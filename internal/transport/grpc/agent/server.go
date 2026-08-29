@@ -3,6 +3,8 @@ package agentgrpc
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +14,8 @@ import (
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
 	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
+	messagev1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1"
+	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -24,8 +28,10 @@ type Server struct {
 	approvals            application.AgentApprovalServiceV1
 	approvalGrants       application.AgentApprovalGrantResolverV1
 	controls             application.AgentTaskControlAuthorizerV1
+	timeline             application.AgentTaskTimelineStoreV1
 	projections          application.AgentTaskWorkflowProjectionServiceV1
 	repairs              application.AgentWorkflowRepairAuditServiceV1
+	repairExecutor       application.AgentWorkflowRepairExecutorV1
 	promotionControls    application.AgentRuntimePromotionControlServiceV1
 	promotionEvidence    application.AgentRuntimePromotionEvidenceReviewServiceV1
 	readinessPublisher   application.AgentMCPReadinessEvidencePublisherV1
@@ -36,6 +42,7 @@ type Server struct {
 	definitionCatalog    application.AgentDefinitionCatalogServiceV1
 	memories             application.AgentMemoryContextResolverV1
 	memoryControls       application.AgentMemoryOwnerControlServiceV1
+	memoryPromotions     application.AgentMemoryCandidatePromotionServiceV1
 	toolAudits           application.AgentToolInvocationAuditServiceV1
 	toolRounds           application.AgentMCPToolRoundServiceV1
 	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
@@ -47,6 +54,14 @@ func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMC
 		return nil, errors.New("Agent MCP readiness evidence Publisher is required")
 	}
 	s.readinessPublisher = publisher
+	return s, nil
+}
+
+func (s *Server) WithTaskTimeline(timeline application.AgentTaskTimelineStoreV1) (*Server, error) {
+	if s == nil || timeline == nil {
+		return nil, errors.New("Agent Task Timeline store is required")
+	}
+	s.timeline = timeline
 	return s, nil
 }
 
@@ -146,6 +161,14 @@ func (s *Server) WithMemoryOwnerControls(controls application.AgentMemoryOwnerCo
 	return s, nil
 }
 
+func (s *Server) WithMemoryCandidatePromotions(promotions application.AgentMemoryCandidatePromotionServiceV1) (*Server, error) {
+	if s == nil || promotions == nil {
+		return nil, errors.New("Agent Memory candidate promotion service is required")
+	}
+	s.memoryPromotions = promotions
+	return s, nil
+}
+
 func (s *Server) ListOwnedMemories(ctx context.Context, request *agentv1.ListOwnedMemoriesRequest) (*agentv1.ListOwnedMemoriesResponse, error) {
 	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
 	if err != nil {
@@ -193,6 +216,46 @@ func (s *Server) RevokeOwnedMemory(ctx context.Context, request *agentv1.RevokeO
 	return agentOwnedMemoryResponseV1(*item), nil
 }
 
+func (s *Server) CorrectOwnedMemory(ctx context.Context, request *agentv1.CorrectOwnedMemoryRequest) (*agentv1.CorrectOwnedMemoryResponse, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.memoryControls == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory owner control is unavailable")
+	}
+	result, err := s.memoryControls.CorrectOwnedMemory(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryOwnerCorrectionRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, MemoryUUID: request.GetMemoryId(),
+		ExpectedVersion: request.GetExpectedVersion(), Content: request.GetContent(),
+		CompactContent: request.GetCompactContent(), Reason: request.GetReason(),
+	})
+	if err != nil {
+		return nil, agentMemoryOwnerErrorV1(err)
+	}
+	return &agentv1.CorrectOwnedMemoryResponse{
+		Previous:  agentOwnedMemoryResponseV1(result.Previous),
+		Corrected: agentOwnedMemoryResponseV1(result.Corrected),
+	}, nil
+}
+
+func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.PromoteMemoryCandidateRequest) (*agentv1.AgentOwnedMemory, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.memoryPromotions == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
+	}
+	item, err := s.memoryPromotions.Promote(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryCandidatePromotionRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, CandidateUUID: request.GetCandidateId(),
+		CandidateSHA256: request.GetCandidateSha256(), ReviewUUID: request.GetReviewId(),
+	})
+	if err != nil {
+		return nil, agentMemoryCandidatePromotionErrorV1(err)
+	}
+	return agentOwnedMemoryResponseV1(*item), nil
+}
+
 func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
 	authenticated, ok := grpcauth.CallerService(ctx)
 	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
@@ -217,6 +280,17 @@ func agentMemoryOwnerErrorV1(err error) error {
 	}
 }
 
+func agentMemoryCandidatePromotionErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentMemoryCandidateInvalid):
+		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, application.ErrAgentMemoryCandidateConflict):
+		return status.Error(codes.Aborted, err.Error())
+	default:
+		return status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
+	}
+}
+
 func agentOwnedMemoryResponseV1(item application.AgentMemoryV1) *agentv1.AgentOwnedMemory {
 	response := &agentv1.AgentOwnedMemory{
 		MemoryId: item.MemoryUUID, AgentId: item.AgentUUID, MemoryType: string(item.MemoryType), Status: string(item.Status),
@@ -225,6 +299,9 @@ func agentOwnedMemoryResponseV1(item application.AgentMemoryV1) *agentv1.AgentOw
 			SourceType: item.Provenance.SourceType, SourceId: item.Provenance.SourceID, Sequence: item.Provenance.Sequence,
 		}, ValidFromUnixMs: item.ValidFrom.UnixMilli(), CreatedAtUnixMs: item.CreatedAt.UnixMilli(),
 		RevokedById: item.RevokedByUUID, RevokeReason: item.RevokeReason,
+		MemoryRootId: item.MemoryRootUUID, MemoryVersion: item.MemoryVersion,
+		SupersedesMemoryId: item.SupersedesMemoryUUID, CorrectedById: item.CorrectedByUUID,
+		CorrectionReason: item.CorrectionReason,
 	}
 	if item.ExpiresAt != nil {
 		response.ExpiresAtUnixMs = item.ExpiresAt.UnixMilli()
@@ -494,6 +571,10 @@ func (s *Server) CreateArtifact(ctx context.Context, request *agentv1.CreateArti
 	if err != nil {
 		return nil, mapAgentArtifactErrorV1(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("artifact:%s:create", artifact.ArtifactUUID), TaskUUID: artifact.TaskUUID, RunUUID: artifact.RunUUID,
+		Kind: application.AgentTaskTimelineEventArtifact, Status: "created", OccurredAt: artifact.CreatedAt,
+	})
 	return &agentv1.CreateArtifactResponse{Artifact: agentArtifactResponseV1(artifact)}, nil
 }
 
@@ -600,6 +681,16 @@ func NewServerWithControlAndProjection(capability application.AgentCapabilityV1,
 	return server, nil
 }
 
+// WithWorkflowRepairExecutor enables the guarded execution control plane.
+// It remains opt-in so audit/proposal deployments cannot mutate projections.
+func (s *Server) WithWorkflowRepairExecutor(executor application.AgentWorkflowRepairExecutorV1) (*Server, error) {
+	if s == nil || executor == nil {
+		return nil, errors.New("Agent Workflow repair executor is required")
+	}
+	s.repairExecutor = executor
+	return s, nil
+}
+
 func (s *Server) ProposeWorkflowRepair(ctx context.Context, request *agentv1.ProposeWorkflowRepairRequest) (*agentv1.WorkflowRepairProposalResponse, error) {
 	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
 	if err != nil {
@@ -647,6 +738,43 @@ func (s *Server) GetWorkflowRepair(ctx context.Context, request *agentv1.GetWork
 		return nil, workflowRepairErrorV1(err)
 	}
 	return workflowRepairProposalResponseV1(proposal), nil
+}
+
+func (s *Server) ExecuteWorkflowRepair(ctx context.Context, request *agentv1.ExecuteWorkflowRepairRequest) (*agentv1.WorkflowRepairExecutionResponse, error) {
+	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.repairExecutor == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Workflow repair executor is unavailable")
+	}
+	target := workflowRepairProjectionFromRPCV1(request.GetTaskId(), request.GetTarget())
+	rollback := workflowRepairProjectionPointerFromRPCV1(request.GetTaskId(), request.GetRollback())
+	execution, err := s.repairExecutor.Execute(ctx, application.AgentWorkflowRepairExecuteRequestV1{
+		ExecutionUUID: request.GetExecutionId(), ExecutorUUID: principal, Target: target, Rollback: rollback,
+	})
+	if err != nil {
+		return nil, workflowRepairExecutionErrorV1(err)
+	}
+	return workflowRepairExecutionResponseV1(execution), nil
+}
+
+func (s *Server) RollbackWorkflowRepair(ctx context.Context, request *agentv1.RollbackWorkflowRepairRequest) (*agentv1.WorkflowRepairExecutionResponse, error) {
+	principal, err := workflowRepairOperatorV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.repairExecutor == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Workflow repair executor is unavailable")
+	}
+	rollback := workflowRepairProjectionPointerFromRPCV1(request.GetTaskId(), request.GetRollback())
+	execution, err := s.repairExecutor.Rollback(ctx, application.AgentWorkflowRepairRollbackRequestV1{
+		ExecutionUUID: request.GetExecutionId(), ExecutorUUID: principal, Rollback: rollback,
+	})
+	if err != nil {
+		return nil, workflowRepairExecutionErrorV1(err)
+	}
+	return workflowRepairExecutionResponseV1(execution), nil
 }
 
 func (s *Server) ProposeRuntimePromotion(ctx context.Context, request *agentv1.ProposeRuntimePromotionRequest) (*agentv1.RuntimePromotionProposalResponse, error) {
@@ -900,6 +1028,47 @@ func workflowRepairEvidenceToRPCV1(value *application.AgentWorkflowEvidenceV1) *
 	}
 	return &agentv1.WorkflowRepairEvidence{WorkflowId: value.WorkflowID, WorkflowRunId: value.WorkflowRunID, Status: value.Status, Revision: value.Revision}
 }
+
+func workflowRepairProjectionFromRPCV1(taskID string, value *agentv1.WorkflowRepairEvidence) application.AgentTaskWorkflowProjectionV1 {
+	if value == nil {
+		return application.AgentTaskWorkflowProjectionV1{TaskUUID: strings.TrimSpace(taskID)}
+	}
+	return application.AgentTaskWorkflowProjectionV1{
+		TaskUUID: strings.TrimSpace(taskID), WorkflowID: value.GetWorkflowId(), RunID: value.GetWorkflowRunId(),
+		Status: application.AgentTaskWorkflowStatusV1(value.GetStatus()), Revision: value.GetRevision(),
+	}
+}
+
+func workflowRepairProjectionPointerFromRPCV1(taskID string, value *agentv1.WorkflowRepairEvidence) *application.AgentTaskWorkflowProjectionV1 {
+	if value == nil {
+		return nil
+	}
+	projection := workflowRepairProjectionFromRPCV1(taskID, value)
+	return &projection
+}
+
+func workflowRepairExecutionResponseV1(value *application.AgentWorkflowRepairExecutionV1) *agentv1.WorkflowRepairExecutionResponse {
+	if value == nil {
+		return nil
+	}
+	return &agentv1.WorkflowRepairExecutionResponse{
+		ExecutionId: value.ExecutionUUID, PlanId: value.PlanID, ProposalId: value.ProposalUUID, TaskId: value.TaskUUID,
+		ExecutorId: value.ExecutorUUID, ExecutorGrantVersion: value.ExecutorGrantVersion,
+		ExpectedCurrentSha256: value.ExpectedCurrentSHA256, TargetSha256: value.TargetSHA256,
+		RollbackSha256: value.RollbackSHA256, Status: string(value.Status),
+	}
+}
+
+func workflowRepairExecutionErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentWorkflowRepairDenied) {
+		return status.Error(codes.PermissionDenied, "Agent Workflow repair execution access denied")
+	}
+	if errors.Is(err, application.ErrAgentWorkflowRepairPrecondition) {
+		return status.Error(codes.FailedPrecondition, "Agent Workflow repair execution precondition failed")
+	}
+	return status.Error(codes.Internal, "Agent Workflow repair execution failed")
+}
+
 func workflowRepairProposalResponseV1(value *application.AgentWorkflowRepairProposalV1) *agentv1.WorkflowRepairProposalResponse {
 	if value == nil {
 		return nil
@@ -941,6 +1110,77 @@ func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.Auth
 		response.WorkflowRevision = authorization.Workflow.Revision
 	}
 	return response, nil
+}
+
+func (s *Server) ListAgentTaskTimeline(ctx context.Context, request *agentv1.ListAgentTaskTimelineRequest) (*agentv1.ListAgentTaskTimelineResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.timeline == nil {
+		return nil, status.Error(codes.FailedPrecondition, "Agent Task Timeline is not configured")
+	}
+	if s.controls == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || strings.TrimSpace(request.GetTaskId()) == "" || strings.TrimSpace(request.GetPrincipalUserId()) == "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task Timeline request is invalid")
+	}
+	if request.GetLimit() == 0 || request.GetLimit() > 100 {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task Timeline limit is invalid")
+	}
+	authorization, err := s.controls.AuthorizeTaskControl(ctx, request.GetTaskId(), request.GetPrincipalUserId())
+	if err != nil || authorization == nil {
+		return nil, status.Error(codes.NotFound, "Agent Task unavailable")
+	}
+	events, err := s.timeline.ListAgentTaskTimelineEvents(ctx, request.GetTaskId(), request.GetAfterSeq(), int(request.GetLimit()))
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Agent Task Timeline unavailable")
+	}
+	response := &agentv1.ListAgentTaskTimelineResponse{SchemaVersion: application.AgentTaskTimelineSchemaVersionV1, TaskId: authorization.TaskUUID, Revision: timelineRevision(authorization), Events: make([]*agentv1.AgentTaskTimelineEvent, 0, len(events))}
+	for _, event := range events {
+		response.Events = append(response.Events, &agentv1.AgentTaskTimelineEvent{
+			EventSeq: event.EventSeq, EventId: event.EventUUID, TaskId: event.TaskUUID, RunId: event.RunUUID,
+			Kind: string(event.Kind), Status: event.Status, CapabilityId: event.CapabilityID, ApprovalId: event.ApprovalUUID,
+			OccurredAtUnixMs: event.OccurredAt.UnixMilli(),
+		})
+	}
+	if len(events) == int(request.GetLimit()) {
+		response.NextCursor = strconv.FormatUint(events[len(events)-1].EventSeq, 10)
+	}
+	return response, nil
+}
+
+func (s *Server) AppendAgentTaskTimelineEvent(ctx context.Context, request *agentv1.AppendAgentTaskTimelineEventRequest) (*agentv1.AppendAgentTaskTimelineEventResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.PermissionDenied, "only the authenticated Agent runtime may append Agent Task Timeline events")
+	}
+	if s.timeline == nil || s.resolver == nil || strings.TrimSpace(request.GetTaskId()) == "" || strings.TrimSpace(request.GetRunId()) == "" {
+		return nil, status.Error(codes.FailedPrecondition, "Agent Task Timeline append is unavailable")
+	}
+	if _, err := s.resolver.Resolve(grpccommon.Correlation(ctx, request.GetContext()), request.GetTaskId(), request.GetRunId()); err != nil {
+		return nil, status.Error(codes.NotFound, "Agent Task Timeline binding is unavailable")
+	}
+	event := application.AgentTaskTimelineEventV1{
+		EventUUID: request.GetEventId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
+		Kind: application.AgentTaskTimelineEventKindV1(request.GetKind()), Status: request.GetStatus(),
+		CapabilityID: request.GetCapabilityId(), ApprovalUUID: request.GetApprovalId(), OccurredAt: time.UnixMilli(request.GetOccurredAtUnixMs()).UTC(),
+	}
+	if err := event.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "Agent Task Timeline event is invalid")
+	}
+	seq, err := s.timeline.AppendAgentTaskTimelineEvent(grpccommon.Correlation(ctx, request.GetContext()), event)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Agent Task Timeline append failed")
+	}
+	return &agentv1.AppendAgentTaskTimelineEventResponse{EventSeq: seq, EventId: event.EventUUID}, nil
+}
+
+func timelineRevision(authorization *application.AgentTaskControlAuthorizationV1) uint64 {
+	if authorization != nil && authorization.Workflow != nil {
+		return authorization.Workflow.Revision
+	}
+	return 0
 }
 
 func (s *Server) ResolveMcpContext(ctx context.Context, request *agentv1.ResolveMcpContextRequest) (*agentv1.ResolveMcpContextResponse, error) {
@@ -998,6 +1238,11 @@ func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.Be
 	if err != nil {
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("tool:%s:begin", record.InvocationUUID), TaskUUID: record.TaskUUID, RunUUID: record.RunUUID,
+		Kind: application.AgentTaskTimelineEventToolInvocation, Status: string(record.Status), CapabilityID: record.CapabilityID,
+		ApprovalUUID: record.ApprovalUUID, OccurredAt: record.StartedAt,
+	})
 	return &agentv1.BeginMcpToolInvocationResponse{InvocationId: record.InvocationUUID, Status: string(record.Status)}, nil
 }
 
@@ -1089,6 +1334,11 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 	if err := s.toolAudits.Finish(grpccommon.Correlation(ctx, request.GetContext()), finish); err != nil {
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("tool:%s:finish", finish.InvocationUUID), TaskUUID: finish.TaskUUID, RunUUID: finish.RunUUID,
+		Kind: application.AgentTaskTimelineEventToolInvocation, Status: string(finish.Status), CapabilityID: command.CapabilityID,
+		OccurredAt: time.Now().UTC(),
+	})
 	return &agentv1.FinishMcpToolInvocationResponse{InvocationId: finish.InvocationUUID, Status: string(finish.Status)}, nil
 }
 
@@ -1259,6 +1509,11 @@ func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestAp
 	if err != nil {
 		return nil, mapApprovalError(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("approval:%s:request", approval.ApprovalUUID), TaskUUID: approval.TaskUUID, RunUUID: request.GetRunId(),
+		Kind: application.AgentTaskTimelineEventApproval, Status: string(approval.Status), CapabilityID: approval.CapabilityID,
+		ApprovalUUID: approval.ApprovalUUID, OccurredAt: time.Now().UTC(),
+	})
 	return approvalResponse(approval), nil
 }
 
@@ -1276,7 +1531,19 @@ func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveAp
 	if err != nil {
 		return nil, mapApprovalError(err)
 	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("approval:%s:resolve", approval.ApprovalUUID), TaskUUID: approval.TaskUUID, RunUUID: request.GetRunId(),
+		Kind: application.AgentTaskTimelineEventApproval, Status: string(approval.Status), CapabilityID: approval.CapabilityID,
+		ApprovalUUID: approval.ApprovalUUID, OccurredAt: time.Now().UTC(),
+	})
 	return approvalResponse(approval), nil
+}
+
+func (s *Server) appendTimelineEvent(ctx context.Context, event application.AgentTaskTimelineEventV1) {
+	if s.timeline == nil {
+		return
+	}
+	_, _ = s.timeline.AppendAgentTaskTimelineEvent(ctx, event)
 }
 
 func (s *Server) ConsumeApproval(ctx context.Context, request *agentv1.ConsumeApprovalRequest) (*agentv1.ConsumeApprovalResponse, error) {
@@ -1353,7 +1620,15 @@ func (s *Server) AdmitRun(ctx context.Context, request *agentv1.AdmitRunRequest)
 	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
 		return nil, status.Error(codes.InvalidArgument, "admission principal belongs to the trusted event payload")
 	}
-	if strings.TrimSpace(request.GetRuntimeId()) != "dipole-agent" || strings.TrimSpace(request.GetMode()) != "shadow" {
+	runtimeID := strings.TrimSpace(request.GetRuntimeId())
+	mode := strings.TrimSpace(request.GetMode())
+	if runtimeID == "" {
+		runtimeID = "dipole-agent"
+	}
+	if mode == "" {
+		mode = "shadow"
+	}
+	if runtimeID != "dipole-agent" || (mode != "shadow" && mode != "active") {
 		return nil, status.Error(codes.InvalidArgument, "Agent Run identity is fixed by the authenticated endpoint")
 	}
 	execution, err := s.admission.Admit(ctx, application.AgentRunAdmissionRequestV1{
@@ -1362,7 +1637,7 @@ func (s *Server) AdmitRun(ctx context.Context, request *agentv1.AdmitRunRequest)
 			DelegatedByUUID: request.GetPrincipalUserId(), TriggerType: request.GetTriggerType(), TriggerRef: request.GetTriggerRef(),
 			SubscriptionUUID: request.GetSubscriptionId(),
 			RequestID:        request.GetContext().GetRequestId(), TraceID: request.GetContext().GetTraceId(), EventID: request.GetEventId(),
-		}, RuntimeID: "dipole-agent", Mode: "shadow",
+		}, RuntimeID: runtimeID, Mode: mode, CandidateVersion: strings.TrimSpace(request.GetCandidateVersion()),
 	})
 	if err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
@@ -1380,7 +1655,17 @@ func (s *Server) CompleteRun(ctx context.Context, request *agentv1.CompleteRunRe
 	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
 		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
 	}
-	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), "dipole-agent", "shadow", application.AgentRunStatusCompleted, ""); err != nil {
+	runtimeID, mode := request.GetRuntimeId(), request.GetMode()
+	if strings.TrimSpace(runtimeID) == "" {
+		runtimeID = "dipole-agent"
+	}
+	if strings.TrimSpace(mode) == "" {
+		mode = "shadow"
+	}
+	if strings.TrimSpace(runtimeID) != "dipole-agent" || (strings.TrimSpace(mode) != "shadow" && strings.TrimSpace(mode) != "active") {
+		return nil, status.Error(codes.InvalidArgument, "Agent Run identity is invalid")
+	}
+	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), runtimeID, mode, application.AgentRunStatusCompleted, ""); err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 			return nil, status.Error(codes.PermissionDenied, "Agent Run completion denied")
 		}
@@ -1401,7 +1686,17 @@ func (s *Server) FinishRun(ctx context.Context, request *agentv1.FinishRunReques
 	if err := application.ValidateAgentRunTerminalV1(runStatus, lastError); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "Agent Run terminal evidence is invalid")
 	}
-	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), "dipole-agent", "shadow", runStatus, lastError); err != nil {
+	runtimeID, mode := request.GetRuntimeId(), request.GetMode()
+	if strings.TrimSpace(runtimeID) == "" {
+		runtimeID = "dipole-agent"
+	}
+	if strings.TrimSpace(mode) == "" {
+		mode = "shadow"
+	}
+	if strings.TrimSpace(runtimeID) != "dipole-agent" || (strings.TrimSpace(mode) != "shadow" && strings.TrimSpace(mode) != "active") {
+		return nil, status.Error(codes.InvalidArgument, "Agent Run identity is invalid")
+	}
+	if err := s.admission.Finish(ctx, request.GetTaskId(), request.GetRunId(), runtimeID, mode, runStatus, lastError); err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 			return nil, status.Error(codes.PermissionDenied, "Agent Run terminal transition denied")
 		}
@@ -1439,6 +1734,47 @@ func (s *Server) ListConversations(ctx context.Context, request *agentv1.ListCon
 	for _, item := range items {
 		if item != nil {
 			response.Conversations = append(response.Conversations, conversationToProto(item))
+		}
+	}
+	return response, nil
+}
+
+func (s *Server) ReadConversation(ctx context.Context, request *agentv1.ReadConversationRequest) (*agentv1.ReadConversationResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	limit := int(request.GetLimit())
+	if limit < 1 || limit > 100 {
+		return nil, status.Error(codes.InvalidArgument, "limit must be between 1 and 100")
+	}
+	targetID := strings.TrimSpace(request.GetTargetId())
+	if targetID == "" {
+		return nil, status.Error(codes.InvalidArgument, "target_id is required")
+	}
+	invocation, err := s.resolver.Resolve(ctx, request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task policy denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task policy lookup failed")
+	}
+	result, err := s.capability.ReadConversation(ctx, invocation, targetID, limit)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentCapabilityDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Capability denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent conversation read failed")
+	}
+	response := &agentv1.ReadConversationResponse{
+		Found: result.Found, Reason: result.Reason, TargetId: result.TargetUUID, TargetType: int32(result.TargetType),
+		Messages: make([]*messagev1.Message, 0, len(result.Messages)),
+	}
+	for _, message := range result.Messages {
+		if message != nil {
+			response.Messages = append(response.Messages, grpcmapping.MessageToProto(message))
 		}
 	}
 	return response, nil

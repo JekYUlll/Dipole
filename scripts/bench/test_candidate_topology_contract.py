@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class CandidateTopologyContractTest(unittest.TestCase):
     def test_dist_compose_exposes_isolation_controls_with_legacy_defaults(self):
-        compose = (ROOT / "docker-compose.dist.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy/compose/docker-compose.dist.yml").read_text(encoding="utf-8")
 
         self.assertEqual(compose.count("image: ${DIPOLE_IMAGE:-dipole-server:latest}"), 3)
         for suffix in ("mysql", "redis", "kafka", "kafdrop", "minio", "minio-init", "node1", "node2", "node3", "nginx"):
@@ -33,6 +33,7 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("status)", script)
         self.assertIn("down)", script)
         self.assertIn("docker image inspect", script)
+        self.assertIn("status --porcelain --untracked-files=no", script)
         self.assertIn("org.opencontainers.image.revision", script)
         self.assertIn("io.dipole.source.dirty", script)
         self.assertIn('DIPOLE_IMAGE="${image_id}"', script)
@@ -42,6 +43,14 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertLess(script.index("/app/dipole-migrate"), script.index("dipole-node1 dipole-node2"))
         self.assertIn("docker compose", script)
         self.assertNotIn("down --volumes", script)
+
+    def test_isolated_message_flow_checks_timeline_reads(self):
+        script = (ROOT / "scripts/smoke-microservice-isolated-images.sh").read_text(encoding="utf-8")
+
+        self.assertIn("before_seq=0&limit=20", script)
+        self.assertIn("after_seq=0&limit=20", script)
+        self.assertIn("message_seq", script)
+        self.assertIn("user_sync_inbox", script)
 
     def test_canonical_compose_gate_renders_candidate_overrides(self):
         script = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")

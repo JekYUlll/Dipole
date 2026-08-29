@@ -1,85 +1,96 @@
-Dipole
+# Dipole
 
-![logo](docs/images/dipole-logo.png)
+Dipole 是一个面向实时协作与 Agent 能力演进的现代 IM 平台。项目以 Go 承担 IM 领域服务，Kafka 连接异步事件与投影，MySQL 提供元数据和事务一致性，并逐步引入 Cassandra Timeline、Elasticsearch Search、Redis Realtime State 与独立的 TypeScript Agent Runtime。
 
-[更新日志](CHANGELOG.md)
+## 项目定位
 
-[架构债务台账](ARCHITECTURE-DEBT.md)
+Dipole 采用渐进式微服务化路线：先以模块化单体保持开发效率，再沿 Gateway、Message、Sync、Search 和 Agent 边界逐步独立部署。核心设计关注消息幂等、会话序列、用户同步游标、事件投影、故障回切和可观测性。
 
-[平台演进计划](PLATFORM-EVOLUTION-PLAN.md)
+当前语言职责如下：
 
-[Agent Runtime 设计](AGENT-RUNTIME-DESIGN.md)
+| 区域 | 技术 | 职责 |
+| --- | --- | --- |
+| IM Core | Go | 用户、群组、消息、会话和一致性边界 |
+| Agent Runtime | TypeScript / Node.js | Agent Task、工具调用、记忆、审批和工作流 |
+| Frontend | TypeScript / Vue | IM 客户端和 Agent 交互界面 |
+| Event Bus | Kafka | 领域事件、异步投影和服务解耦 |
+| Data Layer | MySQL、Cassandra、Elasticsearch、Redis | 元数据、消息 Timeline、搜索和实时状态 |
 
-[GORM 到 sqlc 迁移计划](DATA-ACCESS-MIGRATION.md)
+## 架构概览
 
-[Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)
-
-[Pencil 设计资产](design/README.md)
-
-[IM Gateway 渐进部署手册](GATEWAY-DEPLOYMENT.md)
-
-[最小微服务开发拓扑](MICROSERVICES-DEPLOYMENT.md)
-
-[Search Service 渐进部署手册](SEARCH-SERVICE-DEPLOYMENT.md)
-
-## 数据库迁移
-
-启动服务前先执行版本化 migration：
-
-```bash
-go run ./cmd/migrate -direction up
-go run ./cmd/server
+```text
+Client -- WS/HTTP --> IM Gateway --> Message Service --> MySQL / Kafka
+                                             |
+                         +-------------------+-------------------+
+                         |                   |                   |
+                    Sync Service      Search Service       Agent Runtime
+                         |                   |                   |
+                    Timeline Store          ES             TS + MCP
 ```
 
-服务启动只校验 migration 版本，不修改 schema。baseline down 会删除业务表，只允许在一次性测试库中配合 `-allow-destructive` 使用。
+服务会以兼容的本地实现开始，通过配置切换到独立服务。详细架构决策、迁移边界和当前状态见 [文档目录](docs/README.md)。
 
-多语言仓库的 Go 全量门禁使用：
+## 快速开始
 
-```bash
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu scripts/check-go.sh
-```
-
-该脚本覆盖 `cmd`、`db`、`docs/swagger` 和 `internal` 下的全部 Go package，并依次执行 test 与 vet。Temporal npm 包携带上游 SDK 源树，安装 `agent-runtime/node_modules` 后不再使用根级 `go test ./...`，避免把第三方源码误识别为本项目 package。
-
-sqlc 生成固定使用 `v1.31.1`：
+启动基础服务并执行数据库迁移：
 
 ```bash
-go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
-scripts/sqlc.sh generate
-scripts/check-sqlc.sh
+docker compose up -d mysql redis kafka
+go run ./cmd/tools/migrate -direction up
+go run ./cmd/services/core
 ```
 
-生产数据访问统一使用 `database/sql + sqlc`，查询定义位于 `db/queries`，生成代码位于 `internal/data/mysql/generated`。
-
-前端工具链固定使用 Node.js 22.12+ LTS、Vite 8 和 Vitest 4：
+启动前端：
 
 ```bash
 cd frontend
 nvm use
 npm ci
+npm run dev
+```
+
+生产数据访问使用 `database/sql + sqlc`。生成代码前安装固定版本的 sqlc：
+
+```bash
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+scripts/sqlc.sh generate
+```
+
+## 验证
+
+常用门禁：
+
+```bash
+scripts/check-go.sh
+scripts/check-sqlc.sh
+scripts/check-proto.sh
+scripts/check-compose.sh
+scripts/check-architecture-docs.sh
+scripts/check-service-layout.sh
+```
+
+前端验证：
+
+```bash
+cd frontend
 npm run test:toolchain
 npm test
 npm run build
 ```
 
-`test:toolchain` 验证 `/app/` 静态资源基路径、生产输出边界及 HTTP/WebSocket 开发代理。代理默认目标为 `http://localhost:80`，隔离验收可通过 `DIPOLE_WEB_PROXY_TARGET` 覆盖。
+## 文档
 
-Kafka Envelope、schema version、重试和死信规则见 [Kafka 事件契约](KAFKA-EVENT-CONTRACT.md)。
-Kafka 三节点开发基线与故障验收见 [Kafka Cluster 文档](KAFKA-CLUSTER.md)。
-MySQL InnoDB Cluster、Router writer 路由与主切换验收见 [MySQL Cluster 文档](MYSQL-CLUSTER.md)。
-Redis Sentinel、实时状态语义与故障验收见 [Redis Cluster 文档](REDIS-CLUSTER.md)。
-Cassandra 与 Elasticsearch 隔离实验及影子投影边界见 [Storage Lab 文档](STORAGE-LAB.md)。
-Cassandra 会话 Timeline 分区与影子写入契约见 [Cassandra Timeline 文档](CASSANDRA-TIMELINE.md)。
-Elasticsearch 版本化索引、Alias 与幂等投影契约见 [Message Search 文档](ELASTICSEARCH-SEARCH.md)。
+文档按主题归档在 [`docs/`](docs/README.md)，根目录只保留项目入口、滚动更新日志和仓库协作规则。
 
-`message.transport` 默认为 `local`；设为 `grpc` 后通过受认证网络 channel 调用独立 Message Service，关闭开关即可回切本地实现。
+- [架构与演进](docs/README.md#架构与演进)
+- [多语言服务目录](services/README.md)
+- [数据与存储](docs/README.md#数据与存储)
+- [部署与运行](docs/README.md#部署与运行)
+- [Agent Runtime](docs/README.md#agent-runtime)
+- [前端设计](docs/README.md#前端设计)
+- [性能记录](docs/README.md#性能记录)
+- [更新日志](CHANGELOG.md)
 
-Message gRPC 契约生成固定使用 `protoc-gen-go v1.36.11` 和 `protoc-gen-go-grpc 1.6.2`：
+## 开发约定
 
-```bash
-scripts/check-proto.sh
-```
-
-独立 Message Service 的 mTLS、影子验证、流量切换与回滚步骤见 [MESSAGE-SERVICE-DEPLOYMENT.md](MESSAGE-SERVICE-DEPLOYMENT.md)。
-
-可重复的 RPC 与后续端到端性能记录见 [PERFORMANCE-BASELINE.md](PERFORMANCE-BASELINE.md)。
+长期架构约束需要同步实现、测试、文档清单和更新日志。新增服务或数据边界时，优先增加接口与测试，再逐步切换运行拓扑；所有切换都应保留回滚路径。

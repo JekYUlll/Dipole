@@ -4,7 +4,7 @@
 
 ## Candidate topology
 
-候选拓扑复用 `docker-compose.dist.yml`，同时固定以下隔离边界：
+候选拓扑复用 `deploy/compose/docker-compose.dist.yml`，同时固定以下隔离边界：
 
 - Compose project 与容器前缀：`dipole-c1`
 - 应用镜像：启动时解析为不可变 Docker image SHA-256
@@ -14,7 +14,7 @@
 - Fresh MySQL：候选脚本以 one-shot `dipole-migrate` 命令完成迁移后再启动节点
 - Agent：基准期间固定 `runtime_mode=off`，避免外部模型依赖污染实时数据面
 
-默认 `docker-compose.dist.yml` 仍使用 `dipole-*`、原宿主端口、`10.200.0.0/24` 和 `dipole-server:latest`。
+默认 `deploy/compose/docker-compose.dist.yml` 仍使用 `dipole-*`、原宿主端口、`10.200.0.0/24` 和 `dipole-server:latest`。
 
 候选镜像必须由干净提交构建，并与当前工作树 `HEAD` 相同：
 
@@ -38,7 +38,7 @@ scripts/bench/candidate_topology.sh down
 
 ```bash
 COMPOSE_PROJECT_NAME=dipole-c1 \
-COMPOSE_FILE=docker-compose.dist.yml \
+COMPOSE_FILE=deploy/compose/docker-compose.dist.yml \
 BASE_URL=http://127.0.0.1:18081 \
 NODE1_WS=ws://127.0.0.1:18081 \
 NODE2_WS=ws://127.0.0.1:18082 \
@@ -60,7 +60,7 @@ scripts/bench/run_bench.sh
 
 ```bash
 COMPOSE_PROJECT_NAME=dipole-c1 \
-COMPOSE_FILE=docker-compose.dist.yml \
+COMPOSE_FILE=deploy/compose/docker-compose.dist.yml \
 TARGET_SERVICE=dipole-node2 \
 RUN_ID=c1-node2-recovery \
 scripts/bench/recovery_drill.sh

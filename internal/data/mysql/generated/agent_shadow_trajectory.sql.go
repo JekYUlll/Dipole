@@ -141,6 +141,32 @@ func (q *Queries) GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStep
 	return i, err
 }
 
+const insertAgentMemoryTaskLineage = `-- name: InsertAgentMemoryTaskLineage :exec
+INSERT INTO agent_memory_task_lineage (
+    memory_uuid, task_uuid, representation, source
+) VALUES (?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE
+    representation = IF(representation = VALUES(representation), representation, NULL),
+    source = IF(VALUES(source) = 'context_pre_model', 'context_pre_model', source)
+`
+
+type InsertAgentMemoryTaskLineageParams struct {
+	MemoryUuid     string
+	TaskUuid       string
+	Representation string
+	Source         string
+}
+
+func (q *Queries) InsertAgentMemoryTaskLineage(ctx context.Context, arg InsertAgentMemoryTaskLineageParams) error {
+	_, err := q.db.ExecContext(ctx, insertAgentMemoryTaskLineage,
+		arg.MemoryUuid,
+		arg.TaskUuid,
+		arg.Representation,
+		arg.Source,
+	)
+	return err
+}
+
 const insertAgentShadowPlan = `-- name: InsertAgentShadowPlan :execrows
 INSERT INTO agent_shadow_plans (
     task_uuid, event_id, event_type, summary, plan_sha256, model_route,

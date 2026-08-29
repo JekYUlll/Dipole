@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-COMPOSE_FILE="${ROOT_DIR}/docker-compose.cluster.yml"
+COMPOSE_FILE="${ROOT_DIR}/deploy/compose/docker-compose.cluster.yml"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-kafka-rebalance-smoke}"
 TOPIC="${KAFKA_REBALANCE_TOPIC:-dipole-rebalance-smoke}"
 GROUP="${KAFKA_REBALANCE_GROUP:-dipole-rebalance-group}"

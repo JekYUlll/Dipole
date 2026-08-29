@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dipole Agent Memory Lineage Deployment Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "reviewReceiptSha256", "deploymentId", "runtimeRevision", "configurationSha256", "observedMigration", "healthCheckPassed", "rollbackDrillId", "rollbackDrillPassed", "observedAt", "sharedEnvironment"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-lineage-backfill-deployment-evidence.v1"},
+    "reviewReceiptSha256": {"$ref": "#/$defs/sha256"},
+    "deploymentId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "runtimeRevision": {"type": "string", "pattern": "^[a-f0-9]{40}$|^[a-f0-9]{64}$"},
+    "configurationSha256": {"$ref": "#/$defs/sha256"},
+    "observedMigration": {"const": 43},
+    "healthCheckPassed": {"const": true},
+    "rollbackDrillId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "rollbackDrillPassed": {"const": true},
+    "observedAt": {"type": "string", "format": "date-time"},
+    "sharedEnvironment": {"const": true}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.dist.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/docker-compose.dist.yml}"
 BENCH_SCRIPT="${BENCH_SCRIPT:-scripts/bench/bench.js}"
 RESULTS_DIR="${RESULTS_DIR:-scripts/bench/results}"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"

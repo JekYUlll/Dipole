@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/cassandra-read-rollout/v1/evidence.schema.json",
+  "title": "Dipole Cassandra Read Rollout Evidence v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "service", "deploymentRevision", "windowStart", "windowEnd", "configuredReadPercentage", "requests", "latency"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.cassandra-read-rollout-evidence.v1"}, "service": {"type": "string", "minLength": 1, "maxLength": 128}, "deploymentRevision": {"type": "string", "minLength": 1, "maxLength": 256}, "windowStart": {"type": "string", "format": "date-time"}, "windowEnd": {"type": "string", "format": "date-time"}, "configuredReadPercentage": {"type": "integer", "minimum": 0, "maximum": 100},
+    "requests": {"$ref": "#/$defs/counts"}, "latency": {"type": "object", "additionalProperties": false, "required": ["cassandraP95Micros", "mysqlP95Micros"], "properties": {"cassandraP95Micros": {"type": "integer", "minimum": 0}, "mysqlP95Micros": {"type": "integer", "minimum": 0}}}
+  },
+  "$defs": {"counts": {"type": "object", "additionalProperties": false, "required": ["total", "cassandra", "mysql", "fallback", "verificationSamples", "verificationMismatch", "verificationErrors"], "properties": {"total": {"type": "integer", "minimum": 1}, "cassandra": {"type": "integer", "minimum": 0}, "mysql": {"type": "integer", "minimum": 0}, "fallback": {"type": "integer", "minimum": 0}, "verificationSamples": {"type": "integer", "minimum": 0}, "verificationMismatch": {"type": "integer", "minimum": 0}, "verificationErrors": {"type": "integer", "minimum": 0}}}}
+}

@@ -1,0 +1,19 @@
+cassandra:
+  enabled: true
+  hosts:
+    - cassandra:9042
+  keyspace: dipole_message_shadow
+  local_datacenter: datacenter1
+  timeline_bucket_size: 10000
+
+kafka:
+  enabled: true
+  brokers:
+    - kafka:9092
+
+mysql:
+  host: mysql
+  port: 3306
+  user: dipole
+  password: dipole123
+  dbname: dipole

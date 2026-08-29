@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-lineage-backfill/v1/approval.schema.json",
+  "title": "Dipole Agent Memory Lineage Backfill Approval v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "jobName", "operatorId", "approverId", "manifestSha256", "sourceHighWatermarkId", "approved", "approvalSha256"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-lineage-backfill-approval.v1"},
+    "policyVersion": {"const": "memory-lineage-backfill-v1"},
+    "jobName": {"type": "string", "minLength": 1, "maxLength": 128},
+    "operatorId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "approverId": {"type": "string", "minLength": 1, "maxLength": 128},
+    "manifestSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sourceHighWatermarkId": {"type": "integer", "minimum": 0},
+    "approved": {"const": true},
+    "approvalSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

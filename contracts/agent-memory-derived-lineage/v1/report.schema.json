@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-derived-lineage/v1/report.schema.json",
+  "title": "Dipole Agent Memory Derived Lineage Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "memoryRootSha256", "lineageVersions", "directTaskReferences", "unindexedContextPlans", "unattributedModelTasks", "lineageComplete", "domains", "contentRead", "deletionAuthority", "runtimeAuthority", "reportSha256"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-derived-lineage-report.v1" },
+    "policyVersion": { "const": "memory-derived-lineage-v1" },
+    "memoryRootSha256": { "$ref": "#/$defs/sha256" },
+    "lineageVersions": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "directTaskReferences": { "$ref": "#/$defs/count" },
+    "unindexedContextPlans": { "$ref": "#/$defs/count" },
+    "unattributedModelTasks": { "$ref": "#/$defs/count" },
+    "lineageComplete": { "type": "boolean" },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelCalls", "shadowPlans", "shadowSteps", "artifacts", "toolInvocations", "messageActions", "temporalHistoryPotentialTasks"],
+      "properties": {
+        "modelCalls": { "$ref": "#/$defs/count" },
+        "shadowPlans": { "$ref": "#/$defs/count" },
+        "shadowSteps": { "$ref": "#/$defs/count" },
+        "artifacts": { "$ref": "#/$defs/count" },
+        "toolInvocations": { "$ref": "#/$defs/count" },
+        "messageActions": { "$ref": "#/$defs/count" },
+        "temporalHistoryPotentialTasks": { "$ref": "#/$defs/count" }
+      }
+    },
+    "contentRead": { "const": false },
+    "deletionAuthority": { "const": false },
+    "runtimeAuthority": { "const": false },
+    "reportSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "unindexedContextPlans": { "const": 0 }, "unattributedModelTasks": { "const": 0 } },
+        "required": ["unindexedContextPlans", "unattributedModelTasks"]
+      },
+      "then": { "properties": { "lineageComplete": { "const": true } } },
+      "else": { "properties": { "lineageComplete": { "const": false } } }
+    }
+  ],
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

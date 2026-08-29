@@ -7,7 +7,7 @@ This isolated drill validates the real C++ Realtime Delivery process as the targ
 - Kafka: `apache/kafka:3.9.0`, image `sha256:2956061ba5d3388af8eb3148200f385ccba13ef75bc0eb6dcca5827ebd2d36d4`, one isolated KRaft broker on a random loopback port.
 - Redis: `redis:7.4`, image `sha256:54fc9bbc80cdb3b3d8e3a5197732bff502650b62a8bc86f4c3c36e152db4e1af`, behind the drill's local fault proxy.
 - The compatibility group used kafka-go. The target group was deliberately emptied, then restored by the source-built `dipole-realtime-delivery primary` process using librdkafka and the canonical `dipole.message.*.created` topics.
-- The target manifest required `gateway/gateway-a` and `realtime-delivery/cpp-a`. The fixture emitted only the Gateway observation; the C++ process had to validate the CPP active lease and emit its own short-TTL Redis observation.
+- The target manifest required `gateway/gateway-a` and `services/realtime-delivery/cpp-a`. The fixture emitted only the Gateway observation; the C++ process had to validate the CPP active lease and emit its own short-TTL Redis observation.
 
 The canonical command was:
 

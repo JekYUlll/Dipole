@@ -11,6 +11,7 @@
     "build": "vue-tsc && vite build",
     "test": "vitest run",
     "test:toolchain": "node --test toolchain.test.mjs",
+    "test:design": "node --test ../scripts/check-pencil-design.test.mjs && node ../scripts/check-pencil-design.mjs ../design/dipole-ui.pen",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium firefox webkit",
     "test:watch": "vitest",

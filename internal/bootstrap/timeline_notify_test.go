@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -55,6 +55,7 @@ func TestDeliverDirectMessageTimelineNotificationModes(t *testing.T) {
 	}{
 		{name: "off", mode: wsTransport.TimelineNotifyOff, wantTypes: []string{wsTransport.TypeChatMessage}},
 		{name: "shadow", mode: wsTransport.TimelineNotifyShadow, wantTypes: []string{wsTransport.TypeChatMessage, wsTransport.TypeSyncItemNotifyV1}},
+		{name: "primary", mode: wsTransport.TimelineNotifyPrimary, wantTypes: []string{wsTransport.TypeChatMessage, wsTransport.TypeSyncItemNotifyV1}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			sender := &recordingWSEventSender{}
@@ -74,7 +75,7 @@ func TestDeliverDirectMessageTimelineNotificationModes(t *testing.T) {
 					t.Fatalf("event[%d] correlation=%+v", index, sender.events[index].ids)
 				}
 			}
-			if test.mode == wsTransport.TimelineNotifyShadow {
+			if test.mode == wsTransport.TimelineNotifyShadow || test.mode == wsTransport.TimelineNotifyPrimary {
 				notify := sender.events[1].data.(wsTransport.SyncItemNotifyData)
 				if notify.SchemaVersion != "v1" || notify.EventID != "E42" || notify.MessageUUID != "M42" || notify.ConversationKey != "direct:U1:U2" || notify.MessageSeq != 42 {
 					t.Fatalf("unexpected notify: %+v", notify)

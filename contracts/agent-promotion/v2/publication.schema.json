@@ -15,6 +15,7 @@
     "definitionVersion": { "type": "integer", "minimum": 1 },
     "requestId": { "$ref": "#/$defs/id" },
     "traceId": { "$ref": "#/$defs/id" },
+    "releaseManifest": { "$ref": "../../agent-release/v1/manifest.schema.json" },
     "evidence": {
       "type": "object",
       "additionalProperties": false,

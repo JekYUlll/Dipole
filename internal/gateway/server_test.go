@@ -14,8 +14,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 
@@ -56,6 +56,24 @@ func (gatewayMessageStub) ListGroupMessagesAfterSeq(string, string, uint64, int)
 }
 func (gatewayMessageStub) ListOfflineMessages(string, uint, int) ([]*model.Message, error) {
 	return nil, nil
+}
+
+type gatewaySyncStub struct{}
+
+func (gatewaySyncStub) List(string, uint64, int) (*application.SyncPage, error) {
+	return &application.SyncPage{}, nil
+}
+func (gatewaySyncStub) GetCheckpoint(string, string) (*model.DeviceSyncCheckpoint, error) {
+	return &model.DeviceSyncCheckpoint{}, nil
+}
+func (gatewaySyncStub) AdvanceCheckpoint(string, string, uint64) (*model.DeviceSyncCheckpoint, error) {
+	return &model.DeviceSyncCheckpoint{}, nil
+}
+func (gatewaySyncStub) ListGroupCheckpoints(string, string, []string) ([]*model.GroupSyncCheckpoint, error) {
+	return nil, nil
+}
+func (gatewaySyncStub) AdvanceGroupCheckpoint(string, string, string, uint64) (*model.GroupSyncCheckpoint, error) {
+	return &model.GroupSyncCheckpoint{}, nil
 }
 
 type gatewayCoreStub struct{}
@@ -106,8 +124,10 @@ type gatewayAgentDefinitionStub struct {
 }
 
 type gatewayAgentMemoryStub struct {
-	principal, after, memoryID, reason string
-	limit, listCalls, revokeCalls      int
+	principal, after, memoryID, reason          string
+	content, compactContent                     string
+	expectedVersion                             uint32
+	limit, listCalls, revokeCalls, correctCalls int
 }
 
 func (s *gatewayAgentMemoryStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error) {
@@ -120,6 +140,20 @@ func (s *gatewayAgentMemoryStub) Revoke(_ context.Context, principalUUID, memory
 	s.principal, s.memoryID, s.reason = principalUUID, memoryID, reason
 	s.revokeCalls++
 	return &AgentMemory{MemoryID: memoryID, Status: "revoked", RevokedByID: principalUUID, RevokeReason: reason}, nil
+}
+
+func (s *gatewayAgentMemoryStub) Correct(_ context.Context, principalUUID, memoryID string, expectedVersion uint32, content, compactContent, reason string) (*AgentMemoryCorrection, error) {
+	s.principal, s.memoryID, s.expectedVersion = principalUUID, memoryID, expectedVersion
+	s.content, s.compactContent, s.reason = content, compactContent, reason
+	s.correctCalls++
+	return &AgentMemoryCorrection{
+		Previous:  AgentMemory{MemoryID: memoryID, MemoryRootID: memoryID, MemoryVersion: expectedVersion, Status: "revoked"},
+		Corrected: AgentMemory{MemoryID: "MEM-2", MemoryRootID: memoryID, MemoryVersion: expectedVersion + 1, SupersedesID: memoryID, Status: "active", Content: content},
+	}, nil
+}
+
+func (s *gatewayAgentMemoryStub) PromoteCandidate(_ context.Context, principalUUID, candidateID, candidateSHA256, reviewID string) (*AgentMemory, error) {
+	return &AgentMemory{MemoryID: "MEM-CAND-1", AgentID: "UAI", MemoryType: "observational", Status: "active", ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60, Provenance: AgentMemoryProvenance{SourceType: "memory_candidate", SourceID: candidateID, Sequence: reviewID}, ValidFromUnixMS: 1700000000000, CreatedAtUnixMS: 1700000000000, MemoryRootID: "MEM-CAND-1", MemoryVersion: 1}, nil
 }
 
 func (s *gatewayAgentDefinitionStub) ListDefinitions(_ context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
@@ -187,6 +221,11 @@ func (s *gatewayAgentMCPLimiterStub) AllowAgentMCP(principalUUID string) (bool, 
 func (s *gatewayAgentTaskStub) GetTask(_ context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {
 	s.principal, s.taskID = principalUUID, taskUUID
 	return agentControlJSON(http.StatusOK, map[string]any{"taskId": taskUUID, "status": "running"}), nil
+}
+
+func (s *gatewayAgentTaskStub) GetTimeline(_ context.Context, principalUUID, taskUUID, after string, limit int) (*AgentTaskControlResult, error) {
+	s.principal, s.taskID = principalUUID, taskUUID
+	return agentControlJSON(http.StatusOK, map[string]any{"taskId": taskUUID, "after": after, "limit": limit, "events": []any{}}), nil
 }
 
 func (s *gatewayAgentTaskStub) CancelTask(_ context.Context, principalUUID, taskUUID, reason string) (*AgentTaskControlResult, error) {
@@ -275,6 +314,37 @@ func TestGatewayOwnsHealthAndProxiesCoreHTTP(t *testing.T) {
 	}
 }
 
+func TestGatewayOwnsMessageAndSyncReadRoutes(t *testing.T) {
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	gateway, err := NewServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Sync: gatewaySyncStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+
+	routes := map[string]bool{}
+	for _, route := range gateway.Engine().Routes() {
+		routes[route.Method+" "+route.Path] = true
+	}
+	for _, route := range []string{
+		http.MethodGet + " /api/v1/messages/offline",
+		http.MethodGet + " /api/v1/messages/direct/:target_uuid",
+		http.MethodGet + " /api/v1/messages/group/:group_uuid",
+		http.MethodGet + " /api/v1/sync",
+		http.MethodGet + " /api/v1/sync/checkpoint",
+		http.MethodPatch + " /api/v1/sync/checkpoint",
+		http.MethodPost + " /api/v1/sync/comparison",
+		http.MethodGet + " /api/v1/sync/groups/checkpoints",
+		http.MethodPatch + " /api/v1/sync/groups/:group_uuid/checkpoint",
+	} {
+		if !routes[route] {
+			t.Fatalf("gateway route missing: %s", route)
+		}
+	}
+}
+
 func TestGatewayRequiresRemoteDependencies(t *testing.T) {
 	if _, err := NewServer("http://127.0.0.1:8081", Dependencies{Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
 		t.Fatal("expected missing message application to fail")
@@ -292,6 +362,7 @@ func TestGatewayRequiresRemoteDependencies(t *testing.T) {
 
 func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 	t.Chdir("../..")
+	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")
 	mr, err := miniredis.Run()
 	if err != nil {
 		t.Fatalf("start miniredis: %v", err)
@@ -458,6 +529,22 @@ func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
 	gateway.Engine().ServeHTTP(revokeResponse, revoke)
 	if revokeResponse.Code != http.StatusOK || memories.principal != "U100" || memories.memoryID != "MEM-1" || memories.reason != "outdated" || memories.revokeCalls != 1 {
 		t.Fatalf("revoke code=%d stub=%+v body=%s", revokeResponse.Code, memories, revokeResponse.Body.String())
+	}
+	forgedCorrection := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memories/MEM-1/correct", strings.NewReader(`{"expectedVersion":1,"content":"Owner is Bob","compactContent":"Owner: Bob","reason":"fix owner","principalUserId":"U999"}`))
+	forgedCorrection.Header.Set("Authorization", "Bearer "+token)
+	forgedCorrection.Header.Set("Content-Type", "application/json")
+	forgedCorrectionResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(forgedCorrectionResponse, forgedCorrection)
+	if forgedCorrectionResponse.Code != http.StatusBadRequest || memories.correctCalls != 0 {
+		t.Fatalf("forged correction code=%d calls=%d", forgedCorrectionResponse.Code, memories.correctCalls)
+	}
+	correction := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memories/MEM-1/correct", strings.NewReader(`{"expectedVersion":1,"content":"Owner is Bob","compactContent":"Owner: Bob","reason":"fix owner"}`))
+	correction.Header.Set("Authorization", "Bearer "+token)
+	correction.Header.Set("Content-Type", "application/json")
+	correctionResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(correctionResponse, correction)
+	if correctionResponse.Code != http.StatusOK || memories.principal != "U100" || memories.expectedVersion != 1 || memories.content != "Owner is Bob" || memories.reason != "fix owner" || memories.correctCalls != 1 {
+		t.Fatalf("correction code=%d stub=%+v body=%s", correctionResponse.Code, memories, correctionResponse.Body.String())
 	}
 }
 

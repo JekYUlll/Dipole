@@ -6,16 +6,17 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
-	cassandraData "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
-	routingData "github.com/JekYUlll/Dipole/internal/data/routing"
-	shadowData "github.com/JekYUlll/Dipole/internal/data/shadow"
+	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	routingData "github.com/JekYUlll/Dipole/internal/platform/storage/routing"
+	shadowData "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
+	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
+	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/apache/cassandra-gocql-driver/v2"
 	"google.golang.org/grpc"
@@ -53,7 +54,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if messageCfg.RuntimeMode != "owner" && messageCfg.RuntimeMode != "shadow" {
 		return nil, fmt.Errorf("unsupported message.runtime_mode %q", messageCfg.RuntimeMode)
 	}
-	if err := validateMessageInboxWriteMode(messageCfg, kafkaCfg); err != nil {
+	if err := validateMessageInboxWriteMode(messageCfg, kafkaCfg, config.SyncConfig()); err != nil {
 		return nil, err
 	}
 	if messageCfg.RuntimeMode == "owner" {
@@ -76,7 +77,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			return nil, fmt.Errorf("verify message database permissions: %w", err)
 		}
 	}
-	repos, err := appComposition.NewMessageProcessRepositoriesWithInboxWrites(store.SQLDB, messageCfg.InboxWriteMode == "atomic")
+	repos, err := messagemysql.NewProcessRepositories(store.SQLDB, messageCfg.InboxWriteMode == "atomic")
 	if err != nil {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
@@ -129,7 +130,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if runtime.duplicateHydration != nil {
 		duplicateObserver = runtime.duplicateHydration.Observe
 	}
-	messages := appComposition.NewMessageApplication(repos.Messages, core, appComposition.MessagingDependencies{
+	messages := messageapplication.New(repos.Messages, core, messageapplication.Dependencies{
 		Events: events, HotGroups: platformHotGroup.NewRedisDetector(), DuplicateHydrator: duplicateHydrator,
 		DuplicateHydrationObserver: duplicateObserver,
 	})
@@ -186,7 +187,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	return runtime, nil
 }
 
-func validateMessageInboxWriteMode(messageCfg config.Message, kafkaCfg config.Kafka) error {
+func validateMessageInboxWriteMode(messageCfg config.Message, kafkaCfg config.Kafka, syncCfg config.Sync) error {
 	if messageCfg.InboxWriteMode != "atomic" && messageCfg.InboxWriteMode != "projector" {
 		return fmt.Errorf("unsupported message.inbox_write_mode %q", messageCfg.InboxWriteMode)
 	}
@@ -195,6 +196,9 @@ func validateMessageInboxWriteMode(messageCfg config.Message, kafkaCfg config.Ka
 	}
 	if messageCfg.InboxWriteMode == "projector" && !kafkaCfg.Enabled {
 		return fmt.Errorf("message.inbox_write_mode projector requires kafka.enabled")
+	}
+	if messageCfg.InboxWriteMode == "projector" && !syncCfg.ProjectorEnabled {
+		return fmt.Errorf("message.inbox_write_mode projector requires sync.projector_enabled")
 	}
 	return nil
 }

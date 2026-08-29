@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"time"
 
-	appcomposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/config"
-	elasticsearchdata "github.com/JekYUlll/Dipole/internal/data/elasticsearch"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	elasticsearchdata "github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	searchapplication "github.com/JekYUlll/Dipole/internal/services/search/application"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -59,7 +59,7 @@ func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, ela
 		return nil, err
 	}
 	runtime.coreConn = coreConnection
-	search, err := appcomposition.NewSearchApplication(core, index)
+	search, err := searchapplication.NewSearchApplication(core, index)
 	if err != nil {
 		runtime.Close()
 		return nil, err

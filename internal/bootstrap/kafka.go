@@ -10,14 +10,15 @@ import (
 
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
-	aiModule "github.com/JekYUlll/Dipole/internal/modules/ai"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	"github.com/JekYUlll/Dipole/internal/service"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
+	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
@@ -68,6 +69,27 @@ func RegisterCoreKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *ap
 	return registerCoreKafkaHandlers(hub, repos, nil, false)
 }
 
+// RegisterCoreProjectionKafkaHandlers registers only projections owned by the
+// standalone Core process. Message persistence and Agent handlers belong to
+// their own service runtimes and must not be recreated here.
+func RegisterCoreProjectionKafkaHandlers(messaging *appComposition.MessagingServices) error {
+	if platformKafka.Subscriber == nil {
+		return nil
+	}
+	if messaging == nil || messaging.Conversations == nil {
+		return fmt.Errorf("core projection messaging is required")
+	}
+
+	platformKafka.Subscriber.Register("group.created", initGroupConversationHandler(messaging.Conversations))
+	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(messaging.Conversations, false))
+	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(messaging.Conversations, true))
+	for _, topic := range []string{"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed", "conversation.direct.read", "session.force_logout", "contact.friend.deleted"} {
+		platformKafka.Subscriber.Register(topic, logKafkaEventHandler(topic))
+	}
+
+	return nil
+}
+
 func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Repositories, messaging *appComposition.MessagingServices, includeMessagePersistence bool) error {
 	if platformKafka.Subscriber == nil {
 		return nil
@@ -94,11 +116,11 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		return fmt.Errorf("resolve AI runtime mode: %w", err)
 	}
 	if runsEmbeddedAgent {
-		agentCommands, err := appComposition.NewLocalAgentCommandV1(messaging.Messages)
+		agentCommands, err := agentapplication.NewLocalAgentCommandV1(messaging.Messages)
 		if err != nil {
 			return fmt.Errorf("compose Agent Command v1: %w", err)
 		}
-		agentCapability, err := appComposition.NewLocalAgentCapabilityV1(
+		agentCapability, err := agentapplication.NewLocalAgentCapabilityV1(
 			messaging.Core,
 			messaging.Messages,
 			messaging.Conversations,
@@ -443,7 +465,7 @@ func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReade
 }
 
 func timelineNotifyData(envelope *platformKafka.Envelope, payload service.MessageEventPayload, mode string) (wsTransport.SyncItemNotifyData, bool) {
-	if mode != wsTransport.TimelineNotifyShadow || payload.MessageSeq == 0 || strings.TrimSpace(payload.MessageID) == "" || strings.TrimSpace(payload.ConversationKey) == "" {
+	if (mode != wsTransport.TimelineNotifyShadow && mode != wsTransport.TimelineNotifyPrimary) || payload.MessageSeq == 0 || strings.TrimSpace(payload.MessageID) == "" || strings.TrimSpace(payload.ConversationKey) == "" {
 		return wsTransport.SyncItemNotifyData{}, false
 	}
 	eventID := payload.MessageID

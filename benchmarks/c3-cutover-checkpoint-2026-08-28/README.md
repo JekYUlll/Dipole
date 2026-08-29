@@ -28,7 +28,7 @@ The two Redis observations were injected from the exact v1 contract with real TT
 
 Blocked commands did not create their requested output file.
 
-- Removing `realtime-delivery/cpp-real-a` produced `delivery authority observation realtime-delivery/cpp-real-a is expired or missing`.
+- Removing `services/realtime-delivery/cpp-real-a` produced `delivery authority observation services/realtime-delivery/cpp-real-a is expired or missing`.
 - Stopping the primary-role group member produced `Kafka checkpoint group dipole-realtime-primary-v1 state must be Stable, got Empty`.
 - The first Java console-consumer fixture exposed `Got non-zero number of bytes remaining: 10` in kafka-go's high-level assignment decoder. The final implementation uses a bounded raw ConsumerProtocol prefix parser and was rerun successfully against kafka-go and C++ librdkafka members.
 

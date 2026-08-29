@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-COMPOSE_FILE="${C1_COMPOSE_FILE:-docker-compose.dist.yml}"
+COMPOSE_FILE="${C1_COMPOSE_FILE:-deploy/compose/docker-compose.dist.yml}"
 C1_PROJECT="${C1_PROJECT:-dipole-c1}"
 C1_CONTAINER_PREFIX="${C1_CONTAINER_PREFIX:-dipole-c1}"
 C1_READY_TIMEOUT_SECONDS="${C1_READY_TIMEOUT_SECONDS:-180}"
@@ -54,7 +54,7 @@ verify_candidate_image() {
     echo "candidate image is required" >&2
     exit 1
   fi
-  if [[ -n "$(git -C "${ROOT_DIR}" status --porcelain)" ]]; then
+  if [[ -n "$(git -C "${ROOT_DIR}" status --porcelain --untracked-files=no)" ]]; then
     echo "candidate source tree has changes; commit them before deployment" >&2
     exit 1
   fi

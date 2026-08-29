@@ -248,3 +248,64 @@ WHERE p.proposal_uuid = ? AND p.status = 'proposed'
 UPDATE agent_workflow_repair_proposals
 SET status = 'expired', decided_at = UTC_TIMESTAMP()
 WHERE proposal_uuid = ? AND status = 'proposed' AND expires_at <= UTC_TIMESTAMP();
+
+-- name: InsertAgentWorkflowRepairExecution :execrows
+INSERT IGNORE INTO agent_workflow_repair_executions (
+    execution_uuid, plan_id, proposal_uuid, task_uuid, executor_uuid, executor_grant_version,
+    expected_current_sha256, target_sha256, rollback_sha256, status
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'prepared');
+
+-- name: GetAgentWorkflowRepairExecution :one
+SELECT * FROM agent_workflow_repair_executions WHERE execution_uuid = ? LIMIT 1;
+
+-- name: ClaimAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'executing', started_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'prepared' AND started_at IS NULL AND finished_at IS NULL;
+
+-- name: FailAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'failed', failure_code = ?, finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND status = 'executing'
+  AND started_at IS NOT NULL AND finished_at IS NULL;
+
+-- name: ApplyAgentWorkflowRepairProjectionMissingCurrent :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id IS NULL AND workflow_run_id IS NULL AND workflow_status IS NULL
+  AND workflow_revision IS NULL AND workflow_updated_at IS NULL;
+
+-- name: ApplyAgentWorkflowRepairProjectionExpectedCurrent :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL;
+
+-- name: CommitAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'committed', finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'executing' AND started_at IS NOT NULL AND finished_at IS NULL;
+
+-- name: RollbackAgentWorkflowRepairProjection :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL;
+
+-- name: ClearAgentWorkflowRepairProjection :execrows
+UPDATE agent_tasks
+SET workflow_id = NULL, workflow_run_id = NULL, workflow_status = NULL, workflow_revision = NULL, workflow_updated_at = NULL
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL;
+
+-- name: MarkAgentWorkflowRepairExecutionRolledBack :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'rolled_back', finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'committed' AND started_at IS NOT NULL AND finished_at IS NOT NULL;

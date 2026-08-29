@@ -6,7 +6,7 @@ project_name="dipole-agent-otel-${RANDOM}"
 docker_config=${DIPOLE_SMOKE_DOCKER_CONFIG:-/tmp/dipole-docker-anonymous}
 mkdir -p "$docker_config"
 
-compose=(docker compose -p "$project_name" -f "$root_dir/docker-compose.microservices.yml" --profile observability)
+compose=(docker compose -p "$project_name" -f "$root_dir/deploy/compose/docker-compose.microservices.yml" --profile observability)
 cleanup() {
   DOCKER_CONFIG="$docker_config" DIPOLE_INTERNAL_RPC_SHARED_SECRET=otel-smoke-only \
     "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
@@ -25,7 +25,7 @@ done
 curl -fsS http://127.0.0.1:13133/ >/dev/null
 curl -fsS http://127.0.0.1:3200/ready >/dev/null
 
-npm --prefix "$root_dir/agent-runtime" run build >/dev/null
+npm --prefix "$root_dir/services/agent-runtime" run build >/dev/null
 trace_id=$(
   cd "$root_dir"
   DIPOLE_AGENT_OTEL_ENABLED=true \
@@ -33,8 +33,8 @@ trace_id=$(
   OTEL_TRACES_SAMPLER_ARG=1 \
   OTEL_SERVICE_NAME=dipole-agent-smoke \
   node --input-type=module <<'NODE'
-import { createAgentObservabilityRuntime, loadAgentObservabilityConfig } from "./agent-runtime/dist/observability/agent-observability-runtime.js";
-import { AgentTelemetry } from "./agent-runtime/dist/observability/agent-telemetry.js";
+import { createAgentObservabilityRuntime, loadAgentObservabilityConfig } from "./services/agent-runtime/dist/observability/agent-observability-runtime.js";
+import { AgentTelemetry } from "./services/agent-runtime/dist/observability/agent-telemetry.js";
 
 const runtime = createAgentObservabilityRuntime(loadAgentObservabilityConfig(process.env));
 runtime.start();

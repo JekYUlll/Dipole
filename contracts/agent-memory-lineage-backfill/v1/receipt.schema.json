@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-lineage-backfill/v1/receipt.schema.json",
+  "title": "Dipole Agent Memory Lineage Backfill Receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "manifestSha256", "sourceHighWatermarkId", "lastProcessedId", "processedPlans", "references", "inserted", "duplicates", "complete", "contentRead", "deletionAuthority", "runtimeAuthority", "receiptSha256"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-lineage-backfill-receipt.v1" },
+    "policyVersion": { "const": "memory-lineage-backfill-v1" },
+    "manifestSha256": { "$ref": "#/$defs/sha256" },
+    "sourceHighWatermarkId": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+    "lastProcessedId": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+    "processedPlans": { "$ref": "#/$defs/count" },
+    "references": { "$ref": "#/$defs/count" },
+    "inserted": { "$ref": "#/$defs/count" },
+    "duplicates": { "$ref": "#/$defs/count" },
+    "complete": { "type": "boolean" },
+    "contentRead": { "const": false },
+    "deletionAuthority": { "const": false },
+    "runtimeAuthority": { "const": false },
+    "receiptSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

@@ -1,0 +1,60 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { TestWorkflowEnvironment } from "@temporalio/testing";
+import { Worker } from "@temporalio/worker";
+
+import { foundationAgentTaskActivities, type AgentTaskWorkerActivities } from "./agent-task-activities.js";
+
+const enabled = process.env.DIPOLE_AGENT_TEMPORAL_INTEGRATION === "true";
+
+describe.skipIf(!enabled)("Temporal Agent Memory promotion intent", () => {
+  let env: TestWorkflowEnvironment;
+
+  beforeAll(async () => {
+    env = await TestWorkflowEnvironment.createLocal();
+  }, 120_000);
+
+  afterAll(async () => {
+    await env?.teardown();
+  });
+
+  it("keeps an exact promotion receipt in the durable Task result", async () => {
+    const taskQueue = `dipole-agent-memory-promotion-${Date.now()}`;
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const activities: AgentTaskWorkerActivities = {
+      ...foundationAgentTaskActivities,
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "RUN-1", runStatus: "running" };
+      },
+      async executeAgentTaskStep() {
+        return { kind: "complete", output: { outcome: "prepared" } };
+      }
+    };
+    const worker = await Worker.create({
+      connection: env.nativeConnection,
+      ...(env.namespace === undefined ? {} : { namespace: env.namespace }),
+      taskQueue,
+      workflowsPath: new URL("./agent-task-workflow.ts", import.meta.url).pathname,
+      activities
+    });
+    const result = await worker.runUntil(() => env.client.workflow.execute("agentTaskWorkflow", {
+      taskQueue,
+      workflowId: `dipole-agent-task/memory-promotion-${Date.now()}`,
+      args: [{
+        taskId: "TASK-MEM-PROMOTE", goal: "prepare reviewed memory promotion",
+        memoryPromotion: {
+          tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-MEM-PROMOTE", runId: "RUN-1",
+          candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1", expiresAt
+        },
+        admission: {
+          tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+          triggerType: "manual", triggerRef: "CAND-1", eventId: "EVENT-1"
+        }
+      }]
+    })) as { status: string; output?: { result?: unknown; promotionReceipt?: { status: string; candidateId: string; reviewId: string } } };
+    expect(result.status).toBe("completed");
+    expect(result.output).toMatchObject({
+      result: { outcome: "prepared" },
+      promotionReceipt: { status: "prepared", candidateId: "CAND-1", reviewId: "REV-1" }
+    });
+  }, 120_000);
+});

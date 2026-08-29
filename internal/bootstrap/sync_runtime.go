@@ -7,34 +7,36 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appcomposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
-	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
-	sqlcrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
-	shadowdata "github.com/JekYUlll/Dipole/internal/data/shadow"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
-	syncprojector "github.com/JekYUlll/Dipole/internal/projector/sync"
+	shadowdata "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
+	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
+	syncprojector "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/kafka"
+	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 	"github.com/apache/cassandra-gocql-driver/v2"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
 type SyncRuntime struct {
-	rpc            *InternalRPCServer
-	coreConn       *grpc.ClientConn
-	db             *sql.DB
-	metrics        *platformobservability.MetricsServer
-	projector      bool
-	shadowHydrator *shadowdata.SyncMessageHydrator
-	cassandra      *gocql.Session
-	shutdownSec    int
+	rpc              *InternalRPCServer
+	coreConn         *grpc.ClientConn
+	db               *sql.DB
+	metrics          *platformobservability.MetricsServer
+	projector        bool
+	shadowHydrator   *shadowdata.SyncMessageHydrator
+	hydrationMetrics *shadowdata.SyncHydrationMetrics
+	cassandra        *gocql.Session
+	shutdownSec      int
 }
 
 func InitializeSyncService(ctx context.Context) (*SyncRuntime, error) {
@@ -76,13 +78,13 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			return nil, fmt.Errorf("verify Sync Service database permissions: %w", err)
 		}
 	}
-	primaryHydrator, err := sqlcrepository.NewMySQLSyncMessageHydrator(generated.New(db))
+	primaryHydrator, err := syncmysql.NewMySQLSyncMessageHydrator(generated.New(db))
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("compose MySQL Sync message hydrator: %w", err)
 	}
 	var hydrator application.SyncMessageHydrator = primaryHydrator
-	if syncCfg.CassandraShadowHydration {
+	if syncCfg.CassandraShadowHydration || syncCfg.CassandraPrimaryHydration {
 		runtime.cassandra, err = cassandradata.OpenSession(cassandraCfg)
 		if err != nil {
 			runtime.Close()
@@ -102,10 +104,20 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			runtime.Close()
 			return nil, hydrationErr
 		}
-		runtime.shadowHydrator = shadowdata.NewSyncMessageHydrator(primaryHydrator, cassandraHydrator, logSyncHydrationComparison)
-		hydrator = runtime.shadowHydrator
+		if syncCfg.CassandraShadowHydration {
+			runtime.shadowHydrator = shadowdata.NewSyncMessageHydrator(primaryHydrator, cassandraHydrator, logSyncHydrationComparison)
+			hydrator = runtime.shadowHydrator
+		} else {
+			runtime.hydrationMetrics = shadowdata.NewSyncHydrationMetrics()
+			fallbackHydrator, fallbackErr := shadowdata.NewFallbackSyncMessageHydratorWithMetrics(cassandraHydrator, primaryHydrator, logSyncHydrationRoute, runtime.hydrationMetrics)
+			if fallbackErr != nil {
+				runtime.Close()
+				return nil, fallbackErr
+			}
+			hydrator = fallbackHydrator
+		}
 	}
-	repositories, err := appcomposition.NewSyncProcessRepositoriesWithHydrator(db, hydrator)
+	repositories, err := syncmysql.NewProcessRepositories(db, hydrator)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("compose Sync Service repositories: %w", err)
@@ -116,7 +128,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		return nil, err
 	}
 	runtime.coreConn = coreConnection
-	syncApplication := appcomposition.NewSyncApplication(repositories.Sync, core)
+	syncApplication := syncapplication.New(repositories.Sync, core)
 	var subscriber *platformkafka.Consumer
 	if syncCfg.ProjectorEnabled {
 		projector, projectorErr := syncprojector.New(repositories.Projection)
@@ -147,11 +159,14 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			return nil, fmt.Errorf("start Sync projector consumer: %w", projectorErr)
 		}
 	}
+	var hydrationCollectors []prometheus.Collector
 	if runtime.shadowHydrator != nil {
-		runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber, runtime.shadowHydrator)
-	} else {
-		runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber)
+		hydrationCollectors = append(hydrationCollectors, runtime.shadowHydrator)
 	}
+	if runtime.hydrationMetrics != nil {
+		hydrationCollectors = append(hydrationCollectors, runtime.hydrationMetrics)
+	}
+	runtime.metrics, err = startRuntimeMetrics(metricsCfg, syncServiceName, subscriber, hydrationCollectors...)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync Service metrics: %w", err)
@@ -171,15 +186,22 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		bindRPCReadiness(runtime.metrics, runtime.rpc)
 		markRuntimeReady(runtime.metrics)
 	}
-	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled), zap.Bool("cassandra_shadow_hydration", syncCfg.CassandraShadowHydration))
+	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled), zap.Bool("cassandra_shadow_hydration", syncCfg.CassandraShadowHydration), zap.Bool("cassandra_primary_hydration", syncCfg.CassandraPrimaryHydration))
 	return runtime, nil
 }
 
 func validateSyncHydrationConfig(syncCfg config.Sync, cassandraCfg config.Cassandra) error {
-	if syncCfg.CassandraShadowHydration && !cassandraCfg.Enabled {
-		return fmt.Errorf("Sync Cassandra shadow hydration requires cassandra.enabled")
+	if syncCfg.CassandraShadowHydration && syncCfg.CassandraPrimaryHydration {
+		return fmt.Errorf("Sync Cassandra shadow and primary hydration are mutually exclusive")
+	}
+	if (syncCfg.CassandraShadowHydration || syncCfg.CassandraPrimaryHydration) && !cassandraCfg.Enabled {
+		return fmt.Errorf("Sync Cassandra hydration requires cassandra.enabled")
 	}
 	return nil
+}
+
+func logSyncHydrationRoute(outcome string) {
+	logger.Debug("Sync Cassandra hydration route selected", zap.String("outcome", outcome))
 }
 
 func logSyncHydrationComparison(comparison shadowdata.SyncHydrationComparison) {

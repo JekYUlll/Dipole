@@ -48,7 +48,7 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 批准的 1x 预览位于 `exports/sync-v1/`。Vue Sync Engine 位于 `frontend/src/sync/`，使用 IndexedDB 原子保存消息和安全游标；入口由 `VITE_SYNC_ENGINE_MODE=off|shadow|primary` 控制，默认关闭。
 
-`shadow` 协议对照和 Prometheus 晋级门禁不增加用户可见状态，继续复用上述状态；灰度操作与回切步骤维护在 [`WEB-SYNC-ROLLOUT.md`](../WEB-SYNC-ROLLOUT.md)，只有交互语义变化时才新增 Pencil frame。
+`shadow` 协议对照和 Prometheus 晋级门禁不增加用户可见状态，继续复用上述状态；灰度操作与回切步骤维护在 [`WEB-SYNC-ROLLOUT.md`](../docs/operations/WEB-SYNC-ROLLOUT.md)，只有交互语义变化时才新增 Pencil frame。
 
 显式退出、HTTP 401、WS kick 和账号切换统一复用现有登录跳转与 Sync 状态，不新增视觉分支；终止过程先撤销会话，再在后台完成账号级本地数据清理。
 
@@ -119,6 +119,15 @@ pen version
 
 ```bash
 pen interactive --in design/dipole-ui.pen --out design/dipole-ui.pen
+```
+
+自动化增量任务优先使用仓库内的安全包装器。它将 pen 输出写入临时文件，默认 120 秒超时，校验 `.pen` 结构和导出文件后再原子替换目标；失败时保留原设计：
+
+```bash
+node scripts/pencil-safe-edit.mjs \
+  --input design/dipole-ui.pen --output design/dipole-ui.pen \
+  --export design/exports/review.png --timeout-ms 120000 -- \
+  --prompt-file /path/to/brief.md --agent claude
 ```
 
 进入 interactive session 后遵循以下顺序：

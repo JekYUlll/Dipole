@@ -3,6 +3,7 @@ package agentgrpc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -98,10 +99,23 @@ type agentMemoryResolverStub struct {
 }
 
 type agentMemoryOwnerControlStub struct {
-	listRequest   application.AgentMemoryOwnerListRequestV1
-	revokeRequest application.AgentMemoryOwnerRevokeRequestV1
-	page          application.AgentMemoryOwnerPageV1
-	item          application.AgentMemoryV1
+	listRequest       application.AgentMemoryOwnerListRequestV1
+	revokeRequest     application.AgentMemoryOwnerRevokeRequestV1
+	correctionRequest application.AgentMemoryOwnerCorrectionRequestV1
+	page              application.AgentMemoryOwnerPageV1
+	item              application.AgentMemoryV1
+	correction        application.AgentMemoryOwnerCorrectionResultV1
+}
+
+type agentMemoryCandidatePromotionStub struct {
+	request application.AgentMemoryCandidatePromotionRequestV1
+	item    application.AgentMemoryV1
+}
+
+func (s *agentMemoryCandidatePromotionStub) Promote(_ context.Context, request application.AgentMemoryCandidatePromotionRequestV1) (*application.AgentMemoryV1, error) {
+	s.request = request
+	item := s.item
+	return &item, nil
 }
 
 func (s *agentMemoryOwnerControlStub) ListOwnedMemories(_ context.Context, request application.AgentMemoryOwnerListRequestV1) (*application.AgentMemoryOwnerPageV1, error) {
@@ -113,6 +127,12 @@ func (s *agentMemoryOwnerControlStub) ListOwnedMemories(_ context.Context, reque
 func (s *agentMemoryOwnerControlStub) RevokeOwnedMemory(_ context.Context, request application.AgentMemoryOwnerRevokeRequestV1) (*application.AgentMemoryV1, error) {
 	s.revokeRequest = request
 	copy := s.item
+	return &copy, nil
+}
+
+func (s *agentMemoryOwnerControlStub) CorrectOwnedMemory(_ context.Context, request application.AgentMemoryOwnerCorrectionRequestV1) (*application.AgentMemoryOwnerCorrectionResultV1, error) {
+	s.correctionRequest = request
+	copy := s.correction
 	return &copy, nil
 }
 
@@ -203,6 +223,7 @@ func (s *admissionStub) Finish(_ context.Context, taskUUID, runUUID, _, _ string
 type capabilityStub struct {
 	application.AgentCapabilityV1
 	invocation application.AgentInvocationV1
+	readTarget string
 }
 
 type approvalServiceStub struct {
@@ -230,6 +251,29 @@ type taskControlAuthorizerStub struct {
 	principalUUID string
 	result        application.AgentTaskControlAuthorizationV1
 	err           error
+}
+
+type taskTimelineStub struct {
+	events []application.AgentTaskTimelineEventV1
+	err    error
+}
+
+func (s *taskTimelineStub) AppendAgentTaskTimelineEvent(_ context.Context, event application.AgentTaskTimelineEventV1) (uint64, error) {
+	s.events = append(s.events, event)
+	return uint64(len(s.events)), s.err
+}
+
+func (s *taskTimelineStub) ListAgentTaskTimelineEvents(_ context.Context, _ string, afterSeq uint64, limit int) ([]application.AgentTaskTimelineEventV1, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	result := make([]application.AgentTaskTimelineEventV1, 0, limit)
+	for _, event := range s.events {
+		if event.EventSeq > afterSeq && len(result) < limit {
+			result = append(result, event)
+		}
+	}
+	return result, nil
 }
 
 type taskWorkflowProjectionStub struct {
@@ -286,6 +330,14 @@ func (s *capabilityStub) ListConversations(_ context.Context, invocation applica
 	return []*model.Conversation{{ConversationKey: "group:G1", TargetUUID: "G1", LastMessageSeq: uint64(limit)}}, nil
 }
 
+func (s *capabilityStub) ReadConversation(_ context.Context, invocation application.AgentInvocationV1, targetUUID string, _ int) (*application.AgentConversationReadV1, error) {
+	s.invocation, s.readTarget = invocation, targetUUID
+	return &application.AgentConversationReadV1{
+		Found: true, TargetUUID: targetUUID, TargetType: model.MessageTargetGroup,
+		Messages: []*model.Message{{UUID: "M1", ConversationKey: "group:" + targetUUID, Seq: 7, Content: "evidence"}},
+	}, nil
+}
+
 func TestListConversationsResolvesTrustedTaskIdentity(t *testing.T) {
 	capability := &capabilityStub{}
 	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
@@ -313,6 +365,33 @@ func TestListConversationsRejectsClientPrincipal(t *testing.T) {
 	}
 }
 
+func TestReadConversationResolvesTrustedTaskIdentityAndMapsMessages(t *testing.T) {
+	capability := &capabilityStub{}
+	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.ReadConversation(context.Background(), &agentv1.ReadConversationRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", TargetId: "G1", Limit: 20,
+	})
+	if err != nil {
+		t.Fatalf("read conversation: %v", err)
+	}
+	if capability.invocation.PrincipalUUID != "U100" || capability.readTarget != "G1" || !response.GetFound() || len(response.GetMessages()) != 1 || response.GetMessages()[0].GetSequence() != 7 {
+		t.Fatalf("unexpected trusted response: invocation=%+v target=%q response=%+v", capability.invocation, capability.readTarget, response)
+	}
+}
+
+func TestReadConversationRejectsClientPrincipal(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	_, err := server.ReadConversation(context.Background(), &agentv1.ReadConversationRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", TargetId: "G1", Limit: 20,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+}
+
 func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	controls := &taskControlAuthorizerStub{result: application.AgentTaskControlAuthorizationV1{
 		TaskUUID: "TASK-1", Status: application.AgentTaskStatusWaitingApproval,
@@ -328,6 +407,88 @@ func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	if err != nil || response.GetTaskId() != "TASK-1" || response.GetTaskStatus() != "waiting_approval" || response.GetWorkflowRevision() != 2 ||
 		response.GetWorkflowStatus() != "waiting_approval" || controls.taskUUID != "TASK-1" || controls.principalUUID != "U100" {
 		t.Fatalf("unexpected authorization: response=%+v controls=%+v err=%v", response, controls, err)
+	}
+}
+
+func TestListAgentTaskTimelineUsesOwnerAuthorizationAndCursor(t *testing.T) {
+	controls := &taskControlAuthorizerStub{result: application.AgentTaskControlAuthorizationV1{
+		TaskUUID: "TASK-1", Status: application.AgentTaskStatusRunning,
+		Workflow: &application.AgentTaskWorkflowProjectionV1{Revision: 7},
+	}}
+	timeline := &taskTimelineStub{events: []application.AgentTaskTimelineEventV1{
+		{EventSeq: 4, EventUUID: "EV-4", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventToolInvocation, Status: "completed", OccurredAt: time.UnixMilli(4_000)},
+		{EventSeq: 5, EventUUID: "EV-5", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventTerminal, Status: "completed", OccurredAt: time.UnixMilli(5_000)},
+	}}
+	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	if _, err = server.WithTaskTimeline(timeline); err != nil {
+		t.Fatalf("configure timeline: %v", err)
+	}
+	response, err := server.ListAgentTaskTimeline(context.Background(), &agentv1.ListAgentTaskTimelineRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U100", AfterSeq: 3, Limit: 1,
+	})
+	if err != nil {
+		t.Fatalf("list timeline: %v", err)
+	}
+	if response.GetSchemaVersion() != application.AgentTaskTimelineSchemaVersionV1 || response.GetRevision() != 7 || len(response.GetEvents()) != 1 || response.GetEvents()[0].GetEventSeq() != 4 || response.GetNextCursor() != "4" || controls.principalUUID != "U100" {
+		t.Fatalf("unexpected timeline response: response=%+v controls=%+v", response, controls)
+	}
+}
+
+func TestListAgentTaskTimelineHidesForeignTask(t *testing.T) {
+	controls := &taskControlAuthorizerStub{err: errors.New("foreign task")}
+	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	if _, err = server.WithTaskTimeline(&taskTimelineStub{}); err != nil {
+		t.Fatalf("configure timeline: %v", err)
+	}
+	_, err = server.ListAgentTaskTimeline(context.Background(), &agentv1.ListAgentTaskTimelineRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U999", Limit: 20,
+	})
+	if status.Code(err) != codes.NotFound {
+		t.Fatalf("foreign task code = %s, want %s", status.Code(err), codes.NotFound)
+	}
+}
+
+func TestListAgentTaskTimelineFailsClosedWhenUnconfigured(t *testing.T) {
+	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, &taskControlAuthorizerStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	_, err = server.ListAgentTaskTimeline(context.Background(), &agentv1.ListAgentTaskTimelineRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U100", Limit: 20,
+	})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("unconfigured code = %s, want %s", status.Code(err), codes.FailedPrecondition)
+	}
+}
+
+func TestAppendAgentTaskTimelineEventRequiresRuntimeAndValidRunBinding(t *testing.T) {
+	timeline := &taskTimelineStub{}
+	server, err := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	if _, err = server.WithTaskTimeline(timeline); err != nil {
+		t.Fatalf("configure timeline: %v", err)
+	}
+	response, err := server.AppendAgentTaskTimelineEvent(context.Background(), &agentv1.AppendAgentTaskTimelineEventRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), EventId: "MODEL-1", TaskId: "TASK-1", RunId: "RUN-1",
+		Kind: "model_call", Status: "completed", OccurredAtUnixMs: 1_000,
+	})
+	if err != nil || response.GetEventId() != "MODEL-1" || len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventModelCall {
+		t.Fatalf("unexpected append response=%+v events=%+v err=%v", response, timeline.events, err)
+	}
+	_, err = server.AppendAgentTaskTimelineEvent(context.Background(), &agentv1.AppendAgentTaskTimelineEventRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), EventId: "MODEL-2", TaskId: "TASK-1", RunId: "RUN-1",
+		Kind: "model_call", Status: "completed", OccurredAtUnixMs: 1_000,
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("client principal code = %s, want %s", status.Code(err), codes.PermissionDenied)
 	}
 }
 
@@ -386,6 +547,10 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	if _, err = server.WithToolAudits(audit); err != nil {
 		t.Fatalf("configure Tool audit: %v", err)
 	}
+	timeline := &taskTimelineStub{}
+	if _, err = server.WithTaskTimeline(timeline); err != nil {
+		t.Fatalf("configure timeline: %v", err)
+	}
 	requestContext := grpccommon.RequestContext("", "dipole-agent")
 	requestContext.RequestId, requestContext.TraceId = "REQ-1", "TRACE-1"
 	response, err := server.BeginMcpToolInvocation(context.Background(), &agentv1.BeginMcpToolInvocationRequest{
@@ -395,6 +560,9 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	})
 	if err != nil || response.GetStatus() != "running" || audit.begin.RequestID != "REQ-1" || audit.begin.Transport != application.AgentToolTransportMCP || audit.begin.ApprovalUUID != "APR-1" {
 		t.Fatalf("unexpected Tool begin: response=%+v audit=%+v err=%v", response, audit.begin, err)
+	}
+	if len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventToolInvocation || timeline.events[0].Status != "running" {
+		t.Fatalf("unexpected Tool timeline begin: %+v", timeline.events)
 	}
 	command, err := server.ResolveMcpToolCommand(context.Background(), &agentv1.ResolveMcpToolCommandRequest{
 		Context: requestContext, TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
@@ -418,6 +586,9 @@ func TestMcpToolInvocationAuditUsesAuthenticatedRuntimeContext(t *testing.T) {
 	})
 	if err != nil || finishResponse.GetStatus() != "completed" || audit.finish.ResultBytes != 128 || audit.finish.ActionReference == nil || audit.finish.ActionReference.ResourceUUID != "MSG-1" {
 		t.Fatalf("unexpected Tool finish: response=%+v audit=%+v err=%v", finishResponse, audit.finish, err)
+	}
+	if len(timeline.events) != 2 || timeline.events[1].Status != "completed" {
+		t.Fatalf("unexpected Tool timeline finish: %+v", timeline.events)
 	}
 	_, err = server.BeginMcpToolInvocation(context.Background(), &agentv1.BeginMcpToolInvocationRequest{
 		Context: grpccommon.RequestContext("U999", "dipole-agent"),
@@ -616,6 +787,22 @@ func TestAdmitRunReturnsServerDerivedIdentity(t *testing.T) {
 	}
 }
 
+func TestAdmitRunForwardsActiveRuntimeBinding(t *testing.T) {
+	admission := &admissionStub{result: application.AgentRunAdmissionV1{TaskUUID: "TASK-1", RunUUID: "RUN-1", RunStatus: application.AgentRunStatusRunning}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, admission)
+	_, err := server.AdmitRun(context.Background(), &agentv1.AdmitRunRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TenantId: "dipole", PrincipalUserId: "U100",
+		AgentId: "UAI", TriggerType: "message.direct.created", TriggerRef: "M100", EventId: "E1",
+		RuntimeId: "dipole-agent", Mode: "active", CandidateVersion: "candidate-v1",
+	})
+	if err != nil {
+		t.Fatalf("active admission: %v", err)
+	}
+	if admission.admitted.RuntimeID != "dipole-agent" || admission.admitted.Mode != "active" || admission.admitted.CandidateVersion != "candidate-v1" {
+		t.Fatalf("active runtime binding was not forwarded: %+v", admission.admitted)
+	}
+}
+
 func TestMatchEventSubscriptionsUsesAuthenticatedRuntimeIdentity(t *testing.T) {
 	resolver := &eventSubscriptionResolverStub{items: []application.AgentEventSubscriptionV1{{
 		SubscriptionUUID: "SUB-1", DefinitionUUID: "DEF-1", DefinitionVersion: 2,
@@ -763,6 +950,7 @@ func TestMemoryOwnerRPCUsesAuthenticatedGatewayPrincipalAndOmitsSourceURI(t *tes
 	now := time.UnixMilli(1_700_000_000_000).UTC()
 	item := application.AgentMemoryV1{
 		MemoryUUID: "MEM-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryRootUUID: "MEM-1", MemoryVersion: 1,
 		MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
 		ResourceType: "conversation", ResourceID: "group:G1", Content: "Owner is Alice", CompactContent: "Owner: Alice", Priority: 80,
 		Provenance: application.AgentMemoryProvenanceV1{SourceType: "message", SourceID: "M1", URI: "mysql://internal/secret", Sequence: "42"},
@@ -775,6 +963,17 @@ func TestMemoryOwnerRPCUsesAuthenticatedGatewayPrincipalAndOmitsSourceURI(t *tes
 	revokedAt := now
 	control.item.Status, control.item.RevokedAt = application.AgentMemoryStatusRevoked, &revokedAt
 	control.item.RevokedByUUID, control.item.RevokeReason = "U100", "outdated"
+	control.correction = application.AgentMemoryOwnerCorrectionResultV1{
+		Previous: control.item,
+		Corrected: application.AgentMemoryV1{
+			MemoryUUID: "MEM-2", MemoryRootUUID: "MEM-1", MemoryVersion: 2, SupersedesMemoryUUID: "MEM-1",
+			TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", CorrectedByUUID: "U100", CorrectionReason: "fix owner",
+			MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
+			ResourceType: "conversation", ResourceID: "group:G1", Content: "Owner is Bob", CompactContent: "Owner: Bob", Priority: 80,
+			Provenance: application.AgentMemoryProvenanceV1{SourceType: application.AgentMemorySourceOwnerCorrectionV1, SourceID: "MEM-1", Sequence: "2", URI: "mysql://internal/corrected"},
+			ValidFrom:  now, CreatedAt: now,
+		},
+	}
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	server, _ = server.WithMemoryOwnerControls(control)
 
@@ -799,10 +998,54 @@ func TestMemoryOwnerRPCUsesAuthenticatedGatewayPrincipalAndOmitsSourceURI(t *tes
 	if err != nil || control.revokeRequest.PrincipalUUID != "U100" || control.revokeRequest.Reason != "outdated" {
 		t.Fatalf("revoke owned Memory request=%+v err=%v", control.revokeRequest, err)
 	}
+	response, err = invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.CorrectOwnedMemory(ctx, &agentv1.CorrectOwnedMemoryRequest{
+			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", MemoryId: "MEM-1",
+			ExpectedVersion: 1, Content: "Owner is Bob", CompactContent: "Owner: Bob", Reason: "fix owner",
+		})
+	})
+	corrected := response.(*agentv1.CorrectOwnedMemoryResponse)
+	if err != nil || control.correctionRequest.PrincipalUUID != "U100" || control.correctionRequest.ExpectedVersion != 1 ||
+		corrected.GetPrevious().GetStatus() != "revoked" || corrected.GetCorrected().GetMemoryVersion() != 2 ||
+		corrected.GetCorrected().GetMemoryRootId() != "MEM-1" || corrected.GetCorrected().GetProvenance().GetUri() != "" {
+		t.Fatalf("correct owned Memory request=%+v response=%+v err=%v", control.correctionRequest, corrected, err)
+	}
 	if _, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
 		return server.ListOwnedMemories(ctx, &agentv1.ListOwnedMemoriesRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
 	}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent data-plane owner Memory code = %s", status.Code(err))
+	}
+}
+
+func TestPromoteMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	promotion := &agentMemoryCandidatePromotionStub{item: application.AgentMemoryV1{
+		MemoryUUID: "MEM-CAND-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryType: application.AgentMemoryTypeObservational, Status: application.AgentMemoryStatusActive,
+		ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: "CAND-1", Sequence: "REV-1"},
+		ValidFrom:  now, CreatedAt: now,
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMemoryCandidatePromotions(promotion)
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.PromoteMemoryCandidate(ctx, &agentv1.PromoteMemoryCandidateRequest{
+			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", CandidateId: "CAND-1",
+			CandidateSha256: strings.Repeat("a", 64), ReviewId: "REV-1",
+		})
+	})
+	if err != nil {
+		t.Fatalf("promote candidate: %v", err)
+	}
+	item := response.(*agentv1.AgentOwnedMemory)
+	if promotion.request.PrincipalUUID != "U100" || promotion.request.TenantID != "dipole" || promotion.request.CandidateUUID != "CAND-1" || item.GetMemoryId() != "MEM-CAND-1" {
+		t.Fatalf("unexpected promotion request=%+v response=%+v", promotion.request, item)
+	}
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.PromoteMemoryCandidate(ctx, &agentv1.PromoteMemoryCandidateRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent candidate promotion code = %s", status.Code(err))
 	}
 }
 
@@ -869,6 +1112,8 @@ func TestFinishRunRejectsInvalidStatusAndClientPrincipal(t *testing.T) {
 func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	approvals := &approvalServiceStub{}
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{}, approvals)
+	timeline := &taskTimelineStub{}
+	server, _ = server.WithTaskTimeline(timeline)
 	response, err := server.RequestApproval(context.Background(), &agentv1.RequestApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1",
 		CapabilityId: "message.bulk.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "G1", Actions: []string{"write"}},
@@ -877,11 +1122,17 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	if err != nil || response.GetStatus() != "pending" || approvals.requested.RuntimeID != "dipole-agent" || approvals.requested.Mode != "shadow" {
 		t.Fatalf("request Approval response=%+v request=%+v err=%v", response, approvals.requested, err)
 	}
+	if len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventApproval || timeline.events[0].Status != "pending" {
+		t.Fatalf("unexpected Approval timeline request: %+v", timeline.events)
+	}
 	resolved, err := server.ResolveApproval(context.Background(), &agentv1.ResolveApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1", ActorUserId: "U100", Decision: "approved",
 	})
 	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
 		t.Fatalf("resolve Approval response=%+v resolution=%+v err=%v", resolved, approvals.resolved, err)
+	}
+	if len(timeline.events) != 2 || timeline.events[1].Kind != application.AgentTaskTimelineEventApproval || timeline.events[1].Status != "approved" {
+		t.Fatalf("unexpected Approval timeline resolution: %+v", timeline.events)
 	}
 }
 
@@ -961,6 +1212,22 @@ func TestWorkflowRepairRPCRejectsUnauthenticatedDirectAndAgentCalls(t *testing.T
 		if status.Code(err) != codes.Unauthenticated && status.Code(err) != codes.PermissionDenied {
 			t.Fatalf("repair auth code = %s", status.Code(err))
 		}
+	}
+}
+
+func TestWorkflowRepairExecutionRPCIsOptInAndGatewayBound(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	request := &agentv1.ExecuteWorkflowRepairRequest{
+		Context: grpccommon.RequestContext("U-OPS", "dipole-gateway"), ExecutionId: "repair-execution:" + strings.Repeat("a", 64), TaskId: "TASK-1",
+	}
+	if _, err := server.ExecuteWorkflowRepair(context.Background(), request); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("direct execution code = %s, want PermissionDenied", status.Code(err))
+	}
+	_, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ExecuteWorkflowRepair(ctx, request)
+	})
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("unconfigured execution code = %s, want Unavailable", status.Code(err))
 	}
 }
 

@@ -23,7 +23,13 @@ export const browserSyncMode: BrowserSyncMode = configuredMode === 'shadow' || c
   ? configuredMode
   : import.meta.env.VITE_SYNC_ENGINE_ENABLED === 'true' ? 'primary' : 'off'
 export const browserSyncEnabled = browserSyncMode !== 'off'
-export const timelineNotifyShadowEnabled = import.meta.env.VITE_TIMELINE_NOTIFY_MODE === 'shadow'
+export type TimelineNotifyMode = 'off' | 'shadow' | 'primary'
+const configuredTimelineNotifyMode = import.meta.env.VITE_TIMELINE_NOTIFY_MODE
+export const timelineNotifyMode: TimelineNotifyMode = configuredTimelineNotifyMode === 'shadow' || configuredTimelineNotifyMode === 'primary'
+  ? configuredTimelineNotifyMode
+  : 'off'
+export const timelineNotifyShadowEnabled = timelineNotifyMode === 'shadow'
+export const timelineNotifyPrimaryEnabled = timelineNotifyMode === 'primary'
 export { isLocalSyncCapacityError }
 
 let store: IndexedDBSyncStore | undefined
@@ -105,20 +111,20 @@ export async function reportBrowserSyncFailure(error: unknown) {
   }
 }
 
-export function createBrowserTimelineNotifyVerifier(userUUID: string) {
+export function createBrowserTimelineNotifyVerifier(userUUID: string, deliver?: (messages: Message[]) => void) {
   return new TimelineNotifyShadowVerifier({
     list: async (notification, afterSeq, limit) => {
       const path = timelineNotificationPath(userUUID, notification, afterSeq, limit)
       const messages = await api.get(path)
       return Array.isArray(messages) ? messages as Message[] : []
     },
-  }, reportTimelineNotifyShadowOutcome)
+  }, reportTimelineNotifyShadowOutcome, timelineNotifyPrimaryEnabled ? deliver : undefined)
 }
 
-export function observeBrowserTimelineNotification(userUUID: string, notification: unknown) {
-  if (!timelineNotifyShadowEnabled || !userUUID) return Promise.resolve()
+export function observeBrowserTimelineNotification(userUUID: string, notification: unknown, deliver?: (messages: Message[]) => void) {
+  if (timelineNotifyMode === 'off' || !userUUID) return Promise.resolve()
   if (!timelineVerifier || timelineVerifier.userUUID !== userUUID) {
-    timelineVerifier = { userUUID, verifier: createBrowserTimelineNotifyVerifier(userUUID) }
+    timelineVerifier = { userUUID, verifier: createBrowserTimelineNotifyVerifier(userUUID, deliver) }
   }
   return timelineVerifier.verifier.observe(notification)
 }

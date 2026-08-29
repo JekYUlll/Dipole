@@ -5,6 +5,7 @@ package dipole.agent.v1;
 option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1;agentv1";
 
 import "dipole/common/v1/context.proto";
+import "dipole/message/v1/message.proto";
 
 message AdmitRunRequest {
   dipole.common.v1.RequestContext context = 1;
@@ -17,6 +18,7 @@ message AdmitRunRequest {
   string runtime_id = 8;
   string mode = 9;
   string subscription_id = 10;
+  string candidate_version = 11;
 }
 
 message AdmitRunResponse {
@@ -29,6 +31,8 @@ message CompleteRunRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
   string run_id = 3;
+  string runtime_id = 4;
+  string mode = 5;
 }
 
 message CompleteRunResponse {
@@ -41,6 +45,8 @@ message FinishRunRequest {
   string run_id = 3;
   string run_status = 4;
   string last_error = 5;
+  string runtime_id = 6;
+  string mode = 7;
 }
 
 message FinishRunResponse {
@@ -140,6 +146,22 @@ message ListConversationsResponse {
   repeated ConversationSnapshot conversations = 1;
 }
 
+message ReadConversationRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string target_id = 3;
+  int32 limit = 4;
+  string run_id = 5;
+}
+
+message ReadConversationResponse {
+  bool found = 1;
+  string reason = 2;
+  string target_id = 3;
+  int32 target_type = 4;
+  repeated dipole.message.v1.Message messages = 5;
+}
+
 message AuthorizeTaskControlRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -153,6 +175,51 @@ message AuthorizeTaskControlResponse {
   string workflow_run_id = 4;
   string workflow_status = 5;
   uint64 workflow_revision = 6;
+}
+
+message ListAgentTaskTimelineRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string principal_user_id = 3;
+  uint64 after_seq = 4;
+  uint32 limit = 5;
+}
+
+message AgentTaskTimelineEvent {
+  uint64 event_seq = 1;
+  string event_id = 2;
+  string task_id = 3;
+  string run_id = 4;
+  string kind = 5;
+  string status = 6;
+  string capability_id = 7;
+  string approval_id = 8;
+  int64 occurred_at_unix_ms = 9;
+}
+
+message ListAgentTaskTimelineResponse {
+  string schema_version = 1;
+  string task_id = 2;
+  uint64 revision = 3;
+  repeated AgentTaskTimelineEvent events = 4;
+  string next_cursor = 5;
+}
+
+message AppendAgentTaskTimelineEventRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string event_id = 2;
+  string task_id = 3;
+  string run_id = 4;
+  string kind = 5;
+  string status = 6;
+  string capability_id = 7;
+  string approval_id = 8;
+  int64 occurred_at_unix_ms = 9;
+}
+
+message AppendAgentTaskTimelineEventResponse {
+  uint64 event_seq = 1;
+  string event_id = 2;
 }
 
 message ResolveMcpContextRequest {
@@ -386,6 +453,34 @@ message WorkflowRepairProposalResponse {
   uint32 required_approvals = 12;
   int64 proposed_at_unix_ms = 13;
   int64 expires_at_unix_ms = 14;
+}
+
+message ExecuteWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string execution_id = 2;
+  string task_id = 3;
+  WorkflowRepairEvidence target = 4;
+  WorkflowRepairEvidence rollback = 5;
+}
+
+message RollbackWorkflowRepairRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string execution_id = 2;
+  string task_id = 3;
+  WorkflowRepairEvidence rollback = 4;
+}
+
+message WorkflowRepairExecutionResponse {
+  string execution_id = 1;
+  string plan_id = 2;
+  string proposal_id = 3;
+  string task_id = 4;
+  string executor_id = 5;
+  uint64 executor_grant_version = 6;
+  string expected_current_sha256 = 7;
+  string target_sha256 = 8;
+  string rollback_sha256 = 9;
+  string status = 10;
 }
 
 message ProposeRuntimePromotionRequest {
@@ -677,6 +772,11 @@ message AgentOwnedMemory {
   string revoked_by_id = 14;
   string revoke_reason = 15;
   int64 created_at_unix_ms = 16;
+  string memory_root_id = 17;
+  uint32 memory_version = 18;
+  string supersedes_memory_id = 19;
+  string corrected_by_id = 20;
+  string correction_reason = 21;
 }
 
 message ListOwnedMemoriesResponse {
@@ -690,6 +790,29 @@ message RevokeOwnedMemoryRequest {
   string tenant_id = 2;
   string memory_id = 3;
   string reason = 4;
+}
+
+message CorrectOwnedMemoryRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string memory_id = 3;
+  uint32 expected_version = 4;
+  string content = 5;
+  string compact_content = 6;
+  string reason = 7;
+}
+
+message CorrectOwnedMemoryResponse {
+  AgentOwnedMemory previous = 1;
+  AgentOwnedMemory corrected = 2;
+}
+
+message PromoteMemoryCandidateRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string candidate_id = 3;
+  string candidate_sha256 = 4;
+  string review_id = 5;
 }
 
 message PublishMcpReadinessEvidenceRequest {
@@ -741,6 +864,8 @@ service AgentCapabilityService {
   rpc ListContextMemories(ListContextMemoriesRequest) returns (ListContextMemoriesResponse);
   rpc ListOwnedMemories(ListOwnedMemoriesRequest) returns (ListOwnedMemoriesResponse);
   rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
+  rpc CorrectOwnedMemory(CorrectOwnedMemoryRequest) returns (CorrectOwnedMemoryResponse);
+  rpc PromoteMemoryCandidate(PromoteMemoryCandidateRequest) returns (AgentOwnedMemory);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);
@@ -749,7 +874,10 @@ service AgentCapabilityService {
   rpc ConsumeApproval(ConsumeApprovalRequest) returns (ConsumeApprovalResponse);
   rpc ResolveApprovalGrant(ResolveApprovalGrantRequest) returns (ResolveApprovalGrantResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+  rpc ReadConversation(ReadConversationRequest) returns (ReadConversationResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
+  rpc ListAgentTaskTimeline(ListAgentTaskTimelineRequest) returns (ListAgentTaskTimelineResponse);
+  rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
@@ -763,6 +891,8 @@ service AgentCapabilityService {
   rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
   rpc DecideWorkflowRepair(DecideWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
   rpc GetWorkflowRepair(GetWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);
+  rpc ExecuteWorkflowRepair(ExecuteWorkflowRepairRequest) returns (WorkflowRepairExecutionResponse);
+  rpc RollbackWorkflowRepair(RollbackWorkflowRepairRequest) returns (WorkflowRepairExecutionResponse);
   rpc ProposeRuntimePromotion(ProposeRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
   rpc ReviewRuntimePromotion(ReviewRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);
   rpc GetRuntimePromotion(GetRuntimePromotionRequest) returns (RuntimePromotionProposalResponse);

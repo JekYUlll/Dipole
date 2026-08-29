@@ -12,6 +12,74 @@ import (
 	"time"
 )
 
+const applyAgentWorkflowRepairProjectionExpectedCurrent = `-- name: ApplyAgentWorkflowRepairProjectionExpectedCurrent :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL
+`
+
+type ApplyAgentWorkflowRepairProjectionExpectedCurrentParams struct {
+	WorkflowID         sql.NullString
+	WorkflowRunID      sql.NullString
+	WorkflowStatus     sql.NullString
+	WorkflowRevision   sql.NullInt64
+	TaskUuid           string
+	WorkflowID_2       sql.NullString
+	WorkflowRunID_2    sql.NullString
+	WorkflowStatus_2   sql.NullString
+	WorkflowRevision_2 sql.NullInt64
+}
+
+func (q *Queries) ApplyAgentWorkflowRepairProjectionExpectedCurrent(ctx context.Context, arg ApplyAgentWorkflowRepairProjectionExpectedCurrentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, applyAgentWorkflowRepairProjectionExpectedCurrent,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+		arg.WorkflowID_2,
+		arg.WorkflowRunID_2,
+		arg.WorkflowStatus_2,
+		arg.WorkflowRevision_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const applyAgentWorkflowRepairProjectionMissingCurrent = `-- name: ApplyAgentWorkflowRepairProjectionMissingCurrent :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id IS NULL AND workflow_run_id IS NULL AND workflow_status IS NULL
+  AND workflow_revision IS NULL AND workflow_updated_at IS NULL
+`
+
+type ApplyAgentWorkflowRepairProjectionMissingCurrentParams struct {
+	WorkflowID       sql.NullString
+	WorkflowRunID    sql.NullString
+	WorkflowStatus   sql.NullString
+	WorkflowRevision sql.NullInt64
+	TaskUuid         string
+}
+
+func (q *Queries) ApplyAgentWorkflowRepairProjectionMissingCurrent(ctx context.Context, arg ApplyAgentWorkflowRepairProjectionMissingCurrentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, applyAgentWorkflowRepairProjectionMissingCurrent,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const approveAgentApproval = `-- name: ApproveAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'approved', approved_by_uuid = ?, updated_at = NOW(3)
@@ -46,6 +114,90 @@ WHERE p.proposal_uuid = ? AND p.status = 'proposed' AND p.expires_at > UTC_TIMES
 
 func (q *Queries) ApproveAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
 	result, err := q.db.ExecContext(ctx, approveAgentWorkflowRepairProposal, proposalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const claimAgentWorkflowRepairExecution = `-- name: ClaimAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'executing', started_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'prepared' AND started_at IS NULL AND finished_at IS NULL
+`
+
+type ClaimAgentWorkflowRepairExecutionParams struct {
+	StartedAt            sql.NullTime
+	ExecutionUuid        string
+	ExecutorUuid         string
+	ExecutorGrantVersion uint64
+}
+
+func (q *Queries) ClaimAgentWorkflowRepairExecution(ctx context.Context, arg ClaimAgentWorkflowRepairExecutionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, claimAgentWorkflowRepairExecution,
+		arg.StartedAt,
+		arg.ExecutionUuid,
+		arg.ExecutorUuid,
+		arg.ExecutorGrantVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const clearAgentWorkflowRepairProjection = `-- name: ClearAgentWorkflowRepairProjection :execrows
+UPDATE agent_tasks
+SET workflow_id = NULL, workflow_run_id = NULL, workflow_status = NULL, workflow_revision = NULL, workflow_updated_at = NULL
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL
+`
+
+type ClearAgentWorkflowRepairProjectionParams struct {
+	TaskUuid         string
+	WorkflowID       sql.NullString
+	WorkflowRunID    sql.NullString
+	WorkflowStatus   sql.NullString
+	WorkflowRevision sql.NullInt64
+}
+
+func (q *Queries) ClearAgentWorkflowRepairProjection(ctx context.Context, arg ClearAgentWorkflowRepairProjectionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, clearAgentWorkflowRepairProjection,
+		arg.TaskUuid,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const commitAgentWorkflowRepairExecution = `-- name: CommitAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'committed', finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'executing' AND started_at IS NOT NULL AND finished_at IS NULL
+`
+
+type CommitAgentWorkflowRepairExecutionParams struct {
+	FinishedAt           sql.NullTime
+	ExecutionUuid        string
+	ExecutorUuid         string
+	ExecutorGrantVersion uint64
+}
+
+func (q *Queries) CommitAgentWorkflowRepairExecution(ctx context.Context, arg CommitAgentWorkflowRepairExecutionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, commitAgentWorkflowRepairExecution,
+		arg.FinishedAt,
+		arg.ExecutionUuid,
+		arg.ExecutorUuid,
+		arg.ExecutorGrantVersion,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -142,6 +294,33 @@ WHERE proposal_uuid = ? AND status = 'proposed' AND expires_at <= UTC_TIMESTAMP(
 
 func (q *Queries) ExpireAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
 	result, err := q.db.ExecContext(ctx, expireAgentWorkflowRepairProposal, proposalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const failAgentWorkflowRepairExecution = `-- name: FailAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'failed', failure_code = ?, finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND status = 'executing'
+  AND started_at IS NOT NULL AND finished_at IS NULL
+`
+
+type FailAgentWorkflowRepairExecutionParams struct {
+	FailureCode   sql.NullString
+	FinishedAt    sql.NullTime
+	ExecutionUuid string
+	ExecutorUuid  string
+}
+
+func (q *Queries) FailAgentWorkflowRepairExecution(ctx context.Context, arg FailAgentWorkflowRepairExecutionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, failAgentWorkflowRepairExecution,
+		arg.FailureCode,
+		arg.FinishedAt,
+		arg.ExecutionUuid,
+		arg.ExecutorUuid,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -397,8 +576,35 @@ func (q *Queries) GetAgentWorkflowRepairDecision(ctx context.Context, arg GetAge
 	return i, err
 }
 
+const getAgentWorkflowRepairExecution = `-- name: GetAgentWorkflowRepairExecution :one
+SELECT execution_uuid, plan_id, proposal_uuid, task_uuid, executor_uuid, executor_grant_version, expected_current_sha256, target_sha256, rollback_sha256, status, started_at, finished_at, failure_code, created_at, updated_at FROM agent_workflow_repair_executions WHERE execution_uuid = ? LIMIT 1
+`
+
+func (q *Queries) GetAgentWorkflowRepairExecution(ctx context.Context, executionUuid string) (AgentWorkflowRepairExecution, error) {
+	row := q.db.QueryRowContext(ctx, getAgentWorkflowRepairExecution, executionUuid)
+	var i AgentWorkflowRepairExecution
+	err := row.Scan(
+		&i.ExecutionUuid,
+		&i.PlanID,
+		&i.ProposalUuid,
+		&i.TaskUuid,
+		&i.ExecutorUuid,
+		&i.ExecutorGrantVersion,
+		&i.ExpectedCurrentSha256,
+		&i.TargetSha256,
+		&i.RollbackSha256,
+		&i.Status,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.FailureCode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAgentWorkflowRepairOperatorGrant = `-- name: GetAgentWorkflowRepairOperatorGrant :one
-SELECT user_uuid, can_propose, can_approve, granted_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at FROM agent_workflow_repair_operator_grants WHERE user_uuid = ? LIMIT 1
+SELECT user_uuid, can_propose, can_approve, granted_by_uuid, valid_from, expires_at, revoked_at, created_at, updated_at, grant_version, can_execute FROM agent_workflow_repair_operator_grants WHERE user_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentWorkflowRepairOperatorGrant(ctx context.Context, userUuid string) (AgentWorkflowRepairOperatorGrant, error) {
@@ -414,6 +620,8 @@ func (q *Queries) GetAgentWorkflowRepairOperatorGrant(ctx context.Context, userU
 		&i.RevokedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.GrantVersion,
+		&i.CanExecute,
 	)
 	return i, err
 }
@@ -753,6 +961,43 @@ func (q *Queries) InsertAgentWorkflowRepairDecision(ctx context.Context, arg Ins
 		arg.Decision,
 		arg.ProposalUuid_2,
 		arg.ProposerUuid,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAgentWorkflowRepairExecution = `-- name: InsertAgentWorkflowRepairExecution :execrows
+INSERT IGNORE INTO agent_workflow_repair_executions (
+    execution_uuid, plan_id, proposal_uuid, task_uuid, executor_uuid, executor_grant_version,
+    expected_current_sha256, target_sha256, rollback_sha256, status
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'prepared')
+`
+
+type InsertAgentWorkflowRepairExecutionParams struct {
+	ExecutionUuid         string
+	PlanID                string
+	ProposalUuid          string
+	TaskUuid              string
+	ExecutorUuid          string
+	ExecutorGrantVersion  uint64
+	ExpectedCurrentSha256 sql.NullString
+	TargetSha256          string
+	RollbackSha256        sql.NullString
+}
+
+func (q *Queries) InsertAgentWorkflowRepairExecution(ctx context.Context, arg InsertAgentWorkflowRepairExecutionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAgentWorkflowRepairExecution,
+		arg.ExecutionUuid,
+		arg.PlanID,
+		arg.ProposalUuid,
+		arg.TaskUuid,
+		arg.ExecutorUuid,
+		arg.ExecutorGrantVersion,
+		arg.ExpectedCurrentSha256,
+		arg.TargetSha256,
+		arg.RollbackSha256,
 	)
 	if err != nil {
 		return 0, err
@@ -1141,6 +1386,33 @@ func (q *Queries) ListOwnedAgentEventSubscriptions(ctx context.Context, arg List
 	return items, nil
 }
 
+const markAgentWorkflowRepairExecutionRolledBack = `-- name: MarkAgentWorkflowRepairExecutionRolledBack :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'rolled_back', finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'committed' AND started_at IS NOT NULL AND finished_at IS NOT NULL
+`
+
+type MarkAgentWorkflowRepairExecutionRolledBackParams struct {
+	FinishedAt           sql.NullTime
+	ExecutionUuid        string
+	ExecutorUuid         string
+	ExecutorGrantVersion uint64
+}
+
+func (q *Queries) MarkAgentWorkflowRepairExecutionRolledBack(ctx context.Context, arg MarkAgentWorkflowRepairExecutionRolledBackParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, markAgentWorkflowRepairExecutionRolledBack,
+		arg.FinishedAt,
+		arg.ExecutionUuid,
+		arg.ExecutorUuid,
+		arg.ExecutorGrantVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const projectAgentTaskWorkflowState = `-- name: ProjectAgentTaskWorkflowState :execrows
 UPDATE agent_tasks
 SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,
@@ -1273,6 +1545,44 @@ type RevokeAgentRuntimePromotionGrantParams struct {
 
 func (q *Queries) RevokeAgentRuntimePromotionGrant(ctx context.Context, arg RevokeAgentRuntimePromotionGrantParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, revokeAgentRuntimePromotionGrant, arg.RevokedAt, arg.GrantUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const rollbackAgentWorkflowRepairProjection = `-- name: RollbackAgentWorkflowRepairProjection :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL
+`
+
+type RollbackAgentWorkflowRepairProjectionParams struct {
+	WorkflowID         sql.NullString
+	WorkflowRunID      sql.NullString
+	WorkflowStatus     sql.NullString
+	WorkflowRevision   sql.NullInt64
+	TaskUuid           string
+	WorkflowID_2       sql.NullString
+	WorkflowRunID_2    sql.NullString
+	WorkflowStatus_2   sql.NullString
+	WorkflowRevision_2 sql.NullInt64
+}
+
+func (q *Queries) RollbackAgentWorkflowRepairProjection(ctx context.Context, arg RollbackAgentWorkflowRepairProjectionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, rollbackAgentWorkflowRepairProjection,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+		arg.WorkflowID_2,
+		arg.WorkflowRunID_2,
+		arg.WorkflowStatus_2,
+		arg.WorkflowRevision_2,
+	)
 	if err != nil {
 		return 0, err
 	}

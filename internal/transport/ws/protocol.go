@@ -28,8 +28,9 @@ const (
 )
 
 const (
-	TimelineNotifyOff    = "off"
-	TimelineNotifyShadow = "shadow"
+	TimelineNotifyOff     = "off"
+	TimelineNotifyShadow  = "shadow"
+	TimelineNotifyPrimary = "primary"
 )
 
 const (

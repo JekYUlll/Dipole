@@ -1,5 +1,8 @@
 # 更新日志
 
+- Go/Eino 兼容 Agent 基线已从 `internal/modules/ai/` 收敛到 `internal/services/agent/legacy/`；bootstrap import 与相关文档同步更新，保留 TS Runtime 接管前的回滚路径。
+- 服务布局门禁已固定 Agent legacy 目录归属，并阻止 `internal/modules/ai/` 回流。
+
 本文档记录 Dipole 的重要功能、行为变化、兼容性说明和修复。
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。项目引入正式版本后，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
@@ -15,8 +18,284 @@
 
 ## [Unreleased]
 
+- 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
+- 将 Sync Kafka Projector 从 `internal/projector/sync` 收敛到 `internal/services/sync/infrastructure/kafka`，直接复用 Message domain 事件解码与 Inbox projection contract；新增目录说明和结构门禁，运行时注册、Kafka topic 和 atomic/projector 回滚语义保持兼容。
+- 将 Search Indexer Kafka Projector 从 `internal/projector/search` 收敛到 `internal/services/search/infrastructure/kafka`，直接复用 Message domain 事件解码与 Search mutation contract；新增目录说明和结构门禁，Kafka retry/DLQ 与 Alias 回滚语义保持兼容。
+- 将 Cassandra Message Projector 从 `internal/projector/cassandra` 收敛到 `internal/services/message/infrastructure/cassandra`，直接复用 Message domain 事件解码；保留 `cmd/tools/cassandra-projector` 可选入口，Cassandra shadow/primary 和 MySQL 回退语义保持兼容。
+- 将 SQLC MySQL 事务 Store 和测试迁入 `internal/platform/mysql`，旧 `internal/data/mysql/store_compat.go` 仅保留类型别名与构造转发；事务语义、SQLC 生成输出和现有调用方保持兼容。
+
+### 变更
+- 将 Search/Indexer 共用的 Elasticsearch client、版本化 schema、Alias 和 projection adapter 从 `internal/data/elasticsearch` 收纳到 `internal/platform/elasticsearch`，新增目录职责说明和结构门禁；Search 权限边界、Indexer 写入职责及 Alias 回滚语义保持兼容。
+- 将 Cassandra 灰度读取、消息对照和 Sync hydration fallback 从 `internal/data/{routing,shadow}` 收纳到 `internal/platform/storage/{routing,shadow}`，新增存储平台目录说明和结构门禁；MySQL 主路径、shadow 指标和回退开关保持兼容。
+- 将跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器从 `internal/data/cassandra` 收纳到 `internal/platform/cassandra`，新增目录职责说明和结构门禁；服务业务 projection 与编排保持原有边界。
+- 将 Core、Sync 和 Message 的旧服务兼容入口从 `internal/service` 收纳到 `internal/compat/service`，新增兼容层说明与结构门禁；共享事件发布契约继续留在 `internal/service`，业务行为和回滚入口保持兼容。
+- Core 文件分片会话的 Redis 访问已收敛到 `internal/platform/cache`，domain 保留会话协议并移除对聚合 `internal/store` 的直接依赖；事务写入、缺失 Redis 和上传回滚语义保持兼容。
+- Core Auth TokenService 的 Redis 撤销状态访问已收敛到 `internal/platform/cache`，移除对 `internal/store` 全局客户端的直接依赖；写入和校验在 Redis 不可用时保持 fail-closed。
+- Agent infrastructure contract tests 已改用 `internal/services/agent/application/` 的 Agent-owned application constructors，结构门禁新增 Agent 服务禁止依赖聚合 `internal/app` 的检查；embedded 兼容入口保持不变。
+- 修复 Cassandra primary Compose override 的仓库文件挂载路径：schema 与 Sync primary 配置改用相对于 `deploy/compose/` 首个 Compose 文件的根目录路径，避免容器内将目标文件解析为目录；隔离 primary smoke 已重新通过。
+- Agent Timeline repair 隔离 Compose smoke 通过：验证 v50 migration、UTC 时间基准、专用最小权限、worker readiness、启动前 pending intent 恢复和 event UUID 幂等；临时栈自动清理，默认 production profile 仍关闭。
+- Agent Workflow repair 已完成 operator grant 版本与 CAS executor 的本地实现验证：migration v50 提供 `grant_version`/`can_execute`，执行与回滚均要求 fresh grant、projection hash 和事务性 CAS；公开生产控制面与共享环境演练继续关闭。
+- 更新 `docs/architecture/DEVELOPMENT-ROADMAP.md`：将长期路线图收敛为 G0、微服务、分层存储、Sync、TypeScript Agent Runtime 和 C++ Realtime Delivery 轨道，移除旧 Cgo 必做主线叙述。
+- 对齐面向当前读者的架构材料：更新面试问答、消息存储与同步策略，统一描述 sqlc、服务边界、Message Store、User Inbox、`message_seq`、`read_seq` 和 `sync_seq`；保留 `after_id` 与 `/messages/offline` 的兼容语义。
+- 更新 `docs/architecture/ARCHITECTURE-QA.md`：同步 Message Store、User Inbox Timeline、Conversation Seq/read_seq、sqlc、微服务和分层存储现状，修正早期无 Inbox/GORM/纯模块化单体描述。
+- Sync repository composition 已迁入 `internal/services/sync/infrastructure/mysql/`；embedded 聚合入口保留兼容别名，独立与聚合启动均通过 Sync-owned composition 构造 repository 集合。
+- Agent SQLC repository composition 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/app` 仅保留 embedded 兼容别名，聚合入口通过 Agent-owned composition 构造 repository 集合。
+- Core SQLC repository composition 与 User/Group/Contact cache adapter 已迁入 `internal/services/core/infrastructure/mysql/`；独立 Core Runtime 不再依赖聚合包中的 Core 实现，`internal/app` 仅保留 embedded 兼容别名。
+- Agent Capability RPC 增加 remote authority 传输契约：Admission 支持 `candidate_version`，Run Complete/Finish 绑定显式 `runtime_id + mode`；TS client 默认保持 shadow，active client 必须提供 candidate version，Go Core 继续通过 promotion authorizer 决定是否允许 active。旧省略字段按 shadow 兼容处理，尚未改变生产 Agent 默认开关。
+- Temporal 增加显式 `read_active` Activity profile：active Task 使用 Core RPC 返回的权威 ExecutionContext，并以同一 `runtime_id + mode` 完成终态绑定；Artifact 与写 Capability 继续只在 shadow/关闭路径可用。
+- Agent Execution Policy、Invocation Resolver 和 Run Admission 实现已迁入 `internal/services/agent/application/`；兼容入口保留 deterministic clock 构造，结构门禁阻止旧策略实现回流。
+- Agent application 剩余的 MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；Bootstrap 已直接使用服务包，兼容入口与 deterministic clock 测试构造保持可回切。
+- Workflow Repair Prepare 和 Executor application 实现已迁入 `internal/services/agent/application/`；测试通过兼容入口保持 embedded 回滚能力，结构门禁阻止旧实现回流。
+- Agent Capability 与 Command application 实现已迁入 `internal/services/agent/application/`；消息、会话依赖改为服务接口，Bootstrap 直接使用服务包，结构门禁阻止旧实现回流。
+- Agent Event Subscription application 实现已迁入 `internal/services/agent/application/`；定义读取和会话可见性依赖改为显式服务接口，Bootstrap 直接使用服务包，结构门禁阻止旧实现回流。
+- Agent application 的 Artifact 和 Memory Owner 实现已迁入 `internal/services/agent/application/`；Artifact policy 依赖改为显式服务接口，Bootstrap 直接使用服务包，结构门禁覆盖已迁移文件。
+- Agent application 的 MCP readiness、MCP tool round、tool invocation audit、Runtime promotion evidence 和 Workflow repair audit 实现已迁入 `internal/services/agent/application/`；Bootstrap 与 SQLC 契约测试直接使用服务包，结构门禁覆盖全部已迁移文件。
+- Agent application 的审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion 和 Task Workflow Projection 实现已迁入 `internal/services/agent/application/`；embedded 入口保留兼容转发，结构门禁阻止已迁移实现回流。
+- Agent application 的审批、审批授权和任务控制实现已迁入 `internal/services/agent/application/`；embedded 入口通过兼容别名保持回滚能力，Bootstrap 与 Agent SQLC 契约测试已改用服务专属包。
+- 清理共享 MySQL repository 中已无调用者的事务别名和 UUID 辅助文件，并将共享目录约束收紧为兼容入口集合。
+- Search Index SQLC repository 及契约测试已迁入 `internal/services/search/infrastructure/mysql/`；共享 repository 仅保留兼容别名和构造入口，服务布局门禁已阻止 Search 数据访问实现回流。
+- Core 专属 sqlc MySQL repository 及契约测试已迁入 `internal/services/core/infrastructure/mysql/`；共享 repository 仅保留兼容别名和构造入口，服务布局门禁已阻止 Core 数据访问实现回流。
+- Agent 专属 sqlc MySQL repository 及契约测试已迁入 `internal/services/agent/infrastructure/mysql/`；共享 repository 仅保留兼容别名和构造入口，服务布局门禁已阻止 Agent 数据访问实现回流。
+- 修正 Sync/Message ownership smoke 在 repository 迁移后仍指向旧测试包的问题；新增测试 selector 命中校验，避免 `go test` 无匹配时误报成功，并重新验证真实 MySQL atomic/projector/rollback 权限边界。
+- Compose 编排完成目录收敛：默认本地入口保留在根目录，其余微服务、分发、集群和存储实验拓扑统一迁入 `deploy/compose/`；脚本、文档和归档引用已同步，新增目录索引，Compose 配置门禁覆盖迁移后的全部拓扑。
+- 保留 TypeScript Agent Runtime 的独立 `go.mod` 扫描边界，并修正 repair worker Compose 契约测试，使其校验统一 `/app/service` 入口和 Dockerfile 制品路径。
+- 收紧 Inbox ownership 配置：`message.inbox_write_mode=projector` 现在必须同时启用 `sync.projector_enabled` 和 Kafka；配置不完整时 Message runtime fail closed，`atomic` 回滚路径保持不变。
+- Sync 独立 runtime 已直接装配 Sync-owned repository、hydrator、projection 和 process composition，移除对 `internal/app` 聚合 Composition Root 的依赖；embedded 模式兼容入口保持可回滚。
+- Sync 专属 MySQL repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 直接装配服务边界，embedded 聚合兼容入口继续保留。
+- Message 独立 runtime 已直接装配 Message-owned repository composition 和 application factory，移除对 `internal/app` 聚合 Composition Root 的依赖；embedded 模式兼容入口保持可回滚。
+- Message 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/message/infrastructure/mysql/`；共享 `internal/data/mysql` 仅保留基础 Store、生成代码和其他服务 repository，旧构造入口继续兼容。
+- Message 核心 domain 实现及测试已迁入 `internal/services/message/domain/`；旧 `internal/service` 仅保留兼容类型、错误和构造入口，消息发送、历史查询、幂等、Outbox、Seq、文件授权和热群策略 contract 保持兼容。
+- Message event contract 与 Sync projection 实现及测试已迁入 `internal/services/message/domain/`；旧 `internal/service` 仅保留类型、错误和函数兼容入口，事件版本、Mutation、Search 和 Inbox locator contract 保持兼容。
+- Sync domain 实现及测试已迁入 `internal/services/sync/domain/`；旧 `internal/service` 仅保留兼容错误和构造入口，User Inbox Timeline、设备 Cursor 和群组 checkpoint contract 保持兼容。
+- Core 新增独立 Composition Root `InitializeCoreService`；remote 模式只装配 Core-owned repository、Core HTTP、Core projection Kafka consumer 和 Capability RPC，embedded 模式保留聚合启动器作为本地兼容与回滚路径。
+- Core Conversation domain 实现及测试已迁入 `internal/services/core/domain/conversation/`；旧 `internal/service` 仅保留兼容别名和构造入口，会话列表、群组会话投影、已读回执和备注 contract 保持兼容。
+- Core Contact domain 实现及测试已迁入 `internal/services/core/domain/contact/`；旧 `internal/service` 仅保留兼容别名和构造入口，好友关系、联系人申请、备注、拉黑和删除事件 contract 保持兼容。
+- Core User domain 实现及测试已迁入 `internal/services/core/domain/user/`；旧 `internal/service` 仅保留兼容别名和构造入口，用户资料、头像、用户搜索和管理员用户状态 contract 保持兼容。
+- Core Session domain 实现及测试已迁入 `internal/services/core/domain/session/`；旧 `internal/service` 仅保留兼容别名和构造入口，设备会话查询、强制下线和 Token 撤销 contract 保持兼容。
+- Core Admin domain 实现及测试已迁入 `internal/services/core/domain/admin/`；旧 `internal/service` 仅保留兼容别名和构造入口，后台概览 HTTP contract 与 `ErrAdminRequired` 语义保持兼容。
+- Core Auth/Token domain 实现及测试已迁入 `internal/services/core/domain/auth/`；旧 `internal/service` 仅保留兼容类型、常量、错误和构造入口，现有认证、MCP 授权、Middleware、Gateway 与 WS contract 保持兼容。
+- Gateway 全部 HTTP handler 及测试已从 `internal/handler/http` 迁入 `internal/gateway/http/`；保留现有路由、认证、错误响应和 application port contract，旧共享目录由结构门禁阻止回流。
+- Search HTTP handler 已迁入 `internal/gateway/`，Search application 继续位于 `internal/services/search/application/`；公共 API 和错误响应保持兼容，结构门禁会阻止旧通用路径回流。
+- Sync application 装配已迁入 `internal/services/sync/application/`；`internal/app` 仅通过 `SyncApplication` port 组合，embedded Core 兼容路径和独立 Sync runtime 的行为保持一致。
+- Message application 装配已迁入 `internal/services/message/application/`；保留 Agent command、Outbox 和消息持久化扩展能力，embedded Core 与独立 Message runtime 继续使用同一服务专属 factory。
+- Core capability 实现已迁入 `internal/services/core/application/`；factory 改用用户、联系人、群组、文件和会话查询所需的最小接口，embedded 兼容构造入口保留，便于后续 Core 服务独立部署。
+- Core Conversation application 装配已迁入 `internal/services/core/application/`；Core 的 embedded 与独立 runtime 共用服务专属 local adapter，底层 ConversationService 保持兼容并列入后续物理迁移。
+- Core User application 装配已迁入 `internal/services/core/application/`；Server 继续使用原 User HTTP contract，同时将 User/File store 和对象存储依赖收敛到 Core 服务 factory。
+- Core Contact application 装配已迁入 `internal/services/core/application/`；Server 继续使用原联系人 HTTP contract，同时将联系人 store、事件、通知和系统消息依赖收敛到 Core 服务 factory。
+- Core Group application 装配已迁入 `internal/services/core/application/`；Server 继续使用原群组 HTTP contract，同时将群组 store、事件、热群、文件、对象存储和系统消息依赖收敛到 Core 服务 factory。
+- Core File application 装配已迁入 `internal/services/core/application/`；Messaging composition root 继续使用原文件 HTTP contract，同时将 File metadata、Message store 和对象存储依赖收敛到 Core 服务 factory。
+- Core Auth/Admin/Session application 装配已迁入 `internal/services/core/application/`；Server 继续使用原 HTTP contract，同时将认证、后台统计和设备会话依赖收敛到 Core 服务 factory。
+- Core Group domain 实现及测试已迁入 `internal/services/core/domain/group/`；旧 `internal/service` 仅保留兼容类型和错误别名，现有 HTTP、DTO 与 Kafka contract 保持兼容。
+- Core File domain、Redis 分片会话实现及测试已迁入 `internal/services/core/domain/file/`；旧 `internal/service` 仅保留兼容类型和错误别名，现有文件 HTTP 与 DTO contract 保持兼容。
+- 聚合 repository composition 已显式保存 Core、Message、Sync、Agent 四类 process-owned repository 分组，并由 embedded 兼容入口复用；为后续独立启动链切换保留可回滚边界。
+- 新增 `CoreProcessRepositories`，集中装配 Core 所有的 SQLC repository，并由聚合 `NewRepositories` 复用；现有 embedded 入口保持兼容，便于后续 Core 独立 runtime 切换。
+- 新增 `AgentProcessRepositories`，集中装配 Agent-owned SQLC repository，并由聚合入口复用；Core 兼容 Capability 继续通过 port 使用，便于后续 TS Agent Runtime 独立接管。
+- Search application 已从共享 `internal/app` 迁移到 `internal/services/search/application/`，Search runtime 保持原 application port 不变；结构门禁会阻止旧实现路径回流。
+- 微服务远程模式下 Gateway 直接拥有消息历史与 Sync HTTP 路由，新增 Sync gRPC 连接和 readiness 依赖；Core 仅在 embedded 模式注册消息/同步数据路由，减少 Core HTTP 反代对服务 ownership 的绕行。
+- Gateway 现在直接拥有消息历史和 Sync HTTP 路由，并通过 Message/Sync gRPC 客户端访问；Core 在 `gateway.mode=remote` 下不再注册消息/同步 HTTP 与 WebSocket 数据路由，embedded 模式继续保留兼容入口。
+- 增加 Gateway/Core 路由 ownership 测试和 Sync RPC readiness/连接清理，避免远程部署通过 Core HTTP 反代绕过 Message/Sync 服务。
+- 新增 `docs/architecture/SERVICE-BOUNDARIES.md` 和 `cmd/services/README.md`，明确服务入口、数据所有权、允许共享层与渐进迁移例外；结构门禁现在校验服务边界清单存在且已纳入版本控制。
+- 明确 `internal/` 当前是迁移中的共享实现区，后续按 Core、Message、Sync、Search 和 Agent 责任逐步收敛，避免把入口拆分误判为业务实现已经完全自治。
+- 微服务 Compose 为 Core 增加独立的 `DIPOLE_CORE_MESSAGE_TRANSPORT` 启动配置，默认使用本地消息实现完成 Core readiness；全局 `DIPOLE_MESSAGE_TRANSPORT=grpc` 继续保留给 Gateway/远程调用方，解除 Core/Message 冷启动环。
+- 远程 Gateway 模式下 Core 不再注册消息持久化 Kafka handlers 或负责消息 topic 初始化，避免 Core 的本地启动兼容实现与 Message Service 形成双重 owner。
+- Sync 微服务 Compose 补齐 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION`、`DIPOLE_CASSANDRA_ENABLED` 和 `DIPOLE_CASSANDRA_HOSTS` 配置契约；primary hydration 仍默认关闭，启用时保留 shadow 互斥和 MySQL 即时回退。
+- 在干净提交 `fe84b7b` 上重建并验证七个候选微服务镜像，确认 revision、`dirty=false`、服务二进制标签一致；独立消息流程再次通过 Inbox、`before_seq` 历史读取和 `after_seq` 增量读取。
+- 候选微服务消息 smoke 增加 Seq Timeline 验收：同一消息写入后分别通过 `before_seq=0` 和 `after_seq=0` 查询，并校验 `message_seq` 持久化结果，补齐历史读取与增量读取证据。
+- 修正候选拓扑发布前的源码脏状态判定，仅阻断已跟踪文件变更，允许仓库中的本地 `.planning/` 和 `.codex/` 记录存在而不污染候选镜像发布门禁。
+- 增加 Go 微服务单镜像候选路径：`core`、`gateway`、`message`、`sync`、`search` 和 `search-indexer` 可分别构建只包含自身二进制的镜像，并通过 Compose override 灰度；override 同步覆盖旧 entrypoint，默认仍使用共享 `DIPOLE_IMAGE`，移除 override 即可回滚。
+- 隔离镜像 smoke 已固化为 `scripts/smoke-microservice-isolated-images.sh`，覆盖迁移、服务 readiness、Gateway health 和独立 project 清理；可使用临时 Gateway 端口验证候选栈，不干扰已有 Dipole 实例。
+- 隔离镜像 smoke 增加 `SMOKE_SEARCH_PROFILE=1` 可选门禁，可在不改变默认核心 smoke 的情况下启动并检查 Search、Search Indexer 与 Elasticsearch 候选路径。
+- 隔离镜像 smoke 增加 `SMOKE_MESSAGE_FLOW=1` 可选端到端消息验收：经候选 Gateway 注册/登录和 WebSocket 发送后，核对 Message、Outbox 与目标用户 Inbox 持久化。
+- 完成仓库文档归档：`docs/` 顶层仅保留索引、清单和架构图；Agent、架构、数据、运行、性能、指南与参考材料分别归档到对应子目录，并将参考链接从根目录 `acc.txt` 收纳到 `docs/references/`。文档门禁现在检查顶层文件白名单和旧路径回流。
+- Agent Workflow Repair 增加跨 Go/TypeScript 对齐的 projection hash precondition guard，执行前校验 active executor grant、grant version、Task 绑定和当前/目标 projection 哈希；该 guard 无副作用。
+- 重整仓库文档布局：根目录 README 聚焦项目介绍、架构概览、快速开始和验证入口；架构、数据、运行、前端和性能文档统一归档到 `docs/` 分类目录，并由 `docs/README.md` 集中导航。
+- 将长期运行的 Go 服务入口统一归档到 `cmd/services/`，保留一次性迁移、回填和对账工具在 `cmd/` 顶层，降低微服务部署边界与运维工具的混淆。
+- 将一次性迁移、回填、对账、证据采集和诊断工具统一归档到 `cmd/tools/`，并同步构建脚本、运行手册和测试引用。
+- Workflow Repair operator grant 增加可验证的 `grant_version` 和独立 `can_execute` 权限字段。历史授权默认不获得执行权限，后续 CAS executor 必须同时校验执行能力、版本和有效期。
+- Workflow Repair execution ledger 增加 `prepared -> executing -> failed` 的执行人、授权版本和状态 CAS 边界；当前仅提供持久状态认领与失败终止，projection 写入、commit 和 rollback 仍保持关闭。
+- Workflow Repair 增加事务化 projection commit：在同一 MySQL 事务内完成 projection CAS 与 execution `committed` 更新，任一条件失败都会回滚。
+- Workflow Repair 增加事务化 rollback：支持恢复已提交 projection 或清空 projection，并将 execution 原子标记为 `rolled_back`。
+- Workflow Repair 增加默认未接线的应用层 Executor：执行前重新读取执行人 grant、Task projection 和 canonical hash，完成 claim、precondition、事务 commit；失败记录固定 failure code，rollback 要求原执行人携带 fresh grant 并校验 rollback hash。
+- Workflow Repair Executor 在执行入口校验计划声明的 rollback projection 与 `rollback_sha256`，缺失或漂移时在 claim 前 fail closed。
+- Agent Workflow repair 增加 Gateway-only 的 Execute/Rollback gRPC 契约与执行器注入点；接口默认保持关闭，未配置执行器时返回 `Unavailable`，继续禁止未经组合根接线的真实 projection mutation。
+
+### 新增
+- 增加可选 `cassandra-primary` 微服务 Compose profile：启动 Cassandra 5.0.9、一次性 Timeline schema init，并将 Sync 接入 Cassandra-first hydration；profile 默认关闭，移除 profile 或关闭开关即可回退 MySQL。
+- 增加 `smoke-sync-cassandra-primary-compose.sh`，验证真实容器网络中的 Cassandra schema init、Sync primary readiness 和自动清理边界；该 smoke 不改变默认生产开关。
+- 微服务 Compose 默认切换为 `migrate/core/gateway/message/sync/search/search-indexer` 各自的单服务镜像，并补充可选 Timeline repair worker 镜像；legacy Compose 和逐服务镜像变量保留回滚路径。
+- Context Compiler 增加 provider-neutral `RouteTokenizerAdapter`：按模型 route 注入稳定 tokenizer ID、上下文窗口和 token 计数，跨 route 仍取保守最大估算；未配置 tokenizer 时继续使用校准 UTF-8 fallback，避免未经证据直接绑定 provider。
+- Agent promotion publication 增加受保护的 release manifest 入口：CLI 检测 manifest 后强制校验 `shadow` 阶段、candidate、offline Eval Suite SHA-256 和四类组件哈希，并将 manifest 哈希写入发布 Artifact 与低敏 receipt；旧证据回放入口保持兼容。
+
+- Agent Runtime 增加 `dipole.agent.release-manifest.v1`：将模型、Prompt、Capability Schema、Memory Policy 与 offline Eval Suite SHA-256 绑定到候选版本，晋级校验只接受 `shadow` 阶段并拒绝版本或评测哈希漂移；该清单不改变生产开关。
+
+- Agent Approval 与 Elicitation 表单已迁移到共享 `--dp-*` Pencil token，并增加设计契约测试，避免交互页面重新引入独立主题变量。
+- Agent Approval 页面增加认证浏览器验收，覆盖精确审批绑定、权威查询失败时的 fail-closed 状态和移动端单列布局。
+- Agent Approval 与 Elicitation 增加 Chromium canonical 截图回归，固定 Pencil 共享 token 的主要桌面布局；功能行为继续由三浏览器 E2E 覆盖。
+- Agent Subscription 与 Memory 管理页增加 Chromium canonical 截图回归，覆盖已迁移共享 token 的 Agent 治理控制面。
+- Search Workspace 清理残留硬编码主题值并统一映射到 Pencil `--dp-*` token，新增设计契约测试覆盖搜索、错误和骨架状态。
+- Search Workspace 增加 E2E visual harness，建立 Chromium canonical 的 Idle、Loading、Results、Empty、Error 五态截图基线。
+- Timeline Repair 增加 `agent-timeline-repair-rollout` v1 只读灰度门禁：绑定 worker readiness、operator、部署 revision、告警状态、回滚演练和 outcome 比例，输出低敏 `eligible|blocked` 报告；门禁不会自动启停 worker 或打开生产开关。
+- Timeline Repair rollout 契约补充 eligible/blocked 脱敏示例，明确示例仅用于 CLI 回归，不能替代共享环境灰度证据。
+- Event Subscription 增加可复用的 `off/shadow/enforced` 预筛运行时门禁：强制模式精确绑定 rollout decision、候选配置、语料、评审与 evidence 哈希，证据缺失或漂移时 fail closed；默认不接入 Kafka、模型或生产 Task 创建。
+- C++ projection benchmark 在候选 revision `c063594` 上完成 100,000 次固定 workload 复跑，C++/Go ops ratio 为 `0.0976283897`，低于 `1.0` 门槛，继续保留 Go projection 并归档可复现报告。
+- Conversation Projection 增加 sqlc 批量群消息 upsert：在保持 sender `read_seq`、成员未读计算、Seq 单调更新和幂等语义的前提下，将普通群一次消息的数据库写入收敛为单条 `INSERT ... SELECT`；旧 Repository/test double 继续兼容逐成员路径。
+- Conversation Projection 归档真实 MySQL 8.4.8 的 1000 成员 SQL 对照：serial、batch、并发 serial、并发 batch 均通过行数/序号校验，batch 数据库层耗时约降低 37.3-353.8 倍，InnoDB row-lock wait 增量为零；该证据仍不替代端到端 P95 容量测试。
+- 修正 MySQL migration integration baseline 与实际 v49 schema 漂移：补齐 v49 到 v44 的逐步回滚/表数断言，并恢复 Metadata backfill 测试窗口；隔离 MySQL 8.4.8 + Cassandra hydration smoke 全部通过。
+- Cassandra read-routing 隔离 smoke 已在迁移 v49、临时 MySQL 与 Cassandra 环境通过：Cassandra 页面读取、payload 损坏回退和缺失行回退均符合契约，临时资源已自动清理。
+- Kafka Shadow Runtime 增加可选 Subscription gate 注入点；enforced blocked 会在订阅匹配和 EventLedger claim 前停止，默认未注入以保持现有路径兼容。
+
+- Agent Runtime 增加受认证的只读 `conversation.read` Capability：Go Core 通过新增 gRPC RPC 执行 Task/Run 身份解析与精确资源复核，TypeScript 注册同名 Capability 并将会话消息作为受 provenance 约束的上下文证据候选；协议为向后兼容新增，无数据库迁移。
+- `conversation.read` 输入统一采用 canonical `conversationId`（`direct:<user>:<user>` 或 `group:<group>`）；Runtime 先执行精确 scope 检查并解析目标，Core 继续以 principal 的会话关系作为最终授权依据。
+- ModelShadowPlanner 现在可在模型调用前按 event conversation key 读取最多 20 条授权消息，将 full/compact 消息作为 `untrusted` evidence 编译并记录来源/sequence；Temporal read activity 与普通 shadow registry 统一注册 `conversation.read`，读取失败保持 fail-closed。
+- 修正会话 evidence 中 protobuf Timestamp 的 `bigint` 序列化：`seconds` 统一转为字符串，避免真实消息在 Context 编译时触发 JSON 序列化异常。
+- 会话 evidence 增加防御性边界：Planner 最多编译 20 条远程消息，单条正文最多 8 KiB，并通过 `contentTruncated` 标记截断，避免异常响应放大内存和上下文预算。
+- TypeScript Agent Capability RPC 客户端新增 `conversation.read` 跨语言契约测试：固定 group/direct canonical key 的 target 解析、可信 principal 请求边界、非法 scope 拒绝和响应 target 冲突 fail-closed 行为。
+- `conversation.read` RPC 客户端在边界处拒绝超过请求 `limit` 的消息响应，并对 `found=true/false` 统一校验 target，避免异常响应绕过 Planner 上限或造成资源范围漂移。
+- Context Compiler 的 capability section 现在可消费已注册 Capability Descriptor，向模型提供排序稳定的 `id`、`risk` 和 `requiredPermission` 元数据；运行时从 Registry 注入，旧调用仍兼容 ID-only 表示。
+- Context Compiler 为每个选中的 full/compact fragment 生成 `contentSha256` 并写入 Shadow Plan manifest，支持跨进程重放与 descriptor/context 漂移核验；审计仍不保存 prompt 正文。
+- `conversation.list` 与 `conversation.read` 注册 descriptor 增加受限输入 Schema 摘要（类型、范围、默认值和额外字段策略），模型可按契约生成参数，执行时仍由 Zod 进行最终校验。
+- Capability Registry 注册时校验输入 Schema 摘要：限制可投影关键字、`properties` 嵌套结构和 4 KiB 大小，未知字段或异常膨胀会在进入模型上下文前失败。
+- Capability Registry 注册后深度冻结 descriptor snapshot，防止外部对象修改风险、权限或输入 Schema 后造成执行策略与模型上下文漂移。
+- Event Subscription matcher 增加 256 条候选上限，超限集合在 Schema 解析和关键词匹配前 fail-closed，避免异常订阅配置放大单条 Kafka 事件的 CPU/内存开销。
+- 修正 Subscription Shadow 观测的候选计数：指标现在记录 Core 返回的原始候选数，不再使用匹配结果数低估 miss 场景的预筛选成本；matcher 错误会保留已取得的候选计数。
+- Subscription Shadow metrics observer 增加运行时 outcome 枚举校验，仅接受 `match`、`miss`、`error`，拒绝未注册的低基数标签进入 Prometheus 输出。
+- Subscription Shadow 的 HTTP Prometheus Collector 增加 256 KiB 响应体上限，使用流式读取并在超限、截断或 JSON 无效时返回固定错误，避免外部响应放大 Collector 内存占用。
+- 微服务 Compose 增加默认关闭的 `agent-timeline-repair` profile：独立运行 Timeline repair worker，使用专用 MySQL 账号和最小表级权限，提供可选 readiness/Prometheus 端口；未显式启用 profile 时，默认服务拓扑保持不变。
+- Go 发布链路现在构建并打包 `dipole-agent-task-timeline-repair`，避免运维进程仅存在源码而无法进入服务镜像。
+
+### 迁移说明
+
+- 本次新增 Agent Capability RPC 不要求数据库迁移；升级时需同时部署匹配的 Go gRPC 服务和 TypeScript Runtime 生成代码，旧 Runtime 可继续使用既有 RPC。`conversation.read` 仍受 Task/Run 解析、Core 资源授权和 Runtime `conversation.read` 权限三重约束。
+- 启用 repair worker 前执行 `docker compose --profile agent-timeline-repair up -d agent-timeline-repair`；Compose 会先等待 `mysql-permissions` 完成。共享环境应覆盖 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，并在发布前替换授权 SQL 中的示例密码。
+
+### 验证
+- 2026-08-29 使用随机 Compose project 和 `18180` 隔离端口完成候选微服务端到端 smoke：Core、Message、Sync、Gateway、Agent 均 healthy；注册/登录、好友关系、WebSocket 发送、Message/Outbox/Inbox 幂等以及 `before_seq`/`after_seq` Timeline 读取均通过，测试资源自动清理。
+- 通过 `scripts/smoke-sync-write-ownership.sh`：真实 MySQL 8.4 最小权限、Message atomic/projector 写入边界和 rollback 测试均执行并通过。
+- 通过 `scripts/smoke-sync-projector.sh`：三节点 Kafka backlog/实时事件收敛、retry/DLQ 可观测性和热群 fanout 禁用契约均通过。
+- 2026-08-29 使用独立 Compose project 实测 `SMOKE_SEARCH_PROFILE=1`：Elasticsearch、Search Indexer、Search、Core、Message、Sync、Gateway 和 Agent 均通过 health/readiness，Gateway health 通过，临时资源自动清理。
+- 2026-08-29 `smoke-sync-write-ownership.sh` 与 `smoke-sync-projector.sh` 通过：真实 MySQL 验证 Message atomic/projector 权限和 Inbox ownership 迁移/回滚，三节点 Kafka 验证 backlog、实时事件、retry/DLQ 与 Sync Projector 收敛；证据仍不等同于候选镜像经 Gateway 的完整消息发送验收。
+- 2026-08-29 使用 `SMOKE_MESSAGE_FLOW=1` 通过候选镜像端到端消息验收：经 Gateway 注册/登录、好友关系和 WebSocket 发送后，Message、Outbox 与目标用户 Inbox 均正确落库；重复请求幂等、Kafka authority 和生产回滚仍保持后续门禁。
+- 2026-08-29 端到端消息 smoke 增加同一 `client_message_id` 重发，确认候选 Message Service 对 Message、Outbox 和目标 Inbox 保持幂等单条结果；Kafka authority 深度核对和生产回滚继续保持后续门禁。
+- 2026-08-29 `ISOLATED_IMAGES=1 scripts/smoke-runtime-dependency-readiness.sh` 通过候选镜像运行时演练：Kafka assignment、Search/Indexer readiness、Elasticsearch 故障降级与恢复及核心服务容器身份稳定性均通过；生产切换与回滚 receipt 仍待完成。
+- 运行时依赖 readiness smoke 增加 `ISOLATED_IMAGES=1` 候选镜像模式，复用 Kafka assignment 与 Elasticsearch 故障恢复门禁，避免候选部署只能通过静态配置验证。
+- C++ Realtime Delivery 在当前 `master` 基线通过 Ubuntu 24.04 容器门禁：依赖安装、CMake Release 构建和 14/14 CTest 成功，镜像 provenance 标记 `dirty=false`；Go/C++ projection 性能对照仍为 `blocked`，因此继续保留 Go projection 和默认 Go authority。
+
+- Cassandra hydration 与 read-routing smoke 已支持动态宿主机端口并行执行；2026-08-29 两条真实隔离 MySQL 8.4/Cassandra 5.0.9 验证同时通过，覆盖 shadow hydration、重复响应恢复、Legacy ID 恢复、Metadata 回填、Cassandra 页面读取及损坏/缺失行 MySQL fallback。该证据仍不授权生产主读灰度。
+
+- 前端增加 `test:design` Pencil 结构门禁：对 canonical `design/dipole-ui.pen` 校验核心 desktop/mobile frame、设计变量、可复用组件和 placeholder/未命名节点；测试 fixture 同时覆盖缺失画板与占位节点拒绝，保持真实 Pencil CLI 失败时的安全边界。
+
+- C++ Realtime Delivery 增加 `scripts/check-cpp-realtime-container.sh` 容器门禁：复用 Ubuntu 24.04 Dockerfile，自动绑定 revision/created/dirty provenance，在宿主机缺少 gRPC C++ 开发包时仍可复现依赖、编译和 CTest 验证；该门禁不改变 Go 默认投递 authority。
+
+- 2026-08-29 复核平台静态与协议门禁：Go 全量测试、sqlc、Go/TS Proto、Compose、架构文档、Web Sync 观察和 Agent OTel 检查均通过；C++ Realtime Delivery 通过仓库自带 Ubuntu 24.04 构建镜像完成编译与 14/14 CTest。宿主机缺少 `grpc++ >= 1.51` 时应使用 `services/realtime-delivery/Dockerfile` 或显式依赖根目录，不能将宿主机失败误判为源码失败。
+
+- 平台级门禁与 Agent 观测链路复核通过：`scripts/check-go.sh`、`check-sqlc.sh`、`check-compose.sh`、`check-architecture-docs.sh` 和 `check-agent-otel-observability.sh` 全部通过；独立 OTel smoke 验证 trace 经 Collector 写入并可由 Tempo 查询。
+
+- 微服务部署 smoke 在独立 Compose project 和新构建镜像上通过：MySQL、Redis、Kafka、Core、Message、Sync、Gateway、Agent 均 healthy，且 readiness、Prometheus、Core 代理、TLS 1.3 mTLS 和 remote WS ownership 验收通过；脚本 HTTP 探针增加有界重试/超时，失败可回收。
+
+- 修复 Go 根模块递归扫描 `services/agent-runtime/node_modules` 内嵌 Go 源码的问题：新增 TS 服务目录的 Go module boundary 后，`CGO_ENABLED=0 go test ./...` 全仓通过；Agent Runtime 仍单独通过 Vitest、typecheck 和 production build。
+
+- Agent Runtime 独立服务完成全量回归：Vitest 124 个测试文件通过、650 个测试通过，TypeScript typecheck 与生产构建通过；同时 `CGO_ENABLED=0 go test ./internal/...` 全部通过，确认 TS Runtime 的 shadow/协议边界未破坏 Go Core、存储和微服务路径。
+
+- 存储架构隔离 smoke 已通过 Cassandra 5.0.9、Elasticsearch 9.5.2 和 MinIO 的健康检查及 CRUD 验证；Elasticsearch lab 编排显式使用仅测试环境的磁盘水位参数，健康检查要求 yellow/green，生产配置保持不变。
+
+- Go 微服务测试显式绑定版本化 `configs/config.dist.yaml`，修复干净 worktree 缺少隐式 `config.yaml` 导致的测试失败；`CGO_ENABLED=0 go test ./internal/...` 全部通过，生产配置搜索路径未改变。
+- 新增 `scripts/smoke-agent-timeline-repair-compose.sh` 部署级隔离演练：先校验 v49 migration、Timeline 表和 MySQL `+00:00/+00:00` 时间基准，再在 repair worker 启动前写入 pending intent，验证 opt-in profile 的 `readyz`、启动恢复、持续 replay 和 event UUID 幂等；使用源码构建镜像后完整通过。演练同时发现并修复 MySQL `Asia/Shanghai` 与 Go UTC lease/retry 的 DATETIME 偏移，将微服务 Compose MySQL 固定为 UTC，并避免把一次性 migration job 交给长期服务等待语义。
+- Agent Task Timeline v1 增量设计维护已建立 `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 使用受限增量调用两次均在超时窗口内未完成，safe-edit wrapper 保持 canonical `.pen` 不变且未生成导出图，记录到 `AD-044`，未提前开放视觉基线。
+- Agent Task Timeline Vue 组件已接入共享 `--dp-*` Pencil token，统一使用设计基线中的颜色、字体、间距和圆角；组件契约测试会阻止核心时间线样式回退为旧硬编码值。
+- Login 页面已接入共享 Pencil token，统一画布、表面、边框、字体、交互色和错误色；新增设计契约测试阻止旧绿色/灰色硬编码回流。
+- Agent Task Timeline 路由页面外壳已接入共享画布、字体、间距和文字 token，确保页面级背景与 Timeline 组件使用同一 Pencil 设计基线。
+- Agent Event Subscription 管理页已将主题变量、字体、状态色、表面和边框映射到共享 Pencil token，并增加组件设计契约测试，减少管理控制面视觉漂移。
+- Agent Memory 管理页已覆盖旧主题变量，统一使用共享 Pencil 画布、表面、字体、状态色和数据字体，并增加设计契约测试。
+- Agent Task Timeline 增加 Playwright 浏览器验收：在认证 mock 会话下验证路由开关、Bearer 传递、默认 `limit=50`、稳定 `after` cursor、低敏事件展示和内部 capability ID 不泄露。
+- 新增 Compose 静态契约测试，校验 repair profile、镜像二进制、构建脚本和持久化权限依赖；`docker compose -f docker-compose.microservices.yml config --quiet` 在注入 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` 后通过。
+- 新增 `conversation.read` gRPC/TypeScript 契约测试：验证 Core 从可信 Task/Run 解析身份、拒绝客户端伪造 principal、映射消息字段，并验证 Runtime 权限缺失时不会发起远程调用；`scripts/check-proto.sh`、`node scripts/check-agent-proto-ts.mjs`、Go 定向测试与 Agent Runtime typecheck/测试通过。
+- 新增 Subscription Shadow Collector 响应体边界回归测试，覆盖超过 256 KiB 的 Prometheus 响应 fail-closed；Agent Runtime 定向测试与 typecheck 通过。
+- 新增 Context Compiler 会话 evidence 测试：验证消息 provenance、sequence、full/compact 表示和远程读取调用边界；Agent Runtime 全量测试此前通过，当前 Planner/Capability 定向测试 `15 passed`。
+- 新增 `scripts/smoke-agent-timeline-repair.sh` 进程级隔离演练：使用临时 MySQL、真实迁移和独立 repair 二进制，验证 repair intent 被 claim/replay、状态收敛为 `completed` 且 Timeline 事件保持单份；worker 由 timeout 有界停止，演练不会启用共享环境服务。
+- `smoke-agent-timeline-repair.sh` 真实运行通过：隔离 MySQL、migration、repair process 和幂等事件计数均通过，失败时会保留状态诊断并自动清理临时资源。
+- 增加 Timeline repair 的 Prometheus 告警规则和 promtool 测试：区分短窗口失败与持续 projection retry，profile 启用时由 observability 配置按可选服务抓取；默认拓扑和 repair 开关保持关闭。
+- 新增正式运维手册 `docs/agent/AGENT-TIMELINE-REPAIR-OPERATIONS.md`：统一记录 repair worker 的前置检查、隔离启用、指标验收、暂停回切和低敏证据归档要求；明确禁止 down migration、手工修改状态和删除 Timeline 事件。
+- repair worker 增加显式 `-once` 有界执行模式，常驻轮询与 CronJob/发布验证复用同一 claim/replay/retry 语义；进程级 smoke 已切换为一次性真实执行，减少外部 timeout 对运行结果的干扰。
+- 修正 repair 专用 MySQL 密码覆盖边界：`mysql-permissions` 现在使用同一环境变量执行 `ALTER USER`，并拒绝无法安全嵌入初始化 SQL 的单引号/反斜杠，避免 Compose 配置与授权账号密码漂移。
+
+- Gateway/WS 新增 `message.timeline_notify_mode=primary`：与客户端 `VITE_TIMELINE_NOTIFY_MODE=primary` 对齐，继续发送无正文 `sync.item.notify.v1` locator，支持客户端按会话序号向 Cassandra 主读路径补拉；`off|shadow` 行为保持兼容，回切只需恢复原模式。
+- Sync Web 客户端支持 `VITE_TIMELINE_NOTIFY_MODE=primary`：收到经过严格校验的 `sync.item.notify.v1` 后，按会话 `message_seq` 串行补拉缺口，只有目标序号和 `message_uuid` 完整匹配才合并消息；事件去重、失败隔离和 shadow/off 兼容行为保持不变。服务端 Cassandra 主读仍需独立灰度证据才能启用。
+- Agent Memory 增加 reviewed corpus v1 语言中立 Schema、双 reviewer/第三方 adjudicator 评测器和 `eval:memory-corpus-review` 离线 CLI。语料只保存候选类型、资源范围、证据数量与内容哈希；CLI 仅输出低敏哈希/计数报告，退出码 `0/2/1` 分别表示通过、门禁失败和输入错误，当前仍需真实脱敏语料与人工签署后才可用于灰度。
+- Agent Memory reviewed corpus 增加 owner-only source manifest loader：加载前校验绝对规范路径、不可跟随符号链接、regular/single-link 文件、owner 权限、2 MiB 大小、审批有效期及 corpus/review SHA-256；失败不会进入评测或晋级。该 loader 仍只服务离线证据，生产自动写入保持关闭。
+- Agent Memory 增加 provider-neutral prefilter evidence v1：embedding/small_model 候选绑定 reviewed corpus SHA-256、revision、configuration SHA-256 和 score/threshold，离线评测输出混淆矩阵、precision/recall、nearest-rank p95、平均/总成本及 fail-closed 门禁原因；新增 `eval:memory-prefilter` 与 policy/evidence/report Schema。该证据不访问模型、Kafka 或数据库，真实语料与在线灰度仍关闭。
+- Agent Memory 增加 prefilter rollout decision v1 与 `eval:memory-prefilter-rollout`：重新计算双 reviewer/adjudicator 结果和候选 evidence 门禁，绑定 corpus/review/final-label/evidence 哈希后输出 `eligible|blocked`；该决策仍只作为离线发布前置证据，不开启 Runtime、Kafka 或自动 Memory 写入。
+- Agent Memory 增加 provider-neutral Runtime binding v1：`off/shadow/enforced` 三态 gate 精确校验 rollout decision、candidate/configuration/corpus/review 哈希；只有 `enforced + eligible` 才允许后续任务创建，所有模式均固定无 Memory 写权限，默认不接入生产 Runtime。
+- Cassandra Message Store 增加 read rollout evidence v1 与 `cassandra-read-rollout-evidence` CLI：绑定服务部署 revision、窗口、配置比例、Cassandra/MySQL/fallback/verification 聚合计数和 p95 延迟，按样本、fallback、核验和延迟门槛输出 `eligible|blocked`。报告不含会话或消息标识，仍只支持离线归档，不改变默认 Cassandra 路由。
+- Sync Service 增加 Cassandra hydration evidence v1 与 `sync-cassandra-hydration-evidence` CLI：分别记录 `shadow|primary` 窗口的 Cassandra 命中、MySQL fallback、缺失/冲突/错误和 p95，按统一策略输出低敏 `eligible|blocked`；该证据不改变 `sync.cassandra_primary_hydration` 默认关闭状态。
+- Sync Service 为 Cassandra primary/fallback hydration 增加运行时 Prometheus 证据：按低基数 `hit|fallback|error|cancelled` 记录请求计数和耗时，保留原有日志观测接口；指标只在显式构造 Cassandra primary 路径时注册，不改变默认关闭和即时回退行为。
+- 新增 `sync-cassandra-hydration-snapshot`：严格解析 Sync Service Prometheus 文本快照，绑定显式服务、revision、模式与时间窗口，聚合路由计数并以有限 histogram 桶保守计算 hit p95，输出既有 hydration evidence v1；缺失命中 histogram、未知 outcome、重复 histogram 或无请求均 fail closed。
+- 修正 hydration snapshot 的窗口语义：CLI 现在要求起止 Prometheus 快照，对生命周期累计 counter/histogram 做单调差分；counter reset、histogram 缺失或桶漂移均拒绝生成 evidence，避免把进程累计值误归因到 rollout 窗口。
+- 加固 hydration snapshot 完整性：拒绝重复 route outcome、重复 metric family、错误 metric 类型、额外标签、未知 outcome 和非单调 histogram 桶，避免错误或篡改的 Prometheus 文本被聚合成有效证据。
+
+- 前端新增默认关闭的 Agent Task 审批页 `/agent/tasks/:taskId/approval`，通过认证 Task Query 展示 `waiting_approval` 请求，并调用审批决策接口；严格保留过期、不可用和终态的 fail-closed 行为。完整 Run/Step 时间线仍待后端只读契约。
+- 新增 `contracts/agent-task-timeline/v1/`：定义 Agent Task 增量时间线的低敏事件、稳定游标、principal 复核和 fail-closed 边界；当前只建立契约，Core/Gateway 聚合 adapter 与前端完整时间线仍关闭并由 `AD-045` 跟踪。
+- Agent Task Timeline 增加 migration v48 append-only 事件表及 sqlc append/list repository，使用数据库生成的 `event_seq` 保证 Task 内顺序；状态变更事务接入和 Core/Gateway 聚合 API 仍未开放。
+- Agent Policy 生产事务装配已将 Task/Run 创建与状态迁移和 Timeline 事件写入绑定在同一 MySQL 事务中；事件写入失败会回滚对应状态变化，旧兼容构造保持可用。
+- Core Agent RPC 新增 owner-scoped `ListAgentTaskTimeline` v1：服务端复核 Task principal，按 `event_seq` 提供低敏增量事件与 `next_cursor`，Timeline 仓储已接入生产 Core 装配；Gateway 代理和前端完整时间线仍待后续阶段。
+- Agent Task Timeline 已贯通 Runtime/Gateway 只读链路：Runtime 通过认证控制接口校验 `after/limit` 并调用 Core，Gateway 暴露 `GET /api/v1/agent/tasks/:task_id/timeline`；旧控制实现保持兼容，未提供 Timeline 能力时显式返回不可用。
+- 前端新增默认关闭的 Agent Task Timeline 页面 `/agent/tasks/:taskId/timeline`，支持 v1 低敏事件展示、稳定 cursor 分页、空态、失败清空和重试；开关为 `VITE_AGENT_TIMELINE_ENABLED=true`，未开启时继续回到聊天页。
+- Agent Tool Invocation 成功开始/结束后追加 Timeline v1 低敏事件，事件 ID 按 invocation 和阶段确定性生成；Timeline 插入支持幂等重放，认证失败与外部 round 未完成不会生成伪事件。
+- Agent Approval 请求与决策成功后追加 Timeline v1 事件，按 approval 和阶段生成幂等事件 ID；越权、绑定冲突和失败决策不会追加事件。
+- Core 新增受认证的 Agent Timeline append RPC；TypeScript Runtime 的持久化 Model Router 现在为模型调用写入 `model_call` begin/finish 低敏事件，模型输出和 prompt 不进入 Timeline，投影失败不会阻断模型主流程。
+- Agent Artifact 创建成功后追加低敏 `artifact` Timeline 事件，事件键绑定 artifact ID 并支持幂等重放；正文、对象存储 URI 和 Metadata 继续留在 Artifact 专属读取链路。
+- Agent Task Timeline 增加 MySQL repair ledger v49：Timeline 投影失败时持久化低敏事件意图，按 event UUID 幂等入账，并提供带租约的 claim、完成和 retry 状态操作；当前仅落账，不自动启用修复 worker。
+- Agent Task Timeline 增加显式 repairer：批量领取 repair intent 后按原事件重放，成功标记完成，失败按退避重新调度；worker 保持显式构造和关闭默认，便于先进行故障注入与灰度。
+- 新增独立运维进程 `cmd/agent-task-timeline-repair`：通过 MySQL transaction store 运行 Timeline repairer，支持批量、租约、退避和轮询参数；主服务默认不自动启动该进程。
+- Timeline repair runtime 增加可选 Prometheus collector：暴露有限 outcome 的 repair 计数与耗时，独立进程通过 `--metrics-address` 显式开启，默认不监听指标端口。
+- 新增 MySQL repair recovery contract：在真实 MySQL 上创建 Task/Run，注入 Timeline 投影失败，验证 repair intent 进入 retry，随后真实重放收敛为 `completed` 且 Timeline 事件保持单份；测试独立于客户端时区。
+
+### 验证
+- Agent Runtime 完成 `125` 个测试文件、`657` 个测试和 TypeScript 构建；Frontend 完成工具链契约、`27` 个测试文件、`102` 个测试及 `vue-tsc`/Vite 生产构建，并同步刷新嵌入式 `internal/server/webapp` 资源。
+
+- Agent Runtime G2 foundation 验收状态与实现对齐：`agent-runtime` 已提供 Node 22、Fastify、Zod、KafkaJS、AI SDK adapter 和独立 shadow consumer；Runtime 核心通过 `ModelRouter` 与具体模型 SDK 解耦。现有测试、类型检查和构建门禁保持通过，真实模型、真实语料和生产写入仍按 G3/G4 独立控制。
+- C++ projection microbenchmark 使用同一 `message.direct.created` v1 事件和 100,000 次 JSON 解码/投影迭代，Go/C++ 结果计数一致；C++ 吞吐约为 Go 的 `0.10x`，低于默认晋级门槛，报告为 `blocked`。当前保留 Go projection 作为默认实现并停止 C++ projection 替换，证据归档于 `benchmarks/c2-cpp-projection-benchmark-2026-08-29/`。
+- 新增 sqlc `UpsertGroupConversationMessageBatch` 查询及服务层可选批量路径；`CGO_ENABLED=0 go test ./internal/service ./internal/data/mysql/repository`、sqlc 生成和 diff 检查通过，真实 MySQL 8.4 contract 已验证 sender/recipient Seq、未读计算和重复写入幂等。
+- C++ Realtime Delivery C3 真实隔离故障演练通过：14/14 C++ build/CTest、5/5 对比测试，以及 Controller 进程替换、Redis outage、Kafka rebalance、过期 freeze 自动回切和 C++ primary 停止恢复均通过；报告绑定当前 Git revision、Redis/Kafka 镜像、C++ 二进制、observation 与 journal 哈希。C++ primary、双 group checkpoint 与自动回切证据已具备，生产灰度和性能收益门槛仍保持关闭。
+- Redis Sentinel 三节点真实隔离 smoke 通过：停止当前 master 后约 4 秒完成切换，同一客户端恢复读写与 Pub/Sub，Presence、Hot Group 和限流语义保持可用，旧 master 重新加入为 replica；切主窗口的 Pub/Sub at-most-once 边界仍由 AD-017 跟踪。
+- Elasticsearch Search Service 真实隔离契约通过，验证 Core-derived scope、内部 RPC 和 Elasticsearch 9.5.2 查询路径；三节点 Kafka + Elasticsearch Search Indexer smoke 通过，created、recalled tombstone 与迟到 edited 事件最终收敛为 revision 3 且 `searchable=false`。
+- Cassandra Message Store 真实隔离读路由 smoke 通过：migration v47、Cassandra Timeline 主读、payload 损坏回退和缺行回退均完成验证；Sync hydration smoke 同时通过 Metadata 回填、重复消息恢复和 Legacy ID 恢复。
+- 修正 MySQL migration 集成测试版本基线：迁移已扩展至 v47，测试此前仍按 v44 计算回滚步数，导致 Metadata v12 未被重新执行、回填断言读不到记录；当前按实际最高迁移版本验证回滚和重放。
+- 新增 `scripts/pencil-safe-edit.test.mjs`，用 fake Pencil CLI 覆盖有效 `.pen` 与导出原子提交、超时清理临时文件并保持 canonical 不变两条回归路径；测试 `2/2` 通过。
+- 在当前 master 基线完成 Agent Runtime 与前端质量验证：Agent Runtime `122` 个测试文件、`627` 个测试通过；Frontend `22` 个测试文件、`87` 个测试通过，`vue-tsc` 与 Vite 生产构建通过。7 个 Agent 测试文件、27 个测试按既定条件跳过。
+- Pencil CLI `0.3.5` 认证和版本检查通过；Agent Task Timeline 增量任务在画布调用阶段超时终止，未产生 `.pen` 或导出图，canonical 设计文件保持不变，记录为 `AD-044`。
+- 增加 `scripts/pencil-safe-edit.mjs`：Pencil 增量编辑具备默认超时、临时输出、`.pen` JSON 结构校验、导出文件校验和成功后原子替换，失败不会覆盖 canonical 设计。
+- Agent Runtime 追加 `npm run typecheck` 与生产 `npm run build` 验证通过；`ModelRouter` 继续通过 `StructuredModelClient` 隔离具体 AI SDK，保持后续 Eino/provider 替换的适配边界。
+- Core Agent Timeline RPC 契约测试通过：覆盖 schema/revision/cursor、foreign Task 隐藏和 Timeline 未配置时的 `FailedPrecondition`；Proto Go/TypeScript 生成检查通过。受当前环境配置文件缺失影响，`internal/app` 全包测试仍在既有配置读取处 panic，未归因于本次改动。
+- Agent Runtime Timeline control 通过 TypeScript 类型检查和原生 Vitest：`122` 个测试文件、`627` 个测试通过，7 个文件、27 个测试按既定条件跳过；Go Gateway 受当前环境缺失 `configs/config` 影响未能完成全包运行验证。
+- 前端 Timeline 验证通过：`24` 个测试文件、`96` 个测试通过，`vue-tsc` 与 Vite 生产构建通过；构建产物已同步到嵌入式 Web 服务目录。
+- Agent Tool Timeline 写入专项验证通过：`internal/transport/grpc/agent` 测试通过，`scripts/check-sqlc.sh` 通过，覆盖 begin/finish 事件和重复调用边界。
+- Agent Approval Timeline 专项测试通过：覆盖 pending/approved 生命周期事件，继续保留此前 `internal/transport/grpc/agent` 与 sqlc 门禁结果。
+- Model Router Timeline sink、Core append RPC 的 Proto/Go 生成、Core Agent 测试和 Runtime 类型检查通过；Model Router 回归测试 `12/12` 通过。
+- Artifact Timeline 接入通过 Core Agent 专项编译与测试，保留默认关闭的 Artifact 生产链路和现有授权边界。
+- Timeline repair ledger 专项验证通过：sqlc 生成检查、Application/Repository/Agent transport focused tests 通过；真实 repair worker、共享环境故障注入和默认生产开关仍未开启。
+- Timeline repairer 单元验证通过：覆盖成功重放完成、投影失败 retry_count 递增和非法配置拒绝；当前仍缺少进程装配、真实 MySQL 故障注入与运行时指标。
+- Timeline repair 进程编译验证通过；当前仍需真实数据库故障注入、运行时指标和 operator 灰度记录。
+- Timeline repair collector 与运行时专项验证通过：覆盖 outcome 白名单、指标注册、成功重放和失败 retry；真实数据库故障注入与 operator 灰度记录仍未完成。
+- MySQL repair recovery contract 通过（`DIPOLE_TEST_MYSQL_ADMIN_DSN`）；完整 repository contract 因既有外部依赖等待未完成，不作为本轮通过证据。
+
+- Agent Runtime 增加 `dipole.agent.memory-promotion-receipt.v1` 与 Temporal preparation Activity：为候选晋级生成不含正文的确定性 receipt，绑定 Task/Run、owner、candidate/review 哈希和最多 15 分钟租约；精确重放可恢复，过期、状态或绑定漂移 fail closed。该 receipt 仍只形成 durable promotion intent，不触发 Core Memory 写入，Temporal worker 与自动晋级保持默认关闭。
+
+- Agent Memory 增加受认证的 `PromoteMemoryCandidate` Core gRPC 与 Gateway HTTP 控制入口：仅允许已认证 Gateway 绑定 owner principal，服务端重新校验候选/审核哈希并返回幂等的 observational Memory；该入口不启动 Temporal、不消费 Runtime 旁路，也不打开自动写入。
+
 ### 安全
 
+- Agent Workflow repair 增加受控 `prepared` 准备服务：仅接受已批准、未过期且满足审批门槛的提案，复核 proposal/task/executor 绑定后幂等写入执行意图；当前不推进状态、不修改 projection，也未开放公开执行入口。`executor_grant_version` 仍只作为账本绑定值，待 operator grant 版本化后接入运行时授权复核。
+- Agent Workflow repair 增加 migration v44 prepared execution ledger 与 sqlc 访问边界：以唯一 plan 记录执行意图、提案/任务/执行人绑定、CAS 摘要和回滚摘要；当前仅允许 `prepared` 创建/读取，未提供状态推进、apply、execute 或 rollback RPC，现有运行流量不受影响。
+- Agent Workflow repair 增加默认无副作用的 `repair:preflight`：在未来执行器前重新核对 plan 摘要、批准提案证据、executor grant 版本和当前投影 CAS，仅输出低敏 `ready|blocked` 收据；过期、漂移和绑定不一致统一阻断，继续不提供 projection 写入。
+- 收紧 Agent Workflow repair dry-run 计划绑定：当前投影与目标投影必须属于同一 Workflow/Run，跨任务证据在生成 plan 前 fail closed；不改变 v1 仅 dry-run、无 projection 写入的边界。
+- Agent Memory lineage rollout 增加 deployment evidence v1 与只读 `agent-memory-lineage-deployment-evidence` CLI：外部共享环境记录必须绑定 rollout review receipt、运行版本、配置摘要、migration 43、健康检查和回滚演练 ID；输出仅保存 deployment ID 摘要与通过标志，`executionAuthority`、`contentRead`、`deletionAuthority`、`runtimeAuthority` 固定为 false。该工具不连接共享环境、不执行回填，缺少真实部署与回滚记录时继续 fail closed。
+- Agent Memory 增加有界历史 lineage backfill v1 的语言中立 manifest/receipt 与 Go runner：游标固定为 Shadow Plan ID high-water mark，引用仅允许 exact `memory:<id>` 与 `full|compact`，runner 在目标成功后推进 checkpoint，重复写返回 duplicate 并保持可收敛。Receipt 仅保存 hash、游标和计数，固定不读取正文、不授予删除或 Runtime 权威；MySQL checkpoint/source/target 尚未接线。
+- Agent Memory 增加纯离线派生数据 retention policy 决策：严格覆盖 Model Call、Shadow Plan/Step、Artifact、Tool Invocation、Message Action 与 Temporal potential Task，输入绑定已验证的低敏 lineage report，输出绑定 policy/report/decision 三个 SHA-256。parser 会从 lineage 完整性和受影响的人工复核域重新推导阻断原因；CLI 不连接数据库或网络，固定不读取正文、不执行删除且不授予删除或 Runtime 权威。
+- Agent Memory migration v42 将 direct lineage 外键从 Shadow Plan 提前到权威 Agent Task；受管 Model planner 在 Context 编译后、模型调用前写入 `context_pre_model`，失败时模型零调用。Plan-time repair 保持幂等且不能降级来源；只有同时缺少 Plan 与任何 Memory lineage 的 owner 模型结果才进入未归因缺口。
+- Agent Memory migration v41 增加保守的派生影响边界：Shadow Plan 事务同步保存 `Memory -> Task` 直接引用，精确重放补齐索引，representation 漂移 fail closed；只读审计按 root 统计模型调用、Plan/Step、Artifact、Tool、Message Action 与 Temporal 潜在 Task。报告只含 root SHA-256、有界计数和完整性标志，固定不读取内容、不授予删除或 Runtime 权威；历史未索引 Context 或已完成模型调用缺少 Plan 的未归因 Task 都会返回 `lineageComplete=false`。
+- Agent Memory migration v40 增加 root-wide 内容擦除基础：内部 sqlc/Core 事务锁定完整纠正链，撤销 active 版本，并清除正文、compact、URI、resource binding、root 原始来源与自由文本审计原因；只保留 owner、root/version/predecessor、擦除时间和枚举原因码。语言中立 policy/receipt 明确无自动执行或公开 API 权威，当前没有 Proto、Gateway、Vue 或 retention Worker 入口。
+- Agent Memory correction 增加纯离线五类 Eval 门禁：严格 manifest/observation 绑定 predecessor/successor、完整 lineage、精确重放、漂移冲突、owner/foreign 权限与 successor-only retrieval，并要求模型、Tool、Token 和模型成本全部为零；输入各限 64 KiB，错误与标准报告不回显 Memory、principal 或正文，也不连接生产数据库或写入 Memory。
+- Agent Memory owner correction 继续沿用认证派生权限：公开请求只提交 Memory ID、期望版本、纠正内容与原因，tenant/principal/corrector 由 Gateway/Core 认证链绑定；响应省略内部 provenance URI，并同时返回权威 predecessor 与 successor，客户端不推断并发结果。
 - Agent Memory 增加 owner-scoped 治理边界：公开 HTTP 不接收 tenant/principal，Gateway 从已认证会话构造 Core RequestContext；Core 只允许认证 `dipole-gateway` 调用并再次按 tenant、principal 与 Memory ID 约束查询和撤销。公开 DTO 省略内部 provenance URI，撤销必须提交有界原因并保存 revoker、原因和时间；不同原因的终态重放返回冲突。
 - Gin HTTP 访问日志统一脱敏敏感查询参数：WebSocket 兼容的 `token`/`access_token` 及 refresh/id token、Authorization、API key、client secret、密码和签名类键按大小写无关识别，重复值全部替换为 `REDACTED`；非法 query 编码整段关闭，普通参数继续规范化记录。真实 WebSocket 握手日志捕获测试同时证明查询凭据与 Authorization Header 不进入结构化字段。
 - Agent Runtime 增加默认跳过的外部 MCP encrypted credential 生命周期演练：临时 owner-only 文件以独立 key/ref/version 完成 v3 到 v4 轮换，Catalog 通过原子 rename 发布并在旧版本与当前版本吊销后于 Transport 构造前拒绝；Runtime 重建继续解析 v4，三次成功 Transport 全部关闭。语言中立 v1 证据与 `mcp:credential-drill:check` 固定三开三关、双吊销、canonical SHA-256、24 小时有效期及 `inflight_revocation_authority=false`、`production_authority=false`，不记录凭据、身份、路径或 endpoint。该离线演练不提供在途 socket 主动撤销或共享 provider authority。
@@ -71,10 +350,20 @@
 
 ### 新增
 
+- Context Compiler v2 增加可选 `maxInputTokens` 窗口门禁；route-aware runtime 按最小候选模型窗口扣除最大输出预算，超出时在编译前 fail closed，v1/旧构造保持兼容。
+- Agent Memory Observation/Reflection worker 将幂等键扩展为 tenant、principal、Agent、资源与事件/窗口的完整 scope，避免多租户或多资源复用 ID 时错误丢弃候选；新增跨 scope 回归测试。
+- Agent Memory 增加 v47 Core-owned accepted candidate promotion seam：服务端重新加载并校验候选、owner review、exact hash、范围与 30 天证据窗口，在同一 sqlc/MySQL 事务中创建摘要型 observational Memory 并记录 promotion receipt；重复 promote 可恢复同一 Memory，漂移与缺失均回滚。当前没有公开 Runtime 旁路或自动写入开关。
+- Agent Memory 增加 v46 append-only candidate review ledger：`accepted|rejected` 审核绑定候选哈希、reviewer、有限理由、时间和 review hash，候选状态与审核记录在同一事务中更新；精确重放返回 duplicate，哈希漂移、候选缺失和重复决策冲突均回滚。该阶段仍不将候选投影到 `agent_memories`。
+- Agent Memory 增加 v45 candidate ledger：持久化 Observation/Reflection 候选的摘要、来源/证据 ID、策略版本、规范 SHA-256 和待审状态；候选唯一 ID 重放时执行哈希冲突校验，完整对话正文不会写入 ledger，且不会自动投影到 `agent_memories`。Migration 可回滚，后续 accepted 投影仍需 reviewer、策略和 durable receipt 门禁。
+- Agent Runtime 增加默认 shadow-only 的 Observation/Reflection Memory worker：按事件生成有界、确定性、可去重的 `observational` candidate，再按唯一 evidence window 聚合 reflection candidate；输入超限或凭据模式 fail closed，候选不自动写入 Memory、不调用模型或外部系统。详见 `docs/agent/agent-memory-observation.md`。
+- Agent Workflow repair 增加 `repair:plan` dry-run 执行计划编译器：仅接受已批准提案、双人审批、独立 executor grant 和重新采集的当前/目标/回滚投影，生成带三组 CAS SHA-256、15 分钟有效期和确定性 plan ID 的语言中立 v1 计划。计划生成不连接 MySQL/Temporal、不提供 apply/execute/rollback 字段，身份复用、回滚证据漂移和窗口外重放均 fail closed。
+- 增加默认关闭的 `realtime-cpp` Compose profile：显式配置 `cpp` authority、Primary RPC、Redis fencing epoch 和维护窗口后，才会启动独立 C++ Realtime Delivery；默认 Compose 继续使用 Go，profile 未启用时不创建 C++ 服务。C++ 进程通过 Kafka primary group、Redis authority 和 Gateway mTLS node transport 工作，回滚恢复 Go 配置并移除 profile。
+- 增加语言中立 `dipole.agent.memory-derived-lineage` v1 manifest/report、严格 Zod 解析器和 `audit:memory-derived` CLI。owner 授权 manifest 保持本地敏感输入，标准输出省略 tenant、principal、Memory ID 与全部正文；MySQL 审计账号仅新增 Memory 与 lineage 两张表的只读权限。
+- Agent Memory 增加 append-only owner correction：migration v39 为每条记录保存 root/version/predecessor/corrector/reason，唯一 predecessor 与 `(tenant, root, version)` 约束阻止分叉；sqlc transaction 在同一事务中撤销前序版本并追加 successor，稳定 correction ID 支持精确重放，payload 或期望版本漂移返回冲突。additive gRPC、Gateway 与 Vue 已形成完整闭环，`VITE_AGENT_MEMORY_CORRECTION_ENABLED=false` 默认关闭纠正入口，Pencil 文件维护 desktop/mobile 与六类纠正状态。
 - Agent G3 增加默认关闭的 Memory owner 管理闭环：migration v38 与 sqlc 提供稳定 cursor 分页、owner 隔离的 authoritative get/revoke 和完整撤销审计；additive Agent gRPC 由 Gateway-only 控制面调用，公开 list/revoke API 与 canonical Pencil desktop/mobile 设计、Vue 页面覆盖 loading、ready、empty、inactive、expired、unavailable、revoking 和 conflict 状态。长期 Memory 始终显示 `UNTRUSTED MEMORY`、owner provenance 与自动写入关闭状态；纠正入口等待 append-only 版本模型后再开放。
 - 增加语言中立 `dipole.agent.subscription-shadow-collection.v1` 与只读 Prometheus Collector：从无凭据 origin 执行固定 19 次历史查询，要求单 Agent series、全窗口 Shadow enabled、vector 单值和非负安全整数，自动生成 evidence v1 所需的起止 counter、抓取覆盖与 reset 输入；Collector 不修改共享状态、不输出 Prometheus URL，也明确保留部署 revision 的发布记录核验门槛。
 - 增加语言中立 `dipole.agent.subscription-shadow-evidence.v1` 与独立 CLI：Prometheus 起止快照绑定 24 小时以上窗口、Runtime/config SHA-256、query revision、抓取覆盖率、六类 comparison、candidate 和 counter resets；至少 95% 抓取、100 个事件、零 reset、零 matcher error 才生成最多有效 24 小时的 canonical-hashed passing evidence。输入/证据 Schema 均拒绝附加字段，收据固定 `production_authority=false` 与 `runtime_change_authority=false`，Runtime 启动链不读取该文件。
-- 增加默认关闭的 Agent Subscription 在线 Shadow 对照：`direct_target` Kafka handler 在 EventLedger 前调用同一 Core matcher，只记录固定 `accepted|ignored × match|miss|error` 矩阵和候选总数；matcher 异常不阻断主路径，且不会创建第二个 Task、Workflow 或模型调用。Agent `/metrics` 暴露低敏零值/开关状态，Prometheus 新增 matcher error 与 admission drift 告警；Compose 固定关闭，启用与回滚见 `docs/agent-subscription-shadow.md`。
+- 增加默认关闭的 Agent Subscription 在线 Shadow 对照：`direct_target` Kafka handler 在 EventLedger 前调用同一 Core matcher，只记录固定 `accepted|ignored × match|miss|error` 矩阵和候选总数；matcher 异常不阻断主路径，且不会创建第二个 Task、Workflow 或模型调用。Agent `/metrics` 暴露低敏零值/开关状态，Prometheus 新增 matcher error 与 admission drift 告警；Compose 固定关闭，启用与回滚见 `docs/agent/agent-subscription-shadow.md`。
 - 增加默认关闭的 Agent Event Subscription owner create 闭环：Core additive RPC 将 authenticated readable conversation 与精确 Definition scope 求交集并派生 direct/group event type；Gateway 只接受 Definition、conversation 与确定性 filter，从 JWT/配置派生 principal/tenant，并在创建时重新派生 resource。Vue 从 active Definition 目录和权威候选中选择绑定，关键词超限显式阻止提交，成功后以 Core 结果更新列表；canonical Pencil 增加 desktop/mobile 创建稿、七类状态和两个复用组件。Runtime 与 Compose 继续固定 `direct_target`。
 - 增加默认关闭的 Agent Definition catalog：sqlc 按 tenant/owner、服务端有效期、`conversation.read` 与可读 conversation scope 筛选 active 版本，应用层二次复核 authority；additive Core RPC 与 Gateway `/api/v1/agent/definitions` 从认证 principal 派生 owner，并以 opaque 复合 cursor 分页。公开投影不含原始 permissions、owner 或非 conversation scope；前端严格 API parser 已就绪，conversation chooser、create UI 与 Runtime 切换继续关闭。
 - 增加默认关闭的 Agent Event Subscription owner list/revoke Web 闭环：Gateway 复用现有 Core Agent gRPC 连接，从认证会话派生 principal 并固定 tenant；Vue 以严格响应解析展示 Definition version、conversation scope、确定性 filter 与撤销审计，查询失败清空旧状态，撤销要求精确原因并以权威响应收敛。desktop/mobile 路由已通过 Chromium、Firefox 与 WebKit 验收。该阶段公开 Definition 目录与 create 尚未交付，现由同一 `Unreleased` 中的 owner create 闭环补齐；Runtime `subscription` 继续关闭。
@@ -89,7 +378,7 @@
 - canonical Pencil 增加 Agent Workflow Repair v1：desktop evidence review、`proposed|approved|rejected|expired|unavailable` 六态矩阵、mobile 双人审批层及三类可复用组件；界面明确批准只形成审计结论，不执行 projection repair，2x 评审图归档于 `design/exports/agent-repair-v1/`。
 - 增加 canonical Pencil 前端设计，覆盖 foundations、可复用 IM 组件、Login/Chat desktop/mobile 与关键异常状态，并保存 2x 评审导出图。
 - C3 增加持续 cutover controller 并关闭 `AD-041`：`dipole-realtime-cutover -operation run` 在一个同步循环中统一拥有状态推进、冻结超时回切、阻塞重试与临近到期的 authority lease 续期。Redis attempt-scoped ownership 通过 owner token 的 acquire/renew/release Lua 比较阻止并发 controller；control lease 至少覆盖两倍 action timeout。当前 authority deadline 只从 initial input 或最新 journal-bound transition artifact 恢复，拒绝采用未入 journal 的孤儿 transition；`rollback_requested` 续租保留回切意图和二次冻结要求。隔离 Docker Redis + race 演练证明 Controller A 无 release 退出后，B 在 5 秒 TTL 前被阻断、到期后从 sequence 1 继续到 completed sequence 6，证据归档于 `benchmarks/c3-cutover-controller-2026-08-28/`。
-- C3 隔离故障演练接入真实 C++ Primary authority：演练改用 canonical message topics 与 `dipole-realtime-primary-*` group，目标激活后停止 Go Primary 夹具并启动当前源树构建的 `dipole-realtime-delivery primary`。目标 checkpoint 的 `realtime-delivery/cpp-a` observation 禁止由测试夹具代写，必须由 C++ 进程在校验 CPP active lease 后写入 Redis，并同时通过真实 librdkafka assignment 与 `/readyz`；报告绑定 C++ 二进制、observation payload、consumer group 和 journal 的 SHA-256。持续 controller 所有权仍由 `AD-041` 跟踪。
+- C3 隔离故障演练接入真实 C++ Primary authority：演练改用 canonical message topics 与 `dipole-realtime-primary-*` group，目标激活后停止 Go Primary 夹具并启动当前源树构建的 `dipole-realtime-delivery primary`。目标 checkpoint 的 `services/realtime-delivery/cpp-a` observation 禁止由测试夹具代写，必须由 C++ 进程在校验 CPP active lease 后写入 Redis，并同时通过真实 librdkafka assignment 与 `/readyz`；报告绑定 C++ 二进制、observation payload、consumer group 和 journal 的 SHA-256。持续 controller 所有权仍由 `AD-041` 跟踪。
 - C3 增加 production cutover executor：启动时校验 attempt 对初始 lease、三阶段节点清单和双组 checkpoint 清单的 SHA-256 绑定；每个动作固定执行 `artifact lookup -> Redis receipt recovery -> new side effect`，只有明确缺失 receipt 才允许新的 CAS。source/target/rollback checkpoint 复用节点聚合器和双组 collector，正常切换、冻结期源恢复及目标激活后二次冻结回退均验证 authority、epoch、phase、lease 与 manifest。完成、回退意图和回退完成使用版本化 decision artifact。真实 Redis writer + 模拟 observation/Kafka collector 集成覆盖 forward、两条 rollback 和 transition 成功但 artifact 缺失的恢复。恢复 CLI、租约续期和真实 crash/rebalance/Redis 故障演练仍待完成。
 - C3 增加自包含 cutover attempt workspace：创建时 canonicalize 并不可覆盖保存 initial transition、source/frozen/target 节点清单与 checkpoint 清单，由代码生成精确绑定 initial lease 和全部输入摘要的 `attempt.json`；重试创建只接受完全相同的 canonical 输入。恢复加载会严格解码并重算每个绑定，再打开独立 artifacts 目录，避免操作员在续切时重新提供已漂移的外部文件。
 - C3 增加 `dipole-realtime-cutover` 恢复命令：`create` 在 initial lease 有效期内生成 workspace，`status` 无需 Redis/Kafka 即可回放状态，`advance` 每次只执行一个外部动作并落盘一个事件，`rollback` 从合法状态记录回退意图。变更操作要求显式确认与 operator，单动作 30 秒超时；模糊失败后重复调用会恢复同一 artifact/receipt，禁止一次进程跨多个未持久化副作用。
@@ -154,7 +443,7 @@
 - Agent G4 增加外部 MCP Credential Catalog v1：语言中立 lifecycle manifest 仅保存 tenant、credential ref/version、生效/过期/吊销状态、provider ID 和 opaque provider secret ref，拒绝附加 secret 字段、重复绑定与非法时间状态。Catalog 在每次建连前重新加载，精确版本已吊销、未生效、过期或跨租户时均在 Transport Factory 前 fail closed；轮换可通过新增版本并更新 Profile 完成，Task、Workflow、Context 和审计不接触秘密正文。生产 Catalog source、Secret Provider 与真实外部连接继续关闭。
 - Agent G4 增加默认关闭的外部 MCP 凭据与网络边界：语言中立 Profile v1 仅允许 tenant、HTTPS endpoint、Server/Tool/Host/Port allowlist、TLS ServerName、CA opaque ref 和版本化 credential opaque ref；拒绝 URL 凭据、query/fragment、IP/localhost/内部域名及附加 secret 字段。租户 Registry 只有在精确 owner 匹配后才调用注入式 Transport Factory，并要求 Factory 每次建连拒绝非公网 DNS 解析；当前生产 Provider 尚未实现，误开 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED` 会直接 fail closed，不产生外部连接。
 - Agent G4 为 MCP 执行补充有界取消/超时：Runtime Tool invocation 默认 5 秒并限制在 100 ms 至 60 秒，超时触发 cooperative `AbortSignal`、持久化稳定 `tool_timeout` 且关闭 OTel span；外部 MCP Client 的 connect/list/call 默认使用 10 秒 request/total timeout并接受调用方取消信号。Gateway 断连经 Runtime Streamable HTTP Request signal 传播，DELETE Session 清理与长流入口不受统一代理超时破坏。配置保持默认关闭路径无行为变化。
-- Agent G4 增加默认关闭的第一方 MCP 授权交换与资源边界：受认证 session 需对唯一 canonical resource 和 `dipole.agent.mcp.read` 显式 consent，才能取得 15 分钟专用 JWT；令牌以 `aud`、`scope`、`token_use` 防止跨资源和 session/MCP 混用。Gateway 验证后剥离客户端凭据，仅向 Runtime 传递可信 principal/resource/scope，Runtime 再构造只读 `AuthInfo`。Compose 支持统一覆盖 canonical URI，发布与回滚见 `docs/agent-mcp-authorization.md`；通用 OAuth 2.1 discovery/PKCE/客户端注册继续由 `AD-037` 跟踪。
+- Agent G4 增加默认关闭的第一方 MCP 授权交换与资源边界：受认证 session 需对唯一 canonical resource 和 `dipole.agent.mcp.read` 显式 consent，才能取得 15 分钟专用 JWT；令牌以 `aud`、`scope`、`token_use` 防止跨资源和 session/MCP 混用。Gateway 验证后剥离客户端凭据，仅向 Runtime 传递可信 principal/resource/scope，Runtime 再构造只读 `AuthInfo`。Compose 支持统一覆盖 canonical URI，发布与回滚见 `docs/agent/agent-mcp-authorization.md`；通用 OAuth 2.1 discovery/PKCE/客户端注册继续由 `AD-037` 跟踪。
 - Agent G4 增加默认关闭的 OpenTelemetry 运维 profile：Collector `0.159.0` 通过 128 MiB memory limiter、有界 batch/queue 和重试向 Tempo `2.10.5` 写入 trace，Tempo local backend 固定 24 小时保留且端口只绑定 localhost；Prometheus 新增 Collector down、export failure 和 refused span 三类低基数告警。配置 gate 验证 Collector 与规则，真实 smoke 生成 Agent span、核对 accepted/sent 指标并按 trace ID 从 Tempo 查询；运维说明补充 Task/Run 审计联查和回滚。生产对象存储与通知链继续由 `AD-037` 跟踪。
 - Agent G4 增加默认关闭的生产 OpenTelemetry 装配：Node trace SDK 通过 OTLP/HTTP protobuf 导出既有低敏 span，复用标准 `OTEL_*` endpoint、protocol、ParentBased trace-id ratio sampler 与超时参数，限制单 span 属性/事件/link 数量，并在 Runtime 逆序关闭末尾 flush。关闭 `DIPOLE_AGENT_OTEL_ENABLED` 时不实例化 SDK且忽略残留 OTel 配置；Collector、保留和告警继续由 `AD-037` 跟踪。
 - Agent G4 增加统一低敏 OpenTelemetry 全链路：Foundation Event Processor 记录 Task/Run，Durable Activity 记录 Task admission/finish、Run、Approval 和 Artifact，Context Compiler 记录版本与预算统计，Model Router 为每个真实 provider attempt 记录 ModelCall，native Capability 与 MCP 均记录 ToolCall。Temporal Workflow 保持确定性；span 禁止 Prompt、消息、Memory、Tool/Artifact 正文和底层异常文本，SDK/exporter 装配由后一里程碑承接。
@@ -195,7 +484,7 @@
 - Agent Runtime 增加有界 Kafka 失败转移：`dipole.<topic>.retry/.dead` 显式创建并校验拓扑，无效 envelope/tombstone 直接死信，处理错误最多尝试三次且保留原始 key/value/header；publisher 失败时 handler 拒绝完成。真实 Kafka 3.9 已验证 poison、retry→dead、offset LAG 归零和双副本 rebalance。
 - Agent Runtime 增加 migration v18 与 MySQL EventLedger：Event ID/Task ID 双唯一、事务 claim、lease crash recovery、attempt 和精确 token 终态；微服务默认使用最小权限 `dipole_agent`，真实 MySQL 8.4 与 Kafka 3.9 验证并发单 owner、失败重领、旧 owner 拒绝及 Runtime 重启后重复事件收敛。
 - TypeScript Agent Runtime 增加 `message.direct.created` v1 decoder、KafkaJS 独立 shadow consumer、稳定 Task ID 和 EventLedger port；冷启动 metadata 未收敛时会断开旧客户端并有界重连，微服务 Compose 可独立启动只读 Agent，真实 Kafka 3.9 重放同一事件只产生一条 metadata plan。
-- 增加独立 `agent-runtime/` TypeScript foundation：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2，提供 trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine、shadow 写隔离和 `/livez`/`/readyz`；模型路由与持久审计留待 G2 后续切片。
+- 增加独立 `services/agent-runtime/` TypeScript foundation：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2，提供 trusted ExecutionContext、Go 兼容 Task ID、Capability Registry、resource-scope Policy Engine、shadow 写隔离和 `/livez`/`/readyz`；模型路由与持久审计留待 G2 后续切片。
 - Embedded Agent 增加持久执行策略：`ai.policy_mode=persistent` 默认从版本化 Definition 创建确定性 AgentTask、固定并重读精确 policy version，Invocation 携带 permission/resource scope；`static` 保留显式回滚，Task 以 compare-and-set 进入 completed/failed。
 - 增加版本化 Web Sync 真实观察 Session/Evidence 与 `web_sync_observation.py`：`start/status/finalize` 将候选版本、完整 Git commit、实际发布 bundle SHA-256、初始/最终 Prometheus 原始响应和 24 小时门禁绑定为不可覆盖证据；窗口不足、候选漂移、告警、差异或溢出均 fail closed，blocked 窗口仍保留审计结果且不会自动切换客户端或 Cassandra 路由。
 - 增加 `dipole.agent.policy.persistence.v1`、migration v16 与 sqlc `AgentPolicyStoreV1`：版本化 Definition 保存 permission/scope/有效期/撤销状态，AgentTask 固定 Definition version 与 principal 并以 compare-and-set 迁移状态，Approval 支持 pending→approved、撤销及绑定 capability/canonical scope hash/arguments hash/nonce/有效期的一次性消费；真实 MySQL 8.4 并发测试要求 16 个竞争者仅一个成功。
@@ -345,6 +634,13 @@
 - 增加 `dipole-search-alias` 受控切换/回滚命令，要求维护窗口确认、新鲜快照三重检查、现场 Reconcile、Alias owner CAS 与切换后自动补偿。
 
 ### 变更
+- Agent release manifest 增加单步阶段转移校验，仅允许 `offline <-> shadow <-> user_gray` 相邻推进或回滚，禁止跨阶段跳转并保持旧 manifest 不可变；阶段转移不会自动开启生产流量。
+
+
+- Sync 增加默认关闭的 `sync.cassandra_primary_hydration`：启用后按同一 `conversation_key + message_seq + message_uuid` locator 优先从 Cassandra 补全消息，查询失败立即回退 MySQL；与 `cassandra_shadow_hydration` 互斥，默认配置、旧 Offline 和 MySQL 主读行为保持不变。
+- 前端 F4 增加 `.pen` Foundations 到 Vue 的 token 映射：全局 `--dp-*` CSS token 覆盖颜色、字体、间距和圆角，App 壳层与 Search 工作区开始复用；Vitest 直接读取 canonical `.pen` variables 校验实现值，避免设计稿与页面样式静默漂移。
+- Eino 从 `v0.9.15` 升级至 `v0.9.17`；保持 OpenAI 扩展 `v0.1.13` 不变。Go 全量测试、sqlc drift、Agent Runtime 测试、typecheck 与 build 均通过，未发现 API 兼容性回归。
+- 更新正式技术架构图以匹配当前实现：补充 Core/Message/Gateway/Sync/Search/Agent Runtime 边界、`user_sync_inbox` Sync Timeline、sqlc 数据访问及 Cassandra/Elasticsearch 影子投影；移除 `AutoMigrate`、单体无 Inbox 和旧 Eino 主链路等过时描述。该图仅记录当前已实现或明确默认关闭的能力，不改变运行配置。
 
 - Core RPC Agent 方法 allowlist 补齐 readiness evidence publish/resolve；此前真实 RPC 部署会在 MCP egress freshness 查询时返回 `PermissionDenied`。全栈演练中的 subscription、Run、Workflow projection、MCP Invocation/Round、readiness 和 Artifact 均改由正式 TS `AgentCapabilityRPCClient` 访问隔离 Go mTLS fixture。
 - 外部 MCP 全栈演练脚本不再内嵌两字段 JSON 判断，统一调用 Runtime 契约校验 CLI；证据创建和离线复核共享相同 canonical hash、时间与成功不变量。
@@ -392,7 +688,17 @@
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
 ### 修复
+- 修正 Timeline repair Compose smoke 与运维手册的迁移基线至 v50，避免 v50 schema 在部署前置检查中被误判为旧版本。
+- 修正 MySQL migration integration 的当前版本基线至 v50，并校正 Metadata 回填测试的回退步数；隔离 Cassandra/Sync hydration smoke 现可真实覆盖 v12 `message_metadata` legacy-message backfill。
+- Go 质量门禁默认采用 `CGO_ENABLED=0`，与服务镜像的静态构建保持一致；需要平台原生依赖的检查仍可显式设置 `CGO_ENABLED=1`。
 
+- 存储实验 Compose 支持 Cassandra 宿主机动态端口；hydration 与 read-routing smoke 启动后反查实际映射，修复并行运行共享固定 `19042` 导致的假失败。默认使用随机端口，也可通过 `DIPOLE_CASSANDRA_LAB_PORT` 显式覆盖。
+
+- 修复 Agent Task Timeline 内部自动事件 ID 由长 Task/Run UUID 拼接导致超过 `VARCHAR(64)` 的问题；现在使用固定 64 位 SHA-256 十六进制 ID，兼容最大长度身份并保持事件校验边界。
+
+- 前端 Agent Task 响应解析器现在严格解析 `waiting_approval` 的 request/approval/summary/expiry，并提供绑定 Task/approval ID 的 approved/denied API；审批状态不会再被静默丢弃，`waiting_input` 和旧状态行为保持兼容。
+- 修复 `realtime-cpp` 镜像构建阶段遗漏 authority fence 测试契约目录的问题，确保 CMake/CTest 在独立 builder 中读取完整 golden vectors。
+- 修复 Agent TypeScript Proto 生成物滞后：重新生成 `CorrectOwnedMemory` RPC、Memory root/version/correction 字段及后续方法索引，使 TS 客户端与已发布的 additive Go Proto 定义恢复一致；未改变 Proto schema 或 Runtime 开关。
 - 修复 C1 Kafka lag 采样将无 committed offset 的分区静默当作零积压：独立解析器对 `current-offset=-` 且存在 log end 的行保守计入 retained backlog，并在找不到目标 consumer group 或字段不可解析时 fail closed。真实 node2 首轮恢复演练因此识别出 HTTP 健康早于 72-member consumer group 稳定、`LastOffset` 跳过 40 条 send-requested 的窗口，失败报告未被接受。
 - 修复 canonical Go gate 在干净 checkout 中隐式依赖被忽略的 `configs/config.yaml`：配置加载器支持显式 `DIPOLE_CONFIG_FILE`，`scripts/check-go.sh` 默认使用跟踪的 `configs/config.dist.yaml`，调用方仍可覆盖；未设置环境变量的生产/本地启动继续沿用原有 `config.yaml` 搜索行为。
 - 修复分布式与微服务 Compose 在干净 checkout 中强制依赖未跟踪 `.env`：本地 env file 改为 optional，关键内部 RPC secret 的 `${VAR:?}` 校验保持不变；新增 `scripts/check-compose.sh` 对全部 Compose 文件执行统一静态解析。
@@ -430,6 +736,10 @@
 
 ### 迁移说明
 
+- v42 把 `agent_memory_task_lineage.task_uuid` 外键从 `agent_shadow_plans` 改为 `agent_tasks`，并增加 `context_pre_model` 来源。发布顺序为 migration、Runtime writer、模型流量；旧 Runtime 的 Plan-time `runtime_write` 继续兼容。Down 会删除尚无 Plan 的 pre-model lineage，并把其余来源归一为 `runtime_write` 后恢复 v41 Plan 外键，因此回滚前必须保留低敏影响报告并停止模型 admission。
+- v41 新增 `agent_memory_task_lineage`，以 Memory/Task 主键和 Shadow Plan 外键保存 direct Context reference；发布顺序为 migration、sqlc/TS query、Agent Runtime Shadow writer，旧 Runtime 可继续写 Plan 但会被审计标记为历史未索引。回滚前停止新 Runtime 写入；Down 只删除 direct-reference 索引，不修改 Memory、Plan、Step 或其他派生数据。该迁移不执行历史回填，也不启用删除 Worker、公开 API 或生产 Runtime。
+- v40 为 `agent_memories` 增加内容擦除审计列与固定 tombstone 约束。Down migration 只删除 v40 列和约束，已被擦除的正文、来源及自由文本不会恢复；回滚仍保留 revoked 状态和 v39 纠正链，因此执行擦除前必须按隐私策略确认不可逆影响。
+- v39 在 `agent_memories` 上追加 lineage 与 correction 审计列，并把历史记录回填为 `root=self/version=1`。发布顺序为 migration/sqlc 与 Core transaction、additive gRPC/Gateway、最后显式开启 `VITE_AGENT_MEMORY_CORRECTION_ENABLED`；回滚前先关闭前端入口，Down 会删除纠正 lineage 字段，执行前需确认是否保留已产生的版本链审计。
 - migration v38 为 `agent_memories` 增加 `revoked_by_uuid` 与 `revoke_reason`，并约束 active 记录审计字段为空、revoked 记录同时具备时间、revoker 和原因。历史 revoked 记录以原 principal 和固定 `legacy internal revocation` 回填。发布顺序为 Core migration/sqlc 与 additive gRPC、Gateway、最后显式开启 `gateway.agent_memory_enabled` 和前端 `VITE_AGENT_MEMORIES_ENABLED`；回滚先关闭两个入口，Down 会移除新增撤销审计列，需先确认审计保留要求。
 - Agent Subscription owner create 使用 additive `ListEligibleSubscriptionConversations` RPC，无数据库迁移。先确认 Core 已应用 migration v34，再滚动 Core/Go Proto、Gateway/Web 和 TS 生成客户端；旧 Runtime 不调用该 RPC。`gateway.agent_subscription_enabled=false` 与 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false` 仍需同时显式启用。回滚先关闭前端入口，再关闭 Gateway adapter；该流程不修改 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。
 - `PublishMcpReadinessEvidence` 是 additive Agent Capability RPC，依赖 migration v37。先迁移并滚动 Core，再发布 TS Runtime；旧 Runtime 不调用该方法。回滚时先确保没有证据 Publisher 调用，再回退 Runtime/Core；当前没有 startup scheduler 或 admission consumer，部署后不会自动建立外部连接或激活 Profile。
@@ -498,6 +808,27 @@
 
 ### 验证
 
+- 真实 MySQL 验证通过：`AgentPolicy`、Runtime Promotion 和 Timeline repair recovery contract 均通过，覆盖最大长度身份、故障 retry、恢复 completed 与单事件收敛。
+- Agent MySQL contract 分组验证通过：`TestAgent*` 与 `TestAICallLogRepositoryContract` 共 13 个 contract 在真实 MySQL 上完成，耗时约 149 秒；完整 repository 分组仍单独受数据库清理等待影响。
+- Repository contract 分领域验证通过：基础实体、消息/同步/序列、Outbox/Search 三组在真实 MySQL 上分别通过；与 Agent 组结果合并后覆盖全部 repository contract。共享 MySQL 下的串行整包仍受测试数据库清理耗时影响，未作为单次整包证据。
+- Eino 能力核对：当前锁定的 `v0.9.17` 已包含 ADK Runner、AgenticMessage、AgenticModel 和 AgenticToolsNode 相关 API；Dipole 暂保持现有 `schema.Message`/`adk.Runner` 兼容链路，未直接启用实验性 Agentic provider，后续通过独立 adapter、契约测试和灰度开关评估。
+
+- Agent Workflow repair v44 repository 合同测试在隔离 MySQL 8.4.8 中验证 `prepared` execution 创建、精确重放和同 plan 目标哈希漂移拒绝；当前测试不推进状态，也不修改 Workflow projection。
+- MySQL migration integration baseline 更新至 v44，并覆盖 v44 execution ledger、v43 lineage backfill、v42 pre-model lineage 的连续回滚与表数量断言；避免新迁移已发布但集成测试仍停留在 v42 的验证盲区。
+- 发布级隔离门禁通过：`scripts/check-compose.sh` 校验全部根目录 Compose 与 Agent Shadow 配置；`scripts/smoke-microservices.sh` 使用独立项目启动并清理 Core、Message、Sync、Gateway、Agent、MySQL、Kafka、Redis 和 MinIO，验证 readiness/metrics、mTLS、Gateway 认证代理与远程 WS ownership。Agent 镜像在隔离构建中通过 `npm ci`、构建和零漏洞审计。
+- 发布级回归重新通过：Go 全量包、Agent Runtime `580 passed / 26 skipped`、前端 `85 passed` 与生产构建、sqlc 漂移和架构文档门禁均通过；修正 Agent Runtime README 对 Subscription 管理 API 的过时描述。Vitest 使用项目原生命令运行，未使用不兼容的 Jest `--runInBand` 参数。
+
+- Agent Memory lineage backfill CLI 通过默认 dry-run、审批/manifest hash 绑定、owner 身份匹配和输入大小边界测试；隔离 MySQL 8.4 通过 v43 migration up/down/reapply、失败后恢复、owner 隔离和精确重放验证。
+- Backfill execute approval 收紧为独立 operator/approver 双身份，二者必须不同并共同绑定 job、manifest hash 与 source high-water；CLI 不提供自审批路径。
+- 增加只读 `agent-memory-lineage-rollout-review` CLI，验证 v43、runtime/config SHA-256、未来维护窗口、回滚/备份检查和双人审批；eligible receipt 固定 `executionAuthority=false`，不会触发 backfill。
+- 增加 `scripts/agent-memory-lineage-rollout-input.sh`，只读采集 OCI revision/dirty label、配置 SHA-256、manifest/approval 绑定和人工维护窗口参数；支持现有 40 位或 64 位 revision，缺失或 dirty provenance 直接 fail closed。
+
+- Agent Memory lineage backfill runner/contract 测试通过 `7/7`，覆盖固定 manifest/receipt hash、unknown field、authority/counter drift、resume、duplicate convergence、目标失败不推进 checkpoint、非法引用和配置边界；JSON Schema examples 通过 Draft 2020-12 校验。v43 migration、sqlc 生成物和隔离 MySQL 8.4 已验证固定 high-water、跨 owner 引用阻断、失败后恢复与精确重放幂等。
+- Agent Memory 派生 retention policy 聚焦测试通过 `6/6`，与 lineage 回归合计 `11/11`；覆盖完整/缺失 lineage、受影响与零影响人工复核域、policy/report/decision hash 漂移、authority 提升、64 KiB 双输入和低敏失败。完整 Agent Runtime 为 `586 passed / 26 expected skipped`；TypeScript typecheck/build、Draft 2020-12 strict Schema 示例、canonical Go test/vet、sqlc、Go/TS Proto、Compose、架构文档、观测规则和生产依赖零漏洞门禁通过。
+- Agent Memory pre-model lineage 通过 Planner 顺序/失败单测与真实 MySQL 20/20 contract：Context 来源优先、Plan repair 不降级、未知 Task 原子拒绝、foreign owner 隔离、无 Plan 模型结果先 fail closed 再由 lineage 恢复 root attribution；v1→v42 与 v42→v41 回滚删除无 Plan 行均通过。完整 Agent Runtime 为 580 passed / 26 expected skipped，Go test/vet、typecheck/build 与生产依赖零漏洞门禁通过。
+- Agent Memory 派生血缘测试覆盖 Context 引用排序/去重、非法 ID、representation 冲突、报告 hash/不变量、CLI 脱敏、并发 Plan 重放、历史缺口、下划线相似 ID 与无 Plan 模型结果；真实 MySQL 8.4 通过 12/12 Runtime contract，并验证 migration v1→v41、48 张表及 v41/v40/v39 分步回滚。完整 Agent Runtime 为 579 passed / 24 expected skipped，Go test/vet、Go/TS Proto、sqlc、Compose、架构文档、观测规则、typecheck/build 与生产依赖零漏洞门禁通过。
+- Agent Memory privacy retention 通过领域/Core/sqlc 聚焦测试和真实 MySQL 8.4 contract：两版本 root 全量 tombstone、原字段清除、Context 零召回、越权拒绝、精确重放，以及 v40/v39 分步回滚均通过。
+- Agent Memory correction 通过应用/事务/传输/Gateway/Vue 聚焦测试、canonical Go 全仓测试、前端 85 项 Vitest、工具链 3 项与生产构建；真实 MySQL 8.4 完整 migration v1→v39、v39→v38→后续逐级回滚及 owner repository 并发精确重放通过。真实测试同时修复显式 migration 目标版本、SQL NULL Tool arguments 与 MySQL JSON compact 的兼容基线。
 - Agent Memory owner 治理测试覆盖稳定分页、并发精确撤销重放、不同原因冲突、owner/tenant 隔离、Gateway 服务身份、客户端 principal 注入拒绝、公开 URI 省略、严格前端响应解析和 authoritative row replacement；Vue 21 个文件共 83 项 Vitest、生产构建及 Chromium、Firefox、WebKit 共 6 项 desktop/mobile E2E 通过。真实 MySQL 8.4 验证 migration v1→v38、v38→v37 回滚、生命周期 CHECK、历史审计回填和 owner sqlc contract；canonical Go test/vet、完整 Agent Runtime 566 项通过且 22 项按环境预期跳过，双端构建与官方 npm audit 零高危漏洞。
 - Agent Subscription Shadow Collector 与 evidence 聚焦测试通过 `13/13`，完整 Runtime 通过 `566 passed / 22 expected skipped`；覆盖固定查询/时间、单 series、持续启用、URL 凭据、缺失/多值/非整数/error envelope、CLI 低敏失败、三类严格 Schema 及 Collector-to-evidence 兼容。typecheck/build、官方 npm 源 `0 vulnerabilities`、canonical Go、TS/Go Proto、sqlc、Compose、架构文档和 Agent/服务观测门禁通过。
 - Agent Subscription Shadow evidence 合同通过聚焦 `7/7` 与完整 Runtime `560 passed / 22 expected skipped`，覆盖 CLI create/verify、Schema 字段对照、部分窗口、低覆盖、reset、matcher error、低样本、counter 回退、过期和 canonical hash 篡改；typecheck/build、官方 npm 源零高危审计、TS/Go Proto、sqlc、Compose、架构文档和 Agent/服务观测门禁通过。
@@ -607,6 +938,8 @@
 
 ### 已知问题
 
+- 历史 lineage backfill 已具备 v43 MySQL checkpoint、sqlc source/target、owner-scoped adapter、隔离数据库测试和默认 dry-run 的审批 CLI；当前仍缺少共享环境执行审批记录与 production rollout 证据，不能在共享环境执行回填。sqlc v1.31.1 不支持 inline JSON_TABLE，当前采用 sqlc manifest retrieval、Go 严格展开和 owner-scoped sqlc lookup。
+- Memory root 派生影响已具备逐域离线 retention policy 决策，但尚未实现 Shadow plan、Step、Artifact、Agent Message 或 Temporal history 的字段级擦除器；v42 已为受管 Model planner 建立模型前 root attribution，历史/旁路缺口继续由 owner-scoped 未归因计数阻断。公开 owner 擦除 API、自动 retention Worker 与账号级隐私删除继续关闭并由 `AD-035` 跟踪。
 - Memory v1 已提供默认关闭的 owner list/revoke HTTP/Pencil/Vue 闭环和追加式撤销审计；自动写入、append-only 纠正/版本冲突、Observation/Reflection Worker、置信度策略及 hybrid/vector retrieval 仍待完成。共享 Shadow 仅在已有受控记录时读取，详见 `AD-035`。
 - Event Subscription 已具备默认关闭的公开 Definition 目录、authenticated conversation chooser、owner list/create/revoke HTTP/Pencil/Vue 闭环、撤销审计、provider-neutral 离线预筛 Eval 和双评审 agreement 合同；尚未归档真实 Project Guardian corpus/review report、embedding/小模型 candidate evidence或 subscription Runtime 灰度证据。共享环境继续固定 `direct_target`，详见 `AD-034`。
 - Sync Inbox、旧 Offline 与默认关闭的幂等 hydration 尚未完成替代链路观察；Cassandra 恢复工具已可独立使用不可变完整消息归档，正文退役其余条件继续由 AD-019 跟踪。

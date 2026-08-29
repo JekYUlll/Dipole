@@ -18,18 +18,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
+	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
-	"github.com/JekYUlll/Dipole/internal/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
 
 type Dependencies struct {
 	Messages           application.MessageApplication
+	Sync               application.SyncApplication
 	Core               application.CoreCapability
 	Search             application.SearchApplication
 	AgentTasks         AgentTaskControlApplication
@@ -81,37 +82,52 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	}
 	dispatcher := wsTransport.NewDispatcher(hub, dependencies.Messages, nil, false).WithLimiter(limiter)
 	wsHandler := wsTransport.NewHandler(authenticator, hub, dispatcher)
+	auth := middleware.Auth(tokenService, userFinder)
+	messageHandler := httpHandler.NewMessageHandler(dependencies.Messages)
 
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "component": "gateway"})
 	})
 	engine.GET("/api/v1/ws", wsHandler.Handle)
+	protected := engine.Group("/api/v1")
+	protected.Use(auth)
+	protected.GET("/messages/offline", messageHandler.ListOffline)
+	protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
+	protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
+	if dependencies.Sync != nil {
+		syncHandler := httpHandler.NewSyncHandler(dependencies.Sync)
+		protected.GET("/sync", syncHandler.List)
+		protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
+		protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
+		protected.POST("/sync/comparison", syncHandler.ReportComparison)
+		protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
+		protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
+	}
 	if dependencies.Search != nil {
-		searchHandler := httpHandler.NewSearchHandler(dependencies.Search)
+		searchHandler := NewSearchHandler(dependencies.Search)
 		engine.GET("/api/v1/messages/search", middleware.Auth(tokenService, userFinder), searchHandler.Search)
 	}
 	if dependencies.AgentTasks != nil {
-		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
+		engine.GET("/api/v1/agent/tasks/:task_id/timeline", auth, agentTaskTimelineHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
 	}
 	if dependencies.AgentSubscriptions != nil {
-		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/subscriptions", auth, agentSubscriptionListHandler(dependencies.AgentSubscriptions))
 		engine.GET("/api/v1/agent/subscriptions/options", auth, agentSubscriptionConversationOptionsHandler(dependencies.AgentSubscriptions))
 		engine.POST("/api/v1/agent/subscriptions", auth, agentSubscriptionCreateHandler(dependencies.AgentSubscriptions))
 		engine.POST("/api/v1/agent/subscriptions/:subscription_id/revoke", auth, agentSubscriptionRevokeHandler(dependencies.AgentSubscriptions))
 	}
 	if dependencies.AgentDefinitions != nil {
-		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/definitions", auth, agentDefinitionCatalogHandler(dependencies.AgentDefinitions))
 	}
 	if dependencies.AgentMemories != nil {
-		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/memories", auth, agentMemoryListHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/revoke", auth, agentMemoryRevokeHandler(dependencies.AgentMemories))
+		engine.POST("/api/v1/agent/memories/:memory_id/correct", auth, agentMemoryCorrectHandler(dependencies.AgentMemories))
+		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/promote", auth, agentMemoryCandidatePromoteHandler(dependencies.AgentMemories))
 	}
 	if dependencies.AgentMCP != nil {
 		if err := service.ValidateAgentMCPResource(service.AgentMCPResourceIdentifier()); err != nil {
@@ -190,6 +206,75 @@ func agentMemoryRevokeHandler(memories AgentMemoryControlApplication) gin.Handle
 			return
 		}
 		item, err := memories.Revoke(c.Request.Context(), user.UUID, memoryID, body.Reason)
+		writeAgentMemoryResult(c, item, err)
+	}
+}
+
+func agentMemoryCorrectHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		ExpectedVersion uint32 `json:"expectedVersion"`
+		Content         string `json:"content"`
+		CompactContent  string `json:"compactContent"`
+		Reason          string `json:"reason"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		memoryID := strings.TrimSpace(c.Param("memory_id"))
+		if !validAgentSubscriptionPublicID(memoryID, 64) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory identity"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 24*1024)
+		var body requestBody
+		if decodeStrictAgentSubscriptionBody(c.Request.Body, &body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory correction request"})
+			return
+		}
+		body.Content = strings.TrimSpace(body.Content)
+		body.CompactContent = strings.TrimSpace(body.CompactContent)
+		body.Reason = strings.TrimSpace(body.Reason)
+		if body.ExpectedVersion == 0 || body.Content == "" || len([]byte(body.Content)) > 16*1024 || len([]byte(body.CompactContent)) > 4*1024 ||
+			body.Reason == "" || utf8.RuneCountInString(body.Reason) > 1000 || strings.IndexFunc(body.Reason, unicode.IsControl) >= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory correction request is invalid"})
+			return
+		}
+		result, err := memories.Correct(c.Request.Context(), user.UUID, memoryID, body.ExpectedVersion, body.Content, body.CompactContent, body.Reason)
+		writeAgentMemoryResult(c, result, err)
+	}
+}
+
+func agentMemoryCandidatePromoteHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		CandidateSHA256 string `json:"candidateSha256"`
+		ReviewID        string `json:"reviewId"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		candidateID := strings.TrimSpace(c.Param("candidate_id"))
+		if !validAgentSubscriptionPublicID(candidateID, 72) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory candidate identity"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4*1024)
+		var body requestBody
+		if decodeStrictAgentSubscriptionBody(c.Request.Body, &body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory candidate promotion request"})
+			return
+		}
+		body.CandidateSHA256, body.ReviewID = strings.TrimSpace(body.CandidateSHA256), strings.TrimSpace(body.ReviewID)
+		if len(body.CandidateSHA256) != 64 || !isLowerHex(body.CandidateSHA256) || !validAgentSubscriptionPublicID(body.ReviewID, 72) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory candidate promotion request is invalid"})
+			return
+		}
+		item, err := memories.PromoteCandidate(c.Request.Context(), user.UUID, candidateID, body.CandidateSHA256, body.ReviewID)
 		writeAgentMemoryResult(c, item, err)
 	}
 }
@@ -411,6 +496,34 @@ func agentTaskGetHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
 			return
 		}
 		result, err := tasks.GetTask(c.Request.Context(), user.UUID, c.Param("task_id"))
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func agentTaskTimelineHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		after := c.Query("after")
+		if after != "" {
+			if _, err := strconv.ParseUint(after, 10, 64); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Task Timeline cursor is invalid"})
+				return
+			}
+		}
+		limit := 50
+		if raw := c.Query("limit"); raw != "" {
+			parsed, err := strconv.Atoi(raw)
+			if err != nil || parsed < 1 || parsed > 100 {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Task Timeline limit is invalid"})
+				return
+			}
+			limit = parsed
+		}
+		result, err := tasks.GetTimeline(c.Request.Context(), user.UUID, c.Param("task_id"), after, limit)
 		writeAgentTaskControlResult(c, result, err)
 	}
 }

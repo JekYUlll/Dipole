@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS agent_task_timeline_repairs (
+    event_uuid VARCHAR(64) NOT NULL,
+    task_uuid VARCHAR(64) NOT NULL,
+    run_uuid VARCHAR(64) NULL,
+    event_kind VARCHAR(32) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    capability_id VARCHAR(128) NULL,
+    approval_uuid VARCHAR(64) NULL,
+    occurred_at DATETIME(3) NOT NULL,
+    repair_status VARCHAR(16) NOT NULL DEFAULT 'pending',
+    retry_count INT UNSIGNED NOT NULL DEFAULT 0,
+    last_error VARCHAR(512) NULL,
+    next_retry_at DATETIME(3) NULL,
+    locked_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (event_uuid),
+    KEY idx_agent_timeline_repairs_claim (repair_status, next_retry_at, locked_at, created_at),
+    CONSTRAINT fk_agent_timeline_repair_task FOREIGN KEY (task_uuid) REFERENCES agent_tasks(task_uuid) ON DELETE CASCADE,
+    CONSTRAINT fk_agent_timeline_repair_run FOREIGN KEY (run_uuid) REFERENCES agent_runs(run_uuid) ON DELETE CASCADE,
+    CONSTRAINT fk_agent_timeline_repair_approval FOREIGN KEY (approval_uuid) REFERENCES agent_approvals(approval_uuid) ON DELETE SET NULL,
+    CONSTRAINT chk_agent_timeline_repair_status CHECK (repair_status IN ('pending', 'processing', 'completed'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -10,10 +10,10 @@ import (
 	"github.com/JekYUlll/Dipole/db/migrations"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/elasticsearch"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
+	"github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 	_ "github.com/go-sql-driver/mysql"
 )
 

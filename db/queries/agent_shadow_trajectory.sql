@@ -16,6 +16,14 @@ INSERT INTO agent_shadow_steps (
     task_uuid, step_no, capability_id, status, input_json
 ) VALUES (?, ?, ?, 'planned', ?);
 
+-- name: InsertAgentMemoryTaskLineage :exec
+INSERT INTO agent_memory_task_lineage (
+    memory_uuid, task_uuid, representation, source
+) VALUES (?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE
+    representation = IF(representation = VALUES(representation), representation, NULL),
+    source = IF(VALUES(source) = 'context_pre_model', 'context_pre_model', source);
+
 -- name: ClaimAgentShadowStep :execrows
 UPDATE agent_shadow_steps
 SET status = 'running', claim_token = ?, attempt_count = attempt_count + 1,

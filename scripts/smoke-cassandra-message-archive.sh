@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-storage_compose="$root_dir/docker-compose.storage-lab.yml"
+storage_compose="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
 project="dipole-cassandra-archive-${RANDOM}-$$"
 mysql_container="${project}-mysql"
 migrate_binary=$(mktemp /tmp/dipole-cassandra-archive-migrate.XXXXXX)
@@ -54,10 +54,10 @@ docker exec "$mysql_container" mysqladmin ping -h 127.0.0.1 -uroot -pdipole-root
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/migrate
-  CGO_ENABLED=0 go build -o "$archive_binary" ./cmd/cassandra-archive
-  CGO_ENABLED=0 go build -o "$backfill_binary" ./cmd/cassandra-backfill
-  CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/cassandra-reconcile
+  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/tools/migrate
+  CGO_ENABLED=0 go build -o "$archive_binary" ./cmd/tools/cassandra-archive
+  CGO_ENABLED=0 go build -o "$backfill_binary" ./cmd/tools/cassandra-backfill
+  CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/tools/cassandra-reconcile
 )
 
 runtime_args=(

@@ -14,7 +14,7 @@ server:
 
 gateway:
   # Gateway owns public HTTP/WS; non-WS HTTP is proxied to the Core HTTP process during M5.
-  # embedded keeps the modular monolith path; remote gives realtime delivery ownership to cmd/gateway.
+  # embedded keeps the modular monolith path; remote gives realtime delivery ownership to cmd/services/gateway.
   mode: embedded
   core_http_target: http://127.0.0.1:8081
   # Exposes JWT-authenticated durable Task query/cancel/approval routes through the Gateway.
@@ -121,7 +121,7 @@ kafka:
 message:
   # local keeps direct in-process calls; grpc connects to the authenticated Message endpoint below.
   transport: local
-  # cmd/message-service: shadow serves queries only; owner enables commands, Kafka persistence, and Outbox.
+  # cmd/services/message: shadow serves queries only; owner enables commands, Kafka persistence, and Outbox.
   runtime_mode: owner
   # Query-only comparison; send commands always execute on the selected primary exactly once.
   shadow_queries: false
@@ -158,6 +158,8 @@ sync:
   enforce_db_permissions: false
   # Compare MySQL-hydrated Sync payloads with Cassandra asynchronously; MySQL remains primary.
   cassandra_shadow_hydration: false
+  # Opt in to Cassandra-first hydration; any Cassandra failure immediately reads the same locators from MySQL.
+  cassandra_primary_hydration: false
   # Empty values inherit the global mysql block for backward-compatible local development.
   mysql:
     host: ""

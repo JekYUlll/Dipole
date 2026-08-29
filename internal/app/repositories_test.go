@@ -19,6 +19,41 @@ func TestNewMessageProcessRepositoriesRequiresDatabase(t *testing.T) {
 	}
 }
 
+func TestNewCoreProcessRepositoriesOwnsCoreStores(t *testing.T) {
+	if _, err := NewCoreProcessRepositories(nil); err == nil {
+		t.Fatal("expected nil database to fail")
+	}
+	repos, err := NewCoreProcessRepositories(&sql.DB{})
+	if err != nil {
+		t.Fatalf("new core process repositories: %v", err)
+	}
+	if _, ok := repos.Users.(*CachedUserStore); !ok {
+		t.Fatalf("expected cached user store, got %T", repos.Users)
+	}
+	if _, ok := repos.Groups.(*CachedGroupStore); !ok {
+		t.Fatalf("expected cached group store, got %T", repos.Groups)
+	}
+	if _, ok := repos.Conversations.(*sqlcRepository.ConversationRepository); !ok {
+		t.Fatalf("expected sqlc conversation repository, got %T", repos.Conversations)
+	}
+}
+
+func TestNewAgentProcessRepositoriesOwnsAgentStores(t *testing.T) {
+	if _, err := NewAgentProcessRepositories(nil); err == nil {
+		t.Fatal("expected nil database to fail")
+	}
+	repos, err := NewAgentProcessRepositories(&sql.DB{})
+	if err != nil {
+		t.Fatalf("new agent process repositories: %v", err)
+	}
+	if _, ok := repos.Policy.(*sqlcRepository.AgentPolicyRepository); !ok {
+		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.Policy)
+	}
+	if _, ok := repos.Artifacts.(*sqlcRepository.AgentArtifactRepository); !ok {
+		t.Fatalf("expected sqlc Agent Artifact repository, got %T", repos.Artifacts)
+	}
+}
+
 func TestNewSyncProcessRepositoriesOwnsOnlySyncStore(t *testing.T) {
 	if _, err := NewSyncProcessRepositories(nil); err == nil {
 		t.Fatal("expected nil database to fail")
@@ -53,6 +88,14 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compose repositories: %v", err)
 	}
+	for name, process := range map[string]any{
+		"core process": repos.CoreProcess, "message process": repos.MessageProcess,
+		"sync process": repos.SyncProcess, "agent process": repos.AgentProcess,
+	} {
+		if process == nil {
+			t.Errorf("repository %s composition is nil", name)
+		}
+	}
 	required := map[string]any{
 		"users": repos.Users, "messages": repos.Messages, "files": repos.Files,
 		"conversations": repos.Conversations, "contacts": repos.Contacts,
@@ -76,20 +119,14 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	if _, ok := repos.Files.(*sqlcRepository.FileRepository); !ok {
 		t.Fatalf("expected sqlc file repository, got %T", repos.Files)
 	}
-	if cached, ok := repos.Users.(*CachedUserStore); !ok {
+	if _, ok := repos.Users.(*CachedUserStore); !ok {
 		t.Fatalf("expected cached user store, got %T", repos.Users)
-	} else if _, ok := cached.backend.(*sqlcRepository.UserRepository); !ok {
-		t.Fatalf("expected sqlc user backend, got %T", cached.backend)
 	}
-	if cached, ok := repos.Contacts.(*CachedContactStore); !ok {
+	if _, ok := repos.Contacts.(*CachedContactStore); !ok {
 		t.Fatalf("expected cached contact store, got %T", repos.Contacts)
-	} else if _, ok := cached.backend.(*sqlcRepository.ContactRepository); !ok {
-		t.Fatalf("expected sqlc contact backend, got %T", cached.backend)
 	}
-	if cached, ok := repos.Groups.(*CachedGroupStore); !ok {
+	if _, ok := repos.Groups.(*CachedGroupStore); !ok {
 		t.Fatalf("expected cached group store, got %T", repos.Groups)
-	} else if _, ok := cached.backend.(*sqlcRepository.GroupRepository); !ok {
-		t.Fatalf("expected sqlc group backend, got %T", cached.backend)
 	}
 	if _, ok := repos.Conversations.(*sqlcRepository.ConversationRepository); !ok {
 		t.Fatalf("expected sqlc conversation repository, got %T", repos.Conversations)

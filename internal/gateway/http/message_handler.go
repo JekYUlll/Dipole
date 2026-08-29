@@ -1,0 +1,248 @@
+package http
+
+import (
+	"errors"
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+
+	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/code"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
+	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
+	"github.com/JekYUlll/Dipole/internal/middleware"
+	"github.com/JekYUlll/Dipole/internal/model"
+)
+
+type MessageHandler struct {
+	service applicationPort.MessageQuery
+}
+
+func NewMessageHandler(service applicationPort.MessageQuery) *MessageHandler {
+	return &MessageHandler{service: service}
+}
+
+// ListDirect godoc
+// @Summary 获取单聊历史或增量消息
+// @Tags Message
+// @Security BearerAuth
+// @Produce json
+// @Param target_uuid path string true "目标用户 UUID"
+// @Param before_id query int false "向前翻页游标"
+// @Param before_seq query int false "会话序号向前翻页游标"
+// @Param after_seq query int false "会话序号增量补拉游标"
+// @Param limit query int false "返回数量"
+// @Success 200 {object} MessageListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /messages/direct/{target_uuid} [get]
+func (h *MessageHandler) ListDirect(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	_, hasBeforeID := c.GetQuery("before_id")
+	beforeID, err := queryOptionalUint(c, "before_id")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id is invalid")
+		return
+	}
+	_, hasBeforeSeq := c.GetQuery("before_seq")
+	beforeSeq, err := queryOptionalUint64(c, "before_seq")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_seq is invalid")
+		return
+	}
+	_, hasAfterSeq := c.GetQuery("after_seq")
+	afterSeq, err := queryOptionalUint64(c, "after_seq")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_seq is invalid")
+		return
+	}
+	if boolCount(hasBeforeID, hasBeforeSeq, hasAfterSeq) > 1 {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id, before_seq and after_seq cannot be used together")
+		return
+	}
+
+	var messages []*model.Message
+	if hasAfterSeq {
+		messages, err = h.service.ListDirectMessagesAfterSeq(currentUser.UUID, c.Param("target_uuid"), afterSeq, queryInt(c, "limit"))
+	} else if hasBeforeSeq {
+		messages, err = h.service.ListDirectMessagesBeforeSeq(currentUser.UUID, c.Param("target_uuid"), beforeSeq, queryInt(c, "limit"))
+	} else {
+		messages, err = h.service.ListDirectMessages(currentUser.UUID, c.Param("target_uuid"), beforeID, queryInt(c, "limit"))
+	}
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrMessageTargetRequired):
+			ErrorWithCode(c, http.StatusBadRequest, code.MessageTargetRequired, "target_uuid is required")
+		case errors.Is(err, service.ErrMessageTargetNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.MessageTargetNotFound, "target user not found")
+		case errors.Is(err, service.ErrMessageFriendRequired):
+			ErrorWithCode(c, http.StatusForbidden, code.MessageFriendRequired, "direct message requires friendship")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	Success(c, httpdto.ToMessageResponses(messages))
+}
+
+// ListGroup godoc
+// @Summary 获取群聊历史或增量消息
+// @Tags Message
+// @Security BearerAuth
+// @Produce json
+// @Param group_uuid path string true "群 UUID"
+// @Param before_id query int false "向前翻页游标"
+// @Param before_seq query int false "会话序号向前翻页游标"
+// @Param after_id query int false "增量补拉游标"
+// @Param after_seq query int false "会话序号增量补拉游标"
+// @Param limit query int false "返回数量"
+// @Success 200 {object} MessageListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /messages/group/{group_uuid} [get]
+func (h *MessageHandler) ListGroup(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	_, hasBeforeID := c.GetQuery("before_id")
+	beforeID, err := queryOptionalUint(c, "before_id")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id is invalid")
+		return
+	}
+	_, hasAfterID := c.GetQuery("after_id")
+	afterID, err := queryOptionalUint(c, "after_id")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_id is invalid")
+		return
+	}
+	_, hasBeforeSeq := c.GetQuery("before_seq")
+	beforeSeq, err := queryOptionalUint64(c, "before_seq")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_seq is invalid")
+		return
+	}
+	_, hasAfterSeq := c.GetQuery("after_seq")
+	afterSeq, err := queryOptionalUint64(c, "after_seq")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_seq is invalid")
+		return
+	}
+	if boolCount(hasBeforeID, hasBeforeSeq, hasAfterID, hasAfterSeq) > 1 {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "before_id, before_seq, after_id and after_seq cannot be used together")
+		return
+	}
+
+	limit := queryInt(c, "limit")
+	var messages []*model.Message
+	if hasAfterSeq {
+		messages, err = h.service.ListGroupMessagesAfterSeq(currentUser.UUID, c.Param("group_uuid"), afterSeq, limit)
+	} else if hasBeforeSeq {
+		messages, err = h.service.ListGroupMessagesBeforeSeq(currentUser.UUID, c.Param("group_uuid"), beforeSeq, limit)
+	} else if afterID > 0 {
+		// 热群 notify + pull 会走这一支：客户端记住最近一条已同步消息的自增 ID，
+		// 服务端按 after_id 做增量补拉，避免每次都回放整段历史。
+		messages, err = h.service.ListGroupMessagesAfter(
+			currentUser.UUID,
+			c.Param("group_uuid"),
+			afterID,
+			limit,
+		)
+	} else {
+		messages, err = h.service.ListGroupMessages(
+			currentUser.UUID,
+			c.Param("group_uuid"),
+			beforeID,
+			limit,
+		)
+	}
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrMessageTargetRequired):
+			ErrorWithCode(c, http.StatusBadRequest, code.MessageTargetRequired, "group_uuid is required")
+		case errors.Is(err, service.ErrMessageTargetNotFound):
+			ErrorWithCode(c, http.StatusNotFound, code.MessageTargetNotFound, "group not found")
+		case errors.Is(err, service.ErrMessageGroupForbidden):
+			ErrorWithCode(c, http.StatusForbidden, code.MessageGroupForbidden, "group message requires membership")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		}
+		return
+	}
+
+	Success(c, httpdto.ToMessageResponses(messages))
+}
+
+func boolCount(values ...bool) int {
+	count := 0
+	for _, value := range values {
+		if value {
+			count++
+		}
+	}
+	return count
+}
+
+// ListOffline godoc
+// @Summary 获取离线消息
+// @Tags Message
+// @Security BearerAuth
+// @Produce json
+// @Param after_id query int false "增量游标"
+// @Param limit query int false "返回数量"
+// @Success 200 {object} MessageListResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /messages/offline [get]
+func (h *MessageHandler) ListOffline(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	afterID, err := queryOptionalUint(c, "after_id")
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "after_id is invalid")
+		return
+	}
+
+	messages, err := h.service.ListOfflineMessages(currentUser.UUID, afterID, queryInt(c, "limit"))
+	if err != nil {
+		ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		return
+	}
+
+	Success(c, httpdto.ToMessageResponses(messages))
+}
+
+func queryOptionalUint(c *gin.Context, key string) (uint, error) {
+	raw := c.Query(key)
+	if raw == "" {
+		return 0, nil
+	}
+
+	value, err := strconv.ParseUint(raw, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint(value), nil
+}

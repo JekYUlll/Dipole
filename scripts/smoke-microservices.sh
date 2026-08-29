@@ -3,20 +3,25 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-COMPOSE_FILE="${ROOT_DIR}/docker-compose.microservices.yml"
+COMPOSE_FILE="${ROOT_DIR}/deploy/compose/docker-compose.microservices.yml"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-microservices-smoke}"
 GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:8080}"
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
-  IMAGE_NAME="${IMAGE_NAME:-dipole-server}"
-  IMAGE_TAG="${IMAGE_TAG:-microservices-smoke}"
-  IMAGE_NAME="${IMAGE_NAME}" IMAGE_TAG="${IMAGE_TAG}" "${SCRIPT_DIR}/docker-build.sh" build
-  export DIPOLE_IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
+  "${SCRIPT_DIR}/docker-build.sh" backend
+  "${SCRIPT_DIR}/docker-build-microservice-images.sh"
 fi
 
-: "${DIPOLE_IMAGE:=dipole-server:latest}"
+: "${DIPOLE_MIGRATE_IMAGE:=dipole-migrate:latest}"
+: "${DIPOLE_CORE_IMAGE:=dipole-core:latest}"
+: "${DIPOLE_GATEWAY_IMAGE:=dipole-gateway:latest}"
+: "${DIPOLE_MESSAGE_IMAGE:=dipole-message:latest}"
+: "${DIPOLE_SYNC_IMAGE:=dipole-sync:latest}"
+: "${DIPOLE_SEARCH_IMAGE:=dipole-search:latest}"
+: "${DIPOLE_SEARCH_INDEXER_IMAGE:=dipole-search-indexer:latest}"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
-export DIPOLE_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET
+export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE
+export DIPOLE_SYNC_IMAGE DIPOLE_SEARCH_IMAGE DIPOLE_SEARCH_INDEXER_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
 compose() {
   docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" "$@"
@@ -33,10 +38,17 @@ trap cleanup EXIT
 compose config --quiet
 compose up -d --wait
 
-health="$(curl -fsS "${GATEWAY_URL}/health")"
+health=""
+for _ in $(seq 1 30); do
+  health="$(curl --connect-timeout 2 --max-time 5 -fsS "${GATEWAY_URL}/health" 2>/dev/null || true)"
+  if [[ "${health}" == *'"component":"gateway"'* ]]; then
+    break
+  fi
+  sleep 1
+done
 [[ "${health}" == *'"component":"gateway"'* ]]
 
-proxy_status="$(curl -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts")"
+proxy_status="$(curl --connect-timeout 2 --max-time 5 -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts" || true)"
 [[ "${proxy_status}" == "401" ]]
 
 core_ws_status="$(compose exec -T core sh -c \

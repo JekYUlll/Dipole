@@ -1,0 +1,69 @@
+services:
+  cassandra:
+    image: cassandra:5.0.9
+    restart: unless-stopped
+    environment:
+      CASSANDRA_CLUSTER_NAME: DipoleStorageLab
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 100M
+    ports:
+      - "127.0.0.1:${DIPOLE_CASSANDRA_LAB_PORT:-0}:9042"
+    volumes:
+      - cassandra_lab_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 8s
+      retries: 30
+      start_period: 60s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.2
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    # The lab runs on constrained hosts; keep this override isolated from production.
+    command:
+      - elasticsearch
+      - -Ecluster.routing.allocation.disk.watermark.low=85%
+      - -Ecluster.routing.allocation.disk.watermark.high=95%
+      - -Ecluster.routing.allocation.disk.watermark.flood_stage=97%
+    volumes:
+      - elasticsearch_lab_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          curl -fsS
+          'http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=1s'
+          | grep -Eq '"status":"(yellow|green)"'
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: dipoleminio
+      MINIO_ROOT_PASSWORD: dipoleminiopass
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_lab_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+
+volumes:
+  cassandra_lab_data:
+  elasticsearch_lab_data:
+  minio_lab_data:

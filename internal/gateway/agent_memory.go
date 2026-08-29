@@ -5,8 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
@@ -29,22 +32,32 @@ type AgentMemoryProvenance struct {
 }
 
 type AgentMemory struct {
-	MemoryID        string                `json:"memoryId"`
-	AgentID         string                `json:"agentId"`
-	MemoryType      string                `json:"memoryType"`
-	Status          string                `json:"status"`
-	ResourceType    string                `json:"resourceType"`
-	ResourceID      string                `json:"resourceId"`
-	Content         string                `json:"content"`
-	CompactContent  string                `json:"compactContent,omitempty"`
-	Priority        int32                 `json:"priority"`
-	Provenance      AgentMemoryProvenance `json:"provenance"`
-	ValidFromUnixMS int64                 `json:"validFromUnixMs"`
-	ExpiresAtUnixMS int64                 `json:"expiresAtUnixMs,omitempty"`
-	RevokedAtUnixMS int64                 `json:"revokedAtUnixMs,omitempty"`
-	RevokedByID     string                `json:"revokedById,omitempty"`
-	RevokeReason    string                `json:"revokeReason,omitempty"`
-	CreatedAtUnixMS int64                 `json:"createdAtUnixMs"`
+	MemoryID         string                `json:"memoryId"`
+	AgentID          string                `json:"agentId"`
+	MemoryType       string                `json:"memoryType"`
+	Status           string                `json:"status"`
+	ResourceType     string                `json:"resourceType"`
+	ResourceID       string                `json:"resourceId"`
+	Content          string                `json:"content"`
+	CompactContent   string                `json:"compactContent,omitempty"`
+	Priority         int32                 `json:"priority"`
+	Provenance       AgentMemoryProvenance `json:"provenance"`
+	ValidFromUnixMS  int64                 `json:"validFromUnixMs"`
+	ExpiresAtUnixMS  int64                 `json:"expiresAtUnixMs,omitempty"`
+	RevokedAtUnixMS  int64                 `json:"revokedAtUnixMs,omitempty"`
+	RevokedByID      string                `json:"revokedById,omitempty"`
+	RevokeReason     string                `json:"revokeReason,omitempty"`
+	CreatedAtUnixMS  int64                 `json:"createdAtUnixMs"`
+	MemoryRootID     string                `json:"memoryRootId"`
+	MemoryVersion    uint32                `json:"memoryVersion"`
+	SupersedesID     string                `json:"supersedesMemoryId,omitempty"`
+	CorrectedByID    string                `json:"correctedById,omitempty"`
+	CorrectionReason string                `json:"correctionReason,omitempty"`
+}
+
+type AgentMemoryCorrection struct {
+	Previous  AgentMemory `json:"previous"`
+	Corrected AgentMemory `json:"corrected"`
 }
 
 type AgentMemoryPage struct {
@@ -55,11 +68,15 @@ type AgentMemoryPage struct {
 type AgentMemoryControlApplication interface {
 	List(ctx context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error)
 	Revoke(ctx context.Context, principalUUID, memoryID, reason string) (*AgentMemory, error)
+	Correct(ctx context.Context, principalUUID, memoryID string, expectedVersion uint32, content, compactContent, reason string) (*AgentMemoryCorrection, error)
+	PromoteCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, reviewID string) (*AgentMemory, error)
 }
 
 type agentMemoryRPC interface {
 	ListOwnedMemories(context.Context, *agentv1.ListOwnedMemoriesRequest, ...grpc.CallOption) (*agentv1.ListOwnedMemoriesResponse, error)
 	RevokeOwnedMemory(context.Context, *agentv1.RevokeOwnedMemoryRequest, ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error)
+	CorrectOwnedMemory(context.Context, *agentv1.CorrectOwnedMemoryRequest, ...grpc.CallOption) (*agentv1.CorrectOwnedMemoryResponse, error)
+	PromoteMemoryCandidate(context.Context, *agentv1.PromoteMemoryCandidateRequest, ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error)
 }
 
 type AgentMemoryControlClient struct {
@@ -137,6 +154,68 @@ func (c *AgentMemoryControlClient) Revoke(ctx context.Context, principalUUID, me
 	return &item, nil
 }
 
+func (c *AgentMemoryControlClient) Correct(ctx context.Context, principalUUID, memoryID string, expectedVersion uint32, content, compactContent, reason string) (*AgentMemoryCorrection, error) {
+	principalUUID, memoryID = strings.TrimSpace(principalUUID), strings.TrimSpace(memoryID)
+	content, compactContent, reason = strings.TrimSpace(content), strings.TrimSpace(compactContent), strings.TrimSpace(reason)
+	if principalUUID == "" || !validAgentSubscriptionPublicID(memoryID, 64) || expectedVersion == 0 ||
+		content == "" || len([]byte(content)) > 16*1024 || len([]byte(compactContent)) > 4*1024 ||
+		reason == "" || utf8.RuneCountInString(reason) > 1000 || strings.IndexFunc(reason, unicode.IsControl) >= 0 {
+		return nil, ErrAgentMemoryInvalid
+	}
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.CorrectOwnedMemory(callCtx, &agentv1.CorrectOwnedMemoryRequest{
+		Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID,
+		MemoryId: memoryID, ExpectedVersion: expectedVersion, Content: content, CompactContent: compactContent, Reason: reason,
+	})
+	if err != nil {
+		return nil, mapAgentMemoryRPCError(err)
+	}
+	if response == nil {
+		return nil, ErrAgentMemoryUnavailable
+	}
+	previous, previousErr := agentMemoryFromProto(response.GetPrevious())
+	corrected, correctedErr := agentMemoryFromProto(response.GetCorrected())
+	if previousErr != nil || correctedErr != nil || previous.MemoryID != memoryID || previous.MemoryVersion != expectedVersion ||
+		previous.Status != "revoked" || previous.RevokedByID != principalUUID || corrected.Status != "active" ||
+		corrected.MemoryRootID != previous.MemoryRootID || corrected.MemoryVersion != expectedVersion+1 ||
+		corrected.SupersedesID != memoryID || corrected.CorrectedByID != principalUUID || corrected.CorrectionReason != reason ||
+		corrected.Content != content || corrected.CompactContent != compactContent {
+		return nil, ErrAgentMemoryUnavailable
+	}
+	return &AgentMemoryCorrection{Previous: previous, Corrected: corrected}, nil
+}
+
+func (c *AgentMemoryControlClient) PromoteCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, reviewID string) (*AgentMemory, error) {
+	principalUUID, candidateID, candidateSHA256, reviewID = strings.TrimSpace(principalUUID), strings.TrimSpace(candidateID), strings.TrimSpace(candidateSHA256), strings.TrimSpace(reviewID)
+	if principalUUID == "" || !validAgentSubscriptionPublicID(candidateID, 72) || len(candidateSHA256) != 64 || !isLowerHex(candidateSHA256) || !validAgentSubscriptionPublicID(reviewID, 72) {
+		return nil, ErrAgentMemoryInvalid
+	}
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.PromoteMemoryCandidate(callCtx, &agentv1.PromoteMemoryCandidateRequest{
+		Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID,
+		CandidateId: candidateID, CandidateSha256: candidateSHA256, ReviewId: reviewID,
+	})
+	if err != nil {
+		return nil, mapAgentMemoryRPCError(err)
+	}
+	item, err := agentMemoryFromProto(response)
+	if err != nil || item.Provenance.SourceType != "memory_candidate" || item.Provenance.SourceID != candidateID || item.Provenance.Sequence != reviewID || item.Status != "active" {
+		return nil, ErrAgentMemoryUnavailable
+	}
+	return &item, nil
+}
+
+func isLowerHex(value string) bool {
+	for _, char := range value {
+		if !(char >= '0' && char <= '9') && !(char >= 'a' && char <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 func agentMemoryFromProto(raw *agentv1.AgentOwnedMemory) (AgentMemory, error) {
 	if raw == nil || !validAgentSubscriptionPublicID(raw.GetMemoryId(), 64) || !validAgentSubscriptionPublicID(raw.GetAgentId(), 24) ||
 		!validAgentMemoryType(raw.GetMemoryType()) || (raw.GetStatus() != "active" && raw.GetStatus() != "revoked") ||
@@ -154,6 +233,19 @@ func agentMemoryFromProto(raw *agentv1.AgentOwnedMemory) (AgentMemory, error) {
 		(raw.GetStatus() == "revoked" && (raw.GetRevokedAtUnixMs() <= 0 || !validAgentSubscriptionPublicID(raw.GetRevokedById(), 64) || strings.TrimSpace(raw.GetRevokeReason()) == "")) {
 		return AgentMemory{}, ErrAgentMemoryUnavailable
 	}
+	if !validAgentSubscriptionPublicID(raw.GetMemoryRootId(), 64) || raw.GetMemoryVersion() == 0 {
+		return AgentMemory{}, ErrAgentMemoryUnavailable
+	}
+	if raw.GetMemoryVersion() == 1 {
+		if raw.GetMemoryRootId() != raw.GetMemoryId() || raw.GetSupersedesMemoryId() != "" || raw.GetCorrectedById() != "" || raw.GetCorrectionReason() != "" {
+			return AgentMemory{}, ErrAgentMemoryUnavailable
+		}
+	} else if !validAgentSubscriptionPublicID(raw.GetSupersedesMemoryId(), 64) ||
+		!validAgentSubscriptionPublicID(raw.GetCorrectedById(), 64) || strings.TrimSpace(raw.GetCorrectionReason()) == "" ||
+		raw.GetProvenance().GetSourceType() != "owner_correction" || raw.GetProvenance().GetSourceId() != raw.GetSupersedesMemoryId() ||
+		raw.GetProvenance().GetSequence() != strconv.FormatUint(uint64(raw.GetMemoryVersion()), 10) {
+		return AgentMemory{}, ErrAgentMemoryUnavailable
+	}
 	return AgentMemory{
 		MemoryID: raw.GetMemoryId(), AgentID: raw.GetAgentId(), MemoryType: raw.GetMemoryType(), Status: raw.GetStatus(),
 		ResourceType: raw.GetResourceType(), ResourceID: raw.GetResourceId(), Content: raw.GetContent(), CompactContent: raw.GetCompactContent(),
@@ -161,6 +253,8 @@ func agentMemoryFromProto(raw *agentv1.AgentOwnedMemory) (AgentMemory, error) {
 			SourceType: raw.GetProvenance().GetSourceType(), SourceID: raw.GetProvenance().GetSourceId(), Sequence: raw.GetProvenance().GetSequence(),
 		}, ValidFromUnixMS: raw.GetValidFromUnixMs(), ExpiresAtUnixMS: raw.GetExpiresAtUnixMs(), RevokedAtUnixMS: raw.GetRevokedAtUnixMs(),
 		RevokedByID: raw.GetRevokedById(), RevokeReason: raw.GetRevokeReason(), CreatedAtUnixMS: raw.GetCreatedAtUnixMs(),
+		MemoryRootID: raw.GetMemoryRootId(), MemoryVersion: raw.GetMemoryVersion(), SupersedesID: raw.GetSupersedesMemoryId(),
+		CorrectedByID: raw.GetCorrectedById(), CorrectionReason: raw.GetCorrectionReason(),
 	}, nil
 }
 

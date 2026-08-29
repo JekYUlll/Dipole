@@ -14,8 +14,9 @@ import (
 
 	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
-	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
+	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -24,7 +25,7 @@ import (
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/service"
+	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -73,15 +74,13 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
-	authService := service.NewAuthService(repos.Users, tokenService)
+	authService := coreapplication.NewAuthApplication(repos.Users, tokenService)
 	storageCfg := config.StorageConfig()
-	userService := service.NewUserService(repos.Users).WithAvatarStorage(
-		repos.Files,
-		platformStorage.Client,
-		5*1024*1024,
-		10*time.Minute,
-	)
-	adminService := service.NewAdminService(repos.Admin, wsHub)
+	userService := coreapplication.NewUserApplication(repos.Users, coreapplication.UserDependencies{
+		Files: repos.Files, Storage: platformStorage.Client,
+		AvatarMaxBytes: 5 * 1024 * 1024, AvatarURLTTL: 10 * time.Minute,
+	})
+	adminService := coreapplication.NewAdminApplication(repos.Admin, wsHub)
 	var kafkaEvents applicationPort.EventPublisher
 	if config.KafkaConfig().Enabled {
 		kafkaEvents = platformKafka.Client
@@ -99,14 +98,18 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	if dependencies.Messages != nil {
 		messageApplication = dependencies.Messages
 	}
-	contactService := service.NewContactService(repos.Contacts, repos.Users).WithNotifier(newContactNotifier(wsHub)).WithEvents(kafkaEvents).WithSystemMessenger(messaging.Messages)
-	groupService := service.NewGroupService(repos.Groups, repos.Users, kafkaEvents, hotGroupDetector).WithAvatarStorage(
-		repos.Files,
-		platformStorage.Client,
-		5*1024*1024,
-		10*time.Minute,
-	).WithSystemMessenger(messaging.Messages)
-	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
+	contactService := coreapplication.NewContactApplication(repos.Contacts, repos.Users, coreapplication.ContactDependencies{
+		Notifier: newContactNotifier(wsHub), Events: kafkaEvents, SystemMessenger: messaging.Messages,
+	})
+	groupService := coreapplication.NewGroupApplication(repos.Groups, repos.Users, coreapplication.GroupDependencies{
+		Events: kafkaEvents, HotGroups: hotGroupDetector, Files: repos.Files,
+		Storage: platformStorage.Client, AvatarMaxBytes: 5 * 1024 * 1024,
+		AvatarURLTTL: 10 * time.Minute, SystemMessenger: messaging.Messages,
+	})
+	sessionService := coreapplication.NewSessionApplication(coreapplication.SessionDependencies{
+		Presence: redisPresence, Tokens: tokenService,
+		Kicker: newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled),
+	})
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, repos.Users)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
 	// updateDirectConversationHandler / updateGroupConversationHandler in bootstrap/kafka.go.
@@ -137,7 +140,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 
 	v1 := engine.Group("/api/v1")
 	{
-		if config.GatewayConfig().Mode == "embedded" {
+		if coreOwnsHTTPDataRoutes(config.GatewayConfig().Mode) {
 			v1.GET("/ws", wsHandler.Handle)
 		}
 
@@ -175,15 +178,17 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 			protected.POST("/groups/:uuid/remove-members", groupHandler.RemoveMembers)
 			protected.POST("/groups/:uuid/dismiss", groupHandler.Dismiss)
 			protected.DELETE("/groups/:uuid/members/me", groupHandler.Leave)
-			protected.GET("/messages/offline", messageHandler.ListOffline)
-			protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
-			protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
-			protected.GET("/sync", syncHandler.List)
-			protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
-			protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
-			protected.POST("/sync/comparison", syncHandler.ReportComparison)
-			protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
-			protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
+			if coreOwnsHTTPDataRoutes(config.GatewayConfig().Mode) {
+				protected.GET("/messages/offline", messageHandler.ListOffline)
+				protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
+				protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
+				protected.GET("/sync", syncHandler.List)
+				protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
+				protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
+				protected.POST("/sync/comparison", syncHandler.ReportComparison)
+				protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
+				protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
+			}
 			protected.POST("/files", fileHandler.Upload)
 			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)
 			protected.PUT("/files/uploads/:session_id/parts/:part_number", fileHandler.UploadPart)
@@ -206,6 +211,10 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	}
 
 	return &Server{engine: engine, wsHub: wsHub}
+}
+
+func coreOwnsHTTPDataRoutes(gatewayMode string) bool {
+	return gatewayMode == "embedded"
 }
 
 type wsTransportConversationUpdater interface {

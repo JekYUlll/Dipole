@@ -1,12 +1,12 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const sourceUrl = new URL("../db/queries/agent_shadow_trajectory.sql", import.meta.url);
-const outputUrl = new URL("../agent-runtime/src/events/mysql-shadow-audit-queries.ts", import.meta.url);
+const outputUrl = new URL("../services/agent-runtime/src/events/mysql-shadow-audit-queries.ts", import.meta.url);
 const source = await readFile(sourceUrl, "utf8");
 const entries = [...source.matchAll(/^-- name: (\w+) :\w+\n([\s\S]*?)(?=^-- name:|(?![\s\S]))/gm)];
 
-if (entries.length !== 8) {
-  throw new Error(`expected 8 Agent Shadow trajectory queries, found ${entries.length}`);
+if (entries.length !== 9) {
+  throw new Error(`expected 9 Agent Shadow trajectory queries, found ${entries.length}`);
 }
 
 const output = [

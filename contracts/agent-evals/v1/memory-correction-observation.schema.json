@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/memory-correction-observation.schema.json",
+  "title": "Dipole Agent Memory Correction Evaluation Observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "memoryRootId", "previous", "corrected", "trajectory", "authorizationChecks", "retrievedMemoryIds", "activeRootRecordCount", "lineageRecordCount", "exactReplayConverged", "driftConflict", "metrics"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-correction-eval-observation.v1"},
+    "memoryRootId": {"$ref": "#/$defs/publicId"},
+    "previous": {
+      "type": "object", "additionalProperties": false,
+      "required": ["memoryId", "memoryVersion", "status", "revokedByRole"],
+      "properties": {
+        "memoryId": {"$ref": "#/$defs/publicId"},
+        "memoryVersion": {"type": "integer", "minimum": 1, "maximum": 4294967294},
+        "status": {"const": "revoked"}, "revokedByRole": {"const": "owner"}
+      }
+    },
+    "corrected": {
+      "type": "object", "additionalProperties": false,
+      "required": ["memoryId", "memoryVersion", "status", "supersedesMemoryId", "correctedByRole", "provenanceSourceType", "provenanceSourceId", "provenanceSequence"],
+      "properties": {
+        "memoryId": {"$ref": "#/$defs/publicId"},
+        "memoryVersion": {"type": "integer", "minimum": 2, "maximum": 4294967295},
+        "status": {"const": "active"}, "supersedesMemoryId": {"$ref": "#/$defs/publicId"},
+        "correctedByRole": {"const": "owner"}, "provenanceSourceType": {"const": "owner_correction"},
+        "provenanceSourceId": {"$ref": "#/$defs/publicId"},
+        "provenanceSequence": {"type": "string", "pattern": "^[1-9][0-9]*$"}
+      }
+    },
+    "trajectory": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/step"}},
+    "authorizationChecks": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["actorRole", "decision"],
+            "properties": {"actorRole": {"const": "owner"}, "decision": {"const": "allowed"}}
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["actorRole", "decision"],
+            "properties": {"actorRole": {"const": "foreign"}, "decision": {"const": "denied"}}
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ],
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["actorRole", "decision"],
+        "properties": {"actorRole": {"enum": ["owner", "foreign"]}, "decision": {"enum": ["allowed", "denied"]}}
+      }
+    },
+    "retrievedMemoryIds": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"$ref": "#/$defs/publicId"}},
+    "activeRootRecordCount": {"type": "integer", "minimum": 0, "maximum": 16},
+    "lineageRecordCount": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+    "exactReplayConverged": {"type": "boolean"}, "driftConflict": {"type": "boolean"},
+    "metrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["modelCalls", "toolCalls", "totalTokens", "totalCostMicrousd", "latencyMs"],
+      "properties": {
+        "modelCalls": {"const": 0}, "toolCalls": {"const": 0}, "totalTokens": {"const": 0},
+        "totalCostMicrousd": {"const": 0},
+        "latencyMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
+      }
+    }
+  },
+  "$defs": {
+    "publicId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"},
+    "step": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._:-]*$"}
+  }
+}

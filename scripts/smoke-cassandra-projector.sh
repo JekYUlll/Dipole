@@ -2,8 +2,8 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-kafka_compose="$root_dir/docker-compose.cluster.yml"
-storage_compose="$root_dir/docker-compose.storage-lab.yml"
+kafka_compose="$root_dir/deploy/compose/docker-compose.cluster.yml"
+storage_compose="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
 project="dipole-cassandra-projector-${RANDOM}-$$"
 projector_binary=$(mktemp /tmp/dipole-cassandra-projector.XXXXXX)
 projector_log=$(mktemp /tmp/dipole-cassandra-projector.XXXXXX.log)
@@ -32,7 +32,7 @@ compose exec -T cassandra cqlsh <"$root_dir/db/cassandra/001_timeline.cql"
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$projector_binary" ./cmd/cassandra-projector
+  CGO_ENABLED=0 go build -o "$projector_binary" ./cmd/tools/cassandra-projector
 )
 
 docker run -d --name "$projector_container" \

@@ -28,6 +28,8 @@ const (
 	AgentCapabilityService_ListContextMemories_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ListContextMemories"
 	AgentCapabilityService_ListOwnedMemories_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListOwnedMemories"
 	AgentCapabilityService_RevokeOwnedMemory_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/RevokeOwnedMemory"
+	AgentCapabilityService_CorrectOwnedMemory_FullMethodName                    = "/dipole.agent.v1.AgentCapabilityService/CorrectOwnedMemory"
+	AgentCapabilityService_PromoteMemoryCandidate_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/PromoteMemoryCandidate"
 	AgentCapabilityService_AdmitRun_FullMethodName                              = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
 	AgentCapabilityService_CompleteRun_FullMethodName                           = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
 	AgentCapabilityService_FinishRun_FullMethodName                             = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
@@ -36,7 +38,10 @@ const (
 	AgentCapabilityService_ConsumeApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/ConsumeApproval"
 	AgentCapabilityService_ResolveApprovalGrant_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ResolveApprovalGrant"
 	AgentCapabilityService_ListConversations_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
+	AgentCapabilityService_ReadConversation_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/ReadConversation"
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
+	AgentCapabilityService_ListAgentTaskTimeline_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ListAgentTaskTimeline"
+	AgentCapabilityService_AppendAgentTaskTimelineEvent_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/AppendAgentTaskTimelineEvent"
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
 	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
 	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
@@ -50,6 +55,8 @@ const (
 	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
 	AgentCapabilityService_DecideWorkflowRepair_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/DecideWorkflowRepair"
 	AgentCapabilityService_GetWorkflowRepair_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/GetWorkflowRepair"
+	AgentCapabilityService_ExecuteWorkflowRepair_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ExecuteWorkflowRepair"
+	AgentCapabilityService_RollbackWorkflowRepair_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/RollbackWorkflowRepair"
 	AgentCapabilityService_ProposeRuntimePromotion_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ProposeRuntimePromotion"
 	AgentCapabilityService_ReviewRuntimePromotion_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/ReviewRuntimePromotion"
 	AgentCapabilityService_GetRuntimePromotion_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/GetRuntimePromotion"
@@ -74,6 +81,8 @@ type AgentCapabilityServiceClient interface {
 	ListContextMemories(ctx context.Context, in *ListContextMemoriesRequest, opts ...grpc.CallOption) (*ListContextMemoriesResponse, error)
 	ListOwnedMemories(ctx context.Context, in *ListOwnedMemoriesRequest, opts ...grpc.CallOption) (*ListOwnedMemoriesResponse, error)
 	RevokeOwnedMemory(ctx context.Context, in *RevokeOwnedMemoryRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
+	CorrectOwnedMemory(ctx context.Context, in *CorrectOwnedMemoryRequest, opts ...grpc.CallOption) (*CorrectOwnedMemoryResponse, error)
+	PromoteMemoryCandidate(ctx context.Context, in *PromoteMemoryCandidateRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
 	AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error)
 	CompleteRun(ctx context.Context, in *CompleteRunRequest, opts ...grpc.CallOption) (*CompleteRunResponse, error)
 	FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error)
@@ -82,7 +91,10 @@ type AgentCapabilityServiceClient interface {
 	ConsumeApproval(ctx context.Context, in *ConsumeApprovalRequest, opts ...grpc.CallOption) (*ConsumeApprovalResponse, error)
 	ResolveApprovalGrant(ctx context.Context, in *ResolveApprovalGrantRequest, opts ...grpc.CallOption) (*ResolveApprovalGrantResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
+	ReadConversation(ctx context.Context, in *ReadConversationRequest, opts ...grpc.CallOption) (*ReadConversationResponse, error)
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
+	ListAgentTaskTimeline(ctx context.Context, in *ListAgentTaskTimelineRequest, opts ...grpc.CallOption) (*ListAgentTaskTimelineResponse, error)
+	AppendAgentTaskTimelineEvent(ctx context.Context, in *AppendAgentTaskTimelineEventRequest, opts ...grpc.CallOption) (*AppendAgentTaskTimelineEventResponse, error)
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(ctx context.Context, in *ResolveMcpToolCommandRequest, opts ...grpc.CallOption) (*ResolveMcpToolCommandResponse, error)
@@ -96,6 +108,8 @@ type AgentCapabilityServiceClient interface {
 	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 	DecideWorkflowRepair(ctx context.Context, in *DecideWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
 	GetWorkflowRepair(ctx context.Context, in *GetWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
+	ExecuteWorkflowRepair(ctx context.Context, in *ExecuteWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairExecutionResponse, error)
+	RollbackWorkflowRepair(ctx context.Context, in *RollbackWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairExecutionResponse, error)
 	ProposeRuntimePromotion(ctx context.Context, in *ProposeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
 	ReviewRuntimePromotion(ctx context.Context, in *ReviewRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
 	GetRuntimePromotion(ctx context.Context, in *GetRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error)
@@ -205,6 +219,26 @@ func (c *agentCapabilityServiceClient) RevokeOwnedMemory(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) CorrectOwnedMemory(ctx context.Context, in *CorrectOwnedMemoryRequest, opts ...grpc.CallOption) (*CorrectOwnedMemoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CorrectOwnedMemoryResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_CorrectOwnedMemory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) PromoteMemoryCandidate(ctx context.Context, in *PromoteMemoryCandidateRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AgentOwnedMemory)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_PromoteMemoryCandidate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AdmitRunResponse)
@@ -285,10 +319,40 @@ func (c *agentCapabilityServiceClient) ListConversations(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ReadConversation(ctx context.Context, in *ReadConversationRequest, opts ...grpc.CallOption) (*ReadConversationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadConversationResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ReadConversation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AuthorizeTaskControlResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_AuthorizeTaskControl_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ListAgentTaskTimeline(ctx context.Context, in *ListAgentTaskTimelineRequest, opts ...grpc.CallOption) (*ListAgentTaskTimelineResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAgentTaskTimelineResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListAgentTaskTimeline_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) AppendAgentTaskTimelineEvent(ctx context.Context, in *AppendAgentTaskTimelineEventRequest, opts ...grpc.CallOption) (*AppendAgentTaskTimelineEventResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AppendAgentTaskTimelineEventResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_AppendAgentTaskTimelineEvent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -425,6 +489,26 @@ func (c *agentCapabilityServiceClient) GetWorkflowRepair(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ExecuteWorkflowRepair(ctx context.Context, in *ExecuteWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowRepairExecutionResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ExecuteWorkflowRepair_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) RollbackWorkflowRepair(ctx context.Context, in *RollbackWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairExecutionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkflowRepairExecutionResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_RollbackWorkflowRepair_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) ProposeRuntimePromotion(ctx context.Context, in *ProposeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionProposalResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RuntimePromotionProposalResponse)
@@ -528,6 +612,8 @@ type AgentCapabilityServiceServer interface {
 	ListContextMemories(context.Context, *ListContextMemoriesRequest) (*ListContextMemoriesResponse, error)
 	ListOwnedMemories(context.Context, *ListOwnedMemoriesRequest) (*ListOwnedMemoriesResponse, error)
 	RevokeOwnedMemory(context.Context, *RevokeOwnedMemoryRequest) (*AgentOwnedMemory, error)
+	CorrectOwnedMemory(context.Context, *CorrectOwnedMemoryRequest) (*CorrectOwnedMemoryResponse, error)
+	PromoteMemoryCandidate(context.Context, *PromoteMemoryCandidateRequest) (*AgentOwnedMemory, error)
 	AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error)
 	CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error)
 	FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error)
@@ -536,7 +622,10 @@ type AgentCapabilityServiceServer interface {
 	ConsumeApproval(context.Context, *ConsumeApprovalRequest) (*ConsumeApprovalResponse, error)
 	ResolveApprovalGrant(context.Context, *ResolveApprovalGrantRequest) (*ResolveApprovalGrantResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
+	ReadConversation(context.Context, *ReadConversationRequest) (*ReadConversationResponse, error)
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
+	ListAgentTaskTimeline(context.Context, *ListAgentTaskTimelineRequest) (*ListAgentTaskTimelineResponse, error)
+	AppendAgentTaskTimelineEvent(context.Context, *AppendAgentTaskTimelineEventRequest) (*AppendAgentTaskTimelineEventResponse, error)
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
 	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error)
@@ -550,6 +639,8 @@ type AgentCapabilityServiceServer interface {
 	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	DecideWorkflowRepair(context.Context, *DecideWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
 	GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
+	ExecuteWorkflowRepair(context.Context, *ExecuteWorkflowRepairRequest) (*WorkflowRepairExecutionResponse, error)
+	RollbackWorkflowRepair(context.Context, *RollbackWorkflowRepairRequest) (*WorkflowRepairExecutionResponse, error)
 	ProposeRuntimePromotion(context.Context, *ProposeRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
 	ReviewRuntimePromotion(context.Context, *ReviewRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
 	GetRuntimePromotion(context.Context, *GetRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error)
@@ -596,6 +687,12 @@ func (UnimplementedAgentCapabilityServiceServer) ListOwnedMemories(context.Conte
 func (UnimplementedAgentCapabilityServiceServer) RevokeOwnedMemory(context.Context, *RevokeOwnedMemoryRequest) (*AgentOwnedMemory, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevokeOwnedMemory not implemented")
 }
+func (UnimplementedAgentCapabilityServiceServer) CorrectOwnedMemory(context.Context, *CorrectOwnedMemoryRequest) (*CorrectOwnedMemoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CorrectOwnedMemory not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) PromoteMemoryCandidate(context.Context, *PromoteMemoryCandidateRequest) (*AgentOwnedMemory, error) {
+	return nil, status.Error(codes.Unimplemented, "method PromoteMemoryCandidate not implemented")
+}
 func (UnimplementedAgentCapabilityServiceServer) AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdmitRun not implemented")
 }
@@ -620,8 +717,17 @@ func (UnimplementedAgentCapabilityServiceServer) ResolveApprovalGrant(context.Co
 func (UnimplementedAgentCapabilityServiceServer) ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListConversations not implemented")
 }
+func (UnimplementedAgentCapabilityServiceServer) ReadConversation(context.Context, *ReadConversationRequest) (*ReadConversationResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReadConversation not implemented")
+}
 func (UnimplementedAgentCapabilityServiceServer) AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AuthorizeTaskControl not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ListAgentTaskTimeline(context.Context, *ListAgentTaskTimelineRequest) (*ListAgentTaskTimelineResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAgentTaskTimeline not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) AppendAgentTaskTimelineEvent(context.Context, *AppendAgentTaskTimelineEventRequest) (*AppendAgentTaskTimelineEventResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AppendAgentTaskTimelineEvent not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMcpContext not implemented")
@@ -661,6 +767,12 @@ func (UnimplementedAgentCapabilityServiceServer) DecideWorkflowRepair(context.Co
 }
 func (UnimplementedAgentCapabilityServiceServer) GetWorkflowRepair(context.Context, *GetWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetWorkflowRepair not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ExecuteWorkflowRepair(context.Context, *ExecuteWorkflowRepairRequest) (*WorkflowRepairExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExecuteWorkflowRepair not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) RollbackWorkflowRepair(context.Context, *RollbackWorkflowRepairRequest) (*WorkflowRepairExecutionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RollbackWorkflowRepair not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ProposeRuntimePromotion(context.Context, *ProposeRuntimePromotionRequest) (*RuntimePromotionProposalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ProposeRuntimePromotion not implemented")
@@ -873,6 +985,42 @@ func _AgentCapabilityService_RevokeOwnedMemory_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_CorrectOwnedMemory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CorrectOwnedMemoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).CorrectOwnedMemory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_CorrectOwnedMemory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).CorrectOwnedMemory(ctx, req.(*CorrectOwnedMemoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_PromoteMemoryCandidate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PromoteMemoryCandidateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).PromoteMemoryCandidate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_PromoteMemoryCandidate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).PromoteMemoryCandidate(ctx, req.(*PromoteMemoryCandidateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_AdmitRun_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AdmitRunRequest)
 	if err := dec(in); err != nil {
@@ -1017,6 +1165,24 @@ func _AgentCapabilityService_ListConversations_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ReadConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadConversationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ReadConversation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ReadConversation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ReadConversation(ctx, req.(*ReadConversationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_AuthorizeTaskControl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthorizeTaskControlRequest)
 	if err := dec(in); err != nil {
@@ -1031,6 +1197,42 @@ func _AgentCapabilityService_AuthorizeTaskControl_Handler(srv interface{}, ctx c
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).AuthorizeTaskControl(ctx, req.(*AuthorizeTaskControlRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ListAgentTaskTimeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAgentTaskTimelineRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListAgentTaskTimeline(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListAgentTaskTimeline_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListAgentTaskTimeline(ctx, req.(*ListAgentTaskTimelineRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_AppendAgentTaskTimelineEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AppendAgentTaskTimelineEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).AppendAgentTaskTimelineEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_AppendAgentTaskTimelineEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).AppendAgentTaskTimelineEvent(ctx, req.(*AppendAgentTaskTimelineEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1269,6 +1471,42 @@ func _AgentCapabilityService_GetWorkflowRepair_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ExecuteWorkflowRepair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecuteWorkflowRepairRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ExecuteWorkflowRepair(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ExecuteWorkflowRepair_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ExecuteWorkflowRepair(ctx, req.(*ExecuteWorkflowRepairRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_RollbackWorkflowRepair_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RollbackWorkflowRepairRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).RollbackWorkflowRepair(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_RollbackWorkflowRepair_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).RollbackWorkflowRepair(ctx, req.(*RollbackWorkflowRepairRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_ProposeRuntimePromotion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProposeRuntimePromotionRequest)
 	if err := dec(in); err != nil {
@@ -1475,6 +1713,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AgentCapabilityService_RevokeOwnedMemory_Handler,
 		},
 		{
+			MethodName: "CorrectOwnedMemory",
+			Handler:    _AgentCapabilityService_CorrectOwnedMemory_Handler,
+		},
+		{
+			MethodName: "PromoteMemoryCandidate",
+			Handler:    _AgentCapabilityService_PromoteMemoryCandidate_Handler,
+		},
+		{
 			MethodName: "AdmitRun",
 			Handler:    _AgentCapabilityService_AdmitRun_Handler,
 		},
@@ -1507,8 +1753,20 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AgentCapabilityService_ListConversations_Handler,
 		},
 		{
+			MethodName: "ReadConversation",
+			Handler:    _AgentCapabilityService_ReadConversation_Handler,
+		},
+		{
 			MethodName: "AuthorizeTaskControl",
 			Handler:    _AgentCapabilityService_AuthorizeTaskControl_Handler,
+		},
+		{
+			MethodName: "ListAgentTaskTimeline",
+			Handler:    _AgentCapabilityService_ListAgentTaskTimeline_Handler,
+		},
+		{
+			MethodName: "AppendAgentTaskTimelineEvent",
+			Handler:    _AgentCapabilityService_AppendAgentTaskTimelineEvent_Handler,
 		},
 		{
 			MethodName: "ResolveMcpContext",
@@ -1561,6 +1819,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetWorkflowRepair",
 			Handler:    _AgentCapabilityService_GetWorkflowRepair_Handler,
+		},
+		{
+			MethodName: "ExecuteWorkflowRepair",
+			Handler:    _AgentCapabilityService_ExecuteWorkflowRepair_Handler,
+		},
+		{
+			MethodName: "RollbackWorkflowRepair",
+			Handler:    _AgentCapabilityService_RollbackWorkflowRepair_Handler,
 		},
 		{
 			MethodName: "ProposeRuntimePromotion",

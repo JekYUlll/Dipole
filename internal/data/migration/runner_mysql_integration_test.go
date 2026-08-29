@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 38
+const currentMigrationVersion = 50
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -39,7 +39,7 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if err := runner.ValidateCurrent(ctx); err != nil {
 			t.Fatalf("validate current schema: %v", err)
 		}
-		assertTableCount(t, db, 47)
+		assertTableCount(t, db, 54)
 
 		if err := runner.Up(ctx); err != nil {
 			t.Fatalf("repeat migration: %v", err)
@@ -55,6 +55,72 @@ func TestMySQLBaselineMigration(t *testing.T) {
 		if _, err := db.Exec("DELETE FROM schema_migrations WHERE version = ?", futureVersion); err != nil {
 			t.Fatalf("remove future migration: %v", err)
 		}
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Timeline repair migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 48)
+		assertTableCount(t, db, 53)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Task Timeline migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 47)
+		assertTableCount(t, db, 52)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory promotion migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 46)
+		assertTableCount(t, db, 52)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory review migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 45)
+		assertTableCount(t, db, 51)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory candidate migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 44)
+		assertTableCount(t, db, 50)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Workflow repair execution ledger migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 43)
+		assertTableCount(t, db, 49)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory lineage backfill migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 42)
+		assertTableCount(t, db, 48)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory pre-model lineage migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 41)
+		assertTableCount(t, db, 48)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory Task lineage migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 40)
+		assertTableCount(t, db, 47)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory erasure migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 39)
+		assertTableCount(t, db, 47)
+
+		if err := runner.Down(ctx, 1); err != nil {
+			t.Fatalf("roll back Agent Memory correction migration: %v", err)
+		}
+		assertCurrentVersion(t, runner, 38)
+		assertTableCount(t, db, 47)
+
 		if err := runner.Down(ctx, 1); err != nil {
 			t.Fatalf("roll back Agent Memory owner governance migration: %v", err)
 		}
@@ -447,9 +513,11 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 	}
 	if _, err := db.Exec(`INSERT INTO agent_memories (
 		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
-		resource_type, resource_id, content, priority, source_type, source_id, valid_from
+		resource_type, resource_id, content, priority, source_type, source_id, valid_from,
+		memory_root_uuid, memory_version
 	) VALUES ('MEM-1', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
-		'conversation', 'group:G1', 'Owner is Alice', 80, 'message', 'M1', UTC_TIMESTAMP(3))`); err != nil {
+		'conversation', 'group:G1', 'Owner is Alice', 80, 'message', 'M1', UTC_TIMESTAMP(3),
+		'MEM-1', 1)`); err != nil {
 		t.Fatalf("insert valid Agent Memory: %v", err)
 	}
 	if _, err := db.Exec(`UPDATE agent_memories SET status = 'revoked', revoked_at = UTC_TIMESTAMP(3) WHERE memory_uuid = 'MEM-1'`); err == nil {
@@ -468,11 +536,84 @@ func TestAgentMemoryMigrationEnforcesLifecycleAndRollback(t *testing.T) {
 	} {
 		if _, err := db.Exec(`INSERT INTO agent_memories (
 			memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
-			resource_type, resource_id, content, priority, source_type, source_id, valid_from
+			resource_type, resource_id, content, priority, source_type, source_id, valid_from,
+			memory_root_uuid, memory_version
 		) VALUES (?, 'dipole', 'U100', 'UAI000000000000000001', ?, ?,
-			'conversation', 'group:G1', 'invalid', ?, 'message', 'M2', UTC_TIMESTAMP(3))`, invalid.uuid, invalid.memoryType, invalid.status, invalid.priority); err == nil {
+			'conversation', 'group:G1', 'invalid', ?, 'message', 'M2', UTC_TIMESTAMP(3), ?, 1)`, invalid.uuid, invalid.memoryType, invalid.status, invalid.priority, invalid.uuid); err == nil {
 			t.Fatalf("expected Agent Memory constraint for %+v", invalid)
 		}
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memories (
+		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+		resource_type, resource_id, content, priority, source_type, source_id, source_sequence, valid_from,
+		memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+	) VALUES ('MEM-2', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
+		'conversation', 'group:G1', 'Owner is Bob', 80, 'owner_correction', 'MEM-1', '2', UTC_TIMESTAMP(3),
+		'MEM-1', 2, 'MEM-1', 'U100', 'owner corrected')`); err != nil {
+		t.Fatalf("insert corrected Agent Memory: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memories (
+		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+		resource_type, resource_id, content, priority, source_type, source_id, valid_from,
+		memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+	) VALUES ('MEM-FORK', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
+		'conversation', 'group:G1', 'Owner is Carol', 80, 'owner_correction', 'MEM-1', UTC_TIMESTAMP(3),
+		'MEM-1', 2, 'MEM-1', 'U100', 'fork')`); err == nil {
+		t.Fatal("expected correction fork constraint")
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memories (
+		memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+		resource_type, resource_id, content, priority, source_type, source_id, source_sequence, valid_from,
+		memory_root_uuid, memory_version, supersedes_memory_uuid, corrected_by_uuid, correction_reason
+	) VALUES ('MEM-BAD-SEQUENCE', 'dipole', 'U100', 'UAI000000000000000001', 'semantic', 'active',
+		'conversation', 'group:G1', 'Owner is Carol', 80, 'owner_correction', 'MEM-2', '999', UTC_TIMESTAMP(3),
+		'MEM-1', 3, 'MEM-2', 'U100', 'owner corrected')`); err == nil {
+		t.Fatal("expected correction sequence constraint")
+	}
+	if _, err := db.Exec(`UPDATE agent_memories SET content_erased_at = UTC_TIMESTAMP(3), content_erased_by_uuid = 'U100', content_erasure_reason_code = 'owner_request' WHERE memory_uuid = 'MEM-2'`); err == nil {
+		t.Fatal("expected incomplete content erasure to fail")
+	}
+	if _, err := db.Exec(`INSERT INTO agent_tasks (
+		task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid,
+		status, trigger_type, trigger_ref, goal
+	) VALUES ('TASK-MEM-LINEAGE', 'DEF-MEM-LINEAGE', 1, 'dipole', 'U100', 'UAI000000000000000001',
+		'running', 'message.direct.created', 'M-LINEAGE', 'pre-model lineage')`); err != nil {
+		t.Fatalf("insert Agent Memory lineage Task: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO agent_memory_task_lineage (memory_uuid, task_uuid, representation, source)
+		VALUES ('MEM-2', 'TASK-MEM-LINEAGE', 'full', 'context_pre_model')`); err != nil {
+		t.Fatalf("insert pre-model Agent Memory lineage: %v", err)
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back Agent Memory pre-model lineage migration: %v", err)
+	}
+	var preModelRows int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = 'TASK-MEM-LINEAGE'`).Scan(&preModelRows); err != nil || preModelRows != 0 {
+		t.Fatalf("pre-model Agent Memory rollback rows=%d err=%v", preModelRows, err)
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back Agent Memory Task lineage migration: %v", err)
+	}
+	var lineageTable int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'agent_memory_task_lineage'`).Scan(&lineageTable); err != nil || lineageTable != 0 {
+		t.Fatalf("Agent Memory Task lineage rollback table=%d err=%v", lineageTable, err)
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back Agent Memory erasure migration: %v", err)
+	}
+	var erasureColumns int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'agent_memories' AND column_name IN ('content_erased_at', 'content_erased_by_uuid', 'content_erasure_reason_code')`).Scan(&erasureColumns); err != nil || erasureColumns != 0 {
+		t.Fatalf("Agent Memory erasure rollback columns=%d err=%v", erasureColumns, err)
+	}
+	if err := runner.Down(ctx, 1); err != nil {
+		t.Fatalf("roll back Agent Memory correction migration: %v", err)
+	}
+	var lineageColumns int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'agent_memories' AND column_name IN ('memory_root_uuid', 'memory_version', 'supersedes_memory_uuid', 'corrected_by_uuid', 'correction_reason')`).Scan(&lineageColumns); err != nil || lineageColumns != 0 {
+		t.Fatalf("Agent Memory correction rollback columns=%d err=%v", lineageColumns, err)
+	}
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("reapply Agent Memory correction migration: %v", err)
 	}
 	if err := runner.Down(ctx, currentMigrationVersion-28); err != nil {
 		t.Fatalf("roll back Agent Memory migration: %v", err)
@@ -506,6 +647,8 @@ func TestMessageMetadataMigrationBackfillsExistingMessages(t *testing.T) {
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
+	// Roll back to the version immediately before message_metadata so the next
+	// Up genuinely exercises the migration's legacy-message backfill.
 	if err := runner.Down(ctx, currentMigrationVersion-11); err != nil {
 		t.Fatalf("roll back Metadata legacy ID, Search source, and Metadata migrations: %v", err)
 	}

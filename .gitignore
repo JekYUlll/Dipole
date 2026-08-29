@@ -8,18 +8,8 @@ certs/
 logs/
 dist/
 configs/config.yaml
-# Local research/interview notes. Canonical architecture docs are listed in
-# docs/architecture-docs.manifest and must remain reviewable in Git.
-docs/ai-readiness-checklist.md
-docs/architecture-qa.md
-docs/architecture-reference.md
-docs/cache-strategy.md
-docs/development-roadmap.md
-docs/interview-qa.md
-docs/load-test-report.md
-docs/message-storage-and-sync-model.md
-docs/message-sync-strategy.md
-docs/tls-setup.md
+# Repository documentation is classified under docs/ and reviewed in Git.
+# Keep only generated/local planning output ignored below.
 scripts/bench/results
 __pycache__/
 *.py[cod]
@@ -34,7 +24,7 @@ __pycache__/
 tmp/
 frontend/chat-server
 node_modules/
-agent-runtime/.artifacts/
+services/agent-runtime/.artifacts/
 frontend/playwright-report/
 frontend/test-results/
 

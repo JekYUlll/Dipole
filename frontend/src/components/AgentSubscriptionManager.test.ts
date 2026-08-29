@@ -1,8 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import AgentSubscriptionManager from './AgentSubscriptionManager.vue'
 import type { AgentSubscription, AgentSubscriptionClient } from '@/api/agentSubscriptions'
 import type { AgentDefinitionCatalogClient } from '@/api/agentDefinitions'
+
+const source = readFileSync(resolve(import.meta.dirname, 'AgentSubscriptionManager.vue'), 'utf8')
 
 const active: AgentSubscription = {
   subscriptionId: 'SUB-1', definitionId: 'DEF-1', definitionVersion: 7, agentId: 'UAI',
@@ -31,6 +35,13 @@ function definitions(): AgentDefinitionCatalogClient {
 }
 
 describe('AgentSubscriptionManager', () => {
+  it('uses the shared Pencil token theme', () => {
+    expect(source).toContain('--paper:var(--dp-canvas)')
+    expect(source).toContain('--green:var(--dp-accent-strong)')
+    expect(source).toContain('var(--dp-font-body)')
+    expect(source).not.toContain('--paper:#f4f6f8')
+  })
+
   it('renders the owner-derived list and opens creation from trusted catalogs', async () => {
     const client = service()
     const definitionClient = definitions()

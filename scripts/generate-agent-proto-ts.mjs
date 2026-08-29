@@ -5,14 +5,16 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = process.env.DIPOLE_AGENT_PROTO_TS_OUTPUT === undefined
-  ? resolve(root, "agent-runtime/src/generated")
+  ? resolve(root, "services/agent-runtime/src/generated")
   : resolve(process.env.DIPOLE_AGENT_PROTO_TS_OUTPUT);
 execFileSync("protoc", [
   `--proto_path=${resolve(root, "api/proto")}`,
-  `--plugin=protoc-gen-ts=${resolve(root, "agent-runtime/node_modules/.bin/protoc-gen-ts")}`,
+  `--plugin=protoc-gen-ts=${resolve(root, "services/agent-runtime/node_modules/.bin/protoc-gen-ts")}`,
   `--ts_out=${output}`,
   "--ts_opt=client_grpc1,long_type_bigint,ts_nocheck",
   resolve(root, "api/proto/dipole/common/v1/context.proto"),
+  resolve(root, "api/proto/dipole/message/v1/message.proto"),
+  "/usr/include/google/protobuf/timestamp.proto",
   resolve(root, "api/proto/dipole/agent/v1/agent.proto")
 ], { cwd: root, stdio: "inherit" });
 

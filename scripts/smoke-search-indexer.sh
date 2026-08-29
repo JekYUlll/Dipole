@@ -2,8 +2,8 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-kafka_compose="$root_dir/docker-compose.cluster.yml"
-storage_compose="$root_dir/docker-compose.storage-lab.yml"
+kafka_compose="$root_dir/deploy/compose/docker-compose.cluster.yml"
+storage_compose="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
 project="dipole-search-indexer-${RANDOM}-$$"
 binary=$(mktemp /tmp/dipole-search-indexer.XXXXXX)
 runtime_log=$(mktemp /tmp/dipole-search-indexer.XXXXXX.log)
@@ -28,7 +28,7 @@ compose exec -T elasticsearch curl -fsS -X PUT http://127.0.0.1:9200/_cluster/se
   -H 'Content-Type: application/json' \
   -d '{"transient":{"cluster.routing.allocation.disk.threshold_enabled":false}}' >/dev/null
 
-(cd "$root_dir" && CGO_ENABLED=0 go build -o "$binary" ./cmd/search-indexer)
+(cd "$root_dir" && CGO_ENABLED=0 go build -o "$binary" ./cmd/services/search-indexer)
 docker run -d --name "$runtime_container" --network "${project}_default" \
   -v "$binary:/app/dipole-search-indexer:ro" \
   -v "$root_dir/deploy/elasticsearch/search-indexer-smoke.yaml:/app/configs/config.yaml:ro" \

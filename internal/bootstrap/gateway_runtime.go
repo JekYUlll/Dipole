@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/gateway"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -16,7 +17,6 @@ import (
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	"github.com/JekYUlll/Dipole/internal/service"
 	"github.com/JekYUlll/Dipole/internal/store"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"
@@ -32,6 +32,7 @@ type GatewayRuntime struct {
 	server                 *gateway.Server
 	router                 *wsTransport.PubSubRouter
 	messageConn            *grpc.ClientConn
+	syncConn               *grpc.ClientConn
 	coreConn               *grpc.ClientConn
 	searchConn             *grpc.ClientConn
 	redis                  *redis.Client
@@ -175,6 +176,12 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		return nil, err
 	}
 	runtime.messageConn = messageConn
+	syncApplication, syncConn, err := DialSyncApplication(ctx, rpcCfg)
+	if err != nil {
+		cleanup()
+		return nil, err
+	}
+	runtime.syncConn = syncConn
 	core, coreConn, err := DialGatewayCoreCapability(ctx, rpcCfg)
 	if err != nil {
 		cleanup()
@@ -232,6 +239,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 
 	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
 		Messages:           messages,
+		Sync:               syncApplication,
 		Core:               core,
 		Search:             search,
 		AgentTasks:         agentTasks,
@@ -317,6 +325,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		redisReadinessProbe("redis", runtime.redis),
 		grpcReadinessProbe("core-rpc", runtime.coreConn),
 		grpcReadinessProbe("message-rpc", runtime.messageConn),
+		grpcReadinessProbe("sync-rpc", runtime.syncConn),
 		kafkaReadinessProbe("kafka", platformKafka.Client),
 		kafkaConsumerReadinessProbe("kafka-assignment", platformKafka.Subscriber),
 	}
@@ -384,6 +393,10 @@ func (r *GatewayRuntime) Close() {
 	if r.messageConn != nil {
 		_ = r.messageConn.Close()
 		r.messageConn = nil
+	}
+	if r.syncConn != nil {
+		_ = r.syncConn.Close()
+		r.syncConn = nil
 	}
 	if r.coreConn != nil {
 		_ = r.coreConn.Close()

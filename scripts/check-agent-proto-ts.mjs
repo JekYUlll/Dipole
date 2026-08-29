@@ -13,7 +13,7 @@ try {
     env: { ...process.env, DIPOLE_AGENT_PROTO_TS_OUTPUT: temporary },
     stdio: "inherit"
   });
-  execFileSync("diff", ["-ru", resolve(root, "agent-runtime/src/generated"), temporary], {
+  execFileSync("diff", ["-ru", resolve(root, "services/agent-runtime/src/generated"), temporary], {
     cwd: root,
     stdio: "inherit"
   });

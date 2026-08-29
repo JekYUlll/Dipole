@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-lineage-backfill/v1/manifest.schema.json",
+  "title": "Dipole Agent Memory Lineage Backfill Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "policyVersion", "sourceHighWatermarkId", "batchSize", "manifestSha256"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-lineage-backfill-manifest.v1" },
+    "policyVersion": { "const": "memory-lineage-backfill-v1" },
+    "sourceHighWatermarkId": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+    "batchSize": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "manifestSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }
+}

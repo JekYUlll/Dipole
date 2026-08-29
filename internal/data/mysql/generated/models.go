@@ -251,28 +251,84 @@ type AgentMcpToolRound struct {
 }
 
 type AgentMemory struct {
-	ID             uint64
-	MemoryUuid     string
-	TenantID       string
-	PrincipalUuid  string
-	AgentUuid      string
-	MemoryType     string
-	Status         string
-	ResourceType   string
-	ResourceID     string
-	Content        string
-	CompactContent sql.NullString
-	Priority       int32
-	SourceType     string
-	SourceID       string
-	SourceUri      sql.NullString
-	SourceSequence sql.NullString
-	ValidFrom      time.Time
-	ExpiresAt      sql.NullTime
-	RevokedAt      sql.NullTime
-	CreatedAt      time.Time
-	RevokedByUuid  string
-	RevokeReason   string
+	ID                       uint64
+	MemoryUuid               string
+	TenantID                 string
+	PrincipalUuid            string
+	AgentUuid                string
+	MemoryType               string
+	Status                   string
+	ResourceType             string
+	ResourceID               string
+	Content                  string
+	CompactContent           sql.NullString
+	Priority                 int32
+	SourceType               string
+	SourceID                 string
+	SourceUri                sql.NullString
+	SourceSequence           sql.NullString
+	ValidFrom                time.Time
+	ExpiresAt                sql.NullTime
+	RevokedAt                sql.NullTime
+	CreatedAt                time.Time
+	RevokedByUuid            string
+	RevokeReason             string
+	MemoryRootUuid           string
+	MemoryVersion            uint32
+	SupersedesMemoryUuid     sql.NullString
+	CorrectedByUuid          string
+	CorrectionReason         string
+	ContentErasedAt          sql.NullTime
+	ContentErasedByUuid      string
+	ContentErasureReasonCode string
+}
+
+type AgentMemoryCandidate struct {
+	ID                 uint64
+	CandidateUuid      string
+	TenantID           string
+	PrincipalUuid      string
+	AgentUuid          string
+	ResourceType       string
+	ResourceID         string
+	CandidateType      string
+	SourceID           string
+	EvidenceIdsJson    json.RawMessage
+	Summary            string
+	PolicyVersion      string
+	CandidateSha256    string
+	Status             string
+	ObservedAt         time.Time
+	CreatedAt          time.Time
+	PromotedMemoryUuid sql.NullString
+	PromotedAt         sql.NullTime
+}
+
+type AgentMemoryCandidateReview struct {
+	ID              uint64
+	ReviewUuid      string
+	CandidateUuid   string
+	CandidateSha256 string
+	ReviewerUuid    string
+	Decision        string
+	Reason          string
+	ReviewSha256    string
+	ReviewedAt      time.Time
+	CreatedAt       time.Time
+}
+
+type AgentMemoryLineageBackfillJob struct {
+	JobName               string
+	Status                string
+	SourceHighWatermarkID uint64
+	LastProcessedID       uint64
+	OwnerID               string
+	LeaseExpiresAt        sql.NullTime
+	AttemptCount          uint64
+	LastError             string
+	CompletedAt           sql.NullTime
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 type AgentRun struct {
@@ -385,6 +441,37 @@ type AgentTask struct {
 	TriggerSubscriptionUuid sql.NullString
 }
 
+type AgentTaskTimelineEvent struct {
+	EventSeq     uint64
+	EventUuid    string
+	TaskUuid     string
+	RunUuid      sql.NullString
+	EventKind    string
+	Status       string
+	CapabilityID sql.NullString
+	ApprovalUuid sql.NullString
+	OccurredAt   time.Time
+	CreatedAt    time.Time
+}
+
+type AgentTaskTimelineRepair struct {
+	EventUuid    string
+	TaskUuid     string
+	RunUuid      sql.NullString
+	EventKind    string
+	Status       string
+	CapabilityID sql.NullString
+	ApprovalUuid sql.NullString
+	OccurredAt   time.Time
+	RepairStatus string
+	RetryCount   uint32
+	LastError    sql.NullString
+	NextRetryAt  sql.NullTime
+	LockedAt     sql.NullTime
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
 type AgentToolInvocation struct {
 	ID                 uint64
 	InvocationUuid     string
@@ -426,6 +513,24 @@ type AgentWorkflowRepairDecision struct {
 	CreatedAt    time.Time
 }
 
+type AgentWorkflowRepairExecution struct {
+	ExecutionUuid         string
+	PlanID                string
+	ProposalUuid          string
+	TaskUuid              string
+	ExecutorUuid          string
+	ExecutorGrantVersion  uint64
+	ExpectedCurrentSha256 sql.NullString
+	TargetSha256          string
+	RollbackSha256        sql.NullString
+	Status                string
+	StartedAt             sql.NullTime
+	FinishedAt            sql.NullTime
+	FailureCode           sql.NullString
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
 type AgentWorkflowRepairOperatorGrant struct {
 	UserUuid      string
 	CanPropose    bool
@@ -436,6 +541,8 @@ type AgentWorkflowRepairOperatorGrant struct {
 	RevokedAt     sql.NullTime
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	GrantVersion  uint64
+	CanExecute    bool
 }
 
 type AgentWorkflowRepairProposal struct {

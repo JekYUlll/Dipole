@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-kafka_compose="$root_dir/docker-compose.cluster.yml"
+kafka_compose="$root_dir/deploy/compose/docker-compose.cluster.yml"
 project="dipole-sync-projector-${RANDOM}-$$"
 test_binary=$(mktemp /tmp/dipole-sync-projector-test.XXXXXX)
 mysql_container="${project}-mysql"
@@ -43,7 +43,7 @@ done
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go test -c -o "$test_binary" ./internal/projector/sync
+  CGO_ENABLED=0 go test -c -o "$test_binary" ./internal/services/sync/infrastructure/kafka
 )
 docker run --rm --network "${project}_default" \
   -e "DIPOLE_TEST_SYNC_PROJECTOR_DSN=root:dipole-root@tcp(${mysql_container}:3306)/dipole?parseTime=true&multiStatements=true" \

@@ -2,9 +2,12 @@ package app
 
 import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/service"
+	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
+	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
 )
 
 type HotGroupObserver interface {
@@ -28,58 +31,89 @@ type MessagingDependencies struct {
 
 type MessagingServices struct {
 	Core          applicationPort.CoreCapability
-	Files         *service.FileService
-	Messages      *LocalMessageApplication
-	Conversations *service.ConversationService
-	Sync          *LocalSyncApplication
-}
-
-type LocalMessageApplication struct {
-	*service.MessageService
-}
-
-type LocalSyncApplication struct {
-	*service.SyncService
+	Files         *coreapplication.LocalFileApplication
+	Messages      *messageapplication.LocalApplication
+	Conversations *coreapplication.LocalConversationApplication
+	Sync          applicationPort.SyncApplication
 }
 
 func NewMessagingServices(repos *Repositories, dependencies MessagingDependencies) *MessagingServices {
-	files := service.NewFileService(repos.Files, repos.Messages, dependencies.Storage)
+	if repos == nil {
+		repos = &Repositories{}
+	}
+	coreRepos := repos.CoreProcess
+	if coreRepos == nil {
+		coreRepos = &CoreProcessRepositories{
+			Users: repos.Users, Files: repos.Files, Conversations: repos.Conversations,
+			Contacts: repos.Contacts, Groups: repos.Groups, Admin: repos.Admin,
+		}
+	}
+	messageRepos := repos.MessageProcess
+	if messageRepos == nil {
+		messageRepos = &MessageProcessRepositories{Messages: repos.Messages, Outbox: repos.Outbox}
+	}
+	syncRepos := repos.SyncProcess
+	if syncRepos == nil {
+		syncRepos = &SyncProcessRepositories{Sync: repos.Sync}
+	}
+	return NewMessagingServicesFromProcesses(coreRepos, messageRepos, syncRepos, dependencies)
+}
+
+// NewMessagingServicesFromProcesses composes the messaging facade from
+// service-owned repository groups. The aggregate constructor above remains a
+// compatibility entry point for embedded callers.
+func NewMessagingServicesFromProcesses(
+	coreRepos *CoreProcessRepositories,
+	messageRepos *MessageProcessRepositories,
+	syncRepos *SyncProcessRepositories,
+	dependencies MessagingDependencies,
+) *MessagingServices {
+	if coreRepos == nil {
+		coreRepos = &CoreProcessRepositories{}
+	}
+	if messageRepos == nil {
+		messageRepos = &MessageProcessRepositories{}
+	}
+	if syncRepos == nil {
+		syncRepos = &SyncProcessRepositories{}
+	}
+	files := coreapplication.NewFileApplication(coreRepos.Files, messageRepos.Messages, dependencies.Storage)
 	core := dependencies.Core
 	if core == nil {
-		core = NewLocalCoreCapability(repos)
+		core = coreapplication.New(coreapplication.Dependencies{
+			Users: coreRepos.Users, Contacts: coreRepos.Contacts, Groups: coreRepos.Groups,
+			Files: coreRepos.Files, Conversations: coreRepos.Conversations,
+		})
 	}
 
-	messageService := service.NewMessageServiceWithCore(
-		repos.Messages, core, nil, dependencies.Events, dependencies.HotGroups,
-	)
-	messageService.SetDuplicateMessageHydrator(dependencies.DuplicateHydrator, dependencies.DuplicateHydrationObserver)
+	messages := messageapplication.New(messageRepos.Messages, core, messageapplication.Dependencies{
+		Events:                     dependencies.Events,
+		HotGroups:                  dependencies.HotGroups,
+		DuplicateHydrator:          dependencies.DuplicateHydrator,
+		DuplicateHydrationObserver: dependencies.DuplicateHydrationObserver,
+	})
 	return &MessagingServices{
 		Core:     core,
 		Files:    files,
-		Messages: &LocalMessageApplication{MessageService: messageService},
-		Conversations: service.NewConversationService(
-			repos.Conversations,
-			repos.Users,
-			repos.Groups,
-			dependencies.ConversationNotifier,
-			dependencies.Events,
+		Messages: messages,
+		Conversations: coreapplication.NewConversationApplication(
+			coreRepos.Conversations,
+			coreRepos.Users,
+			coreRepos.Groups,
+			coreapplication.ConversationDependencies{
+				Notifier: dependencies.ConversationNotifier,
+				Events:   dependencies.Events,
+			},
 		),
-		Sync: &LocalSyncApplication{SyncService: service.NewSyncService(repos.Sync, core)},
+		Sync: syncapplication.New(syncRepos.Sync, core),
 	}
 }
 
-func NewMessageApplication(messages applicationPort.MessageStore, core applicationPort.CoreCapability, dependencies MessagingDependencies) *LocalMessageApplication {
-	messageService := service.NewMessageServiceWithCore(
-		messages,
-		core,
-		nil,
-		dependencies.Events,
-		dependencies.HotGroups,
-	)
-	messageService.SetDuplicateMessageHydrator(dependencies.DuplicateHydrator, dependencies.DuplicateHydrationObserver)
-	return &LocalMessageApplication{MessageService: messageService}
-}
-
-func NewSyncApplication(syncStore applicationPort.SyncStore, core applicationPort.CoreCapability) *LocalSyncApplication {
-	return &LocalSyncApplication{SyncService: service.NewSyncService(syncStore, core)}
+func NewMessageApplication(messages applicationPort.MessageStore, core applicationPort.CoreCapability, dependencies MessagingDependencies) *messageapplication.LocalApplication {
+	return messageapplication.New(messages, core, messageapplication.Dependencies{
+		Events:                     dependencies.Events,
+		HotGroups:                  dependencies.HotGroups,
+		DuplicateHydrator:          dependencies.DuplicateHydrator,
+		DuplicateHydrationObserver: dependencies.DuplicateHydrationObserver,
+	})
 }

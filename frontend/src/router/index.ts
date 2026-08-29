@@ -25,6 +25,24 @@ const router = createRouter({
         : { name: 'chat' },
     },
     {
+      path: '/agent/tasks/:taskId/approval',
+      name: 'agent-task-approval',
+      component: () => import('@/views/AgentApprovalView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
+      path: '/agent/tasks/:taskId/timeline',
+      name: 'agent-task-timeline',
+      component: () => import('@/views/AgentTaskTimelineView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
       path: '/agent/subscriptions',
       name: 'agent-subscriptions',
       component: () => import('@/views/AgentSubscriptionsView.vue'),

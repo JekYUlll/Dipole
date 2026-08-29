@@ -25,6 +25,7 @@ type AgentTaskControlResult struct {
 
 type AgentTaskControlApplication interface {
 	GetTask(ctx context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error)
+	GetTimeline(ctx context.Context, principalUUID, taskUUID, after string, limit int) (*AgentTaskControlResult, error)
 	CancelTask(ctx context.Context, principalUUID, taskUUID, reason string) (*AgentTaskControlResult, error)
 	ResolveApproval(ctx context.Context, principalUUID, taskUUID, approvalUUID, decision string) (*AgentTaskControlResult, error)
 	ProvideInput(ctx context.Context, principalUUID, taskUUID, requestUUID string, value any) (*AgentTaskControlResult, error)
@@ -52,6 +53,14 @@ func NewAgentTaskControlClient(target, secret string, timeout time.Duration) (*A
 
 func (c *AgentTaskControlClient) GetTask(ctx context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {
 	return c.request(ctx, http.MethodGet, principalUUID, "/internal/v1/agent/tasks/"+url.PathEscape(taskUUID), nil)
+}
+
+func (c *AgentTaskControlClient) GetTimeline(ctx context.Context, principalUUID, taskUUID, after string, limit int) (*AgentTaskControlResult, error) {
+	path := "/internal/v1/agent/tasks/" + url.PathEscape(taskUUID) + "/timeline?limit=" + url.QueryEscape(fmt.Sprintf("%d", limit))
+	if after != "" {
+		path += "&after=" + url.QueryEscape(after)
+	}
+	return c.request(ctx, http.MethodGet, principalUUID, path, nil)
 }
 
 func (c *AgentTaskControlClient) CancelTask(ctx context.Context, principalUUID, taskUUID, reason string) (*AgentTaskControlResult, error) {

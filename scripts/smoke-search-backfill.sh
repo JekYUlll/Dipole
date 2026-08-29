@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-storage_compose="$root_dir/docker-compose.storage-lab.yml"
+storage_compose="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
 project="dipole-search-backfill-${RANDOM}-$$"
 mysql_container="${project}-mysql"
 migrate_binary=$(mktemp /tmp/dipole-search-backfill-migrate.XXXXXX)
@@ -65,12 +65,12 @@ done
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/migrate
-  CGO_ENABLED=0 go build -o "$backfill_binary" ./cmd/search-backfill
-  CGO_ENABLED=0 go build -o "$archive_binary" ./cmd/search-archive
-  CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/search-reconcile
-  CGO_ENABLED=0 go build -o "$alias_binary" ./cmd/search-alias
-  CGO_ENABLED=0 go build -o "$cleanup_binary" ./cmd/search-outbox-cleanup
+  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/tools/migrate
+  CGO_ENABLED=0 go build -o "$backfill_binary" ./cmd/tools/search-backfill
+  CGO_ENABLED=0 go build -o "$archive_binary" ./cmd/tools/search-archive
+  CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/tools/search-reconcile
+  CGO_ENABLED=0 go build -o "$alias_binary" ./cmd/tools/search-alias
+  CGO_ENABLED=0 go build -o "$cleanup_binary" ./cmd/tools/search-outbox-cleanup
 )
 
 runtime_args=(
@@ -102,7 +102,7 @@ set -e
 [[ "$core_read_exit" -ne 0 ]] || { printf 'Expected Search maintenance account to be denied Core table access\n' >&2; exit 1; }
 
 jq -n \
-  --slurpfile mapping "$root_dir/internal/data/elasticsearch/schema/message_search_v1.json" \
+  --slurpfile mapping "$root_dir/internal/platform/elasticsearch/schema/message_search_v1.json" \
   '{settings:{number_of_shards:1,number_of_replicas:0},mappings:$mapping[0],aliases:{"dipole-smoke-messages-read":{},"dipole-smoke-messages-write":{is_write_index:true}}}' | \
   compose exec -T elasticsearch curl -fsS -X PUT "http://127.0.0.1:9200/${old_index}" \
     -H 'Content-Type: application/json' --data-binary @- >/dev/null
