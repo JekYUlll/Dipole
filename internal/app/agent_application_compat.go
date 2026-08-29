@@ -24,7 +24,6 @@ type StaticAgentExecutionPolicyV1 = agentapplication.StaticAgentExecutionPolicyV
 type PersistentAgentExecutionPolicyV1 = agentapplication.PersistentAgentExecutionPolicyV1
 type PersistentAgentInvocationResolverV1 = agentapplication.PersistentAgentInvocationResolverV1
 type PersistentAgentRunAdmissionV1 = agentapplication.PersistentAgentRunAdmissionV1
-type PersistentAgentMemoryResolverV1 = agentapplication.PersistentAgentMemoryResolverV1
 type AgentMemoryTaskReaderV1 = agentapplication.AgentMemoryTaskReaderV1
 type AgentMessageCommandExecutionServiceV1 = agentapplication.AgentMessageCommandExecutionServiceV1
 type PersistentAgentRuntimePromotionControlServiceV1 = agentapplication.PersistentAgentRuntimePromotionControlServiceV1
@@ -104,10 +103,6 @@ func NewStaticAgentExecutionPolicyV1(permissions []string, scopes []application.
 
 func NewPersistentAgentExecutionPolicyV1(store application.AgentPolicyStoreV1) (*PersistentAgentExecutionPolicyV1, error) {
 	return agentapplication.NewPersistentAgentExecutionPolicyV1(store)
-}
-
-func NewPersistentAgentMemoryResolverV1(store application.AgentMemoryStoreV1, invocations application.AgentInvocationResolverV1, tasks agentapplication.AgentMemoryTaskReaderV1, now func() time.Time) (*PersistentAgentMemoryResolverV1, error) {
-	return agentapplication.NewPersistentAgentMemoryResolverV1(store, invocations, tasks, now)
 }
 
 func NewAgentMessageCommandExecutionV1(tools application.AgentToolInvocationReaderV1, resolver application.AgentInvocationResolverV1, commands application.AgentCommandV1) (*AgentMessageCommandExecutionServiceV1, error) {
