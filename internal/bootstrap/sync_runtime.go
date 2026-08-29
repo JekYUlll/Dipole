@@ -10,7 +10,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
