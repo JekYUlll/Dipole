@@ -291,7 +291,7 @@ socket.setTimeout(() => { socket.close(); }, 7000);
 
 **现象**：`bench_group.js` 500 人群，发送者发 20 条消息，`msg_delivery_rate=100%` 但 avg 延迟 5m36s，p95=6m14s。
 
-**根本原因**：`deliverGroupMessageHandler`（`internal/bootstrap/kafka.go`）对群成员的 WS 推送是**串行循环**：
+**根本原因**：`deliverGroupMessageHandler`（`internal/bootstrap/embedded/kafka.go`）对群成员的 WS 推送是**串行循环**：
 
 ```go
 // 修复前：串行，500 成员 × 20 消息 = 10,000 次顺序调用

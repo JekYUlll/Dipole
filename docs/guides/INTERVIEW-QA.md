@@ -751,7 +751,7 @@ Kafka 在我们项目里主要承担的是业务事件总线，适合：
 - 客户端能感知到服务正在退出，并走自己的重连逻辑
 
 4. 最后停止后台组件
-- 再由 [runtime.go](../../internal/bootstrap/runtime.go) 里的 `Runtime.Close()` 按顺序关闭：
+- 再由 [runtime.go](../../internal/bootstrap/embedded/runtime/runtime.go) 里的 `Runtime.Close()` 按顺序关闭：
   - outbox relay
   - Kafka consumer
   - Kafka publisher
