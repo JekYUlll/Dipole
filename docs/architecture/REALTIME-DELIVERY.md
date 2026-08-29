@@ -145,4 +145,4 @@ Gateway 继续拥有连接认证、心跳、WebSocket envelope、连接级有界
 
 ## Compose profile
 
-`docker-compose.microservices.yml` 默认继续使用 Go authority，`realtime-cpp` profile 默认不创建 C++ 服务。启用 profile 只提供独立的 C++ primary 进程；操作员仍需同时向 Gateway 和 profile 提供 `DIPOLE_REALTIME_DELIVERY=cpp`、`DIPOLE_DELIVERY_PRIMARY_ENABLED=true`、fencing epoch 以及维护窗口决策。profile 使用 Kafka primary group、Redis authority fencing 和 Gateway mTLS node transport，缺少一致切换配置时保持 fail closed。回滚时移除 profile，恢复 `DIPOLE_REALTIME_DELIVERY=go` 与 primary RPC disabled；共享环境切换仍以 C3 checkpoint 和回切 receipt 为准。
+`deploy/compose/docker-compose.microservices.yml` 默认继续使用 Go authority，`realtime-cpp` profile 默认不创建 C++ 服务。启用 profile 只提供独立的 C++ primary 进程；操作员仍需同时向 Gateway 和 profile 提供 `DIPOLE_REALTIME_DELIVERY=cpp`、`DIPOLE_DELIVERY_PRIMARY_ENABLED=true`、fencing epoch 以及维护窗口决策。profile 使用 Kafka primary group、Redis authority fencing 和 Gateway mTLS node transport，缺少一致切换配置时保持 fail closed。回滚时移除 profile，恢复 `DIPOLE_REALTIME_DELIVERY=go` 与 primary RPC disabled；共享环境切换仍以 C3 checkpoint 和回切 receipt 为准。

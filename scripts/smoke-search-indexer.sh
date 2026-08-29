@@ -2,8 +2,8 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-kafka_compose="$root_dir/docker-compose.cluster.yml"
-storage_compose="$root_dir/docker-compose.storage-lab.yml"
+kafka_compose="$root_dir/deploy/compose/docker-compose.cluster.yml"
+storage_compose="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
 project="dipole-search-indexer-${RANDOM}-$$"
 binary=$(mktemp /tmp/dipole-search-indexer.XXXXXX)
 runtime_log=$(mktemp /tmp/dipole-search-indexer.XXXXXX.log)

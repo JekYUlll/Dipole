@@ -65,6 +65,7 @@
 - **本轮进展：** 聚合 `Repositories` 已显式持有 Core、Message、Sync、Agent 四类 process composition，embedded 入口开始复用服务所有权分组；独立启动链仍待切换到这些分组，当前聚合入口保留为回滚路径。
 - **本轮进展：** Core remote 入口已切换到 `InitializeCoreService`，只装配 `CoreProcessRepositories`、Core projection Kafka consumer 和 Core Capability RPC；embedded 模式保留原聚合入口作为本地兼容路径。Core/Message/Agent 的数据库账号和全量运行时切换仍按后续门禁推进。
 - **本轮进展：** Agent repository composition 已抽出 `AgentProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Agent-owned SQL repository 集合；Core 兼容 RPC 仍共享同一进程装配，TS Runtime 完全接管前需继续拆分启动链。
+- **本轮进展：** Compose 编排已从根目录收纳至 `deploy/compose/`，仅保留默认 `docker-compose.yml` 作为本地入口；所有编排引用和 Compose 静态门禁已同步，TS Agent Runtime 保留用于 Go 工具链扫描隔离的独立 module 边界。`internal/app`、`internal/application`、`internal/bootstrap` 和兼容层仍属于下一阶段的物理边界收敛范围。
 
 ### AD-048：Go 微服务默认部署仍使用共享镜像
 
@@ -103,7 +104,7 @@
 - **优先级：** P2
 - **状态：** 接受风险
 - **发现日期：** 2026-08-29
-- **影响范围：** `docker-compose.storage-lab.yml`、Elasticsearch storage-lab 健康检查
+- **影响范围：** `deploy/compose/docker-compose.storage-lab.yml`、Elasticsearch storage-lab 健康检查
 - **现状：** 受限实验主机磁盘使用率可能超过 Elasticsearch 默认 high watermark，导致单节点集群保持 red 并拒绝索引写入。storage-lab 已使用显式 lab-only 磁盘水位参数，健康检查要求 yellow/green；该参数未进入生产 Compose 或应用配置。
 - **风险：** 若实验主机继续逼近 flood-stage，隔离 smoke 仍会失败；放宽实验水位不能替代生产磁盘容量、监控和清理策略。
 - **下一步：** 保持实验栈与生产配置分离，定期清理 Docker volume 并在共享环境补充磁盘告警；生产部署遵循 Elasticsearch 官方水位和容量门禁。

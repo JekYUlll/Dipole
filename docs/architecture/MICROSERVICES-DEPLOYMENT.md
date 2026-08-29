@@ -1,6 +1,6 @@
 # 最小微服务开发拓扑
 
-`docker-compose.microservices.yml` 用于 M6 的本地开发与集成验收，部署以下最小服务集合：
+`deploy/compose/docker-compose.microservices.yml` 用于 M6 的本地开发与集成验收，部署以下最小服务集合：
 
 ```text
 Client -> Gateway -> Core HTTP (domain APIs)
@@ -38,7 +38,7 @@ scripts/docker-build-microservice-images.sh
 
 ```bash
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET="$(openssl rand -hex 32)"
-docker compose -f docker-compose.microservices.yml up -d --wait
+docker compose -f deploy/compose/docker-compose.microservices.yml up -d --wait
 ```
 
 公开入口为 `http://127.0.0.1:8080`。Core、Message、Sync、MySQL、Redis、Kafka 和 MinIO 只在 Compose 网络内可达。远程模式下 Gateway 直接注册消息历史和 Sync HTTP 路由，Core HTTP 仅承接 Core domain 路由。

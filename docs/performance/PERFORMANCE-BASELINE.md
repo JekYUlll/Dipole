@@ -34,7 +34,7 @@ fresh project 复验记录 PID `887973 -> 898410`，故障到 unavailable 为 65
 
 ```bash
 PROCESS_METRICS_SERVICES="gateway core message" \
-COMPOSE_FILE=docker-compose.microservices.yml \
+COMPOSE_FILE=deploy/compose/docker-compose.microservices.yml \
 ./scripts/bench/run_bench.sh
 ```
 
@@ -78,7 +78,7 @@ RSS 峰值是按 `LAG_SAMPLE_SECONDS` 周期观察到的 sampled peak，context 
 CPU: AMD Ryzen 7 8845H
 OS/Arch: linux/amd64
 Commit: ec979d4e237ccf7d0158bf8ce01c96e896118a93
-Topology: docker-compose.dist.yml
+Topology: deploy/compose/docker-compose.dist.yml
 Application: 3 Dipole nodes
 Infrastructure: MySQL 8.4, Redis 7.4, Kafka 3.9.0
 Clients: local k6, 20 WebSocket connections per scenario

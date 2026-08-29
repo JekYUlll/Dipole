@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-COMPOSE_FILE="$ROOT_DIR/docker-compose.mysql-cluster.yml"
+COMPOSE_FILE="$ROOT_DIR/deploy/compose/docker-compose.mysql-cluster.yml"
 PROJECT_NAME="dipole-mysql-cluster-${RANDOM}"
 PROBE_LOG=$(mktemp)
 

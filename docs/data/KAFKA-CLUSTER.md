@@ -1,6 +1,6 @@
 # Kafka Cluster 开发与故障验收
 
-本文档描述 A2 阶段的 Kafka 三节点 KRaft 基线。现有 `docker-compose.yml` 和 `docker-compose.microservices.yml` 继续提供单节点开发与微服务回滚路径；`docker-compose.cluster.yml` 当前用于隔离的基础设施集成和故障演练，后续逐步加入 MySQL、Redis、Cassandra 与 Elasticsearch profile。
+本文档描述 A2 阶段的 Kafka 三节点 KRaft 基线。现有 `docker-compose.yml` 和 `deploy/compose/docker-compose.microservices.yml` 继续提供单节点开发与微服务回滚路径；`deploy/compose/docker-compose.cluster.yml` 当前用于隔离的基础设施集成和故障演练，后续逐步加入 MySQL、Redis、Cassandra 与 Elasticsearch profile。
 
 ## Durability Policy
 
@@ -50,7 +50,7 @@ Topic 配置只在首次创建时写入；已有 Topic 的 RF 迁移与配置 re
 
 ```bash
 KEEP_STACK=1 ./scripts/smoke-kafka-cluster.sh
-docker compose -p dipole-kafka-cluster-smoke -f docker-compose.cluster.yml down -v
+docker compose -p dipole-kafka-cluster-smoke -f deploy/compose/docker-compose.cluster.yml down -v
 ```
 
 ## Prometheus Gates

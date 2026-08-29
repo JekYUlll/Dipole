@@ -21,6 +21,8 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Compose 编排完成目录收敛：默认本地入口保留在根目录，其余微服务、分发、集群和存储实验拓扑统一迁入 `deploy/compose/`；脚本、文档和归档引用已同步，新增目录索引，Compose 配置门禁覆盖迁移后的全部拓扑。
+- 保留 TypeScript Agent Runtime 的独立 `go.mod` 扫描边界，并修正 repair worker Compose 契约测试，使其校验统一 `/app/service` 入口和 Dockerfile 制品路径。
 - 收紧 Inbox ownership 配置：`message.inbox_write_mode=projector` 现在必须同时启用 `sync.projector_enabled` 和 Kafka；配置不完整时 Message runtime fail closed，`atomic` 回滚路径保持不变。
 - Sync 独立 runtime 已直接装配 Sync-owned repository、hydrator、projection 和 process composition，移除对 `internal/app` 聚合 Composition Root 的依赖；embedded 模式兼容入口保持可回滚。
 - Sync 专属 MySQL repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 直接装配服务边界，embedded 聚合兼容入口继续保留。

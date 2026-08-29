@@ -6,7 +6,7 @@ project_name="dipole-agent-otel-${RANDOM}"
 docker_config=${DIPOLE_SMOKE_DOCKER_CONFIG:-/tmp/dipole-docker-anonymous}
 mkdir -p "$docker_config"
 
-compose=(docker compose -p "$project_name" -f "$root_dir/docker-compose.microservices.yml" --profile observability)
+compose=(docker compose -p "$project_name" -f "$root_dir/deploy/compose/docker-compose.microservices.yml" --profile observability)
 cleanup() {
   DOCKER_CONFIG="$docker_config" DIPOLE_INTERNAL_RPC_SHARED_SECRET=otel-smoke-only \
     "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true

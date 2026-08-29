@@ -52,12 +52,12 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 ## Compose 配置层级
 
 - `docker-compose.yml`：最小本地开发拓扑。
-- `docker-compose.microservices.yml`：服务边界、Kafka、同步、搜索和 Agent 的集成拓扑。
-- `docker-compose.dist.yml`：分发/部署镜像拓扑。
-- `docker-compose.cluster.yml`、`docker-compose.mysql-cluster.yml`、`docker-compose.redis-cluster.yml`：集群和故障演练拓扑。
-- `docker-compose.storage-lab.yml`：隔离存储实验，不作为默认运行入口。
+- `deploy/compose/docker-compose.microservices.yml`：服务边界、Kafka、同步、搜索和 Agent 的集成拓扑。
+- `deploy/compose/docker-compose.dist.yml`：分发/部署镜像拓扑。
+- `deploy/compose/docker-compose.cluster.yml`、`deploy/compose/docker-compose.mysql-cluster.yml`、`deploy/compose/docker-compose.redis-cluster.yml`：集群和故障演练拓扑。
+- `deploy/compose/docker-compose.storage-lab.yml`：隔离存储实验，不作为默认运行入口。
 
-Compose 文件暂时保留在根目录，以保持 Docker Compose 的直接调用习惯；职责和优先级由本节固定，后续如迁移到 `deploy/compose/` 必须同步更新所有运行手册和脚本。
+默认本地开发入口保留在根目录；其余 Compose 编排统一位于 `deploy/compose/`。从仓库根目录执行命令时，路径以仓库根目录为 Compose project directory，脚本会显式传入对应文件。
 
 ## 结构门禁
 
@@ -67,4 +67,4 @@ Compose 文件暂时保留在根目录，以保持 Docker Compose 的直接调�
 scripts/check-service-layout.sh
 ```
 
-Go 单服务镜像使用 `scripts/docker-build-microservice-images.sh` 构建；`docker-compose.dist.yml` 和 `DIPOLE_*_IMAGE` 可作为 legacy 回滚路径。
+Go 单服务镜像使用 `scripts/docker-build-microservice-images.sh` 构建；`deploy/compose/docker-compose.dist.yml` 和 `DIPOLE_*_IMAGE` 可作为 legacy 回滚路径。

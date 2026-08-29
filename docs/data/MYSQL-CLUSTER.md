@@ -1,6 +1,6 @@
 # MySQL Cluster 开发与故障验收
 
-本文档描述 A2 阶段的 MySQL 8.4 InnoDB Cluster 基线。现有 `docker-compose.yml` 与 `docker-compose.microservices.yml` 继续提供单节点开发和快速回切；`docker-compose.mysql-cluster.yml` 仅用于隔离的 HA 集成与故障演练。
+本文档描述 A2 阶段的 MySQL 8.4 InnoDB Cluster 基线。现有 `docker-compose.yml` 与 `deploy/compose/docker-compose.microservices.yml` 继续提供单节点开发和快速回切；`deploy/compose/docker-compose.mysql-cluster.yml` 仅用于隔离的 HA 集成与故障演练。
 
 ## Topology
 

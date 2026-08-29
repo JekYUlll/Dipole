@@ -227,7 +227,7 @@ For the current project stage, the single-node IM chain is now in a healthy rang
 
 ## 环境
 
-双节点 Docker Compose 部署（`docker-compose.dist.yml`）：
+双节点 Docker Compose 部署（`deploy/compose/docker-compose.dist.yml`）：
 
 - `dipole-node1` → 宿主机 `8081`
 - `dipole-node2` → 宿主机 `8082`
