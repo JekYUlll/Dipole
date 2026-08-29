@@ -206,7 +206,7 @@
 - **本轮进展：** Core Auth/Admin/Session application 装配已迁入 `internal/services/core/application/`，Server 继续使用原 HTTP contract，同时将认证、后台统计和设备会话的 legacy Service 构造收敛到 Core adapter；底层实现暂保留，回滚入口未改变。
 - **本轮进展：** Core Group domain 实现及测试已迁入 `internal/services/core/domain/group/`；Group HTTP/DTO、Gateway Kafka 和 embedded 解码调用已直接依赖 Core-owned contract，删除无调用者的 `internal/compat/service/group_compat.go`，HTTP/Kafka contract 保持兼容。
 - **本轮进展：** Core File domain、Redis 分片会话实现及测试已迁入 `internal/services/core/domain/file/`；文件 HTTP/DTO 调用已直接依赖 Core-owned contract，删除无调用者的 `internal/compat/service/file_compat.go`，文件 HTTP contract 保持兼容。
-- **本轮进展：** Message event payload、mutation、Search/Sync projection 和 Gateway/Core/embedded Kafka 调用已直接依赖 `internal/services/message/domain/`；兼容层已缩减为仍有 HTTP/WS/legacy service 调用者的 Message contract，事件兼容 wrapper 不再保留。
+- **本轮进展：** Message event payload、mutation、Search/Sync projection、HTTP/WS 错误和 Gateway/Core/embedded Kafka 调用已直接依赖 Message-owned contract，删除无调用者的 Message service facade；兼容层仅保留跨版本 domain-event decoder 辅助。
 - **本轮进展：** Core Auth domain 及测试已迁入 `internal/services/core/domain/auth/`；Auth HTTP/DTO、Middleware 和测试调用已迁移到 Core-owned Auth contract，删除无调用者的 `internal/compat/service/auth_compat.go`，认证与 MCP grant HTTP contract 保持兼容。
 - **本轮进展：** Core Admin domain 及测试已迁入 `internal/services/core/domain/admin/`；HTTP/DTO 与测试调用已迁移到 Core-owned Admin contract，删除无调用者的 `internal/compat/service/admin_compat.go`，User 权限错误继续共享同一错误值。
 - **本轮进展：** Core Session domain 及测试已迁入 `internal/services/core/domain/session/`；设备会话 DTO、HTTP、Core Session Kick 和 Gateway Kafka 测试已迁移到 Core-owned contract，删除无调用者的 `internal/compat/service/session_compat.go`，设备会话 HTTP 与事件 contract 保持兼容。
