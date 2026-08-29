@@ -23,7 +23,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 
 - `internal/` 当前存放 Go 服务共享的领域、应用、数据访问和传输实现，属于渐进迁移中的共享实现区；它不代表所有服务可以任意依赖彼此的业务实现。
 - `internal/application`、`internal/model`、`internal/platform` 是优先允许共享的基础层；`internal/app`、`internal/service`、`internal/handler`、`internal/store` 的服务归属以[服务边界清单](SERVICE-BOUNDARIES.md)为准。
-- 已完成物理收敛的服务实现应放在 `internal/services/<service>/`；当前 Core capability、Search、Message、Sync application 分别位于 `internal/services/core/application/`、`internal/services/search/application/`、`internal/services/message/application/`、`internal/services/sync/application/`，通用 `internal/app` 只保留兼容装配入口。
+- 已完成物理收敛的服务实现应放在 `internal/services/<service>/`；当前 Core capability/Conversation application、Search、Message、Sync application 分别位于 `internal/services/core/application/`、`internal/services/search/application/`、`internal/services/message/application/`、`internal/services/sync/application/`，通用 `internal/app` 只保留兼容装配入口。
 - Gateway 专属 HTTP 边缘适配器位于 `internal/gateway/`；Search HTTP handler 已从通用 `internal/handler/http` 收敛到 Gateway 包。
 - `api/proto/` 存放跨服务 RPC 契约及生成代码。
 - `contracts/` 存放事件、Agent 和运行时边界契约。
