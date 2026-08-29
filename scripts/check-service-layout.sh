@@ -15,6 +15,14 @@ if [[ ! -f "${root_dir}/services/README.md" ]]; then
   echo "polyglot service directory index is missing: services/README.md" >&2
   exit 1
 fi
+if [[ ! -d "${root_dir}/api/gen/go" || ! -f "${root_dir}/api/proto/dipole/message/v1/message.proto" ]]; then
+  echo "protobuf sources and generated Go contracts must remain under api" >&2
+  exit 1
+fi
+if [[ -d "${root_dir}/internal/transport/grpc/gen" ]]; then
+  echo "generated protobuf contracts remain under internal transport" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/operations/README.md" || ! -f "${root_dir}/internal/operations/search/README.md" || ! -f "${root_dir}/internal/operations/sync/README.md" || ! -f "${root_dir}/internal/operations/cassandra/README.md" || ! -f "${root_dir}/internal/operations/agent/README.md" ]]; then
   echo "one-shot operations must be documented under internal/operations" >&2
   exit 1

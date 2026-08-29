@@ -28,6 +28,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - 已完成物理收敛的服务实现应放在 `internal/services/<service>/`；当前 Core capability/Auth domain/Admin domain/Session domain/User domain/Contact domain/Conversation domain/Group domain/File domain、Core repository composition/cache、Search application/infrastructure/Kafka projector、Message application/domain/infrastructure/Cassandra projector、Sync domain/application/infrastructure/Kafka projector、Agent application（审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control、Runtime promotion）及 Agent MySQL infrastructure/composition 分别位于对应服务目录，独立 Core/Message/Sync runtime 直接使用服务专属 composition，通用 `internal/app` 只保留 embedded 兼容装配入口。
 - Gateway 专属 HTTP 边缘适配器位于 `internal/gateway/http/`；Search 和其余 HTTP handlers 均已从旧共享目录收敛到 Gateway 包。
 - `api/proto/` 存放跨服务 RPC 契约及生成代码。
+- `api/proto/` 存放 protobuf 源契约，`api/gen/go/` 存放由固定工具链生成的 Go 类型；服务 transport 只负责适配，不拥有协议生成物。
 - `contracts/` 存放事件、Agent 和运行时边界契约。
 - `db/` 存放迁移、sqlc 查询和数据库结构。
 - `frontend/` 存放客户端；`services/agent-runtime/` 和 `services/realtime-delivery/` 存放非 Go 服务源码及其独立构建入口；Go/Eino 兼容基线位于 `internal/services/agent/legacy/`，等待 TS Runtime 完整接管后删除。

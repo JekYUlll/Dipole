@@ -1144,7 +1144,7 @@ const file_dipole_delivery_v1_delivery_proto_rawDesc = "" +
 	"\x1cDELIVERY_ERROR_CODE_INTERNAL\x10\x042\xd9\x01\n" +
 	"\x13NodeDeliveryService\x12f\n" +
 	"\x10ObserveNodeBatch\x12%.dipole.delivery.v1.NodeDeliveryBatch\x1a+.dipole.delivery.v1.NodeDeliveryObservation\x12Z\n" +
-	"\x10DeliverNodeBatch\x12%.dipole.delivery.v1.NodeDeliveryBatch\x1a\x1f.dipole.delivery.v1.DeliveryAckBOZMgithub.com/JekYUlll/Dipole/internal/transport/grpc/gen/delivery/v1;deliveryv1b\x06proto3"
+	"\x10DeliverNodeBatch\x12%.dipole.delivery.v1.NodeDeliveryBatch\x1a\x1f.dipole.delivery.v1.DeliveryAckB>Z<github.com/JekYUlll/Dipole/api/gen/go/delivery/v1;deliveryv1b\x06proto3"
 
 var (
 	file_dipole_delivery_v1_delivery_proto_rawDescOnce sync.Once

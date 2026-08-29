@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dipole.common.v1;
 
-option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1;commonv1";
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/common/v1;commonv1";
 
 // RequestContext is asserted by an authenticated internal caller.
 // Payload fields provide audit context; transport authentication establishes trust.
