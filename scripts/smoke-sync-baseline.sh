@@ -32,8 +32,8 @@ docker exec "$mysql_container" mysqladmin ping -h 127.0.0.1 -uroot -pdipole-root
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/migrate
-  CGO_ENABLED=0 go build -o "$baseline_binary" ./cmd/sync-baseline
+  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/tools/migrate
+  CGO_ENABLED=0 go build -o "$baseline_binary" ./cmd/tools/sync-baseline
 )
 runtime_args=(
   --network "$network"

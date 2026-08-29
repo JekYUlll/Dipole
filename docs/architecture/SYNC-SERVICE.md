@@ -123,8 +123,8 @@ Projector 异常时先将 Message 账号恢复为 `configs/mysql/message-service
 先使用 migration v10 创建 `sync_replay_jobs`，再执行：
 
 ```bash
-go run ./cmd/sync-replay --job sync-inbox-20260827 --owner operator-a --batch-size 500
-go run ./cmd/sync-reconcile --job sync-inbox-20260827 --batch-size 500
+go run ./cmd/tools/sync-replay --job sync-inbox-20260827 --owner operator-a --batch-size 500
+go run ./cmd/tools/sync-reconcile --job sync-inbox-20260827 --batch-size 500
 ```
 
 Replay 只读取 `message.direct.created` 与 `message.group.created` Outbox，并在首次领取 job 时固化相关事件最大 ID。每批全部成功后才推进 checkpoint；进程中断、lease 过期或目标冲突时可以由新 owner 继续。热群事件计入处理水位，但按 `sync_fanout=false` 跳过用户 Inbox。
@@ -146,8 +146,8 @@ Replay/Reconcile 已解决 Outbox-era Inbox 的固定快照恢复和数据差异
 migration v11 增加不可变 baseline Job/Entry。切换写责任前，在 Message 原子写仍开启且业务写入已受控的维护窗口执行：
 
 ```bash
-go run ./cmd/sync-baseline --action capture --job sync-legacy-20260827
-go run ./cmd/sync-baseline --action reconcile --job sync-legacy-20260827
+go run ./cmd/tools/sync-baseline --action capture --job sync-legacy-20260827
+go run ./cmd/tools/sync-baseline --action reconcile --job sync-legacy-20260827
 ```
 
 Capture 在 Repeatable Read 事务中固定当前 Inbox `sync_seq` 高水位，并归档所有找不到 created Outbox 的行。归档保留原始 `sync_seq + user_uuid + message_uuid + conversation_key + message_seq`，Manifest 记录 created Outbox 首尾 ID、行数和规范化 SHA-256。相同 Job 名重复 Capture 只校验并返回原归档，不移动边界。
@@ -157,7 +157,7 @@ Reconcile 扫描全部缺少 created Outbox 的当前 Inbox；快照后继续产
 仅 missing 状态允许自动恢复：
 
 ```bash
-go run ./cmd/sync-baseline --action restore --job sync-legacy-20260827
+go run ./cmd/tools/sync-baseline --action restore --job sync-legacy-20260827
 ```
 
 Restore 在单事务内以原 `sync_seq` 补齐缺失行。存在 extra/conflicting 时停止并退出 1，避免覆盖 Cursor 或收件人证据。隔离验收命令：

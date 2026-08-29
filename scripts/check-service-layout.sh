@@ -17,4 +17,9 @@ for legacy in server gateway message-service sync-service search-service search-
   fi
 done
 
+if [[ -n "$(find "${root_dir}/cmd" -mindepth 1 -maxdepth 1 -type d ! -name services ! -name tools -print -quit)" ]]; then
+  echo "unclassified command directory remains directly under cmd/" >&2
+  exit 1
+fi
+
 echo "service command layout: ok"

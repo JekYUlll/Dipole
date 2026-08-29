@@ -51,7 +51,7 @@ internal/data/mysql/
 当前操作顺序：
 
 ```bash
-go run ./cmd/migrate -direction up
+go run ./cmd/tools/migrate -direction up
 go run ./cmd/services/core
 ```
 

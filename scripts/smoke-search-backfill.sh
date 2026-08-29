@@ -65,12 +65,12 @@ done
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/migrate
-  CGO_ENABLED=0 go build -o "$backfill_binary" ./cmd/search-backfill
-  CGO_ENABLED=0 go build -o "$archive_binary" ./cmd/search-archive
-  CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/search-reconcile
-  CGO_ENABLED=0 go build -o "$alias_binary" ./cmd/search-alias
-  CGO_ENABLED=0 go build -o "$cleanup_binary" ./cmd/search-outbox-cleanup
+  CGO_ENABLED=0 go build -o "$migrate_binary" ./cmd/tools/migrate
+  CGO_ENABLED=0 go build -o "$backfill_binary" ./cmd/tools/search-backfill
+  CGO_ENABLED=0 go build -o "$archive_binary" ./cmd/tools/search-archive
+  CGO_ENABLED=0 go build -o "$reconcile_binary" ./cmd/tools/search-reconcile
+  CGO_ENABLED=0 go build -o "$alias_binary" ./cmd/tools/search-alias
+  CGO_ENABLED=0 go build -o "$cleanup_binary" ./cmd/tools/search-outbox-cleanup
 )
 
 runtime_args=(

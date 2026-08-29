@@ -33,8 +33,8 @@ YAML
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$work_dir/dipole-migrate" ./cmd/migrate
-  CGO_ENABLED=0 go build -o "$work_dir/dipole-agent-task-timeline-repair" ./cmd/agent-task-timeline-repair
+  CGO_ENABLED=0 go build -o "$work_dir/dipole-migrate" ./cmd/tools/migrate
+  CGO_ENABLED=0 go build -o "$work_dir/dipole-agent-task-timeline-repair" ./cmd/tools/agent-task-timeline-repair
 )
 
 DIPOLE_CONFIG_FILE="$config_file" DIPOLE_MYSQL_HOST=127.0.0.1 DIPOLE_MYSQL_PORT="$mysql_port" \

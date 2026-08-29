@@ -53,7 +53,7 @@
 
     <rect class="box-blue" x="200" y="180" width="120" height="66" />
     <text x="225" y="208" class="title">wscli</text>
-    <text x="215" y="228" class="tiny">cmd/wscli</text>
+    <text x="215" y="228" class="tiny">cmd/tools/wscli</text>
     <text x="214" y="244" class="tiny">登录 / 建连 / 发消息</text>
 
     <rect class="box-blue" x="60" y="268" width="260" height="94" />

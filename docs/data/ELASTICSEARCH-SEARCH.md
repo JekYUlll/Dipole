@@ -88,7 +88,7 @@ DIPOLE_SEARCH_ENABLED=true docker compose -f docker-compose.microservices.yml --
 
 新 mapping 使用新物理索引构建，例如 `dipole-messages-v2`。完成回填和对账后，adapter 先验收两个生产 Alias 全局只有一个 owner，并校验目标 mapping，再通过单次 `_aliases` 请求原子移除旧 read/write Alias 并绑定新索引，write Alias 显式设置 `is_write_index=true`。remove action 使用 `must_exist=true`，并发运维或分裂 owner 会让整个请求失败。请求成功后的 owner 验收失败会触发反向原子补偿；回滚也使用同一受控路径。
 
-`cmd/search-alias` 要求显式确认维护窗口，并在 Reconcile 前、Alias 操作前、Alias 操作后三次确认 Outbox 高水位仍等于已完成任务的固定快照。切换后的检查发现漂移时，命令立即反向切回原索引；补偿失败与原始错误会一并返回。成功输出 JSON receipt，包含 job、from/to、固定高水位、文档计数、切换时间与回滚截止时间。
+`cmd/tools/search-alias` 要求显式确认维护窗口，并在 Reconcile 前、Alias 操作前、Alias 操作后三次确认 Outbox 高水位仍等于已完成任务的固定快照。切换后的检查发现漂移时，命令立即反向切回原索引；补偿失败与原始错误会一并返回。成功输出 JSON receipt，包含 job、from/to、固定高水位、文档计数、切换时间与回滚截止时间。
 
 安全切换流程：
 
@@ -102,7 +102,7 @@ DIPOLE_SEARCH_ENABLED=true docker compose -f docker-compose.microservices.yml --
 
 ## Backfill And Reconciliation
 
-`cmd/search-backfill` 从 Transactional Outbox 捕获一次固定的 Message mutation ID 高水位，并在该快照内按 Message UUID 只选择最终事件。created/edited 恢复完整 searchable 文档，recalled/deleted 恢复持久 tombstone；同一消息的旧 revision 不进入目标构建批次。
+`cmd/tools/search-backfill` 从 Transactional Outbox 捕获一次固定的 Message mutation ID 高水位，并在该快照内按 Message UUID 只选择最终事件。created/edited 恢复完整 searchable 文档，recalled/deleted 恢复持久 tombstone；同一消息的旧 revision 不进入目标构建批次。
 
 任务状态保存在 `search_backfill_jobs`，记录目标物理索引、owner lease、固定高水位、单调 checkpoint、attempt 和失败原因。任务名与目标索引绑定，不能将已完成 checkpoint 复用于另一个构建索引。构建目标名称必须位于当前 `index_prefix-messages-*` 命名空间，创建时不绑定生产 read/write Alias。
 

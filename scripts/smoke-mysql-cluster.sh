@@ -29,7 +29,7 @@ export DIPOLE_MYSQL_PORT=16446
 export DIPOLE_MYSQL_USER=dipole
 export DIPOLE_MYSQL_PASSWORD=dipole123
 export DIPOLE_MYSQL_DBNAME=dipole
-LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go run ./cmd/migrate -direction up
+LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go run ./cmd/tools/migrate -direction up
 
 export DIPOLE_TEST_MYSQL_FAILOVER_DSN='dipole:dipole123@tcp(127.0.0.1:16446)/dipole?parseTime=true&collation=utf8mb4_unicode_ci'
 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test -count=1 -run TestMySQLRouterWriterFailover -v ./internal/data/mysqlconfig >"$PROBE_LOG" 2>&1 &
