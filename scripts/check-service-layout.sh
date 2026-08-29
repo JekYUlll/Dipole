@@ -603,6 +603,19 @@ for service in "${expected_services[@]}"; do
   fi
 done
 
+if [[ ! -f "${root_dir}/internal/services/search/bootstrap/entrypoint.go" || ! -f "${root_dir}/internal/services/search/bootstrap/README.md" ]]; then
+  echo "Search bootstrap boundary is missing" >&2
+  exit 1
+fi
+if ! rg --quiet 'internal/services/search/bootstrap' "${root_dir}/cmd/services/search/main.go"; then
+  echo "Search entrypoint must use its service-owned bootstrap boundary" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/search/main.go"; then
+  echo "Search entrypoint must not depend directly on shared bootstrap" >&2
+  exit 1
+fi
+
 for legacy in server gateway message-service sync-service search-service search-indexer; do
   if [[ -e "${root_dir}/cmd/${legacy}" ]]; then
     echo "legacy service entrypoint remains at cmd/${legacy}" >&2
