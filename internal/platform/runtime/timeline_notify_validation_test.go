@@ -1,10 +1,6 @@
-package bootstrap
+package runtime
 
-import (
-	"testing"
-
-	"github.com/JekYUlll/Dipole/internal/config"
-)
+import "testing"
 
 func TestValidateTimelineNotifyMode(t *testing.T) {
 	for _, test := range []struct {
@@ -16,7 +12,7 @@ func TestValidateTimelineNotifyMode(t *testing.T) {
 		{mode: "primary"},
 		{mode: "", wantError: true},
 	} {
-		err := validateTimelineNotifyMode(config.Message{TimelineNotifyMode: test.mode})
+		err := ValidateTimelineNotifyMode(test.mode)
 		if (err != nil) != test.wantError {
 			t.Fatalf("mode=%q err=%v want_error=%t", test.mode, err, test.wantError)
 		}

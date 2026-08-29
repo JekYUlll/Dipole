@@ -115,7 +115,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	if err := deliveryAuthority.ValidateGatewayCapabilities(rpcCfg.DeliveryObservationEnabled, rpcCfg.DeliveryPrimaryEnabled); err != nil {
 		return nil, err
 	}
-	if err := legacybootstrap.ValidateTimelineNotifyMode(config.MessageConfig()); err != nil {
+	if err := platformRuntime.ValidateTimelineNotifyMode(config.MessageConfig().TimelineNotifyMode); err != nil {
 		return nil, err
 	}
 	if !rpcCfg.Enabled {
