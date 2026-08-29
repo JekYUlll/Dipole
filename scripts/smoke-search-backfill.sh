@@ -102,7 +102,7 @@ set -e
 [[ "$core_read_exit" -ne 0 ]] || { printf 'Expected Search maintenance account to be denied Core table access\n' >&2; exit 1; }
 
 jq -n \
-  --slurpfile mapping "$root_dir/internal/data/elasticsearch/schema/message_search_v1.json" \
+  --slurpfile mapping "$root_dir/internal/platform/elasticsearch/schema/message_search_v1.json" \
   '{settings:{number_of_shards:1,number_of_replicas:0},mappings:$mapping[0],aliases:{"dipole-smoke-messages-read":{},"dipole-smoke-messages-write":{is_write_index:true}}}' | \
   compose exec -T elasticsearch curl -fsS -X PUT "http://127.0.0.1:9200/${old_index}" \
     -H 'Content-Type: application/json' --data-binary @- >/dev/null

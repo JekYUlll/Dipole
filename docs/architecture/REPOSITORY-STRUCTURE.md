@@ -55,6 +55,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `internal/compat/` 只允许存放迁移兼容入口；禁止在此目录新增领域逻辑。
 - `internal/platform/cassandra/` 只允许存放 Cassandra 连接、Timeline 和 hydration 存储适配器；服务业务策略应位于对应服务边界。
 - `internal/platform/storage/` 及其 `routing/`、`shadow/` 子包只允许存放跨服务存储适配器和可回退迁移装饰器；不得在其中新增 Message/Sync 业务规则。
+- `internal/platform/elasticsearch/` 只允许存放 Search/Indexer 共用的 Elasticsearch 客户端、Alias、mapping 和 projection adapter；搜索权限和事件编排必须位于对应服务边界。
 
 ## Compose 配置层级
 
