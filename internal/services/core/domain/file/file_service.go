@@ -21,15 +21,18 @@ import (
 )
 
 var (
-	ErrFileMissing              = errors.New("file is missing")
-	ErrFileTooLarge             = errors.New("file is too large")
-	ErrFileStorageUnavailable   = application.ErrFileStorageUnavailable
-	ErrFileNotFound             = application.ErrFileNotFound
-	ErrFilePermissionDenied     = application.ErrFilePermissionDenied
-	ErrFileExpired              = errors.New("file is expired")
-	ErrMultipartSessionNotFound = errors.New("multipart upload session not found")
-	ErrMultipartSessionInvalid  = errors.New("multipart upload session is invalid")
-	ErrMultipartPartInvalid     = errors.New("multipart upload part is invalid")
+	ErrFileMissing               = errors.New("file is missing")
+	ErrFileTooLarge              = errors.New("file is too large")
+	ErrFileStorageUnavailable    = application.ErrFileStorageUnavailable
+	ErrFileNotFound              = application.ErrFileNotFound
+	ErrFilePermissionDenied      = application.ErrFilePermissionDenied
+	ErrFileExpired               = errors.New("file is expired")
+	ErrMultipartSessionNotFound  = errors.New("multipart upload session not found")
+	ErrMultipartSessionInvalid   = errors.New("multipart upload session is invalid")
+	ErrMultipartPartInvalid      = errors.New("multipart upload part is invalid")
+	ErrMultipartChecksumRequired = errors.New("multipart file checksum is required")
+	ErrMultipartChecksumMismatch = errors.New("multipart file checksum mismatch")
+	ErrMultipartChecksumCleanup  = errors.New("multipart file checksum cleanup unavailable")
 )
 
 type fileRepository interface {
@@ -44,6 +47,10 @@ type fileMessageRepository interface {
 type fileStorage interface {
 	platformStorage.Uploader
 	platformStorage.Downloader
+}
+
+type multipartObjectRemover interface {
+	RemoveObject(ctx context.Context, bucket, objectKey string) error
 }
 
 type multipartPartURLSigner interface {
@@ -90,20 +97,21 @@ func (r *countingHashReader) Read(p []byte) (int, error) {
 }
 
 type FileService struct {
-	repo                fileRepository
-	messageRepo         fileMessageRepository
-	storage             fileStorage
-	sessionStore        multipartUploadSessionStore
-	maxFileSizeBytes    int64
-	multipartChunkSize  int64
-	multipartSessionTTL time.Duration
-	downloadURLTTL      time.Duration
-	multipartMetrics    *MultipartMetrics
+	repo                     fileRepository
+	messageRepo              fileMessageRepository
+	storage                  fileStorage
+	sessionStore             multipartUploadSessionStore
+	maxFileSizeBytes         int64
+	multipartChunkSize       int64
+	multipartSessionTTL      time.Duration
+	downloadURLTTL           time.Duration
+	multipartMetrics         *MultipartMetrics
+	multipartRequireChecksum bool
 }
 
 func NewFileService(repo fileRepository, messageRepo fileMessageRepository, storage fileStorage) *FileService {
 	storageCfg := config.StorageConfig()
-	return newFileService(
+	service := newFileService(
 		repo,
 		messageRepo,
 		storage,
@@ -112,6 +120,8 @@ func NewFileService(repo fileRepository, messageRepo fileMessageRepository, stor
 		time.Duration(maxInt(storageCfg.MultipartSessionTTLMin, 60))*time.Minute,
 		time.Duration(storageCfg.DownloadURLTTLMinutes)*time.Minute,
 	)
+	service.multipartRequireChecksum = storageCfg.MultipartRequireChecksum
+	return service
 }
 
 func newFileService(repo fileRepository, messageRepo fileMessageRepository, storage fileStorage, maxFileSizeBytes int64, multipartChunkSize int64, multipartSessionTTL time.Duration, downloadURLTTL time.Duration) *FileService {
@@ -145,6 +155,7 @@ type InitiateMultipartUploadInput struct {
 	FileName    string `json:"file_name"`
 	FileSize    int64  `json:"file_size"`
 	ContentType string `json:"content_type"`
+	FileSHA256  string `json:"file_sha256,omitempty"`
 }
 
 type InitiateMultipartUploadResult struct {
@@ -260,6 +271,13 @@ func (s *FileService) InitiateMultipartUpload(uploaderUUID string, input Initiat
 	if s.maxFileSizeBytes > 0 && input.FileSize > s.maxFileSizeBytes {
 		return nil, ErrFileTooLarge
 	}
+	fileSHA256, err := normalizeFileSHA256(input.FileSHA256)
+	if err != nil {
+		return nil, ErrMultipartPartInvalid
+	}
+	if s.multipartRequireChecksum && fileSHA256 == "" {
+		return nil, ErrMultipartChecksumRequired
+	}
 
 	contentType := strings.TrimSpace(input.ContentType)
 	if contentType == "" {
@@ -285,6 +303,7 @@ func (s *FileService) InitiateMultipartUpload(uploaderUUID string, input Initiat
 		FileName:     fileName,
 		FileSize:     input.FileSize,
 		ContentType:  contentType,
+		FileSHA256:   fileSHA256,
 		ChunkSize:    chunkSize,
 		TotalParts:   totalParts,
 		CreatedAt:    time.Now().UTC(),
@@ -465,6 +484,50 @@ func validateMultipartPartSHA256(expected string, actual []byte) error {
 	return nil
 }
 
+func normalizeFileSHA256(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return "", nil
+	}
+	decoded, err := hex.DecodeString(value)
+	if err != nil || len(decoded) != sha256.Size {
+		return "", ErrMultipartPartInvalid
+	}
+	return value, nil
+}
+
+func (s *FileService) verifyMultipartFileSHA256(ctx context.Context, session *multipartUploadSession, uploaded *platformStorage.UploadedObject) error {
+	expected := strings.TrimSpace(session.FileSHA256)
+	if expected == "" {
+		if s.multipartRequireChecksum {
+			return ErrMultipartChecksumRequired
+		}
+		return nil
+	}
+	content, err := s.storage.OpenObject(ctx, uploaded.Bucket, uploaded.ObjectKey)
+	if err != nil {
+		return fmt.Errorf("open completed multipart object for checksum: %w", err)
+	}
+	defer content.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, content); err != nil {
+		return fmt.Errorf("read completed multipart object for checksum: %w", err)
+	}
+	actual := hash.Sum(nil)
+	want, _ := hex.DecodeString(expected)
+	if subtle.ConstantTimeCompare(want, actual) == 1 {
+		return nil
+	}
+	remover, ok := s.storage.(multipartObjectRemover)
+	if !ok {
+		return ErrMultipartChecksumCleanup
+	}
+	if err := remover.RemoveObject(ctx, uploaded.Bucket, uploaded.ObjectKey); err != nil {
+		return fmt.Errorf("remove checksum-mismatched object: %w", err)
+	}
+	return ErrMultipartChecksumMismatch
+}
+
 func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error) {
 	started := time.Now()
 	outcome := "error"
@@ -499,6 +562,9 @@ func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*
 	)
 	if err != nil {
 		return nil, fmt.Errorf("complete multipart upload: %w", err)
+	}
+	if err := s.verifyMultipartFileSHA256(ctx, session, uploaded); err != nil {
+		return nil, err
 	}
 
 	record := &model.UploadedFile{
