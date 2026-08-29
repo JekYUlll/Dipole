@@ -12,20 +12,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 type stubAuthService struct {
-	registerFn func(input service.RegisterInput) (*service.AuthResult, error)
-	loginFn    func(input service.LoginInput) (*service.AuthResult, error)
+	registerFn func(input coreauth.RegisterInput) (*coreauth.AuthResult, error)
+	loginFn    func(input coreauth.LoginInput) (*coreauth.AuthResult, error)
 	logoutFn   func(token string) error
-	mcpGrantFn func(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error)
+	mcpGrantFn func(input coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error)
 }
 
-func (s *stubAuthService) IssueAgentMCPGrant(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error) {
+func (s *stubAuthService) IssueAgentMCPGrant(input coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error) {
 	if s.mcpGrantFn == nil {
 		return nil, nil
 	}
@@ -37,14 +36,14 @@ type stubAuthLimiter struct {
 	allowLoginFn    func(identifier string) (bool, time.Duration)
 }
 
-func (s *stubAuthService) Register(input service.RegisterInput) (*service.AuthResult, error) {
+func (s *stubAuthService) Register(input coreauth.RegisterInput) (*coreauth.AuthResult, error) {
 	if s.registerFn == nil {
 		return nil, nil
 	}
 	return s.registerFn(input)
 }
 
-func (s *stubAuthService) Login(input service.LoginInput) (*service.AuthResult, error) {
+func (s *stubAuthService) Login(input coreauth.LoginInput) (*coreauth.AuthResult, error) {
 	if s.loginFn == nil {
 		return nil, nil
 	}
@@ -77,11 +76,11 @@ func TestAuthHandlerRegisterSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewAuthHandler(&stubAuthService{
-		registerFn: func(input service.RegisterInput) (*service.AuthResult, error) {
+		registerFn: func(input coreauth.RegisterInput) (*coreauth.AuthResult, error) {
 			if input.Telephone != "13800138000" {
 				t.Fatalf("unexpected telephone: %s", input.Telephone)
 			}
-			return &service.AuthResult{
+			return &coreauth.AuthResult{
 				Token: "TOKEN123",
 				User: &model.User{
 					UUID:      "U100",
@@ -117,8 +116,8 @@ func TestAuthHandlerRegisterConflict(t *testing.T) {
 	t.Parallel()
 
 	handler := NewAuthHandler(&stubAuthService{
-		registerFn: func(input service.RegisterInput) (*service.AuthResult, error) {
-			return nil, service.ErrUserAlreadyExists
+		registerFn: func(input coreauth.RegisterInput) (*coreauth.AuthResult, error) {
+			return nil, coreauth.ErrUserAlreadyExists
 		},
 	})
 
@@ -138,8 +137,8 @@ func TestAuthHandlerLoginUnauthorized(t *testing.T) {
 	t.Parallel()
 
 	handler := NewAuthHandler(&stubAuthService{
-		loginFn: func(input service.LoginInput) (*service.AuthResult, error) {
-			return nil, service.ErrInvalidCredentials
+		loginFn: func(input coreauth.LoginInput) (*coreauth.AuthResult, error) {
+			return nil, coreauth.ErrInvalidCredentials
 		},
 	})
 
@@ -159,7 +158,7 @@ func TestAuthHandlerLoginRateLimited(t *testing.T) {
 	t.Parallel()
 
 	handler := NewAuthHandler(&stubAuthService{
-		loginFn: func(input service.LoginInput) (*service.AuthResult, error) {
+		loginFn: func(input coreauth.LoginInput) (*coreauth.AuthResult, error) {
 			t.Fatalf("login service should not be called when rate limited")
 			return nil, nil
 		},
@@ -239,11 +238,11 @@ func TestAuthHandlerLogoutFailure(t *testing.T) {
 
 func TestAuthHandlerIssuesAgentMCPGrantFromAuthenticatedPrincipal(t *testing.T) {
 	t.Parallel()
-	handler := NewAuthHandler(&stubAuthService{mcpGrantFn: func(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error) {
+	handler := NewAuthHandler(&stubAuthService{mcpGrantFn: func(input coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error) {
 		if input.UserUUID != "U100" || input.Resource != coreauth.AgentMCPResource || len(input.Scopes) != 1 || input.Scopes[0] != coreauth.AgentMCPReadScope || !input.Consent {
 			t.Fatalf("unexpected grant input: %+v", input)
 		}
-		return &service.AgentMCPGrantResult{
+		return &coreauth.AgentMCPGrantResult{
 			AccessToken: "MCP_TOKEN", TokenType: "Bearer", ExpiresIn: 900,
 			Resource: coreauth.AgentMCPResource, Scope: coreauth.AgentMCPReadScope,
 		}, nil
@@ -263,7 +262,7 @@ func TestAuthHandlerIssuesAgentMCPGrantFromAuthenticatedPrincipal(t *testing.T) 
 
 func TestAuthHandlerRejectsAgentMCPGrantWithoutConsent(t *testing.T) {
 	t.Parallel()
-	handler := NewAuthHandler(&stubAuthService{mcpGrantFn: func(service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error) {
+	handler := NewAuthHandler(&stubAuthService{mcpGrantFn: func(coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error) {
 		t.Fatal("grant service must not run without consent")
 		return nil, nil
 	}})

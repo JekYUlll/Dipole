@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
@@ -27,10 +26,10 @@ type authRateLimiter interface {
 }
 
 type authService interface {
-	Register(input service.RegisterInput) (*service.AuthResult, error)
-	Login(input service.LoginInput) (*service.AuthResult, error)
+	Register(input coreauth.RegisterInput) (*coreauth.AuthResult, error)
+	Login(input coreauth.LoginInput) (*coreauth.AuthResult, error)
 	Logout(token string) error
-	IssueAgentMCPGrant(input service.AgentMCPGrantInput) (*service.AgentMCPGrantResult, error)
+	IssueAgentMCPGrant(input coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error)
 }
 
 func NewAuthHandler(service authService) *AuthHandler {
@@ -81,9 +80,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	result, err := h.service.Register(request.ToInput())
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrInvalidTelephone):
+		case errors.Is(err, coreauth.ErrInvalidTelephone):
 			ErrorWithCode(c, http.StatusBadRequest, code.AuthInvalidTelephone, "telephone format is invalid")
-		case errors.Is(err, service.ErrUserAlreadyExists):
+		case errors.Is(err, coreauth.ErrUserAlreadyExists):
 			ErrorWithCode(c, http.StatusConflict, code.AuthUserAlreadyExists, "telephone already registered")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -134,9 +133,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	result, err := h.service.Login(request.ToInput())
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrInvalidCredentials):
+		case errors.Is(err, coreauth.ErrInvalidCredentials):
 			ErrorWithCode(c, http.StatusUnauthorized, code.AuthInvalidCredentials, "telephone or password is invalid")
-		case errors.Is(err, service.ErrUserDisabled):
+		case errors.Is(err, coreauth.ErrUserDisabled):
 			ErrorWithCode(c, http.StatusForbidden, code.AuthUserDisabled, "user is disabled")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -196,7 +195,7 @@ func (h *AuthHandler) IssueAgentMCPGrant(c *gin.Context) {
 		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, err.Error())
 		return
 	}
-	result, err := h.service.IssueAgentMCPGrant(service.AgentMCPGrantInput{
+	result, err := h.service.IssueAgentMCPGrant(coreauth.AgentMCPGrantInput{
 		UserUUID: user.UUID, Resource: request.Resource, Scopes: request.Scopes, Consent: request.Consent,
 	})
 	if err != nil {
