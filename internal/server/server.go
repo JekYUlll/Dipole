@@ -74,13 +74,13 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
-	authService := service.NewAuthService(repos.Users, tokenService)
+	authService := coreapplication.NewAuthApplication(repos.Users, tokenService)
 	storageCfg := config.StorageConfig()
 	userService := coreapplication.NewUserApplication(repos.Users, coreapplication.UserDependencies{
 		Files: repos.Files, Storage: platformStorage.Client,
 		AvatarMaxBytes: 5 * 1024 * 1024, AvatarURLTTL: 10 * time.Minute,
 	})
-	adminService := service.NewAdminService(repos.Admin, wsHub)
+	adminService := coreapplication.NewAdminApplication(repos.Admin, wsHub)
 	var kafkaEvents applicationPort.EventPublisher
 	if config.KafkaConfig().Enabled {
 		kafkaEvents = platformKafka.Client
@@ -106,7 +106,10 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 		Storage: platformStorage.Client, AvatarMaxBytes: 5 * 1024 * 1024,
 		AvatarURLTTL: 10 * time.Minute, SystemMessenger: messaging.Messages,
 	})
-	sessionService := service.NewSessionService(redisPresence, tokenService, newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled))
+	sessionService := coreapplication.NewSessionApplication(coreapplication.SessionDependencies{
+		Presence: redisPresence, Tokens: tokenService,
+		Kicker: newSessionKicker(wsHub, kafkaEvents, config.KafkaConfig().Enabled),
+	})
 	wsAuthenticator := wsTransport.NewAuthenticator(tokenService, repos.Users)
 	// When Kafka is enabled, conversation updates are handled asynchronously by
 	// updateDirectConversationHandler / updateGroupConversationHandler in bootstrap/kafka.go.

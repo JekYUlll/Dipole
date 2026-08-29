@@ -55,6 +55,12 @@ if [[ ! -f "${root_dir}/internal/services/core/application/file.go" ]]; then
   echo "Core file application is outside its service boundary" >&2
   exit 1
 fi
+for core_app in auth admin session; do
+  if [[ ! -f "${root_dir}/internal/services/core/application/${core_app}.go" ]]; then
+    echo "Core ${core_app} application is outside its service boundary" >&2
+    exit 1
+  fi
+done
 if ! rg --quiet '^type CoreProcessRepositories struct' "${root_dir}/internal/app/repositories.go"; then
   echo "Core process repository composition is missing" >&2
   exit 1
