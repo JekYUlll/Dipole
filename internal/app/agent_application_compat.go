@@ -14,8 +14,6 @@ type PersistentAgentApprovalServiceV1 = agentapplication.PersistentAgentApproval
 type PersistentAgentTaskControlAuthorizerV1 = agentapplication.PersistentAgentTaskControlAuthorizerV1
 type PersistentAgentTaskWorkflowProjectionServiceV1 = agentapplication.PersistentAgentTaskWorkflowProjectionServiceV1
 type PersistentAgentWorkflowRepairAuditServiceV1 = agentapplication.PersistentAgentWorkflowRepairAuditServiceV1
-type PersistentAgentEventSubscriptionResolverV1 = agentapplication.PersistentAgentEventSubscriptionResolverV1
-type PersistentAgentEventSubscriptionControlV1 = agentapplication.PersistentAgentEventSubscriptionControlV1
 type LocalAgentCommandV1 = agentapplication.LocalAgentCommandV1
 type LocalAgentCapabilityV1 = agentapplication.LocalAgentCapabilityV1
 type PersistentAgentWorkflowRepairPrepareServiceV1 = agentapplication.PersistentAgentWorkflowRepairPrepareServiceV1
@@ -59,14 +57,6 @@ func NewPersistentAgentWorkflowRepairAuditServiceV1(policies application.AgentPo
 
 func NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, now func() time.Time) (*PersistentAgentWorkflowRepairAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies, repairs, now)
-}
-
-func NewPersistentAgentEventSubscriptionResolverV1(store application.AgentEventSubscriptionStoreV1, definitions agentapplication.AgentSubscriptionDefinitionReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionResolverV1, error) {
-	return agentapplication.NewPersistentAgentEventSubscriptionResolverV1(store, definitions, now)
-}
-
-func NewPersistentAgentEventSubscriptionControlV1(store application.AgentEventSubscriptionStoreV1, definitions agentapplication.AgentSubscriptionDefinitionReaderV1, conversations agentapplication.AgentSubscriptionConversationReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionControlV1, error) {
-	return agentapplication.NewPersistentAgentEventSubscriptionControlV1(store, definitions, conversations, now)
 }
 
 func NewLocalAgentCommandV1(messages agentapplication.AgentCommandMessages) (*LocalAgentCommandV1, error) {
