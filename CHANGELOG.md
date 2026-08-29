@@ -103,6 +103,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：Multipart 初始化支持可选 `file_sha256`，会话绑定整文件摘要；开启 `storage.multipart_require_checksum` 后，Complete 会读取已完成对象校验 SHA-256，缺失或不匹配时拒绝并清理对象，前端会在初始化阶段提交 Web Crypto 摘要，默认仍保持兼容模式。
 - 2026-08-30：为 Redis Multipart 清理增加幂等与截断保护回归：重复执行不会重复删除，达到 `--redis-max-keys` 时报告 `complete=false`，避免把部分扫描结果误判为全量清理。
 - 2026-08-30：扩展 `dipole-multipart-cleanup` 的可选 Redis 生命周期扫描：`--redis-orphans` 以有界 SCAN 检测无 TTL 的 Multipart meta 与 meta 已过期的孤儿 parts，默认 dry-run，只有 `--execute --confirm` 才删除孤儿 parts；保留原 MinIO 报告字段，完整过期 upload reconciliation 和告警仍待 A7/AD-055。
 - 2026-08-30：Core File Service 接入低基数 Multipart 指标 `dipole_multipart_operations_total` 与 `dipole_multipart_operation_duration_seconds`，覆盖 initiate、presign、register、upload_part、complete、abort 的结果和耗时；不记录用户、会话或对象标识，Redis 过期扫描与清理指标仍待 A7/AD-055。
