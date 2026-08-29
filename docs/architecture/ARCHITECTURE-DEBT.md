@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Gateway 群事件 Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，覆盖创建、更新、成员变更和解散通知；Core 的 `group.created` 会话初始化仍保留公共解码依赖，剩余消息 delivery handler 继续待迁移。
 - 2026-08-29：Gateway `session.force_logout` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，连接控制接口归属 Gateway；剩余消息与群事件 delivery handler 仍待继续迁移。
 - 2026-08-29：Gateway `contact.friend.deleted` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，新增服务自有契约测试；剩余消息与会话事件 delivery handler 仍待继续迁移。
 - 2026-08-29：Gateway `conversation.direct.read` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，新增服务自有契约测试；其余消息与会话事件 delivery handler 仍待继续迁移。
