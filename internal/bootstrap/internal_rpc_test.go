@@ -24,6 +24,7 @@ import (
 	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	gatewaybootstrap "github.com/JekYUlll/Dipole/internal/services/gateway/bootstrap"
 	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
 	syncbootstrap "github.com/JekYUlll/Dipole/internal/services/sync/bootstrap"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
@@ -474,7 +475,7 @@ func TestGatewayUsesItsOwnAuthenticatedCoreIdentity(t *testing.T) {
 		server.Close(ctx)
 	})
 	cfg.CoreTarget = server.Address()
-	client, connection, err := DialGatewayCoreCapability(context.Background(), cfg)
+	client, connection, err := gatewaybootstrap.DialGatewayCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial gateway core capability: %v", err)
 	}

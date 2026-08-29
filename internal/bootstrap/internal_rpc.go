@@ -179,10 +179,6 @@ func DialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.
 	return dialCoreCapabilityAs(ctx, cfg, messageServiceName)
 }
 
-func DialGatewayCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
-	return dialCoreCapabilityAs(ctx, cfg, gatewayServiceName)
-}
-
 func DialGatewayAgentCapability(ctx context.Context, cfg config.InternalRPC) (agentv1.AgentCapabilityServiceClient, *grpc.ClientConn, error) {
 	connection, err := dialInternalRPC(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{Service: gatewayServiceName, Secret: cfg.SharedSecret})
 	if err != nil {
