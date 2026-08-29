@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：完成 `internal/app` 聚合测试壳退休：迁移 11 个 Agent application 边界测试至 `internal/services/agent/application` 外部测试包，删除空聚合目录，并增加结构门禁防止其回流。
 - 2026-08-30：审计确认 Gateway 旧 `NewServer` 仅被测试使用，已迁移测试到显式依赖注入入口并删除隐式 Core Auth 兼容包装；结构门禁锁定 Gateway 只接受 Composition Root 提供的 `TokenResolver`。
 - 2026-08-30：为 `gateway.NewServerWithDependencies` 增加 `TokenResolver` 必填校验和回归测试；独立 Gateway 组合缺少 verifier 时启动前失败，旧 `NewServer` 继续提供兼容注入。
 - 2026-08-30：Gateway Server 新增显式 `TokenResolver` 注入构造函数，独立 bootstrap 负责提供 Core verifier；旧 `NewServer` 保留兼容包装，认证行为和回滚路径保持兼容。
