@@ -22,6 +22,7 @@
 - **长期约束：** 服务拓扑、数据 ownership、默认开关或语言职责变化时，必须同步更新架构图、对应正式文档、更新日志和台账；架构图不得把 shadow、fallback 或离线契约描述成生产主路径。
 - **本轮进展：** `ARCHITECTURE-QA.md` 已同步当前 Message Store、User Inbox Timeline、Conversation Seq/read_seq、sqlc 和微服务拓扑，移除早期无 Inbox、GORM 与纯模块化单体的现状描述。
 - **本轮进展：** 面试问答、消息存储模型和同步策略已同步当前服务目录与 Timeline 实现；旧 `after_id`、`/messages/offline` 和 `unread_count` 已明确标注为兼容语义，避免当前设计说明继续引用过时主路径。
+- **本轮进展：** 长期开发路线图已同步三大阶段和独立 C++ Realtime Delivery 轨道，移除旧 Cgo 必做叙述；C++ 仍保持候选服务和 Go authority，未改变默认运行路径。
 
 ## 待处理
 
