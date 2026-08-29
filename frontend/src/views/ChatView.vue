@@ -662,6 +662,57 @@ const mediaPreviewInflight = new Map<string, Promise<void>>()
 
 const directUploadThresholdBytes = 4 * 1024 * 1024
 const maxTextMessageRunes = 1000
+type MultipartUploadPolicy = {
+  schema_version: string
+  policy_version: string
+  mode: 'relay' | 'presigned'
+  fallback_mode: 'relay'
+  direct_upload_threshold_bytes: number
+  max_file_size_bytes: number
+  chunk_size_bytes: number
+  max_concurrency: number
+  max_retries: number
+  retry_delay_ms: number
+  presign_url_ttl_seconds: number
+}
+
+const defaultMultipartUploadPolicy: MultipartUploadPolicy = {
+  schema_version: 'dipole.multipart-upload.policy.v1',
+  policy_version: 'v1',
+  mode: 'relay',
+  fallback_mode: 'relay',
+  direct_upload_threshold_bytes: directUploadThresholdBytes,
+  max_file_size_bytes: 50 * 1024 * 1024,
+  chunk_size_bytes: 5 * 1024 * 1024,
+  max_concurrency: 3,
+  max_retries: 2,
+  retry_delay_ms: 250,
+  presign_url_ttl_seconds: 900,
+}
+
+let multipartUploadPolicyPromise: Promise<MultipartUploadPolicy> | undefined
+
+const loadMultipartUploadPolicy = async (): Promise<MultipartUploadPolicy> => {
+  if (!multipartUploadPolicyPromise) {
+    multipartUploadPolicyPromise = api.get('/api/v1/files/uploads/policy').then((value) => {
+      const policy = value as Partial<MultipartUploadPolicy>
+      if (policy.schema_version !== defaultMultipartUploadPolicy.schema_version ||
+          policy.fallback_mode !== 'relay' ||
+          (policy.mode !== 'relay' && policy.mode !== 'presigned') ||
+          !Number.isSafeInteger(policy.direct_upload_threshold_bytes) ||
+          !Number.isSafeInteger(policy.max_file_size_bytes) ||
+          !Number.isSafeInteger(policy.chunk_size_bytes) ||
+          !Number.isSafeInteger(policy.max_concurrency) ||
+          !Number.isSafeInteger(policy.max_retries) ||
+          !Number.isSafeInteger(policy.retry_delay_ms) ||
+          !Number.isSafeInteger(policy.presign_url_ttl_seconds)) {
+        throw new Error('invalid multipart upload policy')
+      }
+      return policy as MultipartUploadPolicy
+    }).catch(() => defaultMultipartUploadPolicy)
+  }
+  return multipartUploadPolicyPromise
+}
 type MultipartUploadInit = {
   session_id: string
   chunk_size: number
@@ -1390,7 +1441,8 @@ const clearStoredMultipartUpload = (file: File) => {
 }
 
 const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
-  if (file.size <= directUploadThresholdBytes) {
+  const policy = await loadMultipartUploadPolicy()
+  if (file.size <= policy.direct_upload_threshold_bytes) {
     uploadingFileLabel.value = '上传中...'
     const formData = new FormData()
     formData.append('file', file)
@@ -1438,7 +1490,7 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
 
   try {
     let presignedParts = new Map<number, string>()
-    if (presignedMultipartEnabled) {
+    if (presignedMultipartEnabled && policy.mode === 'presigned') {
       const partNumbers = Array.from({ length: init.total_parts }, (_, index) => index + 1)
         .filter(partNumber => !skipParts.has(partNumber))
       if (partNumbers.length > 0) {
@@ -1472,8 +1524,9 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
         },
       })
     }, {
-      concurrency: 3,
-      maxRetries: 2,
+      concurrency: policy.max_concurrency,
+      maxRetries: policy.max_retries,
+      retryDelayMs: policy.retry_delay_ms,
       skipParts,
       onPartComplete: (completedParts, totalParts) => {
         uploadingFileLabel.value = `上传中 ${completedParts}/${totalParts}...`
