@@ -80,6 +80,13 @@ type gatewayCoreStub struct{}
 
 type gatewayLimiterStub struct{}
 
+func newTestGatewayServer(coreTarget string, dependencies Dependencies) (*Server, error) {
+	if dependencies.TokenResolver == nil {
+		dependencies.TokenResolver = coreauth.NewTokenService()
+	}
+	return NewServerWithDependencies(coreTarget, dependencies)
+}
+
 type gatewaySearchStub struct {
 	principal string
 	text      string
@@ -279,7 +286,7 @@ func TestGatewayOwnsHealthAndProxiesCoreHTTP(t *testing.T) {
 		_, _ = writer.Write([]byte("core-response"))
 	}))
 	defer core.Close()
-	gateway, err := NewServer(core.URL, Dependencies{
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{
 		Messages: gatewayMessageStub{},
 		Core:     gatewayCoreStub{},
 		Limiter:  gatewayLimiterStub{},
@@ -317,7 +324,7 @@ func TestGatewayOwnsHealthAndProxiesCoreHTTP(t *testing.T) {
 func TestGatewayOwnsMessageAndSyncReadRoutes(t *testing.T) {
 	core := httptest.NewServer(http.NotFoundHandler())
 	defer core.Close()
-	gateway, err := NewServer(core.URL, Dependencies{
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{
 		Messages: gatewayMessageStub{}, Sync: gatewaySyncStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{},
 	})
 	if err != nil {
@@ -346,16 +353,16 @@ func TestGatewayOwnsMessageAndSyncReadRoutes(t *testing.T) {
 }
 
 func TestGatewayRequiresRemoteDependencies(t *testing.T) {
-	if _, err := NewServer("http://127.0.0.1:8081", Dependencies{Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
+	if _, err := newTestGatewayServer("http://127.0.0.1:8081", Dependencies{Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
 		t.Fatal("expected missing message application to fail")
 	}
-	if _, err := NewServer("http://127.0.0.1:8081", Dependencies{Messages: gatewayMessageStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
+	if _, err := newTestGatewayServer("http://127.0.0.1:8081", Dependencies{Messages: gatewayMessageStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
 		t.Fatal("expected missing core capability to fail")
 	}
-	if _, err := NewServer("not-a-url", Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
+	if _, err := newTestGatewayServer("not-a-url", Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
 		t.Fatal("expected invalid core target to fail")
 	}
-	if _, err := NewServer("ftp://127.0.0.1", Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
+	if _, err := newTestGatewayServer("ftp://127.0.0.1", Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{}}); err == nil {
 		t.Fatal("expected unsupported core target scheme to fail")
 	}
 }
@@ -381,7 +388,7 @@ func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 	}))
 	defer core.Close()
 	search := &gatewaySearchStub{}
-	gateway, err := NewServer(core.URL, Dependencies{
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{
 		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Search: search, Limiter: gatewayLimiterStub{},
 	})
 	if err != nil {
@@ -429,7 +436,7 @@ func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
 	}))
 	defer core.Close()
 	subscriptions := &gatewayAgentSubscriptionStub{}
-	gateway, err := NewServer(core.URL, Dependencies{
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{
 		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentSubscriptions: subscriptions, Limiter: gatewayLimiterStub{},
 	})
 	if err != nil {
@@ -496,7 +503,7 @@ func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
 	core := httptest.NewServer(http.NotFoundHandler())
 	defer core.Close()
 	memories := &gatewayAgentMemoryStub{}
-	gateway, err := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentMemories: memories, Limiter: gatewayLimiterStub{}})
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentMemories: memories, Limiter: gatewayLimiterStub{}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -558,7 +565,7 @@ func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
 	core := httptest.NewServer(http.NotFoundHandler())
 	defer core.Close()
 	catalog := &gatewayAgentDefinitionStub{}
-	gateway, _ := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentDefinitions: catalog, Limiter: gatewayLimiterStub{}})
+	gateway, _ := newTestGatewayServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentDefinitions: catalog, Limiter: gatewayLimiterStub{}})
 	unauthorized := httptest.NewRecorder()
 	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/definitions", nil))
 	if unauthorized.Code != http.StatusUnauthorized {
@@ -587,7 +594,7 @@ func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
 	core := httptest.NewServer(http.NotFoundHandler())
 	defer core.Close()
 	subscriptions := &gatewayAgentSubscriptionStub{}
-	gateway, _ := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentSubscriptions: subscriptions, Limiter: gatewayLimiterStub{}})
+	gateway, _ := newTestGatewayServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentSubscriptions: subscriptions, Limiter: gatewayLimiterStub{}})
 	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
 
 	for _, target := range []string{
@@ -650,7 +657,7 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) { proxied++; writer.WriteHeader(http.StatusTeapot) }))
 	defer core.Close()
 	tasks := &gatewayAgentTaskStub{}
-	gateway, err := NewServer(core.URL, Dependencies{
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{
 		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentTasks: tasks, Limiter: gatewayLimiterStub{},
 	})
 	if err != nil {
@@ -698,7 +705,7 @@ func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
 	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) { writer.WriteHeader(http.StatusTeapot) }))
 	defer core.Close()
 	mcp := &gatewayAgentMCPStub{}
-	gateway, err := NewServer(core.URL, Dependencies{
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{
 		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentMCP: mcp, Limiter: gatewayLimiterStub{},
 	})
 	if err != nil {
@@ -751,7 +758,7 @@ func TestGatewayRateLimitsAgentMCPByAuthenticatedPrincipalAndAllowsDeleteCleanup
 	defer core.Close()
 	mcp := &gatewayAgentMCPStub{}
 	limiter := &gatewayAgentMCPLimiterStub{allowedCalls: 1, retryAfter: 1500 * time.Millisecond}
-	gateway, err := NewServer(core.URL, Dependencies{
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{
 		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentMCP: mcp,
 		Limiter: gatewayLimiterStub{}, AgentMCPLimiter: limiter,
 	})

@@ -71,7 +71,7 @@
 - 共享 authentication middleware 通过 `internal/application` 的最小 token resolver/session contract 工作；Core Auth 的 JWT 实现可替换，Gateway 认证边界不持有 Core domain 具体类型。
 - WebSocket Authenticator 通过 `internal/application.TokenSessionResolver` 获取会话，transport 层只依赖认证 contract；Core Auth 继续负责 JWT verifier 和 token state 校验。
 - Gateway bootstrap 通过 `gateway.NewServerWithDependencies` 显式注入 `application.TokenResolver`；Gateway Server 只依赖 contract，Core verifier 的实例化位于 Composition Root。
-- `NewServerWithDependencies` 对 TokenResolver 执行 fail-fast 校验；兼容 `NewServer` 只用于迁移期旧调用，独立服务入口必须使用显式依赖注入构造。
+- `NewServerWithDependencies` 对 TokenResolver 执行 fail-fast 校验；Gateway Server 已删除隐式 `NewServer` 兼容包装，所有生产和测试组合都必须显式提供认证依赖。
 - Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配已归属 `internal/services/gateway/server/`；`internal/gateway/http/` 仅保留可复用的 Gin response/handler adapter，Core embedded server 继续通过显式依赖复用。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
 - 服务入口优先依赖自身的 `internal/services/<service>/bootstrap`；尚未完成运行时基础设施拆分的服务，可以通过该目录的兼容 facade 过渡，但入口不得直接引用共享 `internal/bootstrap`。
