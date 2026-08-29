@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/backfill/memorylineage"
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	agentops "github.com/JekYUlll/Dipole/internal/operations/agent"
+	"github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func run(jobName, ownerID, operatorID, approverID string, batchSize, leaseSecond
 	defer stop()
 
 	if !execute {
-		highWatermark, err := bootstrap.ReadMemoryLineageBackfillHighWatermark(ctx)
+		highWatermark, err := agentops.ReadMemoryLineageBackfillHighWatermark(ctx)
 		if err != nil {
 			return err
 		}
@@ -75,7 +75,7 @@ func run(jobName, ownerID, operatorID, approverID string, batchSize, leaseSecond
 	if approval.OperatorID != strings.TrimSpace(operatorID) || approval.ApproverID != strings.TrimSpace(approverID) {
 		return fmt.Errorf("Memory lineage backfill approval identity mismatch")
 	}
-	result, err := bootstrap.RunMemoryLineageBackfill(ctx, bootstrap.MemoryLineageBackfillOptions{
+	result, err := agentops.RunMemoryLineageBackfill(ctx, agentops.MemoryLineageBackfillOptions{
 		JobName: jobName, OwnerID: ownerID, BatchSize: int(manifest.BatchSize), LeaseDuration: time.Duration(leaseSeconds) * time.Second,
 	})
 	if err != nil {

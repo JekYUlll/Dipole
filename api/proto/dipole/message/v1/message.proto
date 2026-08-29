@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package dipole.message.v1;
 
-option go_package = "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/message/v1;messagev1";
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/message/v1;messagev1";
 
 import "google/protobuf/timestamp.proto";
 import "dipole/common/v1/context.proto";
@@ -74,6 +74,19 @@ message SendGroupFileRequest {
   string client_message_id = 4;
 }
 
+message SendSystemDirectMessageRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string sender_user_id = 2;
+  string target_user_id = 3;
+  string content = 4;
+}
+
+message SendSystemGroupMessageRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string group_id = 2;
+  string content = 3;
+}
+
 message SendMessageResponse {
   Message message = 1;
   repeated string recipient_user_ids = 2;
@@ -133,6 +146,8 @@ service MessageService {
   rpc SendGroupText(SendGroupTextRequest) returns (SendMessageResponse);
   rpc SendDirectFile(SendDirectFileRequest) returns (SendMessageResponse);
   rpc SendGroupFile(SendGroupFileRequest) returns (SendMessageResponse);
+  rpc SendSystemDirectMessage(SendSystemDirectMessageRequest) returns (SendMessageResponse);
+  rpc SendSystemGroupMessage(SendSystemGroupMessageRequest) returns (SendMessageResponse);
   rpc GetMessageCommandReceipt(GetMessageCommandReceiptRequest) returns (GetMessageCommandReceiptResponse);
   rpc ListDirectHistory(ListDirectHistoryRequest) returns (ListMessagesResponse);
   rpc ListGroupHistory(ListGroupHistoryRequest) returns (ListMessagesResponse);

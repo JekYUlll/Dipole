@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	cassandraops "github.com/JekYUlll/Dipole/internal/operations/cassandra"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	report, err := bootstrap.RunCassandraReconciliation(ctx, bootstrap.CassandraReconciliationOptions{
+	report, err := cassandraops.RunCassandraReconciliation(ctx, cassandraops.CassandraReconciliationOptions{
 		JobName: *jobName, BatchSize: *batchSize, SampleModulus: *sampleModulus, MaxExamples: *maxExamples,
 		Source: *source, ArchiveManifest: *archiveManifest,
 	})

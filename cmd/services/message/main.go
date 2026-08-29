@@ -5,9 +5,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	"go.uber.org/zap"
 )
 
@@ -20,7 +20,7 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	runtime, err := bootstrap.InitializeMessageService(ctx)
+	runtime, err := messagebootstrap.InitializeService(ctx)
 	if err != nil {
 		logger.L().Fatal("message service initialize failed", zap.Error(err))
 	}

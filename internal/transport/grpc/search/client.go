@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	searchv1 "github.com/JekYUlll/Dipole/api/gen/go/search/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
-	searchv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/search/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

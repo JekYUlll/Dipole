@@ -38,16 +38,16 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 
 | 领域 | 当前实现 | 演进起点 |
 | --- | --- | --- |
-| 应用部署 | 三个相同的单体节点 + Nginx | 已具备横向扩展，尚未形成独立服务 |
-| HTTP / WS | Gin + WebSocket Hub | 适合收口为 IM Gateway |
-| 消息 | `MessageService` + `MessageRepository` | 已有接口、Kafka 和 Outbox，可优先抽离 |
-| 同步 | MySQL `user_sync_inbox` + `/sync` | 后端切片已存在，客户端仍使用旧离线接口 |
-| 会话 | Kafka 驱动的 Conversation Projection | 可继续留在 Core，后续按压力抽离 |
-| 消息存储 | MySQL `messages` | 先抽象 Store，再迁移 Cassandra |
-| 事件 | 单节点 Kafka + Transactional Outbox | 需要事件版本、兼容测试和集群化 |
-| 实时状态 | Redis Presence / PubSub / Hot Group | 继续保持临时状态职责 |
-| 文件 | MinIO | 保持独立对象存储，不随消息库迁移 |
-| AI | 进程内 Eino Agent，消费 `message.direct.created` | 已有天然事件边界，第三阶段迁移到 TypeScript Runtime |
+| 应用部署 | `cmd/services/` 下的 Core、Gateway、Message、Sync、Search 独立 Go 入口，另有 TS Agent Runtime；embedded 聚合入口保留 | 服务镜像和 Compose 已可独立启动，embedded 模式作为回滚路径 |
+| HTTP / WS | Gateway 承担远程模式 HTTP/WebSocket，Core 仅在 embedded 模式保留对应数据面 | Gateway 已通过受认证 RPC 调用 Core、Message、Sync |
+| 消息 | Message Service application + SQLC repository + Outbox | Message 负责消息事实、幂等、Seq 和事件发布，Core 通过 Capability/RPC 协作 |
+| 同步 | Sync Service 管理 MySQL `user_sync_inbox`、设备 Cursor 和群 checkpoint | Cassandra hydration 可选，旧 Offline 接口继续兼容 |
+| 会话 | Core Conversation Projection 消费 Kafka 事件 | Conversation State 仍归 Core，后续按压力独立扩展 |
+| 消息存储 | MySQL `messages` 为当前事实源，Cassandra Timeline 支持 shadow/primary 实验 | 通过 storage-neutral Store、回退和证据门禁推进迁移 |
+| 事件 | Kafka + Transactional Outbox，按服务拆分 consumer ownership | 事件版本、retry/DLQ、幂等和 readiness 门禁已建立 |
+| 实时状态 | Redis Presence / PubSub / Hot Group，Go Delivery 为当前 authority | C++ Realtime Delivery 仅作为默认关闭候选 profile |
+| 文件 | MinIO，文件元数据归 Core，Agent Artifact 使用独立 bucket/身份 | 保持独立对象存储，不随消息库迁移 |
+| AI | Go/Eino legacy 兼容链路 + 默认受控的 TS Agent Runtime shadow/active read 能力 | 通过 promotion、Temporal、Capability 和评测门禁逐步接管 |
 
 ## 4. 总体目标架构
 
@@ -148,7 +148,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 生成 Message gRPC server/client，并用 bufconn 验证 Local server 与 Remote client adapters。
 - [x] 为 Local 与 gRPC adapters 建立完整共享行为契约，覆盖全部命令和查询。
 - [x] Kafka Topic 增加 schema version；定义兼容、弃用和死信策略。
-- [x] 增加 `message.transport=local|grpc` 配置开关，默认继续使用 `local`；M3 的 grpc 模式先走 bufconn，M4 再替换为受认证网络 channel。
+- [x] 增加 `message.transport=local|grpc` 配置开关；M3 阶段以 `local` 作为默认兼容路径并先用 bufconn 验证 gRPC，M4 已替换为受认证网络 channel，当前微服务 Compose 默认使用 `grpc`，`local` 仅作为 embedded/故障回切路径。
 
 **验收：** Local 与 gRPC adapter 通过同一套 contract test；关闭 gRPC 时系统行为与 M2 一致。
 
@@ -355,6 +355,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 通过受认证 Agent Capability RPC 执行首个 `conversation.list` 只读 Step，并持久化 claim/result/error；公开 HTTP 旁路保持禁止（`AD-030` 已关闭）。
 - [x] Runtime 核心保持框架中立，Mastra、OpenAI Agents SDK 和 LangGraph.js 仅作为参考或 adapter；模型调用通过 provider-neutral `ModelRouter`，AI SDK 仅位于 adapter 边界。
 - [x] Agent Runtime 独立服务完成 Vitest、TypeScript typecheck、生产构建和 Go Core 全量回归；该证据只确认当前 shadow/协议边界稳定，不改变默认关闭的生产切流门禁。
+- [x] 增加 `scripts/check-agent-runtime-container.sh` 容器门禁，绑定 revision/created/dirty provenance，验证生产镜像裁剪、非 root `node` 用户和 foundation `/readyz`；active Runtime 仍需独立切流证据。
 - [x] 增加 `services/agent-runtime/go.mod` 作为 Go/TypeScript 服务目录边界，修复 `go test ./...` 扫描 TS 依赖内嵌 Go 源码的问题；Go 全仓与 Agent Runtime 独立测试入口均通过。
 
 ### G3：Durable Task、Context 与 Memory
