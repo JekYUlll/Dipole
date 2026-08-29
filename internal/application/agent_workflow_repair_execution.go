@@ -5,6 +5,7 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const AgentWorkflowRepairExecutionVersionV1 = "dipole.agent.workflow-repair-execution.v1"
@@ -18,7 +19,13 @@ var (
 
 type AgentWorkflowRepairExecutionStatusV1 string
 
-const AgentWorkflowRepairExecutionStatusPrepared AgentWorkflowRepairExecutionStatusV1 = "prepared"
+const (
+	AgentWorkflowRepairExecutionStatusPrepared   AgentWorkflowRepairExecutionStatusV1 = "prepared"
+	AgentWorkflowRepairExecutionStatusExecuting  AgentWorkflowRepairExecutionStatusV1 = "executing"
+	AgentWorkflowRepairExecutionStatusCommitted  AgentWorkflowRepairExecutionStatusV1 = "committed"
+	AgentWorkflowRepairExecutionStatusFailed     AgentWorkflowRepairExecutionStatusV1 = "failed"
+	AgentWorkflowRepairExecutionStatusRolledBack AgentWorkflowRepairExecutionStatusV1 = "rolled_back"
+)
 
 type AgentWorkflowRepairExecutionV1 struct {
 	ExecutionUUID, PlanID, ProposalUUID, TaskUUID, ExecutorUUID string
@@ -51,6 +58,8 @@ func (e AgentWorkflowRepairExecutionV1) Validate() error {
 type AgentWorkflowRepairExecutionStoreV1 interface {
 	CreateWorkflowRepairExecution(context.Context, AgentWorkflowRepairExecutionV1) (bool, error)
 	GetWorkflowRepairExecution(context.Context, string) (*AgentWorkflowRepairExecutionV1, error)
+	ClaimWorkflowRepairExecution(context.Context, string, string, uint64, time.Time) (bool, error)
+	FailWorkflowRepairExecution(context.Context, string, string, string, time.Time) (bool, error)
 }
 
 type AgentWorkflowRepairPrepareRequestV1 struct {
