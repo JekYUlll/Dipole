@@ -6,13 +6,12 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 	searchmysql "github.com/JekYUlll/Dipole/internal/services/search/infrastructure/mysql"
+	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 )
 
 // Repositories contains one repository instance for each application process.
@@ -50,41 +49,6 @@ type Repositories struct {
 }
 
 type MessageProcessRepositories = messagemysql.ProcessRepositories
-
-type SyncProcessRepositories struct {
-	Sync       application.SyncStore
-	Projection application.SyncProjectionStore
-}
-
-func NewSyncProcessRepositories(db *sql.DB) (*SyncProcessRepositories, error) {
-	return NewSyncProcessRepositoriesWithHydrator(db, nil)
-}
-
-func NewSyncProcessRepositoriesWithHydrator(db *sql.DB, hydrator application.SyncMessageHydrator) (*SyncProcessRepositories, error) {
-	if db == nil {
-		return nil, fmt.Errorf("sync repository composition requires database/sql connection")
-	}
-	queries := generated.New(db)
-	var syncStore *sqlcRepository.SyncRepository
-	var err error
-	if hydrator == nil {
-		syncStore, err = sqlcRepository.NewSyncRepository(queries)
-	} else {
-		syncStore, err = sqlcRepository.NewSyncRepositoryWithHydrator(queries, hydrator)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("create sync repository: %w", err)
-	}
-	mysqlStore, err := mysqlData.NewStore(db)
-	if err != nil {
-		return nil, fmt.Errorf("create sync transaction store: %w", err)
-	}
-	projection, err := sqlcRepository.NewSyncProjectionRepository(mysqlStore)
-	if err != nil {
-		return nil, fmt.Errorf("create sync projection repository: %w", err)
-	}
-	return &SyncProcessRepositories{Sync: syncStore, Projection: projection}, nil
-}
 
 func NewMessageProcessRepositories(db *sql.DB) (*MessageProcessRepositories, error) {
 	return NewMessageProcessRepositoriesWithInboxWrites(db, true)
@@ -138,7 +102,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	repos.MessageProcess = messageRepos
 	repos.Messages = messageRepos.Messages
 	repos.Outbox = messageRepos.Outbox
-	syncRepos, err := NewSyncProcessRepositories(db)
+	syncRepos, err := syncmysql.NewProcessRepositories(db, nil)
 	if err != nil {
 		return nil, fmt.Errorf("compose Sync repositories: %w", err)
 	}

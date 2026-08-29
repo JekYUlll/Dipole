@@ -65,6 +65,14 @@ if [[ ! -f "${root_dir}/internal/services/sync/infrastructure/mysql/sync_reposit
   echo "Sync MySQL repository is outside its service boundary" >&2
   exit 1
 fi
+if rg --quiet 'type SyncProcessRepositories struct|func NewSyncProcessRepositories' "${root_dir}/internal/app" --glob '*.go' --glob '!sync_repository_compat.go'; then
+  echo "Sync repository composition must live in the Sync service infrastructure" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/sync/infrastructure/mysql/composition.go" ]]; then
+  echo "Sync process repository composition is outside the Sync service boundary" >&2
+  exit 1
+fi
 if rg --quiet 'internal/app(/|["`])' "${root_dir}/internal/bootstrap/sync_runtime.go"; then
   echo "standalone Sync runtime must not depend on aggregate internal/app composition" >&2
   exit 1
