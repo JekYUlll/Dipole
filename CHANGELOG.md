@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：修正 `docs/architecture/DEVELOPMENT-ROADMAP.md` 中对已退役 `internal/service` 的过时表述，改为描述共享兼容适配器与 `internal/services/<service>/` 的持续收敛，避免路线图误导新服务开发。
 - 2026-08-30：修复 `smoke-sync-cassandra-hydration.sh` 对已退役 `internal/service` 的路径引用，改用 `internal/services/message/domain`；修复后真实隔离 hydration smoke 通过 shadow comparison、重复响应恢复、Legacy ID 恢复和 Metadata backfill。
 - 2026-08-30：在当前 `master` revision `801e69ce` 上复跑完整微服务 Compose smoke；逐服务 health/readiness、metrics、Core 代理 401、Core WS 边界、mTLS 启动、远程 WS ownership 及 Agent EventLedger/Task/Run 幂等均通过，隔离拓扑自动清理，生产 Kafka ownership 与回滚切换继续关闭。
 - 2026-08-30：在当前 `master` revision `69055e87` 上复跑 Cassandra primary Compose smoke；Cassandra schema init、Sync primary profile、依赖 readiness 和 Sync `readyz` 全部通过，临时资源已清理。本次仅证明启动与配置门禁，真实 Inbox hydration、共享环境观测、责任人批准和可执行回切继续关闭。
