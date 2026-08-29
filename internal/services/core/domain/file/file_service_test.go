@@ -144,8 +144,22 @@ func (s *stubMultipartSessionStore) SavePart(ctx context.Context, sessionID stri
 	s.parts[sessionID] = append(s.parts[sessionID], platformStorage.MultipartCompletePart{
 		PartNumber: part.PartNumber,
 		ETag:       part.ETag,
+		Size:       part.Size,
 	})
 	return nil
+}
+
+func TestValidateMultipartPartsRejectsIncorrectPartSizes(t *testing.T) {
+	t.Parallel()
+
+	parts := []platformStorage.MultipartCompletePart{
+		{PartNumber: 1, ETag: "etag-1", Size: 4},
+		{PartNumber: 2, ETag: "etag-2", Size: 4},
+	}
+
+	if err := validateMultipartParts(parts, 2, 8, 5); !errors.Is(err, ErrMultipartSessionInvalid) {
+		t.Fatalf("expected invalid multipart session, got %v", err)
+	}
 }
 
 func (s *stubMultipartSessionStore) ListParts(ctx context.Context, sessionID string) ([]platformStorage.MultipartCompletePart, error) {

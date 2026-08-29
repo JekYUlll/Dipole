@@ -324,6 +324,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 - [x] 已完成 MinIO `NewMultipartUpload`、`PutObjectPart`、`CompleteMultipartUpload` 和 `AbortMultipartUpload` 的服务端链路。
 - [x] 已完成文件所有权校验、分片序号/大小校验、会话 TTL、缺片拒绝、完成后再写 `uploaded_files` 和失败清理。
+- [x] 完成阶段已校验每个 part 的实际字节数：前置 part 必须等于声明的分片大小，最后一个 part 必须等于文件剩余大小；Redis 新记录保存 `ETag + Size`，旧 ETag-only 会话安全拒绝完成。
 - [x] 已完成前端按文件大小选择单请求或 Multipart 上传，并在分片失败时主动取消服务端会话。
 - [ ] 将分片上传升级为 MinIO 预签名 URL 直传，Core 只负责初始化、签发受限 part URL、完成和取消，降低大文件对业务服务带宽与连接的占用。
 - [x] 增加前端有界并发、指数退避和单 part 重试；当前默认 3 路并发、最多 2 次重试，失败仍由上层取消整个 Multipart 会话。
