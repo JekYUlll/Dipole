@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root_dir=$(cd "${script_dir}/.." && pwd)
-compose_file="${root_dir}/docker-compose.microservices.yml"
+compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 isolated_images_file="${root_dir}/deploy/microservices/isolated-images.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-readiness-${RANDOM}-$$}"
 cert_dir="${DIPOLE_INTERNAL_CERT_DIR:-$(mktemp -d -t dipole-readiness-certs.XXXXXX)}"

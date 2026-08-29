@@ -70,8 +70,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root123
     volumes:
-      - ./deploy/mysql/init-cluster.js:/init-cluster.js:ro
-      - ./deploy/mysql/rejoin-instance.js:/rejoin-instance.js:ro
+      - ../../deploy/mysql/init-cluster.js:/init-cluster.js:ro
+      - ../../deploy/mysql/rejoin-instance.js:/rejoin-instance.js:ro
     entrypoint: ["mysqlsh", "--no-defaults", "--js", "--file", "/init-cluster.js"]
 
   mysql-router:

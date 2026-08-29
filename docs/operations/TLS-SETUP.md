@@ -63,7 +63,7 @@ server {
 
 ## Docker Compose 挂载
 
-`docker-compose.dist.yml` 中 nginx 服务挂载证书目录：
+`deploy/compose/docker-compose.dist.yml` 中 nginx 服务挂载证书目录：
 
 ```yaml
 nginx:

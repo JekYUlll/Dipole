@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class CandidateTopologyContractTest(unittest.TestCase):
     def test_dist_compose_exposes_isolation_controls_with_legacy_defaults(self):
-        compose = (ROOT / "docker-compose.dist.yml").read_text(encoding="utf-8")
+        compose = (ROOT / "deploy/compose/docker-compose.dist.yml").read_text(encoding="utf-8")
 
         self.assertEqual(compose.count("image: ${DIPOLE_IMAGE:-dipole-server:latest}"), 3)
         for suffix in ("mysql", "redis", "kafka", "kafdrop", "minio", "minio-init", "node1", "node2", "node3", "nginx"):

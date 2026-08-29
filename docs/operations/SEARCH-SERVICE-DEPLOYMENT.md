@@ -26,18 +26,18 @@ Kafka -> Search Indexer -> Elasticsearch write Alias
 scripts/generate-internal-certs.sh
 scripts/docker-build.sh build
 DIPOLE_INTERNAL_RPC_SHARED_SECRET=<secret> \
-  docker compose --profile search -f docker-compose.microservices.yml up -d --wait
+  docker compose --profile search -f deploy/compose/docker-compose.microservices.yml up -d --wait
 ```
 
 `search` profile 增加 Elasticsearch、Search Indexer 和 Search Service。默认 Compose 不启用该 profile，现有 Core/Message/Gateway 冷启动路径保持不变。先启动存储与内部服务，再灰度重建 Gateway：
 
 ```bash
 DIPOLE_INTERNAL_RPC_SHARED_SECRET=<secret> \
-  docker compose --profile search -f docker-compose.microservices.yml \
+  docker compose --profile search -f deploy/compose/docker-compose.microservices.yml \
   up -d --wait elasticsearch search-indexer search
 
 DIPOLE_INTERNAL_RPC_SHARED_SECRET=<secret> DIPOLE_SEARCH_ENABLED=true \
-  docker compose --profile search -f docker-compose.microservices.yml \
+  docker compose --profile search -f deploy/compose/docker-compose.microservices.yml \
   up -d --wait --force-recreate gateway
 ```
 

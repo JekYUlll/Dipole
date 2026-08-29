@@ -76,7 +76,7 @@ VITE_SYNC_ENGINE_MODE=primary -> shadow -> off
 
 ```bash
 ./scripts/check-web-sync-alerts.sh
-docker compose -f docker-compose.cluster.yml --profile observability config
+docker compose -f deploy/compose/docker-compose.cluster.yml --profile observability config
 cd frontend
 npm ci
 npm run test:e2e:install

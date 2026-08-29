@@ -11,16 +11,16 @@ cleanup() {
   local exit_code=$?
   docker rm -f "$mysql_container" >/dev/null 2>&1 || true
   rm -f "$migrate_binary"
-  docker compose -p "$project" -f "$root_dir/docker-compose.storage-lab.yml" down --volumes --remove-orphans >/dev/null 2>&1 || true
+  docker compose -p "$project" -f "$root_dir/deploy/compose/docker-compose.storage-lab.yml" down --volumes --remove-orphans >/dev/null 2>&1 || true
   exit "$exit_code"
 }
 trap cleanup EXIT INT TERM
 
-docker compose -p "$project" -f "$root_dir/docker-compose.storage-lab.yml" up -d --wait cassandra
+docker compose -p "$project" -f "$root_dir/deploy/compose/docker-compose.storage-lab.yml" up -d --wait cassandra
 cassandra_container="${project}-cassandra-1"
 cassandra_port=$(docker port "$cassandra_container" 9042/tcp | awk -F: 'NR==1 {print $NF}')
 test -n "$cassandra_port"
-docker compose -p "$project" -f "$root_dir/docker-compose.storage-lab.yml" exec -T cassandra cqlsh <"$root_dir/db/cassandra/001_timeline.cql"
+docker compose -p "$project" -f "$root_dir/deploy/compose/docker-compose.storage-lab.yml" exec -T cassandra cqlsh <"$root_dir/db/cassandra/001_timeline.cql"
 
 docker run -d --name "$mysql_container" --network "${project}_default" --network-alias mysql \
   -p 127.0.0.1::3306 \

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-storage_compose="$root_dir/docker-compose.storage-lab.yml"
+storage_compose="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
 project="dipole-cassandra-backfill-${RANDOM}-$$"
 mysql_container="${project}-mysql"
 migrate_binary=$(mktemp /tmp/dipole-cassandra-backfill-migrate.XXXXXX)

@@ -81,7 +81,7 @@ Web 搜索入口通过构建变量 `VITE_SEARCH_ENABLED=true` 启用。该变量
 
 ```bash
 VITE_SEARCH_ENABLED=true scripts/docker-build.sh frontend
-DIPOLE_SEARCH_ENABLED=true docker compose -f docker-compose.microservices.yml --profile search up -d
+DIPOLE_SEARCH_ENABLED=true docker compose -f deploy/compose/docker-compose.microservices.yml --profile search up -d
 ```
 
 ## Alias Migration

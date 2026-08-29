@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.dist.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/docker-compose.dist.yml}"
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-c1}"
 TARGET_SERVICE="${TARGET_SERVICE:-dipole-node2}"
 RECOVERY_TIMEOUT_SECONDS="${RECOVERY_TIMEOUT_SECONDS:-60}"

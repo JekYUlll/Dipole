@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-kafka_compose="$root_dir/docker-compose.cluster.yml"
+kafka_compose="$root_dir/deploy/compose/docker-compose.cluster.yml"
 project="dipole-sync-projector-${RANDOM}-$$"
 test_binary=$(mktemp /tmp/dipole-sync-projector-test.XXXXXX)
 mysql_container="${project}-mysql"

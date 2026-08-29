@@ -47,11 +47,11 @@ scripts/docker-build-microservice-images.sh
 
 ## 切换与回滚
 
-当前 `docker-compose.microservices.yml` 默认使用 `DIPOLE_*_IMAGE` 单服务标签。验证候选镜像时可通过这些变量绑定不可变标签；回滚时将每个变量统一指向已验证的旧共享镜像，或使用 legacy Compose，不需要回滚 schema、offset 或 authority：
+当前 `deploy/compose/docker-compose.microservices.yml` 默认使用 `DIPOLE_*_IMAGE` 单服务标签。验证候选镜像时可通过这些变量绑定不可变标签；回滚时将每个变量统一指向已验证的旧共享镜像，或使用 legacy Compose，不需要回滚 schema、offset 或 authority：
 
 ```bash
 docker compose \
-  -f docker-compose.microservices.yml \
+  -f deploy/compose/docker-compose.microservices.yml \
   -f deploy/microservices/isolated-images.yml \
   config --quiet
 ```
@@ -63,4 +63,4 @@ docker compose \
 - 每个候选镜像必须只包含 `/app/service` 及运行时证书/时区文件。
 - 构建前必须存在对应 `dist/dipole-*` 二进制。
 - 生产切换前仍需通过 `scripts/smoke-microservice-isolated-images.sh`、`scripts/smoke-microservices.sh` 和依赖 readiness 检查。
-- 本切片不改变默认 Go authority、Kafka topic、数据库权限或 Agent 开关；`docker-compose.dist.yml` 继续保留 legacy 单体节点回滚路径。
+- 本切片不改变默认 Go authority、Kafka topic、数据库权限或 Agent 开关；`deploy/compose/docker-compose.dist.yml` 继续保留 legacy 单体节点回滚路径。

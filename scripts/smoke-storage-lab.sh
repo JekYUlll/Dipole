@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-compose_file="$root_dir/docker-compose.storage-lab.yml"
+compose_file="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
 project="dipole-storage-lab-${RANDOM}-$$"
 
 cleanup() {

@@ -15,7 +15,7 @@ x-sentinel: &sentinel
     - -ec
     - cp /etc/redis/sentinel.conf /tmp/sentinel.conf && exec redis-sentinel /tmp/sentinel.conf
   volumes:
-    - ./deploy/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+    - ../../deploy/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
   healthcheck:
     test: ["CMD", "redis-cli", "-p", "26379", "ping"]
     interval: 2s
@@ -27,7 +27,7 @@ services:
     <<: *redis
     command: ["redis-server", "/etc/redis/redis.conf"]
     volumes:
-      - ./deploy/redis/redis.conf:/etc/redis/redis.conf:ro
+      - ../../deploy/redis/redis.conf:/etc/redis/redis.conf:ro
       - redis_1_data:/data
 
   redis-2:
@@ -37,7 +37,7 @@ services:
       redis-1:
         condition: service_healthy
     volumes:
-      - ./deploy/redis/redis.conf:/etc/redis/redis.conf:ro
+      - ../../deploy/redis/redis.conf:/etc/redis/redis.conf:ro
       - redis_2_data:/data
 
   redis-3:
@@ -47,7 +47,7 @@ services:
       redis-1:
         condition: service_healthy
     volumes:
-      - ./deploy/redis/redis.conf:/etc/redis/redis.conf:ro
+      - ../../deploy/redis/redis.conf:/etc/redis/redis.conf:ro
       - redis_3_data:/data
 
   sentinel-1:

@@ -32,7 +32,7 @@ compose() {
   fi
   docker compose -p "${project}" \
     "${profile_args[@]}" \
-    -f "${root_dir}/docker-compose.microservices.yml" \
+    -f "${root_dir}/deploy/compose/docker-compose.microservices.yml" \
     -f "${root_dir}/deploy/microservices/isolated-images.yml" \
     -f "${ports_file}" "$@"
 }

@@ -5,7 +5,7 @@
 ## Scope
 
 ```text
-docker-compose.storage-lab.yml
+deploy/compose/docker-compose.storage-lab.yml
         │
         ├── Cassandra 5.0.9 / single node / 512 MiB heap
         └── Elasticsearch 9.5.2 / single node / 512 MiB heap

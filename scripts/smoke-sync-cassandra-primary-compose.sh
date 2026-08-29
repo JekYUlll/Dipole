@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root_dir=$(cd "${script_dir}/.." && pwd)
 project="${COMPOSE_PROJECT_NAME:-dipole-sync-cassandra-primary-${RANDOM}-$$}"
-compose_file="${root_dir}/docker-compose.microservices.yml"
+compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 primary_file="${root_dir}/deploy/microservices/cassandra-primary.yml"
 
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"

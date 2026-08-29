@@ -3,7 +3,7 @@ set -euo pipefail
 
 IMAGE_NAME="${IMAGE_NAME:-dipole-server}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.dist.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/docker-compose.dist.yml}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -35,7 +35,7 @@ usage() {
   echo "Environment variables:"
   echo "  IMAGE_NAME   Image name (default: dipole-server)"
   echo "  IMAGE_TAG    Image tag  (default: latest)"
-  echo "  COMPOSE_FILE Compose file (default: docker-compose.dist.yml)"
+  echo "  COMPOSE_FILE Compose file (default: deploy/compose/docker-compose.dist.yml)"
   echo "  NODE_SERVICES Space-separated node services to deploy/restart/log"
   echo "  GO_BUILD_FLAGS Additional flags passed to go build"
   echo "  DIPOLE_BUILD_CREATED Override the embedded RFC3339 build time"

@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-COMPOSE_FILE="${ROOT_DIR}/docker-compose.microservices.yml"
+COMPOSE_FILE="${ROOT_DIR}/deploy/compose/docker-compose.microservices.yml"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-microservices-smoke}"
 GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:8080}"
 

@@ -180,4 +180,4 @@ npm run context:calibrate -- --evidence=../../contracts/agent-context-calibratio
 
 命令不访问 provider 或网络。报告不回显 case 正文，只保存正文 SHA-256、UTF-8 字节数、逐 route 估算误差、fallback route 和双重证据哈希；零低估且所有 route 均有显式 profile 时退出 0，合法但不足的校准退出 2，输入错误退出 1。`eligible` 只用于候选评审，不能修改 Runtime 配置或自动启用 Compiler v2。
 
-微服务环境使用根目录 `docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，默认仅启用 Kafka 与 Agent 自有 MySQL ledger。Capability RPC 和 Temporal 均需通过显式开关及凭据启用。
+微服务环境使用根目录 `deploy/compose/docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，默认仅启用 Kafka 与 Agent 自有 MySQL ledger。Capability RPC 和 Temporal 均需通过显式开关及凭据启用。

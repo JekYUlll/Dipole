@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-compose_file="$root_dir/docker-compose.redis-cluster.yml"
+compose_file="$root_dir/deploy/compose/docker-compose.redis-cluster.yml"
 project="dipole-redis-cluster-${RANDOM}-$$"
 network="${project}_default"
 probe_binary=$(mktemp /tmp/dipole-redis-failover-probe.XXXXXX)

@@ -1,10 +1,10 @@
 x-dipole-service: &dipole-service
   restart: unless-stopped
   env_file:
-    - path: .env
+    - path: ../../.env
       required: false
   volumes:
-    - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
+    - ../../configs/config.dist.yaml:/app/configs/config.yaml:ro
 
 x-internal-rpc: &internal-rpc
   DIPOLE_INTERNAL_RPC_ENABLED: "true"
@@ -82,14 +82,14 @@ services:
 
   agent:
     build:
-      context: ./services/agent-runtime
+      context: ../../services/agent-runtime
       dockerfile: Dockerfile
     image: ${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
     restart: unless-stopped
     volumes:
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
     depends_on:
       kafka:
         condition: service_healthy
@@ -152,14 +152,14 @@ services:
   realtime-cpp:
     profiles: ["realtime-cpp"]
     build:
-      context: .
+      context: ../..
       dockerfile: services/realtime-delivery/Dockerfile
     image: ${DIPOLE_REALTIME_IMAGE:-dipole-realtime-delivery:latest}
     restart: unless-stopped
     volumes:
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/realtime.pem:/run/dipole/certs/realtime.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/realtime-key.pem:/run/dipole/certs/realtime-key.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/realtime.pem:/run/dipole/certs/realtime.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/realtime-key.pem:/run/dipole/certs/realtime-key.pem:ro
       - realtime_cpp_evidence:/var/lib/dipole
     depends_on:
       gateway:
@@ -226,10 +226,10 @@ services:
       DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY: ${DIPOLE_ARTIFACT_MAINTENANCE_MINIO_ACCESS_KEY:-dipoleartifactmaintenance}
       DIPOLE_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY: ${DIPOLE_ARTIFACT_MAINTENANCE_MINIO_SECRET_KEY:-dipoleartifactmaintenancepass}
     volumes:
-      - ./configs/minio/agent-artifact-policy.json:/policies/agent-artifact-policy.json:ro
-      - ./configs/minio/platform-storage-policy.json:/policies/platform-storage-policy.json:ro
-      - ./configs/minio/agent-artifact-audit-policy.json:/policies/agent-artifact-audit-policy.json:ro
-      - ./configs/minio/agent-artifact-maintenance-policy.json:/policies/agent-artifact-maintenance-policy.json:ro
+      - ../../configs/minio/agent-artifact-policy.json:/policies/agent-artifact-policy.json:ro
+      - ../../configs/minio/platform-storage-policy.json:/policies/platform-storage-policy.json:ro
+      - ../../configs/minio/agent-artifact-audit-policy.json:/policies/agent-artifact-audit-policy.json:ro
+      - ../../configs/minio/agent-artifact-maintenance-policy.json:/policies/agent-artifact-maintenance-policy.json:ro
     entrypoint: >
       /bin/sh -c "mc alias set local http://minio:9000 dipoleminio dipoleminiopass &&
       mc mb --ignore-existing local/dipole-files &&
@@ -291,11 +291,11 @@ services:
     environment:
       DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD: ${DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD:-change-me}
     volumes:
-      - ./configs/mysql/message-service-atomic-grants.dist.sql:/grants/message-atomic.sql:ro
-      - ./configs/mysql/message-service-projector-grants.dist.sql:/grants/message-projector.sql:ro
-      - ./configs/mysql/sync-service-grants.dist.sql:/grants/sync.sql:ro
-      - ./configs/mysql/agent-service-grants.dist.sql:/grants/agent.sql:ro
-      - ./configs/mysql/agent-timeline-repair-grants.dist.sql:/grants/agent-timeline-repair.sql:ro
+      - ../../configs/mysql/message-service-atomic-grants.dist.sql:/grants/message-atomic.sql:ro
+      - ../../configs/mysql/message-service-projector-grants.dist.sql:/grants/message-projector.sql:ro
+      - ../../configs/mysql/sync-service-grants.dist.sql:/grants/sync.sql:ro
+      - ../../configs/mysql/agent-service-grants.dist.sql:/grants/agent.sql:ro
+      - ../../configs/mysql/agent-timeline-repair-grants.dist.sql:/grants/agent-timeline-repair.sql:ro
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - >-
@@ -312,10 +312,10 @@ services:
     image: ${DIPOLE_CORE_IMAGE:-dipole-core:latest}
     entrypoint: ["/app/service"]
     volumes:
-      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/core.pem:/run/dipole/certs/core.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/core-key.pem:/run/dipole/certs/core-key.pem:ro
+      - ../../configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/core.pem:/run/dipole/certs/core.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/core-key.pem:/run/dipole/certs/core-key.pem:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -363,10 +363,10 @@ services:
     image: ${DIPOLE_MESSAGE_IMAGE:-dipole-message:latest}
     entrypoint: ["/app/service"]
     volumes:
-      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/message.pem:/run/dipole/certs/message.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/message-key.pem:/run/dipole/certs/message-key.pem:ro
+      - ../../configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/message.pem:/run/dipole/certs/message.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/message-key.pem:/run/dipole/certs/message-key.pem:ro
     depends_on:
       mysql-permissions:
         condition: service_completed_successfully
@@ -401,10 +401,10 @@ services:
     image: ${DIPOLE_SYNC_IMAGE:-dipole-sync:latest}
     entrypoint: ["/app/service"]
     volumes:
-      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/sync.pem:/run/dipole/certs/sync.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/sync-key.pem:/run/dipole/certs/sync-key.pem:ro
+      - ../../configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/sync.pem:/run/dipole/certs/sync.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/sync-key.pem:/run/dipole/certs/sync-key.pem:ro
     depends_on:
       core:
         condition: service_healthy
@@ -490,10 +490,10 @@ services:
     image: ${DIPOLE_SEARCH_IMAGE:-dipole-search:latest}
     entrypoint: ["/app/service"]
     volumes:
-      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/search.pem:/run/dipole/certs/search.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/search-key.pem:/run/dipole/certs/search-key.pem:ro
+      - ../../configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/search.pem:/run/dipole/certs/search.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/search-key.pem:/run/dipole/certs/search-key.pem:ro
     depends_on:
       core:
         condition: service_healthy
@@ -520,10 +520,10 @@ services:
     image: ${DIPOLE_GATEWAY_IMAGE:-dipole-gateway:latest}
     entrypoint: ["/app/service"]
     volumes:
-      - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/gateway.pem:/run/dipole/certs/gateway.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/gateway-key.pem:/run/dipole/certs/gateway-key.pem:ro
+      - ../../configs/config.dist.yaml:/app/configs/config.yaml:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/gateway.pem:/run/dipole/certs/gateway.pem:ro
+      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/gateway-key.pem:/run/dipole/certs/gateway-key.pem:ro
     depends_on:
       core:
         condition: service_healthy
@@ -576,7 +576,7 @@ services:
     restart: unless-stopped
     command: ["--config.file=/etc/prometheus/prometheus-services.yml"]
     volumes:
-      - ./deploy/observability:/etc/prometheus:ro
+      - ../../deploy/observability:/etc/prometheus:ro
     ports:
       - "9090:9090"
 
@@ -586,7 +586,7 @@ services:
     restart: unless-stopped
     command: ["-config.file=/etc/tempo/config.yml"]
     volumes:
-      - ./deploy/observability/tempo.yml:/etc/tempo/config.yml:ro
+      - ../../deploy/observability/tempo.yml:/etc/tempo/config.yml:ro
       - tempo_trace_data:/var/tempo
     ports:
       - "127.0.0.1:3200:3200"
@@ -597,7 +597,7 @@ services:
     restart: unless-stopped
     command: ["--config=/etc/otelcol-contrib/config.yml"]
     volumes:
-      - ./deploy/observability/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+      - ../../deploy/observability/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
     ports:
       - "127.0.0.1:4318:4318"
       - "127.0.0.1:13133:13133"

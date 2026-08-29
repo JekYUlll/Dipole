@@ -1,6 +1,6 @@
 # Redis Sentinel 开发与故障验收
 
-本文档描述 A2 阶段的 Redis 7.4 Sentinel 基线。现有 Compose 继续提供单节点快速开发；`docker-compose.redis-cluster.yml` 提供隔离的故障转移演练环境。
+本文档描述 A2 阶段的 Redis 7.4 Sentinel 基线。现有 Compose 继续提供单节点快速开发；`deploy/compose/docker-compose.redis-cluster.yml` 提供隔离的故障转移演练环境。
 
 ## Topology
 

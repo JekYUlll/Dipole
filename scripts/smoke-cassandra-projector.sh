@@ -2,8 +2,8 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-kafka_compose="$root_dir/docker-compose.cluster.yml"
-storage_compose="$root_dir/docker-compose.storage-lab.yml"
+kafka_compose="$root_dir/deploy/compose/docker-compose.cluster.yml"
+storage_compose="$root_dir/deploy/compose/docker-compose.storage-lab.yml"
 project="dipole-cassandra-projector-${RANDOM}-$$"
 projector_binary=$(mktemp /tmp/dipole-cassandra-projector.XXXXXX)
 projector_log=$(mktemp /tmp/dipole-cassandra-projector.XXXXXX.log)

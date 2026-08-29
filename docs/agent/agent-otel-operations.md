@@ -14,7 +14,7 @@ scripts/check-agent-otel-observability.sh
 scripts/smoke-agent-otel.sh
 
 export DIPOLE_AGENT_OTEL_ENABLED=true
-docker compose -f docker-compose.microservices.yml --profile observability up -d tempo otel-collector prometheus
+docker compose -f deploy/compose/docker-compose.microservices.yml --profile observability up -d tempo otel-collector prometheus
 ```
 
 Smoke 使用固定 localhost 验收端口、随机 Compose project 和测试专用卷，因此应在长期 profile 启动前独立执行。它生成 `agent.otel.smoke` span，验证 Collector accepted/sent 指标并按 trace ID 从 Tempo 查询完整 trace，退出时删除测试栈。正式环境应另外归档镜像 digest、Prometheus 原始查询、Tempo trace ID、执行时间和配置 commit。

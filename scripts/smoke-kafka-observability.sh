@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-COMPOSE_FILE="$ROOT_DIR/docker-compose.cluster.yml"
+COMPOSE_FILE="$ROOT_DIR/deploy/compose/docker-compose.cluster.yml"
 PROJECT_NAME="dipole-kafka-observability-${RANDOM}"
 TOPIC="dipole.observability.${RANDOM}"
 GROUP="dipole-observability-${RANDOM}"
