@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Sync Kafka Projector 已迁入 `internal/services/sync/infrastructure/kafka/`，复用 Message domain event contract；旧 `internal/projector/sync/` 已由结构门禁阻止回流，后续仍需继续收敛跨服务运维工具和共享 SQLC 基础设施。
 - 2026-08-29：Elasticsearch client、版本化 schema、Alias 和 projection adapter 已迁入 `internal/platform/elasticsearch/`；Search/Indexer 业务边界保持独立，后续需继续评估 Elasticsearch 连接 owner 与 Search Service 独立 module 的最终收敛。
 - 2026-08-29：Cassandra routing、shadow message store 和 Sync hydration fallback 已迁入 `internal/platform/storage/`；装饰器仍只通过 application port 运行，后续需继续评估迁移完成后的删除时机和 routing/shadow 配置 owner。
 - 2026-08-29：跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器已迁入 `internal/platform/cassandra/`；服务业务 projection 保持在各自边界，后续仍需评估 routing/shadow 装饰器和 Cassandra 数据 owner 的最终归属。
