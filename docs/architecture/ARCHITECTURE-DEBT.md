@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Gateway Kafka 注册器与 authority handler factory 已迁入 `internal/services/gateway/infrastructure/kafka/`，`internal/bootstrap` 仅保留兼容转发及 Core/Message projection；Gateway Kafka 装配边界已完成收敛。
 - 2026-08-29：Gateway group message delivery handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，覆盖普通群 fan-out、hot-group notify、文件消息和 Timeline notify；Gateway Kafka handler 的共享实现迁移已完成，后续转入兼容入口审计与删除。
 - 2026-08-29：Gateway direct message delivery handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，Timeline notify 和文件消息映射由服务自有实现持有；group message delivery 仍待处理 hot-group 依赖后迁移。
 - 2026-08-29：Gateway 群事件 Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，覆盖创建、更新、成员变更和解散通知；Core 的 `group.created` 会话初始化仍保留公共解码依赖，剩余消息 delivery handler 继续待迁移。
