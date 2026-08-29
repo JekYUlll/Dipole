@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent Memory Owner Control 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
 - Agent Artifact Service 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
 - Agent Memory Candidate Promotion 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
 - Agent MCP Tool Round 与 Terminal 测试已整体迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的 Round/Terminal 构造转发。

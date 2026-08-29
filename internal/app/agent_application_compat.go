@@ -15,7 +15,6 @@ type PersistentAgentTaskControlAuthorizerV1 = agentapplication.PersistentAgentTa
 type PersistentAgentTaskWorkflowProjectionServiceV1 = agentapplication.PersistentAgentTaskWorkflowProjectionServiceV1
 type AgentRuntimePromotionEvidenceReviewServiceV1 = agentapplication.AgentRuntimePromotionEvidenceReviewServiceV1
 type PersistentAgentWorkflowRepairAuditServiceV1 = agentapplication.PersistentAgentWorkflowRepairAuditServiceV1
-type PersistentAgentMemoryOwnerControlV1 = agentapplication.PersistentAgentMemoryOwnerControlV1
 type PersistentAgentEventSubscriptionResolverV1 = agentapplication.PersistentAgentEventSubscriptionResolverV1
 type PersistentAgentEventSubscriptionControlV1 = agentapplication.PersistentAgentEventSubscriptionControlV1
 type LocalAgentCommandV1 = agentapplication.LocalAgentCommandV1
@@ -66,10 +65,6 @@ func NewPersistentAgentWorkflowRepairAuditServiceV1(policies application.AgentPo
 
 func NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, now func() time.Time) (*PersistentAgentWorkflowRepairAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies, repairs, now)
-}
-
-func NewPersistentAgentMemoryOwnerControlV1(store application.AgentMemoryOwnerStoreV1, now func() time.Time) (*PersistentAgentMemoryOwnerControlV1, error) {
-	return agentapplication.NewPersistentAgentMemoryOwnerControlV1(store, now)
 }
 
 func NewPersistentAgentEventSubscriptionResolverV1(store application.AgentEventSubscriptionStoreV1, definitions agentapplication.AgentSubscriptionDefinitionReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionResolverV1, error) {
