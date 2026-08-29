@@ -23,6 +23,7 @@
 - 删除经调用审计确认仅被 contract 测试使用的 shared `NewSearchRPCServer` 与 `NewSyncRPCServer` facade；测试和生产入口统一使用 Search/Sync 自有 bootstrap。
 - 删除经调用审计确认无生产调用者的 shared `DialSearchApplication`、`DialSyncApplication` 与 `DialCoreSyncApplication` facade；测试改用 Search bootstrap 或 embedded-owned client，RPC 认证和协议语义保持兼容。
 - 删除经调用审计确认无生产调用者的 shared `DialSearchCoreCapability` 与 `DialSyncCoreCapability` facade；RPC contract 测试改用 Search/Sync 自有 bootstrap，Core capability 身份限制保持不变。
+- 删除经调用审计确认无生产调用者的 shared `DialGatewayCoreCapability` facade；Gateway contract 测试和生产 runtime 统一使用 Gateway 自有 bootstrap。
 - 将仅供 embedded 聚合运行时使用的 Message transport/shadow 实现迁入 `internal/bootstrap/embedded/`，共享 bootstrap 只保留生命周期编排；transport 行为、local/grpc/shadow 回退和测试语义保持不变。
 - 删除经调用审计确认无生产或测试调用者的 shared Core Agent RPC control 包装 `NewCoreRPCServerWithAgentControl`；仍在 embedded contract 和运行时使用的 Agent RPC 装配保持不变。
 - 将 Cassandra Projector runtime 从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap`；独立工具改用 Message-owned bootstrap，Cassandra Timeline projection、Kafka consumer group 和回滚语义保持不变。
