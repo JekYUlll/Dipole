@@ -8,8 +8,6 @@ import (
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
-	searchv1 "github.com/JekYUlll/Dipole/api/gen/go/search/v1"
-	syncv1 "github.com/JekYUlll/Dipole/api/gen/go/sync/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
@@ -17,8 +15,6 @@ import (
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
-	searchgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/search"
-	syncgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/sync"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
@@ -221,46 +217,6 @@ func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerSer
 	if err != nil {
 		_ = connection.Close()
 		return nil, nil, fmt.Errorf("create core capability client: %w", err)
-	}
-	return client, connection, nil
-}
-
-func DialSearchApplication(ctx context.Context, cfg config.InternalRPC) (*searchgrpc.Client, *grpc.ClientConn, error) {
-	connection, err := dialInternalRPC(ctx, cfg, cfg.SearchTarget, grpcauth.Credentials{
-		Service: gatewayServiceName,
-		Secret:  cfg.SharedSecret,
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("dial Search rpc: %w", err)
-	}
-	client, err := searchgrpc.NewClientForService(searchv1.NewSearchServiceClient(connection), gatewayServiceName)
-	if err != nil {
-		_ = connection.Close()
-		return nil, nil, fmt.Errorf("create Search application client: %w", err)
-	}
-	return client, connection, nil
-}
-
-func DialSyncApplication(ctx context.Context, cfg config.InternalRPC) (*syncgrpc.Client, *grpc.ClientConn, error) {
-	return dialSyncApplicationAs(ctx, cfg, gatewayServiceName)
-}
-
-func DialCoreSyncApplication(ctx context.Context, cfg config.InternalRPC) (*syncgrpc.Client, *grpc.ClientConn, error) {
-	return dialSyncApplicationAs(ctx, cfg, coreServiceName)
-}
-
-func dialSyncApplicationAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*syncgrpc.Client, *grpc.ClientConn, error) {
-	connection, err := dialInternalRPC(ctx, cfg, cfg.SyncTarget, grpcauth.Credentials{
-		Service: callerService,
-		Secret:  cfg.SharedSecret,
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("dial sync rpc: %w", err)
-	}
-	client, err := syncgrpc.NewClientForService(syncv1.NewSyncQueryServiceClient(connection), callerService)
-	if err != nil {
-		_ = connection.Close()
-		return nil, nil, fmt.Errorf("create sync application client: %w", err)
 	}
 	return client, connection, nil
 }

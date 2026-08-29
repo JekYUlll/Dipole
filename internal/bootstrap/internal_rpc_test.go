@@ -21,6 +21,7 @@ import (
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
+	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
@@ -608,7 +609,7 @@ func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 		searchServer.Close(ctx)
 	})
 	cfg.SearchTarget = searchServer.Address()
-	search, searchConnection, err := DialSearchApplication(context.Background(), cfg)
+	search, searchConnection, err := searchbootstrap.DialSearchApplication(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial Search application: %v", err)
 	}
@@ -657,7 +658,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 		syncServer.Close(ctx)
 	})
 	cfg.SyncTarget = syncServer.Address()
-	syncApplication, syncConnection, err := DialCoreSyncApplication(context.Background(), cfg)
+	syncApplication, syncConnection, err := appComposition.DialCoreSyncApplication(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial Sync application as Core: %v", err)
 	}
