@@ -4,22 +4,14 @@ import (
 	"context"
 	"os"
 
-	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/server"
 	"go.uber.org/zap"
 )
 
-// EmbeddedRuntime aliases the compatibility aggregate runtime.
-type EmbeddedRuntime = legacybootstrap.Runtime
-
 // Runtime is the standalone Core service runtime.
 type Runtime = CoreRuntime
-
-func InitializeEmbedded(ctx context.Context) (*EmbeddedRuntime, error) {
-	return legacybootstrap.Initialize(ctx)
-}
 
 func InitializeService(ctx context.Context) (*Runtime, error) {
 	return InitializeCoreService(ctx)

@@ -29,6 +29,9 @@ func TestCoreServiceEntrypointUsesOwnedRuntime(t *testing.T) {
 	if !strings.Contains(string(source), "return InitializeCoreService(ctx)") {
 		t.Fatalf("Core service entrypoint must initialize its owned runtime")
 	}
+	if strings.Contains(string(source), "internal/bootstrap") {
+		t.Fatalf("Core service entrypoint must not import legacy bootstrap")
+	}
 	if strings.Contains(string(source), "legacybootstrap.RunServer") {
 		t.Fatalf("Core service entrypoint must own its HTTP/TLS server startup")
 	}
