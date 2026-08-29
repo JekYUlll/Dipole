@@ -7,7 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 type contactStoreSpy struct {
@@ -139,11 +139,11 @@ func setupCachedContactStoreTest(t *testing.T) func() {
 	if err != nil {
 		t.Fatalf("run miniredis: %v", err)
 	}
-	oldRDB := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	oldRDB := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	return func() {
-		_ = store.RDB.Close()
-		store.RDB = oldRDB
+		_ = cache.RDB.Close()
+		cache.RDB = oldRDB
 		mr.Close()
 	}
 }

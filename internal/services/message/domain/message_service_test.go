@@ -11,10 +11,10 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/alicebob/miniredis/v2"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/redis/go-redis/v9"
@@ -1123,13 +1123,13 @@ func setupMessageServiceRedisTest(t *testing.T) func() {
 	}
 
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	oldRDB := store.RDB
-	store.RDB = rdb
+	oldRDB := cache.RDB
+	cache.RDB = rdb
 
 	return func() {
 		_ = rdb.Close()
 		mr.Close()
-		store.RDB = oldRDB
+		cache.RDB = oldRDB
 	}
 }
 
