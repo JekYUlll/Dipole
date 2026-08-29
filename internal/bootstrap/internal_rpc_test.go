@@ -586,7 +586,7 @@ func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 		coreServer.Close(ctx)
 	})
 	cfg.CoreTarget = coreServer.Address()
-	core, coreConnection, err := DialSearchCoreCapability(context.Background(), cfg)
+	core, coreConnection, err := searchbootstrap.DialSearchCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial Core as Search service: %v", err)
 	}
@@ -635,7 +635,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 		coreServer.Close(ctx)
 	})
 	cfg.CoreTarget = coreServer.Address()
-	core, coreConnection, err := DialSyncCoreCapability(context.Background(), cfg)
+	core, coreConnection, err := syncbootstrap.DialSyncCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial Core as Sync service: %v", err)
 	}

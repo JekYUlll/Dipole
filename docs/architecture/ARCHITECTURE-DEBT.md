@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Search/Sync Core capability client facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；Search/Sync 自有 bootstrap 直接持有服务身份和平台 RPC transport，权限校验与回滚行为保持兼容。
 - 2026-08-30：Search/Sync RPC client facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；Gateway、Search、Sync 与 embedded 各自持有所需 client 装配，协议、身份和回滚行为保持兼容。
 - 2026-08-30：Search/Sync RPC server facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；contract 测试直接使用各服务 bootstrap，服务协议、认证和回滚行为保持兼容。
 - 2026-08-30：调用审计确认 shared Message RPC server/client facade 无仓内调用者，已删除 `NewMessageRPCServer`、`DialMessageApplication` 和 `DialCoreMessageApplication`；Message、Gateway 与 embedded 各自使用服务边界内的 RPC 装配，协议和认证行为保持兼容。
