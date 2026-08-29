@@ -33,6 +33,7 @@
 - **风险：** 若实验主机继续逼近 flood-stage，隔离 smoke 仍会失败；放宽实验水位不能替代生产磁盘容量、监控和清理策略。
 - **下一步：** 保持实验栈与生产配置分离，定期清理 Docker volume 并在共享环境补充磁盘告警；生产部署遵循 Elasticsearch 官方水位和容量门禁。
 - **验证：** 2026-08-29 storage-lab smoke 通过 Cassandra 5.0.9、Elasticsearch 9.5.2 和 MinIO CRUD，且未产生生产流量。
+- **本轮进展：** Cassandra hydration/read-routing smoke 改用动态宿主机端口并反查映射，消除并行实验之间的固定端口竞争；默认仍只运行隔离实验，不改变生产端口或主读开关。
 
 ### AD-046：Timeline repair worker 尚未纳入默认服务拓扑
 
@@ -316,6 +317,7 @@
 - **本轮进展：** 增加 Sync Cassandra hydration evidence v1 与 Go CLI，按窗口和部署 revision 绑定 shadow/primary 聚合指标，重算命中、fallback、缺失、冲突、错误与 p95 门禁。真实客户端流量、Prometheus 原始快照、责任人批准和主读回切证据仍缺失。
 - **本轮进展：** 修正 migration integration test 从 v47 漂移到实际 v49 的基线与逐步回滚断言；重新执行隔离 Cassandra/MySQL hydration smoke，Metadata backfill、重复响应恢复、Legacy ID 恢复和 shadow comparison 均通过。该证据仍不替代共享环境主读窗口、责任人批准和可执行回切。
 - **本轮进展：** 在同一 v49 隔离迁移环境重新执行 Cassandra read-routing smoke，Cassandra 页面读取、payload 损坏和缺失行回退 MySQL 均通过；生产主读比例、共享环境窗口和责任人批准保持未启用。
+- **本轮进展：** storage-lab Compose 改用动态 Cassandra 宿主机端口，hydration 与 read-routing smoke 已并行通过，分别验证 hydration/Metadata 回填和 Cassandra 主读及损坏/缺失回退；临时资源自动清理，生产主读和共享环境证据门槛保持不变。
 - **建议方向：** A5 Search 与 A4 Cassandra 均已具备不可变归档恢复源；重复发送 hydration 与 Timeline notification shadow 均已具备严格 24 小时晋级规则。Web Sync 观察现可用候选 commit/bundle 哈希绑定的 Session/Evidence 归档，仍需在完整服务 Prometheus 和真实客户端流量上运行并固定对象版本。随后继续通知 shadow 证据归档、Sync Cassandra hydration 主读/fallback 和重复发送 hydration 灰度，再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。
 

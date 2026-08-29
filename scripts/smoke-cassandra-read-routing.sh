@@ -5,6 +5,7 @@ root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 project="dipole-cassandra-read-${RANDOM}-$$"
 mysql_container="${project}-mysql"
 migrate_binary=$(mktemp /tmp/dipole-cassandra-read-migrate.XXXXXX)
+export DIPOLE_CASSANDRA_LAB_PORT="${DIPOLE_CASSANDRA_LAB_PORT:-0}"
 
 cleanup() {
   local exit_code=$?
@@ -16,6 +17,9 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 docker compose -p "$project" -f "$root_dir/docker-compose.storage-lab.yml" up -d --wait cassandra
+cassandra_container="${project}-cassandra-1"
+cassandra_port=$(docker port "$cassandra_container" 9042/tcp | awk -F: 'NR==1 {print $NF}')
+test -n "$cassandra_port"
 docker compose -p "$project" -f "$root_dir/docker-compose.storage-lab.yml" exec -T cassandra cqlsh <"$root_dir/db/cassandra/001_timeline.cql"
 
 docker run -d --name "$mysql_container" --network "${project}_default" --network-alias mysql \
@@ -44,7 +48,7 @@ docker exec "$mysql_container" mysql -N -uroot -pdipole-root dipole \
 (
   cd "$root_dir"
   DIPOLE_TEST_MYSQL_DSN="root:dipole-root@tcp(127.0.0.1:${mysql_port})/dipole?parseTime=true&loc=UTC" \
-    DIPOLE_TEST_CASSANDRA_HOSTS=127.0.0.1:19042 \
+    DIPOLE_TEST_CASSANDRA_HOSTS=127.0.0.1:"$cassandra_port" \
     LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test -count=1 -run TestCassandraReadRouterMySQLFallbackContract ./internal/data/routing
 )
 

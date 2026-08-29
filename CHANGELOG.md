@@ -62,6 +62,8 @@
 
 ### 验证
 
+- Cassandra hydration 与 read-routing smoke 已支持动态宿主机端口并行执行；2026-08-29 两条真实隔离 MySQL 8.4/Cassandra 5.0.9 验证同时通过，覆盖 shadow hydration、重复响应恢复、Legacy ID 恢复、Metadata 回填、Cassandra 页面读取及损坏/缺失行 MySQL fallback。该证据仍不授权生产主读灰度。
+
 - 前端增加 `test:design` Pencil 结构门禁：对 canonical `design/dipole-ui.pen` 校验核心 desktop/mobile frame、设计变量、可复用组件和 placeholder/未命名节点；测试 fixture 同时覆盖缺失画板与占位节点拒绝，保持真实 Pencil CLI 失败时的安全边界。
 
 - C++ Realtime Delivery 增加 `scripts/check-cpp-realtime-container.sh` 容器门禁：复用 Ubuntu 24.04 Dockerfile，自动绑定 revision/created/dirty provenance，在宿主机缺少 gRPC C++ 开发包时仍可复现依赖、编译和 CTest 验证；该门禁不改变 Go 默认投递 authority。
@@ -567,6 +569,8 @@
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
 ### 修复
+
+- 存储实验 Compose 支持 Cassandra 宿主机动态端口；hydration 与 read-routing smoke 启动后反查实际映射，修复并行运行共享固定 `19042` 导致的假失败。默认使用随机端口，也可通过 `DIPOLE_CASSANDRA_LAB_PORT` 显式覆盖。
 
 - 修复 Agent Task Timeline 内部自动事件 ID 由长 Task/Run UUID 拼接导致超过 `VARCHAR(64)` 的问题；现在使用固定 64 位 SHA-256 十六进制 ID，兼容最大长度身份并保持事件校验边界。
 
