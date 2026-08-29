@@ -134,11 +134,11 @@ if rg --quiet 'github.com/JekYUlll/Dipole/internal/store' "${root_dir}/internal"
 	echo "runtime Redis callers must use internal/platform/cache" >&2
 	exit 1
 fi
-if rg --quiet 'platformHotGroup\.NewRedisDetector\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/server" --glob '*.go'; then
+if rg --quiet 'platformHotGroup\.NewRedisDetector\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/services/core/server" --glob '*.go'; then
 	echo "Hot Group production composition must inject the platform Redis client" >&2
 	exit 1
 fi
-if rg --quiet 'platformPresence\.NewRedisPresence\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/server" --glob '*.go'; then
+if rg --quiet 'platformPresence\.NewRedisPresence\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/services/core/server" --glob '*.go'; then
 	echo "Presence production composition must inject the platform Redis client" >&2
 	exit 1
 fi
@@ -233,7 +233,7 @@ if [[ -d "${root_dir}/internal/data/routing" || -d "${root_dir}/internal/data/sh
   echo "legacy storage decorator directories remain under internal/data" >&2
   exit 1
 fi
-for runtime_consumer_dir in internal/operations internal/platform internal/services internal/bootstrap internal/server internal/gateway internal/transport; do
+for runtime_consumer_dir in internal/operations internal/platform internal/services internal/bootstrap internal/services/core/server internal/gateway internal/transport; do
   if rg --quiet 'internal/data/mysql/repository' "${root_dir}/${runtime_consumer_dir}" --glob '*.go'; then
     echo "new runtime code must use service-owned MySQL repositories; legacy repository aliases are compatibility-only" >&2
     exit 1
@@ -694,6 +694,10 @@ if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/gateway/main.go"; t
 fi
 if [[ ! -f "${root_dir}/internal/services/core/bootstrap/entrypoint.go" || ! -f "${root_dir}/internal/services/core/bootstrap/README.md" ]]; then
   echo "Core bootstrap boundary is missing" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/core/server/server.go" || ! -f "${root_dir}/internal/services/core/server/webapp/index.html" ]]; then
+  echo "Core server boundary or embedded web assets are missing" >&2
   exit 1
 fi
 if ! rg --quiet 'internal/services/core/bootstrap' "${root_dir}/cmd/services/core/main.go"; then
