@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Message Service 对 Core Capability RPC 改用惰性连接与就绪探针：Core 未监听时 Message 仍可完成启动，失败连接不缓存并在后续请求或探针中重试；关闭和 embedded/local 回退语义保持兼容。
 - Message RPC 新增 Core-only system message command，Core standalone 通过懒连接 adapter 将联系人/群组系统消息交给 Message Service 持久化；默认微服务配置启用远程路径，embedded 模式保持本地回滚。
 - 将 Message 与 Core 共享的文件错误提升到 `internal/application` 契约，解除 Message domain 对 Core domain 实现的直接依赖；保留 Core/兼容入口的错误身份和 HTTP 错误映射。
 - 重新整理一次性运维代码：将 Agent、Cassandra、Search、Sync 的回填、基线、清理、切换、证据和对账实现统一收纳到 `internal/operations/<service>/`，移除 `internal/backfill`、`internal/baseline`、`internal/cleanup`、`internal/cutover`、`internal/reconcile` 和 `internal/evidence` 横向遗留目录；补充目录索引与结构门禁，运行行为和工具入口保持兼容。
