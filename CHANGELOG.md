@@ -75,6 +75,7 @@
 - 启用 repair worker 前执行 `docker compose --profile agent-timeline-repair up -d agent-timeline-repair`；Compose 会先等待 `mysql-permissions` 完成。共享环境应覆盖 `DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD`，并在发布前替换授权 SQL 中的示例密码。
 
 ### 验证
+- C++ Realtime Delivery 在当前 `master` 基线通过 Ubuntu 24.04 容器门禁：依赖安装、CMake Release 构建和 14/14 CTest 成功，镜像 provenance 标记 `dirty=false`；Go/C++ projection 性能对照仍为 `blocked`，因此继续保留 Go projection 和默认 Go authority。
 
 - Cassandra hydration 与 read-routing smoke 已支持动态宿主机端口并行执行；2026-08-29 两条真实隔离 MySQL 8.4/Cassandra 5.0.9 验证同时通过，覆盖 shadow hydration、重复响应恢复、Legacy ID 恢复、Metadata 回填、Cassandra 页面读取及损坏/缺失行 MySQL fallback。该证据仍不授权生产主读灰度。
 
