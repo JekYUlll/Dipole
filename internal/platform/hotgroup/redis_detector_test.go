@@ -75,6 +75,36 @@ func TestRedisDetectorMarksHotGroupAfterThreshold(t *testing.T) {
 	}
 }
 
+func TestRedisDetectorUsesExplicitClient(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("run miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	previousRDB := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = previousRDB })
+
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer client.Close()
+	detector := NewDetectorWithClient(config.HotGroup{
+		Enabled:              true,
+		MemberCountThreshold: 1,
+		MessageThreshold:     1,
+		WindowSeconds:        60,
+		CoolingSeconds:       180,
+	}, client)
+
+	status, err := detector.ObserveMessage("G-explicit", 1)
+	if err != nil {
+		t.Fatalf("observe message with explicit client: %v", err)
+	}
+	if !status.IsHot {
+		t.Fatalf("expected explicit client to make group hot, got %+v", status)
+	}
+}
+
 func setupRedisDetectorTest(t *testing.T) func() {
 	t.Helper()
 
