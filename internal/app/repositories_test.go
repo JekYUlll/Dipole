@@ -38,6 +38,22 @@ func TestNewCoreProcessRepositoriesOwnsCoreStores(t *testing.T) {
 	}
 }
 
+func TestNewAgentProcessRepositoriesOwnsAgentStores(t *testing.T) {
+	if _, err := NewAgentProcessRepositories(nil); err == nil {
+		t.Fatal("expected nil database to fail")
+	}
+	repos, err := NewAgentProcessRepositories(&sql.DB{})
+	if err != nil {
+		t.Fatalf("new agent process repositories: %v", err)
+	}
+	if _, ok := repos.Policy.(*sqlcRepository.AgentPolicyRepository); !ok {
+		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.Policy)
+	}
+	if _, ok := repos.Artifacts.(*sqlcRepository.AgentArtifactRepository); !ok {
+		t.Fatalf("expected sqlc Agent Artifact repository, got %T", repos.Artifacts)
+	}
+}
+
 func TestNewSyncProcessRepositoriesOwnsOnlySyncStore(t *testing.T) {
 	if _, err := NewSyncProcessRepositories(nil); err == nil {
 		t.Fatal("expected nil database to fail")
