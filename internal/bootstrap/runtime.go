@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
@@ -24,6 +23,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
@@ -31,9 +31,9 @@ import (
 type Runtime struct {
 	server      *server.Server
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
-	outboxFlow  *outboxRelay
-	messageFlow *messageApplicationTransport
-	syncFlow    *syncApplicationTransport
+	outboxFlow  *messagekafka.Relay
+	messageFlow *appComposition.MessageApplicationTransport
+	syncFlow    *appComposition.SyncApplicationTransport
 	coreRPC     *InternalRPCServer
 	metrics     *platformObservability.MetricsServer
 }
@@ -45,7 +45,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	gatewayCfg := config.GatewayConfig()
 	storageCfg := config.StorageConfig()
 	messageCfg := config.CoreMessageConfig()
-	if err := validateTimelineNotifyMode(messageCfg); err != nil {
+	if err := platformRuntime.ValidateTimelineNotifyMode(messageCfg.TimelineNotifyMode); err != nil {
 		return nil, err
 	}
 	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
@@ -275,7 +275,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		logger.Info("core rpc server started", zap.String("addr", coreRPC.Address()))
 	}
-	messageFlow, err := newMessageApplicationTransport(ctx, messageCfg, rpcCfg, localMessaging.Messages)
+	messageFlow, err := appComposition.NewMessageApplicationTransport(ctx, messageCfg, rpcCfg, localMessaging.Messages)
 	if err != nil {
 		if coreRPC != nil {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -284,7 +284,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		return nil, fmt.Errorf("initialize message transport: %w", err)
 	}
-	syncFlow, err := newSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
+	syncFlow, err := appComposition.NewSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
 	if err != nil {
 		messageFlow.Close()
 		if coreRPC != nil {
@@ -347,7 +347,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("kafka consumer started")
 	}
 	if kafkaCfg.Enabled && platformKafka.Client != nil {
-		rt.outboxFlow = newOutboxRelay(repos.Outbox)
+		rt.outboxFlow = messagekafka.NewRelay(repos.Outbox)
 		if rt.outboxFlow != nil {
 			rt.outboxFlow.Start()
 			logger.Info("outbox relay started")
@@ -380,36 +380,12 @@ func coreOwnsMessagePersistence(gatewayMode, messageTransport string) bool {
 	return gatewayMode == "embedded" && messageTransport != "grpc"
 }
 
-func validateTimelineNotifyMode(messageCfg config.Message) error {
-	if messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyOff && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyShadow && messageCfg.TimelineNotifyMode != wsTransport.TimelineNotifyPrimary {
-		return fmt.Errorf("unsupported message.timeline_notify_mode %q", messageCfg.TimelineNotifyMode)
-	}
-	return nil
-}
-
 func (r *Runtime) Server() *server.Server {
 	if r == nil {
 		return nil
 	}
 
 	return r.server
-}
-
-func RunServer(srv *server.Server, tlsCfg config.TLS) error {
-	if !tlsCfg.Enabled {
-		return srv.Run(config.Addr())
-	}
-
-	if err := ensureTLSFiles(tlsCfg); err != nil {
-		return err
-	}
-
-	logger.Info("tls enabled",
-		zap.String("cert_file", tlsCfg.CertFile),
-		zap.String("key_file", tlsCfg.KeyFile),
-	)
-
-	return srv.RunTLS(config.Addr(), tlsCfg.CertFile, tlsCfg.KeyFile)
 }
 
 func (r *Runtime) Close() {
@@ -446,15 +422,4 @@ func (r *Runtime) Close() {
 	if r.router != nil {
 		r.router.Stop()
 	}
-}
-
-func ensureTLSFiles(tlsCfg config.TLS) error {
-	if _, err := os.Stat(tlsCfg.CertFile); err != nil {
-		return err
-	}
-	if _, err := os.Stat(tlsCfg.KeyFile); err != nil {
-		return err
-	}
-
-	return nil
 }

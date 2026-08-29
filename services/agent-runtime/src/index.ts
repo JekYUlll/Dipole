@@ -36,12 +36,23 @@ import {
 } from "./runtime/external-mcp-production-shadow.js";
 import type { ExternalMcpShadowProcess } from "./runtime/external-mcp-shadow-process.js";
 import { SubscriptionShadowMetrics } from "./observability/subscription-shadow-metrics.js";
+import { readFileSync } from "node:fs";
+import { assertActivePromotionBinding } from "./promotion/agent-release-manifest.js";
 
 const port = Number.parseInt(process.env.DIPOLE_AGENT_PORT ?? "8091", 10);
 const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
 let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
+if (shadowConfig.runtimeMode === "active") {
+  let releaseManifest: unknown;
+  try {
+    releaseManifest = JSON.parse(readFileSync(shadowConfig.releaseManifestPath, "utf8"));
+  } catch (error) {
+    throw new Error(`Active Agent Runtime release manifest cannot be loaded: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  assertActivePromotionBinding(releaseManifest, shadowConfig.candidateVersion);
+}
 if (shadowConfig.runtimeMode === "active" && temporalConfig.activityMode !== "read_active") {
   throw new Error("Active Agent Runtime requires read_active Temporal Activities");
 }
