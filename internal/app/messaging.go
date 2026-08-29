@@ -5,6 +5,7 @@ import (
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/service"
+	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
 	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
 )
@@ -40,7 +41,10 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 	files := service.NewFileService(repos.Files, repos.Messages, dependencies.Storage)
 	core := dependencies.Core
 	if core == nil {
-		core = NewLocalCoreCapability(repos)
+		core = coreapplication.New(coreapplication.Dependencies{
+			Users: repos.Users, Contacts: repos.Contacts, Groups: repos.Groups,
+			Files: repos.Files, Conversations: repos.Conversations,
+		})
 	}
 
 	messages := messageapplication.New(repos.Messages, core, messageapplication.Dependencies{

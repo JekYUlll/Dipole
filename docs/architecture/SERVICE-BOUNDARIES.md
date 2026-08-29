@@ -29,6 +29,7 @@
 
 - `internal/service`、`internal/handler`、`internal/store` 和 `internal/app` 仍包含多个服务的组合与实现，当前属于迁移中的共享实现区。
 - Search application 已迁入 `internal/services/search/application/`；该目录只依赖共享 application port、Core Capability 和 Search Index 接口。
+- Core capability 已迁入 `internal/services/core/application/`；该目录只依赖用户、联系人、群组、文件和会话查询所需的最小 store 接口，embedded 与独立 Core runtime 共用该装配。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
 - Message application 已迁入 `internal/services/message/application/`；该目录只依赖共享 MessageStore、Core Capability、事件发布 port 和 Message application port，embedded 与独立 Message runtime 共用该装配。
 - Search HTTP handler 已迁入 `internal/gateway/`，只负责 Gateway 认证上下文、参数校验和 Search application 响应映射。
