@@ -94,7 +94,7 @@ func TestPersistentAgentWorkflowRepairExecutorCommitsAndRollsBackWithFreshGrant(
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := executor.Execute(context.Background(), application.AgentWorkflowRepairExecuteRequestV1{ExecutionUUID: execution.ExecutionUUID, ExecutorUUID: execution.ExecutorUUID, Target: target})
+	result, err := executor.Execute(context.Background(), application.AgentWorkflowRepairExecuteRequestV1{ExecutionUUID: execution.ExecutionUUID, ExecutorUUID: execution.ExecutorUUID, Target: target, Rollback: &current})
 	if err != nil || result == nil || result.Status != application.AgentWorkflowRepairExecutionStatusCommitted || transaction.commits != 1 {
 		t.Fatalf("execute result=%+v commits=%d err=%v", result, transaction.commits, err)
 	}
