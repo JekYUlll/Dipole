@@ -73,7 +73,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	hotGroupDetector := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
 	redisPresence := platformPresence.NewRedisPresenceWithClient(config.PresenceConfig(), cache.RDB)
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
-	requestLimiter := platformRateLimit.NewLimiter()
+	requestLimiter := platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
 	tokenService := service.NewTokenService()
 	authService := coreapplication.NewAuthApplication(repos.Users, tokenService)
 	storageCfg := config.StorageConfig()
