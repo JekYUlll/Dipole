@@ -323,17 +323,17 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		return nil, fmt.Errorf("start gateway metrics: %w", err)
 	}
 	readinessProbes := []platformObservability.DependencyProbe{
-		redisReadinessProbe("redis", runtime.redis),
-		grpcReadinessProbe("core-rpc", runtime.coreConn),
-		grpcReadinessProbe("message-rpc", runtime.messageConn),
-		grpcReadinessProbe("sync-rpc", runtime.syncConn),
-		kafkaReadinessProbe("kafka", platformKafka.Client),
-		kafkaConsumerReadinessProbe("kafka-assignment", platformKafka.Subscriber),
+		platformRuntime.RedisReadinessProbe("redis", runtime.redis),
+		platformRuntime.GRPCReadinessProbe("core-rpc", runtime.coreConn),
+		platformRuntime.GRPCReadinessProbe("message-rpc", runtime.messageConn),
+		platformRuntime.GRPCReadinessProbe("sync-rpc", runtime.syncConn),
+		platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client),
+		platformRuntime.KafkaConsumerReadinessProbe("kafka-assignment", platformKafka.Subscriber),
 	}
 	if deliveryObservationFence != nil {
-		readinessProbes = append(readinessProbes, authorityFenceReadinessProbe("delivery-authority", deliveryObservationFence, deliveryAuthority))
+		readinessProbes = append(readinessProbes, platformRuntime.AuthorityFenceReadinessProbe("delivery-authority", deliveryObservationFence, deliveryAuthority))
 	}
-	if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(), readinessProbes...); err != nil {
+	if err := platformRuntime.ConfigureDependencyReadiness(runtime.metrics, config.MetricsConfig(), readinessProbes...); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("configure Gateway dependency readiness: %w", err)
 	}

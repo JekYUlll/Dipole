@@ -82,8 +82,8 @@ func InitializeSearchIndexer(ctx context.Context) (*SearchIndexerRuntime, error)
 		cleanup()
 		return nil, fmt.Errorf("start Search Indexer metrics: %w", err)
 	}
-	if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(),
-		elasticsearchReadinessProbe("elasticsearch", index), kafkaReadinessProbe("kafka", platformKafka.Client),
+	if err := platformRuntime.ConfigureDependencyReadiness(runtime.metrics, config.MetricsConfig(),
+		platformRuntime.ElasticsearchReadinessProbe("elasticsearch", index), platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client),
 	); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("configure Search Indexer dependency readiness: %w", err)

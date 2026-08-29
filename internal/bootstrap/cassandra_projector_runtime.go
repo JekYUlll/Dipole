@@ -79,9 +79,9 @@ func InitializeCassandraProjector(ctx context.Context) (*CassandraProjectorRunti
 		cleanup()
 		return nil, fmt.Errorf("start Cassandra projector metrics: %w", err)
 	}
-	if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(),
-		cassandraReadinessProbe("cassandra", runtime.session, cassandraCfg.Keyspace),
-		kafkaReadinessProbe("kafka", platformKafka.Client),
+	if err := platformRuntime.ConfigureDependencyReadiness(runtime.metrics, config.MetricsConfig(),
+		platformRuntime.CassandraReadinessProbe("cassandra", runtime.session, cassandraCfg.Keyspace),
+		platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client),
 	); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("configure Cassandra projector dependency readiness: %w", err)

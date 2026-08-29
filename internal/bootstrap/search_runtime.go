@@ -70,8 +70,8 @@ func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, ela
 		runtime.Close()
 		return nil, fmt.Errorf("start Search Service metrics: %w", err)
 	}
-	if err := configureRuntimeDependencyReadiness(runtime.metrics, metricsCfg,
-		elasticsearchReadinessProbe("elasticsearch", index), grpcReadinessProbe("core-rpc", runtime.coreConn),
+	if err := platformruntime.ConfigureDependencyReadiness(runtime.metrics, metricsCfg,
+		platformruntime.ElasticsearchReadinessProbe("elasticsearch", index), platformruntime.GRPCReadinessProbe("core-rpc", runtime.coreConn),
 	); err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("configure Search dependency readiness: %w", err)
@@ -82,7 +82,7 @@ func initializeSearchService(ctx context.Context, rpcCfg config.InternalRPC, ela
 		return nil, fmt.Errorf("start Search rpc server: %w", err)
 	}
 	if runtime.metrics != nil {
-		bindRPCReadiness(runtime.metrics, runtime.rpc)
+		platformruntime.BindRPCReadiness(runtime.metrics, runtime.rpc)
 		platformruntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("Search Service runtime initialized", zap.String("read_alias", index.ReadAlias()))

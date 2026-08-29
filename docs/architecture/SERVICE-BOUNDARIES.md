@@ -28,7 +28,7 @@
 - `internal/platform/elasticsearch`：Search 与 Search Indexer 共用的版本化索引、Alias 和 mutation adapter；不保存消息事实和授权事实。
 - `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 连接初始化、事务边界、generated 输出和 mapper；业务仓储由各服务拥有，旧 `internal/data/mysql` Store 与 `internal/store` MySQL 入口仅保留兼容入口。
 - `internal/platform/cache`：Redis 单节点/Sentinel 客户端、共享缓存和实时状态原语；业务服务直接依赖该平台包，旧 `internal/store/redis_compat.go` 仅保留兼容入口。
-- `internal/platform/runtime`：跨服务 metrics 生命周期和运行时基础设施；不承载业务编排、数据访问或 RPC 语义。
+- `internal/platform/runtime`：跨服务 metrics 生命周期、依赖 readiness 探针和 RPC serving 绑定；不承载业务编排、数据访问或具体服务 RPC 语义。
 - `api/proto`、`api/gen/go`、`contracts`：跨服务 RPC 源契约、生成类型、事件和 Agent 契约；生成代码由协议目录统一维护。
 
 ### 需要收敛

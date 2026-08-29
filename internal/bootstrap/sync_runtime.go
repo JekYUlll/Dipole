@@ -172,8 +172,8 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		runtime.Close()
 		return nil, fmt.Errorf("start Sync Service metrics: %w", err)
 	}
-	if err := configureRuntimeDependencyReadiness(runtime.metrics, metricsCfg,
-		mysqlReadinessProbe("mysql", runtime.db), grpcReadinessProbe("core-rpc", runtime.coreConn),
+	if err := platformruntime.ConfigureDependencyReadiness(runtime.metrics, metricsCfg,
+		platformruntime.MySQLReadinessProbe("mysql", runtime.db), platformruntime.GRPCReadinessProbe("core-rpc", runtime.coreConn),
 	); err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("configure Sync dependency readiness: %w", err)
@@ -184,7 +184,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 		return nil, fmt.Errorf("start Sync rpc server: %w", err)
 	}
 	if runtime.metrics != nil {
-		bindRPCReadiness(runtime.metrics, runtime.rpc)
+		platformruntime.BindRPCReadiness(runtime.metrics, runtime.rpc)
 		platformruntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("Sync Service runtime initialized", zap.Bool("projector_enabled", syncCfg.ProjectorEnabled), zap.Bool("cassandra_shadow_hydration", syncCfg.CassandraShadowHydration), zap.Bool("cassandra_primary_hydration", syncCfg.CassandraPrimaryHydration))

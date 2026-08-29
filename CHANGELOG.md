@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 运行时 readiness 编排已下沉到 `internal/platform/runtime`，统一提供依赖探针、gRPC health 检查、Kafka consumer 初始分配检查、Cassandra schema 检查和 RPC serving 绑定；服务特有启动条件继续留在各自 runtime，旧 `internal/bootstrap/dependency_readiness.go` 保留兼容出口。
 - 新增 `internal/platform/runtime` 共享运行时平台，Core、Gateway、Message、Sync、Search、Search Indexer 和 Cassandra projector 统一使用平台 metrics 生命周期；旧 `internal/bootstrap/metrics.go` 降级为兼容出口，运行行为和回滚路径保持不变。
 - Search Indexer 服务新增 `internal/services/search-indexer/bootstrap/` 入口边界，`cmd/services/search-indexer` 已停止直接依赖共享 `internal/bootstrap`；Kafka、Elasticsearch、metrics 和 readiness 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
 - Core 服务新增 `internal/services/core/bootstrap/` 入口边界，`cmd/services/core` 已停止直接依赖共享 `internal/bootstrap`，并显式区分独立 Core 与 embedded 回滚模式；RPC、Kafka、storage 和 readiness 运行时暂保留兼容 facade。
