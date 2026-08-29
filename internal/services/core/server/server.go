@@ -217,6 +217,7 @@ func NewWithDependencies(repos *Repositories, dependencies Dependencies) *Server
 			}
 			protected.POST("/files", fileHandler.Upload)
 			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)
+			protected.GET("/files/uploads/:session_id", fileHandler.MultipartStatus)
 			protected.PUT("/files/uploads/:session_id/parts/:part_number", fileHandler.UploadPart)
 			protected.POST("/files/uploads/:session_id/complete", fileHandler.CompleteMultipart)
 			protected.DELETE("/files/uploads/:session_id", fileHandler.AbortMultipart)
