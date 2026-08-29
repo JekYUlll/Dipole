@@ -2,9 +2,9 @@ package app
 
 import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/service"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
 	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"

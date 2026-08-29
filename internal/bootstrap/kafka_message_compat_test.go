@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 func TestDecodeMessageEventPayloadPreservesSyncFanoutPresence(t *testing.T) {

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 const (

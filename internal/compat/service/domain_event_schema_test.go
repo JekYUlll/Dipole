@@ -82,7 +82,7 @@ func loadDomainEventSchema(t *testing.T, name string) messageEventSchema {
 	if !ok {
 		t.Fatal("locate domain schema test source")
 	}
-	path := filepath.Join(filepath.Dir(currentFile), "..", "..", "contracts", "events", "domain", "v1", name)
+	path := filepath.Join(filepath.Dir(currentFile), "..", "..", "..", "contracts", "events", "domain", "v1", name)
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read domain event schema: %v", err)

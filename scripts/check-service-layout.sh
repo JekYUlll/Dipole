@@ -15,6 +15,16 @@ if [[ ! -f "${root_dir}/services/README.md" ]]; then
   echo "polyglot service directory index is missing: services/README.md" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal/compat/service" ]]; then
+  echo "legacy compatibility adapters must be isolated under internal/compat" >&2
+  exit 1
+fi
+for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
+  if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
+    echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2
+    exit 1
+  fi
+done
 if ! git -C "${root_dir}" ls-files --error-unmatch docs/architecture/SERVICE-BOUNDARIES.md >/dev/null 2>&1; then
   echo "service boundary manifest is not tracked: docs/architecture/SERVICE-BOUNDARIES.md" >&2
   exit 1
@@ -193,39 +203,39 @@ if rg --quiet 'github.com/JekYUlll/Dipole/internal/store' "${root_dir}/internal/
   echo "Core domain implementation must not depend directly on aggregate internal/store" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/file_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/file_service.go" ]]; then
   echo "legacy Core file implementation remains under internal/service" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/auth_service.go" || -e "${root_dir}/internal/service/token_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/auth_service.go" || -e "${root_dir}/internal/compat/service/token_service.go" ]]; then
   echo "legacy Core auth implementation remains under internal/service" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/admin_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/admin_service.go" ]]; then
   echo "legacy Core admin implementation remains under internal/service" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/session_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/session_service.go" ]]; then
   echo "legacy Core session implementation remains under internal/service" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/user_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/user_service.go" ]]; then
   echo "legacy Core user implementation remains under internal/service" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/contact_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/contact_service.go" ]]; then
   echo "legacy Core contact implementation remains under internal/service" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/conversation_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/conversation_service.go" ]]; then
   echo "legacy Core conversation implementation remains under internal/service" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/sync_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/sync_service.go" ]]; then
   echo "legacy Sync implementation remains under internal/service" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/message_event.go" || -e "${root_dir}/internal/service/message_sync_projection.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/message_event.go" || -e "${root_dir}/internal/compat/service/message_sync_projection.go" ]]; then
   echo "legacy Message event implementation remains under internal/service" >&2
   exit 1
 fi
@@ -237,7 +247,7 @@ if [[ -e "${root_dir}/internal/data/mysql/repository/sync.go" || -e "${root_dir}
   echo "legacy Sync MySQL implementation remains in shared repository package" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then
+if [[ -e "${root_dir}/internal/compat/service/group_service.go" ]]; then
   echo "legacy Core group implementation remains under internal/service" >&2
   exit 1
 fi
