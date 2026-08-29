@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- 更新 `docs/architecture/ARCHITECTURE-QA.md`：同步 Message Store、User Inbox Timeline、Conversation Seq/read_seq、sqlc、微服务和分层存储现状，修正早期无 Inbox/GORM/纯模块化单体描述。
 - Sync repository composition 已迁入 `internal/services/sync/infrastructure/mysql/`；embedded 聚合入口保留兼容别名，独立与聚合启动均通过 Sync-owned composition 构造 repository 集合。
 - Agent SQLC repository composition 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/app` 仅保留 embedded 兼容别名，聚合入口通过 Agent-owned composition 构造 repository 集合。
 - Core SQLC repository composition 与 User/Group/Contact cache adapter 已迁入 `internal/services/core/infrastructure/mysql/`；独立 Core Runtime 不再依赖聚合包中的 Core 实现，`internal/app` 仅保留 embedded 兼容别名。
