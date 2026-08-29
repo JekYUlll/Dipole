@@ -88,6 +88,14 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("compose repositories: %v", err)
 	}
+	for name, process := range map[string]any{
+		"core process": repos.CoreProcess, "message process": repos.MessageProcess,
+		"sync process": repos.SyncProcess, "agent process": repos.AgentProcess,
+	} {
+		if process == nil {
+			t.Errorf("repository %s composition is nil", name)
+		}
+	}
 	required := map[string]any{
 		"users": repos.Users, "messages": repos.Messages, "files": repos.Files,
 		"conversations": repos.Conversations, "contacts": repos.Contacts,
