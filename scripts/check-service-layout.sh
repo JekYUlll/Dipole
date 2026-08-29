@@ -142,7 +142,7 @@ if rg --quiet 'platformPresence\.NewRedisPresence\(' "${root_dir}/internal/boots
 	echo "Presence production composition must inject the platform Redis client" >&2
 	exit 1
 fi
-if rg --quiet 'platformRateLimit\.NewLimiter\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/server" "${root_dir}/internal/gateway" --glob '*.go'; then
+if rg --quiet 'platformRateLimit\.NewLimiter\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/services/core/server" "${root_dir}/internal/gateway" --glob '*.go'; then
 	echo "Rate limiter production composition must inject the platform Redis client" >&2
 	exit 1
 fi
