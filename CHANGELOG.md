@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：在当前 `master` revision `801e69ce` 上复跑完整微服务 Compose smoke；逐服务 health/readiness、metrics、Core 代理 401、Core WS 边界、mTLS 启动、远程 WS ownership 及 Agent EventLedger/Task/Run 幂等均通过，隔离拓扑自动清理，生产 Kafka ownership 与回滚切换继续关闭。
 - 2026-08-30：在当前 `master` revision `69055e87` 上复跑 Cassandra primary Compose smoke；Cassandra schema init、Sync primary profile、依赖 readiness 和 Sync `readyz` 全部通过，临时资源已清理。本次仅证明启动与配置门禁，真实 Inbox hydration、共享环境观测、责任人批准和可执行回切继续关闭。
 - 2026-08-30：复核 Agent Runtime Context Compiler 校准命令：fixture evidence 覆盖中文、英文、代码、Emoji 和 Tool Schema 五类样本，`eligible=true`、无低估，report SHA-256 为 `d5bce2090f8d4b4c6af786d75dee656fd9dd33554ecaf8026e5880abe4863562`；同时全量回归 `665` 项通过、`27` 项按条件跳过，真实候选模型校准仍保持生产前置门禁。
 - 2026-08-30：在当前 `master` revision `d2507377` 上重建微服务候选镜像并复跑 Agent Timeline repair Compose smoke；migration `v50`、UTC、专用最小权限、worker readiness、pending intent 恢复和 event UUID 幂等均通过，隔离栈已清理，共享环境 operator 灰度与默认生产开关继续关闭。
