@@ -1931,6 +1931,28 @@ paths:
       summary: 上传分片
       tags:
       - File
+  /files/uploads/policy:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SuccessEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取分片上传策略
+      tags:
+      - File
   /files/uploads/initiate:
     post:
       consumes:
