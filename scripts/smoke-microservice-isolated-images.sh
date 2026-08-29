@@ -45,7 +45,11 @@ compose() {
 
 cleanup() {
   local exit_code=$?
-  if [[ "${KEEP_ON_FAILURE:-0}" != "1" || "${exit_code}" == "0" ]]; then
+  local retain_failure=0
+  if [[ "${KEEP_ON_FAILURE:-0}" == "1" && "${exit_code}" != "0" ]]; then
+    retain_failure=1
+  fi
+  if [[ "${retain_failure}" == "0" ]]; then
     compose down -v --remove-orphans >/dev/null 2>&1 || true
   else
     printf 'isolated microservices smoke retained failed project: %s\n' "${project}" >&2
@@ -53,8 +57,10 @@ cleanup() {
   rm -f "${ports_file}"
   rm -f "${wscli_log}"
   rm -f "${wscli_binary}"
-  if [[ "${remove_cert_dir}" == "1" ]]; then
+  if [[ "${remove_cert_dir}" == "1" && "${retain_failure}" == "0" ]]; then
     rm -rf "${cert_dir}"
+  elif [[ "${retain_failure}" == "1" ]]; then
+    printf 'isolated microservices smoke retained certificate directory: %s\n' "${cert_dir}" >&2
   fi
   exit "${exit_code}"
 }
