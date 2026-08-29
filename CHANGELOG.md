@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：校准 AD-055 与 A7 的大文件上传状态：记录整文件 SHA-256 绑定与可选强制校验已完成，明确 Redis 孤儿扫描已有基础能力，并将剩余工作收敛为 Multipart reconciliation、生命周期告警、Complete/Abort 幂等、暂停/继续和真实故障矩阵。
 - 2026-08-30：同步 `PLATFORM-EVOLUTION-PLAN.md` 的实际质量基线和 F4 状态：Agent Runtime 更新为 `125` 个测试文件/`665` 个通过、`27` 个按条件跳过，Frontend 更新为 `28` 个文件/`104` 个测试，并明确 token 映射、核心流程和跨浏览器功能回归已完成；全页面截图视觉基线、真实 Pencil CLI 增量编辑及未覆盖平台仍保留待办。
 - 2026-08-30：完成主线综合门禁复核：架构文档、服务布局、SQLC 和脚本包白名单下的 Go 全量 test/vet 均通过；同时确认根目录 Markdown 与 `docs/` 分类保持收敛，未新增散落文档。
 - 2026-08-30：修正 `docs/architecture/DEVELOPMENT-ROADMAP.md` 中对已退役 `internal/service` 的过时表述，改为描述共享兼容适配器与 `internal/services/<service>/` 的持续收敛，避免路线图误导新服务开发。
