@@ -91,7 +91,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		&appComposition.SyncProcessRepositories{},
 		appComposition.MessagingDependencies{
 			Events:    events,
-			HotGroups: platformHotGroup.NewRedisDetector(),
+			HotGroups: platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB),
 			Storage:   platformStorage.Client,
 		},
 	)
