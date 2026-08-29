@@ -18,6 +18,8 @@
 
 ## [Unreleased]
 
+- Message bootstrap 的惰性 Core 重试测试已改用本地最小 gRPC adapter，不再反向导入共享 `internal/bootstrap` 测试夹具，解除 Message 服务测试包循环依赖。
+- Embedded 兼容入口 `internal/bootstrap.NewMessageRPCServer` 已改为转发 Message bootstrap 的服务自有实现，删除共享 RPC 文件中的重复注册逻辑；旧调用方的协议、认证和回滚行为保持兼容。
 - Message 独立 runtime 的 RPC server 字段已切换为 `internal/platform/rpc.Server`，移除对共享 `internal/bootstrap` RPC 类型别名的生产依赖；embedded 兼容入口继续保留，协议、认证和回滚行为不变。
 - Message MySQL least-privilege database permission probe 已迁入 `internal/services/message/infrastructure/mysql`；独立 Message runtime 直接校验服务自有边界，embedded 入口保留兼容转发，权限探针单元测试与真实账号集成测试随服务 infrastructure 归属。
 - Message `send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka`；独立 Message runtime 直接注册服务 handler，embedded 保留兼容注册包装。
