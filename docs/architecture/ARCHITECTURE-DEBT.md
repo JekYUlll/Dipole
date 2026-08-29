@@ -548,6 +548,7 @@
 - **本轮进展：** 增加受控 `prepared` 准备服务：复核已批准且未过期的 repair proposal、审批计数、Task 存在性和 proposal/task/executor 绑定，再通过 execution store 幂等创建并读取执行意图；该服务不推进状态、不修改 projection。由于 operator grant 当前没有版本字段，`executor_grant_version` 暂只保存计划绑定，运行时 grant 复核仍关闭。
 - **本轮进展：** Agent Runtime 增加 `repair:plan` dry-run 计划编译器，按 execution-plan v1 生成确定性的 plan ID、当前/目标/回滚投影 SHA-256 和 15 分钟 CAS 窗口；批准状态、双审批人、独立执行人及 grant version 均在计划生成前校验。CLI 不连接 MySQL/Temporal，不改变 projection，也没有 apply/execute/rollback 入口。单测、类型检查和构建已通过。
 - **本轮进展：** 追加 Workflow/Run 身份绑定校验，当前投影与目标投影必须属于同一运行实例，跨运行证据在 plan 编译阶段拒绝；新增回归测试并保持 v1 dry-run 与无写执行器边界。
+- **验证记录：** TS Agent Runtime 独立执行 `npm test -- --run` 通过（125 个测试文件、661 个测试），`npm run typecheck` 与 `npm run build` 通过；当前 Compose 仍固定 shadow/metadata/foundation，尚未宣称生产接管。
 - **本轮进展：** 增加 `repair:preflight` 二次采证器，按 plan/proposal/grant/current CAS 生成低敏 `ready|blocked` 收据；它不读取数据库、不调用 Temporal、不修改 projection，真实 executor 与生产 authority 继续关闭。
 - **本轮进展：** migration v44 与 sqlc 新增 prepared execution ledger，持久化唯一 plan 的执行意图、提案/任务/执行人绑定和 CAS 摘要；应用接口仅支持创建/读取 prepared 记录，未增加状态推进或写入 RPC，便于后续 executor 在独立版本中实现可恢复提交与回滚。
 - **本轮进展：** migration v50 为 Workflow Repair operator grant 增加 `grant_version` 与独立 `can_execute` 能力；旧授权默认保持提案/审批权限，执行器必须绑定非零版本并单独授予执行权，避免仅凭旧 `executor_grant_version` 进入写路径。

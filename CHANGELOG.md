@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- TS Agent Runtime 独立 module 完成当前基线验证：`npm test -- --run` 通过（125 个测试文件、661 个测试），`npm run typecheck` 与 `npm run build` 通过；Compose 仍保持 shadow、metadata、foundation 默认回滚模式。
 - 完成当前仓库结构基线验证：全量 `CGO_ENABLED=0 go test ./...` 通过，覆盖服务入口、运维工具、兼容包、平台层和 RPC/WS transport；根级目录白名单与服务边界门禁继续通过。
 - 新增根级源码目录白名单门禁，明确 `api/`、`benchmarks/`、`cmd/`、`configs/`、`contracts/`、`db/`、`deploy/`、`design/`、`docs/`、`frontend/`、`internal/`、`scripts/` 和 `services/` 的归属；本地 `logs/`、`tmp/`、`dist/`、`certs/` 继续由忽略规则隔离。
 - Agent bootstrap 已改用 Agent-owned application constructors，移除 runtime/kafka 对 `internal/app` 聚合 facade 的最后两处生产引用；服务布局门禁现禁止外部生产代码依赖该兼容入口。
