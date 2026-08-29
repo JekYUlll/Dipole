@@ -29,7 +29,7 @@
 
 - `internal/service`、`internal/handler`、`internal/store` 和 `internal/app` 仍包含多个服务的组合与实现，当前属于迁移中的共享实现区。
 - Search application 已迁入 `internal/services/search/application/`；该目录只依赖共享 application port、Core Capability 和 Search Index 接口。
-- Core capability 与 Conversation application 已迁入 `internal/services/core/application/`；Core capability 只依赖查询所需的最小 store 接口，Conversation application 通过明确的 repository、事件和通知依赖装配，embedded 与独立 Core runtime 共用该边界。
+- Core capability、User 与 Conversation application 已迁入 `internal/services/core/application/`；User application 通过 User/File store 和对象存储依赖装配，Core capability 使用最小查询接口，Conversation application 通过明确的 repository、事件和通知依赖装配，embedded 与独立 Core runtime 共用该边界。
 - Core repository composition 已提供 `CoreProcessRepositories`，集中声明 Core 所有的用户、群组、联系人、文件、Conversation State 和 Admin store；聚合 `Repositories` 仅作为 embedded 兼容入口。
 - Agent repository composition 已提供 `AgentProcessRepositories`，集中声明 Agent policy、task timeline、memory、approval、artifact、tool audit 和 readiness store；Core 仅通过兼容 RPC/port 使用必要能力。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。

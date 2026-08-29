@@ -25,6 +25,7 @@ import (
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/service"
+	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -75,12 +76,10 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	tokenService := service.NewTokenService()
 	authService := service.NewAuthService(repos.Users, tokenService)
 	storageCfg := config.StorageConfig()
-	userService := service.NewUserService(repos.Users).WithAvatarStorage(
-		repos.Files,
-		platformStorage.Client,
-		5*1024*1024,
-		10*time.Minute,
-	)
+	userService := coreapplication.NewUserApplication(repos.Users, coreapplication.UserDependencies{
+		Files: repos.Files, Storage: platformStorage.Client,
+		AvatarMaxBytes: 5 * 1024 * 1024, AvatarURLTTL: 10 * time.Minute,
+	})
 	adminService := service.NewAdminService(repos.Admin, wsHub)
 	var kafkaEvents applicationPort.EventPublisher
 	if config.KafkaConfig().Enabled {
