@@ -183,7 +183,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task control authorizer: %w", composeErr)
 		}
-		workflowProjection, composeErr := appComposition.NewPersistentAgentTaskWorkflowProjectionServiceV1(repos.AgentPolicy)
+		workflowProjection, composeErr := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow projection: %w", composeErr)
 		}
@@ -211,7 +211,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription control: %w", composeErr)
 		}
-		definitionCatalog, composeErr := appComposition.NewPersistentAgentDefinitionCatalogV1(repos.AgentDefinitionCatalog, time.Now)
+		definitionCatalog, composeErr := agentapplication.NewPersistentAgentDefinitionCatalogV1(repos.AgentDefinitionCatalog, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Definition catalog: %w", composeErr)
 		}
@@ -223,7 +223,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory owner control: %w", composeErr)
 		}
-		memoryPromotions, composeErr := appComposition.NewPersistentAgentMemoryCandidatePromotionServiceV1(repos.AgentMemoryPromotions, time.Now)
+		memoryPromotions, composeErr := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(repos.AgentMemoryPromotions, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory candidate promotion service: %w", composeErr)
 		}
