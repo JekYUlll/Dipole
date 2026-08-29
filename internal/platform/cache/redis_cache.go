@@ -1,6 +1,7 @@
 // Package cache provides thin Redis helpers for JSON serialisation/deserialisation
-// and hash-field operations. All functions are no-ops when store.RDB is nil,
-// so the application degrades gracefully when Redis is unavailable.
+// and hash-field operations. Best-effort cache helpers are no-ops when
+// store.RDB is nil; required service-state helpers return an error instead so
+// callers can fail closed when Redis is unavailable.
 package cache
 
 import (
