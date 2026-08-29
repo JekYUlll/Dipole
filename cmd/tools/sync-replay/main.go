@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	syncops "github.com/JekYUlll/Dipole/internal/operations/sync"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	result, err := bootstrap.RunSyncReplay(ctx, bootstrap.SyncReplayOptions{
+	result, err := syncops.RunSyncReplay(ctx, syncops.SyncReplayOptions{
 		JobName: *jobName, OwnerID: *ownerID, BatchSize: *batchSize,
 		LeaseDuration: time.Duration(*leaseSeconds) * time.Second,
 	})

@@ -19,6 +19,7 @@
 ## [Unreleased]
 
 - 将 Search 回填、归档、对账、Alias 切换和 Outbox 清理装配从 `internal/bootstrap/` 收纳到 `internal/operations/search/`，明确长期服务启动与一次性运维操作的目录边界；命令行入口、回滚语义和操作参数保持兼容。
+- 将 Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 装配从 `internal/bootstrap/` 分别收纳到 `internal/operations/sync/`、`internal/operations/cassandra/`；长期服务运行时、命令参数和回滚语义保持兼容。
 - 将 MySQL 全局连接初始化从 `internal/store` 收敛到 `internal/platform/mysql`，生产启动入口、Bloom 初始化和 Agent 维护工具统一使用新平台边界；旧 MySQL 入口保留为兼容转发，Redis 迁移保持独立节奏。
 - 将 Redis 客户端初始化和全局状态从 `internal/store` 收敛到 `internal/platform/cache`，同步迁移 Core、Gateway、Message、Presence、Hot Group、限流和 realtime 运维工具；旧 Redis 入口保留为兼容转发，单节点/Sentinel 配置和实时状态语义保持兼容。
 - Hot Group Detector 新增显式 Redis 客户端注入，Core、Message、embedded 和 Kafka 投影装配统一传入平台客户端；无参数构造函数继续保留为兼容入口，检测阈值和热群策略保持不变。
