@@ -9,11 +9,12 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
+	searchmysql "github.com/JekYUlll/Dipole/internal/operations/search/backfill/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	mysqlconfig "github.com/JekYUlll/Dipole/internal/platform/mysql/config"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -37,7 +38,7 @@ func RunSearchBackfill(ctx context.Context, options SearchBackfillOptions) (sear
 		return searchbackfill.Result{}, err
 	}
 	defer db.Close()
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		return searchbackfill.Result{}, err
 	}
@@ -45,7 +46,7 @@ func RunSearchBackfill(ctx context.Context, options SearchBackfillOptions) (sear
 	if err != nil {
 		return searchbackfill.Result{}, err
 	}
-	checkpoints, err := mysqldata.NewSearchBackfillCheckpointStore(store, options.TargetIndex)
+	checkpoints, err := searchmysql.NewSearchBackfillCheckpointStore(store, options.TargetIndex)
 	if err != nil {
 		return searchbackfill.Result{}, err
 	}

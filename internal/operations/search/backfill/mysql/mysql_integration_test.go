@@ -10,15 +10,17 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/model"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
+	searchmysql "github.com/JekYUlll/Dipole/internal/operations/search/backfill/mysql"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
+	mysqltestutil "github.com/JekYUlll/Dipole/internal/platform/mysql/testutil"
 )
 
 func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
-	db := openTemporaryDatabase(t)
+	db := mysqltestutil.OpenTemporaryDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatalf("create migration runner: %v", err)
@@ -35,11 +37,11 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 		t.Fatalf("insert unrelated outbox event: %v", err)
 	}
 
-	store, err := mysqlStore.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		t.Fatalf("create MySQL store: %v", err)
 	}
-	source, err := mysqlStore.NewSearchBackfillSource(store)
+	source, err := searchmysql.NewSearchBackfillSource(store)
 	if err != nil {
 		t.Fatalf("create Search source: %v", err)
 	}
@@ -56,7 +58,7 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 		t.Fatalf("unexpected final-state source page: %+v", items)
 	}
 
-	checkpoints, err := mysqlStore.NewSearchBackfillCheckpointStore(store, "dipole-messages-v1-build-a")
+	checkpoints, err := searchmysql.NewSearchBackfillCheckpointStore(store, "dipole-messages-v1-build-a")
 	if err != nil {
 		t.Fatalf("create Search checkpoints: %v", err)
 	}
@@ -68,7 +70,7 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 	if err != nil || checkpoint.HighWatermarkID != 3 || checkpoint.Status != searchbackfill.StatusRunning {
 		t.Fatalf("initial checkpoint=%+v err=%v", checkpoint, err)
 	}
-	if _, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", descriptor, 99, time.Minute); !errors.Is(err, mysqlStore.ErrSearchBackfillLeaseHeld) {
+	if _, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", descriptor, 99, time.Minute); !errors.Is(err, searchmysql.ErrSearchBackfillLeaseHeld) {
 		t.Fatalf("second owner error=%v", err)
 	}
 	if err := checkpoints.Advance(context.Background(), "search-v1-build-a", "owner-a", 2, time.Minute); err != nil {
@@ -83,7 +85,7 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 	}
 	wrongSource := descriptor
 	wrongSource.SnapshotID = "archive:other"
-	if _, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", wrongSource, highWatermark, time.Minute); !errors.Is(err, mysqlStore.ErrSearchBackfillSourceMismatch) {
+	if _, err := checkpoints.Acquire(context.Background(), "search-v1-build-a", "owner-b", wrongSource, highWatermark, time.Minute); !errors.Is(err, searchmysql.ErrSearchBackfillSourceMismatch) {
 		t.Fatalf("source mismatch error=%v", err)
 	}
 	if err := checkpoints.Advance(context.Background(), "search-v1-build-a", "owner-b", 3, time.Minute); err != nil {
@@ -96,11 +98,11 @@ func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
 	if err != nil || completed != 3 {
 		t.Fatalf("completed watermark=%d err=%v", completed, err)
 	}
-	if _, err := checkpoints.CompletedHighWatermarkForSource(context.Background(), "search-v1-build-a", wrongSource); !errors.Is(err, mysqlStore.ErrSearchBackfillSourceMismatch) {
+	if _, err := checkpoints.CompletedHighWatermarkForSource(context.Background(), "search-v1-build-a", wrongSource); !errors.Is(err, searchmysql.ErrSearchBackfillSourceMismatch) {
 		t.Fatalf("completed source mismatch error=%v", err)
 	}
-	wrongTarget, _ := mysqlStore.NewSearchBackfillCheckpointStore(store, "dipole-messages-v1-build-b")
-	if _, err := wrongTarget.CompletedHighWatermark(context.Background(), "search-v1-build-a"); !errors.Is(err, mysqlStore.ErrSearchBackfillTargetMismatch) {
+	wrongTarget, _ := searchmysql.NewSearchBackfillCheckpointStore(store, "dipole-messages-v1-build-b")
+	if _, err := wrongTarget.CompletedHighWatermark(context.Background(), "search-v1-build-a"); !errors.Is(err, searchmysql.ErrSearchBackfillTargetMismatch) {
 		t.Fatalf("target mismatch error=%v", err)
 	}
 }

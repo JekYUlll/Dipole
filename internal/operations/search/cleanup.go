@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"os"
 
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
+	searchmysql "github.com/JekYUlll/Dipole/internal/operations/search/backfill/mysql"
 	searchcleanup "github.com/JekYUlll/Dipole/internal/operations/search/cleanup"
+	cleanupmysql "github.com/JekYUlll/Dipole/internal/operations/search/cleanup/mysql"
 	searchreconcile "github.com/JekYUlll/Dipole/internal/operations/search/reconcile"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 )
 
 type SearchCleanupOptions struct {
@@ -44,11 +46,11 @@ func RunSearchOutboxCleanup(ctx context.Context, options SearchCleanupOptions) (
 		return searchcleanup.Result{}, err
 	}
 	defer db.Close()
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		return searchcleanup.Result{}, err
 	}
-	checkpoints, err := mysqldata.NewSearchBackfillCheckpointStore(store, options.TargetIndex)
+	checkpoints, err := searchmysql.NewSearchBackfillCheckpointStore(store, options.TargetIndex)
 	if err != nil {
 		return searchcleanup.Result{}, err
 	}
@@ -60,7 +62,7 @@ func RunSearchOutboxCleanup(ctx context.Context, options SearchCleanupOptions) (
 	if highWatermark != receipt.HighWatermarkID {
 		return searchcleanup.Result{}, fmt.Errorf("Search cleanup Job high watermark does not match archive receipt")
 	}
-	cleanupStore, err := mysqldata.NewSearchOutboxCleanupStore(store)
+	cleanupStore, err := cleanupmysql.NewSearchOutboxCleanupStore(store)
 	if err != nil {
 		return searchcleanup.Result{}, err
 	}

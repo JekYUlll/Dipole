@@ -7,13 +7,15 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
 	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
+	cassandramysql "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
+	mysqltestutil "github.com/JekYUlll/Dipole/internal/platform/mysql/testutil"
 )
 
 func TestCassandraBackfillSourceAndCheckpointContract(t *testing.T) {
-	db := openTemporaryDatabase(t)
+	db := mysqltestutil.OpenTemporaryDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatalf("create migration runner: %v", err)
@@ -38,11 +40,11 @@ func TestCassandraBackfillSourceAndCheckpointContract(t *testing.T) {
 		}
 	}
 
-	store, err := mysqlStore.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		t.Fatalf("create MySQL store: %v", err)
 	}
-	source, err := mysqlStore.NewCassandraBackfillSource(store)
+	source, err := cassandramysql.NewCassandraBackfillSource(store)
 	if err != nil {
 		t.Fatalf("create backfill source: %v", err)
 	}
@@ -59,7 +61,7 @@ func TestCassandraBackfillSourceAndCheckpointContract(t *testing.T) {
 		t.Fatalf("source page=%+v err=%v", messages, err)
 	}
 
-	checkpoints, err := mysqlStore.NewCassandraBackfillCheckpointStore(store)
+	checkpoints, err := cassandramysql.NewCassandraBackfillCheckpointStore(store)
 	if err != nil {
 		t.Fatalf("create checkpoint store: %v", err)
 	}
@@ -67,14 +69,14 @@ func TestCassandraBackfillSourceAndCheckpointContract(t *testing.T) {
 	if err != nil || checkpoint.HighWatermarkID != 3 || checkpoint.LastProcessedID != 0 || checkpoint.Status != cassandrabackfill.StatusRunning {
 		t.Fatalf("initial checkpoint=%+v err=%v", checkpoint, err)
 	}
-	if _, err := checkpoints.CompletedHighWatermark(context.Background(), "timeline-v1"); !errors.Is(err, mysqlStore.ErrCassandraBackfillIncomplete) {
+	if _, err := checkpoints.CompletedHighWatermark(context.Background(), "timeline-v1"); !errors.Is(err, cassandramysql.ErrCassandraBackfillIncomplete) {
 		t.Fatalf("running job reconciliation watermark error=%v", err)
 	}
-	if _, err := checkpoints.Acquire(context.Background(), "timeline-v1", "owner-b", descriptor, 99, time.Minute); !errors.Is(err, mysqlStore.ErrCassandraBackfillLeaseHeld) {
+	if _, err := checkpoints.Acquire(context.Background(), "timeline-v1", "owner-b", descriptor, 99, time.Minute); !errors.Is(err, cassandramysql.ErrCassandraBackfillLeaseHeld) {
 		t.Fatalf("second owner error=%v", err)
 	}
 	otherSource := cassandrabackfill.SourceDescriptor{Kind: cassandrabackfill.SourceKindMessageArchive, SnapshotID: "other", SHA256: "abc"}
-	if _, err := checkpoints.Acquire(context.Background(), "timeline-v1", "owner-a", otherSource, highWatermark, time.Minute); !errors.Is(err, mysqlStore.ErrCassandraBackfillSourceMismatch) {
+	if _, err := checkpoints.Acquire(context.Background(), "timeline-v1", "owner-a", otherSource, highWatermark, time.Minute); !errors.Is(err, cassandramysql.ErrCassandraBackfillSourceMismatch) {
 		t.Fatalf("changed source error=%v", err)
 	}
 	if err := checkpoints.Advance(context.Background(), "timeline-v1", "owner-a", 2, time.Minute); err != nil {
@@ -98,14 +100,14 @@ func TestCassandraBackfillSourceAndCheckpointContract(t *testing.T) {
 	if err != nil || completedHighWatermark != 3 {
 		t.Fatalf("completed reconciliation watermark=%d err=%v", completedHighWatermark, err)
 	}
-	if _, err := checkpoints.CompletedHighWatermarkForSource(context.Background(), "timeline-v1", otherSource); !errors.Is(err, mysqlStore.ErrCassandraBackfillSourceMismatch) {
+	if _, err := checkpoints.CompletedHighWatermarkForSource(context.Background(), "timeline-v1", otherSource); !errors.Is(err, cassandramysql.ErrCassandraBackfillSourceMismatch) {
 		t.Fatalf("reconciliation changed source error=%v", err)
 	}
 	checkpoint, err = checkpoints.Acquire(context.Background(), "timeline-v1", "owner-c", descriptor, 99, time.Minute)
 	if err != nil || checkpoint.Status != cassandrabackfill.StatusCompleted || checkpoint.HighWatermarkID != 3 || checkpoint.LastProcessedID != 3 {
 		t.Fatalf("completed checkpoint=%+v err=%v", checkpoint, err)
 	}
-	if err := checkpoints.Advance(context.Background(), "timeline-v1", "owner-c", 3, time.Minute); !errors.Is(err, mysqlStore.ErrCassandraBackfillLeaseLost) {
+	if err := checkpoints.Advance(context.Background(), "timeline-v1", "owner-c", 3, time.Minute); !errors.Is(err, cassandramysql.ErrCassandraBackfillLeaseLost) {
 		t.Fatalf("completed job advance error=%v", err)
 	}
 }

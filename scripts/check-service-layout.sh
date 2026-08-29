@@ -150,6 +150,37 @@ if [[ -d "${root_dir}/internal/data/mysql/generated" || -d "${root_dir}/internal
   echo "legacy SQLC generated or mapper directory remains under internal/data/mysql" >&2
   exit 1
 fi
+for legacy_mysql_operation in \
+  agent_memory_lineage_backfill.go \
+  cassandra_backfill.go \
+  search_backfill.go \
+  search_cleanup.go \
+  sync_baseline.go \
+  sync_replay.go; do
+  if [[ -e "${root_dir}/internal/data/mysql/${legacy_mysql_operation}" ]]; then
+    echo "MySQL operation adapter remains in legacy internal/data/mysql: ${legacy_mysql_operation}" >&2
+    exit 1
+  fi
+done
+if [[ -d "${root_dir}/internal/data/migration" || -d "${root_dir}/internal/data/mysqlconfig" ]]; then
+  echo "MySQL platform support remains in legacy internal/data; use internal/platform/mysql" >&2
+  exit 1
+fi
+for expected_mysql_operation_dir in \
+  internal/operations/agent/memorylineage/mysql \
+  internal/operations/cassandra/backfill/mysql \
+  internal/operations/search/backfill/mysql \
+  internal/operations/search/cleanup/mysql \
+  internal/operations/sync/baseline/mysql \
+  internal/operations/sync/replay/mysql \
+  internal/platform/mysql/config \
+  internal/platform/mysql/migration \
+  internal/platform/mysql/testutil; do
+  if [[ ! -d "${root_dir}/${expected_mysql_operation_dir}" ]]; then
+    echo "MySQL operation/platform directory is missing: ${expected_mysql_operation_dir}" >&2
+    exit 1
+  fi
+done
 if [[ -d "${root_dir}/internal/data/elasticsearch" ]]; then
   echo "legacy Elasticsearch adapter directory remains under internal/data" >&2
   exit 1

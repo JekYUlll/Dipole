@@ -9,11 +9,12 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
 	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
+	cassandramysql "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill/mysql"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	mysqlconfig "github.com/JekYUlll/Dipole/internal/platform/mysql/config"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -37,7 +38,7 @@ func RunCassandraBackfill(ctx context.Context, options CassandraBackfillOptions)
 		return cassandrabackfill.Result{}, err
 	}
 	defer db.Close()
-	mysqlStore, err := mysqldata.NewStore(db)
+	mysqlStore, err := platformmysql.NewStore(db)
 	if err != nil {
 		return cassandrabackfill.Result{}, err
 	}
@@ -45,7 +46,7 @@ func RunCassandraBackfill(ctx context.Context, options CassandraBackfillOptions)
 	if err != nil {
 		return cassandrabackfill.Result{}, err
 	}
-	checkpoints, err := mysqldata.NewCassandraBackfillCheckpointStore(mysqlStore)
+	checkpoints, err := cassandramysql.NewCassandraBackfillCheckpointStore(mysqlStore)
 	if err != nil {
 		return cassandrabackfill.Result{}, err
 	}
@@ -72,10 +73,10 @@ func RunCassandraBackfill(ctx context.Context, options CassandraBackfillOptions)
 	return runner.Run(ctx)
 }
 
-func openCassandraSnapshotSource(kind, manifestPath string, store *mysqldata.Store) (cassandrabackfill.Source, error) {
+func openCassandraSnapshotSource(kind, manifestPath string, store *platformmysql.Store) (cassandrabackfill.Source, error) {
 	switch strings.ToLower(strings.TrimSpace(kind)) {
 	case "", "mysql":
-		return mysqldata.NewCassandraBackfillSource(store)
+		return cassandramysql.NewCassandraBackfillSource(store)
 	case "archive":
 		if strings.TrimSpace(manifestPath) == "" {
 			return nil, fmt.Errorf("Cassandra archive source requires an archive manifest")

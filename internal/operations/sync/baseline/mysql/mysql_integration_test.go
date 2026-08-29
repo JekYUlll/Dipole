@@ -7,13 +7,15 @@ import (
 	"testing"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	"github.com/JekYUlll/Dipole/internal/data/migration"
-	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
 	syncbaseline "github.com/JekYUlll/Dipole/internal/operations/sync/baseline"
+	syncbaselinemysql "github.com/JekYUlll/Dipole/internal/operations/sync/baseline/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
+	mysqltestutil "github.com/JekYUlll/Dipole/internal/platform/mysql/testutil"
 )
 
 func TestSyncBaselineCaptureReconcileAndRestore(t *testing.T) {
-	db := openTemporaryDatabase(t)
+	db := mysqltestutil.OpenTemporaryDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
 	if err != nil {
 		t.Fatalf("create migration runner: %v", err)
@@ -23,11 +25,11 @@ func TestSyncBaselineCaptureReconcileAndRestore(t *testing.T) {
 	}
 	seedSyncBaseline(t, db)
 
-	store, err := mysqlStore.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		t.Fatalf("create sqlc store: %v", err)
 	}
-	baseline, err := mysqlStore.NewSyncBaselineStore(store)
+	baseline, err := syncbaselinemysql.NewSyncBaselineStore(store)
 	if err != nil {
 		t.Fatalf("create Sync baseline store: %v", err)
 	}
@@ -101,7 +103,7 @@ func TestSyncBaselineCaptureReconcileAndRestore(t *testing.T) {
 		t.Fatalf("insert moved baseline row: %v", err)
 	}
 	report, err = baseline.Restore(ctx, "legacy-v1", 10)
-	if !errors.Is(err, mysqlStore.ErrUnsafeSyncBaselineRestore) || report.Conflicting != 1 {
+	if !errors.Is(err, syncbaselinemysql.ErrUnsafeSyncBaselineRestore) || report.Conflicting != 1 {
 		t.Fatalf("expected unsafe conflict refusal: report=%+v err=%v", report, err)
 	}
 	if _, err := db.Exec(`UPDATE sync_inbox_baseline_entries

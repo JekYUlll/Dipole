@@ -5,9 +5,10 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	cassandramysql "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill/mysql"
 	cassandrareconcile "github.com/JekYUlll/Dipole/internal/operations/cassandra/reconcile"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 )
 
 type CassandraReconciliationOptions struct {
@@ -29,7 +30,7 @@ func RunCassandraReconciliation(ctx context.Context, options CassandraReconcilia
 		return cassandrareconcile.Report{}, err
 	}
 	defer db.Close()
-	mysqlStore, err := mysqldata.NewStore(db)
+	mysqlStore, err := platformmysql.NewStore(db)
 	if err != nil {
 		return cassandrareconcile.Report{}, err
 	}
@@ -37,7 +38,7 @@ func RunCassandraReconciliation(ctx context.Context, options CassandraReconcilia
 	if err != nil {
 		return cassandrareconcile.Report{}, err
 	}
-	checkpoints, err := mysqldata.NewCassandraBackfillCheckpointStore(mysqlStore)
+	checkpoints, err := cassandramysql.NewCassandraBackfillCheckpointStore(mysqlStore)
 	if err != nil {
 		return cassandrareconcile.Report{}, err
 	}

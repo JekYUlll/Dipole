@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/model"
 	syncbackfill "github.com/JekYUlll/Dipole/internal/operations/sync/backfill"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
@@ -23,7 +24,7 @@ var (
 
 type SyncReplaySource struct{ queries *generated.Queries }
 
-func NewSyncReplaySource(store *Store) (*SyncReplaySource, error) {
+func NewSyncReplaySource(store *platformmysql.Store) (*SyncReplaySource, error) {
 	if store == nil {
 		return nil, errors.New("Sync replay MySQL store is required")
 	}
@@ -70,9 +71,9 @@ func (s *SyncReplaySource) ListAfter(ctx context.Context, afterID, throughID uin
 	return result, nil
 }
 
-type SyncReplayCheckpointStore struct{ store *Store }
+type SyncReplayCheckpointStore struct{ store *platformmysql.Store }
 
-func NewSyncReplayCheckpointStore(store *Store) (*SyncReplayCheckpointStore, error) {
+func NewSyncReplayCheckpointStore(store *platformmysql.Store) (*SyncReplayCheckpointStore, error) {
 	if store == nil {
 		return nil, errors.New("Sync replay checkpoint MySQL store is required")
 	}
@@ -163,7 +164,7 @@ func requireSyncReplayOwnership(result sql.Result, err error, operation string) 
 
 type SyncInboxReconcileTarget struct{ queries *generated.Queries }
 
-func NewSyncInboxReconcileTarget(store *Store) (*SyncInboxReconcileTarget, error) {
+func NewSyncInboxReconcileTarget(store *platformmysql.Store) (*SyncInboxReconcileTarget, error) {
 	if store == nil {
 		return nil, errors.New("Sync reconciliation MySQL store is required")
 	}

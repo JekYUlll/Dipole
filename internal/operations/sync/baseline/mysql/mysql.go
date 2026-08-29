@@ -8,16 +8,17 @@ import (
 	"strings"
 
 	syncbaseline "github.com/JekYUlll/Dipole/internal/operations/sync/baseline"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 var ErrUnsafeSyncBaselineRestore = errors.New("Sync baseline restore requires a missing-only reconciliation")
 
 type SyncBaselineStore struct {
-	store *Store
+	store *platformmysql.Store
 }
 
-func NewSyncBaselineStore(store *Store) (*SyncBaselineStore, error) {
+func NewSyncBaselineStore(store *platformmysql.Store) (*SyncBaselineStore, error) {
 	if store == nil {
 		return nil, errors.New("Sync baseline MySQL store is required")
 	}
@@ -77,7 +78,7 @@ func (s *SyncBaselineStore) Capture(ctx context.Context, jobName string) (syncba
 		return nil
 	})
 	if err != nil {
-		if IsDuplicateKey(err) {
+		if platformmysql.IsDuplicateKey(err) {
 			manifest, _, loadErr := s.Load(ctx, jobName)
 			return manifest, loadErr
 		}

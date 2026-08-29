@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	searchcleanup "github.com/JekYUlll/Dipole/internal/operations/search/cleanup"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
@@ -13,7 +14,7 @@ var _ searchcleanup.Store = (*SearchOutboxCleanupStore)(nil)
 
 type SearchOutboxCleanupStore struct{ queries *generated.Queries }
 
-func NewSearchOutboxCleanupStore(store *Store) (*SearchOutboxCleanupStore, error) {
+func NewSearchOutboxCleanupStore(store *platformmysql.Store) (*SearchOutboxCleanupStore, error) {
 	if store == nil {
 		return nil, errors.New("Search Outbox cleanup MySQL store is required")
 	}

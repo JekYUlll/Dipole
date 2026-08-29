@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
 	cassandrabackfill "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill"
+	cassandramysql "github.com/JekYUlll/Dipole/internal/operations/cassandra/backfill/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	platformstorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 )
 
@@ -24,11 +25,11 @@ func RunCassandraArchive(ctx context.Context, options CassandraArchiveOptions) (
 		return cassandrabackfill.ArchiveManifest{}, err
 	}
 	defer db.Close()
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		return cassandrabackfill.ArchiveManifest{}, err
 	}
-	source, err := mysqldata.NewCassandraBackfillSource(store)
+	source, err := cassandramysql.NewCassandraBackfillSource(store)
 	if err != nil {
 		return cassandrabackfill.ArchiveManifest{}, err
 	}

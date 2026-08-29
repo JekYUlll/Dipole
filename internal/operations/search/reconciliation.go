@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	searchmysql "github.com/JekYUlll/Dipole/internal/operations/search/backfill/mysql"
 	searchreconcile "github.com/JekYUlll/Dipole/internal/operations/search/reconcile"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 )
 
 type SearchReconciliationOptions struct {
@@ -28,7 +29,7 @@ func RunSearchReconciliation(ctx context.Context, options SearchReconciliationOp
 		return searchreconcile.Report{}, err
 	}
 	defer db.Close()
-	store, err := mysqldata.NewStore(db)
+	store, err := platformmysql.NewStore(db)
 	if err != nil {
 		return searchreconcile.Report{}, err
 	}
@@ -36,7 +37,7 @@ func RunSearchReconciliation(ctx context.Context, options SearchReconciliationOp
 	if err != nil {
 		return searchreconcile.Report{}, err
 	}
-	checkpoints, err := mysqldata.NewSearchBackfillCheckpointStore(store, options.TargetIndex)
+	checkpoints, err := searchmysql.NewSearchBackfillCheckpointStore(store, options.TargetIndex)
 	if err != nil {
 		return searchreconcile.Report{}, err
 	}

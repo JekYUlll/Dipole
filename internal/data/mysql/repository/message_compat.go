@@ -1,7 +1,7 @@
 package repository
 
 import (
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
+	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 )
