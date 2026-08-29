@@ -34,10 +34,10 @@ HTTP/WebSocket → Gateway → Service Application → Domain → SQLC Repositor
                                   ↘ Platform (Redis, MinIO, Presence, Bloom)
 ```
 
-**Entry points:** Go services live under `cmd/services/`; TypeScript Agent Runtime and C++ Realtime Delivery live under `services/`. `internal/bootstrap/` still provides shared composition and embedded rollback wiring.
+**Entry points:** Go services live under `cmd/services/`; TypeScript Agent Runtime and C++ Realtime Delivery live under `services/`. Embedded rollback composition is owned by `internal/bootstrap/embedded/`; service runtimes live under their corresponding `internal/services/<service>/bootstrap/` packages.
 
 **Key packages:**
-- `internal/bootstrap` — initialization orchestration; `runtime.go` is the composition root
+- `internal/bootstrap/embedded` — embedded aggregate initialization and rollback composition
 - `internal/services/<service>` — service-owned application, domain, and infrastructure implementations
 - `internal/compat/service` — legacy package-path aliases and construction forwards kept for rollback
 - `internal/data/mysql/repository` — compatibility adapters only; new SQLC implementations belong to service infrastructure
@@ -50,7 +50,7 @@ HTTP/WebSocket → Gateway → Service Application → Domain → SQLC Repositor
 
 **Dual ID model:** Models have both an auto-increment `ID` (used for DB relations) and a `UUID` (exposed in APIs). Never expose the numeric ID externally.
 
-**Kafka is optional:** When `kafka.enabled: false` in config, services operate synchronously. When enabled, message persistence and conversation updates are published as async events. See `internal/bootstrap/kafka.go` for handler registration.
+**Kafka is optional:** When `kafka.enabled: false` in config, services operate synchronously. When enabled, message persistence and conversation updates are published as async events. Embedded handler registration is owned by `internal/bootstrap/embedded/kafka.go`.
 
 **Bloom filters:** Redis-backed bloom filters (`internal/platform/bloom`) gate user/group existence checks before hitting MySQL. They're populated at startup and updated on create.
 
