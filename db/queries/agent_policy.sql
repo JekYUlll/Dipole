@@ -269,3 +269,17 @@ UPDATE agent_workflow_repair_executions
 SET status = 'failed', failure_code = ?, finished_at = ?, updated_at = UTC_TIMESTAMP()
 WHERE execution_uuid = ? AND executor_uuid = ? AND status = 'executing'
   AND started_at IS NOT NULL AND finished_at IS NULL;
+
+-- name: ApplyAgentWorkflowRepairProjectionMissingCurrent :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id IS NULL AND workflow_run_id IS NULL AND workflow_status IS NULL
+  AND workflow_revision IS NULL AND workflow_updated_at IS NULL;
+
+-- name: ApplyAgentWorkflowRepairProjectionExpectedCurrent :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?, workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ? AND workflow_run_id = ? AND workflow_status = ? AND workflow_revision = ?
+  AND workflow_updated_at IS NOT NULL;

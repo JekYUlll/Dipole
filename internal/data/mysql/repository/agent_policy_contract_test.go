@@ -190,6 +190,14 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 		loadedTask.Workflow.Status != application.AgentTaskWorkflowStatusWaitingInput || loadedTask.Workflow.Revision != 2 {
 		t.Fatalf("loaded Workflow projection: task=%+v err=%v", loadedTask, err)
 	}
+	repairTarget := nextProjection
+	repairTarget.Status, repairTarget.Revision = application.AgentTaskWorkflowStatusFailed, 3
+	if applied, err := store.ApplyWorkflowRepairProjection(context.Background(), &nextProjection, repairTarget); err != nil || !applied {
+		t.Fatalf("apply repair projection with exact CAS: applied=%v err=%v", applied, err)
+	}
+	if applied, err := store.ApplyWorkflowRepairProjection(context.Background(), &nextProjection, repairTarget); err != nil || applied {
+		t.Fatalf("replay stale repair projection: applied=%v err=%v", applied, err)
+	}
 	missingProjectionTask := task
 	missingProjectionTask.TaskUUID, missingProjectionTask.TriggerRef = "TASK-2", "M200"
 	missingProjectionTask.Status = application.AgentTaskStatusCreated
@@ -209,6 +217,10 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	}
 	if page, err := store.ListTaskWorkflowProjectionSnapshots(context.Background(), "dipole-agent", "shadow", task.TaskUUID, 10); err != nil || len(page) != 1 || page[0].TaskUUID != missingProjectionTask.TaskUUID {
 		t.Fatalf("list Workflow projection snapshots after cursor: page=%+v err=%v", page, err)
+	}
+	missingTarget := application.AgentTaskWorkflowProjectionV1{TaskUUID: missingProjectionTask.TaskUUID, WorkflowID: "dipole-agent-task/" + missingProjectionTask.TaskUUID, RunID: missingRunUUID, Status: application.AgentTaskWorkflowStatusRunning, Revision: 1}
+	if applied, err := store.ApplyWorkflowRepairProjection(context.Background(), nil, missingTarget); err != nil || !applied {
+		t.Fatalf("apply repair projection from missing state: applied=%v err=%v", applied, err)
 	}
 	for _, conflictProjection := range []application.AgentTaskWorkflowProjectionV1{
 		projection,
