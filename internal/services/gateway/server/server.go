@@ -77,6 +77,9 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 	if dependencies.Core == nil {
 		return nil, errors.New("gateway core capability is required")
 	}
+	if dependencies.TokenResolver == nil {
+		return nil, errors.New("gateway token resolver is required")
+	}
 	target, err := url.Parse(coreTarget)
 	if err != nil || (target.Scheme != "http" && target.Scheme != "https") || target.Host == "" {
 		return nil, errors.New("gateway core http target is invalid")
