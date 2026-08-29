@@ -3,8 +3,8 @@ package httpdto
 import (
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
+	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 )
 
 type ApplyContactRequest struct {
@@ -12,8 +12,8 @@ type ApplyContactRequest struct {
 	Message    string `json:"message" binding:"omitempty,max=255"`
 }
 
-func (r ApplyContactRequest) ToInput() service.ApplyContactInput {
-	return service.ApplyContactInput{
+func (r ApplyContactRequest) ToInput() corecontact.ApplyContactInput {
+	return corecontact.ApplyContactInput{
 		TargetUUID: r.TargetUUID,
 		Message:    r.Message,
 	}
@@ -38,7 +38,7 @@ type ContactResponse struct {
 	CreatedAt time.Time           `json:"created_at"`
 }
 
-func ToContactResponses(items []*service.ContactListItem) []*ContactResponse {
+func ToContactResponses(items []*corecontact.ContactListItem) []*ContactResponse {
 	response := make([]*ContactResponse, 0, len(items))
 	for _, item := range items {
 		if item == nil {
@@ -66,7 +66,7 @@ type ContactApplicationResponse struct {
 	CreatedAt time.Time           `json:"created_at"`
 }
 
-func ToContactApplicationResponses(items []*service.ContactApplicationView) []*ContactApplicationResponse {
+func ToContactApplicationResponses(items []*corecontact.ContactApplicationView) []*ContactApplicationResponse {
 	response := make([]*ContactApplicationResponse, 0, len(items))
 	for _, item := range items {
 		if item == nil || item.Application == nil {
