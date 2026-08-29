@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- Sync repository composition 已迁入 `internal/services/sync/infrastructure/mysql/`；embedded 聚合入口保留兼容别名，独立与聚合启动均通过 Sync-owned composition 构造 repository 集合。
 - Agent SQLC repository composition 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/app` 仅保留 embedded 兼容别名，聚合入口通过 Agent-owned composition 构造 repository 集合。
 - Core SQLC repository composition 与 User/Group/Contact cache adapter 已迁入 `internal/services/core/infrastructure/mysql/`；独立 Core Runtime 不再依赖聚合包中的 Core 实现，`internal/app` 仅保留 embedded 兼容别名。
 - Agent Capability RPC 增加 remote authority 传输契约：Admission 支持 `candidate_version`，Run Complete/Finish 绑定显式 `runtime_id + mode`；TS client 默认保持 shadow，active client 必须提供 candidate version，Go Core 继续通过 promotion authorizer 决定是否允许 active。旧省略字段按 shadow 兼容处理，尚未改变生产 Agent 默认开关。
