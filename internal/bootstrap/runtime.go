@@ -327,12 +327,12 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		wsEventSender,
 		repos,
 		localMessaging,
-		coreOwnsMessagePersistence(gatewayCfg.Mode, messageCfg.Transport),
+		appComposition.CoreOwnsMessagePersistence(gatewayCfg.Mode, messageCfg.Transport),
 	)
 	if registerErr != nil {
 		return nil, fmt.Errorf("register kafka handlers failed: %w", registerErr)
 	}
-	if kafkaCfg.Enabled && platformKafka.Client != nil && coreOwnsMessagePersistence(gatewayCfg.Mode, messageCfg.Transport) {
+	if kafkaCfg.Enabled && platformKafka.Client != nil && appComposition.CoreOwnsMessagePersistence(gatewayCfg.Mode, messageCfg.Transport) {
 		if err := platformKafka.Client.EnsureTopics(appComposition.ManagedKafkaTopics()); err != nil {
 			return nil, fmt.Errorf("ensure kafka topics failed: %w", err)
 		}
@@ -375,10 +375,6 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	}
 
 	return rt, nil
-}
-
-func coreOwnsMessagePersistence(gatewayMode, messageTransport string) bool {
-	return gatewayMode == "embedded" && messageTransport != "grpc"
 }
 
 func (r *Runtime) Server() *server.Server {
