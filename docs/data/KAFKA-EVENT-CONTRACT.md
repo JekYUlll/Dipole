@@ -85,4 +85,4 @@ Mutation payload 在现有消息快照字段之外增加：
 
 ## 当前 Topic
 
-Topic 清单位于 `internal/bootstrap/kafka_topics.go`。Message、Group、Conversation、Contact 与 Session 事件共享本规则；`message.*.created` 由 Transactional Outbox 发布，其 value、mutation metadata 和 headers 在同一消息事务中固化。
+Topic 清单位于 `internal/bootstrap/embedded/kafka_topics.go`。Message、Group、Conversation、Contact 与 Session 事件共享本规则；`message.*.created` 由 Transactional Outbox 发布，其 value、mutation metadata 和 headers 在同一消息事务中固化。
