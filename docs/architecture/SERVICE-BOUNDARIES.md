@@ -68,6 +68,7 @@
 - Gateway Kafka consumer 使用 `internal/application` 中的版本化群组、会话、联系人和已读事件 contract；Gateway 不直接依赖 Core domain decoder，Core 负责事件生产与自身 projection，结构门禁阻止跨服务 domain 实现回流。
 - Gateway Agent MCP proxy 使用 `internal/application` 中的 resource/scope contract 和安全 URL 校验；Core 负责 token issuer/verifier 与可配置 resource，Gateway 不复制认证领域实现。
 - Agent MCP resource 默认值和配置解析由 `internal/application` 提供；Gateway bootstrap、middleware 和 proxy 共享同一 contract，Core Auth 仅负责 token issuer/verifier。
+- 共享 authentication middleware 通过 `internal/application` 的最小 token resolver/session contract 工作；Core Auth 的 JWT 实现可替换，Gateway 认证边界不持有 Core domain 具体类型。
 - Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配已归属 `internal/services/gateway/server/`；`internal/gateway/http/` 仅保留可复用的 Gin response/handler adapter，Core embedded server 继续通过显式依赖复用。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
 - 服务入口优先依赖自身的 `internal/services/<service>/bootstrap`；尚未完成运行时基础设施拆分的服务，可以通过该目录的兼容 facade 过渡，但入口不得直接引用共享 `internal/bootstrap`。
