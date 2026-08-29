@@ -55,6 +55,27 @@ describe("PromotionEvidencePublisher", () => {
     })).rejects.toThrow(/eligible/);
     expect(createArtifact).not.toHaveBeenCalled();
   });
+
+  it("requires and records a shadow release manifest on the guarded publication path", async () => {
+    const evidence = eligibleEvidence();
+    const createArtifact = vi.fn(async (input: AgentArtifactCreateInput): Promise<AgentArtifactRecord> => artifactRecord(input));
+    const publisher = new PromotionEvidencePublisher({ createArtifact });
+    const manifest = releaseManifest(evidence.offlineEvalReport.suiteSha256);
+
+    const receipt = await publisher.publishWithReleaseManifest({
+      schemaVersion: "dipole.agent.promotion-evidence-publication.v1", tenantId: "TENANT-A", taskId: "TASK-1", runId: "RUN-1",
+      runtimeId: "dipole-agent", definitionId: "DEF-1", definitionVersion: 7, evidence, releaseManifest: manifest
+    });
+    const request = createArtifact.mock.calls[0]![0];
+    expect(request.metadata).toMatchObject({ releaseManifestSHA256: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    expect(JSON.parse(Buffer.from(request.content).toString("utf8")).releaseManifest).toEqual(manifest);
+    expect(receipt.releaseManifestSha256).toBe(request.metadata.releaseManifestSHA256);
+    await expect(publisher.publishWithReleaseManifest({
+      schemaVersion: "dipole.agent.promotion-evidence-publication.v1", tenantId: "TENANT-A", taskId: "TASK-1", runId: "RUN-1",
+      runtimeId: "dipole-agent", definitionId: "DEF-1", definitionVersion: 7, evidence,
+      releaseManifest: { ...manifest, stage: "user_gray" }
+    })).rejects.toThrow(/shadow stage/);
+  });
 });
 
 function eligibleEvidence(): AgentShadowPromotionEvidenceV2 {
@@ -85,6 +106,15 @@ function artifactRecord(input: AgentArtifactCreateInput): AgentArtifactRecord {
   const artifactId = createHash("sha256").update(["dipole.agent.artifact.v1", input.taskId, input.runId, input.artifactType, String(input.version), contentSha256].join("\n")).digest("hex");
   return { schemaVersion: "dipole.agent.artifact.v1", artifactId, taskId: input.taskId, runId: input.runId, artifactType: input.artifactType,
     version: input.version, title: input.title, mediaType: input.mediaType, contentSha256, sizeBytes: input.content.byteLength, metadata: input.metadata };
+}
+
+function releaseManifest(offlineEvalSuiteSha256: string): object {
+  const component = (version: string) => ({ version, sha256: "b".repeat(64) });
+  return {
+    schemaVersion: "dipole.agent.release-manifest.v1", candidateVersion: "agent-runtime@abc1234", runtimeId: "dipole-agent", stage: "shadow",
+    components: { model: component("model@1"), prompt: component("prompt@1"), capabilitySchema: component("capability@1"), memoryPolicy: component("memory@1") },
+    offlineEvalSuiteSha256
+  };
 }
 
 function canonicalJSON(value: unknown): string {

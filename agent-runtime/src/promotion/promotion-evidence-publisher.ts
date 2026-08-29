@@ -5,7 +5,9 @@ import { z } from "zod";
 import type { AgentArtifactCreateInput, AgentArtifactRecord } from "../capabilities/agent-capability-rpc.js";
 import {
   evaluateAgentShadowPromotionV2, parseAgentShadowPromotionEvidenceV2,
+  type AgentShadowPromotionDecisionV2, type AgentShadowPromotionEvidenceV2,
 } from "./agent-shadow-promotion-policy.js";
+import { agentReleaseManifestSha256, assertShadowPromotionBinding, type AgentReleaseManifest } from "./agent-release-manifest.js";
 
 const bindingSchema = z.object({
   schemaVersion: z.literal("dipole.agent.promotion-evidence-publication.v1"),
@@ -28,6 +30,7 @@ export interface PromotionEvidencePublicationInput {
   readonly definitionId: string;
   readonly definitionVersion: number;
   readonly evidence: unknown;
+  readonly releaseManifest?: unknown;
   readonly requestId?: string;
   readonly traceId?: string;
 }
@@ -44,6 +47,7 @@ export interface PromotionEvidenceReceipt {
   readonly candidateVersion: string;
   readonly definitionId: string;
   readonly definitionVersion: number;
+  readonly releaseManifestSha256?: string;
 }
 
 interface ArtifactPublisher {
@@ -54,6 +58,22 @@ export class PromotionEvidencePublisher {
   constructor(private readonly artifacts: ArtifactPublisher) {}
 
   async publish(input: PromotionEvidencePublicationInput): Promise<PromotionEvidenceReceipt> {
+    return this.publishValidated(input);
+  }
+
+  async publishWithReleaseManifest(input: PromotionEvidencePublicationInput & { readonly releaseManifest: unknown }): Promise<PromotionEvidenceReceipt> {
+    const evidence = parseAgentShadowPromotionEvidenceV2(input.evidence);
+    const decision = evaluateAgentShadowPromotionV2(evidence);
+    const manifest = assertShadowPromotionBinding(input.releaseManifest, evidence.candidateVersion, decision.offlineEvalSuiteSha256);
+    return this.publishValidated(input, evidence, decision, manifest);
+  }
+
+  private async publishValidated(
+    input: PromotionEvidencePublicationInput,
+    knownEvidence?: AgentShadowPromotionEvidenceV2,
+    knownDecision?: AgentShadowPromotionDecisionV2,
+    releaseManifest?: AgentReleaseManifest
+  ): Promise<PromotionEvidenceReceipt> {
     const binding = bindingSchema.parse({
       schemaVersion: input.schemaVersion,
       tenantId: input.tenantId, taskId: input.taskId, runId: input.runId, runtimeId: input.runtimeId,
@@ -61,21 +81,23 @@ export class PromotionEvidencePublisher {
       ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
       ...(input.traceId === undefined ? {} : { traceId: input.traceId })
     });
-    const evidence = parseAgentShadowPromotionEvidenceV2(input.evidence);
-    const decision = evaluateAgentShadowPromotionV2(evidence);
+    const evidence = knownEvidence ?? parseAgentShadowPromotionEvidenceV2(input.evidence);
+    const decision = knownDecision ?? evaluateAgentShadowPromotionV2(evidence);
     if (decision.decision !== "eligible") {
       throw new Error(`Agent promotion evidence is not eligible: ${decision.reasons.join(",")}`);
     }
     const metadata = {
       runtimeId: binding.runtimeId, candidateVersion: evidence.candidateVersion,
       definitionId: binding.definitionId, definitionVersion: binding.definitionVersion,
-      evalSuiteSHA256: decision.offlineEvalSuiteSha256
+      evalSuiteSHA256: decision.offlineEvalSuiteSha256,
+      ...(releaseManifest === undefined ? {} : { releaseManifestSHA256: agentReleaseManifestSha256(releaseManifest) })
     } as const;
     const content = Buffer.from(canonicalJSON({
       schemaVersion: "dipole.agent.promotion-evaluation.v1", runtimeId: binding.runtimeId,
       candidateVersion: evidence.candidateVersion,
       definition: { id: binding.definitionId, version: binding.definitionVersion },
-      evidence, decision
+      evidence, decision,
+      ...(releaseManifest === undefined ? {} : { releaseManifest })
     }), "utf8");
     const artifact = await this.artifacts.createArtifact({
       tenantId: binding.tenantId, taskId: binding.taskId, runId: binding.runId,
@@ -93,7 +115,8 @@ export class PromotionEvidencePublisher {
       schemaVersion: "dipole.agent.promotion-evidence-receipt.v1", artifactId: artifact.artifactId,
       evidenceSHA256, evalSuiteSHA256: decision.offlineEvalSuiteSha256,
       tenantId: binding.tenantId, taskId: binding.taskId, runId: binding.runId, runtimeId: binding.runtimeId,
-      candidateVersion: evidence.candidateVersion, definitionId: binding.definitionId, definitionVersion: binding.definitionVersion
+      candidateVersion: evidence.candidateVersion, definitionId: binding.definitionId, definitionVersion: binding.definitionVersion,
+      ...(releaseManifest === undefined ? {} : { releaseManifestSha256: agentReleaseManifestSha256(releaseManifest) })
     };
   }
 }
