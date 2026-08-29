@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	searchcleanup "github.com/JekYUlll/Dipole/internal/cleanup/search"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 var _ searchcleanup.Store = (*SearchOutboxCleanupStore)(nil)

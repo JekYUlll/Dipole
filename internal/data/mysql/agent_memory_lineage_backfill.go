@@ -10,7 +10,7 @@ import (
 	"time"
 
 	memorylineage "github.com/JekYUlll/Dipole/internal/backfill/memorylineage"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 var (

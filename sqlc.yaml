@@ -7,7 +7,7 @@ sql:
     gen:
       go:
         package: generated
-        out: internal/data/mysql/generated
+        out: internal/platform/mysql/generated
         sql_package: database/sql
         emit_interface: true
         emit_empty_slices: true
