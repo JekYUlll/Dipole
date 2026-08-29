@@ -531,6 +531,19 @@ if [[ ! -f "${root_dir}/internal/app/agent_repository_compat.go" ]]; then
   echo "embedded Agent repository compatibility boundary is missing" >&2
   exit 1
 fi
+# The aggregate app facade is an embedded rollback boundary. Keep its
+# production callers explicit so new standalone services cannot depend on it.
+while IFS= read -r app_importer; do
+  relative_importer="${app_importer#"${root_dir}/"}"
+  case "${relative_importer}" in
+    internal/bootstrap/runtime.go|internal/bootstrap/kafka.go|internal/app/*)
+      ;;
+    *)
+      echo "production code must not depend on aggregate internal/app: ${relative_importer}" >&2
+      exit 1
+      ;;
+  esac
+done < <(rg -l 'github.com/JekYUlll/Dipole/internal/app(/|["`])' "${root_dir}" --glob '*.go' --glob '!**/*_test.go' || true)
 for legacy_agent_repository in agent_policy.go agent_memory.go agent_artifact.go agent_tool_invocation.go agent_task_timeline.go agent_runtime_promotion_control.go agent_mcp_tool_round.go agent_mcp_readiness_evidence.go ai_call_log.go; do
   if [[ -e "${root_dir}/internal/data/mysql/repository/${legacy_agent_repository}" ]]; then
     echo "legacy Agent MySQL implementation remains in shared repository package: ${legacy_agent_repository}" >&2

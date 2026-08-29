@@ -26,6 +26,7 @@
 - 2026-08-29：Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 装配已分别迁入 `internal/operations/sync/`、`internal/operations/cassandra/`；长期服务运行时保留在 bootstrap，三类运维目录均由结构门禁保护。
 - 2026-08-29：Agent Memory lineage backfill 装配已迁入 `internal/operations/agent/`，Agent 长期运行时与高风险一次性维护入口完成目录隔离；后续仍需继续收敛共享 Composition Root。
 - 2026-08-29：embedded 聚合 `Repositories`、`MessagingServices` 及其构造实现已迁入 `internal/bootstrap/embedded/`；`internal/app` 收缩为兼容 facade，生产 bootstrap 已切换新边界，Agent 兼容构造仍单独保留待后续拆分。
+- 2026-08-29：服务布局门禁固定 `internal/app` 的生产引用白名单，仅允许 embedded runtime 与旧 Kafka 装配使用聚合 facade；独立服务继续禁止依赖该入口，后续待 embedded/兼容路径退休后删除 facade。
 - 2026-08-29：protobuf Go 生成物已从 `internal/transport/grpc/gen/` 收纳到 `api/gen/go/`，同步更新所有 transport、Gateway、Bootstrap 和 Realtime 引用；协议源、生成物与服务适配层边界已由 `check-proto` 和服务布局门禁固定。
 - 2026-08-29：Cassandra routing、shadow message store 和 Sync hydration fallback 已迁入 `internal/platform/storage/`；装饰器仍只通过 application port 运行，后续需继续评估迁移完成后的删除时机和 routing/shadow 配置 owner。
 - 2026-08-29：跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器已迁入 `internal/platform/cassandra/`；服务业务 projection 保持在各自边界，后续仍需评估 routing/shadow 装饰器和 Cassandra 数据 owner 的最终归属。
