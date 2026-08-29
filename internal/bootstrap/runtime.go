@@ -306,7 +306,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。
 	// 单节点部署时 router 为 nil，直接使用 hub 本地投递。
 	rt := &Runtime{server: srv, messageFlow: messageFlow, syncFlow: syncFlow, coreRPC: coreRPC}
-	var wsEventSender kafkaWSEventSender
+	var wsEventSender appComposition.WSEventSender
 	if gatewayCfg.Mode == "embedded" {
 		wsEventSender = srv.WSHub()
 	}
@@ -323,7 +323,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			)
 		}
 	}
-	registerErr := registerCoreKafkaHandlers(
+	registerErr := appComposition.RegisterKafkaHandlers(
 		wsEventSender,
 		repos,
 		localMessaging,
