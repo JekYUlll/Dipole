@@ -936,6 +936,7 @@
 - **完成日期：** 2026-08-26
 - **解决方式：** 使用版本化 SQL migration 管理 schema，所有 Repository 经共享真实 MySQL 契约渐进迁移到 `database/sql + sqlc`；最终移除 legacy adapters、model tags、AutoMigrate、SQLite 方言测试、兼容配置和 `gorm.io/*` 依赖。
 - **验证：** 全仓 GORM 标识与模块依赖扫描为空；通过 sqlc 生成漂移、全量 Go、真实 MySQL Repository/migration/并发事务、race、vet 和模块完整性测试。
+- **2026-08-30 复核：** `scripts/check-sqlc.sh`、服务布局门禁和 Go 全仓回归再次通过；生产 Go 源码及 `go.mod`/`go.sum` 未发现 GORM 或 `AutoMigrate` 回流，继续保持 SQLC-only 运行边界。
 
 ### AD-001：并发事务可能造成 Sync Cursor 永久跳过消息
 
