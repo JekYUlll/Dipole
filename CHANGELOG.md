@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：修复 Inbox projector 隔离 smoke 的失败拓扑保留逻辑，并补齐 Message Service 的 `DIPOLE_SYNC_PROJECTOR_ENABLED` 前置配置；在 projector ownership 模式下完成真实消息流程验证，receipt 归档于 `benchmarks/ad048-projector-message-flow-2026-08-30/receipt.json`，回滚仍为移除 overlay 并恢复 `atomic`。
 - 2026-08-30：完成逐服务候选镜像的真实消息流程验证，覆盖注册登录、好友关系、WebSocket 发送、Message/Outbox/Inbox 幂等和 Seq 历史/增量读取；receipt 归档于 `benchmarks/ad048-message-flow-2026-08-30/receipt.json`，生产切换保持关闭。
 - 2026-08-30：收紧 Memory candidate 解析边界，正文和 compact 摘要均拒绝凭据模式；新增绕过 ObservationWorker 的 fail-closed 测试，保持自动 Memory 写入关闭。
 - 2026-08-30：收紧 Agent Task Timeline 的 TS RPC 客户端响应校验，拒绝跨任务、空事件 ID、重复或倒序 `event_seq`，新增 fail-closed 契约测试；不改变服务端协议和默认关闭状态。

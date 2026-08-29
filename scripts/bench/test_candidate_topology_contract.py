@@ -52,6 +52,12 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("message_seq", script)
         self.assertIn("user_sync_inbox", script)
 
+    def test_inbox_projector_overlay_enables_projector_validation_in_message_service(self):
+        overlay = (ROOT / "deploy/microservices/inbox-projector.yml").read_text(encoding="utf-8")
+
+        self.assertIn("DIPOLE_MESSAGE_INBOX_WRITE_MODE: projector", overlay)
+        self.assertIn('DIPOLE_SYNC_PROJECTOR_ENABLED: "true"', overlay)
+
     def test_canonical_compose_gate_renders_candidate_overrides(self):
         script = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")
 
