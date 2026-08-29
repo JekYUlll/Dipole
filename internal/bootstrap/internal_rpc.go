@@ -30,14 +30,6 @@ const (
 
 type InternalRPCServer = platformrpc.Server
 
-func NewCoreRPCServerWithAgent(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals ...application.AgentApprovalServiceV1) (*InternalRPCServer, error) {
-	agentAdapter, err := agentgrpc.NewServer(agentCapability, resolver, admission, approvals...)
-	if err != nil {
-		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
-	}
-	return newCoreRPCServer(cfg, capability, agentAdapter)
-}
-
 func NewCoreRPCServerWithAgentControlAndProjection(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs ...application.AgentWorkflowRepairAuditServiceV1) (*InternalRPCServer, error) {
 	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections, repairs...)
 	if err != nil {
