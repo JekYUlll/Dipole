@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：审计确认 embedded `Repositories.Search` 无生产或测试调用者，删除 embedded Search SQLC 构造和冗余字段；Search Service 继续由 Elasticsearch-owned runtime 独立装配。
 - 2026-08-30：embedded repository composition 将 Core 的 User、Group、Contact、File、Conversation、Admin 仓储统一收回 `CoreProcessRepositories`，移除聚合根的 Core 扁平字段；Core HTTP 适配、assistant 初始化和 embedded 回滚语义保持兼容。
 - 2026-08-30：embedded repository composition 将 Message、Outbox、Sync 仓储访问统一收回 `MessageProcessRepositories` 与 `SyncProcessRepositories`，移除聚合根的 Message/Sync 扁平字段；Outbox 启动、Inbox 组合和回滚语义保持兼容。
 - 2026-08-30：embedded repository composition 将 Agent policy、task、memory、approval、artifact、tool audit 等仓储统一收回 `AgentProcessRepositories`，移除聚合根的 Agent 扁平字段；Agent 初始化、SQLC 实现和 embedded 回滚语义保持兼容。
