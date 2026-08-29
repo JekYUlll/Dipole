@@ -9,6 +9,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/model"
 	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
@@ -17,15 +18,15 @@ var (
 	ErrConversationReadTargetMismatch = errors.New("conversation read event must target a direct conversation")
 )
 
-func DecodeGroupEventPayload(eventType string, raw json.RawMessage) (GroupEventPayload, error) {
+func DecodeGroupEventPayload(eventType string, raw json.RawMessage) (coregroup.GroupEventPayload, error) {
 	if err := requireDomainEventType(eventType,
 		"group.created", "group.updated", "group.members.added", "group.members.removed", "group.dismissed",
 	); err != nil {
-		return GroupEventPayload{}, err
+		return coregroup.GroupEventPayload{}, err
 	}
-	var payload GroupEventPayload
+	var payload coregroup.GroupEventPayload
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return GroupEventPayload{}, fmt.Errorf("decode Group event payload: %w", err)
+		return coregroup.GroupEventPayload{}, fmt.Errorf("decode Group event payload: %w", err)
 	}
 	return payload, nil
 }
