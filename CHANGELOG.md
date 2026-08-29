@@ -16,6 +16,8 @@
 ## [Unreleased]
 
 ### 新增
+- Agent Runtime 增加 `dipole.agent.release-manifest.v1`：将模型、Prompt、Capability Schema、Memory Policy 与 offline Eval Suite SHA-256 绑定到候选版本，晋级校验只接受 `shadow` 阶段并拒绝版本或评测哈希漂移；该清单不改变生产开关。
+
 - Agent Approval 与 Elicitation 表单已迁移到共享 `--dp-*` Pencil token，并增加设计契约测试，避免交互页面重新引入独立主题变量。
 - Agent Approval 页面增加认证浏览器验收，覆盖精确审批绑定、权威查询失败时的 fail-closed 状态和移动端单列布局。
 - Agent Approval 与 Elicitation 增加 Chromium canonical 截图回归，固定 Pencil 共享 token 的主要桌面布局；功能行为继续由三浏览器 E2E 覆盖。

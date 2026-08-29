@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-release/v1/manifest.schema.json",
+  "title": "Dipole Agent Runtime release manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidateVersion", "runtimeId", "stage", "components", "offlineEvalSuiteSha256"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.release-manifest.v1" },
+    "candidateVersion": { "$ref": "#/$defs/version" },
+    "runtimeId": { "const": "dipole-agent" },
+    "stage": { "enum": ["offline", "shadow", "user_gray"] },
+    "components": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "prompt", "capabilitySchema", "memoryPolicy"],
+      "properties": {
+        "model": { "$ref": "#/$defs/component" },
+        "prompt": { "$ref": "#/$defs/component" },
+        "capabilitySchema": { "$ref": "#/$defs/component" },
+        "memoryPolicy": { "$ref": "#/$defs/component" }
+      }
+    },
+    "offlineEvalSuiteSha256": { "$ref": "#/$defs/sha256" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "version": { "type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "sha256"],
+      "properties": {
+        "version": { "$ref": "#/$defs/version" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}
