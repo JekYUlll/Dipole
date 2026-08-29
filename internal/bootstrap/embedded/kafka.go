@@ -17,6 +17,7 @@ import (
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	"go.uber.org/zap"
@@ -272,15 +273,15 @@ func decodeMessageEventPayload(event platformKafka.Event) (service.MessageEventP
 	return payload, nil
 }
 
-func decodeGroupEventPayload(event platformKafka.Event) (service.GroupEventPayload, error) {
+func decodeGroupEventPayload(event platformKafka.Event) (coregroup.GroupEventPayload, error) {
 	envelope, err := requireEnvelope(event)
 	if err != nil {
-		return service.GroupEventPayload{}, err
+		return coregroup.GroupEventPayload{}, err
 	}
 
 	payload, err := service.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
 	if err != nil {
-		return service.GroupEventPayload{}, fmt.Errorf("unmarshal group event payload: %w", err)
+		return coregroup.GroupEventPayload{}, fmt.Errorf("unmarshal group event payload: %w", err)
 	}
 
 	return payload, nil
