@@ -317,6 +317,10 @@ if rg --quiet 'DialGatewayCoreCapability' "${root_dir}/internal/bootstrap/intern
   echo "retired Gateway Core client facade remains in shared bootstrap" >&2
   exit 1
 fi
+if rg --quiet 'DialGatewayAgentCapability|DialCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Gateway/Message client facades remain in shared bootstrap" >&2
+  exit 1
+fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
   if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
     echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2
