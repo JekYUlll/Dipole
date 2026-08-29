@@ -15,6 +15,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 
@@ -460,7 +461,7 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("admit durable Approval Run: %v", err)
 	}
-	approvalService, err := appComposition.NewPersistentAgentApprovalServiceV1(store)
+	approvalService, err := agentapplication.NewPersistentAgentApprovalServiceV1(store)
 	if err != nil {
 		t.Fatalf("create persistent Approval service: %v", err)
 	}

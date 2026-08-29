@@ -18,7 +18,10 @@ func TestPersistentAgentApprovalServiceBindsRequestAndResolutionToTaskPrincipal(
 			RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning,
 		}},
 	}
-	service := &PersistentAgentApprovalServiceV1{store: store, now: func() time.Time { return now }}
+	service, err := NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("new Approval service: %v", err)
+	}
 	scope := application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "G1", Actions: []string{"write"}}
 	scopeHash, _ := application.AgentResourceScopeSHA256V1(scope)
 	approval := application.AgentApprovalV1{
@@ -67,7 +70,10 @@ func TestPersistentAgentApprovalServiceRejectsForgedActorAndCrossTaskApproval(t 
 		runs:      map[string]*application.AgentRunV1{"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning}},
 		approvals: map[string]*application.AgentApprovalV1{"APR-2": {ApprovalUUID: "APR-2", TaskUUID: "TASK-2", Status: application.AgentApprovalStatusPending, ExpiresAt: now.Add(time.Hour)}},
 	}
-	service := &PersistentAgentApprovalServiceV1{store: store, now: func() time.Time { return now }}
+	service, err := NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("new Approval service: %v", err)
+	}
 	for _, resolution := range []application.AgentApprovalResolutionV1{
 		{TaskUUID: "TASK-1", RunUUID: "RUN-1", RuntimeID: "dipole-agent", Mode: "shadow", ApprovalUUID: "APR-2", ActorUUID: "U100", Decision: application.AgentApprovalDecisionDenied},
 		{TaskUUID: "TASK-1", RunUUID: "RUN-1", RuntimeID: "dipole-agent", Mode: "shadow", ApprovalUUID: "APR-2", ActorUUID: "U999", Decision: application.AgentApprovalDecisionApproved},
@@ -96,7 +102,10 @@ func TestPersistentAgentApprovalServiceConsumesExactApprovedBindingOnce(t *testi
 		}},
 		approvals: map[string]*application.AgentApprovalV1{"APR-WRITE-1": approval, "APR-WRITE-2": &driftApproval},
 	}
-	service := &PersistentAgentApprovalServiceV1{store: store, now: func() time.Time { return now }}
+	service, err := NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("new Approval service: %v", err)
+	}
 	consumption := application.AgentApprovalConsumptionV1{
 		TaskUUID: "TASK-1", RunUUID: "RUN-1", RuntimeID: "dipole-agent", Mode: "active", ApprovalUUID: "APR-WRITE-1",
 		Claim: application.AgentApprovalClaimV1{
