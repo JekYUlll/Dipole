@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：补充根级 `/agent-runtime/` 遗留构建产物的显式忽略规则和仓库结构说明；TypeScript Agent 源码继续唯一归属 `services/agent-runtime/`，Go 继续通过显式包白名单避免递归扫描本地构建输出。
 - 2026-08-30：兼容服务测试根退休后的规范 Go 门禁复核通过：`scripts/check-go.sh` 的全量 `go test` 与 `go vet` 均成功；直接 `go test ./...` 会把本地忽略的 `agent-runtime` 构建依赖目录纳入扫描，项目继续以脚本包白名单作为可复现门禁。
 - 2026-08-30：`internal/compat/service` 已无生产依赖，仅剩跨版本 domain-event 契约测试；测试已迁入 `internal/platform/events/contract` 外部测试包，兼容 service 根目录删除，并由服务布局门禁阻止回流。
 - 2026-08-30：调用审计确认 `internal/app` 已无生产代码和测试调用者；11 个 Agent application 边界测试已迁入 `internal/services/agent/application` 外部测试包，删除聚合测试壳并由服务布局门禁阻止回流。

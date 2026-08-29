@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：明确忽略根级遗留 `agent-runtime/` 构建产物，保留 `services/agent-runtime/` 作为唯一 TypeScript Agent 源码目录；Go 项目继续使用显式包白名单门禁，源码布局不受本地构建输出影响。
 - 2026-08-30：在兼容服务测试根退休后的最新 `master` 上完成规范 Go 门禁复核；`scripts/check-go.sh` 中的全量 `go test` 与 `go vet` 均通过，裸 `go test ./...` 仅受本地忽略构建目录影响，不作为项目门禁。
 - 2026-08-30：完成 `internal/compat/service` 兼容测试根退休：跨版本 domain-event 契约测试迁入 `internal/platform/events/contract` 外部测试包，兼容目录仅保留说明，结构门禁阻止旧路径回流。
 - 2026-08-30：完成 `internal/app` 聚合测试壳退休：迁移 11 个 Agent application 边界测试至 `internal/services/agent/application` 外部测试包，删除空聚合目录，并增加结构门禁防止其回流。
