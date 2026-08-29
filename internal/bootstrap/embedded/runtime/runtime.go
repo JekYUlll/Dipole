@@ -296,7 +296,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		return nil, fmt.Errorf("initialize Sync transport: %w", err)
 	}
 	syncComparisonMetrics := platformObservability.NewClientSyncComparisonCollector()
-	srv := server.NewWithDependencies(repos, server.Dependencies{
+	srv := server.NewWithDependencies(&server.Repositories{
+		Users: repos.Users, Files: repos.Files, Conversations: repos.Conversations,
+		Contacts: repos.Contacts, Groups: repos.Groups, Admin: repos.Admin,
+	}, server.Dependencies{
 		Messages:       messageFlow.Application,
 		Sync:           syncFlow.Application,
 		SyncComparison: syncComparisonMetrics,
