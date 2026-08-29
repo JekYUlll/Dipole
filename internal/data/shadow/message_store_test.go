@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	cassandraData "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/model"
+	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 )
 
 type primaryMessageStore struct {

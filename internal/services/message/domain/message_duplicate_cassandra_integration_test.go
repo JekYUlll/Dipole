@@ -8,8 +8,8 @@ import (
 
 	cassandrabackfill "github.com/JekYUlll/Dipole/internal/backfill/cassandra"
 	"github.com/JekYUlll/Dipole/internal/config"
-	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/model"
+	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
