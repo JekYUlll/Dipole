@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：将 Agent MCP 默认 resource 与配置 resource 解析下沉到 `internal/application`；Core Auth 保留兼容入口并继续负责 token issuer/verifier，Gateway bootstrap、proxy 和 middleware 统一使用跨服务 contract，相关回流门禁与测试通过。
 - 2026-08-30：将 Gateway Agent MCP 代理使用的 resource identifier、只读 scope 和安全 URL 校验下沉到 `internal/application`；Core 继续持有 token 签发/解析实现，Gateway 代理仅依赖跨服务认证 contract，并新增回流门禁与安全校验测试。
 - 2026-08-30：将 Gateway Kafka 消费所需的群组、会话强制退出、联系人删除和会话已读事件 payload/decoder 下沉到 `internal/application`；Gateway 不再编译期依赖 Core domain，新增服务布局门禁防止该依赖回流，事件 JSON 与投递语义保持兼容。
 - 2026-08-30：调用审计确认 embedded `NewMessageProcessRepositories` 包装无独立语义，已删除并让 embedded aggregate 直接调用 Message-owned SQLC constructor；inbox 写入开关和回滚配置保持显式传递。
