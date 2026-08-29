@@ -1,4 +1,4 @@
-package repository_test
+package agentmysql_test
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
-	sqlcrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	agenttimelinereconcile "github.com/JekYUlll/Dipole/internal/reconcile/agenttimeline"
+	sqlcrepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 
 type failingTimelineStore struct{ err error }

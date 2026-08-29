@@ -1,4 +1,4 @@
-package repository
+package agentmysql
 
 import (
 	"bytes"
@@ -14,19 +14,19 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 )
 
-type agentMCPReadinessEvidenceQueries interface {
+type AgentMCPReadinessEvidenceQueries interface {
 	InsertAgentMCPReadinessEvidence(context.Context, generated.InsertAgentMCPReadinessEvidenceParams) (int64, error)
 	GetAgentMCPReadinessEvidence(context.Context, generated.GetAgentMCPReadinessEvidenceParams) (generated.AgentMcpReadinessEvidence, error)
 	GetFreshAgentMCPReadinessEvidence(context.Context, generated.GetFreshAgentMCPReadinessEvidenceParams) (generated.AgentMcpReadinessEvidence, error)
 }
 
 type AgentMCPReadinessEvidenceRepository struct {
-	queries agentMCPReadinessEvidenceQueries
+	queries AgentMCPReadinessEvidenceQueries
 }
 
 var _ application.AgentMCPReadinessEvidenceStoreV1 = (*AgentMCPReadinessEvidenceRepository)(nil)
 
-func NewAgentMCPReadinessEvidenceRepository(queries agentMCPReadinessEvidenceQueries) (*AgentMCPReadinessEvidenceRepository, error) {
+func NewAgentMCPReadinessEvidenceRepository(queries AgentMCPReadinessEvidenceQueries) (*AgentMCPReadinessEvidenceRepository, error) {
 	if queries == nil {
 		return nil, errors.New("Agent MCP readiness evidence queries are required")
 	}

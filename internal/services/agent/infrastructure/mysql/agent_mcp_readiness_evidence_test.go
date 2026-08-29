@@ -1,4 +1,4 @@
-package repository
+package agentmysql
 
 import (
 	"context"
@@ -56,4 +56,4 @@ func readinessRecordForRepositoryTest(t *testing.T) application.AgentMCPReadines
 	return record
 }
 
-var _ agentMCPReadinessEvidenceQueries = failingAgentMCPReadinessQueries{}
+var _ AgentMCPReadinessEvidenceQueries = failingAgentMCPReadinessQueries{}

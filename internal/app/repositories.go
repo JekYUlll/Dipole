@@ -9,6 +9,7 @@ import (
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
+	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 )
 
@@ -100,35 +101,35 @@ func NewAgentProcessRepositories(db *sql.DB) (*AgentProcessRepositories, error) 
 
 func newAgentProcessRepositories(db *sql.DB, mysqlStore *mysqlData.Store) (*AgentProcessRepositories, error) {
 	queries := generated.New(db)
-	aiCallLogs, err := sqlcRepository.NewAICallLogRepository(queries)
+	aiCallLogs, err := agentmysql.NewAICallLogRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc AI call log repository: %w", err)
 	}
-	policy, err := sqlcRepository.NewAgentPolicyRepositoryWithTransactions(mysqlStore)
+	policy, err := agentmysql.NewAgentPolicyRepositoryWithTransactions(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Policy repository: %w", err)
 	}
-	artifacts, err := sqlcRepository.NewAgentArtifactRepository(queries)
+	artifacts, err := agentmysql.NewAgentArtifactRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Artifact repository: %w", err)
 	}
-	memories, err := sqlcRepository.NewAgentMemoryRepositoryWithTransactions(mysqlStore)
+	memories, err := agentmysql.NewAgentMemoryRepositoryWithTransactions(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Memory repository: %w", err)
 	}
-	toolAudits, err := sqlcRepository.NewAgentToolInvocationRepository(queries)
+	toolAudits, err := agentmysql.NewAgentToolInvocationRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Tool invocation repository: %w", err)
 	}
-	toolRounds, err := sqlcRepository.NewAgentMCPToolRoundRepository(queries)
+	toolRounds, err := agentmysql.NewAgentMCPToolRoundRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent MCP Tool round repository: %w", err)
 	}
-	promotionControls, err := sqlcRepository.NewAgentRuntimePromotionControlRepository(mysqlStore)
+	promotionControls, err := agentmysql.NewAgentRuntimePromotionControlRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
 	}
-	readinessEvidence, err := sqlcRepository.NewAgentMCPReadinessEvidenceRepository(queries)
+	readinessEvidence, err := agentmysql.NewAgentMCPReadinessEvidenceRepository(queries)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent MCP readiness evidence repository: %w", err)
 	}

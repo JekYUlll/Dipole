@@ -217,6 +217,20 @@ if [[ ! -f "${root_dir}/internal/services/agent/legacy/service.go" ]]; then
   echo "Go/Eino compatibility baseline is outside the Agent service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/agent/infrastructure/mysql/agent_policy.go" ]]; then
+  echo "Agent MySQL repository implementation is outside the Agent service boundary" >&2
+  exit 1
+fi
+for legacy_agent_repository in agent_policy.go agent_memory.go agent_artifact.go agent_tool_invocation.go agent_task_timeline.go agent_runtime_promotion_control.go agent_mcp_tool_round.go agent_mcp_readiness_evidence.go ai_call_log.go; do
+  if [[ -e "${root_dir}/internal/data/mysql/repository/${legacy_agent_repository}" ]]; then
+    echo "legacy Agent MySQL implementation remains in shared repository package: ${legacy_agent_repository}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'services/agent/infrastructure/mysql' "${root_dir}/internal/app/repositories.go"; then
+  echo "Agent process composition must use Agent-owned MySQL repositories" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/modules/ai" ]]; then
   echo "legacy Agent module remains under internal/modules/ai" >&2
   exit 1
