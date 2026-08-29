@@ -15,7 +15,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-const coreServiceName = "dipole-core"
+const (
+	coreServiceName = "dipole-core"
+)
 
 type InternalRPCServer = platformrpc.Server
 
