@@ -20,7 +20,6 @@ import (
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	"github.com/JekYUlll/Dipole/internal/services/gateway/server"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
@@ -219,7 +218,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	var agentMCP gateway.AgentMCPApplication
 	if gatewayCfg.AgentMCPEnabled {
-		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret, coreauth.AgentMCPResourceIdentifier())
+		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret, application.AgentMCPResourceIdentifier(config.AuthConfig().AgentMCPResource))
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Agent MCP proxy: %w", err)

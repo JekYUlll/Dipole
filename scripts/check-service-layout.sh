@@ -273,6 +273,11 @@ if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/service
   echo "Gateway Agent MCP proxy must use application authentication contracts" >&2
   exit 1
 fi
+
+if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
+  echo "Gateway bootstrap must use application Agent MCP resource contracts" >&2
+  exit 1
+fi
 if [[ -d "${root_dir}/internal/projector/cassandra" ]]; then
   echo "legacy Cassandra projector directory remains outside the Message service boundary" >&2
   exit 1
