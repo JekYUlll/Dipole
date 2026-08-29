@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Web Sync Observation CLI 新增 Session 起点校验，早于 `started_at` 的 status 采样统一拒绝并由回归测试锁定；该修复只强化证据时间完整性，不改变 24 小时晋级门槛或生产开关。
 - 2026-08-30：主线复核前端设计和 Web Sync 观测契约均通过：Pencil 结构门禁 54 个 Frame/2036 个节点/36 个变量/23 个可复用组件，前端 Vitest 102 个测试，观测契约 9 个测试；这些结果不替代真实客户端 24 小时共享环境窗口，A6 仍保持未晋级。
 - 2026-08-30：微服务 Compose 已显式声明 `DIPOLE_AGENT_RUNTIME_MODE=shadow`，并增加配置门禁防止默认部署漂移到 `active`；该切片只强化配置可见性和 fail-closed 约束，不改变 Agent authority。
 - 2026-08-30：收敛 Agent Runtime 的部署文档语义：Compose 默认启动容器并运行 Kafka Shadow，`active` authority、模型调用和写能力仍默认关闭；补充 active 启用前的 release manifest、Temporal 和 promotion binding 前置条件。该变更只澄清现状，不改变运行时开关。

@@ -147,6 +147,8 @@ def build_status(session, captured_at, client):
     _validate_session(session)
     captured_at = _utc(captured_at)
     started_at = _parse_time(session["started_at"])
+    if captured_at < started_at:
+        raise ValueError("Web Sync observation status cannot precede session start")
     snapshot = _query_snapshot(client, FINAL_QUERIES, captured_at)
     return {
         "session_id": session["session_id"],
