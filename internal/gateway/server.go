@@ -19,10 +19,12 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
+	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -78,7 +80,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	authenticator := wsTransport.NewAuthenticator(tokenService, userFinder)
 	limiter := dependencies.Limiter
 	if limiter == nil {
-		limiter = platformRateLimit.NewLimiter()
+		limiter = platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
 	}
 	dispatcher := wsTransport.NewDispatcher(hub, dependencies.Messages, nil, false).WithLimiter(limiter)
 	wsHandler := wsTransport.NewHandler(authenticator, hub, dispatcher)
@@ -136,7 +138,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		auth := middleware.AgentMCPAuth(tokenService, userFinder)
 		agentMCPLimiter := dependencies.AgentMCPLimiter
 		if agentMCPLimiter == nil {
-			agentMCPLimiter = platformRateLimit.NewLimiter()
+			agentMCPLimiter = platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
 		}
 		engine.Any("/api/v1/agent/tasks/:task_id/runs/:run_id/mcp", auth, agentMCPHandler(dependencies.AgentMCP, agentMCPLimiter))
 	}
