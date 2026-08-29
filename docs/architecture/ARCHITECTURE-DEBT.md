@@ -52,6 +52,7 @@
 - **本轮进展：** Core Admin domain 及测试已迁入 `internal/services/core/domain/admin/`；`internal/service/admin_compat.go` 仅保留类型、错误和构造入口兼容层，User 权限错误继续共享同一错误值，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core Session domain 及测试已迁入 `internal/services/core/domain/session/`；`internal/service/session_compat.go` 仅保留类型、错误和构造入口兼容层，设备会话 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core User domain 及测试已迁入 `internal/services/core/domain/user/`；`internal/service/user_compat.go` 仅保留类型、错误和构造入口兼容层，头像对象存储与用户管理 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Contact domain 及测试已迁入 `internal/services/core/domain/contact/`；`internal/service/contact_compat.go` 仅保留类型、错误、常量和构造入口兼容层，联系人 HTTP 与事件 contract 保持兼容，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core repository composition 已抽出 `CoreProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Core 数据所有权；独立 Core runtime 尚未切换为仅加载该集合，聚合入口继续作为回滚路径。
 - **本轮进展：** 聚合 `Repositories` 已显式持有 Core、Message、Sync、Agent 四类 process composition，embedded 入口开始复用服务所有权分组；独立启动链仍待切换到这些分组，当前聚合入口保留为回滚路径。
 - **本轮进展：** Agent repository composition 已抽出 `AgentProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Agent-owned SQL repository 集合；Core 兼容 RPC 仍共享同一进程装配，TS Runtime 完全接管前需继续拆分启动链。
