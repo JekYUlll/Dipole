@@ -24,6 +24,7 @@ import (
 	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	gatewaybootstrap "github.com/JekYUlll/Dipole/internal/services/gateway/bootstrap"
 	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
@@ -282,7 +283,7 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 		server.Close(ctx)
 	})
 
-	connection, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+	connection, err := platformrpc.Dial(context.Background(), cfg, server.Address(), grpcauth.Credentials{
 		Service: "dipole-realtime", Secret: cfg.SharedSecret,
 	})
 	if err != nil {
@@ -294,7 +295,7 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 		t.Fatalf("delivery observation=%+v err=%v", observation, err)
 	}
 
-	if _, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+	if _, err := platformrpc.Dial(context.Background(), cfg, server.Address(), grpcauth.Credentials{
 		Service: messageServiceName, Secret: cfg.SharedSecret,
 	}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected Message caller rejection, got %v", err)
@@ -318,7 +319,7 @@ func TestDeliveryObservationRPCReportsBackpressureOverTCP(t *testing.T) {
 		t.Fatalf("start delivery observation rpc: %v", err)
 	}
 	t.Cleanup(func() { server.Close(context.Background()) })
-	connection, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+	connection, err := platformrpc.Dial(context.Background(), cfg, server.Address(), grpcauth.Credentials{
 		Service: "dipole-realtime", Secret: cfg.SharedSecret,
 	})
 	if err != nil {
