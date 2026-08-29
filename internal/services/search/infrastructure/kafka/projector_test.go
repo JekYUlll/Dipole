@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type stubIndex struct {
@@ -29,15 +29,15 @@ func (s *stubIndex) Search(model.MessageSearchQuery) ([]*model.MessageSearchDocu
 }
 
 func TestProjectorMapsCreatedAndEditedToSearchableMutations(t *testing.T) {
-	for _, mutationType := range []service.MessageMutationType{service.MessageMutationCreated, service.MessageMutationEdited} {
+	for _, mutationType := range []messagedomain.MessageMutationType{messagedomain.MessageMutationCreated, messagedomain.MessageMutationEdited} {
 		index := &stubIndex{}
 		projector, _ := New(index)
 		revision := uint64(2)
-		if mutationType == service.MessageMutationCreated {
+		if mutationType == messagedomain.MessageMutationCreated {
 			revision = 1
 		}
-		eventType, _ := service.MessageMutationEventType(model.MessageTargetDirect, mutationType)
-		err := projector.Project(context.Background(), event(t, eventType, service.MessageEventPayload{
+		eventType, _ := messagedomain.MessageMutationEventType(model.MessageTargetDirect, mutationType)
+		err := projector.Project(context.Background(), event(t, eventType, messagedomain.MessageEventPayload{
 			MutationType: mutationType, Revision: revision, ActorUUID: "U1", MessageID: "M1",
 			ConversationKey: "direct:U1:U2", MessageSeq: 7, SenderUUID: "U1", TargetUUID: "U2",
 			TargetType: model.MessageTargetDirect, Content: "approved", SentAt: time.Now().UTC(),
@@ -49,11 +49,11 @@ func TestProjectorMapsCreatedAndEditedToSearchableMutations(t *testing.T) {
 }
 
 func TestProjectorMapsRecallAndDeleteToTombstones(t *testing.T) {
-	for _, mutationType := range []service.MessageMutationType{service.MessageMutationRecalled, service.MessageMutationDeleted} {
+	for _, mutationType := range []messagedomain.MessageMutationType{messagedomain.MessageMutationRecalled, messagedomain.MessageMutationDeleted} {
 		index := &stubIndex{}
 		projector, _ := New(index)
-		eventType, _ := service.MessageMutationEventType(model.MessageTargetGroup, mutationType)
-		err := projector.Project(context.Background(), event(t, eventType, service.MessageEventPayload{
+		eventType, _ := messagedomain.MessageMutationEventType(model.MessageTargetGroup, mutationType)
+		err := projector.Project(context.Background(), event(t, eventType, messagedomain.MessageEventPayload{
 			MutationType: mutationType, Revision: 3, ActorUUID: "U1", MessageID: "M1", TargetType: model.MessageTargetGroup,
 		}))
 		if err != nil || index.mutation.Type != model.MessageSearchMutationTombstone || index.mutation.Document != nil {
@@ -65,9 +65,9 @@ func TestProjectorMapsRecallAndDeleteToTombstones(t *testing.T) {
 func TestProjectorRejectsChannelAndRevisionConflicts(t *testing.T) {
 	index := &stubIndex{}
 	projector, _ := New(index)
-	tests := []service.MessageEventPayload{
-		{MutationType: service.MessageMutationCreated, Revision: 2, ActorUUID: "U1", MessageID: "M1", TargetType: model.MessageTargetDirect},
-		{MutationType: service.MessageMutationCreated, Revision: 1, ActorUUID: "U1", MessageID: "M1", TargetType: model.MessageTargetGroup},
+	tests := []messagedomain.MessageEventPayload{
+		{MutationType: messagedomain.MessageMutationCreated, Revision: 2, ActorUUID: "U1", MessageID: "M1", TargetType: model.MessageTargetDirect},
+		{MutationType: messagedomain.MessageMutationCreated, Revision: 1, ActorUUID: "U1", MessageID: "M1", TargetType: model.MessageTargetGroup},
 	}
 	for _, payload := range tests {
 		if err := projector.Project(context.Background(), event(t, "message.direct.created", payload)); err == nil {
@@ -83,8 +83,8 @@ func TestProjectorPropagatesIndexFailure(t *testing.T) {
 	expected := errors.New("Elasticsearch unavailable")
 	index := &stubIndex{err: expected}
 	projector, _ := New(index)
-	err := projector.Project(context.Background(), event(t, "message.direct.created", service.MessageEventPayload{
-		MutationType: service.MessageMutationCreated, Revision: 1, ActorUUID: "U1", MessageID: "M1",
+	err := projector.Project(context.Background(), event(t, "message.direct.created", messagedomain.MessageEventPayload{
+		MutationType: messagedomain.MessageMutationCreated, Revision: 1, ActorUUID: "U1", MessageID: "M1",
 		ConversationKey: "direct:U1:U2", MessageSeq: 1, SenderUUID: "U1", TargetType: model.MessageTargetDirect, SentAt: time.Now().UTC(),
 	}))
 	if !errors.Is(err, expected) {
@@ -92,7 +92,7 @@ func TestProjectorPropagatesIndexFailure(t *testing.T) {
 	}
 }
 
-func event(t *testing.T, eventType string, payload service.MessageEventPayload) platformKafka.Event {
+func event(t *testing.T, eventType string, payload messagedomain.MessageEventPayload) platformKafka.Event {
 	t.Helper()
 	raw, err := json.Marshal(payload)
 	if err != nil {
