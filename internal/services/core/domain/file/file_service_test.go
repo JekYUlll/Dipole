@@ -146,8 +146,12 @@ func (r *stubFileMessageRepository) FindLatestAccessibleFileMessage(fileUUID, us
 }
 
 type stubMultipartSessionStore struct {
-	sessions map[string]*multipartUploadSession
-	parts    map[string][]platformStorage.MultipartCompletePart
+	sessions  map[string]*multipartUploadSession
+	parts     map[string][]platformStorage.MultipartCompletePart
+	completed map[string]struct {
+		owner string
+		file  *model.UploadedFile
+	}
 }
 
 func (s *stubMultipartSessionStore) Create(ctx context.Context, session *multipartUploadSession, ttl time.Duration) error {
@@ -163,6 +167,31 @@ func (s *stubMultipartSessionStore) Create(ctx context.Context, session *multipa
 func (s *stubMultipartSessionStore) Get(ctx context.Context, sessionID string) (*multipartUploadSession, error) {
 	_ = ctx
 	return s.sessions[sessionID], nil
+}
+
+func (s *stubMultipartSessionStore) SaveCompleted(ctx context.Context, sessionID, uploaderUUID string, file *model.UploadedFile, ttl time.Duration) error {
+	_ = ctx
+	_ = ttl
+	if s.completed == nil {
+		s.completed = map[string]struct {
+			owner string
+			file  *model.UploadedFile
+		}{}
+	}
+	s.completed[sessionID] = struct {
+		owner string
+		file  *model.UploadedFile
+	}{owner: uploaderUUID, file: file}
+	return nil
+}
+
+func (s *stubMultipartSessionStore) GetCompleted(ctx context.Context, sessionID string) (*model.UploadedFile, string, error) {
+	_ = ctx
+	completed, ok := s.completed[sessionID]
+	if !ok {
+		return nil, "", nil
+	}
+	return completed.file, completed.owner, nil
 }
 
 func (s *stubMultipartSessionStore) SavePart(ctx context.Context, sessionID string, part *platformStorage.UploadedPart, ttl time.Duration) error {
@@ -450,6 +479,56 @@ func TestFileServiceMultipartUploadFlow(t *testing.T) {
 	}
 	if file == nil || file.UUID == "" {
 		t.Fatalf("expected uploaded file record, got %+v", file)
+	}
+	retried, err := service.CompleteMultipartUpload("U100", initResult.SessionID)
+	if err != nil {
+		t.Fatalf("retry complete multipart upload: %v", err)
+	}
+	if retried.UUID != file.UUID {
+		t.Fatalf("retry returned a different file: first=%s retry=%s", file.UUID, retried.UUID)
+	}
+}
+
+func TestFileServiceMultipartAbortIsIdempotentAndRejectsCompletedUpload(t *testing.T) {
+	t.Parallel()
+
+	abortCalls := 0
+	service := newFileService(&stubFileRepository{}, nil, &stubUploader{
+		initiateMultipartFn: func(context.Context, string, string) (*platformStorage.MultipartUpload, error) {
+			return &platformStorage.MultipartUpload{Bucket: "dipole-files", ObjectKey: "message-files/data", UploadID: "UPLOAD-ABORT"}, nil
+		},
+		abortMultipartFn: func(context.Context, string, string) error {
+			abortCalls++
+			return nil
+		},
+	}, 50*1024*1024, 5, time.Hour, 10*time.Minute)
+	store := &stubMultipartSessionStore{}
+	service.sessionStore = store
+
+	initResult, err := service.InitiateMultipartUpload("U100", InitiateMultipartUploadInput{FileName: "data", FileSize: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.AbortMultipartUpload("U100", initResult.SessionID); err != nil {
+		t.Fatalf("abort multipart upload: %v", err)
+	}
+	if err := service.AbortMultipartUpload("U100", initResult.SessionID); err != nil {
+		t.Fatalf("retry abort multipart upload: %v", err)
+	}
+	if abortCalls != 1 {
+		t.Fatalf("expected one storage abort call, got %d", abortCalls)
+	}
+
+	store.completed = map[string]struct {
+		owner string
+		file  *model.UploadedFile
+	}{}
+	store.completed["completed-session"] = struct {
+		owner string
+		file  *model.UploadedFile
+	}{owner: "U100", file: &model.UploadedFile{UUID: "F100"}}
+	if err := service.AbortMultipartUpload("U100", "completed-session"); !errors.Is(err, ErrMultipartSessionInvalid) {
+		t.Fatalf("expected completed upload rejection, got %v", err)
 	}
 }
 
