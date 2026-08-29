@@ -62,6 +62,9 @@ func RegisterKafkaHandlers(hub WSEventSender, repos *Repositories, messaging *Me
 	if repos == nil {
 		return fmt.Errorf("kafka handler repositories are required")
 	}
+	if repos.AgentProcess == nil {
+		return fmt.Errorf("kafka handler Agent repositories are required")
+	}
 
 	var events applicationPort.EventPublisher
 	if platformKafka.Client != nil {
@@ -94,7 +97,7 @@ func RegisterKafkaHandlers(hub WSEventSender, repos *Repositories, messaging *Me
 		if err != nil {
 			return fmt.Errorf("compose Agent Capability v1: %w", err)
 		}
-		if aiService, err := newAIService(aiConfig, repos.AICallLogs, agentCommands, agentCapability, repos.AgentPolicy); err != nil {
+		if aiService, err := newAIService(aiConfig, repos.AgentProcess.AICallLogs, agentCommands, agentCapability, repos.AgentProcess.Policy); err != nil {
 			return err
 		} else if aiService != nil {
 			platformKafka.Subscriber.Register("message.direct.created", handleAIDirectReply(aiService))

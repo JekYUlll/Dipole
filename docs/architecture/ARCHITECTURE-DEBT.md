@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：embedded repository composition 已将 Agent 全部仓储访问收敛到 `AgentProcessRepositories`，移除聚合根的 Agent 扁平字段，并通过 Agent 初始化与 repository contract 测试；Core/Message/Sync 的聚合字段仍按后续切片收敛。
 - 2026-08-30：Core server 与 standalone bootstrap 已切换到 Core-owned repository/messaging 端口和本地组合函数，移除对 `internal/bootstrap/embedded` 聚合类型的直接依赖；embedded 仅在回滚组合边界适配，新增服务布局门禁防止 Core 依赖回流。
 - 2026-08-30：复跑 `scripts/smoke-sync-cassandra-primary-compose.sh`，隔离微服务 Compose 真实验证 Cassandra schema init、MySQL migration、Core/Message/Sync 依赖 readiness 和 `primary=true` 配置；临时拓扑自动清理，共享环境长期观测、责任人批准和可执行回切仍未完成。
 - 2026-08-30：复跑 `scripts/smoke-cassandra-read-routing.sh`，隔离环境真实验证 migration v50、Cassandra Timeline 页面主读，以及 payload 损坏和缺行按同一 locator 回退 MySQL；资源自动清理，生产主读比例、共享环境窗口、责任人批准和可执行回切仍未启用。
