@@ -51,6 +51,7 @@
 - 2026-08-29：Message bootstrap 的惰性 Core 重试测试已改用本地最小 gRPC adapter，测试包不再反向依赖共享 bootstrap，进一步固定 Message 服务的物理边界。
 - 2026-08-29：Embedded Kafka 装配已直接注册 Message-owned persistence handlers，删除无外部调用者的共享 `RegisterMessageKafkaHandlers` 包装，Message Kafka 兼容表面进一步缩小。
 - 2026-08-29：Embedded runtime 已直接持有并创建 `messagekafka.Relay`，删除仅供旧 bootstrap 内部使用的 Outbox alias/构造包装；Outbox 启动条件和 embedded 回滚语义保持兼容。
+- 2026-08-29：删除已无调用者的 `internal/bootstrap.VerifyMessageDatabaseBoundary` 兼容转发，Message 数据库权限探针由 `internal/services/message/infrastructure/mysql` 唯一持有，权限语义保持不变。
 - 2026-08-29：Search 生产 RPC bootstrap 已脱离 `internal/bootstrap`，直接使用平台 RPC transport；Core capability server 仅作为测试 fixture 使用 legacy helper，避免重复实现 Core 方法权限策略，后续继续迁移 Message、Sync 和 Gateway 协议 adapter。
 - 2026-08-29：Internal RPC 通用 transport 已迁入 `internal/platform/rpc/`，并由旧 `internal/bootstrap` helper 转发；平台层覆盖认证、TLS 1.3 mTLS、health check、拨号超时和优雅关闭，服务协议 adapter 与方法权限仍按服务边界继续收敛。
 - 2026-08-29：修复 Agent MCP RPC drill fixture 对旧 `internal/transport/grpc/gen` 生成路径的引用，统一切换到 `api/gen/go`；`master` 全量 Go 测试、服务布局、架构文档和 Compose 门禁均已恢复通过。

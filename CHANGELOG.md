@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 删除已无调用者的 `internal/bootstrap.VerifyMessageDatabaseBoundary` 兼容转发；Message 数据库权限探针继续由 `internal/services/message/infrastructure/mysql` 唯一持有，embedded 与独立 runtime 均不改变权限语义。
 - Embedded runtime 已直接持有并创建 `messagekafka.Relay`，删除仅供旧 bootstrap 内部使用的 Outbox 类型 alias/构造包装；Outbox relay 实现、启动条件和回滚行为保持兼容。
 - Embedded Kafka 装配已直接注册 Message-owned persistence handlers，删除仅供共享 bootstrap 内部使用的 `RegisterMessageKafkaHandlers` 包装，避免继续扩散 Message Kafka 实现入口。
 - Message bootstrap 的惰性 Core 重试测试已改用本地最小 gRPC adapter，不再反向导入共享 `internal/bootstrap` 测试夹具，解除 Message 服务测试包循环依赖。
