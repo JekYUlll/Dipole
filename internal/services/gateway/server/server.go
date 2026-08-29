@@ -30,19 +30,21 @@ import (
 )
 
 type Dependencies struct {
-	Messages           application.MessageApplication
-	Sync               application.SyncApplication
-	Core               application.CoreCapability
-	Search             application.SearchApplication
-	AgentTasks         AgentTaskControlApplication
-	AgentSubscriptions AgentSubscriptionControlApplication
-	AgentDefinitions   AgentDefinitionCatalogApplication
-	AgentMemories      AgentMemoryControlApplication
-	AgentMCP           AgentMCPApplication
-	TokenResolver      application.TokenResolver
-	Presence           wsTransport.PresenceTracker
-	Limiter            MessageRateLimiter
-	AgentMCPLimiter    AgentMCPRateLimiter
+	Messages              application.MessageApplication
+	Sync                  application.SyncApplication
+	Core                  application.CoreCapability
+	Search                application.SearchApplication
+	AgentTasks            AgentTaskControlApplication
+	AgentSubscriptions    AgentSubscriptionControlApplication
+	AgentDefinitions      AgentDefinitionCatalogApplication
+	AgentMemories         AgentMemoryControlApplication
+	AgentMCP              AgentMCPApplication
+	TokenResolver         application.TokenResolver
+	Presence              wsTransport.PresenceTracker
+	Limiter               MessageRateLimiter
+	AgentMCPLimiter       AgentMCPRateLimiter
+	PresignedUploadProxy  http.Handler
+	PresignedUploadBucket string
 }
 
 type MessageRateLimiter interface {
@@ -145,6 +147,10 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 			agentMCPLimiter = platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
 		}
 		engine.Any("/api/v1/agent/tasks/:task_id/runs/:run_id/mcp", auth, agentMCPHandler(dependencies.AgentMCP, agentMCPLimiter))
+	}
+	if dependencies.PresignedUploadProxy != nil && strings.TrimSpace(dependencies.PresignedUploadBucket) != "" {
+		bucket := strings.Trim(strings.TrimSpace(dependencies.PresignedUploadBucket), "/")
+		engine.PUT("/"+bucket+"/*object", gin.WrapH(dependencies.PresignedUploadProxy))
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, proxyErr error) {
