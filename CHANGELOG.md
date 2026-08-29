@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：补充 Agent Active Compose 负向门禁，缺失 release manifest 或 candidate version 时在插值阶段直接失败；默认 Shadow 配置和 Active 回滚路径保持不变。
 - 2026-08-30：核验 CloudWeGo Eino 依赖升级状态：`go list -m -u` 未发现高于当前 `v0.9.17` 的可用升级；公开 `v0.10.0-alpha` 仍属于预发布路线，暂不引入 Go/Eino 回滚基线，避免与 TS Agent Runtime 接管和微服务切换同时改变。
 - 2026-08-30：复核 Agent Active 晋级前置门禁：TypeScript Runtime Vitest `125` 个文件、`665` 个测试通过，`typecheck`、生产构建和 Compose active overlay 契约均通过；默认 Shadow、显式 `user_gray` manifest 和 candidate 绑定保持 fail-closed，共享 Temporal/Kafka/Active authority 联调仍待完成。
 
