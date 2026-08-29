@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent MCP Readiness Evidence 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
 - Agent Definition Catalog 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
 - Agent Approval Grant Resolver 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发；审批主服务测试因共享 policy stub 继续保留兼容边界。
 - Agent application compatibility facade 已删除两个无调用者的未导出转发函数；仍被兼容测试使用的执行策略和任务辅助入口继续保留，服务 application 实现保持唯一来源。
