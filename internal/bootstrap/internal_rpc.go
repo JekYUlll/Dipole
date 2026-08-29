@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -12,7 +11,6 @@ import (
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	corepolicy "github.com/JekYUlll/Dipole/internal/services/core/rpcpolicy"
 	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
-	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
 	"google.golang.org/grpc"
 )
@@ -141,18 +139,10 @@ func newCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapabil
 	if agentAdapter != nil {
 		allowed = append(allowed, agentServiceName)
 	}
-	return newInternalRPCServer(cfg, cfg.CoreListenAddress, allowed, func(server *grpc.Server) {
+	return platformrpc.NewServer(cfg, cfg.CoreListenAddress, allowed, func(server *grpc.Server) {
 		corev1.RegisterCoreCapabilityServiceServer(server, adapter)
 		if agentAdapter != nil {
 			agentv1.RegisterAgentCapabilityServiceServer(server, agentAdapter)
 		}
 	}, corepolicy.RestrictAgentServiceMethods)
-}
-
-func newInternalRPCServer(cfg config.InternalRPC, address string, allowedCallers []string, register func(*grpc.Server), additionalInterceptors ...grpc.UnaryServerInterceptor) (*InternalRPCServer, error) {
-	return platformrpc.NewServer(cfg, address, allowedCallers, register, additionalInterceptors...)
-}
-
-func dialInternalRPC(ctx context.Context, cfg config.InternalRPC, target string, serviceCredentials grpcauth.Credentials) (*grpc.ClientConn, error) {
-	return platformrpc.Dial(ctx, cfg, target, serviceCredentials)
 }
