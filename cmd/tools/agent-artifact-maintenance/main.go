@@ -16,9 +16,9 @@ import (
 	artifactcleanup "github.com/JekYUlll/Dipole/internal/cleanup/artifact"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	platformstorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	artifactreconcile "github.com/JekYUlll/Dipole/internal/reconcile/artifact"
+	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 
@@ -72,7 +72,7 @@ func main() {
 		if err != nil {
 			fatal(err)
 		}
-		metadata, err := repository.NewAgentArtifactRepository(generated.New(store.SQLDB))
+		metadata, err := agentmysql.NewAgentArtifactRepository(generated.New(store.SQLDB))
 		if err != nil {
 			fatal(err)
 		}

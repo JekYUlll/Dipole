@@ -1,4 +1,4 @@
-package repository_test
+package agentmysql_test
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
+	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 
 func TestAgentRuntimePromotionControlMySQLContract(t *testing.T) {

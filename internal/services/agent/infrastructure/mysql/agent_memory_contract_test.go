@@ -1,4 +1,4 @@
-package repository_test
+package agentmysql_test
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
+	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 
 func TestAgentMemoryRepositoryContract(t *testing.T) {

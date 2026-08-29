@@ -11,9 +11,9 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	agenttimelinereconcile "github.com/JekYUlll/Dipole/internal/reconcile/agenttimeline"
+	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	policy, err := repository.NewAgentPolicyRepositoryWithTransactions(mysqlStore)
+	policy, err := agentmysql.NewAgentPolicyRepositoryWithTransactions(mysqlStore)
 	if err != nil {
 		fatal(err)
 	}

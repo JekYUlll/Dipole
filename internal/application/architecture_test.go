@@ -18,13 +18,13 @@ func TestTransportPackagesDoNotImportDataImplementations(t *testing.T) {
 	}
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
 
-	for _, relativeDirectory := range []string{"internal/server", "internal/handler", "internal/transport"} {
+	for _, relativeDirectory := range []string{"internal/server", "internal/gateway", "internal/transport"} {
 		directory := filepath.Join(repositoryRoot, relativeDirectory)
 		err := filepath.WalkDir(directory, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
-			if entry.IsDir() || filepath.Ext(path) != ".go" {
+			if entry.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
 

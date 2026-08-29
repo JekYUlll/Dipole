@@ -34,6 +34,7 @@
 - Core 已提供独立 Composition Root `InitializeCoreService`：remote 模式只装配 Core-owned repository、Core projection、Core HTTP 和 Core Capability RPC；embedded 模式继续使用聚合入口作为本地兼容和回滚路径。
 - 聚合 `Repositories` 已显式保存 Core、Message、Sync、Agent 四类 process composition，后续独立启动链应直接接收对应分组，避免重新恢复扁平跨服务依赖。
 - Agent repository composition 已提供 `AgentProcessRepositories`，集中声明 Agent policy、task timeline、memory、approval、artifact、tool audit 和 readiness store；Core 仅通过兼容 RPC/port 使用必要能力。Go/Eino 兼容实现位于 `internal/services/agent/legacy/`，由 TS Agent Runtime 按发布门禁逐步接管。
+- Agent 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/data/mysql/repository/agent_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口，Agent 数据访问实现由 Agent process 独占。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
 - Sync domain 实现已迁入 `internal/services/sync/domain/`；旧 `internal/service` 仅保留错误和构造入口兼容层，Sync Timeline、设备 Cursor 和群组 checkpoint contract 保持兼容。
 - Sync MySQL repository、hydrator 和 projection 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 直接使用服务专属 composition，旧共享 repository 仅保留兼容入口。
