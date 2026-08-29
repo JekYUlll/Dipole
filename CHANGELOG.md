@@ -19,6 +19,7 @@
 ## [Unreleased]
 
 - 新增 `deploy/microservices/inbox-projector.yml` 可移除的 Inbox ownership 切换 overlay：绑定 Message projector 模式、`dipole_message_projector` 最小账号和 Sync projector 开关，并由 `scripts/check-compose.sh` 校验配置一致性；默认 atomic 回滚路径保持不变。
+- 重新通过 `scripts/smoke-sync-write-ownership.sh`：真实 MySQL 8.4 验证 atomic/projector 最小权限、Inbox 写责任切换和 rollback contract；共享候选环境切换仍需维护窗口 receipt。
 - Kafka 三节点故障与消费 ownership 演练通过：RF=3/min ISR=2 下验证单 broker 存活、低于 quorum 拒绝确认写入、consumer member 丢失后的 6 分区接管和 lag 归零；Prometheus 观测演练覆盖 lag、retry、DLQ、ISR 缺口及 broker 恢复。
 - 修复 Kafka cluster observability profile 的 Prometheus rule-file 挂载漂移，补齐 duplicate hydration 和 Agent Timeline repair 规则，并在 `scripts/check-compose.sh` 增加挂载门禁；生产 Kafka ownership 切换和可执行回滚 receipt 仍按 AD-048 跟踪。
 - Redis Sentinel 三节点故障演练通过：真实客户端完成 master 切换、Pub/Sub 重连、Presence、Hot Group 和限流恢复，旧 master 重新加入为 replica；可靠消息仍由 Kafka/Sync Timeline 提供补偿。
