@@ -46,6 +46,10 @@ type fileStorage interface {
 	platformStorage.Downloader
 }
 
+type multipartPartURLSigner interface {
+	PresignMultipartPartURL(ctx context.Context, objectKey, uploadID string, partNumber int, expiry time.Duration) (string, error)
+}
+
 type FileDownloadResult struct {
 	FileID      string     `json:"file_id"`
 	FileName    string     `json:"file_name"`
@@ -144,6 +148,14 @@ type MultipartUploadStatus struct {
 	TotalParts    int                         `json:"total_parts"`
 	UploadedParts []MultipartUploadPartStatus `json:"uploaded_parts"`
 }
+
+type MultipartPartUploadURL struct {
+	PartNumber int       `json:"part_number"`
+	URL        string    `json:"url"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+const multipartPartURLTTL = 15 * time.Minute
 
 func (s *FileService) UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
 	if header == nil {
@@ -290,6 +302,46 @@ func (s *FileService) GetMultipartUploadStatus(uploaderUUID, sessionID string) (
 		})
 	}
 	return status, nil
+}
+
+func (s *FileService) PresignMultipartParts(uploaderUUID, sessionID string, partNumbers []int) ([]MultipartPartUploadURL, error) {
+	signer, ok := s.storage.(multipartPartURLSigner)
+	if !ok {
+		return nil, ErrFileStorageUnavailable
+	}
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if len(partNumbers) == 0 {
+		return nil, ErrMultipartPartInvalid
+	}
+	seen := make(map[int]struct{}, len(partNumbers))
+	ordered := make([]int, 0, len(partNumbers))
+	for _, partNumber := range partNumbers {
+		if partNumber <= 0 || partNumber > session.TotalParts {
+			return nil, ErrMultipartPartInvalid
+		}
+		if _, exists := seen[partNumber]; exists {
+			return nil, ErrMultipartPartInvalid
+		}
+		seen[partNumber] = struct{}{}
+		ordered = append(ordered, partNumber)
+	}
+	sort.Ints(ordered)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	expiresAt := time.Now().UTC().Add(multipartPartURLTTL)
+	result := make([]MultipartPartUploadURL, 0, len(ordered))
+	for _, partNumber := range ordered {
+		presignedURL, signErr := signer.PresignMultipartPartURL(ctx, session.ObjectKey, session.UploadID, partNumber, multipartPartURLTTL)
+		if signErr != nil {
+			return nil, fmt.Errorf("presign multipart part %d: %w", partNumber, signErr)
+		}
+		result = append(result, MultipartPartUploadURL{PartNumber: partNumber, URL: presignedURL, ExpiresAt: expiresAt})
+	}
+	return result, nil
 }
 
 func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {

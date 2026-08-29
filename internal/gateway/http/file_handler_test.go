@@ -23,6 +23,7 @@ type stubFileService struct {
 	uploadFn            func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
 	initiateMultipartFn func(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
 	statusMultipartFn   func(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error)
+	presignMultipartFn  func(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error)
 	uploadPartFn        func(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error
 	completeMultipartFn func(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	abortMultipartFn    func(uploaderUUID, sessionID string) error
@@ -67,6 +68,13 @@ func (s *stubFileService) GetMultipartUploadStatus(uploaderUUID, sessionID strin
 		return nil, nil
 	}
 	return s.statusMultipartFn(uploaderUUID, sessionID)
+}
+
+func (s *stubFileService) PresignMultipartParts(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error) {
+	if s.presignMultipartFn == nil {
+		return nil, nil
+	}
+	return s.presignMultipartFn(uploaderUUID, sessionID, partNumbers)
 }
 
 func (s *stubFileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
@@ -344,6 +352,32 @@ func TestFileHandlerMultipartStatusSuccess(t *testing.T) {
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestFileHandlerPresignMultipartPartsSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&stubFileService{
+		presignMultipartFn: func(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error) {
+			if uploaderUUID != "U100" || sessionID != "MU100" || len(partNumbers) != 2 || partNumbers[0] != 1 || partNumbers[1] != 2 {
+				t.Fatalf("unexpected presign args: %s %s %v", uploaderUUID, sessionID, partNumbers)
+			}
+			return []corefile.MultipartPartUploadURL{{PartNumber: 1, URL: "https://minio.test/1"}}, nil
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/files/uploads/MU100/parts/presign", strings.NewReader(`{"part_numbers":[1,2]}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "session_id", Value: "MU100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.PresignMultipartParts(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
 }
 
