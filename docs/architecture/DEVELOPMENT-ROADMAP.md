@@ -4,18 +4,20 @@
 
 这份路线图用于把 `Dipole` 的开发顺序、阶段目标和阶段后的重构任务明确下来，方便后续持续推进。
 
-当前项目定位仍然是：
+> 当前平台迁移以 [平台演进计划](PLATFORM-EVOLUTION-PLAN.md) 为准；本文保留业务功能拆解，并补充与现行服务边界一致的后续轨道。
+
+当前项目定位是：
 
 - 以 `KamaChat` 为主参考的学习型 IM 项目
 - 以 `im-server` 校正模块边界和演进方式
-- 以模块化单体作为当前阶段的落地形态
+- 以面向服务边界的 Monorepo 作为当前落地形态，保留 embedded 兼容路径
 
 同时明确两件事：
 
 - `AI` 功能是必做主线
-- `Cgo` 高性能模块是必做主线
+- C++ Realtime Delivery 是候选数据面主线，只有 benchmark 和故障演练证明收益后才切流
 
-这两部分会在 IM 核心链路稳定后正式接入，前面的阶段需要提前为它们预留边界。
+Agent Runtime 已进入独立服务演进阶段；C++ 数据面继续保持独立候选服务，前置协议、观测和回滚边界先行。
 
 ---
 
@@ -23,17 +25,15 @@
 
 推荐按下面顺序推进：
 
-1. 基线收口与测试基建
-2. 用户与认证
-3. 消息与 WebSocket
-4. 会话
-5. 联系人与关系链路
-6. 群组
-7. AI 能力接入
-8. Cgo 高性能模块接入
-9. 工程化补强
+1. G0 前置风险治理与测试基线
+2. M1-M6 渐进式微服务改造
+3. A1-A5 消息 Timeline 与分层存储演进
+4. A6 Sync Service、Web Sync 和客户端观测
+5. G1-G4 TypeScript Agent Runtime 独立化
+6. C++ Realtime Delivery 候选数据面
+7. 工程化、评测和发布门禁
 
-其中 `1-6` 是 IM 核心主线，`7-8` 是明确要交付的增强主线，`9` 用于把项目打磨到更适合展示和继续扩展的状态。
+其中前五项构成当前平台主线，C++ 数据面与工程化作为独立发布轨道，避免把语言替换、存储迁移和业务服务拆分合并到一次变更中。
 
 ---
 
@@ -41,9 +41,9 @@
 
 - 基于 test 进行开发，每个阶段都要补对应的单元测试和接口测试。
 - 每做完一个功能块，就做一次小规模重构，不把债务一路堆到最后。
-- 先保证单体内边界清晰，再考虑是否需要拆分进程。
+- 先稳定服务契约、数据 ownership 和回滚证据，再扩大独立进程的生产职责。
 - 纯 Go 版本优先保证正确性，性能优化建立在 benchmark 和 profiling 之上。
-- AI 与 Cgo 在前期先预留接口和扩展点，中后期做正式实现。
+- Agent 通过 Kafka、Capability RPC 和 Temporal 独立演进；C++ 通过跨进程协议接入，Go 保留默认 authority。
 
 ---
 
@@ -290,55 +290,56 @@
 - AI 能力能和消息、会话、用户体系自然协作
 - 项目具备更强的差异化展示点
 
-### Phase 7：Cgo 高性能模块接入
+### Phase 7：C++ Realtime Delivery 候选数据面
 
-这一阶段也是必做项。目标是把“性能优化”从口号落成一个可解释、可 benchmark、可开关的工程模块。
+这一阶段独立于 Go 业务服务。目标是把实时投递数据面做成可解释、可 benchmark、可开关和可回切的候选服务。
 
 推荐切入方式：
 
-1. 先用 pure Go 跑通正确性
-2. 用 benchmark 与 pprof 找出热点
-3. 选择 1-2 个收益明显的点接入 Cgo
-4. 保留 pure Go 回退实现
+1. 先以 Go Realtime Delivery 作为默认 authority
+2. 用 benchmark、pprof 和故障演练确认瓶颈
+3. 通过 Kafka、Redis Presence 和 Gateway receiver 接入 C++ shadow
+4. 满足 assignment、重复投递、背压和恢复门禁后再小流量切换
 
-优先考虑的 Cgo 切入点：
+候选职责包括：
 
-- 文本敏感词匹配或文本预处理
-- 消息压缩、编解码或序列化热点
-- 大列表批处理时的高频字符串处理
+- Kafka `message.created` 消费
+- 在线节点聚合与批量投递
+- 热群通知聚合和背压
+- Redis Presence 查询与 Gateway 节点路由
 
-推荐模块结构：
+服务目录：
 
-- `internal/platform/accelerator`
-- `internal/platform/accelerator/purego`
-- `internal/platform/accelerator/cgo`
+- `services/realtime-delivery`
+- `api/proto/dipole/delivery/v1`
+- `contracts/realtime-delivery-*`
 
 开发内容：
 
-- 为候选热点建立 benchmark
-- 为 pure Go 和 Cgo 实现定义统一接口
-- 使用 build tag 控制启用路径
-- 加入边界测试、压力测试与回退策略
+- 为 Go/C++ 建立同 workload benchmark
+- 固定跨语言 delivery contract、assignment 和 fence
+- 通过 Compose profile 控制 C++ 候选服务
+- 加入重复、丢失、节点故障、队列满和恢复测试
 
 交付清单：
 
-- 至少一个真正进入主流程的 Cgo 加速模块
-- 对比 benchmark 数据
-- 可切换的 pure Go / Cgo 实现
-- 清晰的构建说明与依赖说明
+- C++ shadow 与 Go authority 的可比 benchmark 数据
+- 可审计的候选接纳和回切证据
+- 独立构建镜像与运行手册
+- Go 默认回退路径和明确的 authority fence
 
 阶段后重构任务：
 
-- 收口内存管理边界，避免跨语言生命周期混乱
-- 用更小的接口暴露 Cgo 能力，减少扩散
-- 为 Cgo 模块补齐 fuzz test、race 检查和异常兜底
+- 收口跨进程协议和 ownership，避免双 authority
+- 用窄接口暴露 Gateway receiver 和 Redis 路由能力
+- 为 C++ 队列、并发和异常恢复补齐压力测试
 - 把性能测试脚本文档化
 
 完成标志：
 
-- Cgo 模块在项目里承担真实职责
-- 性能收益可以通过数据解释
-- 即使关闭 Cgo，系统也能稳定回退到 pure Go
+- C++ 候选服务承担可度量的实时投递职责
+- 性能收益与故障行为可以通过证据解释
+- 关闭 C++ profile 后系统稳定回退到 Go authority
 
 ### Phase 8：工程化补强
 
@@ -390,13 +391,13 @@
 
 ## 6. 现在就需要预留的扩展点
 
-虽然 AI 和 Cgo 会在后续阶段正式接入，但现在就应该提前留出位置：
+虽然 Agent 和 C++ 数据面按独立阶段推进，但现在就应该提前留出位置：
 
 - 用户模型里要允许出现系统用户或 AI 助手用户
 - 消息模型里要允许挂载元数据，如 `source`、`extra`、`tool_result`
 - 会话模型里要允许区分普通会话与 AI 会话
 - 消息应用层要避免直接依赖具体 LLM SDK
-- 文本处理、压缩、编解码等热点能力要通过接口调用，方便后续切到 Cgo 实现
+- 实时投递能力要通过跨进程 contract 调用，方便后续切到 C++ 候选服务
 
 ---
 
@@ -408,4 +409,4 @@
 2. 做单聊文本消息 MVP，跑通发送、落库、在线投递。
 3. 在消息主链路初步稳定后，再补会话视图和联系人关系。
 
-这样推进节奏会比较稳，既能持续交付，也能逐步把后续 AI 与 Cgo 的落点准备好。
+这样推进节奏会比较稳，既能持续交付，也能逐步把 Agent 与 C++ 数据面的落点准备好。
