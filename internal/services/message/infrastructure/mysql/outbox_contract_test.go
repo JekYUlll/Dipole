@@ -1,4 +1,4 @@
-package repository_test
+package messagemysql_test
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
+	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 )
 
 func TestOutboxRelayRepositoryContract(t *testing.T) {
@@ -29,7 +29,7 @@ func TestOutboxRelayRepositoryContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create MySQL store: %v", err)
 	}
-	sqlcRepo, err := sqlcRepository.NewOutboxRepository(mysqlStore)
+	sqlcRepo, err := messagemysql.NewOutboxRepository(mysqlStore)
 	if err != nil {
 		t.Fatalf("create sqlc outbox repository: %v", err)
 	}

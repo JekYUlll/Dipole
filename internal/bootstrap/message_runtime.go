@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	cassandraData "github.com/JekYUlll/Dipole/internal/data/cassandra"
@@ -16,6 +15,8 @@ import (
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	messageapplication "github.com/JekYUlll/Dipole/internal/services/message/application"
+	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/apache/cassandra-gocql-driver/v2"
 	"google.golang.org/grpc"
@@ -76,7 +77,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			return nil, fmt.Errorf("verify message database permissions: %w", err)
 		}
 	}
-	repos, err := appComposition.NewMessageProcessRepositoriesWithInboxWrites(store.SQLDB, messageCfg.InboxWriteMode == "atomic")
+	repos, err := messagemysql.NewProcessRepositories(store.SQLDB, messageCfg.InboxWriteMode == "atomic")
 	if err != nil {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
@@ -129,7 +130,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if runtime.duplicateHydration != nil {
 		duplicateObserver = runtime.duplicateHydration.Observe
 	}
-	messages := appComposition.NewMessageApplication(repos.Messages, core, appComposition.MessagingDependencies{
+	messages := messageapplication.New(repos.Messages, core, messageapplication.Dependencies{
 		Events: events, HotGroups: platformHotGroup.NewRedisDetector(), DuplicateHydrator: duplicateHydrator,
 		DuplicateHydrationObserver: duplicateObserver,
 	})

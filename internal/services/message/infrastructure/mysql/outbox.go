@@ -1,4 +1,4 @@
-package repository
+package messagemysql
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/mapper"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -17,10 +18,10 @@ import (
 var _ application.OutboxRelayStore = (*OutboxRepository)(nil)
 
 type OutboxRepository struct {
-	store transactionStore
+	store mysqlData.TransactionStore
 }
 
-func NewOutboxRepository(store transactionStore) (*OutboxRepository, error) {
+func NewOutboxRepository(store mysqlData.TransactionStore) (*OutboxRepository, error) {
 	if store == nil {
 		return nil, errors.New("outbox transaction store is required")
 	}

@@ -47,6 +47,14 @@ if [[ ! -f "${root_dir}/internal/services/message/infrastructure/mysql/message_r
   echo "Message MySQL repository is outside its service boundary" >&2
   exit 1
 fi
+if rg --quiet 'internal/app(/|["`])' "${root_dir}/internal/bootstrap/message_runtime.go"; then
+  echo "standalone Message runtime must not depend on aggregate internal/app composition" >&2
+  exit 1
+fi
+if ! rg --quiet 'services/message/infrastructure/mysql' "${root_dir}/internal/bootstrap/message_runtime.go"; then
+  echo "standalone Message runtime must use Message-owned repository composition" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/services/core/application/application.go" ]]; then
   echo "Core capability implementation is outside its service boundary" >&2
   exit 1
