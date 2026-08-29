@@ -96,6 +96,18 @@ jq -e '
   and .services.sync.environment.DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION == "true"
 ' <<<"${primary_profile_config}" >/dev/null
 
+projector_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+    docker compose -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/inbox-projector.yml config --format json
+})"
+jq -e '
+  .services.message.environment.DIPOLE_MESSAGE_RUNTIME_MODE == "owner"
+  and .services.message.environment.DIPOLE_MESSAGE_INBOX_WRITE_MODE == "projector"
+  and .services.message.environment.DIPOLE_MESSAGE_MYSQL_USER == "dipole_message_projector"
+  and .services.sync.environment.DIPOLE_SYNC_PROJECTOR_ENABLED == "true"
+' <<<"${projector_config}" >/dev/null
+
 isolated_microservices_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   docker compose --profile search -f deploy/compose/docker-compose.microservices.yml -f deploy/microservices/isolated-images.yml config --format json

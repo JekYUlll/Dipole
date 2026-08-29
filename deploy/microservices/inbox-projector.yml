@@ -1,0 +1,10 @@
+services:
+  message:
+    environment:
+      DIPOLE_MESSAGE_RUNTIME_MODE: owner
+      DIPOLE_MESSAGE_INBOX_WRITE_MODE: projector
+      DIPOLE_MESSAGE_MYSQL_USER: ${DIPOLE_MESSAGE_PROJECTOR_MYSQL_USER:-dipole_message_projector}
+      DIPOLE_MESSAGE_MYSQL_PASSWORD: ${DIPOLE_MESSAGE_PROJECTOR_MYSQL_PASSWORD:-change-me}
+  sync:
+    environment:
+      DIPOLE_SYNC_PROJECTOR_ENABLED: "true"
