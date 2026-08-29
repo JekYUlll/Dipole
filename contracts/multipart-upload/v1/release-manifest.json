@@ -1,0 +1,8 @@
+{
+  "schema_version": "dipole.multipart-upload.release.v1",
+  "policy_version": "v1",
+  "policy_file": "contracts/multipart-upload/v1/default-policy.json",
+  "policy_sha256": "4a217b722a14523603bfac01d2c6b5823f860788d88ab893ce8e0da29827a57b",
+  "default_mode": "relay",
+  "fallback_mode": "relay"
+}
