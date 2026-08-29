@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Internal RPC 通用 transport 已下沉到 `internal/platform/rpc`，统一承载 gRPC listener、服务认证、TLS 1.3 mTLS、health check、拨号超时和优雅关闭；`internal/bootstrap` 保留薄兼容转发，协议 adapter 与方法权限继续按服务边界逐步迁移。
 - 修复 Agent MCP RPC drill fixture 对已迁移 protobuf 生成目录的旧引用，统一使用 `api/gen/go/agent/v1`；master 全量 Go 测试恢复可执行。
 - 修复 Gateway 服务入口 `RunServer` 递归调用自身的迁移回归，改为委托服务自有 `RunGatewayServer`；新增架构测试锁定入口委托关系，HTTP/WS 与 TLS 启动路径已通过验证。
 - Gateway runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/gateway/bootstrap`，服务入口直接拥有 HTTP/WS、Redis Presence/限流、Kafka 和实时投递 authority 装配；RPC、TLS 与 Kafka handler 兼容入口保留，旧 runtime 路径由结构门禁阻止回流。

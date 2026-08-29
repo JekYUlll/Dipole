@@ -22,6 +22,10 @@ type readinessValidator interface {
 	ValidateReadiness(context.Context) error
 }
 
+type rpcReadiness interface {
+	SetServing(bool)
+}
+
 func configureRuntimeDependencyReadiness(
 	server *platformobservability.MetricsServer,
 	cfg config.Metrics,
@@ -42,7 +46,7 @@ func configureRuntimeDependencyReadiness(
 	return server.MonitorDependencies(probes, policy)
 }
 
-func bindRPCReadiness(server *platformobservability.MetricsServer, rpc *InternalRPCServer) {
+func bindRPCReadiness(server *platformobservability.MetricsServer, rpc rpcReadiness) {
 	if server == nil || rpc == nil {
 		return
 	}
