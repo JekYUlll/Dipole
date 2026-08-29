@@ -16,6 +16,8 @@
 ## [Unreleased]
 
 ### 新增
+- Agent promotion publication 增加受保护的 release manifest 入口：CLI 检测 manifest 后强制校验 `shadow` 阶段、candidate、offline Eval Suite SHA-256 和四类组件哈希，并将 manifest 哈希写入发布 Artifact 与低敏 receipt；旧证据回放入口保持兼容。
+
 - Agent Runtime 增加 `dipole.agent.release-manifest.v1`：将模型、Prompt、Capability Schema、Memory Policy 与 offline Eval Suite SHA-256 绑定到候选版本，晋级校验只接受 `shadow` 阶段并拒绝版本或评测哈希漂移；该清单不改变生产开关。
 
 - Agent Approval 与 Elicitation 表单已迁移到共享 `--dp-*` Pencil token，并增加设计契约测试，避免交互页面重新引入独立主题变量。

@@ -12,6 +12,7 @@ interface Writable {
 
 interface PublisherHandle {
   publish(input: PromotionEvidencePublicationInput): Promise<PromotionEvidenceReceipt>;
+  publishWithReleaseManifest?(input: PromotionEvidencePublicationInput & { readonly releaseManifest: unknown }): Promise<PromotionEvidenceReceipt>;
   close(): void;
 }
 
@@ -32,7 +33,10 @@ export async function runPromotionEvidencePublishCLI(
   try {
     const input = JSON.parse(await readFile(inputArgs[0]!.slice("--input=".length), "utf8")) as PromotionEvidencePublicationInput;
     handle = dependencies.openPublisher();
-    const receipt = await handle.publish(input);
+    const receipt = input.releaseManifest === undefined
+      ? await handle.publish(input)
+      : await handle.publishWithReleaseManifest?.(input as PromotionEvidencePublicationInput & { readonly releaseManifest: unknown });
+    if (receipt === undefined) throw new Error("release manifest publication is unavailable");
     stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
     return 0;
   } catch (error) {
@@ -50,7 +54,11 @@ function defaultDependencies(): PromotionEvidencePublishCLIDependencies {
       if (!config.capabilityRpc.enabled) throw new Error("Agent Capability RPC must be enabled for evidence publication");
       const rpc = createAgentCapabilityRPC(config);
       const publisher = new PromotionEvidencePublisher(rpc.client);
-      return { publish: input => publisher.publish(input), close: rpc.close };
+      return {
+        publish: input => publisher.publish(input),
+        publishWithReleaseManifest: input => publisher.publishWithReleaseManifest(input),
+        close: rpc.close
+      };
     }
   };
 }
