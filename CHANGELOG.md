@@ -18,6 +18,8 @@
 
 ## [Unreleased]
 
+- Agent MCP Tool Round 与 Terminal 测试已整体迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的 Round/Terminal 构造转发。
+- Agent MCP Tool Round 测试已补齐本地最小 invocation reader stub，解除对 `internal/app` 共享测试辅助的隐式依赖。
 - Agent MCP Readiness Evidence 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
 - Agent Definition Catalog 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
 - Agent Approval Grant Resolver 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发；审批主服务测试因共享 policy stub 继续保留兼容边界。

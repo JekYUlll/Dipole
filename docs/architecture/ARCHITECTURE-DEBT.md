@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-29：MCP Tool Round 与 Terminal 测试已迁入 `internal/services/agent/application`，共享 stub 随测试归属迁移，并删除 `internal/app` 对应构造转发。
+- 2026-08-29：MCP Tool Round 测试已补齐 Agent application 自有的最小 invocation reader stub，避免服务测试依赖 `internal/app` 测试包。
 - 2026-08-29：MCP Readiness Evidence 测试已迁入 `internal/services/agent/application`，直接覆盖 Agent-owned publisher/resolver 并删除 `internal/app` 对应 facade。
 - 2026-08-29：Definition Catalog 测试已迁入 `internal/services/agent/application`，直接覆盖 Agent-owned 实现并删除 `internal/app` 对应 facade，继续保留共享 policy stub 依赖的兼容测试。
 - 2026-08-29：Approval Grant Resolver 测试已迁入 `internal/services/agent/application`，直接覆盖 Agent-owned 实现并删除 `internal/app` 对应 facade；审批主服务仍依赖共享 policy stub，暂保留其兼容测试路径。
