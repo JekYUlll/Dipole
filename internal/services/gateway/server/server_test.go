@@ -361,7 +361,7 @@ func TestGatewayRequiresRemoteDependencies(t *testing.T) {
 }
 
 func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
-	t.Chdir("../..")
+	t.Chdir("../../../..")
 	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")
 	mr, err := miniredis.Run()
 	if err != nil {
@@ -410,7 +410,7 @@ func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 }
 
 func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
-	t.Chdir("../..")
+	t.Chdir("../../../..")
 	mr, err := miniredis.Run()
 	if err != nil {
 		t.Fatalf("start miniredis: %v", err)
@@ -487,7 +487,7 @@ func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
 }
 
 func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
-	t.Chdir("../..")
+	t.Chdir("../../../..")
 	mr, _ := miniredis.Run()
 	defer mr.Close()
 	previousRedis := cache.RDB
@@ -549,7 +549,7 @@ func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
 }
 
 func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
-	t.Chdir("../..")
+	t.Chdir("../../../..")
 	mr, _ := miniredis.Run()
 	defer mr.Close()
 	previousRedis := cache.RDB
@@ -575,7 +575,7 @@ func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
 }
 
 func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
-	t.Chdir("../..")
+	t.Chdir("../../../..")
 	mr, _ := miniredis.Run()
 	defer mr.Close()
 	previousRedis := cache.RDB
@@ -637,7 +637,7 @@ func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
 }
 
 func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
-	t.Chdir("../..")
+	t.Chdir("../../../..")
 	mr, err := miniredis.Run()
 	if err != nil {
 		t.Fatalf("start miniredis: %v", err)
@@ -686,7 +686,7 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 }
 
 func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
-	t.Chdir("../..")
+	t.Chdir("../../../..")
 	mr, err := miniredis.Run()
 	if err != nil {
 		t.Fatalf("start miniredis: %v", err)
@@ -738,7 +738,7 @@ func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
 }
 
 func TestGatewayRateLimitsAgentMCPByAuthenticatedPrincipalAndAllowsDeleteCleanup(t *testing.T) {
-	t.Chdir("../..")
+	t.Chdir("../../../..")
 	mr, err := miniredis.Run()
 	if err != nil {
 		t.Fatalf("start miniredis: %v", err)
