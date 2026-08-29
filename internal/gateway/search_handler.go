@@ -1,4 +1,4 @@
-package http
+package gateway
 
 import (
 	"net/http"
@@ -11,6 +11,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
+	httpHandler "github.com/JekYUlll/Dipole/internal/handler/http"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 )
 
@@ -37,27 +38,27 @@ func NewSearchHandler(service application.SearchApplication) *SearchHandler {
 func (h *SearchHandler) Search(c *gin.Context) {
 	currentUser, ok := middleware.CurrentUser(c)
 	if !ok {
-		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		httpHandler.ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
 		return
 	}
 	query := strings.TrimSpace(c.Query("q"))
 	if query == "" || utf8.RuneCountInString(query) > 256 {
-		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "q must contain between 1 and 256 characters")
+		httpHandler.ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "q must contain between 1 and 256 characters")
 		return
 	}
 	limit := 20
 	if rawLimit, present := c.GetQuery("limit"); present {
 		parsed, err := strconv.Atoi(rawLimit)
 		if err != nil || parsed < 1 || parsed > 100 {
-			ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "limit must be between 1 and 100")
+			httpHandler.ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "limit must be between 1 and 100")
 			return
 		}
 		limit = parsed
 	}
 	documents, err := h.service.Search(currentUser.UUID, query, limit)
 	if err != nil {
-		ErrorWithCode(c, http.StatusBadGateway, code.Internal, "search service unavailable")
+		httpHandler.ErrorWithCode(c, http.StatusBadGateway, code.Internal, "search service unavailable")
 		return
 	}
-	Success(c, httpdto.ToSearchMessageResponses(documents))
+	httpHandler.Success(c, httpdto.ToSearchMessageResponses(documents))
 }

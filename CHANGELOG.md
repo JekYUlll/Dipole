@@ -16,6 +16,7 @@
 ## [Unreleased]
 
 ### 变更
+- Search HTTP handler 已迁入 `internal/gateway/`，Search application 继续位于 `internal/services/search/application/`；公共 API 和错误响应保持兼容，结构门禁会阻止旧通用路径回流。
 - Search application 已从共享 `internal/app` 迁移到 `internal/services/search/application/`，Search runtime 保持原 application port 不变；结构门禁会阻止旧实现路径回流。
 - 微服务远程模式下 Gateway 直接拥有消息历史与 Sync HTTP 路由，新增 Sync gRPC 连接和 readiness 依赖；Core 仅在 embedded 模式注册消息/同步数据路由，减少 Core HTTP 反代对服务 ownership 的绕行。
 - Gateway 现在直接拥有消息历史和 Sync HTTP 路由，并通过 Message/Sync gRPC 客户端访问；Core 在 `gateway.mode=remote` 下不再注册消息/同步 HTTP 与 WebSocket 数据路由，embedded 模式继续保留兼容入口。

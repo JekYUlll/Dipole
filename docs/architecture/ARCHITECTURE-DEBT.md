@@ -35,6 +35,7 @@
 - **验证门槛：** 新增服务必须有独立入口、构建制品、数据 ownership、依赖清单、contract test 和回滚说明；结构门禁、Go 全量测试、镜像隔离检查和对应服务 smoke 必须通过。
 - **本轮进展：** 已新增服务入口索引、服务边界清单和结构门禁检查；本条债务保留，代表代码物理边界尚未全部收敛。
 - **本轮进展：** Search application 及其测试已从 `internal/app` 迁入 `internal/services/search/application/`，Search runtime 改用服务专属包；结构门禁已防止旧路径回流，其他服务仍待按同一方式迁移。
+- **本轮进展：** Search HTTP handler 及其测试已从通用 `internal/handler/http` 迁入 `internal/gateway/`，Gateway 仍复用相同认证、错误映射和 Search application contract；结构门禁已增加旧路径回流检查。
 
 ### AD-048：Go 微服务默认部署仍使用共享镜像
 
