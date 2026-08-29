@@ -16,6 +16,7 @@ class RuntimeReadinessContractTest(unittest.TestCase):
         self.assertIn("${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}", compose)
         self.assertIn('INTERNAL_CERT_DIR="${cert_dir}"', smoke)
         self.assertIn("assert_dependency_ready gateway kafka-assignment", smoke)
+        self.assertIn("timeout --kill-after=2s 10s docker compose", smoke)
 
 
 if __name__ == "__main__":
