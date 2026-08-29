@@ -25,7 +25,25 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `db/` 存放迁移、sqlc 查询和数据库结构。
 - `frontend/` 存放客户端；`agent-runtime/` 存放 TypeScript Agent 服务。
 - `deploy/images/` 存放按服务边界构建的镜像模板；`deploy/microservices/` 存放可组合的微服务部署 override。
-- `docs/` 存放架构、数据、运行、前端和性能文档；根目录只保留项目入口和滚动更新日志。
+- `docs/` 存放架构、Agent、数据、运行、前端、性能、指南和参考材料；`docs/` 顶层只保留索引、清单和架构图。
+
+## 非运行时目录
+
+- `acc/` 是本地参考项目区，不属于 Dipole 的编译图和部署拓扑。
+- `benchmarks/` 只保存可复核的性能、故障和迁移证据，每个证据目录应包含 README、报告和校验清单。
+- `design/` 保存 Pencil 源文件、设计变更记录和导出图；前端实现位于 `frontend/`。
+- `scripts/` 保存测试、Smoke、迁移和运维门禁脚本，不承载长期服务入口。
+- `tmp/` 只用于本地临时数据，不应提交业务源文件。
+
+## Compose 配置层级
+
+- `docker-compose.yml`：最小本地开发拓扑。
+- `docker-compose.microservices.yml`：服务边界、Kafka、同步、搜索和 Agent 的集成拓扑。
+- `docker-compose.dist.yml`：分发/部署镜像拓扑。
+- `docker-compose.cluster.yml`、`docker-compose.mysql-cluster.yml`、`docker-compose.redis-cluster.yml`：集群和故障演练拓扑。
+- `docker-compose.storage-lab.yml`：隔离存储实验，不作为默认运行入口。
+
+Compose 文件暂时保留在根目录，以保持 Docker Compose 的直接调用习惯；职责和优先级由本节固定，后续如迁移到 `deploy/compose/` 必须同步更新所有运行手册和脚本。
 
 ## 结构门禁
 

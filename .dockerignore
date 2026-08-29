@@ -1,7 +1,6 @@
 .git
 .gitignore
 acc
-acc.txt
 tmp
 logs
 certs/local

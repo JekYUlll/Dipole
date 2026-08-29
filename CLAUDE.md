@@ -66,7 +66,7 @@ Main config: `configs/config.yaml`. Key sections: `app`, `server`, `auth` (JWT),
 
 - Avoid over-engineering upfront — leave room for incremental extension.
 - Development is test-driven; write tests before or alongside implementation.
-- Reference implementations are in `acc/`: `KamaChat` (learning project) and the two `im-*` projects (commercial). Architectural guidance derived from these is in `docs/architecture-reference.md`.
+- Reference implementations are in `acc/`: `KamaChat` (learning project) and the two `im-*` projects (commercial). Architectural guidance derived from these is in `docs/architecture/architecture-reference.md`.
 
 ## Testing
 
