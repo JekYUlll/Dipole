@@ -13,21 +13,21 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 )
 
 type fileService interface {
 	UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
-	InitiateMultipartUpload(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error)
+	InitiateMultipartUpload(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
 	UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error
 	CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	AbortMultipartUpload(uploaderUUID, sessionID string) error
-	CreateDownloadLink(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error)
-	OpenContent(currentUserUUID, fileUUID string) (*service.FileContentResult, error)
+	CreateDownloadLink(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error)
+	OpenContent(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error)
 }
 
 type FileHandler struct {
@@ -107,11 +107,11 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	file, err := h.service.UploadMessageFile(currentUser.UUID, fileHeader)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrFileMissing):
+		case errors.Is(err, corefile.ErrFileMissing):
 			ErrorWithCode(c, http.StatusBadRequest, code.FileMissing, "file is required")
-		case errors.Is(err, service.ErrFileTooLarge):
+		case errors.Is(err, corefile.ErrFileTooLarge):
 			ErrorWithCode(c, http.StatusBadRequest, code.FileTooLarge, "file is too large")
-		case errors.Is(err, service.ErrFileStorageUnavailable):
+		case errors.Is(err, corefile.ErrFileStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -145,13 +145,13 @@ func (h *FileHandler) Download(c *gin.Context) {
 	result, err := h.service.CreateDownloadLink(currentUser.UUID, c.Param("file_id"))
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrFileNotFound):
+		case errors.Is(err, corefile.ErrFileNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.FileNotFound, "file not found")
-		case errors.Is(err, service.ErrFilePermissionDenied):
+		case errors.Is(err, corefile.ErrFilePermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.FilePermissionDenied, "file permission denied")
-		case errors.Is(err, service.ErrFileExpired):
+		case errors.Is(err, corefile.ErrFileExpired):
 			ErrorWithCode(c, http.StatusForbidden, code.FileExpired, "file is expired")
-		case errors.Is(err, service.ErrFileStorageUnavailable):
+		case errors.Is(err, corefile.ErrFileStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -185,13 +185,13 @@ func (h *FileHandler) Content(c *gin.Context) {
 	result, err := h.service.OpenContent(currentUser.UUID, c.Param("file_id"))
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrFileNotFound):
+		case errors.Is(err, corefile.ErrFileNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.FileNotFound, "file not found")
-		case errors.Is(err, service.ErrFilePermissionDenied):
+		case errors.Is(err, corefile.ErrFilePermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.FilePermissionDenied, "file permission denied")
-		case errors.Is(err, service.ErrFileExpired):
+		case errors.Is(err, corefile.ErrFileExpired):
 			ErrorWithCode(c, http.StatusForbidden, code.FileExpired, "file is expired")
-		case errors.Is(err, service.ErrFileStorageUnavailable):
+		case errors.Is(err, corefile.ErrFileStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -260,7 +260,7 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.InitiateMultipartUpload(currentUser.UUID, service.InitiateMultipartUploadInput{
+	result, err := h.service.InitiateMultipartUpload(currentUser.UUID, corefile.InitiateMultipartUploadInput{
 		FileName:    req.FileName,
 		FileSize:    req.FileSize,
 		ContentType: req.ContentType,
@@ -373,19 +373,19 @@ func (h *FileHandler) AbortMultipart(c *gin.Context) {
 
 func (h *FileHandler) handleMultipartError(c *gin.Context, err error) {
 	switch {
-	case errors.Is(err, service.ErrFileMissing):
+	case errors.Is(err, corefile.ErrFileMissing):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileMissing, "file is required")
-	case errors.Is(err, service.ErrFileTooLarge):
+	case errors.Is(err, corefile.ErrFileTooLarge):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileTooLarge, "file is too large")
-	case errors.Is(err, service.ErrFilePermissionDenied):
+	case errors.Is(err, corefile.ErrFilePermissionDenied):
 		ErrorWithCode(c, http.StatusForbidden, code.FilePermissionDenied, "file permission denied")
-	case errors.Is(err, service.ErrMultipartSessionNotFound):
+	case errors.Is(err, corefile.ErrMultipartSessionNotFound):
 		ErrorWithCode(c, http.StatusNotFound, code.FileMultipartSessionNotFound, "multipart upload session not found")
-	case errors.Is(err, service.ErrMultipartSessionInvalid):
+	case errors.Is(err, corefile.ErrMultipartSessionInvalid):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartSessionInvalid, "multipart upload session is invalid")
-	case errors.Is(err, service.ErrMultipartPartInvalid):
+	case errors.Is(err, corefile.ErrMultipartPartInvalid):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "multipart upload part is invalid")
-	case errors.Is(err, service.ErrFileStorageUnavailable):
+	case errors.Is(err, corefile.ErrFileStorageUnavailable):
 		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 	default:
 		// Preserve current response envelope even when the lower layer returns a
