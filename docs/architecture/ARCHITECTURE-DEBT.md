@@ -21,6 +21,7 @@
 - 2026-08-30：清理服务布局门禁中针对已删除 `internal/bootstrap/internal_rpc.go` 的六段过时检查，并修正仓库结构文档中的已删除 helper 描述；门禁现可无 IO 警告地验证当前 Core RPC/Kafka 物理边界。
 - 2026-08-30：embedded Kafka 组合及其消息事件契约测试已迁入 `internal/bootstrap/embedded/`，legacy `internal/bootstrap` 不再持有 Kafka 注册实现；聚合 runtime、旧 Eino 回滚路径和实时投递注册顺序回归通过，后续继续评估 embedded composition 的剩余共享生命周期边界。
 - 2026-08-30：Core RPC contract 测试已全部改用 `internal/services/core/rpc`，共享 bootstrap 的 Core RPC 函数 wrapper、类型别名和生产服务名常量均已删除；测试常量收纳至 `_test.go`，Core/embedded RPC 行为回归通过。
+- 2026-08-30：Message service/错误兼容入口已删除，Message HTTP/WS 和事件消费者直接依赖 Message-owned contract；同步修正服务边界文档中关于 Message/Sync 兼容入口仍在保留的历史描述，剩余 `internal/compat/service` 仅承担跨版本 domain-event decoder 辅助。
 - 2026-08-30：Core RPC 组合逻辑已迁入 `internal/services/core/rpc/`，embedded runtime 改用 Core-owned composition；共享 `internal/bootstrap/internal_rpc.go` 已完全移除，新增边界测试并通过 Core/embedded RPC contract。
 - 2026-08-30：审计确认 `internal/data/mysql` 及旧 repository facade 已不存在，业务 SQLC 仓储均位于对应服务 infrastructure；修正 `REPOSITORY-STRUCTURE.md` 与 `SERVICE-BOUNDARIES.md` 中残留的旧目录描述，并通过结构门禁，避免文档继续指导已退役布局。
 - 2026-08-30：在最新 `master` 提交 `3adc755` 上复测 AD-005 的真实 MySQL 8.4、1000 成员 Conversation SQLC 批量投影；serial/batch 与并发对照均通过，batch 相比 serial 约降低 46.2/286.9 倍，投影行数均为 1000，锁等待增量为零。该结果属于单轮 SQL 层复测，端到端 P95、多轮统计和共享拓扑容量验证仍待完成。
