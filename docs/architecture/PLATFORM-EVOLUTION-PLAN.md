@@ -335,7 +335,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 增加可见的暂停/继续控制；会话恢复必须继续绑定用户、对象键、文件大小、内容类型和 upload ID。
 - [x] 增加受所有权保护的 Multipart 会话状态查询，返回已完成 part 的编号、ETag 和实际尺寸，为后续浏览器暂停/恢复跳过已完成分片提供服务端 contract。
 - [x] 增加 `X-Part-SHA256` part checksum：现代 Web Crypto 可用时由客户端发送，Core 在保存 ETag/Size 前校验实际读取长度并恒时比较摘要；旧客户端缺少该头时保持兼容。
-- [ ] 增加整文件 SHA-256、强制 checksum 模式和完成结果校验，防止网络重试或客户端异常导致内容静默错误。
+- [x] 增加整文件 SHA-256、强制 checksum 模式和完成结果校验：初始化绑定 `file_sha256`，`storage.multipart_require_checksum` 开启后 Complete 读取对象校验并在不匹配时清理；默认保持兼容模式。
 - [x] 增加默认 dry-run 的 `dipole-multipart-cleanup` 运维工具：按 MinIO 发起时间筛选 `message-files/` 未完成 Multipart，输出可审计 JSON；执行模式必须显式提供 `--execute --confirm`，单个 Abort 失败不会掩盖其他结果。
 - [ ] 增加 MinIO 未完成 Multipart 生命周期清理、Redis 会话过期扫描、完成/取消幂等和孤儿对象 reconciliation；指标至少覆盖 active、complete、abort、expired、retry、checksum mismatch 与耗时分位数。
   - [x] Core File Service 已接入低基数 initiate/presign/register/upload_part/complete/abort 结果与耗时指标；过期扫描、孤儿 reconciliation 和完整生命周期指标仍待完成。

@@ -190,6 +190,7 @@ type Storage struct {
 	Endpoint                     string `mapstructure:"endpoint"`
 	PresignEndpoint              string `mapstructure:"presign_endpoint"`
 	PresignedUploadProxyEnabled  bool   `mapstructure:"presigned_upload_proxy_enabled"`
+	MultipartRequireChecksum     bool   `mapstructure:"multipart_require_checksum"`
 	AccessKey                    string `mapstructure:"access_key"`
 	SecretKey                    string `mapstructure:"secret_key"`
 	UseSSL                       bool   `mapstructure:"use_ssl"`
@@ -464,6 +465,7 @@ func Load() error {
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
 		v.SetDefault("storage.presign_endpoint", "")
 		v.SetDefault("storage.presigned_upload_proxy_enabled", false)
+		v.SetDefault("storage.multipart_require_checksum", false)
 		v.SetDefault("storage.access_key", "dipoleplatform")
 		v.SetDefault("storage.secret_key", "dipoleplatformpass")
 		v.SetDefault("storage.use_ssl", false)
@@ -666,6 +668,7 @@ func Load() error {
 			"storage.artifact_maintenance_secret_key",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
+			"storage.multipart_require_checksum",
 			"storage.download_url_ttl_minutes",
 			"rate_limit.enabled",
 			"rate_limit.register_limit",

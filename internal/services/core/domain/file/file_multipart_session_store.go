@@ -24,6 +24,7 @@ type multipartUploadSession struct {
 	FileName     string    `json:"file_name"`
 	FileSize     int64     `json:"file_size"`
 	ContentType  string    `json:"content_type"`
+	FileSHA256   string    `json:"file_sha256,omitempty"`
 	ChunkSize    int64     `json:"chunk_size"`
 	TotalParts   int       `json:"total_parts"`
 	CreatedAt    time.Time `json:"created_at"`

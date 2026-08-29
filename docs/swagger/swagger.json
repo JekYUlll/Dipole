@@ -4043,6 +4043,9 @@
                 "content_type": {
                     "type": "string"
                 },
+                "file_sha256": {
+                    "type": "string"
+                },
                 "file_name": {
                     "type": "string"
                 },
