@@ -424,6 +424,7 @@
 - **本轮进展：** Runtime matcher 在解析前限制最多 256 条 Core 候选，超限集合 fail-closed；既有本地过滤、Shadow 观测和生产开关语义保持不变。
 - **本轮进展：** Event Subscription 控制面测试已迁入 Agent application 边界并直接验证创建、幂等回放、scope/owner 授权、可读会话交集、分页和撤销审计；聚合 `internal/app` 仅供该测试使用的兼容转发已删除，服务实现成为测试与生产装配的共同入口。
 - **本轮进展：** Agent Command 测试已迁入 Agent application 边界并直接验证可信身份、关联 ID、幂等收据、异常恢复、绑定漂移和 fail-closed 行为；聚合 `internal/app` 仅供该测试使用的兼容入口已删除。
+- **本轮进展：** Agent Capability 测试已迁入 Agent application 边界并直接验证主体限制、会话读取、权限与资源范围校验、关联上下文传递和依赖 fail-closed；聚合 `internal/app` 仅供该测试使用的兼容入口已删除。
 - **本轮进展：** Shadow 指标已修正为记录原始候选集合大小，避免以匹配数替代候选数造成成本证据偏差；后续灰度仍需共享环境抓取和完整窗口。
 - **本轮进展：** Shadow metrics observer 已在运行时拒绝闭集之外的 outcome，保持 Prometheus label vocabulary 与 evidence schema 一致；共享环境窗口仍待完成。
 - **本轮进展：** 只读 Prometheus Collector 已对响应体实施 256 KiB 流式上限，并在超限、读取失败或 JSON 异常时统一 fail-closed；共享环境窗口与发布 artifact 交叉核对仍待完成。
