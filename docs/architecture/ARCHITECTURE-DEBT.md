@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：补齐前端类型检查脚本并加入工具链契约测试，`npm run typecheck` 与 `vue-tsc --noEmit` 现在具有统一、可发现的验证入口；不改变前端默认构建和发布边界。
 - 2026-08-30：修复 Chat 初始化认证恢复的未处理 Promise rejection；共享设备 HTTP 401 E2E 已覆盖会话清理、登录页跳转和三浏览器无 `pageerror`，避免认证失败污染前端错误信号。
 - 2026-08-30：复核 Go/Eino 回滚基线，项目当前锁定 `github.com/cloudwego/eino v0.9.17`，`go list -m -u` 未发现更高稳定升级；预发布版本不进入生产依赖，Eino 继续仅承担 embedded legacy 回滚职责。
 - 2026-08-30：Agent Active Compose 增加缺失 release manifest/candidate 的负向门禁，部署插值不完整时 fail closed；默认 Shadow、显式 `user_gray` manifest 和回滚路径保持不变。
