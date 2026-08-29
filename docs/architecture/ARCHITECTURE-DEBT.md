@@ -212,7 +212,7 @@
 - **本轮进展：** Core User domain 及测试已迁入 `internal/services/core/domain/user/`；`internal/compat/service/user_compat.go` 仅保留类型、错误和构造入口兼容层，头像对象存储与用户管理 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core Contact domain 及测试已迁入 `internal/services/core/domain/contact/`；`internal/compat/service/contact_compat.go` 仅保留类型、错误、常量和构造入口兼容层，联系人 HTTP 与事件 contract 保持兼容，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core Conversation domain 及测试已迁入 `internal/services/core/domain/conversation/`；`internal/compat/service/conversation_compat.go` 仅保留类型、错误和构造入口兼容层，Conversation HTTP、已读回执和投影观察 contract 保持兼容，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Sync domain 及测试已迁入 `internal/services/sync/domain/`；`internal/compat/service/sync_compat.go` 仅保留错误和构造入口兼容层，设备 Cursor、群组 checkpoint 和增量同步 contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Sync domain 及测试已迁入 `internal/services/sync/domain/`；全仓调用审计确认 `internal/compat/service/sync_compat.go` 无生产或测试调用者，已删除该兼容入口并收紧服务布局门禁，设备 Cursor、群组 checkpoint 和增量同步 contract 保持兼容。
 - **本轮进展：** Message event contract 与 Sync projection 实现及测试已迁入 `internal/services/message/domain/`；`internal/compat/service/message_event_compat.go` 仅保留类型、错误和函数兼容入口，事件、Search mutation 和 Inbox locator contract 保持兼容，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Message 核心 domain 实现及测试已迁入 `internal/services/message/domain/`；`internal/compat/service/message_event_compat.go` 继续提供兼容类型、错误和构造入口，消息发送、历史查询、幂等、Outbox、Seq、文件授权和热群策略 contract 保持兼容，旧核心实现路径由结构门禁阻止回流。
 - **本轮进展：** Message 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/data/mysql/repository/message_compat.go` 仅保留兼容别名和构造入口，生成代码、事务 Store 和消息表 ownership 保持稳定，旧共享 repository 路径由结构门禁阻止回流。
