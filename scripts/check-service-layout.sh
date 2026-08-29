@@ -23,6 +23,18 @@ if [[ ! -f "${root_dir}/internal/services/search/application/search.go" ]]; then
   echo "Search application implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/search/infrastructure/mysql/search_index.go" ]]; then
+  echo "Search index repository implementation is outside the Search service boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/data/mysql/repository/search_index.go" ]]; then
+  echo "legacy Search index repository remains in shared repository package" >&2
+  exit 1
+fi
+if ! rg --quiet 'services/search/infrastructure/mysql' "${root_dir}/internal/app/repositories.go"; then
+  echo "Search composition must use Search-owned index repository" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/services/sync/application/application.go" ]]; then
   echo "Sync application implementation is outside its service boundary" >&2
   exit 1

@@ -12,6 +12,7 @@ import (
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
+	searchmysql "github.com/JekYUlll/Dipole/internal/services/search/infrastructure/mysql"
 )
 
 // Repositories contains one repository instance for each application process.
@@ -280,7 +281,7 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 	}
 	repos.SyncProcess = syncRepos
 	repos.Sync = syncRepos.Sync
-	searchAdapter, err := sqlcRepository.NewSearchIndexRepository(generated.New(db))
+	searchAdapter, err := searchmysql.NewSearchIndexRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc search index repository: %w", err)
 	}
