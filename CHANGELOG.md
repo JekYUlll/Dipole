@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Workflow Repair Executor 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
 - Workflow Repair Prepare 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
 - Workflow Repair Audit 测试已直接使用 Agent application 构造器；删除 `internal/app` 中仅供该测试使用的兼容类型与转发。
 - Runtime Promotion Control 测试已直接使用 Agent application 的时钟注入构造器；删除 `internal/app` 中无调用的类型与构造转发。
