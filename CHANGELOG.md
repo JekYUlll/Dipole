@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Message 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Message adapter，并由 Message runtime 自有入口启动；旧 `internal/bootstrap` RPC server wrapper 不再参与 Message 生产装配，其他兼容依赖继续保持可回滚。
 - Search 生产 RPC bootstrap 已直接使用 `internal/platform/rpc` 注册 Search adapter、执行服务认证拨号并管理 transport 生命周期；Core RPC legacy helper 限定在测试 fixture，Search 生产代码不再依赖 `internal/bootstrap`。
 - Internal RPC 通用 transport 已下沉到 `internal/platform/rpc`，统一承载 gRPC listener、服务认证、TLS 1.3 mTLS、health check、拨号超时和优雅关闭；`internal/bootstrap` 保留薄兼容转发，协议 adapter 与方法权限继续按服务边界逐步迁移。
 - 修复 Agent MCP RPC drill fixture 对已迁移 protobuf 生成目录的旧引用，统一使用 `api/gen/go/agent/v1`；master 全量 Go 测试恢复可执行。
