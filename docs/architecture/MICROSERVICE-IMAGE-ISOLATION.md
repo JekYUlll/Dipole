@@ -23,7 +23,7 @@ BUILD_IMAGE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
 SMOKE_SEARCH_PROFILE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
 ```
 
-需要验收候选 Gateway 的真实消息写入时，额外启用消息链路检查：
+需要验收候选 Gateway 的真实消息写入、Inbox 和 Seq Timeline 读取时，额外启用消息链路检查：
 
 ```bash
 SMOKE_MESSAGE_FLOW=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
@@ -56,7 +56,7 @@ docker compose \
   config --quiet
 ```
 
-若候选服务未通过 readiness、RPC 或消息 smoke，移除 override 即回到共享镜像；该过程不需要回滚 schema、offset 或 authority。
+若候选服务未通过 readiness、RPC、消息写入或 Seq Timeline 读取 smoke，移除 override 即回到共享镜像；该过程不需要回滚 schema、offset 或 authority。
 
 ## 门禁
 
