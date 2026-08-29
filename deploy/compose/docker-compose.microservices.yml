@@ -100,6 +100,7 @@ services:
       DIPOLE_AGENT_HOST: 0.0.0.0
       DIPOLE_AGENT_PORT: "8091"
       DIPOLE_AGENT_KAFKA_ENABLED: "true"
+      DIPOLE_AGENT_RUNTIME_MODE: shadow
       DIPOLE_AGENT_KAFKA_BROKERS: kafka:9092
       DIPOLE_AGENT_KAFKA_CLIENT_ID: dipole-agent
       DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-shadow-v1
