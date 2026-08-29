@@ -7,6 +7,8 @@ acc/
 certs/
 logs/
 dist/
+# Legacy root-level Agent build output; source lives under services/agent-runtime/.
+/agent-runtime/
 configs/config.yaml
 # Repository documentation is classified under docs/ and reviewed in Git.
 # Keep only generated/local planning output ignored below.
