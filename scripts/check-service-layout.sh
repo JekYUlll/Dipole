@@ -39,6 +39,10 @@ if [[ ! -f "${root_dir}/internal/services/core/application/conversation.go" ]]; 
   echo "Core conversation application is outside its service boundary" >&2
   exit 1
 fi
+if ! rg --quiet '^type CoreProcessRepositories struct' "${root_dir}/internal/app/repositories.go"; then
+  echo "Core process repository composition is missing" >&2
+  exit 1
+fi
 if rg --quiet '^type LocalCoreCapability struct' "${root_dir}/internal/app"; then
   echo "legacy shared Core capability implementation remains under internal/app" >&2
   exit 1

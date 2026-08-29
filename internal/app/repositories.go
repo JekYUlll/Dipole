@@ -52,6 +52,62 @@ type SyncProcessRepositories struct {
 	Projection application.SyncProjectionStore
 }
 
+// CoreProcessRepositories contains only repositories owned by the Core service.
+// The aggregate Repositories type below remains as a compatibility composition
+// root for the embedded server during the migration.
+type CoreProcessRepositories struct {
+	Users         application.UserStore
+	Files         application.FileMetadataStore
+	Conversations application.ConversationStore
+	Contacts      application.ContactStore
+	Groups        application.GroupStore
+	Admin         application.AdminOverviewStore
+}
+
+func NewCoreProcessRepositories(db *sql.DB) (*CoreProcessRepositories, error) {
+	if db == nil {
+		return nil, fmt.Errorf("core repository composition requires database/sql connection")
+	}
+	mysqlStore, err := mysqlData.NewStore(db)
+	if err != nil {
+		return nil, fmt.Errorf("create core transaction store: %w", err)
+	}
+	return newCoreProcessRepositories(db, mysqlStore)
+}
+
+func newCoreProcessRepositories(db *sql.DB, mysqlStore *mysqlData.Store) (*CoreProcessRepositories, error) {
+	queries := generated.New(db)
+	admin, err := sqlcRepository.NewAdminRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc admin repository: %w", err)
+	}
+	files, err := sqlcRepository.NewFileRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc file repository: %w", err)
+	}
+	users, err := sqlcRepository.NewUserRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc user repository: %w", err)
+	}
+	contacts, err := sqlcRepository.NewContactRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc contact repository: %w", err)
+	}
+	groups, err := sqlcRepository.NewGroupRepository(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc group repository: %w", err)
+	}
+	conversations, err := sqlcRepository.NewConversationRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc conversation repository: %w", err)
+	}
+	return &CoreProcessRepositories{
+		Admin: admin, Files: files,
+		Users: NewCachedUserStore(users), Contacts: NewCachedContactStore(contacts),
+		Groups: NewCachedGroupStore(groups), Conversations: conversations,
+	}, nil
+}
+
 func NewSyncProcessRepositories(db *sql.DB) (*SyncProcessRepositories, error) {
 	return NewSyncProcessRepositoriesWithHydrator(db, nil)
 }
@@ -117,6 +173,16 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc transaction store: %w", err)
 	}
 	repos := &Repositories{}
+	coreRepos, err := newCoreProcessRepositories(db, mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("compose Core repositories: %w", err)
+	}
+	repos.Users = coreRepos.Users
+	repos.Files = coreRepos.Files
+	repos.Conversations = coreRepos.Conversations
+	repos.Contacts = coreRepos.Contacts
+	repos.Groups = coreRepos.Groups
+	repos.Admin = coreRepos.Admin
 	adapter, err := sqlcRepository.NewAICallLogRepository(generated.New(db))
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc AI call log repository: %w", err)
@@ -155,26 +221,6 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc Agent MCP Tool round repository: %w", err)
 	}
 	repos.AgentToolRounds = agentToolRounds
-	adminAdapter, err := sqlcRepository.NewAdminRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc admin repository: %w", err)
-	}
-	repos.Admin = adminAdapter
-	fileAdapter, err := sqlcRepository.NewFileRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc file repository: %w", err)
-	}
-	repos.Files = fileAdapter
-	userAdapter, err := sqlcRepository.NewUserRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc user repository: %w", err)
-	}
-	repos.Users = NewCachedUserStore(userAdapter)
-	contactAdapter, err := sqlcRepository.NewContactRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc contact repository: %w", err)
-	}
-	repos.Contacts = NewCachedContactStore(contactAdapter)
 	promotionControls, err := sqlcRepository.NewAgentRuntimePromotionControlRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
@@ -200,16 +246,6 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("create sqlc search index repository: %w", err)
 	}
 	repos.Search = searchAdapter
-	groupAdapter, err := sqlcRepository.NewGroupRepository(mysqlStore)
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc group repository: %w", err)
-	}
-	repos.Groups = NewCachedGroupStore(groupAdapter)
-	conversationAdapter, err := sqlcRepository.NewConversationRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc conversation repository: %w", err)
-	}
-	repos.Conversations = conversationAdapter
 	outboxAdapter, err := sqlcRepository.NewOutboxRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc outbox relay repository: %w", err)

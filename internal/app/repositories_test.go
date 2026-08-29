@@ -19,6 +19,25 @@ func TestNewMessageProcessRepositoriesRequiresDatabase(t *testing.T) {
 	}
 }
 
+func TestNewCoreProcessRepositoriesOwnsCoreStores(t *testing.T) {
+	if _, err := NewCoreProcessRepositories(nil); err == nil {
+		t.Fatal("expected nil database to fail")
+	}
+	repos, err := NewCoreProcessRepositories(&sql.DB{})
+	if err != nil {
+		t.Fatalf("new core process repositories: %v", err)
+	}
+	if _, ok := repos.Users.(*CachedUserStore); !ok {
+		t.Fatalf("expected cached user store, got %T", repos.Users)
+	}
+	if _, ok := repos.Groups.(*CachedGroupStore); !ok {
+		t.Fatalf("expected cached group store, got %T", repos.Groups)
+	}
+	if _, ok := repos.Conversations.(*sqlcRepository.ConversationRepository); !ok {
+		t.Fatalf("expected sqlc conversation repository, got %T", repos.Conversations)
+	}
+}
+
 func TestNewSyncProcessRepositoriesOwnsOnlySyncStore(t *testing.T) {
 	if _, err := NewSyncProcessRepositories(nil); err == nil {
 		t.Fatal("expected nil database to fail")
