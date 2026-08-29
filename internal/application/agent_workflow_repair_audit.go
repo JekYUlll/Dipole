@@ -63,7 +63,9 @@ func (e AgentWorkflowEvidenceV1) Validate() error {
 
 type AgentWorkflowRepairOperatorGrantV1 struct {
 	UserUUID, GrantedByUUID string
+	Version                 uint64
 	CanPropose, CanApprove  bool
+	CanExecute              bool
 	ValidFrom               time.Time
 	ExpiresAt, RevokedAt    *time.Time
 }

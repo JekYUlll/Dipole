@@ -17,6 +17,7 @@
 
 ### 变更
 - 重整仓库文档布局：根目录 README 聚焦项目介绍、架构概览、快速开始和验证入口；架构、数据、运行、前端和性能文档统一归档到 `docs/` 分类目录，并由 `docs/README.md` 集中导航。
+- Workflow Repair operator grant 增加可验证的 `grant_version` 和独立 `can_execute` 权限字段。历史授权默认不获得执行权限，后续 CAS executor 必须同时校验执行能力、版本和有效期。
 
 ### 新增
 - Context Compiler 增加 provider-neutral `RouteTokenizerAdapter`：按模型 route 注入稳定 tokenizer ID、上下文窗口和 token 计数，跨 route 仍取保守最大估算；未配置 tokenizer 时继续使用校准 UTF-8 fallback，避免未经证据直接绑定 provider。
