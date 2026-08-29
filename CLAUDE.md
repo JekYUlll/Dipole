@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 air
 
 # Build
-go build -o ./tmp/server ./cmd/server
+go build -o ./tmp/server ./cmd/services/core
 
 # Run all tests
 go test ./...
@@ -33,7 +33,7 @@ HTTP/WebSocket → Handler → Service → Repository → Store (MySQL + Redis)
                                   ↘ Platform (Kafka, MinIO, Cache, Presence, Bloom)
 ```
 
-**Entry point:** `cmd/server/main.go` → `internal/bootstrap/runtime.go` initializes all dependencies and wires services together.
+**Entry point:** `cmd/services/core/main.go` → `internal/bootstrap/runtime.go` initializes all dependencies and wires services together.
 
 **Key packages:**
 - `internal/bootstrap` — initialization orchestration; `runtime.go` is the composition root

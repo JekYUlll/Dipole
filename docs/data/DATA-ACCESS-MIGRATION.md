@@ -52,7 +52,7 @@ internal/data/mysql/
 
 ```bash
 go run ./cmd/migrate -direction up
-go run ./cmd/server
+go run ./cmd/services/core
 ```
 
 应用默认只读校验 `schema_migrations` 版本，不在启动阶段修改 schema。baseline down 会删除全部业务表，仅允许在一次性测试库中显式使用 `-allow-destructive`。

@@ -28,7 +28,7 @@ compose exec -T elasticsearch curl -fsS -X PUT http://127.0.0.1:9200/_cluster/se
   -H 'Content-Type: application/json' \
   -d '{"transient":{"cluster.routing.allocation.disk.threshold_enabled":false}}' >/dev/null
 
-(cd "$root_dir" && CGO_ENABLED=0 go build -o "$binary" ./cmd/search-indexer)
+(cd "$root_dir" && CGO_ENABLED=0 go build -o "$binary" ./cmd/services/search-indexer)
 docker run -d --name "$runtime_container" --network "${project}_default" \
   -v "$binary:/app/dipole-search-indexer:ro" \
   -v "$root_dir/deploy/elasticsearch/search-indexer-smoke.yaml:/app/configs/config.yaml:ro" \

@@ -68,7 +68,7 @@
     <text x="400" y="155" class="panel-title">接入层与进程内运行时</text>
 
     <rect class="box-gray" x="405" y="178" width="630" height="70" />
-    <text x="425" y="205" class="title">cmd/server + bootstrap.Initialize + bootstrap.RunServer</text>
+    <text x="425" y="205" class="title">cmd/services/core + bootstrap.Initialize + bootstrap.RunServer</text>
     <text x="425" y="226" class="text">配置与日志初始化、依赖 readiness、migration 版本校验、sqlc/Redis/Kafka/MinIO 连接、Composition Root 与 Bloom 过滤器预热</text>
 
     <rect class="box-blue" x="405" y="275" width="300" height="170" />
