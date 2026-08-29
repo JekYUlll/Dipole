@@ -113,7 +113,7 @@ func TestGatewayMessageHandlerChecksSharedFenceBeforeClientWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	fence := &authorityFenceStub{err: errors.New("frozen")}
-	guarded := fenceMessageDeliveryHandler(realtimeDelivery.AuthorityGo, fence, direct)
+	guarded := gatewaykafka.FenceMessageDeliveryHandler(realtimeDelivery.AuthorityGo, fence, direct)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if err := guarded(ctx, directCreatedEvent(t, 42)); !errors.Is(err, context.Canceled) {
@@ -148,7 +148,7 @@ func TestGatewayMessageHandlerContinuesSameRecordAfterFenceRecovery(t *testing.T
 		t.Fatal(err)
 	}
 	fence := &recoveringAuthorityFenceStub{}
-	guarded := fenceMessageDeliveryHandler(realtimeDelivery.AuthorityGo, fence, direct)
+	guarded := gatewaykafka.FenceMessageDeliveryHandler(realtimeDelivery.AuthorityGo, fence, direct)
 	if err := guarded(context.Background(), directCreatedEvent(t, 42)); err != nil {
 		t.Fatalf("recover fence on same record: %v", err)
 	}
