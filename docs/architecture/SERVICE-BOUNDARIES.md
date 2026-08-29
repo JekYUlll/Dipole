@@ -39,15 +39,15 @@
 - Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；Sync 长期 runtime 位于自身 bootstrap，Cassandra Projector runtime 归属 Message bootstrap。
 - Agent Memory lineage backfill 已收纳到 `internal/operations/agent/`；manifest、审批和执行回执仍由 Agent 运维工具管理，Agent Runtime 长期实现保持在 Agent service 边界内。
 - Search application 已迁入 `internal/services/search/application/`；该目录只依赖共享 application port、Core Capability 和 Search Index 接口。
-- Search Index SQLC repository 及契约测试已迁入 `internal/services/search/infrastructure/mysql/`；`internal/data/mysql/repository/search_index_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口。
+- Search Index SQLC repository 及契约测试已迁入 `internal/services/search/infrastructure/mysql/`，由 Search Indexer 服务独占；共享 SQLC 基础设施仅位于 `internal/platform/mysql/`。
 - Search Indexer Kafka Projector 已迁入 `internal/services/search/infrastructure/kafka/`，直接复用 Message domain 的事件 contract；旧 `internal/projector/search/` 路径由结构门禁阻止回流，索引失败仍遵循 Kafka retry/DLQ 和 Alias 回滚策略。
 - Core capability、Auth domain、Admin domain、Session domain、User domain、Contact domain、Conversation domain、Group domain 与 File domain 已迁入 `internal/services/core/`；Auth domain 位于 `core/domain/auth`，Admin domain 位于 `core/domain/admin`，Session domain 位于 `core/domain/session`，User domain 位于 `core/domain/user`，Contact domain 位于 `core/domain/contact`，Conversation domain 位于 `core/domain/conversation`，Auth/Admin/Session application 通过明确的 User/Admin、Token、Presence 和连接踢出依赖装配，User application 通过 User/File store 和对象存储依赖装配，Contact application 通过 Contact/User store、事件、通知和系统消息依赖装配，Group domain 位于 `core/domain/group`，通过 Group/User store、事件、热群、文件、对象存储和系统消息依赖装配，File domain 位于 `core/domain/file`，通过 File metadata、Message store、Redis 分片会话和对象存储依赖装配，Core capability 使用最小查询接口，Conversation domain 通过明确的 repository、事件、通知和投影观察依赖装配，embedded 与独立 Core runtime 共用该边界。
 - Core repository composition 已提供 `ProcessRepositories`，集中声明 Core 所有的用户、群组、联系人、文件、Conversation State 和 Admin store，并与 SQLC repository、缓存适配器共同位于 `internal/services/core/infrastructure/mysql/`；聚合 `Repositories` 和 `internal/app` 别名仅作为 embedded 兼容入口。
-- Core 专属 sqlc MySQL repository 及契约测试已迁入 `internal/services/core/infrastructure/mysql/`；`internal/data/mysql/repository/core_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口，Core 数据访问实现由 Core process 独占。
+- Core 专属 sqlc MySQL repository 及契约测试已迁入 `internal/services/core/infrastructure/mysql/`，Core 数据访问实现由 Core process 独占。
 - Core 已提供独立 Composition Root `InitializeCoreService`：remote 模式只装配 Core-owned repository、Core projection、Core HTTP 和 Core Capability RPC；embedded 模式继续使用聚合入口作为本地兼容和回滚路径。
 - 聚合 `Repositories` 已显式保存 Core、Message、Sync、Agent 四类 process composition，后续独立启动链应直接接收对应分组，避免重新恢复扁平跨服务依赖。
 - Agent repository composition 已提供 `ProcessRepositories`，集中声明 Agent policy、task timeline、memory、approval、artifact、tool audit 和 readiness store，并与 SQLC 实现共同位于 `internal/services/agent/infrastructure/mysql/`；Core 仅通过兼容 RPC/port 使用必要能力。Go/Eino 兼容实现位于 `internal/services/agent/legacy/`，由 TS Agent Runtime 按发布门禁逐步接管。
-- Agent 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/data/mysql/repository/agent_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口，Agent 数据访问实现由 Agent process 独占。
+- Agent 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/agent/infrastructure/mysql/`，Agent 数据访问实现由 Agent process 独占。
 - Agent application 的审批、审批授权、任务控制、Definition Catalog、Memory Candidate Promotion、Task Workflow Projection、MCP readiness、MCP tool round、tool audit、Runtime promotion evidence、Workflow repair audit、Artifact、Memory Owner、Subscription、Capability、Command、Workflow repair prepare、Workflow repair executor、Execution Policy、MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion 实现已迁入 `internal/services/agent/application/`；`internal/app` 的 Agent application 兼容 facade 已在调用者迁移后移除，服务入口和契约测试直接依赖 Agent application 包。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
 - Sync domain 实现已迁入 `internal/services/sync/domain/`；旧 `internal/service` 仅保留错误和构造入口兼容层，Sync Timeline、设备 Cursor 和群组 checkpoint contract 保持兼容。
@@ -64,7 +64,7 @@
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
 - 服务入口优先依赖自身的 `internal/services/<service>/bootstrap`；尚未完成运行时基础设施拆分的服务，可以通过该目录的兼容 facade 过渡，但入口不得直接引用共享 `internal/bootstrap`。
-- `internal/data/mysql` 及其历史 repository facade 已完成调用审计并退役；具体 SQLC repository 必须位于其服务的 infrastructure 边界。
+- `internal/data/mysql` 及其历史 repository facade 已完成调用审计并退役；具体 SQLC repository 必须位于其服务的 infrastructure 边界，跨服务共享能力仅通过 `internal/platform/mysql/` 提供。
 - 业务服务不得跨边界写入其他服务拥有的表。查询应通过 application port、RPC 或版本化事件完成。
 - `cmd/tools` 的回填、对账和证据程序可以复用只读 application port，但不能成为长期服务的隐式写入口。
 
