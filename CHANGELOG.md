@@ -51,6 +51,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：同步修正服务边界文档中已过期的 Message/Sync 兼容入口描述，明确剩余兼容目录仅承担跨版本 domain-event decoder 辅助；不改变运行时 contract。
 - 2026-08-30：Message HTTP/WS 错误和 service 构造调用已统一迁移到 Message-owned contract，删除无调用者的 `internal/compat/service/message_compat.go`；兼容目录仅保留跨版本 domain-event decoder 辅助。
 - 2026-08-30：Message event payload、mutation 和 Search/Sync projection 调用已统一迁移到 Message domain，兼容文件重命名并缩减为仍有调用者的 Message service/错误 contract；Kafka、Search、Sync 和 Gateway 事件行为保持兼容。
 - 2026-08-30：Core Group 的 HTTP、DTO、Gateway Kafka 和 embedded 解码调用已统一迁移到 Core-owned Group domain contract，删除无调用者的 `internal/compat/service/group_compat.go`；群组 HTTP/Kafka contract 保持兼容。
