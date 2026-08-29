@@ -1,0 +1,25 @@
+groups:
+  - name: dipole-multipart
+    rules:
+      - alert: DipoleMultipartOperationErrors
+        expr: sum by (operation) (rate(dipole_multipart_operations_total{outcome="error"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Multipart operation errors are being reported
+
+      - alert: DipoleMultipartChecksumMismatch
+        expr: increase(dipole_multipart_operations_total{operation="complete",outcome="checksum_mismatch"}[10m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Multipart checksum mismatches were detected
+
+      - alert: DipoleMultipartOperationLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le, operation) (rate(dipole_multipart_operation_duration_seconds_bucket[10m]))) > 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Multipart operation p95 latency is high

@@ -343,6 +343,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Complete 成功后写入短期完成收据，客户端重复 Complete 可返回相同文件记录；Abort 对已取消会话幂等成功，对已完成会话拒绝，存储层重复调用保持受控。
   - [x] 增加 `dipole-multipart-cleanup --reconcile` 只读 reconciliation，按 `object_key + upload_id` 对照 MinIO 未完成 upload 与 Redis session metadata，报告两类跨存储漂移且不执行删除。
   - [x] 增加 `--reconcile-fail-on-drift` 告警门禁；显式开启时发现跨存储漂移返回退出码 `3`，默认行为和只读语义保持不变。
+  - [x] 增加独立 Multipart Prometheus 规则和 promtool 测试，覆盖 operation error、checksum mismatch 与 p95 latency，低基数标签保持受控。
 - [ ] 将大文件上限、分片大小、并发数、URL TTL 和失败重试次数纳入版本化配置与发布清单，保留旧单请求路径作为可即时回切的兼容实现。
 - [ ] 用真实 MinIO 集成测试覆盖大文件、多 part、重复 part、乱序 part、断网重试、过期会话、Abort、Complete 幂等、权限越界和服务重启恢复；补齐网关限流与代理超时验证。
   - [x] 可选真实 MinIO 代理 smoke 已覆盖一分片 UploadPart、S3 Host 签名、ETag、Complete 和对象内容核验，并自动清理测试对象；完整故障矩阵仍待完成。
