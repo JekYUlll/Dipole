@@ -73,4 +73,15 @@ while IFS= read -r document; do
   esac
 done < <(find . -maxdepth 1 -type f -name '*.md' -printf '%f\n' | sort)
 
+allowed_root_dirs=(api benchmarks cmd configs contracts db deploy design docs frontend internal scripts services)
+while IFS= read -r directory; do
+  case " ${allowed_root_dirs[*]} " in
+    *" ${directory} "*) ;;
+    *)
+      echo "root source directory must be classified in repository structure: ${directory}" >&2
+      exit 1
+      ;;
+  esac
+done < <(git ls-files | awk -F/ 'NF > 1 {print $1}' | sort -u)
+
 echo "architecture documentation gate passed"

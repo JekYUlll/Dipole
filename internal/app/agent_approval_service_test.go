@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
 func TestPersistentAgentApprovalServiceBindsRequestAndResolutionToTaskPrincipal(t *testing.T) {
@@ -18,7 +19,7 @@ func TestPersistentAgentApprovalServiceBindsRequestAndResolutionToTaskPrincipal(
 			RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning,
 		}},
 	}
-	service, err := NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
+	service, err := agentapplication.NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Approval service: %v", err)
 	}
@@ -70,7 +71,7 @@ func TestPersistentAgentApprovalServiceRejectsForgedActorAndCrossTaskApproval(t 
 		runs:      map[string]*application.AgentRunV1{"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning}},
 		approvals: map[string]*application.AgentApprovalV1{"APR-2": {ApprovalUUID: "APR-2", TaskUUID: "TASK-2", Status: application.AgentApprovalStatusPending, ExpiresAt: now.Add(time.Hour)}},
 	}
-	service, err := NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
+	service, err := agentapplication.NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Approval service: %v", err)
 	}
@@ -102,7 +103,7 @@ func TestPersistentAgentApprovalServiceConsumesExactApprovedBindingOnce(t *testi
 		}},
 		approvals: map[string]*application.AgentApprovalV1{"APR-WRITE-1": approval, "APR-WRITE-2": &driftApproval},
 	}
-	service, err := NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
+	service, err := agentapplication.NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Approval service: %v", err)
 	}

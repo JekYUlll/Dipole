@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
+	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 

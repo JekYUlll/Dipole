@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/backfill/memorylineage"
+	"github.com/JekYUlll/Dipole/internal/operations/agent/memorylineage"
 )
 
 func main() {
