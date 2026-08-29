@@ -6,6 +6,8 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 
 长期运行的 Go 服务统一放在 `cmd/services/`：
 
+入口索引和服务职责见 [`cmd/services/README.md`](../../cmd/services/README.md)，数据所有权和过渡例外见[服务边界清单](SERVICE-BOUNDARIES.md)。
+
 | 目录 | 服务职责 | 当前制品 |
 | --- | --- | --- |
 | `cmd/services/core` | 用户、群组、联系人、文件和会话核心 | `dipole-server` |
@@ -19,7 +21,8 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 
 ## 共享代码与契约
 
-- `internal/` 存放 Go 服务共享的领域、应用、数据访问和传输实现。
+- `internal/` 当前存放 Go 服务共享的领域、应用、数据访问和传输实现，属于渐进迁移中的共享实现区；它不代表所有服务可以任意依赖彼此的业务实现。
+- `internal/application`、`internal/model`、`internal/platform` 是优先允许共享的基础层；`internal/app`、`internal/service`、`internal/handler`、`internal/store` 的服务归属以[服务边界清单](SERVICE-BOUNDARIES.md)为准。
 - `api/proto/` 存放跨服务 RPC 契约及生成代码。
 - `contracts/` 存放事件、Agent 和运行时边界契约。
 - `db/` 存放迁移、sqlc 查询和数据库结构。

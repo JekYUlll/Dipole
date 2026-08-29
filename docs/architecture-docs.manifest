@@ -1,5 +1,6 @@
 # Canonical architecture documents required to remain under version control.
 docs/architecture/PLATFORM-EVOLUTION-PLAN.md
+docs/architecture/SERVICE-BOUNDARIES.md
 docs/architecture/ARCHITECTURE-DEBT.md
 docs/data/DATA-ACCESS-MIGRATION.md
 docs/architecture/MICROSERVICES-DEPLOYMENT.md
