@@ -56,9 +56,6 @@ type SyncProcessRepositories struct {
 	Projection application.SyncProjectionStore
 }
 
-// CoreProcessRepositories contains only repositories owned by the Core service.
-// The aggregate Repositories type below remains as a compatibility composition
-// root for the embedded server during the migration.
 // AgentProcessRepositories contains repositories owned by the Agent runtime.
 // The Go Core still consumes selected Agent ports for the compatibility RPC
 // surface, while the process boundary remains explicit for later extraction.
