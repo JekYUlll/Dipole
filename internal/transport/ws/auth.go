@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 var (
@@ -17,7 +17,7 @@ var (
 )
 
 type tokenResolver interface {
-	ResolveSession(token string) (*service.TokenSession, error)
+	ResolveSession(token string) (*coreauth.TokenSession, error)
 }
 
 type userFinder interface {

@@ -14,7 +14,6 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	httpHandler "github.com/JekYUlll/Dipole/internal/gateway/http"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -27,6 +26,7 @@ import (
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -75,7 +75,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	redisPresence := platformPresence.NewRedisPresenceWithClient(config.PresenceConfig(), cache.RDB)
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
-	tokenService := service.NewTokenService()
+	tokenService := coreauth.NewTokenService()
 	authService := coreapplication.NewAuthApplication(repos.Users, tokenService)
 	storageCfg := config.StorageConfig()
 	userService := coreapplication.NewUserApplication(repos.Users, coreapplication.UserDependencies{

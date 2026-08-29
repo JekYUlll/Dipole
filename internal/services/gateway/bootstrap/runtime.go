@@ -10,7 +10,6 @@ import (
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
@@ -21,6 +20,7 @@ import (
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	"github.com/JekYUlll/Dipole/internal/services/gateway/server"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
@@ -219,7 +219,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	var agentMCP gateway.AgentMCPApplication
 	if gatewayCfg.AgentMCPEnabled {
-		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret, service.AgentMCPResourceIdentifier())
+		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret, coreauth.AgentMCPResourceIdentifier())
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Agent MCP proxy: %w", err)

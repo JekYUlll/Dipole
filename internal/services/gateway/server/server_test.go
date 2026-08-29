@@ -14,9 +14,9 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 type gatewayMessageStub struct{}
@@ -393,7 +393,7 @@ func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 	if unauthorized.Code != http.StatusUnauthorized || proxied != 0 {
 		t.Fatalf("unauthorized Search: code=%d proxied=%d", unauthorized.Code, proxied)
 	}
-	token, err := service.NewTokenService().Issue(&model.User{UUID: "U1"})
+	token, err := coreauth.NewTokenService().Issue(&model.User{UUID: "U1"})
 	if err != nil {
 		t.Fatalf("issue gateway test token: %v", err)
 	}
@@ -441,7 +441,7 @@ func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
 	if unauthorized.Code != http.StatusUnauthorized || proxied != 0 || subscriptions.listCalls != 0 {
 		t.Fatalf("unauthorized list: code=%d proxied=%d calls=%d", unauthorized.Code, proxied, subscriptions.listCalls)
 	}
-	token, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	token, err := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
@@ -505,7 +505,7 @@ func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
 	if unauthorized.Code != http.StatusUnauthorized || memories.listCalls != 0 {
 		t.Fatalf("unauthorized list code=%d calls=%d", unauthorized.Code, memories.listCalls)
 	}
-	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
 	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/memories?after=CURSOR-0&limit=20", nil)
 	listRequest.Header.Set("Authorization", "Bearer "+token)
 	listResponse := httptest.NewRecorder()
@@ -564,7 +564,7 @@ func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
 	if unauthorized.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthorized code=%d", unauthorized.Code)
 	}
-	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
 	request := httptest.NewRequest(http.MethodGet, "/api/v1/agent/definitions?limit=20", nil)
 	request.Header.Set("Authorization", "Bearer "+token)
 	response := httptest.NewRecorder()
@@ -588,7 +588,7 @@ func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
 	defer core.Close()
 	subscriptions := &gatewayAgentSubscriptionStub{}
 	gateway, _ := NewServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentSubscriptions: subscriptions, Limiter: gatewayLimiterStub{}})
-	token, _ := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
 
 	for _, target := range []string{
 		"/api/v1/agent/subscriptions?limit=101",
@@ -662,7 +662,7 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 	if unauthorized.Code != http.StatusUnauthorized || proxied != 0 {
 		t.Fatalf("unauthorized control: code=%d proxied=%d", unauthorized.Code, proxied)
 	}
-	token, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	token, err := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
@@ -711,7 +711,7 @@ func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
 	if unauthorized.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthorized MCP code=%d", unauthorized.Code)
 	}
-	sessionToken, err := service.NewTokenService().Issue(&model.User{UUID: "U100"})
+	sessionToken, err := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
 	}
@@ -722,7 +722,7 @@ func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
 	if confusedResponse.Code != http.StatusUnauthorized || mcp.calls != 0 {
 		t.Fatalf("ordinary session token reached MCP: code=%d calls=%d", confusedResponse.Code, mcp.calls)
 	}
-	token, err := service.NewTokenService().IssueAgentMCPAccessToken("U100", service.AgentMCPResource, []string{service.AgentMCPReadScope}, true)
+	token, err := coreauth.NewTokenService().IssueAgentMCPAccessToken("U100", coreauth.AgentMCPResource, []string{coreauth.AgentMCPReadScope}, true)
 	if err != nil {
 		t.Fatalf("issue Agent MCP token: %v", err)
 	}
@@ -758,7 +758,7 @@ func TestGatewayRateLimitsAgentMCPByAuthenticatedPrincipalAndAllowsDeleteCleanup
 	if err != nil {
 		t.Fatalf("new gateway: %v", err)
 	}
-	token, err := service.NewTokenService().IssueAgentMCPAccessToken("U100", service.AgentMCPResource, []string{service.AgentMCPReadScope}, true)
+	token, err := coreauth.NewTokenService().IssueAgentMCPAccessToken("U100", coreauth.AgentMCPResource, []string{coreauth.AgentMCPReadScope}, true)
 	if err != nil {
 		t.Fatalf("issue Agent MCP token: %v", err)
 	}
