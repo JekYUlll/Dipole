@@ -332,7 +332,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 将分片上传流量切换为 MinIO 预签名 URL 直传，Core 只负责初始化、签发受限 part URL、登记 ETag/尺寸、完成和取消，降低大文件对业务服务带宽与连接的占用。
 - [x] 增加前端有界并发、指数退避和单 part 重试；当前默认 3 路并发、最多 2 次重试，失败仍由上层取消整个 Multipart 会话。
 - [x] 增加客户端断点恢复基础：Web 按文件指纹保存 session，恢复前通过受保护状态接口校验文件元数据并跳过服务端已确认 part；完成或失败取消后清理本地 session。
-- [ ] 增加可见的暂停/继续控制；会话恢复必须继续绑定用户、对象键、文件大小、内容类型和 upload ID。
+- [x] 增加可见的暂停/继续控制；暂停只停止新 part 调度，已完成 part、Redis 会话和本地文件指纹保留，继续时仍绑定用户、对象键、文件大小、内容类型和 upload ID；刷新页面后可通过既有恢复入口继续。
 - [x] 增加受所有权保护的 Multipart 会话状态查询，返回已完成 part 的编号、ETag 和实际尺寸，为后续浏览器暂停/恢复跳过已完成分片提供服务端 contract。
 - [x] 增加 `X-Part-SHA256` part checksum：现代 Web Crypto 可用时由客户端发送，Core 在保存 ETag/Size 前校验实际读取长度并恒时比较摘要；旧客户端缺少该头时保持兼容。
 - [x] 增加整文件 SHA-256、强制 checksum 模式和完成结果校验：初始化绑定 `file_sha256`，`storage.multipart_require_checksum` 开启后 Complete 读取对象校验并在不匹配时清理；默认保持兼容模式。
