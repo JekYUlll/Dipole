@@ -102,12 +102,14 @@ services:
     volumes:
       - ./configs/minio/agent-artifact-policy.json:/policies/agent-artifact-policy.json:ro
       - ./configs/minio/platform-storage-policy.json:/policies/platform-storage-policy.json:ro
+      - ./configs/minio/platform-storage-cors.json:/policies/platform-storage-cors.json:ro
       - ./configs/minio/agent-artifact-audit-policy.json:/policies/agent-artifact-audit-policy.json:ro
       - ./configs/minio/agent-artifact-maintenance-policy.json:/policies/agent-artifact-maintenance-policy.json:ro
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 dipoleminio dipoleminiopass &&
       mc mb --ignore-existing local/dipole-files &&
+      mc cors set local/dipole-files /policies/platform-storage-cors.json &&
       mc mb --ignore-existing --with-lock local/dipole-search-archives &&
       mc version enable local/dipole-search-archives &&
       mc retention set --default governance 30d local/dipole-search-archives &&
