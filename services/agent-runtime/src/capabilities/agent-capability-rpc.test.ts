@@ -93,6 +93,41 @@ describe("AgentCapabilityRPCClient", () => {
     await expect(client.readConversation(context, "direct:U100:U200", 1)).rejects.toThrow("too many messages");
   });
 
+  it("accepts only ordered timeline events bound to the requested task", async () => {
+    const listAgentTaskTimeline = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, {
+        schemaVersion: "dipole.agent.task.timeline.v1", taskId: "TASK-1", revision: 3n,
+        events: [
+          { eventSeq: 4n, eventId: "EV-4", taskId: "TASK-1", runId: "RUN-1", kind: "run", status: "running", capabilityId: "", approvalId: "", occurredAtUnixMs: 4_000n },
+          { eventSeq: 5n, eventId: "EV-5", taskId: "TASK-1", runId: "RUN-1", kind: "terminal", status: "completed", capabilityId: "", approvalId: "", occurredAtUnixMs: 5_000n }
+        ], nextCursor: "5"
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ listAgentTaskTimeline } as unknown as IAgentCapabilityServiceClient, "secret");
+
+    await expect(client.listAgentTaskTimeline("TASK-1", "U100", 3n, 20)).resolves.toMatchObject({
+      taskId: "TASK-1", nextCursor: "5", events: [{ eventSeq: 4n }, { eventSeq: 5n }]
+    });
+  });
+
+  it("rejects foreign, duplicate, and out-of-order timeline events", async () => {
+    const listAgentTaskTimeline = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, {
+        schemaVersion: "dipole.agent.task.timeline.v1", taskId: "TASK-1", revision: 3n,
+        events: [
+          { eventSeq: 4n, eventId: "EV-4", taskId: "TASK-2", runId: "RUN-2", kind: "run", status: "running", capabilityId: "", approvalId: "", occurredAtUnixMs: 4_000n },
+          { eventSeq: 4n, eventId: "EV-4B", taskId: "TASK-1", runId: "RUN-1", kind: "run", status: "running", capabilityId: "", approvalId: "", occurredAtUnixMs: 4_000n }
+        ], nextCursor: "4"
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ listAgentTaskTimeline } as unknown as IAgentCapabilityServiceClient, "secret");
+
+    await expect(client.listAgentTaskTimeline("TASK-1", "U100", 3n, 20))
+      .rejects.toThrow("invalid event ordering or task binding");
+  });
+
   it("resolves only an exact low-sensitive fresh readiness receipt", async () => {
     const profile = "b".repeat(64);
     const runtime = "a".repeat(64);
