@@ -73,12 +73,20 @@ if [[ ! -f "${root_dir}/internal/services/core/domain/auth/auth_service.go" || !
   echo "Core auth domain implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/core/domain/admin/admin_service.go" ]]; then
+  echo "Core admin domain implementation is outside its service boundary" >&2
+  exit 1
+fi
 if [[ -e "${root_dir}/internal/service/file_service.go" ]]; then
   echo "legacy Core file implementation remains under internal/service" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/auth_service.go" || -e "${root_dir}/internal/service/token_service.go" ]]; then
   echo "legacy Core auth implementation remains under internal/service" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/service/admin_service.go" ]]; then
+  echo "legacy Core admin implementation remains under internal/service" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then

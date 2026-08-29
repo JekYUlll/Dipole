@@ -49,6 +49,7 @@
 - **本轮进展：** Core Group domain 实现及测试已迁入 `internal/services/core/domain/group/`；`internal/service/group_compat.go` 仅保留类型和错误别名，HTTP/DTO/Kafka contract 暂不改变，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core File domain、Redis 分片会话实现及测试已迁入 `internal/services/core/domain/file/`；`internal/service/file_compat.go` 仅保留类型和错误别名，文件 HTTP/DTO contract 暂不改变，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core Auth domain 及测试已迁入 `internal/services/core/domain/auth/`；`internal/service/auth_compat.go` 与 `token_compat.go` 仅保留兼容别名，Middleware、Gateway、WS 和 HTTP contract 暂不改变，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Admin domain 及测试已迁入 `internal/services/core/domain/admin/`；`internal/service/admin_compat.go` 仅保留类型、错误和构造入口兼容层，User 权限错误继续共享同一错误值，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Core repository composition 已抽出 `CoreProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Core 数据所有权；独立 Core runtime 尚未切换为仅加载该集合，聚合入口继续作为回滚路径。
 - **本轮进展：** 聚合 `Repositories` 已显式持有 Core、Message、Sync、Agent 四类 process composition，embedded 入口开始复用服务所有权分组；独立启动链仍待切换到这些分组，当前聚合入口保留为回滚路径。
 - **本轮进展：** Agent repository composition 已抽出 `AgentProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Agent-owned SQL repository 集合；Core 兼容 RPC 仍共享同一进程装配，TS Runtime 完全接管前需继续拆分启动链。

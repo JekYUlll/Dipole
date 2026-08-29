@@ -27,7 +27,6 @@ var (
 	ErrAvatarMissing            = errors.New("avatar is missing")
 	ErrAvatarTooLarge           = errors.New("avatar is too large")
 	ErrAvatarStorageUnavailable = errors.New("avatar storage is unavailable")
-	ErrAdminRequired            = errors.New("admin required")
 	ErrInvalidUserStatus        = errors.New("invalid user status")
 	ErrCannotDisableSelf        = errors.New("cannot disable self")
 )
