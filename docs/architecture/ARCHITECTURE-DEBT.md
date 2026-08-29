@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Gateway Agent MCP 代理的 resource、scope 和安全 URL 校验已下沉到 `internal/application`；Core 继续拥有 token issuer/verifier，Gateway 只依赖认证 contract，结构门禁和安全校验测试已通过。
 - 2026-08-30：Gateway Kafka consumer 所需的群组、会话、联系人和已读事件 decoder 已下沉到 `internal/application` 跨服务 contract；Gateway 生产代码不再依赖 Core domain，服务布局门禁已固定该边界，Core 仍保留事件生产与自身投影实现。
 - 2026-08-30：调用审计确认 embedded Message repository wrapper 无独立调用者，已删除 `NewMessageProcessRepositories` 及其 inbox 开关转发，聚合入口直接使用 Message-owned constructor；整体 `NewRepositories` 仍作为 embedded 回滚组合保留。
 - 2026-08-30：调用审计确认 embedded Search 字段没有生产或测试使用者，已删除聚合层 Search SQLC 构造；Search Service 继续由 Elasticsearch-owned runtime 独立装配，聚合层仅保留 embedded 回滚所需的四类 process composition。
