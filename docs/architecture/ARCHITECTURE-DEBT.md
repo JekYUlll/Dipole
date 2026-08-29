@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：审计确认 `internal/data/mysql` 及旧 repository facade 已不存在，业务 SQLC 仓储均位于对应服务 infrastructure；修正 `REPOSITORY-STRUCTURE.md` 与 `SERVICE-BOUNDARIES.md` 中残留的旧目录描述，并通过结构门禁，避免文档继续指导已退役布局。
 - 2026-08-30：在最新 `master` 提交 `3adc755` 上复测 AD-005 的真实 MySQL 8.4、1000 成员 Conversation SQLC 批量投影；serial/batch 与并发对照均通过，batch 相比 serial 约降低 46.2/286.9 倍，投影行数均为 1000，锁等待增量为零。该结果属于单轮 SQL 层复测，端到端 P95、多轮统计和共享拓扑容量验证仍待完成。
 - 2026-08-30：Kafka rebalance 隔离 smoke 通过，验证双 consumer、成员退出后的六分区 ownership 接管和 lag 归零；生产 Kafka ownership 切换、候选发布和可执行回滚 receipt 仍待共享环境门禁。
 - 2026-08-30：Agent Runtime 独立回归通过，Vitest 125 个测试文件/662 个测试、TypeScript typecheck 和生产 build 均成功；AD-009/AD-030 的真实 Kafka、Temporal、Capability RPC、外部 MCP 和 active authority 联调仍待共享环境证据。
