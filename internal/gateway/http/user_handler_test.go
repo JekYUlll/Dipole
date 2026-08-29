@@ -17,6 +17,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreadmin "github.com/JekYUlll/Dipole/internal/services/core/domain/admin"
 )
 
 type stubUserService struct {
@@ -357,7 +358,7 @@ func TestUserHandlerListForAdminForbidden(t *testing.T) {
 
 	handler := NewUserHandler(&stubUserService{
 		listUsersFn: func(currentUser *model.User, input service.AdminListUsersInput) ([]*model.User, error) {
-			return nil, service.ErrAdminRequired
+			return nil, coreadmin.ErrAdminRequired
 		},
 	})
 
