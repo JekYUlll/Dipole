@@ -99,6 +99,7 @@
 - **本轮进展：** 2026-08-29 将 Agent Capability 与 Command application 实现迁入 Agent 服务边界；Bootstrap 已直接使用服务包，消息与会话依赖显式化，结构门禁覆盖十六类已迁移实现。Execution Policy、Workflow repair executor 及聚合 Composition Root仍待继续收敛。
 - **本轮进展：** 2026-08-29 将 Workflow Repair Prepare 和 Executor application 实现迁入 Agent 服务边界；兼容入口保留，结构门禁覆盖十八类已迁移实现。Execution Policy、Agent Runtime 独立 Composition Root 及聚合 Composition Root仍待继续收敛。
 - **本轮进展：** 2026-08-29 将 Agent Execution Policy、Invocation Resolver 和 Run Admission 实现迁入 Agent 服务边界；兼容入口保留并增加 deterministic clock 构造，结构门禁覆盖十九类已迁移实现。Agent Runtime 独立 Composition Root、剩余轻量兼容实现和 TS Runtime 正式接管仍待继续收敛。
+- **本轮进展：** 2026-08-29 将 Agent MCP tool terminal、Memory、Message command execution、Runtime promotion control 和 Runtime promotion application 实现迁入 Agent 服务边界；Bootstrap 已直接使用服务包，Memory task reader 与时间依赖改为显式服务契约，结构门禁覆盖二十四类已迁移实现。Agent Runtime 独立 Composition Root、聚合兼容装配收敛和 TS Runtime 正式接管仍待继续推进。
 
 ### AD-049：Core 与 Message 远程初始化存在双向依赖
 

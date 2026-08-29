@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -17,10 +17,15 @@ type PersistentAgentActiveRunPromotionAuthorizerV1 struct {
 var _ application.AgentActiveRunPromotionAuthorizerV1 = (*PersistentAgentActiveRunPromotionAuthorizerV1)(nil)
 
 func NewPersistentAgentActiveRunPromotionAuthorizerV1(store application.AgentRuntimePromotionGrantStoreV1) (*PersistentAgentActiveRunPromotionAuthorizerV1, error) {
-	if store == nil {
+	return NewPersistentAgentActiveRunPromotionAuthorizerV1WithClock(store, time.Now)
+}
+
+// NewPersistentAgentActiveRunPromotionAuthorizerV1WithClock keeps policy tests deterministic.
+func NewPersistentAgentActiveRunPromotionAuthorizerV1WithClock(store application.AgentRuntimePromotionGrantStoreV1, now func() time.Time) (*PersistentAgentActiveRunPromotionAuthorizerV1, error) {
+	if store == nil || now == nil {
 		return nil, fmt.Errorf("persistent Agent active Run promotion authorizer requires store")
 	}
-	return &PersistentAgentActiveRunPromotionAuthorizerV1{store: store, now: time.Now}, nil
+	return &PersistentAgentActiveRunPromotionAuthorizerV1{store: store, now: now}, nil
 }
 
 func (a *PersistentAgentActiveRunPromotionAuthorizerV1) AuthorizeActiveRun(ctx context.Context, request application.AgentActiveRunPromotionRequestV1) error {

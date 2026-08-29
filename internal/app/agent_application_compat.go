@@ -32,6 +32,11 @@ type StaticAgentExecutionPolicyV1 = agentapplication.StaticAgentExecutionPolicyV
 type PersistentAgentExecutionPolicyV1 = agentapplication.PersistentAgentExecutionPolicyV1
 type PersistentAgentInvocationResolverV1 = agentapplication.PersistentAgentInvocationResolverV1
 type PersistentAgentRunAdmissionV1 = agentapplication.PersistentAgentRunAdmissionV1
+type PersistentAgentMemoryResolverV1 = agentapplication.PersistentAgentMemoryResolverV1
+type AgentMemoryTaskReaderV1 = agentapplication.AgentMemoryTaskReaderV1
+type AgentMessageCommandExecutionServiceV1 = agentapplication.AgentMessageCommandExecutionServiceV1
+type PersistentAgentRuntimePromotionControlServiceV1 = agentapplication.PersistentAgentRuntimePromotionControlServiceV1
+type PersistentAgentActiveRunPromotionAuthorizerV1 = agentapplication.PersistentAgentActiveRunPromotionAuthorizerV1
 
 func NewPersistentAgentApprovalGrantResolverV1(store application.AgentApprovalGrantStoreV1) (*PersistentAgentApprovalGrantResolverV1, error) {
 	return agentapplication.NewPersistentAgentApprovalGrantResolverV1(store)
@@ -155,6 +160,34 @@ func NewStaticAgentExecutionPolicyV1(permissions []string, scopes []application.
 
 func NewPersistentAgentExecutionPolicyV1(store application.AgentPolicyStoreV1) (*PersistentAgentExecutionPolicyV1, error) {
 	return agentapplication.NewPersistentAgentExecutionPolicyV1(store)
+}
+
+func NewPersistentAgentMemoryResolverV1(store application.AgentMemoryStoreV1, invocations application.AgentInvocationResolverV1, tasks agentapplication.AgentMemoryTaskReaderV1, now func() time.Time) (*PersistentAgentMemoryResolverV1, error) {
+	return agentapplication.NewPersistentAgentMemoryResolverV1(store, invocations, tasks, now)
+}
+
+func NewAgentMessageCommandExecutionV1(tools application.AgentToolInvocationReaderV1, resolver application.AgentInvocationResolverV1, commands application.AgentCommandV1) (*AgentMessageCommandExecutionServiceV1, error) {
+	return agentapplication.NewAgentMessageCommandExecutionV1(tools, resolver, commands)
+}
+
+func NewPersistentAgentRuntimePromotionControlServiceV1(policies application.AgentPolicyStoreV1, artifacts application.AgentArtifactStoreV1, control application.AgentRuntimePromotionControlStoreV1) (*PersistentAgentRuntimePromotionControlServiceV1, error) {
+	return agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1(policies, artifacts, control)
+}
+
+func newPersistentAgentRuntimePromotionControlServiceV1(policies application.AgentPolicyStoreV1, artifacts application.AgentArtifactStoreV1, control application.AgentRuntimePromotionControlStoreV1, now func() time.Time) (*PersistentAgentRuntimePromotionControlServiceV1, error) {
+	return agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1WithClock(policies, artifacts, control, now)
+}
+
+func NewPersistentAgentActiveRunPromotionAuthorizerV1(store application.AgentRuntimePromotionGrantStoreV1) (*PersistentAgentActiveRunPromotionAuthorizerV1, error) {
+	return agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(store)
+}
+
+func NewPersistentAgentMCPToolInvocationTerminalServiceV1(rounds application.AgentMCPToolRoundStoreV1, invocations application.AgentToolInvocationReaderV1, audits application.AgentToolInvocationAuditServiceV1) (application.AgentMCPToolInvocationTerminalServiceV1, error) {
+	return agentapplication.NewPersistentAgentMCPToolInvocationTerminalServiceV1(rounds, invocations, audits)
+}
+
+func newPersistentAgentMCPToolInvocationTerminalServiceV1(rounds application.AgentMCPToolRoundStoreV1, invocations application.AgentToolInvocationReaderV1, audits application.AgentToolInvocationAuditServiceV1, now func() time.Time) (application.AgentMCPToolInvocationTerminalServiceV1, error) {
+	return agentapplication.NewPersistentAgentMCPToolInvocationTerminalServiceV1WithClock(rounds, invocations, audits, now)
 }
 
 func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.AgentPolicyStoreV1, tenantID, agentUUID string, permissions []string, scopes []application.AgentResourceScopeV1) error {

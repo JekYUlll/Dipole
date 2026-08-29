@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -38,7 +38,17 @@ func NewPersistentAgentMCPToolInvocationTerminalServiceV1(
 	invocations application.AgentToolInvocationReaderV1,
 	audits application.AgentToolInvocationAuditServiceV1,
 ) (application.AgentMCPToolInvocationTerminalServiceV1, error) {
-	return newPersistentAgentMCPToolInvocationTerminalServiceV1(rounds, invocations, audits, time.Now)
+	return NewPersistentAgentMCPToolInvocationTerminalServiceV1WithClock(rounds, invocations, audits, time.Now)
+}
+
+// NewPersistentAgentMCPToolInvocationTerminalServiceV1WithClock keeps terminal tests deterministic.
+func NewPersistentAgentMCPToolInvocationTerminalServiceV1WithClock(
+	rounds application.AgentMCPToolRoundStoreV1,
+	invocations application.AgentToolInvocationReaderV1,
+	audits application.AgentToolInvocationAuditServiceV1,
+	now func() time.Time,
+) (application.AgentMCPToolInvocationTerminalServiceV1, error) {
+	return newPersistentAgentMCPToolInvocationTerminalServiceV1(rounds, invocations, audits, now)
 }
 
 func (s *persistentAgentMCPToolInvocationTerminalServiceV1) FinishFromRound(

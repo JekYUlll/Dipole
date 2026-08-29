@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -14,15 +14,15 @@ import (
 type PersistentAgentMemoryResolverV1 struct {
 	store       application.AgentMemoryStoreV1
 	invocations application.AgentInvocationResolverV1
-	tasks       agentMemoryTaskReaderV1
+	tasks       AgentMemoryTaskReaderV1
 	now         func() time.Time
 }
 
-type agentMemoryTaskReaderV1 interface {
+type AgentMemoryTaskReaderV1 interface {
 	GetTask(ctx context.Context, taskUUID string) (*application.AgentTaskV1, error)
 }
 
-func NewPersistentAgentMemoryResolverV1(store application.AgentMemoryStoreV1, invocations application.AgentInvocationResolverV1, tasks agentMemoryTaskReaderV1, now func() time.Time) (*PersistentAgentMemoryResolverV1, error) {
+func NewPersistentAgentMemoryResolverV1(store application.AgentMemoryStoreV1, invocations application.AgentInvocationResolverV1, tasks AgentMemoryTaskReaderV1, now func() time.Time) (*PersistentAgentMemoryResolverV1, error) {
 	if store == nil || invocations == nil || tasks == nil {
 		return nil, errors.New("Agent Memory store, Invocation resolver, and Task reader are required")
 	}

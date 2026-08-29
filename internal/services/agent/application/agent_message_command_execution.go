@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 	if request.TaskUUID == "" || request.RunUUID == "" || request.InvocationUUID == "" || request.Content == "" {
 		return nil, application.ErrAgentCommandDenied
 	}
-	wantCapability, err := agentCommandCapabilityIDV1(request.Kind)
+	wantCapability, err := AgentCommandCapabilityIDV1(request.Kind)
 	if err != nil {
 		return nil, application.ErrAgentCommandDenied
 	}

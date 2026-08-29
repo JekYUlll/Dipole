@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -19,7 +19,12 @@ type PersistentAgentRuntimePromotionControlServiceV1 struct {
 }
 
 func NewPersistentAgentRuntimePromotionControlServiceV1(policies application.AgentPolicyStoreV1, artifacts application.AgentArtifactStoreV1, control application.AgentRuntimePromotionControlStoreV1) (*PersistentAgentRuntimePromotionControlServiceV1, error) {
-	return newPersistentAgentRuntimePromotionControlServiceV1(policies, artifacts, control, time.Now)
+	return NewPersistentAgentRuntimePromotionControlServiceV1WithClock(policies, artifacts, control, time.Now)
+}
+
+// NewPersistentAgentRuntimePromotionControlServiceV1WithClock keeps promotion tests deterministic.
+func NewPersistentAgentRuntimePromotionControlServiceV1WithClock(policies application.AgentPolicyStoreV1, artifacts application.AgentArtifactStoreV1, control application.AgentRuntimePromotionControlStoreV1, now func() time.Time) (*PersistentAgentRuntimePromotionControlServiceV1, error) {
+	return newPersistentAgentRuntimePromotionControlServiceV1(policies, artifacts, control, now)
 }
 
 func newPersistentAgentRuntimePromotionControlServiceV1(policies application.AgentPolicyStoreV1, artifacts application.AgentArtifactStoreV1, control application.AgentRuntimePromotionControlStoreV1, now func() time.Time) (*PersistentAgentRuntimePromotionControlServiceV1, error) {
