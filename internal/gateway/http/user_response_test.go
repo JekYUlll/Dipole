@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 func TestPresentUserForViewerReturnsPublicProfileForOtherUser(t *testing.T) {
@@ -91,7 +91,7 @@ func TestNewAuthResponseUsesPrivateProfile(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
-	result := &service.AuthResult{
+	result := &coreauth.AuthResult{
 		Token: "TOKEN123",
 		User: &model.User{
 			ID:        1,
