@@ -25,6 +25,7 @@
 - 2026-08-29：Search 回填、归档、对账、Alias 切换和 Outbox 清理的装配代码已从 `internal/bootstrap/` 收纳到 `internal/operations/search/`；长期服务启动包与一次性运维操作边界已通过结构门禁固定，Sync/Cassandra 运维运行时仍待按同一模式收敛。
 - 2026-08-29：Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 装配已分别迁入 `internal/operations/sync/`、`internal/operations/cassandra/`；长期服务运行时保留在 bootstrap，三类运维目录均由结构门禁保护。
 - 2026-08-29：Agent Memory lineage backfill 装配已迁入 `internal/operations/agent/`，Agent 长期运行时与高风险一次性维护入口完成目录隔离；后续仍需继续收敛共享 Composition Root。
+- 2026-08-29：embedded 聚合 `Repositories`、`MessagingServices` 及其构造实现已迁入 `internal/bootstrap/embedded/`；`internal/app` 收缩为兼容 facade，生产 bootstrap 已切换新边界，Agent 兼容构造仍单独保留待后续拆分。
 - 2026-08-29：Cassandra routing、shadow message store 和 Sync hydration fallback 已迁入 `internal/platform/storage/`；装饰器仍只通过 application port 运行，后续需继续评估迁移完成后的删除时机和 routing/shadow 配置 owner。
 - 2026-08-29：跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器已迁入 `internal/platform/cassandra/`；服务业务 projection 保持在各自边界，后续仍需评估 routing/shadow 装饰器和 Cassandra 数据 owner 的最终归属。
 - 2026-08-29：兼容别名已从 `internal/service` 收纳到 `internal/compat/service`；`internal/service` 仅保留共享事件发布契约与实现，后续仍需逐步迁移调用方并缩减兼容入口。

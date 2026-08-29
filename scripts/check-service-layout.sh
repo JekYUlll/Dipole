@@ -175,7 +175,7 @@ if [[ -e "${root_dir}/internal/data/mysql/repository/search_index.go" ]]; then
   echo "legacy Search index repository remains in shared repository package" >&2
   exit 1
 fi
-if ! rg --quiet 'services/search/infrastructure/mysql' "${root_dir}/internal/app/repositories.go"; then
+if ! rg --quiet 'services/search/infrastructure/mysql' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
   echo "Search composition must use Search-owned index repository" >&2
   exit 1
 fi
@@ -321,7 +321,7 @@ for legacy_core_repository in admin.go contact.go conversation.go file.go group.
     exit 1
   fi
 done
-if ! rg --quiet 'services/core/infrastructure/mysql' "${root_dir}/internal/app/repositories.go"; then
+if ! rg --quiet 'services/core/infrastructure/mysql' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
   echo "Core process composition must use Core-owned MySQL repositories" >&2
   exit 1
 fi
@@ -449,7 +449,7 @@ for legacy_agent_repository in agent_policy.go agent_memory.go agent_artifact.go
     exit 1
   fi
 done
-if ! rg --quiet 'services/agent/infrastructure/mysql' "${root_dir}/internal/app/repositories.go"; then
+if ! rg --quiet 'services/agent/infrastructure/mysql' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
   echo "Agent process composition must use Agent-owned MySQL repositories" >&2
   exit 1
 fi

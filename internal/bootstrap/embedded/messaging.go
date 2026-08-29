@@ -1,4 +1,4 @@
-package app
+package embedded
 
 import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"

@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	appComposition "github.com/JekYUlll/Dipole/internal/app"
+	appCompat "github.com/JekYUlll/Dipole/internal/app"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -545,13 +546,13 @@ func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, comma
 	var executionPolicy applicationPort.AgentExecutionPolicyV1
 	switch policyMode {
 	case config.AIPolicyStatic:
-		executionPolicy, err = appComposition.NewStaticAgentExecutionPolicyV1(permissions, scopes)
+		executionPolicy, err = appCompat.NewStaticAgentExecutionPolicyV1(permissions, scopes)
 	case config.AIPolicyPersistent:
 		if policyStore == nil {
 			return nil, fmt.Errorf("Agent Policy Store v1 is required in persistent policy mode")
 		}
-		if err = appComposition.EnsureEmbeddedAgentDefinitionV1(context.Background(), policyStore, "dipole", aiConfig.AssistantUUID, permissions, scopes); err == nil {
-			executionPolicy, err = appComposition.NewPersistentAgentExecutionPolicyV1(policyStore)
+		if err = appCompat.EnsureEmbeddedAgentDefinitionV1(context.Background(), policyStore, "dipole", aiConfig.AssistantUUID, permissions, scopes); err == nil {
+			executionPolicy, err = appCompat.NewPersistentAgentExecutionPolicyV1(policyStore)
 		}
 	}
 	if err != nil {
