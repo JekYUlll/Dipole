@@ -22,6 +22,7 @@ func TestRedisPresenceRegisterTouchAndUnregister(t *testing.T) {
 			TTLSeconds: 120,
 		},
 		nodeID: "node-a",
+		redis:  cache.RDB,
 	}
 
 	state := ConnectionState{
@@ -90,6 +91,7 @@ func TestRedisPresenceCountsMultipleConnections(t *testing.T) {
 			TTLSeconds: 120,
 		},
 		nodeID: "node-a",
+		redis:  cache.RDB,
 	}
 
 	tracker.Register(ConnectionState{ConnectionID: "C100", UserUUID: "U100", ConnectedAt: time.Now().UTC()})
@@ -104,6 +106,29 @@ func TestRedisPresenceCountsMultipleConnections(t *testing.T) {
 	}
 	if got := tracker.UserConnectionCount("U100"); got != 2 {
 		t.Fatalf("expected user U100 connection count 2, got %d", got)
+	}
+}
+
+func TestRedisPresenceUsesExplicitClient(t *testing.T) {
+	mr, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("run miniredis: %v", err)
+	}
+	defer mr.Close()
+
+	previousRDB := cache.RDB
+	cache.RDB = nil
+	t.Cleanup(func() { cache.RDB = previousRDB })
+
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer client.Close()
+	presence := NewRedisPresenceWithClient(config.Presence{
+		Enabled: true, NodeID: "explicit-node", TTLSeconds: 120,
+	}, client)
+
+	presence.Register(ConnectionState{ConnectionID: "C-explicit", UserUUID: "U-explicit"})
+	if got := presence.UserConnectionCount("U-explicit"); got != 1 {
+		t.Fatalf("expected explicit client connection count 1, got %d", got)
 	}
 }
 

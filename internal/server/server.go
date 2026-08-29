@@ -71,7 +71,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	hotGroupDetector := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
-	redisPresence := platformPresence.NewRedisPresence()
+	redisPresence := platformPresence.NewRedisPresenceWithClient(config.PresenceConfig(), cache.RDB)
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiter()
 	tokenService := service.NewTokenService()
