@@ -1,4 +1,4 @@
-package bootstrap
+package embedded
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ func TestKafkaManagedTopicsHaveVersionedContracts(t *testing.T) {
 			covered[eventType] = contract
 		}
 	}
-	for _, topic := range kafkaManagedTopics() {
+	for _, topic := range ManagedKafkaTopics() {
 		if covered[topic] == "" {
 			t.Errorf("Kafka managed topic %s has no versioned contract", topic)
 		}
@@ -41,7 +41,7 @@ func contractEventTypes(t *testing.T, relativePath string) []string {
 	if !ok {
 		t.Fatal("locate Kafka contract test source")
 	}
-	root := filepath.Join(filepath.Dir(currentFile), "..", "..")
+	root := filepath.Join(filepath.Dir(currentFile), "..", "..", "..")
 	raw, err := os.ReadFile(filepath.Join(root, relativePath))
 	if err != nil {
 		t.Fatalf("read event contract %s: %v", relativePath, err)

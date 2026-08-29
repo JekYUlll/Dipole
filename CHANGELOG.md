@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 将 embedded Kafka managed topic 清单及其契约扫描测试迁入 `internal/bootstrap/embedded/`；聚合 runtime 通过 embedded-owned API 确保 topic，独立服务的 consumer ownership 不变。
 - 清理服务布局门禁中针对已删除 `internal/bootstrap/internal_rpc.go` 的无效检查，避免通过门禁时产生误导性 IO 警告；Core RPC 组合和 embedded Kafka 组合的当前归属与实际目录保持一致。
 - 将 embedded Kafka 组合及其兼容测试迁入 `internal/bootstrap/embedded/`，聚合 runtime 通过 `RegisterKafkaHandlers` 调用；Conversation projection、群初始化、旧 Eino 触发、日志 handler 和实时投递注册顺序保持兼容。
 - 迁移 `internal/bootstrap` RPC contract 测试至 `internal/services/core/rpc`，删除 Core RPC 组合的旧 bootstrap wrapper、类型别名和生产服务名常量；embedded runtime 直接持有 Core-owned RPC 类型，测试常量仅保留在测试辅助文件。
