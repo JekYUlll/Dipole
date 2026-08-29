@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/cloudwego/eino/schema"
@@ -39,7 +40,7 @@ type baselineExpected struct {
 func TestGoEinoBaselineContract(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join("..", "..", "..", "contracts", "agent-evals", "v1", "go-eino-baseline.json")
+	path := filepath.Join(repositoryRoot(), "contracts", "agent-evals", "v1", "go-eino-baseline.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read Go/Eino baseline: %v", err)
@@ -84,7 +85,7 @@ func TestGoEinoBaselineContract(t *testing.T) {
 func TestAgentEvalSchemaIsVersionedJSON(t *testing.T) {
 	t.Parallel()
 
-	path := filepath.Join("..", "..", "..", "contracts", "agent-evals", "v1", "schema.json")
+	path := filepath.Join(repositoryRoot(), "contracts", "agent-evals", "v1", "schema.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read Agent eval schema: %v", err)
@@ -96,6 +97,11 @@ func TestAgentEvalSchemaIsVersionedJSON(t *testing.T) {
 	if document["$id"] != "https://dipole.local/contracts/agent-evals/v1/schema.json" {
 		t.Fatalf("unexpected Agent eval schema ID %q", document["$id"])
 	}
+}
+
+func repositoryRoot() string {
+	_, source, _, _ := runtime.Caller(0)
+	return filepath.Clean(filepath.Join(filepath.Dir(source), "..", "..", "..", ".."))
 }
 
 type recordingEvalAgent struct {

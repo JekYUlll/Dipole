@@ -28,7 +28,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `api/proto/` 存放跨服务 RPC 契约及生成代码。
 - `contracts/` 存放事件、Agent 和运行时边界契约。
 - `db/` 存放迁移、sqlc 查询和数据库结构。
-- `frontend/` 存放客户端；`services/agent-runtime/` 和 `services/realtime-delivery/` 存放非 Go 服务源码及其独立构建入口。
+- `frontend/` 存放客户端；`services/agent-runtime/` 和 `services/realtime-delivery/` 存放非 Go 服务源码及其独立构建入口；Go/Eino 兼容基线位于 `internal/services/agent/legacy/`，等待 TS Runtime 完整接管后删除。
 - `deploy/images/` 存放按服务边界构建的镜像模板；`deploy/microservices/` 存放可组合的微服务部署 override。
 - `docs/` 存放架构、Agent、数据、运行、前端、性能、指南和参考材料；`docs/` 顶层只保留索引、清单和架构图。
 
@@ -46,6 +46,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `services/` 只放需要独立 module/toolchain 的服务源码：TypeScript Agent Runtime 和 C++ Realtime Delivery。
 - 服务目录内允许保留语言生态所需的 `package.json`、`go.mod`、`CMakeLists.txt` 和本地测试配置；跨服务协议仍只能来自 `api/proto/` 或 `contracts/`。
 - 根目录禁止重新出现 `services/agent-runtime/`、`services/realtime-delivery/` 两个服务源码目录。
+- 结构门禁只检查 Git 跟踪内容；本地构建生成的同名忽略目录不会改变仓库结构判定。
 
 ## Compose 配置层级
 

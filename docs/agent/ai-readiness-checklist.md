@@ -155,7 +155,7 @@ AI 功能的权限边界要先定清楚，不然后面容易出现“能读不�
 
 建议位置：
 
-- `internal/modules/ai/application/context_builder.go`
+- `services/agent-runtime/src/context/`
 
 职责建议包括：
 
@@ -235,11 +235,11 @@ AI 输出不能只停留在内存里，需要能写回业务系统。
 
 建议单独建立 AI 模块，保持与现有业务域平行：
 
-- `internal/modules/ai/domain`
-- `internal/modules/ai/application`
-- `internal/modules/ai/infrastructure`
-- `internal/modules/ai/delivery/http`
-- `internal/modules/ai/delivery/kafka`
+- `services/agent-runtime/src/domain`
+- `services/agent-runtime/src/application`
+- `services/agent-runtime/src/infrastructure`
+- `services/agent-runtime/src/delivery/http`
+- `services/agent-runtime/src/delivery/kafka`
 
 推荐职责划分：
 
