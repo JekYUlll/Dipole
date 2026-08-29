@@ -27,7 +27,7 @@
 
 ### 需要收敛
 
-- `internal/service`、`internal/handler`、`internal/store` 和 `internal/app` 仍包含多个服务的组合与实现，当前属于迁移中的共享实现区。
+- `internal/service`、`internal/handler`、`internal/store` 和 `internal/app` 仍包含迁移中的共享组合与少量 Agent 实现；已迁移的 Agent 审批、审批授权和任务控制实现位于 `internal/services/agent/application/`，旧目录仅保留兼容装配入口。
 - Search application 已迁入 `internal/services/search/application/`；该目录只依赖共享 application port、Core Capability 和 Search Index 接口。
 - Search Index SQLC repository 及契约测试已迁入 `internal/services/search/infrastructure/mysql/`；`internal/data/mysql/repository/search_index_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口。
 - Core capability、Auth domain、Admin domain、Session domain、User domain、Contact domain、Conversation domain、Group domain 与 File domain 已迁入 `internal/services/core/`；Auth domain 位于 `core/domain/auth`，Admin domain 位于 `core/domain/admin`，Session domain 位于 `core/domain/session`，User domain 位于 `core/domain/user`，Contact domain 位于 `core/domain/contact`，Conversation domain 位于 `core/domain/conversation`，Auth/Admin/Session application 通过明确的 User/Admin、Token、Presence 和连接踢出依赖装配，User application 通过 User/File store 和对象存储依赖装配，Contact application 通过 Contact/User store、事件、通知和系统消息依赖装配，Group domain 位于 `core/domain/group`，通过 Group/User store、事件、热群、文件、对象存储和系统消息依赖装配，File domain 位于 `core/domain/file`，通过 File metadata、Message store、Redis 分片会话和对象存储依赖装配，Core capability 使用最小查询接口，Conversation domain 通过明确的 repository、事件、通知和投影观察依赖装配，embedded 与独立 Core runtime 共用该边界。
@@ -37,6 +37,7 @@
 - 聚合 `Repositories` 已显式保存 Core、Message、Sync、Agent 四类 process composition，后续独立启动链应直接接收对应分组，避免重新恢复扁平跨服务依赖。
 - Agent repository composition 已提供 `AgentProcessRepositories`，集中声明 Agent policy、task timeline、memory、approval、artifact、tool audit 和 readiness store；Core 仅通过兼容 RPC/port 使用必要能力。Go/Eino 兼容实现位于 `internal/services/agent/legacy/`，由 TS Agent Runtime 按发布门禁逐步接管。
 - Agent 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/data/mysql/repository/agent_compat.go` 仅保留 embedded 与运维工具的兼容别名和构造入口，Agent 数据访问实现由 Agent process 独占。
+- Agent application 的审批、审批授权和任务控制实现已迁入 `internal/services/agent/application/`；`internal/app/agent_application_compat.go` 仅保留 embedded 兼容别名与构造转发，服务入口和契约测试优先直接依赖 Agent application 包。
 - Sync application 已迁入 `internal/services/sync/application/`；该目录只依赖共享 SyncStore、Core Capability 和 Sync application port，embedded 与独立 Sync runtime 共用该装配。
 - Sync domain 实现已迁入 `internal/services/sync/domain/`；旧 `internal/service` 仅保留错误和构造入口兼容层，Sync Timeline、设备 Cursor 和群组 checkpoint contract 保持兼容。
 - Sync MySQL repository、hydrator 和 projection 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 直接使用服务专属 composition，旧共享 repository 仅保留兼容入口。

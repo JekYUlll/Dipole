@@ -91,6 +91,7 @@
 - **本轮进展：** 2026-08-29 在 `SMOKE_MESSAGE_FLOW=1` 中复用同一 `client_message_id` 重发消息，数据库核对确认 Message、Outbox 和 Inbox 各保持单条，候选 Message Service 幂等路径通过；Kafka authority 深度核对和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 以 `ISOLATED_IMAGES=1` 运行依赖 readiness smoke，Kafka assignment 建立、Search/Indexer 候选服务、Elasticsearch 停止降级与恢复、核心容器身份稳定性均通过；生产切换与回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-29 基础微服务 Compose 切换为逐服务镜像与统一 `/app/service` 入口，补充 repair worker 镜像构建；基础核心 smoke、Search profile 消息 smoke 和 repair profile v50 恢复/幂等 smoke 均通过。共享环境 Kafka ownership、发布切换与可执行回滚 receipt 仍待完成。
+- **本轮进展：** 2026-08-29 将 Agent 审批、审批授权和任务控制 application 实现迁入 `internal/services/agent/application/`；embedded `internal/app` 保留兼容别名与构造转发，Bootstrap 和 Agent SQLC 契约测试已直接依赖服务专属包；新增结构门禁阻止这三类实现回流。其余 Agent application、聚合 Composition Root、独立数据库账号和服务自治仍待继续收敛。
 
 ### AD-049：Core 与 Message 远程初始化存在双向依赖
 

@@ -251,6 +251,20 @@ if [[ ! -f "${root_dir}/internal/services/agent/infrastructure/mysql/agent_polic
   echo "Agent MySQL repository implementation is outside the Agent service boundary" >&2
   exit 1
 fi
+for agent_application in agent_approval_grant.go agent_approval_service.go agent_task_control.go; do
+  if [[ ! -f "${root_dir}/internal/services/agent/application/${agent_application}" ]]; then
+    echo "Agent application implementation is outside the Agent service boundary: ${agent_application}" >&2
+    exit 1
+  fi
+  if [[ -e "${root_dir}/internal/app/${agent_application}" ]]; then
+    echo "legacy Agent application implementation remains under internal/app: ${agent_application}" >&2
+    exit 1
+  fi
+done
+if [[ ! -f "${root_dir}/internal/app/agent_application_compat.go" ]]; then
+  echo "embedded Agent application compatibility boundary is missing" >&2
+  exit 1
+fi
 for legacy_agent_repository in agent_policy.go agent_memory.go agent_artifact.go agent_tool_invocation.go agent_task_timeline.go agent_runtime_promotion_control.go agent_mcp_tool_round.go agent_mcp_readiness_evidence.go ai_call_log.go; do
   if [[ -e "${root_dir}/internal/data/mysql/repository/${legacy_agent_repository}" ]]; then
     echo "legacy Agent MySQL implementation remains in shared repository package: ${legacy_agent_repository}" >&2

@@ -20,6 +20,7 @@ import (
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	"github.com/JekYUlll/Dipole/internal/store"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -170,15 +171,15 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Run admission: %w", composeErr)
 		}
-		approvalService, composeErr := appComposition.NewPersistentAgentApprovalServiceV1(repos.AgentPolicy)
+		approvalService, composeErr := agentapplication.NewPersistentAgentApprovalServiceV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Approval service: %w", composeErr)
 		}
-		approvalGrants, composeErr := appComposition.NewPersistentAgentApprovalGrantResolverV1(repos.AgentApprovalGrants)
+		approvalGrants, composeErr := agentapplication.NewPersistentAgentApprovalGrantResolverV1(repos.AgentApprovalGrants)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Approval grant resolver: %w", composeErr)
 		}
-		controlAuthorizer, composeErr := appComposition.NewPersistentAgentTaskControlAuthorizerV1(repos.AgentPolicy)
+		controlAuthorizer, composeErr := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(repos.AgentPolicy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task control authorizer: %w", composeErr)
 		}

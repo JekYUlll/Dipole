@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -17,10 +17,11 @@ type PersistentAgentApprovalGrantResolverV1 struct {
 }
 
 func NewPersistentAgentApprovalGrantResolverV1(store application.AgentApprovalGrantStoreV1) (*PersistentAgentApprovalGrantResolverV1, error) {
-	return newPersistentAgentApprovalGrantResolverV1(store, time.Now)
+	return NewPersistentAgentApprovalGrantResolverV1WithClock(store, time.Now)
 }
 
-func newPersistentAgentApprovalGrantResolverV1(store application.AgentApprovalGrantStoreV1, now func() time.Time) (*PersistentAgentApprovalGrantResolverV1, error) {
+// NewPersistentAgentApprovalGrantResolverV1WithClock keeps time-dependent policy tests deterministic.
+func NewPersistentAgentApprovalGrantResolverV1WithClock(store application.AgentApprovalGrantStoreV1, now func() time.Time) (*PersistentAgentApprovalGrantResolverV1, error) {
 	if store == nil || now == nil {
 		return nil, fmt.Errorf("Agent Approval grant store and clock are required")
 	}

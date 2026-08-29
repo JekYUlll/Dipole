@@ -23,7 +23,7 @@ func TestPersistentAgentApprovalGrantResolverReturnsOneExactActiveGrant(t *testi
 			Status: application.AgentApprovalStatusApproved, ApprovedByUUID: "U100", ExpiresAt: now.Add(time.Minute),
 		}},
 	}
-	resolver, err := newPersistentAgentApprovalGrantResolverV1(store, func() time.Time { return now })
+	resolver, err := NewPersistentAgentApprovalGrantResolverV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new resolver: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestPersistentAgentApprovalGrantResolverFailsClosed(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			test.store.grants = test.grants
-			resolver, _ := newPersistentAgentApprovalGrantResolverV1(&test.store, func() time.Time { return now })
+			resolver, _ := NewPersistentAgentApprovalGrantResolverV1WithClock(&test.store, func() time.Time { return now })
 			_, err := resolver.ResolveGrant(context.Background(), application.AgentApprovalGrantRequestV1{
 				TaskUUID: "TASK-1", RunUUID: "RUN-1", RuntimeID: "dipole-agent", Mode: test.mode,
 				CapabilityID: "message.system.send", ResourceScope: scope, ArgumentsSHA256: strings.Repeat("a", 64),

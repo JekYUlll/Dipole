@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -15,10 +15,15 @@ type PersistentAgentApprovalServiceV1 struct {
 }
 
 func NewPersistentAgentApprovalServiceV1(store application.AgentPolicyStoreV1) (*PersistentAgentApprovalServiceV1, error) {
-	if store == nil {
+	return NewPersistentAgentApprovalServiceV1WithClock(store, time.Now)
+}
+
+// NewPersistentAgentApprovalServiceV1WithClock keeps time-dependent policy tests deterministic.
+func NewPersistentAgentApprovalServiceV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time) (*PersistentAgentApprovalServiceV1, error) {
+	if store == nil || now == nil {
 		return nil, fmt.Errorf("Agent Policy Store is required")
 	}
-	return &PersistentAgentApprovalServiceV1{store: store, now: time.Now}, nil
+	return &PersistentAgentApprovalServiceV1{store: store, now: now}, nil
 }
 
 func (s *PersistentAgentApprovalServiceV1) Request(ctx context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
