@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Gateway `session.force_logout` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，连接控制接口归属 Gateway；剩余消息与群事件 delivery handler 仍待继续迁移。
 - 2026-08-29：Gateway `contact.friend.deleted` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，新增服务自有契约测试；剩余消息与会话事件 delivery handler 仍待继续迁移。
 - 2026-08-29：Gateway `conversation.direct.read` Kafka handler 已迁入 `internal/services/gateway/infrastructure/kafka/`，新增服务自有契约测试；其余消息与会话事件 delivery handler 仍待继续迁移。
 - 2026-08-29：Gateway realtime delivery authority fence 已迁入 `internal/services/gateway/infrastructure/kafka/`，embedded 装配改用服务自有实现；完整消息 delivery handler 仍待继续迁移。

@@ -192,7 +192,7 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 			GroupUUID: p.GroupUUID, GroupName: p.GroupName, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
 		}
 	}))
-	platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
+	platformKafka.Subscriber.Register("session.force_logout", gatewaykafka.NewSessionKickHandler(hub))
 	platformKafka.Subscriber.Register("contact.friend.deleted", gatewaykafka.NewContactFriendDeletedHandler(hub))
 	return nil
 }
@@ -520,25 +520,6 @@ func deliverGroupEventHandler[T any](
 	}
 }
 
-func deliverSessionKickHandler(hub kafkaWSEventSender) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeSessionKickPayload(event)
-		if err != nil {
-			logger.Warn("decode session kick payload failed", zap.Error(err))
-			return err
-		}
-		if payload.All {
-			hub.DisconnectAllConnections(payload.UserUUID, payload.Reason)
-			return nil
-		}
-
-		hub.DisconnectConnections(payload.UserUUID, payload.ConnectionIDs, payload.Reason)
-		return nil
-	}
-}
-
 func decodeMessageEventPayload(event platformKafka.Event) (service.MessageEventPayload, error) {
 	envelope, err := requireEnvelope(event)
 	if err != nil {
@@ -562,20 +543,6 @@ func decodeGroupEventPayload(event platformKafka.Event) (service.GroupEventPaylo
 	payload, err := service.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
 	if err != nil {
 		return service.GroupEventPayload{}, fmt.Errorf("unmarshal group event payload: %w", err)
-	}
-
-	return payload, nil
-}
-
-func decodeSessionKickPayload(event platformKafka.Event) (service.SessionKickEventPayload, error) {
-	envelope, err := requireEnvelope(event)
-	if err != nil {
-		return service.SessionKickEventPayload{}, err
-	}
-
-	payload, err := service.DecodeSessionKickEventPayload(envelope.EventType, envelope.Payload)
-	if err != nil {
-		return service.SessionKickEventPayload{}, fmt.Errorf("unmarshal session kick payload: %w", err)
 	}
 
 	return payload, nil
