@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Gateway 显式 Composition Root 构造已强制要求 `application.TokenResolver`，缺失 verifier 会在服务启动前 fail fast；旧构造仅保留兼容包装，回归测试和结构门禁通过。
 - 2026-08-30：Gateway Server 已增加显式 `application.TokenResolver` 注入入口，独立 Gateway bootstrap 负责组合 Core JWT verifier；旧构造仅保留兼容包装，服务层不再自行决定认证实现。
 - 2026-08-30：WebSocket Authenticator 已改用 `internal/application.TokenSessionResolver`，移除 transport 对 Core Auth 具体 TokenSession 类型的编译依赖；Core 继续拥有 JWT verifier，Gateway 后续可通过 Composition Root 注入替代实现。
 - 2026-08-30：共享 authentication middleware 已改用 `internal/application` 的 token resolver/session contract，移除对 Core Auth 具体 TokenService 的编译依赖；Core 继续拥有 JWT issuer/verifier，后续可独立替换 Gateway verifier。
