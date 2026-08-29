@@ -147,6 +147,33 @@ func (q *Queries) ClaimAgentWorkflowRepairExecution(ctx context.Context, arg Cla
 	return result.RowsAffected()
 }
 
+const commitAgentWorkflowRepairExecution = `-- name: CommitAgentWorkflowRepairExecution :execrows
+UPDATE agent_workflow_repair_executions
+SET status = 'committed', finished_at = ?, updated_at = UTC_TIMESTAMP()
+WHERE execution_uuid = ? AND executor_uuid = ? AND executor_grant_version = ?
+  AND status = 'executing' AND started_at IS NOT NULL AND finished_at IS NULL
+`
+
+type CommitAgentWorkflowRepairExecutionParams struct {
+	FinishedAt           sql.NullTime
+	ExecutionUuid        string
+	ExecutorUuid         string
+	ExecutorGrantVersion uint64
+}
+
+func (q *Queries) CommitAgentWorkflowRepairExecution(ctx context.Context, arg CommitAgentWorkflowRepairExecutionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, commitAgentWorkflowRepairExecution,
+		arg.FinishedAt,
+		arg.ExecutionUuid,
+		arg.ExecutorUuid,
+		arg.ExecutorGrantVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const consumeAgentApproval = `-- name: ConsumeAgentApproval :execrows
 UPDATE agent_approvals
 SET status = 'consumed', consumed_at = ?, updated_at = NOW(3)

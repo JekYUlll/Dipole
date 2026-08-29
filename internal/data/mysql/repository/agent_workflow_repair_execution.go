@@ -119,3 +119,60 @@ func (r *AgentPolicyRepository) ApplyWorkflowRepairProjection(ctx context.Contex
 	}
 	return rows > 0, nil
 }
+
+var errRepairExecutionCASNoop = errors.New("Workflow repair execution CAS did not apply")
+
+func (r *AgentPolicyRepository) CommitWorkflowRepairProjection(ctx context.Context, executionUUID, executorUUID string, grantVersion uint64, expected *application.AgentTaskWorkflowProjectionV1, target application.AgentTaskWorkflowProjectionV1, finishedAt time.Time) (bool, error) {
+	if r.store == nil || strings.TrimSpace(executionUUID) == "" || strings.TrimSpace(executorUUID) == "" || grantVersion == 0 || finishedAt.IsZero() {
+		return false, fmt.Errorf("validate Workflow repair transactional commit: %w", application.ErrAgentWorkflowRepairPrecondition)
+	}
+	target.TaskUUID = strings.TrimSpace(target.TaskUUID)
+	if err := target.Validate(); err != nil || target.TaskUUID == "" {
+		return false, fmt.Errorf("validate Workflow repair transactional target: %w", application.ErrAgentWorkflowRepairPrecondition)
+	}
+	if expected != nil && (expected.Validate() != nil || expected.TaskUUID != target.TaskUUID) {
+		return false, fmt.Errorf("validate Workflow repair transactional expected: %w", application.ErrAgentWorkflowRepairPrecondition)
+	}
+	workflowID := sql.NullString{String: target.WorkflowID, Valid: true}
+	workflowRunID := sql.NullString{String: target.RunID, Valid: true}
+	workflowStatus := sql.NullString{String: string(target.Status), Valid: true}
+	workflowRevision := sql.NullInt64{Int64: int64(target.Revision), Valid: true}
+	err := r.store.WithinTx(ctx, nil, func(q *generated.Queries) error {
+		var rows int64
+		var applyErr error
+		if expected == nil {
+			rows, applyErr = q.ApplyAgentWorkflowRepairProjectionMissingCurrent(ctx, generated.ApplyAgentWorkflowRepairProjectionMissingCurrentParams{
+				WorkflowID: workflowID, WorkflowRunID: workflowRunID, WorkflowStatus: workflowStatus, WorkflowRevision: workflowRevision, TaskUuid: target.TaskUUID,
+			})
+		} else {
+			rows, applyErr = q.ApplyAgentWorkflowRepairProjectionExpectedCurrent(ctx, generated.ApplyAgentWorkflowRepairProjectionExpectedCurrentParams{
+				WorkflowID: workflowID, WorkflowRunID: workflowRunID, WorkflowStatus: workflowStatus, WorkflowRevision: workflowRevision,
+				TaskUuid: target.TaskUUID, WorkflowID_2: sql.NullString{String: expected.WorkflowID, Valid: true}, WorkflowRunID_2: sql.NullString{String: expected.RunID, Valid: true},
+				WorkflowStatus_2: sql.NullString{String: string(expected.Status), Valid: true}, WorkflowRevision_2: sql.NullInt64{Int64: int64(expected.Revision), Valid: true},
+			})
+		}
+		if applyErr != nil {
+			return fmt.Errorf("apply Workflow repair projection in transaction: %w", applyErr)
+		}
+		if rows == 0 {
+			return errRepairExecutionCASNoop
+		}
+		committed, commitErr := q.CommitAgentWorkflowRepairExecution(ctx, generated.CommitAgentWorkflowRepairExecutionParams{
+			FinishedAt: sql.NullTime{Time: finishedAt.UTC(), Valid: true}, ExecutionUuid: strings.TrimSpace(executionUUID), ExecutorUuid: strings.TrimSpace(executorUUID), ExecutorGrantVersion: grantVersion,
+		})
+		if commitErr != nil {
+			return fmt.Errorf("commit Workflow repair execution in transaction: %w", commitErr)
+		}
+		if committed == 0 {
+			return errRepairExecutionCASNoop
+		}
+		return nil
+	})
+	if errors.Is(err, errRepairExecutionCASNoop) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}

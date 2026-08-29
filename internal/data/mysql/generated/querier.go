@@ -33,6 +33,7 @@ type Querier interface {
 	ClaimCassandraBackfillJob(ctx context.Context, arg ClaimCassandraBackfillJobParams) error
 	ClaimSearchBackfillJob(ctx context.Context, arg ClaimSearchBackfillJobParams) error
 	ClaimSyncReplayJob(ctx context.Context, arg ClaimSyncReplayJobParams) error
+	CommitAgentWorkflowRepairExecution(ctx context.Context, arg CommitAgentWorkflowRepairExecutionParams) (int64, error)
 	CompleteAgentEvent(ctx context.Context, arg CompleteAgentEventParams) (int64, error)
 	CompleteAgentMemoryLineageBackfillJob(ctx context.Context, arg CompleteAgentMemoryLineageBackfillJobParams) (sql.Result, error)
 	CompleteAgentModelCall(ctx context.Context, arg CompleteAgentModelCallParams) (int64, error)
