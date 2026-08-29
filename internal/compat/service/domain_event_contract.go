@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/model"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
 var (
@@ -52,13 +53,13 @@ func DecodeContactFriendDeletedPayload(eventType string, raw json.RawMessage) (C
 	return payload, nil
 }
 
-func DecodeSessionKickEventPayload(eventType string, raw json.RawMessage) (SessionKickEventPayload, error) {
+func DecodeSessionKickEventPayload(eventType string, raw json.RawMessage) (coresession.SessionKickEventPayload, error) {
 	if err := requireDomainEventType(eventType, "session.force_logout"); err != nil {
-		return SessionKickEventPayload{}, err
+		return coresession.SessionKickEventPayload{}, err
 	}
-	var payload SessionKickEventPayload
+	var payload coresession.SessionKickEventPayload
 	if err := json.Unmarshal(raw, &payload); err != nil {
-		return SessionKickEventPayload{}, fmt.Errorf("decode Session event payload: %w", err)
+		return coresession.SessionKickEventPayload{}, fmt.Errorf("decode Session event payload: %w", err)
 	}
 	return payload, nil
 }
