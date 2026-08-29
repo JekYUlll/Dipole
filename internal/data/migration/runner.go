@@ -166,7 +166,7 @@ func (r *Runner) ValidateCurrent(ctx context.Context) error {
 	}
 	for _, migration := range r.migrations {
 		if _, ok := applied[migration.Version]; !ok {
-			return fmt.Errorf("database migration %06d_%s is missing; run cmd/migrate", migration.Version, migration.Name)
+			return fmt.Errorf("database migration %06d_%s is missing; run cmd/tools/migrate", migration.Version, migration.Name)
 		}
 	}
 	return nil

@@ -33,7 +33,7 @@ mysql:
 
 ## Migration Ownership
 
-`cmd/migrate` 仍是唯一 schema 变更入口。Runner 的 Up/Down 使用 schema-scoped MySQL advisory lock：
+`cmd/tools/migrate` 仍是唯一 schema 变更入口。Runner 的 Up/Down 使用 schema-scoped MySQL advisory lock：
 
 ```text
 dipole:migrate:<sha256(database-name)[:48]>

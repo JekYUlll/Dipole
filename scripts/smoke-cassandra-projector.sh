@@ -32,7 +32,7 @@ compose exec -T cassandra cqlsh <"$root_dir/db/cassandra/001_timeline.cql"
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$projector_binary" ./cmd/cassandra-projector
+  CGO_ENABLED=0 go build -o "$projector_binary" ./cmd/tools/cassandra-projector
 )
 
 docker run -d --name "$projector_container" \
