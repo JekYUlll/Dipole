@@ -596,6 +596,7 @@
 ### AD-017：Redis Pub/Sub 切主窗口保持 at-most-once 语义
 
 - **本轮验证：** Redis Sentinel 真实三节点故障演练已验证 master 切换和 replica 重加入期间的客户端恢复、Presence、Hot Group 与限流语义；Pub/Sub 在切主瞬间的已发布消息仍无法补读，持久可靠性继续由 Kafka/Sync Timeline 承担。
+- **验证记录：** 2026-08-30 重新执行 `scripts/smoke-redis-failover.sh`，真实验证三节点 Sentinel 切主、客户端重连、Pub/Sub、Presence、Hot Group、限流语义恢复，以及原主节点重启后重新加入为副本；该证据来自隔离栈，生产 Redis 配置和切换策略保持不变。
 - **追加验证：** 2026-08-29 修正 smoke 构建入口至 `internal/platform/cache` 后重新完成三 Redis + 三 Sentinel 演练；当前 master 停止、新 master 发现、Pub/Sub 重连、Presence/Hot Group/限流恢复及旧 master 以 replica 重加入均通过。Pub/Sub at-most-once 边界保持不变。
 
 - **优先级：** P2

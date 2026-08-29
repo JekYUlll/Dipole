@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：重新执行 Redis Sentinel 三节点故障转移 smoke，真实验证客户端重连、Pub/Sub、Presence、Hot Group 和限流语义恢复，以及原主节点重新加入为副本；隔离栈自动清理，生产 Redis 配置保持不变。
 - 2026-08-30：重新执行 Elasticsearch Search Service 隔离 smoke，真实验证 Elasticsearch 9.5.2 查询路径、Core 派生 scope 和 Internal RPC 契约；临时存储栈自动清理，生产 Search Alias 与索引切换保持不变。
 - 2026-08-30：重新执行 Cassandra read-routing 隔离 smoke，真实验证 migration v50、Cassandra Seq 页面主读，以及 payload 损坏/缺行按同一 cursor 回退 MySQL；临时 Compose 资源自动清理，生产主读开关保持关闭。
 - Agent Runtime active 启动增加 release manifest 绑定：必须提供 manifest 文件、candidate 必须一致且阶段必须为 `user_gray`；默认 shadow 路径不变，缺失/读取失败/阶段或版本漂移均 fail closed。
