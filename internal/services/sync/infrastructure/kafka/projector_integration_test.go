@@ -17,6 +17,7 @@ import (
 	sqlcrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -75,7 +76,7 @@ func TestKafkaMySQLDualRunIntegration(t *testing.T) {
 		t.Fatalf("ensure Kafka topics: %v", err)
 	}
 	catchupFanout := true
-	catchupPayload := service.MessageEventPayload{
+	catchupPayload := messagedomain.MessageEventPayload{
 		MessageID: "M-SYNC-CATCHUP", ConversationKey: "direct:U300:U400", MessageSeq: 1,
 		SenderUUID: "U300", TargetUUID: "U400", TargetType: model.MessageTargetDirect,
 		RecipientUUIDs: []string{"U300", "U400"}, SyncFanout: &catchupFanout, SentAt: time.Now().UTC(),
