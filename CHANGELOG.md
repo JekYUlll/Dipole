@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：补充 Multipart P95 延迟告警的正向 promtool 触发测试，确保 30 秒阈值和 `operation` 标签在规则变更后仍可验证。
 - 2026-08-30：增加 Multipart Prometheus 告警规则与 promtool 测试，覆盖操作错误、整文件 checksum mismatch 和高延迟；修正 Core 指标将 checksum mismatch 以专用 outcome 暴露，规则挂载保持可回滚。
 - 2026-08-30：Multipart reconciliation 增加 `--reconcile-fail-on-drift` 告警门禁，显式开启时发现 MinIO/Redis 跨存储漂移返回退出码 `3`；默认仍只读且不修改数据。
 - 2026-08-30：Multipart cleanup 增加只读 `--reconcile` 模式，对照 MinIO 未完成 upload 与 Redis session metadata，识别跨存储漂移并以测试保证默认不修改任何数据。
