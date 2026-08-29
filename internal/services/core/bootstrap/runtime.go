@@ -19,6 +19,7 @@ import (
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	"github.com/JekYUlll/Dipole/internal/services/core/server"
@@ -93,6 +94,8 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB),
 		platformStorage.Client,
 	)
+	multipartMetrics := corefile.NewMultipartMetrics()
+	messaging.Files.WithMultipartMetrics(multipartMetrics)
 
 	runtime := &CoreRuntime{}
 	var systemMessages applicationPort.SystemMessageSender
@@ -121,7 +124,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			return nil, fmt.Errorf("initialize Core capability RPC: %w", err)
 		}
 	}
-	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber)
+	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber, multipartMetrics)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start Core metrics: %w", err)
