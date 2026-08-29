@@ -378,6 +378,7 @@
 - **本轮进展：** Registry 已在注册边界校验 Schema 摘要关键字、`properties` 映射和 4 KiB 上限，阻止未知描述字段或异常膨胀进入 Context；后续新增 Capability 仍需补齐 descriptor 与契约测试。
 - **本轮进展：** Registry 现在深度冻结注册 descriptor 及嵌套 Schema，形成稳定的 capability authority snapshot；新增 Capability 仍需通过 descriptor、Schema 和权限契约测试。
 - **本轮进展：** Context Compiler v2 现在接收 route-aware 的最大输入窗口，按最小候选模型窗口扣除最大输出预算，超出请求在编译入口 fail closed；新增回归测试，v1/旧构造路径保持兼容。
+- **本轮进展：** Memory candidate 的公开解析边界新增正文与 compact 摘要凭据模式校验；即使绕过 ObservationWorker 直接提交候选，也会在 Reflection/Ledger 前 fail closed，并由回归测试覆盖两条内容路径。
 - **本轮进展：** TypeScript Timeline RPC client 现在在消费前校验每个事件的 Task 绑定、非空 `event_id` 和严格递增 `event_seq`，并通过跨任务、重复和倒序事件测试验证 fail-closed；服务端协议和默认 Timeline 开关保持不变。
 - **本轮进展：** Context manifest 已为实际选中的 full/compact fragment 保存 SHA-256，审计可在不落正文的前提下核验重放与上下文漂移；完整生产 evidence 仍待共享环境窗口。
 - **建议方向：** 以已验证的 repair contract 为基础补齐 operator 灰度、运行时告警和全套件稳定运行证据，再以共享环境证据开启前端 flag；继续只返回低敏元数据，随后按证据逐步加入 Artifact 引用与 Pencil/视觉回归。
