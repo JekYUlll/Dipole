@@ -5,7 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
+	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 func TestLazyCoreCapabilityDoesNotBlockMessageStartupAndRetries(t *testing.T) {
@@ -31,12 +34,12 @@ func TestLazyCoreCapabilityDoesNotBlockMessageStartupAndRetries(t *testing.T) {
 		t.Fatal("failed lazy dial must not be cached")
 	}
 
-	server, err := NewCoreRPCServer(config.InternalRPC{
+	server, err := legacybootstrap.NewCoreRPCServer(config.InternalRPC{
 		Enabled:            true,
 		SharedSecret:       "test-secret",
 		CoreListenAddress:  "127.0.0.1:0",
 		DialTimeoutSeconds: 1,
-	}, rpcCoreStub{})
+	}, messageCoreCapabilityStub{})
 	if err != nil {
 		t.Fatalf("start Core RPC server: %v", err)
 	}
@@ -63,4 +66,36 @@ func TestLazyCoreCapabilityDoesNotBlockMessageStartupAndRetries(t *testing.T) {
 	if _, err := lazy.GetUserByUUID("U-closed"); err == nil {
 		t.Fatal("closed lazy capability must reject new calls")
 	}
+}
+
+type messageCoreCapabilityStub struct{}
+
+var _ application.CoreCapability = messageCoreCapabilityStub{}
+
+func (messageCoreCapabilityStub) GetUserByUUID(userUUID string) (*model.User, error) {
+	return &model.User{UUID: userUUID, Nickname: "RPC User"}, nil
+}
+
+func (messageCoreCapabilityStub) CanSendDirectMessage(string, string) (bool, error) {
+	return true, nil
+}
+
+func (messageCoreCapabilityStub) GetGroupByUUID(groupUUID string) (*model.Group, error) {
+	return &model.Group{UUID: groupUUID, Name: "RPC Group"}, nil
+}
+
+func (messageCoreCapabilityStub) GetGroupMember(groupUUID, userUUID string) (*model.GroupMember, error) {
+	return &model.GroupMember{GroupUUID: groupUUID, UserUUID: userUUID}, nil
+}
+
+func (messageCoreCapabilityStub) ListGroupMembers(groupUUID string) ([]*model.GroupMember, error) {
+	return []*model.GroupMember{{GroupUUID: groupUUID, UserUUID: "U1"}}, nil
+}
+
+func (messageCoreCapabilityStub) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	return &model.UploadedFile{UUID: fileUUID, UploaderUUID: uploaderUUID, FileName: "rpc-file"}, nil
+}
+
+func (messageCoreCapabilityStub) ListSearchConversationKeys(string) ([]string, error) {
+	return nil, nil
 }

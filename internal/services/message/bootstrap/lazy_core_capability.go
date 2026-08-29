@@ -3,12 +3,16 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
+	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
 	"google.golang.org/grpc"
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
@@ -57,7 +61,7 @@ func (c *lazyCoreCapability) resolve(ctx context.Context) (*coregrpc.Client, *gr
 	}
 	c.mu.Unlock()
 
-	client, conn, err := DialCoreCapability(ctx, c.cfg)
+	client, conn, err := dialCoreCapability(ctx, c.cfg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -74,6 +78,22 @@ func (c *lazyCoreCapability) resolve(ctx context.Context) (*coregrpc.Client, *gr
 	}
 	c.client, c.conn = client, conn
 	return client, conn, nil
+}
+
+func dialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
+	connection, err := platformrpc.Dial(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{
+		Service: messageServiceName,
+		Secret:  cfg.SharedSecret,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial core rpc: %w", err)
+	}
+	client, err := coregrpc.NewClientForService(corev1.NewCoreCapabilityServiceClient(connection), messageServiceName)
+	if err != nil {
+		_ = connection.Close()
+		return nil, nil, fmt.Errorf("create core capability client: %w", err)
+	}
+	return client, connection, nil
 }
 
 func (c *lazyCoreCapability) Check(ctx context.Context) error {

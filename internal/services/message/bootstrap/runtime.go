@@ -28,7 +28,7 @@ const messageServiceName = "dipole-message"
 
 type MessageRuntime struct {
 	rpc                *legacybootstrap.InternalRPCServer
-	coreCapability     *legacybootstrap.LazyCoreCapability
+	coreCapability     *lazyCoreCapability
 	outboxFlow         *legacybootstrap.OutboxRelay
 	shutdownSec        int
 	metrics            *platformObservability.MetricsServer
@@ -86,7 +86,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
 	runtime := &MessageRuntime{
-		coreCapability: legacybootstrap.NewLazyCoreCapability(rpcCfg),
+		coreCapability: newLazyCoreCapability(rpcCfg),
 		shutdownSec:    rpcCfg.ShutdownTimeoutSeconds,
 	}
 	var duplicateHydrator applicationPort.SyncMessageHydrator
@@ -169,7 +169,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 	}
 	readinessProbes := []platformObservability.DependencyProbe{
 		platformRuntime.MySQLReadinessProbe("mysql", platformmysql.SQLDB),
-		legacybootstrap.LazyCoreCapabilityReadinessProbe("core-rpc", runtime.coreCapability),
+		lazyCoreCapabilityReadinessProbe("core-rpc", runtime.coreCapability),
 	}
 	if messageCfg.RuntimeMode == "owner" {
 		readinessProbes = append(readinessProbes, platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client))
