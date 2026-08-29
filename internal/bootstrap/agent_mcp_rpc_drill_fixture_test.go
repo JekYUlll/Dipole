@@ -19,6 +19,7 @@ import (
 
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	"github.com/JekYUlll/Dipole/internal/config"
+	corepolicy "github.com/JekYUlll/Dipole/internal/services/core/rpcpolicy"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -94,7 +95,7 @@ func TestAgentMCPRPCDrillFixtureProcess(t *testing.T) {
 	}
 	server, err := newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{agentServiceName}, func(server *grpc.Server) {
 		agentv1.RegisterAgentCapabilityServiceServer(server, fixture)
-	}, restrictCoreServiceMethods)
+	}, corepolicy.RestrictAgentServiceMethods)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +325,7 @@ func startAgentMCPRPCDrillServer(t *testing.T, certs agentMCPRPCDrillCertificate
 		TLSCertFile: certs.coreCert, TLSKeyFile: certs.coreKey, TLSCAFile: certs.ca, TLSServerName: "core"}
 	server, err := newInternalRPCServer(cfg, cfg.CoreListenAddress, []string{agentServiceName}, func(server *grpc.Server) {
 		agentv1.RegisterAgentCapabilityServiceServer(server, fixture)
-	}, restrictCoreServiceMethods)
+	}, corepolicy.RestrictAgentServiceMethods)
 	if err != nil {
 		t.Fatal(err)
 	}
