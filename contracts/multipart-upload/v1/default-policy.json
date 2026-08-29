@@ -1,0 +1,13 @@
+{
+  "schema_version": "dipole.multipart-upload.policy.v1",
+  "policy_version": "v1",
+  "mode": "relay",
+  "fallback_mode": "relay",
+  "direct_upload_threshold_bytes": 4194304,
+  "max_file_size_bytes": 52428800,
+  "chunk_size_bytes": 5242880,
+  "max_concurrency": 3,
+  "max_retries": 2,
+  "retry_delay_ms": 250,
+  "presign_url_ttl_seconds": 900
+}
