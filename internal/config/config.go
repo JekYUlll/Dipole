@@ -189,6 +189,7 @@ type Storage struct {
 	Provider                     string `mapstructure:"provider"`
 	Endpoint                     string `mapstructure:"endpoint"`
 	PresignEndpoint              string `mapstructure:"presign_endpoint"`
+	PresignedUploadProxyEnabled  bool   `mapstructure:"presigned_upload_proxy_enabled"`
 	AccessKey                    string `mapstructure:"access_key"`
 	SecretKey                    string `mapstructure:"secret_key"`
 	UseSSL                       bool   `mapstructure:"use_ssl"`
@@ -462,6 +463,7 @@ func Load() error {
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
 		v.SetDefault("storage.presign_endpoint", "")
+		v.SetDefault("storage.presigned_upload_proxy_enabled", false)
 		v.SetDefault("storage.access_key", "dipoleplatform")
 		v.SetDefault("storage.secret_key", "dipoleplatformpass")
 		v.SetDefault("storage.use_ssl", false)
