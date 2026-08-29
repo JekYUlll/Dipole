@@ -3,7 +3,7 @@ package httpdto
 import (
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
 type DeviceSessionResponse struct {
@@ -17,7 +17,7 @@ type DeviceSessionResponse struct {
 	LastSeenAt   string `json:"last_seen_at"`
 }
 
-func ToDeviceSessionResponses(devices []*service.DeviceSessionView) []*DeviceSessionResponse {
+func ToDeviceSessionResponses(devices []*coresession.DeviceSessionView) []*DeviceSessionResponse {
 	result := make([]*DeviceSessionResponse, 0, len(devices))
 	for _, device := range devices {
 		if device == nil {
