@@ -33,6 +33,22 @@ func (s *repairExecutionStoreStubV1) GetWorkflowRepairExecution(_ context.Contex
 	return &copy, nil
 }
 
+func (s *repairExecutionStoreStubV1) ClaimWorkflowRepairExecution(_ context.Context, executionUUID, executorUUID string, grantVersion uint64, _ time.Time) (bool, error) {
+	if s.execution == nil || s.execution.ExecutionUUID != executionUUID || s.execution.ExecutorUUID != executorUUID || s.execution.ExecutorGrantVersion != grantVersion || s.execution.Status != application.AgentWorkflowRepairExecutionStatusPrepared {
+		return false, nil
+	}
+	s.execution.Status = application.AgentWorkflowRepairExecutionStatusExecuting
+	return true, nil
+}
+
+func (s *repairExecutionStoreStubV1) FailWorkflowRepairExecution(_ context.Context, executionUUID, executorUUID, _ string, _ time.Time) (bool, error) {
+	if s.execution == nil || s.execution.ExecutionUUID != executionUUID || s.execution.ExecutorUUID != executorUUID || s.execution.Status != application.AgentWorkflowRepairExecutionStatusExecuting {
+		return false, nil
+	}
+	s.execution.Status = application.AgentWorkflowRepairExecutionStatusFailed
+	return true, nil
+}
+
 func TestPersistentAgentWorkflowRepairPrepareRequiresApprovedQuorumAndIsIdempotent(t *testing.T) {
 	now := time.Date(2026, 8, 29, 0, 0, 0, 0, time.UTC)
 	policies := &agentPolicyStoreStub{tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1"}}}
