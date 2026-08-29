@@ -19,6 +19,7 @@ import (
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
+	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
@@ -316,7 +317,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		ConstLabels: prometheus.Labels{"authority": string(deliveryAuthority)},
 	})
 	authorityMetric.Set(1)
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), gatewayServiceName, platformKafka.Subscriber, authorityMetric)
+	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), gatewayServiceName, platformKafka.Subscriber, authorityMetric)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start gateway metrics: %w", err)
@@ -337,7 +338,7 @@ func InitializeGateway(ctx context.Context) (*GatewayRuntime, error) {
 		return nil, fmt.Errorf("configure Gateway dependency readiness: %w", err)
 	}
 	if runtime.metrics != nil {
-		markRuntimeReady(runtime.metrics)
+		platformRuntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("gateway runtime initialized",
 		zap.String("core_http_target", gatewayCfg.CoreHTTPTarget),
@@ -377,7 +378,7 @@ func (r *GatewayRuntime) Close() {
 		r.deliveryObserver.Close()
 		r.deliveryObserver = nil
 	}
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("gateway metrics close failed", zap.Error(err))
 	}
 	if err := platformKafka.CloseConsumer(); err != nil {

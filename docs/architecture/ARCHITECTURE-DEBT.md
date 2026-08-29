@@ -84,6 +84,7 @@
 - **本轮进展：** Gateway 入口装配已收敛到 `internal/services/gateway/bootstrap/`，`cmd/services/gateway` 不再直接依赖共享 `internal/bootstrap`；当前底层 Gateway runtime 仍通过兼容 facade 调用共享实时投递 authority、Kafka、Redis、gRPC、metrics 和 readiness 设施，后续继续完成实现迁移。
 - **本轮进展：** Core 入口装配已收敛到 `internal/services/core/bootstrap/`，`cmd/services/core` 不再直接依赖共享 `internal/bootstrap`；入口显式区分独立 Core 与 embedded 回滚路径，底层 Core runtime 仍通过兼容 facade 调用共享 RPC、Kafka、storage、metrics 和 readiness 设施，后续继续完成实现迁移。
 - **本轮进展：** Search Indexer 入口装配已收敛到 `internal/services/search-indexer/bootstrap/`，`cmd/services/search-indexer` 不再直接依赖共享 `internal/bootstrap`；底层 Search Indexer runtime 仍通过兼容 facade 调用共享 Kafka、Elasticsearch、metrics 和 readiness 设施，后续继续完成实现迁移。
+- **本轮进展：** 跨服务 metrics 生命周期已下沉到 `internal/platform/runtime/`，所有长期 runtime 已切换新平台 API，`internal/bootstrap/metrics.go` 仅保留兼容 helper；依赖 readiness 探针和内部 RPC server 仍待按服务边界继续拆分。
 - **本轮进展：** Message application 装配已从 `internal/app` 迁入 `internal/services/message/application/`，保留包含 Agent command、Outbox 和持久化扩展方法的 local adapter；`internal/app` 仅负责 Composition Root 参数转换，结构门禁已增加 Message application 路径检查。
 - **本轮进展：** Core capability 实现已从 `internal/app` 迁入 `internal/services/core/application/`，factory 只接收实际使用的最小 store 接口；`internal/app` 保留兼容构造入口，结构门禁已阻止旧具体实现回流。
 - **本轮进展：** Core Conversation application 的装配已迁入 `internal/services/core/application/`，`MessagingServices` 改持有服务专属 local adapter；底层 `internal/service` 实现暂保留，后续继续按 application port 拆分。

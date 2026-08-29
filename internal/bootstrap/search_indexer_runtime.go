@@ -13,6 +13,7 @@ import (
 	elasticsearchdata "github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	searchprojector "github.com/JekYUlll/Dipole/internal/services/search/infrastructure/kafka"
 )
 
@@ -76,7 +77,7 @@ func InitializeSearchIndexer(ctx context.Context) (*SearchIndexerRuntime, error)
 		cleanup()
 		return nil, fmt.Errorf("start Search Indexer consumer: %w", err)
 	}
-	runtime.metrics, err = startRuntimeMetrics(config.MetricsConfig(), searchIndexerServiceName, platformKafka.Subscriber)
+	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), searchIndexerServiceName, platformKafka.Subscriber)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start Search Indexer metrics: %w", err)
@@ -88,7 +89,7 @@ func InitializeSearchIndexer(ctx context.Context) (*SearchIndexerRuntime, error)
 		return nil, fmt.Errorf("configure Search Indexer dependency readiness: %w", err)
 	}
 	if runtime.metrics != nil {
-		markRuntimeReady(runtime.metrics)
+		platformRuntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("Search Indexer runtime initialized",
 		zap.String("consumer", searchIndexerServiceName),
@@ -102,7 +103,7 @@ func (r *SearchIndexerRuntime) Close() {
 	if r == nil {
 		return
 	}
-	if err := closeRuntimeMetrics(r.metrics); err != nil {
+	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("Search Indexer metrics close failed", zap.Error(err))
 	}
 	if err := platformKafka.CloseConsumer(); err != nil {
