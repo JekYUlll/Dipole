@@ -132,17 +132,17 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	}
 	if runtime.metrics != nil {
 		probes := []platformObservability.DependencyProbe{
-			mysqlReadinessProbe("mysql", platformmysql.SQLDB),
-			redisReadinessProbe("redis", cache.RDB),
+			platformRuntime.MySQLReadinessProbe("mysql", platformmysql.SQLDB),
+			platformRuntime.RedisReadinessProbe("redis", cache.RDB),
 		}
 		if platformKafka.Client != nil {
-			probes = append(probes, kafkaReadinessProbe("kafka", platformKafka.Client))
+			probes = append(probes, platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client))
 		}
-		if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(), probes...); err != nil {
+		if err := platformRuntime.ConfigureDependencyReadiness(runtime.metrics, config.MetricsConfig(), probes...); err != nil {
 			cleanup()
 			return nil, fmt.Errorf("configure Core readiness: %w", err)
 		}
-		bindRPCReadiness(runtime.metrics, runtime.coreRPC)
+		platformRuntime.BindRPCReadiness(runtime.metrics, runtime.coreRPC)
 		platformRuntime.MarkReady(runtime.metrics)
 	}
 	logger.Info("standalone Core runtime initialized", zap.String("mode", gatewayMode), zap.String("rpc_addr", rpcAddress(runtime.coreRPC)))

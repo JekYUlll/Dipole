@@ -165,13 +165,13 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("start message metrics: %w", err)
 	}
 	readinessProbes := []platformObservability.DependencyProbe{
-		mysqlReadinessProbe("mysql", platformmysql.SQLDB),
+		platformRuntime.MySQLReadinessProbe("mysql", platformmysql.SQLDB),
 		lazyCoreCapabilityReadinessProbe("core-rpc", runtime.coreCapability),
 	}
 	if messageCfg.RuntimeMode == "owner" {
-		readinessProbes = append(readinessProbes, kafkaReadinessProbe("kafka", platformKafka.Client))
+		readinessProbes = append(readinessProbes, platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client))
 	}
-	if err := configureRuntimeDependencyReadiness(runtime.metrics, config.MetricsConfig(), readinessProbes...); err != nil {
+	if err := platformRuntime.ConfigureDependencyReadiness(runtime.metrics, config.MetricsConfig(), readinessProbes...); err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("configure Message dependency readiness: %w", err)
 	}
@@ -181,7 +181,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("start message rpc server: %w", err)
 	}
 	if runtime.metrics != nil {
-		bindRPCReadiness(runtime.metrics, runtime.rpc)
+		platformRuntime.BindRPCReadiness(runtime.metrics, runtime.rpc)
 		platformRuntime.MarkReady(runtime.metrics)
 	}
 	return runtime, nil

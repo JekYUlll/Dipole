@@ -366,11 +366,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		return nil, fmt.Errorf("start runtime metrics: %w", err)
 	}
 	if rt.metrics != nil {
-		if err := configureRuntimeDependencyReadiness(rt.metrics, config.MetricsConfig(), mysqlReadinessProbe("mysql", platformmysql.SQLDB)); err != nil {
+		if err := platformRuntime.ConfigureDependencyReadiness(rt.metrics, config.MetricsConfig(), platformRuntime.MySQLReadinessProbe("mysql", platformmysql.SQLDB)); err != nil {
 			rt.Close()
 			return nil, fmt.Errorf("configure Core dependency readiness: %w", err)
 		}
-		bindRPCReadiness(rt.metrics, rt.coreRPC)
+		platformRuntime.BindRPCReadiness(rt.metrics, rt.coreRPC)
 		platformRuntime.MarkReady(rt.metrics)
 	}
 

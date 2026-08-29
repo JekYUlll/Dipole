@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：将依赖 readiness 编排、Kafka consumer 初始分配检查、Cassandra schema 检查和 RPC serving 绑定下沉到 `internal/platform/runtime`，各服务 runtime 已切换公开平台 API，并保留旧 bootstrap helper 作为回滚兼容出口；服务特有启动校验和共享环境 readiness 证据仍待继续收敛。
 - 2026-08-29：Kafka 三节点 quorum、consumer rebalance 和 Prometheus observability smoke 均通过，验证 RF=3/min ISR=2 下的 broker 故障拒绝与恢复、6 分区 ownership 接管、lag 归零及 retry/DLQ/ISR 指标；同时修复 cluster profile 漏挂 duplicate hydration 和 Agent Timeline repair rule files，并加入 Compose 挂载门禁。共享候选环境的 Kafka ownership 切换与可执行回滚 receipt 仍待完成。
 - 2026-08-29：新增 `deploy/microservices/inbox-projector.yml` 可回滚 override，将 Message projector ownership、最小 MySQL 账号和 Sync projector 开关绑定到同一配置切片；`scripts/check-compose.sh` 已加入一致性门禁，实际候选环境切换仍待维护窗口 receipt。
 - 2026-08-29：重新通过 `scripts/smoke-sync-write-ownership.sh`，真实 MySQL 8.4 验证 atomic/projector 最小权限、Inbox 写责任切换和 rollback contract；该证据支持候选部署，仍不替代共享环境的 Kafka ownership 与生产回切 receipt。
