@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 )
 

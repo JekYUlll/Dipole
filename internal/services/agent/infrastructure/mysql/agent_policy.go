@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
