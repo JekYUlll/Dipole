@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "exports": [
+    { "path": "exports/foundations.png", "purpose": "foundations" },
+    { "path": "exports/login-desktop.png", "purpose": "login-desktop" },
+    { "path": "exports/login-mobile.png", "purpose": "login-mobile" },
+    { "path": "exports/chat-desktop.png", "purpose": "chat-desktop" },
+    { "path": "exports/chat-mobile.png", "purpose": "chat-mobile" },
+    { "path": "exports/review-checklist.png", "purpose": "review-checklist" },
+    { "path": "exports/dipole-ui-overview.png", "purpose": "overview" },
+    { "path": "exports/search-v1", "purpose": "search-v1" },
+    { "path": "exports/sync-v1", "purpose": "sync-v1" },
+    { "path": "exports/agent-repair-v1", "purpose": "agent-repair-v1" },
+    { "path": "exports/agent-elicitation-v1", "purpose": "agent-elicitation-v1" },
+    { "path": "exports/agent-subscription-v1", "purpose": "agent-subscription-v1" },
+    { "path": "exports/agent-subscription-create-v1", "purpose": "agent-subscription-create-v1" }
+  ]
+}
