@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：删除经全仓调用审计确认无调用者的 `internal/compat/service/sync_compat.go`，Sync domain 继续由 `internal/services/sync/domain` 唯一持有，其他兼容入口和回滚路径保持不变。
 - 2026-08-30：为 `internal/application` 增加 contract ownership 说明和架构测试，禁止跨服务契约层依赖服务实现、旧数据层及运维目录，为 SQLC 与多语言协议演进固定边界。
 - 2026-08-30：加强微服务 Compose 镜像隔离门禁，覆盖默认 Agent Runtime 和 Timeline repair profile 的独立镜像、构建上下文与服务入口；不改变默认 Go authority 或回滚路径。
 - 2026-08-30：前端 Pencil 设计门禁新增批准导出清单校验，覆盖基础页面、Search、Sync 和 Agent 评审资产；缺失或空导出会在 `npm run test:design` 阶段 fail closed，不改变运行时行为。
