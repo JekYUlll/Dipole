@@ -44,6 +44,13 @@ export function assertShadowPromotionBinding(
   return manifest;
 }
 
+export function assertActivePromotionBinding(value: unknown, candidateVersion: string): AgentReleaseManifest {
+  const manifest = parseAgentReleaseManifest(value);
+  if (manifest.stage !== "user_gray") throw new Error("Active Agent Runtime requires a user_gray release manifest");
+  if (manifest.candidateVersion !== candidateVersion) throw new Error("Active Agent release candidate version does not match the release manifest");
+  return manifest;
+}
+
 export function transitionAgentReleaseStage(value: unknown, nextStage: AgentReleaseStage): AgentReleaseManifest {
   const manifest = parseAgentReleaseManifest(value);
   const stages: readonly AgentReleaseStage[] = ["offline", "shadow", "user_gray"];

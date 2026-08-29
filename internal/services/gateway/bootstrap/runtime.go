@@ -10,7 +10,6 @@ import (
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
-	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/gateway"
@@ -23,6 +22,7 @@ import (
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
+	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"github.com/prometheus/client_golang/prometheus"
@@ -115,7 +115,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	if err := deliveryAuthority.ValidateGatewayCapabilities(rpcCfg.DeliveryObservationEnabled, rpcCfg.DeliveryPrimaryEnabled); err != nil {
 		return nil, err
 	}
-	if err := legacybootstrap.ValidateTimelineNotifyMode(config.MessageConfig()); err != nil {
+	if err := platformRuntime.ValidateTimelineNotifyMode(config.MessageConfig().TimelineNotifyMode); err != nil {
 		return nil, err
 	}
 	if !rpcCfg.Enabled {
@@ -311,7 +311,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 			eventSender = runtime.router
 		}
 	}
-	if err := legacybootstrap.RegisterGatewayKafkaHandlers(eventSender, deliveryAuthority, deliveryFence); err != nil {
+	if err := gatewaykafka.RegisterHandlers(eventSender, deliveryAuthority, deliveryFence); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register gateway kafka handlers: %w", err)
 	}
@@ -430,7 +430,7 @@ func RunGatewayServer(srv *gateway.Server, tlsCfg config.TLS) error {
 	if !tlsCfg.Enabled {
 		return srv.Run(config.Addr())
 	}
-	if err := legacybootstrap.EnsureTLSFiles(tlsCfg); err != nil {
+	if err := platformRuntime.ValidateTLSFiles(tlsCfg); err != nil {
 		return err
 	}
 	return srv.RunTLS(config.Addr(), tlsCfg.CertFile, tlsCfg.KeyFile)
