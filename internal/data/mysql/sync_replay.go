@@ -10,7 +10,7 @@ import (
 
 	syncbackfill "github.com/JekYUlll/Dipole/internal/backfill/sync"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 )
