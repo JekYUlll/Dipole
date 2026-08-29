@@ -43,6 +43,7 @@
 - **本轮进展：** Core User application 装配已迁入 `internal/services/core/application/`，Server 通过服务专属 factory 注入 User/File store 与对象存储；底层 `internal/service` 实现暂保留，HTTP contract 和回滚入口未改变。
 - **本轮进展：** Core Contact application 装配已迁入 `internal/services/core/application/`，Server 通过服务专属 factory 注入 Contact/User store、事件、通知和系统消息；底层 `internal/service` 实现暂保留，联系人 HTTP contract 和回滚入口未改变。
 - **本轮进展：** Core Group application 装配已迁入 `internal/services/core/application/`，Server 通过服务专属 factory 注入 Group/User store、事件、热群、文件、对象存储和系统消息；底层 `internal/service` 实现暂保留，群组 HTTP contract 和回滚入口未改变。
+- **本轮进展：** Core File application 装配已迁入 `internal/services/core/application/`，Messaging composition root 通过服务专属 factory 注入 File metadata、Message store 和对象存储；底层 `internal/service` 实现暂保留，文件 HTTP contract 和回滚入口未改变。
 - **本轮进展：** Core repository composition 已抽出 `CoreProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Core 数据所有权；独立 Core runtime 尚未切换为仅加载该集合，聚合入口继续作为回滚路径。
 - **本轮进展：** Agent repository composition 已抽出 `AgentProcessRepositories` 并由聚合 `NewRepositories` 复用，明确 Agent-owned SQL repository 集合；Core 兼容 RPC 仍共享同一进程装配，TS Runtime 完全接管前需继续拆分启动链。
 
