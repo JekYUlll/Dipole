@@ -1,4 +1,4 @@
-package service
+package messagedomain
 
 import (
 	"os"

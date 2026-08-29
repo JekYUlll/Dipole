@@ -3,7 +3,7 @@ package messageapplication
 import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
-	"github.com/JekYUlll/Dipole/internal/service"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type HotGroupObserver interface {
@@ -21,13 +21,13 @@ type Dependencies struct {
 // LocalApplication is the Message service's local application adapter.
 // Remote transports implement the same application port at the boundary.
 type LocalApplication struct {
-	*service.MessageService
+	*messagedomain.MessageService
 }
 
 var _ applicationPort.MessageApplication = (*LocalApplication)(nil)
 
 func New(messages applicationPort.MessageStore, core applicationPort.CoreCapability, dependencies Dependencies) *LocalApplication {
-	messageService := service.NewMessageServiceWithCore(
+	messageService := messagedomain.NewMessageServiceWithCore(
 		messages,
 		core,
 		nil,

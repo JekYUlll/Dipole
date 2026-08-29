@@ -1,4 +1,4 @@
-package service
+package messagedomain
 
 import (
 	"context"
@@ -16,8 +16,15 @@ import (
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	"github.com/JekYUlll/Dipole/internal/platform/idgen"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"golang.org/x/sync/singleflight"
+)
+
+var (
+	ErrFileStorageUnavailable = corefile.ErrFileStorageUnavailable
+	ErrFileNotFound           = corefile.ErrFileNotFound
+	ErrFilePermissionDenied   = corefile.ErrFilePermissionDenied
 )
 
 var (
@@ -33,7 +40,7 @@ var (
 	ErrMessageIdempotencyConflict = applicationPort.ErrMessageIdempotencyConflict
 )
 
-type messageRepository interface {
+type MessageRepository interface {
 	CreateWithSync(message *model.Message, recipientUUIDs []string) error
 	StoreWithOutboxAndSync(message *model.Message, buildOutbox applicationPort.MessageOutboxBuilder, recipientUUIDs []string) error
 	EnsureOutbox(event *model.OutboxEvent) error
@@ -48,37 +55,37 @@ type messageRepository interface {
 	ListOfflineByUserUUID(userUUID string, afterID uint, limit int) ([]*model.Message, error)
 }
 
-type messageFileFinder interface {
+type MessageFileFinder interface {
 	GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error)
 }
 
-type messageUserFinder interface {
+type MessageUserFinder interface {
 	GetByUUID(uuid string) (*model.User, error)
 }
 
-type friendshipChecker interface {
+type FriendshipChecker interface {
 	CanSendDirectMessage(userUUID, friendUUID string) (bool, error)
 }
 
-type groupMessageChecker interface {
+type GroupMessageChecker interface {
 	GetByUUID(groupUUID string) (*model.Group, error)
 	GetMember(groupUUID, userUUID string) (*model.GroupMember, error)
 	ListMembers(groupUUID string) ([]*model.GroupMember, error)
 }
 
-type hotGroupObserver interface {
+type HotGroupObserver interface {
 	ObserveMessage(groupUUID string, memberCount int) (platformHotGroup.Status, error)
 	Status(groupUUID string, memberCount int) (platformHotGroup.Status, error)
 }
 
 type MessageService struct {
-	repo             messageRepository
-	userFinder       messageUserFinder
-	friendChecker    friendshipChecker
-	groupChecker     groupMessageChecker
-	events           eventPublisher
-	fileFinder       messageFileFinder
-	hotGroups        hotGroupObserver
+	repo             MessageRepository
+	userFinder       MessageUserFinder
+	friendChecker    FriendshipChecker
+	groupChecker     GroupMessageChecker
+	events           EventPublisher
+	fileFinder       MessageFileFinder
+	hotGroups        HotGroupObserver
 	duplicateBody    applicationPort.SyncMessageHydrator
 	duplicateObserve func(string)
 	// 热群改成 notify + pull 后，同一台节点上会出现很多相同的
@@ -96,7 +103,7 @@ func (s *MessageService) SetDuplicateMessageHydrator(hydrator applicationPort.Sy
 	}
 }
 
-func NewMessageService(repo messageRepository, userFinder messageUserFinder, friendChecker friendshipChecker, groupChecker groupMessageChecker, fileFinder messageFileFinder, events eventPublisher, hotGroups hotGroupObserver) *MessageService {
+func NewMessageService(repo MessageRepository, userFinder MessageUserFinder, friendChecker FriendshipChecker, groupChecker GroupMessageChecker, fileFinder MessageFileFinder, events EventPublisher, hotGroups HotGroupObserver) *MessageService {
 	return &MessageService{
 		repo:          repo,
 		userFinder:    userFinder,
@@ -108,7 +115,7 @@ func NewMessageService(repo messageRepository, userFinder messageUserFinder, fri
 	}
 }
 
-func NewMessageServiceWithCore(repo messageRepository, core applicationPort.CoreCapability, fileFinder messageFileFinder, events eventPublisher, hotGroups hotGroupObserver) *MessageService {
+func NewMessageServiceWithCore(repo MessageRepository, core applicationPort.CoreCapability, fileFinder MessageFileFinder, events EventPublisher, hotGroups HotGroupObserver) *MessageService {
 	if core == nil {
 		return NewMessageService(repo, nil, nil, nil, fileFinder, events, hotGroups)
 	}
