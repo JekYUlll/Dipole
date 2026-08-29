@@ -27,6 +27,14 @@ if [[ ! -f "${root_dir}/internal/platform/storage/README.md" || ! -f "${root_dir
   echo "storage migration decorators must remain under internal/platform/storage" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/platform/elasticsearch/README.md" || ! -f "${root_dir}/internal/platform/elasticsearch/index.go" || ! -f "${root_dir}/internal/platform/elasticsearch/schema/message_search_v1.json" ]]; then
+  echo "shared Elasticsearch adapter and schema must remain under internal/platform/elasticsearch" >&2
+  exit 1
+fi
+if [[ -d "${root_dir}/internal/data/elasticsearch" ]]; then
+  echo "legacy Elasticsearch adapter directory remains under internal/data" >&2
+  exit 1
+fi
 if [[ -d "${root_dir}/internal/data/routing" || -d "${root_dir}/internal/data/shadow" ]]; then
   echo "legacy storage decorator directories remain under internal/data" >&2
   exit 1

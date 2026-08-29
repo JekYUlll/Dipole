@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	elasticsearchdata "github.com/JekYUlll/Dipole/internal/data/elasticsearch"
 	"github.com/JekYUlll/Dipole/internal/model"
+	elasticsearchdata "github.com/JekYUlll/Dipole/internal/platform/elasticsearch"
 )
 
 func TestSearchRuntimeElasticsearchContract(t *testing.T) {
