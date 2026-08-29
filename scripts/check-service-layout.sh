@@ -90,6 +90,16 @@ if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal
   echo "legacy compatibility adapters must be isolated under internal/compat" >&2
   exit 1
 fi
+for compatibility_readme in \
+  internal/app/README.md \
+  internal/data/mysql/README.md \
+  internal/data/mysql/repository/README.md \
+  internal/store/README.md; do
+  if [[ ! -f "${root_dir}/${compatibility_readme}" ]]; then
+    echo "compatibility directory is missing its ownership guide: ${compatibility_readme}" >&2
+    exit 1
+  fi
+done
 if [[ ! -f "${root_dir}/internal/platform/cache/redis.go" || ! -f "${root_dir}/internal/platform/cache/redis_cache.go" ]]; then
 	echo "shared Redis client and cache helpers must remain under internal/platform/cache" >&2
 	exit 1
