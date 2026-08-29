@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { agentReleaseManifestSha256, assertShadowPromotionBinding, parseAgentReleaseManifest } from "./agent-release-manifest.js";
+import { agentReleaseManifestSha256, assertShadowPromotionBinding, parseAgentReleaseManifest, transitionAgentReleaseStage } from "./agent-release-manifest.js";
 
 const suiteHash = "a".repeat(64);
 
@@ -25,6 +25,16 @@ describe("Agent release manifest", () => {
     expect(() => assertShadowPromotionBinding(fixture(), "agent-runtime@other", suiteHash)).toThrow(/candidate version/);
     expect(() => assertShadowPromotionBinding(fixture(), "agent-runtime@abc123", "b".repeat(64))).toThrow(/Eval Suite hash/);
     expect(() => parseAgentReleaseManifest({ ...fixture(), extra: true })).toThrow();
+  });
+
+  it("allows one-step promotion and rollback without mutating the prior manifest", () => {
+    const offline = { ...fixture(), stage: "offline" as const };
+    const shadow = transitionAgentReleaseStage(offline, "shadow");
+    const userGray = transitionAgentReleaseStage(shadow, "user_gray");
+    expect(offline.stage).toBe("offline");
+    expect(userGray.stage).toBe("user_gray");
+    expect(transitionAgentReleaseStage(userGray, "shadow").stage).toBe("shadow");
+    expect(() => transitionAgentReleaseStage(offline, "user_gray")).toThrow(/one step/);
   });
 });
 

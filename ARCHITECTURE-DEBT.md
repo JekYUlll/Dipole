@@ -122,6 +122,7 @@
 - **处理门槛：** 任何 Agent active authority、自动 Memory 写入、语义检索切流或面向用户的主动消息发送前，至少归档一份真实候选五类报告及对应 Suite hash；当前 promotion v2 只可作为 Harness/Shadow 工程门禁。
 - **本轮进展：** 新增 `dipole.agent.release-manifest.v1`，把 candidate、模型、Prompt、Capability Schema、Memory Policy 和 offline Eval Suite SHA-256 绑定，并要求 promotion 仅使用 `shadow` 阶段清单；真实 Project Guardian 语料、共享观察窗口和用户灰度仍未完成。
 - **本轮进展：** release manifest 已接入 promotion publication 的显式新入口和 CLI；manifest 哈希随 Artifact/receipt 持久化，携带 manifest 的请求无法绕过 shadow 阶段或 Eval Suite 绑定，旧证据回放保持兼容。
+- **本轮进展：** release manifest 增加单步阶段转移与回滚校验，禁止跨越 `offline`、`shadow`、`user_gray` 的相邻门禁；该函数只生成新 manifest，仍需 operator 证据才能改变实际 Runtime 开关。
 
 ### AD-037：MCP 网络入口尚缺 OAuth、外部连接与写能力门禁
 

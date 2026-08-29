@@ -503,6 +503,8 @@
 - 增加 `dipole-search-alias` 受控切换/回滚命令，要求维护窗口确认、新鲜快照三重检查、现场 Reconcile、Alias owner CAS 与切换后自动补偿。
 
 ### 变更
+- Agent release manifest 增加单步阶段转移校验，仅允许 `offline <-> shadow <-> user_gray` 相邻推进或回滚，禁止跨阶段跳转并保持旧 manifest 不可变；阶段转移不会自动开启生产流量。
+
 
 - Sync 增加默认关闭的 `sync.cassandra_primary_hydration`：启用后按同一 `conversation_key + message_seq + message_uuid` locator 优先从 Cassandra 补全消息，查询失败立即回退 MySQL；与 `cassandra_shadow_hydration` 互斥，默认配置、旧 Offline 和 MySQL 主读行为保持不变。
 - 前端 F4 增加 `.pen` Foundations 到 Vue 的 token 映射：全局 `--dp-*` CSS token 覆盖颜色、字体、间距和圆角，App 壳层与 Search 工作区开始复用；Vitest 直接读取 canonical `.pen` variables 校验实现值，避免设计稿与页面样式静默漂移。
