@@ -39,7 +39,7 @@ HTTP/WebSocket → Handler → Service → Repository → Store (MySQL + Redis)
 - `internal/bootstrap` — initialization orchestration; `runtime.go` is the composition root
 - `internal/service` — all business logic; services are injected with repository interfaces
 - `internal/data/mysql/repository` — sqlc-backed adapters for application data ports
-- `internal/handler/http` — Gin handlers; thin layer that calls services and writes responses
+- `internal/gateway/http` — Gateway-owned Gin edge handlers; thin adapters that call application ports and write responses
 - `internal/transport/ws` — WebSocket hub, client lifecycle, message dispatcher, presence integration
 - `internal/services/agent/legacy` — Eino-based AI assistant; has its own DB user (`UserTypeAssistant`) and is initialized at bootstrap
 - `internal/platform` — infrastructure abstractions: Kafka publisher, Redis cache, MinIO storage, bloom filters, rate limiter, presence tracker

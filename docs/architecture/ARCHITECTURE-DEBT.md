@@ -35,7 +35,7 @@
 - **验证门槛：** 新增服务必须有独立入口、构建制品、数据 ownership、依赖清单、contract test 和回滚说明；结构门禁、Go 全量测试、镜像隔离检查和对应服务 smoke 必须通过。
 - **本轮进展：** 已新增服务入口索引、服务边界清单和结构门禁检查；本条债务保留，代表代码物理边界尚未全部收敛。
 - **本轮进展：** Search application 及其测试已从 `internal/app` 迁入 `internal/services/search/application/`，Search runtime 改用服务专属包；结构门禁已防止旧路径回流，其他服务仍待按同一方式迁移。
-- **本轮进展：** Search HTTP handler 及其测试已从通用 `internal/handler/http` 迁入 `internal/gateway/`，Gateway 仍复用相同认证、错误映射和 Search application contract；结构门禁已增加旧路径回流检查。
+- **本轮进展：** Gateway 全部 HTTP handler 及测试已从通用 `internal/handler/http` 迁入 `internal/gateway/http/`，保留认证、错误映射和各 application contract；结构门禁已增加旧目录回流检查。
 - **本轮进展：** Sync application 装配已从 `internal/app` 迁入 `internal/services/sync/application/`，`MessagingServices` 只持有共享 `SyncApplication` port，独立 Sync runtime 与 embedded 兼容路径共用服务专属 factory；结构门禁已增加 Sync application 路径检查。
 - **本轮进展：** Message application 装配已从 `internal/app` 迁入 `internal/services/message/application/`，保留包含 Agent command、Outbox 和持久化扩展方法的 local adapter；`internal/app` 仅负责 Composition Root 参数转换，结构门禁已增加 Message application 路径检查。
 - **本轮进展：** Core capability 实现已从 `internal/app` 迁入 `internal/services/core/application/`，factory 只接收实际使用的最小 store 接口；`internal/app` 保留兼容构造入口，结构门禁已阻止旧具体实现回流。
@@ -599,9 +599,9 @@
 - **状态：** 已解决
 - **发现日期：** 2026-08-26
 - **解决日期：** 2026-08-27
-- **影响范围：** `internal/handler/http/*_test.go`、整包 race 门禁
+- **影响范围：** `internal/gateway/http/*_test.go`、整包 race 门禁
 - **解决方式：** 在包级 `TestMain` 进入并行测试前只调用一次 `gin.SetMode(gin.TestMode)`，删除各测试函数中的重复全局写入，同时保留原有 `t.Parallel()` 覆盖。
-- **验证：** 修复前 `go test -race ./internal/handler/http` 稳定报告 `gin.SetMode` 写写及与 `gin.New/CreateTestContext` 的读写竞争；修复后整包 race、普通测试和完整 Go 测试通过。
+- **验证：** 修复前旧 Handler 包的 `go test -race` 稳定报告 `gin.SetMode` 写写及与 `gin.New/CreateTestContext` 的读写竞争；修复后 Gateway HTTP 包的 race、普通测试和完整 Go 测试通过。
 - **长期约束：** Handler 测试不得在测试函数或并行子测试中修改 Gin 包级模式；新增全局测试配置应在 `TestMain` 中串行完成。
 
 ### AD-025：Web 本地消息库清理与容量策略需真实浏览器验收

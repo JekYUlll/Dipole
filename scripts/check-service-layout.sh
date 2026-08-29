@@ -126,8 +126,8 @@ if git -C "${root_dir}" ls-files --error-unmatch agent-runtime >/dev/null 2>&1 |
   echo "legacy polyglot service directory remains at repository root" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/internal/handler/http/search_handler.go" || -e "${root_dir}/internal/handler/http/search_handler_test.go" ]]; then
-  echo "legacy shared Search HTTP handler path remains under internal/handler/http" >&2
+if [[ -e "${root_dir}/internal/handler/http" ]]; then
+  echo "legacy shared HTTP handler path remains under internal/handler/http" >&2
   exit 1
 fi
 for service in "${expected_services[@]}"; do
