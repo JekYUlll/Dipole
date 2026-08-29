@@ -8,7 +8,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/model"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/search/infrastructure/mysql"
 )

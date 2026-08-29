@@ -23,6 +23,7 @@
 - 将 Search Indexer Kafka Projector 从 `internal/projector/search` 收敛到 `internal/services/search/infrastructure/kafka`，直接复用 Message domain 事件解码与 Search mutation contract；新增目录说明和结构门禁，Kafka retry/DLQ 与 Alias 回滚语义保持兼容。
 - 将 Cassandra Message Projector 从 `internal/projector/cassandra` 收敛到 `internal/services/message/infrastructure/cassandra`，直接复用 Message domain 事件解码；保留 `cmd/tools/cassandra-projector` 可选入口，Cassandra shadow/primary 和 MySQL 回退语义保持兼容。
 - 将 SQLC MySQL 事务 Store 和测试迁入 `internal/platform/mysql`，旧 `internal/data/mysql/store_compat.go` 仅保留类型别名与构造转发；事务语义、SQLC 生成输出和现有调用方保持兼容。
+- 将 SQLC generated 输出和 MySQL mapper 从 `internal/data/mysql` 收敛到 `internal/platform/mysql`，同步更新 `sqlc.yaml`、漂移检查和全仓引用；旧 `internal/data/mysql` 不再承载 generated/mapper 目录，查询行为与兼容入口保持稳定。
 
 ### 变更
 - 将 Search/Indexer 共用的 Elasticsearch client、版本化 schema、Alias 和 projection adapter 从 `internal/data/elasticsearch` 收纳到 `internal/platform/elasticsearch`，新增目录职责说明和结构门禁；Search 权限边界、Indexer 写入职责及 Alias 回滚语义保持兼容。

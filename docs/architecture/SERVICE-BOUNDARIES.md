@@ -26,7 +26,7 @@
 - `internal/platform/cassandra`：跨 Message/Sync 复用的 Cassandra Timeline 与 hydration 存储适配器，不承载服务业务编排。
 - `internal/platform/storage`：对象存储、Search Archive 以及 MySQL/Cassandra 灰度 routing、shadow 和 hydration fallback 适配器；通过配置关闭即可回到主存储路径。
 - `internal/platform/elasticsearch`：Search 与 Search Indexer 共用的版本化索引、Alias 和 mutation adapter；不保存消息事实和授权事实。
-- `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 事务边界；业务仓储由各服务拥有，旧 `internal/data/mysql` Store 仅保留兼容入口。
+- `internal/platform/mysql`：基于 database/sql + SQLC 的共享 MySQL 事务边界、generated 输出和 mapper；业务仓储由各服务拥有，旧 `internal/data/mysql` Store 仅保留兼容入口。
 - `api/proto`、`contracts`：跨服务 RPC、事件和 Agent 契约。
 
 ### 需要收敛
@@ -51,7 +51,7 @@
 - Inbox ownership 配置要求：Message `projector` 模式必须与启用的 Sync projector 和 Kafka 一起发布；`atomic` 模式保留为立即回滚路径，配置校验在连接副作用前 fail closed。
 - Message application 已迁入 `internal/services/message/application/`；该目录只依赖共享 MessageStore、Core Capability、事件发布 port 和 Message application port，embedded 与独立 Message runtime 共用该装配。
 - Message event contract 与 Sync projection 已迁入 `internal/services/message/domain/`；旧 `internal/service` 仅保留类型、错误和函数兼容入口，事件版本、Mutation、Search 和 Inbox locator contract 保持兼容。
-- Message MySQL repository 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/data/mysql/generated` 与事务 Store 仍作为基础设施共享，`messages`、Metadata、Outbox 和可选 Inbox 原子写入由 Message process 组合。
+- Message MySQL repository 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/platform/mysql/generated` 与事务 Store 仍作为基础设施共享，`messages`、Metadata、Outbox 和可选 Inbox 原子写入由 Message process 组合。
 - Message Cassandra Projector 已迁入 `internal/services/message/infrastructure/cassandra/`，写入 Message-owned Timeline；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。
 - Message 独立 runtime 已直接使用 Message infrastructure composition 和 Message application factory；`internal/app` 仅保留 embedded 聚合兼容入口，独立 Message 启动不再依赖聚合 repository composition。
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。

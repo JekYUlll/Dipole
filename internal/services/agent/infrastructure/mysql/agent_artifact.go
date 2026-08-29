@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 )
 
 type AgentArtifactRepository struct{ queries generated.Querier }
