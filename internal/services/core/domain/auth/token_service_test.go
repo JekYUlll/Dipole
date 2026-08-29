@@ -72,3 +72,20 @@ func TestAgentMCPAccessTokenRequiresExplicitExactConsent(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveSessionFailsClosedWhenRedisUnavailable(t *testing.T) {
+	t.Chdir("../../../../..")
+	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")
+
+	previousRedis := store.RDB
+	store.RDB = nil
+	t.Cleanup(func() { store.RDB = previousRedis })
+
+	token, err := NewTokenService().Issue(&model.User{UUID: "U100"})
+	if err != nil {
+		t.Fatalf("issue session token: %v", err)
+	}
+	if _, err := NewTokenService().ResolveSession(token); !errors.Is(err, ErrInvalidToken) {
+		t.Fatalf("expected Redis outage to fail closed, got %v", err)
+	}
+}

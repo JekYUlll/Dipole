@@ -6,6 +6,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -86,6 +87,27 @@ func SetJSON(ctx context.Context, key string, value any, ttl time.Duration) erro
 	}
 
 	return store.RDB.Set(ctx, key, payload, ttl).Err()
+}
+
+// SetString writes a short-lived scalar used by service state such as token
+// revocations. Unlike cache writes, missing Redis is an error for this path.
+func SetString(ctx context.Context, key, value string, ttl time.Duration) error {
+	if store.RDB == nil {
+		return fmt.Errorf("redis is not initialized")
+	}
+
+	return store.RDB.Set(ctx, key, value, ttl).Err()
+}
+
+// Exists reports whether a service-state key is present. Missing Redis is an
+// error so callers can fail closed when state cannot be validated.
+func Exists(ctx context.Context, key string) (bool, error) {
+	if store.RDB == nil {
+		return false, fmt.Errorf("redis is not initialized")
+	}
+
+	count, err := store.RDB.Exists(ctx, key).Result()
+	return count > 0, err
 }
 
 func Delete(ctx context.Context, keys ...string) error {
