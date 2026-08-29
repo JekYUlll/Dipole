@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type event struct {
-	EventID   string                      `json:"event_id"`
-	EventType string                      `json:"event_type"`
-	Payload   service.MessageEventPayload `json:"payload"`
+	EventID   string                            `json:"event_id"`
+	EventType string                            `json:"event_type"`
+	Payload   messagedomain.MessageEventPayload `json:"payload"`
 }
 
 type report struct {
@@ -43,7 +43,7 @@ func main() {
 		if err := json.Unmarshal([]byte(rawEvent), &decoded); err != nil {
 			panic(err)
 		}
-		if _, _, err := service.MessageSyncProjection(decoded.EventID, decoded.EventType, decoded.Payload); err != nil {
+		if _, _, err := messagedomain.MessageSyncProjection(decoded.EventID, decoded.EventType, decoded.Payload); err != nil {
 			panic(err)
 		}
 	}
@@ -54,7 +54,7 @@ func main() {
 		if err := json.Unmarshal([]byte(rawEvent), &decoded); err != nil {
 			panic(err)
 		}
-		projection, fanout, err := service.MessageSyncProjection(decoded.EventID, decoded.EventType, decoded.Payload)
+		projection, fanout, err := messagedomain.MessageSyncProjection(decoded.EventID, decoded.EventType, decoded.Payload)
 		if err != nil || !fanout || projection == nil {
 			panic(fmt.Sprintf("projection failed: %v", err))
 		}
