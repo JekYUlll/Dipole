@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: resolve(import.meta.dirname, '../internal/server/webapp'),
+    outDir: resolve(import.meta.dirname, '../internal/services/core/server/webapp'),
     emptyOutDir: true,
   },
   server: {
