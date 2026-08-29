@@ -15,10 +15,10 @@ go build -o ./tmp/server ./cmd/services/core
 go test ./...
 
 # Run a single test
-go test ./internal/service/... -run TestMessageService_SendMessage
+go test ./internal/services/message/... -run TestMessageService_SendMessage
 
 # Run tests with verbose output
-go test -v ./internal/service/...
+go test -v ./internal/services/message/...
 
 # Start infrastructure (MySQL, Redis, Kafka, MinIO)
 docker compose up -d
@@ -26,22 +26,24 @@ docker compose up -d
 
 ## Architecture
 
-Dipole is a modular monolith IM backend. The layers are:
+Dipole is a service-oriented IM monorepo with an embedded compatibility path. The layers are:
 
 ```
-HTTP/WebSocket → Handler → Service → Repository → Store (MySQL + Redis)
-                                  ↘ Platform (Kafka, MinIO, Cache, Presence, Bloom)
+HTTP/WebSocket → Gateway → Service Application → Domain → SQLC Repository
+                                  ↘ Kafka → Sync/Search/Agent projections
+                                  ↘ Platform (Redis, MinIO, Presence, Bloom)
 ```
 
-**Entry point:** `cmd/services/core/main.go` → `internal/bootstrap/runtime.go` initializes all dependencies and wires services together.
+**Entry points:** Go services live under `cmd/services/`; TypeScript Agent Runtime and C++ Realtime Delivery live under `services/`. `internal/bootstrap/` still provides shared composition and embedded rollback wiring.
 
 **Key packages:**
 - `internal/bootstrap` — initialization orchestration; `runtime.go` is the composition root
-- `internal/service` — all business logic; services are injected with repository interfaces
-- `internal/data/mysql/repository` — sqlc-backed adapters for application data ports
+- `internal/services/<service>` — service-owned application, domain, and infrastructure implementations
+- `internal/compat/service` — legacy package-path aliases and construction forwards kept for rollback
+- `internal/data/mysql/repository` — compatibility adapters only; new SQLC implementations belong to service infrastructure
 - `internal/gateway/http` — Gateway-owned Gin edge handlers; thin adapters that call application ports and write responses
 - `internal/transport/ws` — WebSocket hub, client lifecycle, message dispatcher, presence integration
-- `internal/services/agent/legacy` — Eino-based AI assistant; has its own DB user (`UserTypeAssistant`) and is initialized at bootstrap
+- `internal/services/agent/legacy` — Go/Eino compatibility baseline; TypeScript Agent Runtime is the target runtime
 - `internal/platform` — infrastructure abstractions: Kafka publisher, Redis cache, MinIO storage, bloom filters, rate limiter, presence tracker
 
 ## Non-Obvious Design Decisions

@@ -127,7 +127,7 @@
 - 登录、发消息、上传文件的短窗口限流计数
 - 分布式在线用户数、在线连接数、多端连接状态缓存
 
-对应代码在 [token_service.go](/home/horeb/_code/_go/Dipole/internal/service/token_service.go)。
+对应代码在 [token_service.go](/home/horeb/_code/_go/Dipole/internal/services/core/domain/auth/token_service.go)。
 
 ### 4.4 这一层最值得优先落地的缓存
 

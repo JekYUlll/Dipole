@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	commonv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/common/v1"
 	syncv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/sync/v1"
