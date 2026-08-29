@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
 func TestRuntimePromotionControlRequiresEvidenceAndDistinctReviewer(t *testing.T) {
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
 	fixture := newPromotionControlFixtureV1(now)
-	service, err := newPersistentAgentRuntimePromotionControlServiceV1(fixture.policies, fixture.artifacts, fixture.control, func() time.Time { return now })
+	service, err := agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1WithClock(fixture.policies, fixture.artifacts, fixture.control, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestRuntimePromotionControlRequiresEvidenceAndDistinctReviewer(t *testing.T
 func TestRuntimePromotionControlRejectsCrossTenantEvidenceAndAuditsRevocation(t *testing.T) {
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
 	fixture := newPromotionControlFixtureV1(now)
-	service, _ := newPersistentAgentRuntimePromotionControlServiceV1(fixture.policies, fixture.artifacts, fixture.control, func() time.Time { return now })
+	service, _ := agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1WithClock(fixture.policies, fixture.artifacts, fixture.control, func() time.Time { return now })
 	crossTenant := promotionProposalRequestV1(now)
 	crossTenant.TenantID = "TENANT-B"
 	if _, err := service.Propose(context.Background(), "PROPOSER", crossTenant); !errors.Is(err, application.ErrAgentRuntimePromotionControlDenied) {
