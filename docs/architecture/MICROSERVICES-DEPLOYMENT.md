@@ -3,14 +3,15 @@
 `docker-compose.microservices.yml` 用于 M6 的本地开发与集成验收，部署以下最小服务集合：
 
 ```text
-Client -> Gateway -> Core HTTP
-          |    |
-          |    +-> Core Capability gRPC
-          +------> Message gRPC
+Client -> Gateway -> Core HTTP (domain APIs)
+          |    |\
+          |    | +-> Core Capability gRPC
+          |    +----> Message gRPC (history / commands)
+          +---------> Sync gRPC (Inbox / checkpoints)
 
 Message -> MySQL / Redis / Kafka
 Core    -> MySQL / Redis / Kafka / MinIO
-Gateway -> Redis / Kafka
+Gateway -> Redis / Kafka / Message / Sync
 ```
 
 可选 `search` profile 追加：
@@ -40,7 +41,7 @@ export DIPOLE_INTERNAL_RPC_SHARED_SECRET="$(openssl rand -hex 32)"
 docker compose -f docker-compose.microservices.yml up -d --wait
 ```
 
-公开入口为 `http://127.0.0.1:8080`。Core、Message、MySQL、Redis、Kafka 和 MinIO 只在 Compose 网络内可达。
+公开入口为 `http://127.0.0.1:8080`。Core、Message、Sync、MySQL、Redis、Kafka 和 MinIO 只在 Compose 网络内可达。远程模式下 Gateway 直接注册消息历史和 Sync HTTP 路由，Core HTTP 仅承接 Core domain 路由。
 
 每个 Go 应用进程使用只包含自身 `/app/service` 的镜像；migration 作为一次性服务先执行，Core 与 Message 就绪后 Gateway 才开始接收流量。内部 gRPC 强制使用 TLS 1.3 mTLS，证书 CN 分别为 `dipole-core`、`dipole-message` 和 `dipole-gateway`。每个容器只挂载自己的证书、私钥与公共 CA 证书，CA 私钥保留在宿主机。
 

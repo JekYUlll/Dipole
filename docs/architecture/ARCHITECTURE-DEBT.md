@@ -65,6 +65,7 @@
 - **下一步：** 将 Core 的消息依赖收窄为只读/受控 Capability，或引入显式异步连接状态与远程重连机制；补充 Core HTTP 路由 ownership、Kafka consumer 唯一性和远程冷启动回切证据。
 - **验证门槛：** 默认微服务 Compose 冷启动中 Core、Message、Sync、Gateway 均 healthy；Core 专用 transport 配置单测、远程 Message mTLS contract、端到端消息 smoke 和 Local 回切 smoke 均通过。
 - **本轮进展：** 远程模式下 Core 的本地启动兼容层不再注册 Message persistence consumer，也不初始化消息 topic；消息写入与 topic ownership 继续收敛到 Message Service，新增 ownership 单测并由 Compose 配置门禁固定全局 transport 为 gRPC。
+- **本轮进展：** Gateway 已直接注册消息历史与 Sync HTTP 路由并通过受认证的 Message/Sync RPC 访问；Core 仅在 embedded 模式注册对应 HTTP/WS 数据路由，remote 模式的公共消息与同步入口已收口到 Gateway。Core 内部系统消息组合仍需后续改为受控远程 Capability。
 
 ### AD-047：受限实验主机的 Elasticsearch 磁盘水位需要隔离约束
 

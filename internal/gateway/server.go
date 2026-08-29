@@ -30,6 +30,7 @@ import (
 
 type Dependencies struct {
 	Messages           application.MessageApplication
+	Sync               application.SyncApplication
 	Core               application.CoreCapability
 	Search             application.SearchApplication
 	AgentTasks         AgentTaskControlApplication
@@ -81,17 +82,32 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	}
 	dispatcher := wsTransport.NewDispatcher(hub, dependencies.Messages, nil, false).WithLimiter(limiter)
 	wsHandler := wsTransport.NewHandler(authenticator, hub, dispatcher)
+	auth := middleware.Auth(tokenService, userFinder)
+	messageHandler := httpHandler.NewMessageHandler(dependencies.Messages)
 
 	engine.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "component": "gateway"})
 	})
 	engine.GET("/api/v1/ws", wsHandler.Handle)
+	protected := engine.Group("/api/v1")
+	protected.Use(auth)
+	protected.GET("/messages/offline", messageHandler.ListOffline)
+	protected.GET("/messages/direct/:target_uuid", messageHandler.ListDirect)
+	protected.GET("/messages/group/:group_uuid", messageHandler.ListGroup)
+	if dependencies.Sync != nil {
+		syncHandler := httpHandler.NewSyncHandler(dependencies.Sync)
+		protected.GET("/sync", syncHandler.List)
+		protected.GET("/sync/checkpoint", syncHandler.GetCheckpoint)
+		protected.PATCH("/sync/checkpoint", syncHandler.AdvanceCheckpoint)
+		protected.POST("/sync/comparison", syncHandler.ReportComparison)
+		protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
+		protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
+	}
 	if dependencies.Search != nil {
 		searchHandler := httpHandler.NewSearchHandler(dependencies.Search)
 		engine.GET("/api/v1/messages/search", middleware.Auth(tokenService, userFinder), searchHandler.Search)
 	}
 	if dependencies.AgentTasks != nil {
-		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
 		engine.GET("/api/v1/agent/tasks/:task_id/timeline", auth, agentTaskTimelineHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
@@ -99,18 +115,15 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
 	}
 	if dependencies.AgentSubscriptions != nil {
-		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/subscriptions", auth, agentSubscriptionListHandler(dependencies.AgentSubscriptions))
 		engine.GET("/api/v1/agent/subscriptions/options", auth, agentSubscriptionConversationOptionsHandler(dependencies.AgentSubscriptions))
 		engine.POST("/api/v1/agent/subscriptions", auth, agentSubscriptionCreateHandler(dependencies.AgentSubscriptions))
 		engine.POST("/api/v1/agent/subscriptions/:subscription_id/revoke", auth, agentSubscriptionRevokeHandler(dependencies.AgentSubscriptions))
 	}
 	if dependencies.AgentDefinitions != nil {
-		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/definitions", auth, agentDefinitionCatalogHandler(dependencies.AgentDefinitions))
 	}
 	if dependencies.AgentMemories != nil {
-		auth := middleware.Auth(tokenService, userFinder)
 		engine.GET("/api/v1/agent/memories", auth, agentMemoryListHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/revoke", auth, agentMemoryRevokeHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/correct", auth, agentMemoryCorrectHandler(dependencies.AgentMemories))
