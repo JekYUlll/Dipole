@@ -263,6 +263,11 @@ if rg --quiet 'internal/services/core/domain/' "${root_dir}/internal/services/me
   echo "Message service must not import Core domain implementations" >&2
   exit 1
 fi
+
+if rg --quiet 'internal/services/core/domain/' "${root_dir}/internal/services/gateway/infrastructure/kafka" --glob '*.go' --glob '!**/*_test.go'; then
+  echo "Gateway Kafka consumers must use application event contracts, not Core domain implementations" >&2
+  exit 1
+fi
 if [[ -d "${root_dir}/internal/projector/cassandra" ]]; then
   echo "legacy Cassandra projector directory remains outside the Message service boundary" >&2
   exit 1
