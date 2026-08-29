@@ -1,4 +1,4 @@
-package app
+package agentapplication_test
 
 import applicationPort "github.com/JekYUlll/Dipole/internal/application"
 import coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
