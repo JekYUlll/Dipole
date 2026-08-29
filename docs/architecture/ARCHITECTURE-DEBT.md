@@ -73,6 +73,7 @@
 - **本轮进展：** 2026-08-29 修正 ownership smoke 的旧 repository 测试路径，并增加 selector 命中 fail-closed；真实 MySQL atomic/projector/rollback smoke 与三节点 Kafka Sync projector dual-run smoke 均通过。生产级候选镜像切换、Kafka ownership 深度核对和可执行回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-29 使用隔离候选微服务 Compose 完成 Gateway 端到端消息验证，覆盖服务健康、注册/登录、好友关系、WebSocket、Message/Outbox/Inbox 幂等和 Seq Timeline 读取；生产 Kafka ownership 切换与可执行回滚 receipt 仍待完成。
 - **本轮进展：** Core repository composition 与 User/Group/Contact cache adapter 已迁入 `internal/services/core/infrastructure/mysql/`；独立 Core Runtime 直接依赖 Core-owned composition，`internal/app` 仅保留 embedded 兼容别名，结构门禁阻止实现回流。
+- **本轮进展：** Agent repository composition 已迁入 `internal/services/agent/infrastructure/mysql/`；`internal/app` 仅保留 embedded 兼容别名，聚合入口改用 Agent-owned composition，结构门禁阻止 Agent composition 回流。
 
 ### AD-048：Go 微服务默认部署仍使用共享镜像
 
