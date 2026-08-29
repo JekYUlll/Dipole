@@ -81,6 +81,8 @@ sync:
 
 环境变量为 `DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION=true`。开关启用但 `cassandra.enabled=false` 时，Sync Service 在开放 RPC 前拒绝启动。Prometheus 暴露 `dipole_sync_hydration_shadow_total{outcome}` 和 `dipole_sync_hydration_shadow_duration_seconds{outcome}`；`outcome` 包含 `match`、`mismatch`、`error` 和 `skipped`。
 
+Cassandra-first primary hydration 使用 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION=true`，并同时设置 `DIPOLE_CASSANDRA_ENABLED=true` 与 `DIPOLE_CASSANDRA_HOSTS`。微服务 Compose 已提供这三个环境变量，默认分别为 `false`、`false` 和 `127.0.0.1:19042`；primary 与 shadow 互斥，Cassandra 失败会按同一 locator 整批回退 MySQL。切换前必须使用实际 Cassandra 网络地址、独立观测窗口和 AD-043 evidence gate，默认配置不自动启用。
+
 Sync 新 consumer group 从 Kafka earliest retained offset 建立；已经提交过 offset 的 group 继续从自身 checkpoint 恢复。该语义关闭“Replay 固定快照后、consumer 首次建组前”的跳过窗口。Kafka retention 之前的消息由 Outbox Replay 覆盖，缺少 created Outbox 的早期行由历史 baseline 覆盖。
 
 写责任切换观察窗按以下顺序执行：

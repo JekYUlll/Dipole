@@ -28,6 +28,19 @@ jq -e '
   and .services.sync.entrypoint == ["/app/service"]
 ' <<<"${default_microservices_config}" >/dev/null
 
+primary_hydration_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_CASSANDRA_ENABLED=true \
+  DIPOLE_CASSANDRA_HOSTS=cassandra:9042 \
+  DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION=true \
+    docker compose -f docker-compose.microservices.yml config --format json
+})"
+jq -e '
+  .services.sync.environment.DIPOLE_CASSANDRA_ENABLED == "true"
+  and .services.sync.environment.DIPOLE_CASSANDRA_HOSTS == "cassandra:9042"
+  and .services.sync.environment.DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION == "true"
+' <<<"${primary_hydration_config}" >/dev/null
+
 isolated_microservices_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   docker compose --profile search -f docker-compose.microservices.yml -f deploy/microservices/isolated-images.yml config --format json
