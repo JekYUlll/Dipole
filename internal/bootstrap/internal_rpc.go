@@ -175,14 +175,6 @@ func newCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapabil
 	}, restrictCoreServiceMethods)
 }
 
-func DialSearchCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
-	return dialCoreCapabilityAs(ctx, cfg, searchServiceName)
-}
-
-func DialSyncCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
-	return dialCoreCapabilityAs(ctx, cfg, syncServiceName)
-}
-
 func DialCoreCapability(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
 	return dialCoreCapabilityAs(ctx, cfg, messageServiceName)
 }
