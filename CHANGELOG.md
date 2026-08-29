@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：在当前 `master` revision `d2507377` 上重建微服务候选镜像并复跑 Agent Timeline repair Compose smoke；migration `v50`、UTC、专用最小权限、worker readiness、pending intent 恢复和 event UUID 幂等均通过，隔离栈已清理，共享环境 operator 灰度与默认生产开关继续关闭。
 - 2026-08-30：补齐前端 `npm run typecheck` 标准脚本，并由 Vite 工具链契约测试锁定 `vue-tsc --noEmit` 命令；后续类型检查可使用统一入口执行。
 - 2026-08-30：收敛 Chat 初始化阶段的认证恢复异常：HTTP 401 仍由统一拦截器执行会话清理和跳转，Vue 生命周期不再产生未处理 Promise rejection；共享设备认证 E2E 在 Chromium、Firefox、WebKit 共 `6/6` 通过。
 - 2026-08-30：完成前端全浏览器 Playwright 回归：Chromium、Firefox、WebKit 共 `90` 项配置测试中 `64` 项通过、`26` 项按平台/条件跳过；Agent 表单、Task Timeline、IndexedDB 恢复、Search 视觉状态和设备会话均通过适用场景。
