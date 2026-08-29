@@ -78,3 +78,21 @@ type AgentWorkflowRepairPrepareRequestV1 struct {
 type AgentWorkflowRepairPrepareServiceV1 interface {
 	Prepare(context.Context, AgentWorkflowRepairPrepareRequestV1) (*AgentWorkflowRepairExecutionV1, error)
 }
+
+type AgentWorkflowRepairExecuteRequestV1 struct {
+	ExecutionUUID string
+	ExecutorUUID  string
+	Target        AgentTaskWorkflowProjectionV1
+	Rollback      *AgentTaskWorkflowProjectionV1
+}
+
+type AgentWorkflowRepairExecutorV1 interface {
+	Execute(context.Context, AgentWorkflowRepairExecuteRequestV1) (*AgentWorkflowRepairExecutionV1, error)
+	Rollback(context.Context, AgentWorkflowRepairRollbackRequestV1) (*AgentWorkflowRepairExecutionV1, error)
+}
+
+type AgentWorkflowRepairRollbackRequestV1 struct {
+	ExecutionUUID string
+	ExecutorUUID  string
+	Rollback      *AgentTaskWorkflowProjectionV1
+}
