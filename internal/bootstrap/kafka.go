@@ -120,7 +120,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		}
 	}
 	if includeMessagePersistence {
-		RegisterMessageKafkaHandlers(messaging.Messages)
+		messagekafka.RegisterPersistenceHandlers(platformKafka.Subscriber, messaging.Messages)
 	}
 	platformKafka.Subscriber.Register("message.direct.created", updateConversationHandler(messaging.Conversations, false))
 	platformKafka.Subscriber.Register("message.group.created", updateConversationHandler(messaging.Conversations, true))
@@ -243,10 +243,6 @@ func checkpointMessageDeliveryHandler(label string) platformKafka.Handler {
 		}
 		return nil
 	}
-}
-
-func RegisterMessageKafkaHandlers(persister messagekafka.MessagePersister) {
-	messagekafka.RegisterPersistenceHandlers(platformKafka.Subscriber, persister)
 }
 
 func logKafkaEventHandler(topic string) platformKafka.Handler {
