@@ -13,7 +13,7 @@ import (
 	mysqlDriver "github.com/go-sql-driver/mysql"
 )
 
-const currentMigrationVersion = 49
+const currentMigrationVersion = 50
 
 func TestMySQLBaselineMigration(t *testing.T) {
 	adminDSN := os.Getenv("DIPOLE_TEST_MYSQL_ADMIN_DSN")
@@ -647,6 +647,8 @@ func TestMessageMetadataMigrationBackfillsExistingMessages(t *testing.T) {
 	if err := runner.Up(ctx); err != nil {
 		t.Fatalf("migrate database: %v", err)
 	}
+	// Roll back to the version immediately before message_metadata so the next
+	// Up genuinely exercises the migration's legacy-message backfill.
 	if err := runner.Down(ctx, currentMigrationVersion-11); err != nil {
 		t.Fatalf("roll back Metadata legacy ID, Search source, and Metadata migrations: %v", err)
 	}
