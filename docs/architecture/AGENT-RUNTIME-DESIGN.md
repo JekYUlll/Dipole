@@ -1,6 +1,6 @@
 # Dipole Agent Runtime 设计
 
-本文档定义 Dipole 的 Agent 产品边界、TypeScript 技术栈、核心抽象和渐进迁移路线。实现状态以 [平台演进计划](PLATFORM-EVOLUTION-PLAN.md) 为准，发布变化记录在 [更新日志](CHANGELOG.md)。
+本文档定义 Dipole 的 Agent 产品边界、TypeScript 技术栈、核心抽象和渐进迁移路线。实现状态以 [平台演进计划](PLATFORM-EVOLUTION-PLAN.md) 为准，发布变化记录在 [更新日志](../../CHANGELOG.md)。
 
 ## 1. 产品定位
 

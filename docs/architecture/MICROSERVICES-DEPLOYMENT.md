@@ -87,4 +87,4 @@ BUILD_IMAGE=1 scripts/smoke-runtime-dependency-readiness.sh
 
 ## 回滚
 
-代码层继续保留 `gateway.mode=embedded` 与 `message.transport=local`。容器拓扑故障时按 [Gateway 部署手册](GATEWAY-DEPLOYMENT.md) 和 [Message 部署手册](MESSAGE-SERVICE-DEPLOYMENT.md) 回切；schema 与消息数据无需逆向迁移。
+代码层继续保留 `gateway.mode=embedded` 与 `message.transport=local`。容器拓扑故障时按 [Gateway 部署手册](../operations/GATEWAY-DEPLOYMENT.md) 和 [Message 部署手册](../operations/MESSAGE-SERVICE-DEPLOYMENT.md) 回切；schema 与消息数据无需逆向迁移。

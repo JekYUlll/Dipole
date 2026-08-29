@@ -27,7 +27,7 @@ DIPOLE_INTERNAL_RPC_TLS_CA_FILE=/run/secrets/internal-ca.crt
 DIPOLE_INTERNAL_RPC_TLS_SERVER_NAME=<peer-certificate-san>
 ```
 
-Message 进程使用独立 MySQL 账号。以 [message-service-grants.dist.sql](configs/mysql/message-service-grants.dist.sql) 为模板创建账号，并设置：
+Message 进程使用独立 MySQL 账号。以 [message-service-grants.dist.sql](../../configs/mysql/message-service-grants.dist.sql) 为模板创建账号，并设置：
 
 ```text
 DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS=true

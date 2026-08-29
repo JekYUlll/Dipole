@@ -31,4 +31,15 @@ if ! git check-ignore --quiet docs/architecture-reference.md; then
   exit 1
 fi
 
+allowed_root_docs=(README.md CHANGELOG.md AGENTS.md CLAUDE.md)
+while IFS= read -r document; do
+  case " ${allowed_root_docs[*]} " in
+    *" ${document} "*) ;;
+    *)
+      echo "root markdown document must be organized under docs/: ${document}" >&2
+      exit 1
+      ;;
+  esac
+done < <(find . -maxdepth 1 -type f -name '*.md' -printf '%f\n' | sort)
+
 echo "architecture documentation gate passed"
