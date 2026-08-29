@@ -10,7 +10,7 @@ import (
 	"time"
 
 	cassandrabackfill "github.com/JekYUlll/Dipole/internal/backfill/cassandra"
-	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
+	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 )
 
 type Source interface {

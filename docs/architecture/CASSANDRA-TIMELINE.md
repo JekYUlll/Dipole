@@ -26,7 +26,7 @@ bucket = (message_seq - 1) / 10000
 
 ## Projection Contract
 
-`internal/data/cassandra.TimelineStore.Append` 接收已经由 MySQL Transactional Outbox 和 Kafka 确认的 immutable created event，返回三类结果：
+`internal/platform/cassandra.TimelineStore.Append` 接收已经由 MySQL Transactional Outbox 和 Kafka 确认的 immutable created event，返回三类结果：
 
 | 结果 | 条件 | Consumer 行为 |
 | --- | --- | --- |
