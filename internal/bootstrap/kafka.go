@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
-	"sync"
 	"time"
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
@@ -51,10 +49,6 @@ func sendEventToUser(ctx context.Context, hub kafkaWSEventSender, userUUID, even
 
 type kafkaGroupConversationIniter interface {
 	InitGroupConversations(groupUUID string, memberUUIDs []string, createdAt time.Time) error
-}
-
-type groupHeatReader interface {
-	Status(groupUUID string, memberCount int) (platformHotGroup.Status, error)
 }
 
 func RegisterKafkaHandlersWithRepositories(hub kafkaWSEventSender, repos *appComposition.Repositories) error {
@@ -200,13 +194,13 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 func gatewayMessageDeliveryHandlers(
 	authority realtimeDelivery.Authority,
 	hub kafkaWSEventSender,
-	hotGroups groupHeatReader,
+	hotGroups gatewaykafka.GroupHeatReader,
 	notifier *gatewaykafka.Notifier,
 	timelineNotifyMode string,
 ) (platformKafka.Handler, platformKafka.Handler, error) {
 	switch authority {
 	case realtimeDelivery.AuthorityGo, realtimeDelivery.AuthorityShadow:
-		return gatewaykafka.NewDirectMessageHandler(hub, timelineNotifyMode), deliverGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode), nil
+		return gatewaykafka.NewDirectMessageHandler(hub, timelineNotifyMode), gatewaykafka.NewGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode), nil
 	case realtimeDelivery.AuthorityCPP:
 		return checkpointMessageDeliveryHandler("direct"), checkpointMessageDeliveryHandler("group"), nil
 	default:
@@ -283,110 +277,6 @@ func updateConversationHandler(updater kafkaConversationUpdater, isGroup bool) p
 		)
 		return nil
 	}
-}
-
-func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReader, notifier *gatewaykafka.Notifier, timelineNotifyMode string) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		payload, err := decodeMessageEventPayload(event)
-		if err != nil {
-			logger.Warn("decode group message for delivery failed", zap.Error(err))
-			return err
-		}
-
-		// For hot groups (high message frequency), send a lightweight notify event instead of
-		// the full message payload. The client then batch-fetches missed messages via REST,
-		// avoiding WS fan-out storms when many members are online simultaneously.
-		hot := false
-		recentMessageCount := 0
-		if hotGroups != nil {
-			status, statusErr := hotGroups.Status(payload.TargetUUID, len(payload.RecipientUUIDs))
-			if statusErr != nil {
-				logger.Warn("query hot group status failed",
-					zap.String("group_uuid", payload.TargetUUID),
-					zap.Error(statusErr),
-				)
-			} else {
-				hot = status.IsHot
-				recentMessageCount = status.RecentMessageCount
-			}
-		}
-
-		eventData := wsTransport.ChatMessageData{
-			MessageID:   payload.MessageID,
-			MessageSeq:  payload.MessageSeq,
-			FromUUID:    payload.SenderUUID,
-			TargetUUID:  payload.TargetUUID,
-			TargetType:  payload.TargetType,
-			MessageType: payload.MessageType,
-			Content:     payload.Content,
-			File:        payloadToWSFile(payload),
-			SentAt:      payload.SentAt,
-		}
-		var wg sync.WaitGroup
-		// 这里仍然保留 per-recipient fan-out，是为了复用现有的用户级连接路由能力。
-		// 热群模式下只把正文换成 notify，先把 WS 写放大降下来；后续如果继续压测，
-		// 这一层还可以演进成按 node_id 聚合后再批量转发。
-		for _, recipientUUID := range payload.RecipientUUIDs {
-			if hot {
-				continue
-			}
-			if recipientUUID == payload.SenderUUID {
-				continue
-			}
-			wg.Add(1)
-			go func(uuid string) {
-				defer wg.Done()
-				sendEventToUser(ctx, hub, uuid, wsTransport.TypeChatMessage, eventData)
-				if notify, ok := timelineNotifyData(event.Envelope, payload, timelineNotifyMode); ok {
-					sendEventToUser(ctx, hub, uuid, wsTransport.TypeSyncItemNotifyV1, notify)
-				}
-			}(recipientUUID)
-		}
-		wg.Wait()
-		if hot {
-			// 热群下不再逐条立即 fan-out notify，而是把短时间窗口内的多条消息
-			// 合并成一次“最新游标通知”，让客户端做一次批量补拉即可。
-			notifier.Enqueue(payload.TargetUUID, wsTransport.GroupMessageNotifyData{
-				GroupUUID:          payload.TargetUUID,
-				LatestMessageID:    payload.MessageID,
-				LatestMessageSeq:   payload.MessageSeq,
-				MessageType:        payload.MessageType,
-				Preview:            messagePreview(payload),
-				RecentMessageCount: recentMessageCount,
-				SentAt:             payload.SentAt,
-				SenderUUID:         payload.SenderUUID,
-			}, payload.RecipientUUIDs)
-		}
-
-		return nil
-	}
-}
-
-func timelineNotifyData(envelope *platformKafka.Envelope, payload service.MessageEventPayload, mode string) (wsTransport.SyncItemNotifyData, bool) {
-	if (mode != wsTransport.TimelineNotifyShadow && mode != wsTransport.TimelineNotifyPrimary) || payload.MessageSeq == 0 || strings.TrimSpace(payload.MessageID) == "" || strings.TrimSpace(payload.ConversationKey) == "" {
-		return wsTransport.SyncItemNotifyData{}, false
-	}
-	eventID := payload.MessageID
-	if envelope != nil && strings.TrimSpace(envelope.EventID) != "" {
-		eventID = strings.TrimSpace(envelope.EventID)
-	}
-	return wsTransport.SyncItemNotifyData{
-		SchemaVersion: "v1", EventID: eventID, MessageUUID: payload.MessageID,
-		ConversationKey: payload.ConversationKey, MessageSeq: payload.MessageSeq,
-		TargetType: payload.TargetType, TargetUUID: payload.TargetUUID,
-	}, true
-}
-
-func messagePreview(payload service.MessageEventPayload) string {
-	if payload.MessageType == model.MessageTypeFile {
-		if payload.FileName != "" {
-			return "[文件] " + payload.FileName
-		}
-		return "[文件]"
-	}
-	return payload.Content
 }
 
 func newAIService(aiConfig config.AI, logs applicationPort.AICallLogStore, commands applicationPort.AgentCommandV1, capability applicationPort.AgentCapabilityV1, policyStore applicationPort.AgentPolicyStoreV1) (*aiModule.Service, error) {
@@ -517,21 +407,6 @@ func servicePayloadToMessage(payload service.MessageEventPayload) *model.Message
 		FileURL:         payload.FileURL,
 		FileContentType: payload.FileContentType,
 		SentAt:          payload.SentAt,
-	}
-}
-
-func payloadToWSFile(payload service.MessageEventPayload) *wsTransport.FilePayload {
-	if payload.MessageType != model.MessageTypeFile {
-		return nil
-	}
-
-	return &wsTransport.FilePayload{
-		FileID:        payload.FileID,
-		FileName:      payload.FileName,
-		FileSize:      payload.FileSize,
-		DownloadPath:  "/api/v1/files/" + payload.FileID + "/download",
-		ContentType:   payload.FileContentType,
-		FileExpiresAt: payload.FileExpiresAt,
 	}
 }
 

@@ -107,7 +107,7 @@ func TestDeliverGroupMessageKeepsHotGroupAggregation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sender := &recordingWSEventSender{}
 			aggregator := gatewaykafka.NewNotifier(sender, time.Millisecond)
-			if err := deliverGroupMessageHandler(sender, fixedGroupHeat{hot: test.hot}, aggregator, wsTransport.TimelineNotifyShadow)(context.Background(), groupCreatedEvent(t)); err != nil {
+			if err := gatewaykafka.NewGroupMessageHandler(sender, fixedGroupHeat{hot: test.hot}, aggregator, wsTransport.TimelineNotifyShadow)(context.Background(), groupCreatedEvent(t)); err != nil {
 				t.Fatalf("deliver group event: %v", err)
 			}
 			if test.hot {
