@@ -16,6 +16,7 @@ import (
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
@@ -50,7 +51,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if gatewayCfg.Mode != "embedded" && gatewayCfg.Mode != "remote" {
 		return nil, fmt.Errorf("unsupported gateway.mode %q", gatewayCfg.Mode)
 	}
-	if err := store.InitMySQL(); err != nil {
+	if err := platformmysql.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("mysql init failed: %w", err)
 	}
 	logger.Info("mysql init succeeded",
@@ -108,14 +109,14 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("storage is disabled")
 	}
 
-	runner, err := migration.NewRunner(store.SQLDB, migrations.Files)
+	runner, err := migration.NewRunner(platformmysql.SQLDB, migrations.Files)
 	if err != nil {
 		return nil, fmt.Errorf("initialize migration validation: %w", err)
 	}
 	if err := runner.ValidateCurrent(ctx); err != nil {
 		return nil, fmt.Errorf("database schema is not ready: %w", err)
 	}
-	repos, err := appComposition.NewRepositories(store.SQLDB)
+	repos, err := appComposition.NewRepositories(platformmysql.SQLDB)
 	if err != nil {
 		return nil, fmt.Errorf("compose repositories: %w", err)
 	}
@@ -364,7 +365,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		return nil, fmt.Errorf("start runtime metrics: %w", err)
 	}
 	if rt.metrics != nil {
-		if err := configureRuntimeDependencyReadiness(rt.metrics, config.MetricsConfig(), mysqlReadinessProbe("mysql", store.SQLDB)); err != nil {
+		if err := configureRuntimeDependencyReadiness(rt.metrics, config.MetricsConfig(), mysqlReadinessProbe("mysql", platformmysql.SQLDB)); err != nil {
 			rt.Close()
 			return nil, fmt.Errorf("configure Core dependency readiness: %w", err)
 		}

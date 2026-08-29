@@ -14,6 +14,7 @@ import (
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
@@ -37,7 +38,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		return nil, err
 	}
 
-	if err := store.InitMySQL(); err != nil {
+	if err := platformmysql.InitMySQL(); err != nil {
 		return nil, fmt.Errorf("Core MySQL init failed: %w", err)
 	}
 	if err := store.InitRedis(); err != nil {
@@ -46,14 +47,14 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	if err := platformStorage.Init(); err != nil {
 		return nil, fmt.Errorf("Core storage init failed: %w", err)
 	}
-	runner, err := migration.NewRunner(store.SQLDB, migrations.Files)
+	runner, err := migration.NewRunner(platformmysql.SQLDB, migrations.Files)
 	if err != nil {
 		return nil, fmt.Errorf("initialize Core migration validation: %w", err)
 	}
 	if err := runner.ValidateCurrent(ctx); err != nil {
 		return nil, fmt.Errorf("Core database schema is not ready: %w", err)
 	}
-	coreRepos, err := coremysql.NewProcessRepositories(store.SQLDB)
+	coreRepos, err := coremysql.NewProcessRepositories(platformmysql.SQLDB)
 	if err != nil {
 		return nil, fmt.Errorf("compose Core repositories: %w", err)
 	}
@@ -124,7 +125,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	}
 	if runtime.metrics != nil {
 		probes := []platformObservability.DependencyProbe{
-			mysqlReadinessProbe("mysql", store.SQLDB),
+			mysqlReadinessProbe("mysql", platformmysql.SQLDB),
 			redisReadinessProbe("redis", store.RDB),
 		}
 		if platformKafka.Client != nil {
