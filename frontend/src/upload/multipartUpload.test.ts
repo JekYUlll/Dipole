@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import { uploadMultipartParts } from './multipartUpload'
+import { sha256Hex, uploadMultipartParts } from './multipartUpload'
 
 describe('uploadMultipartParts', () => {
+  it('computes a stable SHA-256 checksum when Web Crypto is available', async () => {
+    const checksum = await sha256Hex(new Blob(['data']))
+    if (checksum === undefined) return
+    expect(checksum).toBe('3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7')
+  })
+
   it('uploads parts with bounded concurrency and reports completion', async () => {
     const file = new Blob(['0123456789'])
     const uploaded: Array<{ partNumber: number; size: number }> = []

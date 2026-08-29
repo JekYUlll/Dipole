@@ -2,6 +2,9 @@ package corefile
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -227,7 +230,7 @@ func (s *FileService) InitiateMultipartUpload(uploaderUUID string, input Initiat
 	}, nil
 }
 
-func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error {
+func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
 	if s.storage == nil {
 		return ErrFileStorageUnavailable
 	}
@@ -248,12 +251,28 @@ func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNu
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	part, err := s.storage.UploadMultipartPart(ctx, session.ObjectKey, session.UploadID, partNumber, body, contentLength)
+	hash := sha256.New()
+	part, err := s.storage.UploadMultipartPart(ctx, session.ObjectKey, session.UploadID, partNumber, io.TeeReader(body, hash), contentLength)
 	if err != nil {
 		return fmt.Errorf("upload multipart part: %w", err)
 	}
+	if err := validateMultipartPartSHA256(partSHA256, hash.Sum(nil)); err != nil {
+		return err
+	}
 	if err := s.sessionStore.SavePart(ctx, session.SessionID, part, s.effectiveMultipartSessionTTL()); err != nil {
 		return fmt.Errorf("persist multipart part: %w", err)
+	}
+	return nil
+}
+
+func validateMultipartPartSHA256(expected string, actual []byte) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	decoded, err := hex.DecodeString(expected)
+	if err != nil || len(decoded) != sha256.Size || subtle.ConstantTimeCompare(decoded, actual) != 1 {
+		return ErrMultipartPartInvalid
 	}
 	return nil
 }

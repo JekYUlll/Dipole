@@ -3,6 +3,8 @@ package corefile
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -397,10 +399,10 @@ func TestFileServiceMultipartUploadFlow(t *testing.T) {
 		t.Fatalf("expected 2 parts, got %d", initResult.TotalParts)
 	}
 
-	if err := service.UploadMultipartPart("U100", initResult.SessionID, 1, 5, bytes.NewReader([]byte("12345"))); err != nil {
+	if err := service.UploadMultipartPart("U100", initResult.SessionID, 1, 5, "", bytes.NewReader([]byte("12345"))); err != nil {
 		t.Fatalf("upload part 1: %v", err)
 	}
-	if err := service.UploadMultipartPart("U100", initResult.SessionID, 2, 3, bytes.NewReader([]byte("678"))); err != nil {
+	if err := service.UploadMultipartPart("U100", initResult.SessionID, 2, 3, "", bytes.NewReader([]byte("678"))); err != nil {
 		t.Fatalf("upload part 2: %v", err)
 	}
 
@@ -410,5 +412,36 @@ func TestFileServiceMultipartUploadFlow(t *testing.T) {
 	}
 	if file == nil || file.UUID == "" {
 		t.Fatalf("expected uploaded file record, got %+v", file)
+	}
+}
+
+func TestFileServiceMultipartUploadRejectsChecksumMismatch(t *testing.T) {
+	t.Parallel()
+
+	repo := &stubFileRepository{}
+	sessionStore := &stubMultipartSessionStore{}
+	service := newFileService(repo, nil, &stubUploader{
+		initiateMultipartFn: func(context.Context, string, string) (*platformStorage.MultipartUpload, error) {
+			return &platformStorage.MultipartUpload{Bucket: "b", ObjectKey: "k", UploadID: "u", FileName: "f", ContentType: "application/octet-stream"}, nil
+		},
+		uploadPartFn: func(_ context.Context, _, _ string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error) {
+			if _, err := io.Copy(io.Discard, reader); err != nil {
+				return nil, err
+			}
+			return &platformStorage.UploadedPart{PartNumber: partNumber, ETag: "etag", Size: size}, nil
+		},
+	}, 50*1024*1024, 5, time.Hour, time.Minute)
+	service.sessionStore = sessionStore
+
+	initResult, err := service.InitiateMultipartUpload("U100", InitiateMultipartUploadInput{FileName: "f", FileSize: 4})
+	if err != nil {
+		t.Fatalf("initiate multipart upload: %v", err)
+	}
+	checksum := sha256.Sum256([]byte("wrong"))
+	if err := service.UploadMultipartPart("U100", initResult.SessionID, 1, 4, hex.EncodeToString(checksum[:]), bytes.NewReader([]byte("data"))); !errors.Is(err, ErrMultipartPartInvalid) {
+		t.Fatalf("expected checksum rejection, got %v", err)
+	}
+	if len(sessionStore.parts[initResult.SessionID]) != 0 {
+		t.Fatal("checksum mismatch must not persist the part")
 	}
 }
