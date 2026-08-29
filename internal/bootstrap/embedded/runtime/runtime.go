@@ -121,6 +121,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compose repositories: %w", err)
 	}
+	if repos.AgentProcess == nil {
+		return nil, fmt.Errorf("compose Agent repositories: process set is nil")
+	}
+	agentRepos := repos.AgentProcess
 	if err := coreapplication.EnsureAIAssistantUser(repos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
 	}
@@ -154,7 +158,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	var coreRPC *corerpc.Server
 	if rpcCfg.Enabled {
 		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
-		if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, repos.AgentPolicy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
+		if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, agentRepos.Policy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
 			return nil, fmt.Errorf("ensure remote Agent Definition: %w", err)
 		}
 		agentCommands, composeErr := agentapplication.NewLocalAgentCommandV1(localMessaging.Messages)
@@ -165,83 +169,83 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
 		}
-		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(repos.AgentPolicy)
+		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Invocation resolver: %w", composeErr)
 		}
-		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(repos.AgentPolicy)
+		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Run admission: %w", composeErr)
 		}
-		approvalService, composeErr := agentapplication.NewPersistentAgentApprovalServiceV1(repos.AgentPolicy)
+		approvalService, composeErr := agentapplication.NewPersistentAgentApprovalServiceV1(agentRepos.Policy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Approval service: %w", composeErr)
 		}
-		approvalGrants, composeErr := agentapplication.NewPersistentAgentApprovalGrantResolverV1(repos.AgentApprovalGrants)
+		approvalGrants, composeErr := agentapplication.NewPersistentAgentApprovalGrantResolverV1(agentRepos.ApprovalGrants)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Approval grant resolver: %w", composeErr)
 		}
-		controlAuthorizer, composeErr := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(repos.AgentPolicy)
+		controlAuthorizer, composeErr := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(agentRepos.Policy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task control authorizer: %w", composeErr)
 		}
-		workflowProjection, composeErr := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(repos.AgentPolicy)
+		workflowProjection, composeErr := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(agentRepos.Policy)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow projection: %w", composeErr)
 		}
-		workflowRepairAudit, composeErr := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(repos.AgentPolicy, repos.AgentRepairs)
+		workflowRepairAudit, composeErr := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(agentRepos.Policy, agentRepos.Repairs)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow repair audit: %w", composeErr)
 		}
-		promotionControls, composeErr := agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1(repos.AgentPolicy, repos.AgentArtifacts, repos.AgentPromotionControls)
+		promotionControls, composeErr := agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1(agentRepos.Policy, agentRepos.Artifacts, agentRepos.PromotionControls)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Runtime promotion control: %w", composeErr)
 		}
-		readinessEvidence, composeErr := agentapplication.NewPersistentAgentMCPReadinessEvidencePublisherV1(repos.AgentReadinessEvidence)
+		readinessEvidence, composeErr := agentapplication.NewPersistentAgentMCPReadinessEvidencePublisherV1(agentRepos.ReadinessEvidence)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP readiness evidence Publisher: %w", composeErr)
 		}
-		readinessResolver, composeErr := agentapplication.NewPersistentAgentMCPReadinessEvidenceResolverV1(repos.AgentReadinessEvidence, time.Now)
+		readinessResolver, composeErr := agentapplication.NewPersistentAgentMCPReadinessEvidenceResolverV1(agentRepos.ReadinessEvidence, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP readiness evidence Resolver: %w", composeErr)
 		}
-		subscriptionResolver, composeErr := agentapplication.NewPersistentAgentEventSubscriptionResolverV1(repos.AgentSubscriptions, repos.AgentPolicy, time.Now)
+		subscriptionResolver, composeErr := agentapplication.NewPersistentAgentEventSubscriptionResolverV1(agentRepos.Subscriptions, agentRepos.Policy, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription resolver: %w", composeErr)
 		}
-		subscriptionControls, composeErr := agentapplication.NewPersistentAgentEventSubscriptionControlV1(repos.AgentSubscriptions, repos.AgentPolicy, localMessaging.Core, time.Now)
+		subscriptionControls, composeErr := agentapplication.NewPersistentAgentEventSubscriptionControlV1(agentRepos.Subscriptions, agentRepos.Policy, localMessaging.Core, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription control: %w", composeErr)
 		}
-		definitionCatalog, composeErr := agentapplication.NewPersistentAgentDefinitionCatalogV1(repos.AgentDefinitionCatalog, time.Now)
+		definitionCatalog, composeErr := agentapplication.NewPersistentAgentDefinitionCatalogV1(agentRepos.DefinitionCatalog, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Definition catalog: %w", composeErr)
 		}
-		memoryResolver, composeErr := agentapplication.NewPersistentAgentMemoryResolverV1(repos.AgentMemories, resolver, repos.AgentPolicy, time.Now)
+		memoryResolver, composeErr := agentapplication.NewPersistentAgentMemoryResolverV1(agentRepos.Memories, resolver, agentRepos.Policy, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory resolver: %w", composeErr)
 		}
-		memoryControls, composeErr := agentapplication.NewPersistentAgentMemoryOwnerControlV1(repos.AgentMemoryOwners, time.Now)
+		memoryControls, composeErr := agentapplication.NewPersistentAgentMemoryOwnerControlV1(agentRepos.MemoryOwners, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory owner control: %w", composeErr)
 		}
-		memoryPromotions, composeErr := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(repos.AgentMemoryPromotions, time.Now)
+		memoryPromotions, composeErr := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(agentRepos.MemoryPromotions, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory candidate promotion service: %w", composeErr)
 		}
-		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(repos.AgentToolAudits, resolver, repos.AgentPolicy, localMessaging.Messages)
+		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, localMessaging.Messages)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Tool invocation audit: %w", composeErr)
 		}
-		toolRounds, composeErr := agentapplication.NewPersistentAgentMCPToolRoundServiceV1(repos.AgentToolRounds, repos.AgentToolAudits)
+		toolRounds, composeErr := agentapplication.NewPersistentAgentMCPToolRoundServiceV1(agentRepos.ToolRounds, agentRepos.ToolAudits)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP Tool round receipts: %w", composeErr)
 		}
-		toolTerminals, composeErr := agentapplication.NewPersistentAgentMCPToolInvocationTerminalServiceV1(repos.AgentToolRounds, repos.AgentToolAudits, toolAudits)
+		toolTerminals, composeErr := agentapplication.NewPersistentAgentMCPToolInvocationTerminalServiceV1(agentRepos.ToolRounds, agentRepos.ToolAudits, toolAudits)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP Tool invocation terminal: %w", composeErr)
 		}
-		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(repos.AgentToolAudits, resolver, agentCommands)
+		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, agentCommands)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
 		}
@@ -257,7 +261,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			if artifactErr != nil {
 				return nil, fmt.Errorf("compose Agent Artifact blob storage: %w", artifactErr)
 			}
-			persistentArtifacts, serviceErr := agentapplication.NewPersistentAgentArtifactServiceV1(repos.AgentPolicy, repos.AgentArtifacts, artifactBlobs)
+			persistentArtifacts, serviceErr := agentapplication.NewPersistentAgentArtifactServiceV1(agentRepos.Policy, agentRepos.Artifacts, artifactBlobs)
 			artifactErr = serviceErr
 			if artifactErr != nil {
 				return nil, fmt.Errorf("compose Agent Artifact service: %w", artifactErr)
@@ -269,7 +273,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = corerpc.NewWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryPromotions, repos.AgentTaskTimeline, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryPromotions, agentRepos.TaskTimeline, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

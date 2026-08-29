@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：embedded repository composition 将 Agent policy、task、memory、approval、artifact、tool audit 等仓储统一收回 `AgentProcessRepositories`，移除聚合根的 Agent 扁平字段；Agent 初始化、SQLC 实现和 embedded 回滚语义保持兼容。
 - 2026-08-30：Core server 与 standalone bootstrap 已改用 Core-owned repository、messaging 和 application 端口；embedded 聚合通过边界适配继续提供本地回滚组合，Core 服务自有代码不再直接依赖 `internal/bootstrap/embedded`。
 - 2026-08-30：Core Auth 的输入、结果、错误和 MCP grant 调用已统一迁移到 Core-owned Auth domain，删除无调用者的 `internal/compat/service/auth_compat.go`；认证 HTTP contract 保持兼容。
 - 2026-08-30：Core Conversation 的视图、已读回执、错误和事件契约调用已统一迁移到 Core-owned Conversation domain，删除无调用者的 `internal/compat/service/conversation_compat.go`；Conversation HTTP/Kafka contract 保持兼容。
