@@ -15,6 +15,9 @@
 
 ## [Unreleased]
 
+### 变更
+- 重整仓库文档布局：根目录 README 聚焦项目介绍、架构概览、快速开始和验证入口；架构、数据、运行、前端和性能文档统一归档到 `docs/` 分类目录，并由 `docs/README.md` 集中导航。
+
 ### 新增
 - Context Compiler 增加 provider-neutral `RouteTokenizerAdapter`：按模型 route 注入稳定 tokenizer ID、上下文窗口和 token 计数，跨 route 仍取保守最大估算；未配置 tokenizer 时继续使用校准 UTF-8 fallback，避免未经证据直接绑定 provider。
 - Agent promotion publication 增加受保护的 release manifest 入口：CLI 检测 manifest 后强制校验 `shadow` 阶段、candidate、offline Eval Suite SHA-256 和四类组件哈希，并将 manifest 哈希写入发布 Artifact 与低敏 receipt；旧证据回放入口保持兼容。

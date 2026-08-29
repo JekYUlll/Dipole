@@ -48,7 +48,7 @@ Elasticsearch 镜像体积较大，首次拉取耗时明显；默认 Compose、�
 
 ## Completed A3 Gates
 
-A3 已完成 bucket rollover、Seq 聚簇排序、事件幂等、Projector、历史 Backfill、固定快照对账和 query-only shadow-read。客户端仍读取 MySQL；具体启用与回滚顺序见 [Cassandra Timeline 文档](CASSANDRA-TIMELINE.md)。
+A3 已完成 bucket rollover、Seq 聚簇排序、事件幂等、Projector、历史 Backfill、固定快照对账和 query-only shadow-read。客户端仍读取 MySQL；具体启用与回滚顺序见 [Cassandra Timeline 文档](../architecture/CASSANDRA-TIMELINE.md)。
 
 A5 引入 Elasticsearch Search Projection 时再定义正式 analyzer、mapping、alias/version、重建和切换协议。
 

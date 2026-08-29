@@ -138,7 +138,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 
 **验收：** 服务启动不修改 schema；SQL migration、生成漂移、Repository contract、MySQL 集成和回滚测试通过；生产代码不再导入 GORM。
 
-详细步骤见 [GORM 到 sqlc 迁移计划](DATA-ACCESS-MIGRATION.md)。
+详细步骤见 [GORM 到 sqlc 迁移计划](../data/DATA-ACCESS-MIGRATION.md)。
 
 ### M3：定义远程契约但仍走本地实现
 
@@ -524,7 +524,7 @@ Pencil CLI 增量任务本轮未形成可提交设计资产，原因和回滚边
 当前质量基线：Agent Runtime `npm test` 通过 122 个测试文件/627 个测试；Frontend `npm test`、`vue-tsc` 与 Vite 生产构建通过。该验证不等同于 F2-F4 设计稿和真实浏览器视觉回归全部完成。
 Agent Runtime 的 `npm run typecheck` 与 `npm run build` 也已通过；模型调用仍经 provider-neutral `ModelRouter` 边界。
 
-设计轨道不阻塞后端内部重构；任何用户可见功能进入实现前，必须先完成对应 `.pen` frame 和状态评审。详细步骤见 [Pencil 前端设计计划](FRONTEND-DESIGN-PLAN.md)。
+设计轨道不阻塞后端内部重构；任何用户可见功能进入实现前，必须先完成对应 `.pen` frame 和状态评审。详细步骤见 [Pencil 前端设计计划](../frontend/FRONTEND-DESIGN-PLAN.md)。
 
 ## 11. 全程测试矩阵
 
@@ -540,7 +540,7 @@ Agent Runtime 的 `npm run typecheck` 与 `npm run build` 也已通过；模型�
 | Data access | SQL migration、sqlc 生成漂移、Repository contract、真实 MySQL 事务 |
 | Frontend | Vue 类型检查、组件、Playwright E2E、视觉回归、响应式和可访问性 |
 
-每个里程碑都需要更新 `CHANGELOG.md`、本计划状态和 `ARCHITECTURE-DEBT.md`，并保存测试与迁移证据。
+每个里程碑都需要更新 `../../CHANGELOG.md`、本计划状态和 `ARCHITECTURE-DEBT.md`，并保存测试与迁移证据。
 
 ## 12. 回滚开关
 
