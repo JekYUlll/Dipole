@@ -1,4 +1,4 @@
-package bootstrap
+package messagemysql
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func verifyMessageDatabaseAccount(t *testing.T, environment string, inboxWrites 
 	if err := db.PingContext(context.Background()); err != nil {
 		t.Fatalf("ping Message projector MySQL account: %v", err)
 	}
-	if err := verifyMessageDatabaseBoundary(context.Background(), db, inboxWrites); err != nil {
+	if err := VerifyDatabaseBoundary(context.Background(), db, inboxWrites); err != nil {
 		t.Fatalf("verify real Message MySQL boundary: %v", err)
 	}
 }

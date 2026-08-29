@@ -1,4 +1,4 @@
-package bootstrap
+package messagemysql
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func (s *databasePermissionProbeStub) ExecContext(_ context.Context, query strin
 
 func TestVerifyMessageDatabaseBoundaryAcceptsLeastPrivilegeAccount(t *testing.T) {
 	probe := &databasePermissionProbeStub{}
-	if err := verifyMessageDatabaseBoundary(context.Background(), probe, true); err != nil {
+	if err := VerifyDatabaseBoundary(context.Background(), probe, true); err != nil {
 		t.Fatalf("verify message database boundary: %v", err)
 	}
 	wantQueries := len(messageRequiredPermissionProbes) + len(messageAtomicInboxPermissionProbes) + len(messageDeniedPermissionProbes) + len(messageForbiddenPermissionProbes) + 2
@@ -65,35 +65,35 @@ func TestVerifyMessageDatabaseBoundaryAcceptsLeastPrivilegeAccount(t *testing.T)
 }
 
 func TestVerifyMessageDatabaseBoundaryRejectsForbiddenOwnedOperation(t *testing.T) {
-	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{forbiddenAllowed: "schema_migrations:INSERT"}, true)
+	err := VerifyDatabaseBoundary(context.Background(), &databasePermissionProbeStub{forbiddenAllowed: "schema_migrations:INSERT"}, true)
 	if err == nil || !strings.Contains(err.Error(), "forbidden INSERT on schema_migrations") {
 		t.Fatalf("expected forbidden schema write rejection, got %v", err)
 	}
 }
 
 func TestVerifyMessageDatabaseBoundaryRejectsCoreTableAccess(t *testing.T) {
-	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{coreAllowed: "users"}, true)
+	err := VerifyDatabaseBoundary(context.Background(), &databasePermissionProbeStub{coreAllowed: "users"}, true)
 	if err == nil || !strings.Contains(err.Error(), "forbidden SELECT on users") {
 		t.Fatalf("expected users access rejection, got %v", err)
 	}
 }
 
 func TestVerifyMessageDatabaseBoundaryRejectsMissingOwnedTableAccess(t *testing.T) {
-	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{allowedError: errors.New("denied")}, true)
+	err := VerifyDatabaseBoundary(context.Background(), &databasePermissionProbeStub{allowedError: errors.New("denied")}, true)
 	if err == nil || !strings.Contains(err.Error(), "lacks SELECT on messages") {
 		t.Fatalf("expected owned table rejection, got %v", err)
 	}
 }
 
 func TestVerifyMessageDatabaseBoundaryProjectorModeRejectsInboxAccess(t *testing.T) {
-	err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{coreAllowed: "user_sync_inbox"}, false)
+	err := VerifyDatabaseBoundary(context.Background(), &databasePermissionProbeStub{coreAllowed: "user_sync_inbox"}, false)
 	if err == nil || !strings.Contains(err.Error(), "forbidden SELECT on user_sync_inbox") {
 		t.Fatalf("expected Inbox access rejection, got %v", err)
 	}
 }
 
 func TestVerifyMessageDatabaseBoundaryAcceptsProjectorAccountWithoutInboxAccess(t *testing.T) {
-	if err := verifyMessageDatabaseBoundary(context.Background(), &databasePermissionProbeStub{denyInbox: true}, false); err != nil {
+	if err := VerifyDatabaseBoundary(context.Background(), &databasePermissionProbeStub{denyInbox: true}, false); err != nil {
 		t.Fatalf("verify projector account: %v", err)
 	}
 }

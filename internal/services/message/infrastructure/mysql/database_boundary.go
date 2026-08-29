@@ -1,4 +1,4 @@
-package bootstrap
+package messagemysql
 
 import (
 	"context"
@@ -86,7 +86,9 @@ type databasePermissionProbe interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 }
 
-func verifyMessageDatabaseBoundary(ctx context.Context, database databasePermissionProbe, inboxWrites bool) error {
+// VerifyDatabaseBoundary validates the least-privilege account used by the
+// Message service before it starts serving traffic.
+func VerifyDatabaseBoundary(ctx context.Context, database databasePermissionProbe, inboxWrites bool) error {
 	if database == nil {
 		return errors.New("message database permission probe is required")
 	}

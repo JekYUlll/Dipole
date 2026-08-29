@@ -78,7 +78,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("message database schema is not ready: %w", err)
 	}
 	if messageCfg.EnforceDBPermissions {
-		if err := legacybootstrap.VerifyMessageDatabaseBoundary(ctx, platformmysql.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
+		if err := messagemysql.VerifyDatabaseBoundary(ctx, platformmysql.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
 			return nil, fmt.Errorf("verify message database permissions: %w", err)
 		}
 	}
