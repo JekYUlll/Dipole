@@ -2,7 +2,6 @@ package bootstrap
 
 import "github.com/JekYUlll/Dipole/internal/config"
 
-// Exported compatibility helpers support the Gateway-owned runtime while
-// shared TLS and validation implementations are being retired.
+// Exported compatibility helper supports embedded callers while Gateway
+// validation ownership moves out of the shared bootstrap.
 func ValidateTimelineNotifyMode(cfg config.Message) error { return validateTimelineNotifyMode(cfg) }
-func EnsureTLSFiles(cfg config.TLS) error                 { return ensureTLSFiles(cfg) }

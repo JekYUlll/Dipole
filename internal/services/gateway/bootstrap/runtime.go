@@ -430,7 +430,7 @@ func RunGatewayServer(srv *gateway.Server, tlsCfg config.TLS) error {
 	if !tlsCfg.Enabled {
 		return srv.Run(config.Addr())
 	}
-	if err := legacybootstrap.EnsureTLSFiles(tlsCfg); err != nil {
+	if err := platformRuntime.ValidateTLSFiles(tlsCfg); err != nil {
 		return err
 	}
 	return srv.RunTLS(config.Addr(), tlsCfg.CertFile, tlsCfg.KeyFile)

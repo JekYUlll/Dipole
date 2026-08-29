@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
@@ -401,7 +400,7 @@ func RunServer(srv *server.Server, tlsCfg config.TLS) error {
 		return srv.Run(config.Addr())
 	}
 
-	if err := ensureTLSFiles(tlsCfg); err != nil {
+	if err := platformRuntime.ValidateTLSFiles(tlsCfg); err != nil {
 		return err
 	}
 
@@ -447,15 +446,4 @@ func (r *Runtime) Close() {
 	if r.router != nil {
 		r.router.Stop()
 	}
-}
-
-func ensureTLSFiles(tlsCfg config.TLS) error {
-	if _, err := os.Stat(tlsCfg.CertFile); err != nil {
-		return err
-	}
-	if _, err := os.Stat(tlsCfg.KeyFile); err != nil {
-		return err
-	}
-
-	return nil
 }
