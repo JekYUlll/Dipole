@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：执行 `scripts/smoke-cassandra-read-routing.sh`，验证 Timeline 页面使用 Cassandra 读取，并在 payload 损坏或记录缺失时按同一 cursor 安全回退 MySQL；隔离资源自动清理，生产 Cassandra 主读开关保持关闭。
 - 2026-08-30：执行 `scripts/smoke-sync-cassandra-primary-compose.sh`，在隔离 Compose 中验证 Cassandra schema init、MySQL migration、Sync Cassandra primary 配置和 `/readyz`；临时资源自动清理，生产 Cassandra 主读、共享环境观测与回切开关保持关闭。
 - 2026-08-30：删除仅被 legacy 测试使用的 shared `newInternalRPCServer` 与 `dialInternalRPC` 转发层，测试和 Core embedded 组合直接使用 `internal/platform/rpc`；RPC transport、认证、TLS 和回滚语义保持兼容。
 - 2026-08-30：将 Core Agent RPC caller-to-method 权限策略从 shared `internal/bootstrap` 下沉到 `internal/services/core/rpcpolicy`；embedded Core server 与 MCP drill fixture 复用 Core-owned policy，保留 Agent/Search/Sync 的方法白名单、mTLS caller 校验和拒绝语义。
