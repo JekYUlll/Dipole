@@ -132,7 +132,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		duplicateObserver = runtime.duplicateHydration.Observe
 	}
 	messages := messageapplication.New(repos.Messages, core, messageapplication.Dependencies{
-		Events: events, HotGroups: platformHotGroup.NewRedisDetector(), DuplicateHydrator: duplicateHydrator,
+		Events: events, HotGroups: platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB), DuplicateHydrator: duplicateHydrator,
 		DuplicateHydrationObserver: duplicateObserver,
 	})
 	servedMessages := applicationPort.MessageApplication(messages)

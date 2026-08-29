@@ -20,6 +20,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
@@ -69,7 +70,7 @@ func NewWithDependencies(repos *appComposition.Repositories, dependencies Depend
 	})
 	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	hotGroupDetector := platformHotGroup.NewRedisDetector()
+	hotGroupDetector := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
 	redisPresence := platformPresence.NewRedisPresence()
 	wsHub := wsTransport.NewHub(wsTransport.WithPresenceTracker(wsTransport.NewRedisPresenceTracker(redisPresence)))
 	requestLimiter := platformRateLimit.NewLimiter()

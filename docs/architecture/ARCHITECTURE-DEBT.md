@@ -12,6 +12,7 @@
 
 - 2026-08-29：MySQL 全局连接初始化已从 `internal/store` 收敛到 `internal/platform/mysql`，Core、Message、embedded runtime、Bloom 和维护工具已切换新入口；`internal/store/mysql_compat.go` 仅保留回滚兼容，Redis 全局状态仍待后续单独收敛。
 - 2026-08-29：Redis 客户端初始化和全局状态已从 `internal/store` 收敛到 `internal/platform/cache`，Core、Gateway、Message、Presence、Hot Group、限流和 realtime 运维工具已切换新入口；`internal/store/redis_compat.go` 仅保留回滚兼容。
+- 2026-08-29：Hot Group Detector 已支持显式 Redis 客户端并由生产 Composition Root 注入，结构门禁阻止生产装配回到无参数全局构造；兼容构造仍保留，Presence 和限流的显式客户端注入继续作为后续切片。
 - 2026-08-29：Sync Kafka Projector 已迁入 `internal/services/sync/infrastructure/kafka/`，复用 Message domain event contract；旧 `internal/projector/sync/` 已由结构门禁阻止回流，后续仍需继续收敛跨服务运维工具和共享 SQLC 基础设施。
 - 2026-08-29：Search Indexer Kafka Projector 已迁入 `internal/services/search/infrastructure/kafka/`，复用 Message domain event contract；旧 `internal/projector/search/` 已由结构门禁阻止回流，Cassandra Projector 仍保留为独立实验性运行时，后续继续评估其入口归属。
 - 2026-08-29：Cassandra Message Projector 已迁入 `internal/services/message/infrastructure/cassandra/`，复用 Message domain event contract；旧 `internal/projector/cassandra/` 已由结构门禁阻止回流，独立 `cmd/tools/cassandra-projector` 入口暂保留用于可选存储实验和回滚。
