@@ -387,6 +387,7 @@
 
 - **优先级：** P1
 - **状态：** 处理中
+- **2026-08-30 验证：** Context calibration fixture 已通过 5 类合成样本并生成 hash-bound report；该结果不构成真实 Task、模型和人工语料证据，不能开启 Agent active authority 或生产上下文灰度。
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Eval、Shadow 晋级、Memory/Retrieval、模型与 Prompt 发布
 - **现状：** TypeScript Runtime 已提供严格的 outcome、trajectory、permission、retrieval、cost deterministic Harness、语言中立 Suite/Report schema、canonical SHA-256 和三态 CLI；promotion v2 强制绑定同一候选版本的完整五类报告并逐类别阻断。security suite 串联真实结构边界。真实 Shadow adapter 现通过 sqlc/TS 共享只读查询提取 Task/Run/Context/Step/Artifact/ModelCall/ToolCall，将数据库 observation 与版本化评审 manifest 合成五类 Suite；Task/Run 摘要绑定 case ID，独立 MySQL 账号仅具八张审计表 SELECT。通过门槛的 v2 证据可发布为不可变 `promotion_evaluation` Artifact，并通过 Gateway-only projection 审阅。Subscription corpus review v1 另以 corpus SHA-256 绑定双 reviewer 完整标签和第三方分歧裁决，输出不含正文/身份的 agreement 报告。migration v32/v33 已建立 durable grant 与双人控制面，active context 会逐次重查有效期和撤销状态。
@@ -536,6 +537,7 @@
 
 - **优先级：** P2
 - **状态：** 处理中
+- **2026-08-30 验证：** `services/agent-runtime` 的 `context:calibrate` fixture 通过，`eligible=true`，生成 `route-calibrated-v1:sha256:597b970fa91e846b0a0d8ae6407dba279cc77e051068954ec7d58553a7ec7afe` 与稳定报告哈希；该证据只覆盖 fixture tokenizer/合成语料，真实候选模型 route 校准仍待完成。
 - **发现日期：** 2026-08-27
 - **影响范围：** `agent-runtime`、Context Compiler、多模型路由、长上下文与成本门禁
 - **现状：** 显式启用的 Context Compiler v2 已支持 route 声明 context window、UTF-8 bytes/token 校准值与安全余量，并对所有候选 route 取最大估算和最小窗口；未声明 route 使用固定保守 fallback，配置 SHA-256 estimator ID 随 Plan manifest 持久化。语言中立 evidence/report 与离线 CLI 已要求每个 route 覆盖中英文、代码、Emoji、Tool schema，逐项记录 reference/estimate/error、正文哈希及 provider revision。默认与 Compose 保持 v1，保护在途不可变 Plan 重放；实际 provider usage 继续由 ModelAuditStore 在调用后记录。
