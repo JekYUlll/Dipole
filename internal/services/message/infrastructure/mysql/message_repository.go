@@ -1,14 +1,14 @@
-package repository
+package messagemysql
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/mapper"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -18,15 +18,15 @@ var _ application.MessageStore = (*MessageRepository)(nil)
 var _ application.MessageMetadataStore = (*MessageRepository)(nil)
 
 type MessageRepository struct {
-	store          transactionStore
+	store          mysqlData.TransactionStore
 	writeSyncInbox bool
 }
 
-func NewMessageRepository(store transactionStore) (*MessageRepository, error) {
+func NewMessageRepository(store mysqlData.TransactionStore) (*MessageRepository, error) {
 	return NewMessageRepositoryWithInboxWrites(store, true)
 }
 
-func NewMessageRepositoryWithInboxWrites(store transactionStore, enabled bool) (*MessageRepository, error) {
+func NewMessageRepositoryWithInboxWrites(store mysqlData.TransactionStore, enabled bool) (*MessageRepository, error) {
 	if store == nil {
 		return nil, errors.New("message transaction store is required")
 	}
@@ -277,22 +277,4 @@ func createSQLCSyncInbox(ctx context.Context, q *generated.Queries, message *mod
 		}
 	}
 	return nil
-}
-
-func uniqueSortedSQLCUUIDs(values []string) []string {
-	seen := make(map[string]struct{}, len(values))
-	result := make([]string, 0, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value == "" {
-			continue
-		}
-		if _, ok := seen[value]; ok {
-			continue
-		}
-		seen[value] = struct{}{}
-		result = append(result, value)
-	}
-	sort.Strings(result)
-	return result
 }

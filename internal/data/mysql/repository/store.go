@@ -1,16 +1,7 @@
 package repository
 
-import (
-	"context"
-	"database/sql"
+import mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
 
-	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
-)
-
-type transactionStore interface {
-	Queries() *generated.Queries
-	WithinTx(context.Context, *sql.TxOptions, func(*generated.Queries) error) error
-}
+type transactionStore = mysqlData.TransactionStore
 
 var _ transactionStore = (*mysqlData.Store)(nil)

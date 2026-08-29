@@ -1,4 +1,4 @@
-package repository_test
+package messagemysql_test
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
+	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 )
 
 type messageSyncStores struct {
@@ -41,7 +42,7 @@ func TestMessageProjectorAccountWritesMessageAndOutbox(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create Message projector store: %v", err)
 	}
-	repository, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(store, false)
+	repository, err := messagemysql.NewMessageRepositoryWithInboxWrites(store, false)
 	if err != nil {
 		t.Fatalf("create Message projector repository: %v", err)
 	}
@@ -72,7 +73,7 @@ func TestMessageAtomicAccountWritesMessageOutboxAndInbox(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create Message atomic store: %v", err)
 	}
-	repository, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(store, true)
+	repository, err := messagemysql.NewMessageRepositoryWithInboxWrites(store, true)
 	if err != nil {
 		t.Fatalf("create Message atomic repository: %v", err)
 	}
@@ -98,7 +99,7 @@ func TestMessageSyncRepositoryContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create MySQL store: %v", err)
 	}
-	sqlcMessage, err := sqlcRepository.NewMessageRepository(mysqlStore)
+	sqlcMessage, err := messagemysql.NewMessageRepository(mysqlStore)
 	if err != nil {
 		t.Fatalf("create sqlc message repository: %v", err)
 	}
@@ -128,7 +129,7 @@ func TestMessageInboxWriteOwnershipCanMoveToProjectorAndRollBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create MySQL store: %v", err)
 	}
-	projectorMode, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(store, false)
+	projectorMode, err := messagemysql.NewMessageRepositoryWithInboxWrites(store, false)
 	if err != nil {
 		t.Fatalf("create projector-mode repository: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestMessageInboxWriteOwnershipCanMoveToProjectorAndRollBack(t *testing.T) {
 		t.Fatalf("projected inbox rows = %d, want 1", got)
 	}
 
-	atomicMode, err := sqlcRepository.NewMessageRepositoryWithInboxWrites(store, true)
+	atomicMode, err := messagemysql.NewMessageRepositoryWithInboxWrites(store, true)
 	if err != nil {
 		t.Fatalf("create atomic-mode repository: %v", err)
 	}

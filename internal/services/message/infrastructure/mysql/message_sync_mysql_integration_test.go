@@ -1,4 +1,4 @@
-package repository_test
+package messagemysql_test
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
+	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 )
 
 func TestSQLCMessageSyncSequenceFollowsCommitOrder(t *testing.T) {
@@ -30,7 +31,7 @@ func TestSQLCMessageSyncSequenceFollowsCommitOrder(t *testing.T) {
 		firstInboxInserted: make(chan struct{}),
 		releaseFirst:       make(chan struct{}),
 	}
-	repo, err := sqlcRepository.NewMessageRepository(&pausingTransactionStore{db: db, control: control})
+	repo, err := messagemysql.NewMessageRepository(&pausingTransactionStore{db: db, control: control})
 	if err != nil {
 		t.Fatalf("create sqlc message repository: %v", err)
 	}
@@ -80,7 +81,7 @@ func TestSQLCConversationSequenceIsContinuousUnderConcurrency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create MySQL store: %v", err)
 	}
-	repo, err := sqlcRepository.NewMessageRepository(store)
+	repo, err := messagemysql.NewMessageRepository(store)
 	if err != nil {
 		t.Fatalf("create message repository: %v", err)
 	}
