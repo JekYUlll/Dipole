@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：服务布局门禁新增 shared `internal/bootstrap` 根目录生产 Go 文件回流检查，当前 embedded runtime 物理路径和各独立服务 bootstrap 边界由自动化契约持续保护。
 - 2026-08-30：embedded 聚合 runtime 已从共享 `internal/bootstrap` 迁入 `internal/bootstrap/embedded/runtime/` 子包，Core embedded 兼容入口直接引用 embedded-owned runtime；共享 bootstrap 根目录不再持有生产级聚合实现，生命周期、Kafka、transport 和回滚语义保持兼容。
 - 2026-08-30：embedded 聚合的 Message persistence ownership 策略及测试已迁入 `internal/bootstrap/embedded/`，共享 bootstrap 仅保留 runtime 生命周期编排；local/gRPC/remote 判断和回滚语义保持兼容。
 - 2026-08-30：embedded Kafka managed topic 清单及契约测试已迁入 `internal/bootstrap/embedded/`，runtime 直接使用 embedded-owned API；topic 列表和版本化契约回归通过，独立服务 consumer ownership 保持不变。
