@@ -23,6 +23,17 @@
 
 ## 待处理
 
+### AD-048：Go 微服务默认部署仍使用共享镜像
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-29
+- **影响范围：** Go 服务镜像、Compose 发布、回滚和供应链 provenance
+- **现状：** 服务入口已拆分，Compose 仍默认引用包含多个二进制的 `DIPOLE_IMAGE`。本轮新增只复制单一 `/app/service` 的镜像模板、构建脚本和 `isolated-images.yml` override，Core 候选镜像已实际构建验证。
+- **风险：** 共享镜像扩大每个服务的攻击面和发布耦合；候选镜像尚未完成全套服务共享环境 readiness、RPC、消息和回滚演练，因此暂不替换默认镜像。
+- **下一步：** 在隔离 Compose 项目中构建六个单服务镜像，逐项验证启动、依赖 readiness、mTLS、Kafka ownership 和回滚；证据完整后再评估默认 Compose 切换。
+- **验证门槛：** `scripts/check-compose.sh`、`scripts/check-service-layout.sh`、Go backend 构建和 Core 镜像内容隔离检查已通过；默认共享镜像与 authority 行为保持不变。
+
 ### AD-047：受限实验主机的 Elasticsearch 磁盘水位需要隔离约束
 
 - **优先级：** P2
