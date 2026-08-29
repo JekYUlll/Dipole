@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Memory Candidate Promotion 测试已迁入 `internal/services/agent/application`，直接覆盖 Agent-owned 实现并删除 `internal/app` 对应 facade。
 - 2026-08-29：MCP Tool Round 与 Terminal 测试已迁入 `internal/services/agent/application`，共享 stub 随测试归属迁移，并删除 `internal/app` 对应构造转发。
 - 2026-08-29：MCP Tool Round 测试已补齐 Agent application 自有的最小 invocation reader stub，避免服务测试依赖 `internal/app` 测试包。
 - 2026-08-29：MCP Readiness Evidence 测试已迁入 `internal/services/agent/application`，直接覆盖 Agent-owned publisher/resolver 并删除 `internal/app` 对应 facade。
