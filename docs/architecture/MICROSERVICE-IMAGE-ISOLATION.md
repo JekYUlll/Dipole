@@ -23,6 +23,12 @@ BUILD_IMAGE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
 SMOKE_SEARCH_PROFILE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
 ```
 
+需要验收候选 Gateway 的真实消息写入时，额外启用消息链路检查：
+
+```bash
+SMOKE_MESSAGE_FLOW=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
+```
+
 可以通过环境变量覆盖镜像标签：
 
 ```bash
