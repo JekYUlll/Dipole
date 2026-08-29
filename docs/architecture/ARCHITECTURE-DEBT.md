@@ -11,6 +11,7 @@
 ### 本轮进展
 
 - 2026-08-30：调用审计确认导出 `RestrictCoreServiceMethods` 无仓内调用者，已删除 shared policy 包装；Core RPC server 保留私有权限策略，已有 Agent/Search/Sync 权限 contract 不变。
+- 2026-08-30：调用审计确认 shared `NewCoreRPCServerWithAgent` 仅被测试使用，已删除该 facade；Agent RPC contract 测试直接构造 adapter，仍被 runtime 使用的 control/projection/artifact 构造路径保持兼容。
 - 2026-08-30：shared `RegisterCoreProjectionKafkaHandlers` 已完成调用审计并退休；Core standalone runtime 直接使用 Core-owned projection 注册器，Conversation projection、Kafka ownership 和回滚语义保持兼容。
 - 2026-08-30：shared `internal/bootstrap.RunServer` 已完成调用审计并退休；Core/Gateway 的 TLS 与服务启动入口由各自 bootstrap 持有，embedded 聚合不再暴露通用 server runner。
 - 2026-08-30：shared Kafka 注册 facade `RegisterKafkaHandlersWithRepositories` 与 `RegisterCoreKafkaHandlersWithRepositories` 已完成调用审计并退休；embedded runtime 继续使用私有组合，Core projection 保持由 Core-owned 入口注册，Kafka ownership 和回滚语义保持兼容。
