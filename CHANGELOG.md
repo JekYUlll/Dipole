@@ -1,5 +1,6 @@
 # 更新日志
 
+- Agent Runtime active 启动增加 release manifest 绑定：必须提供 manifest 文件、candidate 必须一致且阶段必须为 `user_gray`；默认 shadow 路径不变，缺失/读取失败/阶段或版本漂移均 fail closed。
 - Go/Eino 兼容 Agent 基线已从 `internal/modules/ai/` 收敛到 `internal/services/agent/legacy/`；bootstrap import 与相关文档同步更新，保留 TS Runtime 接管前的回滚路径。
 - 服务布局门禁已固定 Agent legacy 目录归属，并阻止 `internal/modules/ai/` 回流。
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { agentReleaseManifestSha256, assertShadowPromotionBinding, parseAgentReleaseManifest, transitionAgentReleaseStage } from "./agent-release-manifest.js";
+import { agentReleaseManifestSha256, assertActivePromotionBinding, assertShadowPromotionBinding, parseAgentReleaseManifest, transitionAgentReleaseStage } from "./agent-release-manifest.js";
 
 const suiteHash = "a".repeat(64);
 
@@ -25,6 +25,12 @@ describe("Agent release manifest", () => {
     expect(() => assertShadowPromotionBinding(fixture(), "agent-runtime@other", suiteHash)).toThrow(/candidate version/);
     expect(() => assertShadowPromotionBinding(fixture(), "agent-runtime@abc123", "b".repeat(64))).toThrow(/Eval Suite hash/);
     expect(() => parseAgentReleaseManifest({ ...fixture(), extra: true })).toThrow();
+  });
+
+  it("requires a user-gray manifest before active runtime startup", () => {
+    expect(assertActivePromotionBinding({ ...fixture(), stage: "user_gray" }, "agent-runtime@abc123").stage).toBe("user_gray");
+    expect(() => assertActivePromotionBinding(fixture(), "agent-runtime@abc123")).toThrow(/user_gray/);
+    expect(() => assertActivePromotionBinding({ ...fixture(), stage: "user_gray" }, "agent-runtime@other")).toThrow(/candidate version/);
   });
 
   it("allows one-step promotion and rollback without mutating the prior manifest", () => {

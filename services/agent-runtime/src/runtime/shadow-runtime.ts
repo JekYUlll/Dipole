@@ -43,6 +43,7 @@ const shadowRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
   runtimeMode: z.enum(["shadow", "active"]),
   candidateVersion: z.string().trim(),
+  releaseManifestPath: z.string().trim(),
   brokers: z.array(z.string().trim().min(1)),
   clientId: z.string().trim().min(1),
   groupId: z.string().trim().min(1),
@@ -99,6 +100,9 @@ const shadowRuntimeConfigSchema = z.object({
   }
   if (config.runtimeMode === "active" && config.candidateVersion.length === 0) {
     refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires a candidate version", path: ["candidateVersion"] });
+  }
+  if (config.runtimeMode === "active" && config.releaseManifestPath.length === 0) {
+    refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires a release manifest", path: ["releaseManifestPath"] });
   }
   if (config.enabled && config.brokers.length === 0) {
     refinement.addIssue({ code: "custom", message: "Kafka brokers are required when shadow runtime is enabled", path: ["brokers"] });
@@ -177,6 +181,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     enabled: env.DIPOLE_AGENT_KAFKA_ENABLED?.trim().toLowerCase() === "true",
     runtimeMode: env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase() === "remote" ? "active" : "shadow",
     candidateVersion: env.DIPOLE_AGENT_CANDIDATE_VERSION ?? "",
+    releaseManifestPath: env.DIPOLE_AGENT_RELEASE_MANIFEST ?? "",
     brokers: (env.DIPOLE_AGENT_KAFKA_BROKERS ?? "").split(",").map((broker) => broker.trim()).filter(Boolean),
     clientId: env.DIPOLE_AGENT_KAFKA_CLIENT_ID ?? "dipole-agent",
     groupId: env.DIPOLE_AGENT_KAFKA_GROUP_ID ?? "dipole-agent-shadow-v1",
