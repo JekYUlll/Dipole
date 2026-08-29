@@ -6,14 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
 func TestNewGroupEventHandlerFansOutRecipients(t *testing.T) {
 	sender := &directReadSender{}
-	payload, err := json.Marshal(coregroup.GroupEventPayload{
+	payload, err := json.Marshal(application.GroupEventPayload{
 		GroupUUID: "G1", Name: "group", MemberUUIDs: []string{"U1", "U2"},
 		RecipientUUIDs: []string{"U1", "U2"}, OccurredAt: time.Now().UTC(),
 	})
@@ -21,7 +21,7 @@ func TestNewGroupEventHandlerFansOutRecipients(t *testing.T) {
 		t.Fatal(err)
 	}
 	event := platformKafka.Event{Envelope: &platformKafka.Envelope{EventType: "group.updated", Payload: payload}}
-	dataBuilder := func(p coregroup.GroupEventPayload) wsTransport.GroupUpdatedEventData {
+	dataBuilder := func(p application.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 		return wsTransport.GroupUpdatedEventData{GroupUUID: p.GroupUUID, Name: p.Name}
 	}
 
@@ -39,7 +39,7 @@ func TestNewGroupEventHandlerFansOutRecipients(t *testing.T) {
 
 func TestNewGroupEventHandlerRejectsMalformedEvent(t *testing.T) {
 	event := platformKafka.Event{Envelope: &platformKafka.Envelope{EventType: "group.updated", Payload: []byte(`{"group_uuid":`)}}
-	buildData := func(coregroup.GroupEventPayload) wsTransport.GroupUpdatedEventData {
+	buildData := func(application.GroupEventPayload) wsTransport.GroupUpdatedEventData {
 		return wsTransport.GroupUpdatedEventData{}
 	}
 	if err := NewGroupEventHandler(&directReadSender{}, wsTransport.TypeGroupUpdated, buildData)(context.Background(), event); err == nil {
