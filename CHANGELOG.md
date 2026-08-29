@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：Multipart reconciliation 增加 `--reconcile-fail-on-drift` 告警门禁，显式开启时发现 MinIO/Redis 跨存储漂移返回退出码 `3`；默认仍只读且不修改数据。
 - 2026-08-30：Multipart cleanup 增加只读 `--reconcile` 模式，对照 MinIO 未完成 upload 与 Redis session metadata，识别跨存储漂移并以测试保证默认不修改任何数据。
 - 2026-08-30：Multipart 增加短期完成收据与重复请求保护：成功响应丢失后重复 Complete 返回同一文件记录，重复 Abort 不重复调用对象存储，已完成会话拒绝 Abort；补充 Core 服务测试与 A7/AD-055 台账记录。
 - 2026-08-30：校准 AD-055 与 A7 的大文件上传状态：记录整文件 SHA-256 绑定与可选强制校验已完成，明确 Redis 孤儿扫描已有基础能力，并将剩余工作收敛为 Multipart reconciliation、生命周期告警、Complete/Abort 幂等、暂停/继续和真实故障矩阵。
