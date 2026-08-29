@@ -72,12 +72,25 @@ export DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_SEARCH_IMAGE DIPOLE_SEARCH_
 
 INTERNAL_CERT_DIR="${cert_dir}" "${script_dir}/generate-internal-certs.sh" >/dev/null
 compose config --quiet
-compose up -d --wait
-curl --fail --silent --show-error --connect-timeout 2 --max-time 5 "http://127.0.0.1:${gateway_port}/health" | grep -q '"component":"gateway"'
+compose up -d
+
+for _ in $(seq 1 120); do
+  gateway_health=$(curl --fail --silent --show-error --connect-timeout 2 --max-time 5 \
+    "http://127.0.0.1:${gateway_port}/health" 2>/dev/null || true)
+  [[ "${gateway_health}" == *'"component":"gateway"'* ]] && break
+  sleep 1
+done
+[[ "${gateway_health}" == *'"component":"gateway"'* ]]
 
 for service in core message sync gateway; do
-  compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez | grep -qx alive
-  compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz | grep -qx ready
+  for _ in $(seq 1 120); do
+    live=$(compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez 2>/dev/null || true)
+    ready=$(compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null || true)
+    [[ "${live}" == alive && "${ready}" == ready ]] && break
+    sleep 1
+  done
+  test "${live}" = alive
+  test "${ready}" = ready
 done
 
 if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
@@ -94,6 +107,7 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
   sender_password=123456
   target_password=123456
   message_content="isolated-candidate-message-${project}"
+  client_message_id="isolated-candidate-client-${project}"
 
   register() {
     local phone=$1 nickname=$2
@@ -135,9 +149,10 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
     -d '{"action":"accept"}' \
     "http://127.0.0.1:${gateway_port}/api/v1/contacts/applications/${application_id}" >/dev/null
 
-  if { printf '/send %s\n' "${message_content}"; sleep 2; } |
+  if { printf '/send %s\n' "${message_content}"; sleep 1; printf '/send %s\n' "${message_content}"; sleep 2; } |
     "${wscli_binary}" -base "http://127.0.0.1:${gateway_port}" \
-      -telephone "${sender_phone}" -password "${sender_password}" -target "${target_uuid}" >"${wscli_log}" 2>&1; then
+      -telephone "${sender_phone}" -password "${sender_password}" -target "${target_uuid}" \
+      -client-message-id "${client_message_id}" >"${wscli_log}" 2>&1; then
     wscli_status=0
   else
     wscli_status=$?
