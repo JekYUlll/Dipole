@@ -2,30 +2,31 @@
 
 ## 收件箱/发件箱设计
 
-**Q: 当前设计没有用户的收件箱和发件箱，是否有必要？**
+**Q: Message Store 与 User Inbox Timeline 为什么要分开？**
 
-不需要引入。当前设计已覆盖收件箱/发件箱要解决的核心问题：
+当前架构已经引入 User Inbox Timeline，并与 Message Store 分工：
 
-- 我发出去的消息：`ListByConversationKey` 按 `conversation_key` 拉取，发送方自然包含在内
-- 我收到的消息：`ListOfflineByUserUUID` 按 `target_uuid = me` 或群成员关系过滤
-- 未读数：`Conversation` 表的 `unread_count`，per-user 独立维护
-- 离线补拉：增量游标 `after_id`，客户端维护 `last_synced_message_id`
+- 历史消息：Message Store 按 `conversation_key + message_seq` 提供漫游和分页
+- 待同步消息：Sync Store 按 `user_uuid + sync_seq` 保存 `user_sync_inbox` locator
+- 未读状态：Conversation State 使用 `last_message_seq + read_seq` 表达用户读位点
+- 离线补拉：客户端按设备 Cursor 请求 `after_sync_seq`，再按 locator 拉取完整消息
 
-收件箱/发件箱（写扩散）适用于需要对每条消息独立标记状态（如邮件语义）的场景。Dipole 是 IM 语义，消息是会话的一部分，`Conversation` per-user 记录已承担"用户视图"的职责。
+Message Store 与 Sync Store 分离后，历史查询和用户同步查询分别按自己的访问模式优化。普通群可使用用户级 Inbox 写扩散，热群继续使用聚合通知加 Timeline 拉取，避免按成员无限放大写入。
 
-如果后续需要"对我删除"或消息独立状态，可以加一张 `user_message_states(user_uuid, message_id, deleted, ...)` 表，比引入完整收件箱代价小得多。
+`user_sync_inbox` 只保存 locator，不复制消息正文；设备 Cursor、群组 checkpoint 和幂等约束共同保证多端恢复。对我删除等用户视图状态可以在此模型上继续增加独立投影。
 
 ---
 
 ## 群聊消息扩散模式
 
-**Q: 当前的群聊消息是读扩散还是写扩散？**
+**Q: 当前的群聊消息采用哪种扩散模式？**
 
-混合模式：消息存储读扩散 + 未读计数写扩散。
+混合模式：Message Store 保持单条消息，Sync Timeline 和 Conversation State 根据群规模选择写扩散或读扩散。
 
-- **消息存储（读扩散）**：消息只写一条记录，`target_type = Group`，`target_uuid = group_uuid`。读取时通过 JOIN 查询动态过滤出当前用户所属群的消息。
-- **实时推送（读扩散）**：`syncDispatch=true` 时，dispatcher 遍历群成员列表逐个调用 `hub.SendEventToUser()`，消息本身只有一份。
-- **未读数（写扩散）**：发群消息时，`ConversationService` 给每个群成员各自的 `Conversation` 记录做 `unread_count += 1`。
+- **Message Store**：消息按会话保存一份，由 `conversation_id + message_seq` 定位。
+- **普通群**：消息事件经 Kafka 投影到收件人 Inbox，并更新用户会话状态。
+- **热群**：保留群级 Timeline checkpoint，实时层发送聚合 notify，客户端按 Seq 补拉，减少成员级写扩散。
+- **未读状态**：使用 `last_message_seq` 与 `read_seq` 计算，并保留投影校正能力。
 
 和微信的做法类似。
 
@@ -146,14 +147,14 @@ Kafka Consumer ──► deliverGroupMessageHandler（syncDispatch=false 时逐�
 
 ## 消息回执
 
-当前有两种回执：
+当前有两种主要回执：
 
 **发送回执（chat.sent）**：消息发出后立即回给发送方，含 `delivered` 字段，表示推送时对方是否有在线 WS 连接。Kafka 模式下始终为 `false`（推送由 consumer 异步完成）。
 
-**已读回执（chat.read）**：客户端打开会话时主动调 `POST /conversations/{target_uuid}/read`，服务端清零未读数，并将 `last_read_message_uuid` 推送给对方。
+**已读回执（chat.read）**：客户端打开会话时提交会话级 `read_seq`，服务端推进用户会话读位点，并向其他设备同步状态。
 
 当前局限：
-- 粒度是会话级（最后一条消息），不是消息级
+- 目前以会话 Seq 读位点为主，消息级送达状态仍属于后续能力
 - 群聊没有已读回执，只清未读数，不通知其他成员
 - 没有"送达"回执，`delivered: true` 只说明推送时有连接，不代表客户端真正处理了消息
 - 已读是主动触发的，不是自动的
@@ -162,7 +163,7 @@ Kafka Consumer ──► deliverGroupMessageHandler（syncDispatch=false 时逐�
 
 ## Message 与 Conversation 的关系
 
-`messages` 表存消息本身，`conversations` 表是每个用户视角下的会话摘要，两者通过 `conversation_key` 关联。
+Message Store 存完整消息事实，`conversations` 表保存每个用户视角下的会话状态，Sync Store 保存用户待同步 locator，三者通过会话标识和 Seq 关联。
 
 `Conversation` 的唯一索引是 `(user_uuid, conversation_key)`，同一个会话每个参与者各有一行。
 
@@ -170,19 +171,19 @@ Kafka Consumer ──► deliverGroupMessageHandler（syncDispatch=false 时逐�
 - 单聊：`direct:UUID_A:UUID_B`（两个 UUID 排序后拼接，保证双向同一个 key）
 - 群聊：`group:GUUID`
 
-**群里发一条消息会创建多少条 Conversation 记录：**
+**群里发一条消息会如何更新用户状态：**
 
-`UpdateGroupConversations` 遍历所有 N 个成员，每人一次 `UpsertGroupMessage`（ON CONFLICT DO UPDATE）。首次发消息 INSERT N 条，后续 UPDATE N 条。发送方 `unread_count` 不增加，其余 N-1 人各加 1。
+普通群通过 Kafka projector 为收件人更新 Inbox 和 Conversation State；热群使用群级 checkpoint 与聚合 notify，客户端按 Seq 补拉。Conversation State 以 `last_message_seq`、`read_seq` 和投影状态表达未读位置。
 
-这是写扩散，群越大写放大越高。
+普通群仍存在成员级写扩散成本，热群路径通过读扩散降低该成本。
 
 ---
 
 ## 写扩散延迟问题
 
-**无 Kafka**：`UpdateGroupConversations` 在发送链路上同步执行，N 次串行 MySQL 写全部完成后才回 ACK。100 人群 = 100 次串行写，延迟直接叠加。
+**同步兼容模式**：Conversation State 可在发送链路内更新，成员级写入会随群规模增加。
 
-**有 Kafka**：conversation 更新由 consumer 异步执行，不在发送链路上，发送延迟不受影响。但 consumer 侧存在一次冗余的 `ListMembers` 查询——`send_requested` payload 里已经带了 `RecipientUUIDs`，consumer 没有复用，而是重新查了一次成员列表。
+**Kafka 模式**：Message、Sync 和 Conversation projection 在发送链路外异步执行，发送延迟与投影延迟解耦；事件携带的 recipient snapshot 用于幂等和权限边界校验。
 
 ---
 
@@ -235,39 +236,38 @@ AI 助手 UUID 是硬编码配置值（`UAI000000000000000001`），不走生成
 
 ### 定位
 
-Go 实现的模块化单体 IM 后端，支持单聊、群聊、文件传输和 AI 助手。以单机同步模式为基础，通过 Kafka 开关切换到异步分布式模式，两种模式共用同一套业务逻辑。
+Dipole 是采用模块化单体渐进演进的事件驱动 IM 平台，当前已提供 Core、Gateway、Message、Sync、Search、Agent Runtime 等独立服务入口；Go 承担 IM 业务与一致性，TypeScript 承担 Agent Runtime，C++ Realtime Delivery 作为独立候选数据面。
 
 ### 分层架构
 
 ```
-HTTP/WebSocket
+Client
+    ↓ HTTP / WebSocket
+IM Gateway
+    ↓ gRPC / Kafka
+Core / Message / Sync / Search / Agent Runtime
     ↓
-Handler（Gin）          — 参数校验、鉴权、限流
-    ↓
-Service                 — 业务逻辑、权限检查
-    ↓
-Repository              — 数据访问接口（GORM）
-    ↓
-Store                   — MySQL + Redis
-    ↑
-Platform                — Kafka / MinIO / Bloom / Presence / RateLimit
+sqlc + MySQL | Kafka | Redis | Cassandra | Elasticsearch | MinIO
 ```
 
 ### 基础设施
 
 | 组件 | 用途 |
 |---|---|
-| MySQL | 消息、用户、群组、会话持久化 |
+| MySQL | Core 状态、Message 元数据/兼容正文、Sync 状态和 Agent ledger |
 | Redis | 用户/群组缓存、Presence、限流计数、Bloom filter |
-| Kafka | 可选，消息异步落库和事件分发 |
+| Kafka | Outbox 事件传播、投影和跨服务异步解耦 |
+| Cassandra | Message Timeline 影子/候选主读 |
+| Elasticsearch | 消息搜索索引和重建投影 |
 | MinIO | 文件存储，presigned URL 下载 |
 
 ### 主要设计权衡
 
 | 决策 | 选择 | 代价 |
 |---|---|---|
-| 消息存储 | 读扩散（一条消息一行） | 群消息查询需 JOIN |
-| 未读计数 | 写扩散（每人一行） | 大群发消息 N 次写 |
-| Kafka 模式 | ACK 先于落库 | 发送方看到"已发"但消息可能还没持久化 |
+| 消息存储 | Message Store 按会话 Seq 保存事实 | Cassandra 主读仍需灰度与回切证据 |
+| 用户同步 | Sync Store 保存 Inbox locator 和设备 Cursor | 普通群存在写扩散，热群需要 checkpoint |
+| 未读状态 | Conversation State 使用 `last_message_seq + read_seq` | 投影延迟期间需要状态对账 |
+| Kafka 模式 | Outbox 后异步传播 created 事件 | 需要 retry/DLQ、幂等和 ownership 门禁 |
 | UUID 生成 | 纯随机无时间戳 | 无法按 UUID 排序，碰撞无重试 |
-| 单体架构 | 模块化单体 | 水平扩展需要 Kafka + 共享 Redis，不能独立扩展各模块 |
+| 服务演进 | 模块化单体起步、按边界渐进拆分 | 兼容入口和共享 schema 仍需按 rollout 门禁逐步退出 |

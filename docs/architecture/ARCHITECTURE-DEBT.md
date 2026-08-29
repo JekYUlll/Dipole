@@ -20,6 +20,7 @@
 - **解决方式：** 将架构图更新为当前 Core/Message/Gateway/Sync/Search/Agent Runtime 分层，补充 sqlc、`user_sync_inbox`、Cassandra/Elasticsearch 影子投影和回滚门禁，并移除 `AutoMigrate`、无 Inbox 单体及旧 Eino 主链路的过时表述。图中仍明确标注本地合并启动、影子能力和默认关闭边界。
 - **验证：** `scripts/check-architecture-docs.sh`、SVG XML 解析和 `git diff --check` 通过；本次只修改文档，不改变运行配置或服务权限。
 - **长期约束：** 服务拓扑、数据 ownership、默认开关或语言职责变化时，必须同步更新架构图、对应正式文档、更新日志和台账；架构图不得把 shadow、fallback 或离线契约描述成生产主路径。
+- **本轮进展：** `ARCHITECTURE-QA.md` 已同步当前 Message Store、User Inbox Timeline、Conversation Seq/read_seq、sqlc 和微服务拓扑，移除早期无 Inbox、GORM 与纯模块化单体的现状描述。
 
 ## 待处理
 
