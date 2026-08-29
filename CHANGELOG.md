@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 `contracts/multipart-upload/v1` 版本化上传策略、默认 `relay` 策略和 SHA-256 release manifest，并增加 `scripts/check-multipart-policy.mjs` 及 Node 测试；大文件上限、分片大小、并发、重试和预签名 URL TTL 统一进入可审计契约，生产仍保留旧路径回切。
+
 - 2026-08-30：Multipart Web 上传增加可见的暂停/继续控制；暂停只停止新分片调度并保留 Redis/MinIO 会话，继续时复用原 `upload_id` 和已确认分片，前端上传专项测试、类型检查和生产构建通过。
 
 - 2026-08-30：重新执行 `scripts/smoke-microservices.sh`，隔离验证 Core、Gateway、Message、Sync、Agent 及 MySQL/Redis/Kafka/MinIO readiness、metrics、mTLS、远程 WS ownership 和 Agent 幂等；临时拓扑自动清理，KafkaJS 分区器 warning 未影响验收。
