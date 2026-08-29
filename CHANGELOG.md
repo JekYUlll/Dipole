@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 复跑 `scripts/smoke-cassandra-read-routing.sh`：在隔离 MySQL/Cassandra 与 migration v50 环境验证 Timeline 页面使用 Cassandra，并在 payload 损坏或记录缺失时按同一 locator 安全回退 MySQL；临时资源自动清理，生产主读开关保持关闭。
 - 将 Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配迁入 `internal/services/gateway/server/`，Gateway bootstrap 直接使用服务自有 server；共享 Gin handler 保留在 `internal/gateway/http/` 供兼容 Core server 复用。
 - 将 Core HTTP/WS server、静态资源和通知适配器迁入 `internal/services/core/server/`，独立 Core 与 embedded 兼容入口统一使用 Core-owned server；旧 `internal/server/` 路径退役，HTTP、WS 和回滚语义保持兼容。
 - 服务布局门禁新增 shared `internal/bootstrap` 根目录生产 Go 文件回流检查，embedded runtime 必须位于 `internal/bootstrap/embedded/runtime/`，独立服务 runtime 必须位于对应服务 bootstrap。
