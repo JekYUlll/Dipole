@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：复核 Agent Active 晋级前置门禁：TypeScript Runtime Vitest `125` 个文件、`665` 个测试通过，`typecheck`、生产构建和 Compose active overlay 契约均通过；默认 Shadow、显式 `user_gray` manifest 和 candidate 绑定保持 fail-closed，共享 Temporal/Kafka/Active authority 联调仍待完成。
+
 - 2026-08-30：修复 Inbox projector 隔离 smoke 的失败拓扑保留逻辑，并补齐 Message Service 的 `DIPOLE_SYNC_PROJECTOR_ENABLED` 前置配置；在 projector ownership 模式下完成真实消息流程验证，receipt 归档于 `benchmarks/ad048-projector-message-flow-2026-08-30/receipt.json`，回滚仍为移除 overlay 并恢复 `atomic`。
 - 2026-08-30：完成逐服务候选镜像的真实消息流程验证，覆盖注册登录、好友关系、WebSocket 发送、Message/Outbox/Inbox 幂等和 Seq 历史/增量读取；receipt 归档于 `benchmarks/ad048-message-flow-2026-08-30/receipt.json`，生产切换保持关闭。
 - 2026-08-30：收紧 Memory candidate 解析边界，正文和 compact 摘要均拒绝凭据模式；新增绕过 ObservationWorker 的 fail-closed 测试，保持自动 Memory 写入关闭。
