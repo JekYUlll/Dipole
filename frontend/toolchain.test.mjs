@@ -15,7 +15,7 @@ const configFile = resolve(projectRoot, 'vite.config.ts')
 test('Vite config preserves the Dipole base path and output boundary', async () => {
   const config = await resolveConfig({ configFile }, 'build')
   assert.equal(config.base, '/app/')
-  assert.equal(config.build.outDir, resolve(projectRoot, '../internal/server/webapp'))
+  assert.equal(config.build.outDir, resolve(projectRoot, '../internal/services/core/server/webapp'))
   assert.equal(config.server.proxy['/api'].ws, true)
   assert.equal(config.server.proxy['/api'].changeOrigin, true)
 })
