@@ -7,7 +7,6 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
@@ -16,6 +15,7 @@ import (
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	routingData "github.com/JekYUlll/Dipole/internal/platform/storage/routing"
 	shadowData "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
@@ -28,7 +28,7 @@ import (
 const messageServiceName = "dipole-message"
 
 type MessageRuntime struct {
-	rpc                *legacybootstrap.InternalRPCServer
+	rpc                *platformrpc.Server
 	coreCapability     *lazyCoreCapability
 	outboxFlow         *messagekafka.Relay
 	shutdownSec        int
