@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- TLS 证书与私钥路径校验已下沉至 `internal/platform/runtime.ValidateTLSFiles`，Core、Gateway 和 embedded runtime 统一使用平台实现；删除共享 bootstrap 的重复 helper，TLS 启动失败语义保持一致。
 - 删除已无调用者的 `internal/bootstrap.VerifyMessageDatabaseBoundary` 兼容转发；Message 数据库权限探针继续由 `internal/services/message/infrastructure/mysql` 唯一持有，embedded 与独立 runtime 均不改变权限语义。
 - Embedded runtime 已直接持有并创建 `messagekafka.Relay`，删除仅供旧 bootstrap 内部使用的 Outbox 类型 alias/构造包装；Outbox relay 实现、启动条件和回滚行为保持兼容。
 - Embedded Kafka 装配已直接注册 Message-owned persistence handlers，删除仅供共享 bootstrap 内部使用的 `RegisterMessageKafkaHandlers` 包装，避免继续扩散 Message Kafka 实现入口。
