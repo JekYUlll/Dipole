@@ -121,6 +121,8 @@
 
 ## [Unreleased]
 
+- 2026-08-30：完成开发期部署环境评估：Remote GPU（224 vCPU、188 GiB 内存、约 1.1 TiB 可用磁盘、4 张 RTX 4090）作为完整微服务、存储实验、Agent Runtime 和分级负载测试环境；TencentCloud_01（2 vCPU、2 GiB 内存、50 GiB 磁盘）收敛为轻量 smoke 与低资源兼容性环境；本机暂不运行完整集群压测。远程部署门禁、资源快照、不可变镜像、隔离 Compose project、故障停止和回滚要求已写入平台演进计划，当前尚未执行远程部署。
+
 - 2026-08-30：Multipart 初始化支持可选 `file_sha256`，会话绑定整文件摘要；开启 `storage.multipart_require_checksum` 后，Complete 会读取已完成对象校验 SHA-256，缺失或不匹配时拒绝并清理对象，前端会在初始化阶段提交 Web Crypto 摘要，默认仍保持兼容模式。
 - 2026-08-30：为 Redis Multipart 清理增加幂等与截断保护回归：重复执行不会重复删除，达到 `--redis-max-keys` 时报告 `complete=false`，避免把部分扫描结果误判为全量清理。
 - 2026-08-30：扩展 `dipole-multipart-cleanup` 的可选 Redis 生命周期扫描：`--redis-orphans` 以有界 SCAN 检测无 TTL 的 Multipart meta 与 meta 已过期的孤儿 parts，默认 dry-run，只有 `--execute --confirm` 才删除孤儿 parts；保留原 MinIO 报告字段，完整过期 upload reconciliation 和告警仍待 A7/AD-055。
