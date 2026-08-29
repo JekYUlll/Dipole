@@ -15,6 +15,14 @@ if ! git -C "${root_dir}" ls-files --error-unmatch docs/architecture/SERVICE-BOU
   echo "service boundary manifest is not tracked: docs/architecture/SERVICE-BOUNDARIES.md" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/search/application/search.go" ]]; then
+  echo "Search application implementation is outside its service boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/app/search.go" || -e "${root_dir}/internal/app/search_test.go" ]]; then
+  echo "legacy shared Search application path remains under internal/app" >&2
+  exit 1
+fi
 for service in "${expected_services[@]}"; do
   if [[ ! -f "${root_dir}/cmd/services/${service}/main.go" ]]; then
     echo "missing service entrypoint: cmd/services/${service}/main.go" >&2
