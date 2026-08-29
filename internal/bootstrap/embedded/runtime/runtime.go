@@ -124,6 +124,9 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if repos.AgentProcess == nil {
 		return nil, fmt.Errorf("compose Agent repositories: process set is nil")
 	}
+	if repos.MessageProcess == nil {
+		return nil, fmt.Errorf("compose Message repositories: process set is nil")
+	}
 	agentRepos := repos.AgentProcess
 	if err := coreapplication.EnsureAIAssistantUser(repos.Users); err != nil {
 		return nil, fmt.Errorf("ensure ai assistant user failed: %w", err)
@@ -355,7 +358,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("kafka consumer started")
 	}
 	if kafkaCfg.Enabled && platformKafka.Client != nil {
-		rt.outboxFlow = messagekafka.NewRelay(repos.Outbox)
+		rt.outboxFlow = messagekafka.NewRelay(repos.MessageProcess.Outbox)
 		if rt.outboxFlow != nil {
 			rt.outboxFlow.Start()
 			logger.Info("outbox relay started")
