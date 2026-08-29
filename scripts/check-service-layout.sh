@@ -150,6 +150,10 @@ if [[ -d "${root_dir}/internal/data/mysql/generated" || -d "${root_dir}/internal
   echo "legacy SQLC generated or mapper directory remains under internal/data/mysql" >&2
   exit 1
 fi
+if compgen -G "${root_dir}/internal/service/*.go" >/dev/null 2>&1; then
+  echo "legacy internal/service implementation remains; use internal/services or internal/compat" >&2
+  exit 1
+fi
 for legacy_mysql_operation in \
   agent_memory_lineage_backfill.go \
   cassandra_backfill.go \
