@@ -47,7 +47,7 @@
 - 将 Search/Indexer 共用的 Elasticsearch client、版本化 schema、Alias 和 projection adapter 从 `internal/data/elasticsearch` 收纳到 `internal/platform/elasticsearch`，新增目录职责说明和结构门禁；Search 权限边界、Indexer 写入职责及 Alias 回滚语义保持兼容。
 - 将 Cassandra 灰度读取、消息对照和 Sync hydration fallback 从 `internal/data/{routing,shadow}` 收纳到 `internal/platform/storage/{routing,shadow}`，新增存储平台目录说明和结构门禁；MySQL 主路径、shadow 指标和回退开关保持兼容。
 - 将跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器从 `internal/data/cassandra` 收纳到 `internal/platform/cassandra`，新增目录职责说明和结构门禁；服务业务 projection 与编排保持原有边界。
-- 将 Core、Sync 和 Message 的旧服务兼容入口从 `internal/service` 收纳到 `internal/compat/service`，新增兼容层说明与结构门禁；共享事件发布契约继续留在 `internal/service`，业务行为和回滚入口保持兼容。
+- 将 Core、Sync 和 Message 的旧服务兼容入口从 `internal/service` 收纳到 `internal/compat/service`，新增兼容层说明与结构门禁；旧 `internal/service` 实现已清空，业务行为和回滚入口保持兼容。
 - Core 文件分片会话的 Redis 访问已收敛到 `internal/platform/cache`，domain 保留会话协议并移除对聚合 `internal/store` 的直接依赖；事务写入、缺失 Redis 和上传回滚语义保持兼容。
 - Core Auth TokenService 的 Redis 撤销状态访问已收敛到 `internal/platform/cache`，移除对 `internal/store` 全局客户端的直接依赖；写入和校验在 Redis 不可用时保持 fail-closed。
 - Agent infrastructure contract tests 已改用 `internal/services/agent/application/` 的 Agent-owned application constructors，结构门禁新增 Agent 服务禁止依赖聚合 `internal/app` 的检查；embedded 兼容入口保持不变。

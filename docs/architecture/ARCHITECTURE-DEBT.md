@@ -29,7 +29,7 @@
 - 2026-08-29：protobuf Go 生成物已从 `internal/transport/grpc/gen/` 收纳到 `api/gen/go/`，同步更新所有 transport、Gateway、Bootstrap 和 Realtime 引用；协议源、生成物与服务适配层边界已由 `check-proto` 和服务布局门禁固定。
 - 2026-08-29：Cassandra routing、shadow message store 和 Sync hydration fallback 已迁入 `internal/platform/storage/`；装饰器仍只通过 application port 运行，后续需继续评估迁移完成后的删除时机和 routing/shadow 配置 owner。
 - 2026-08-29：跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器已迁入 `internal/platform/cassandra/`；服务业务 projection 保持在各自边界，后续仍需评估 routing/shadow 装饰器和 Cassandra 数据 owner 的最终归属。
-- 2026-08-29：兼容别名已从 `internal/service` 收纳到 `internal/compat/service`；`internal/service` 仅保留共享事件发布契约与实现，后续仍需逐步迁移调用方并缩减兼容入口。
+- 2026-08-29：兼容别名已从 `internal/service` 收纳到 `internal/compat/service`；旧 `internal/service` 实现已清空，后续继续缩减其他兼容入口。
 - 2026-08-29：确认 `internal/service/event_publisher.go` 已无调用者并删除，`internal/service` 不再承载 Go 实现；服务布局门禁阻止该目录重新出现业务实现，跨服务事件契约继续由 application port 和版本化事件包承载。
 - 开始处理时补充负责人或关联 Issue/PR；解决后记录提交、验证方式和完成日期。
 - 本台账描述风险和演进方向，不代表当前迭代立即修改对应实现。
@@ -146,7 +146,7 @@
 - **下一步：** 在隔离 Compose 与共享环境记录冷启动、依赖 readiness、端到端消息和 Local 回切 evidence，再继续收紧 Core/Message 数据库账号与服务启动权限。
 - **验证门槛：** 默认微服务 Compose 冷启动中 Core、Message、Sync、Gateway 均 healthy；Core 专用 transport 配置单测、远程 Message mTLS contract、端到端消息 smoke 和 Local 回切 smoke 均通过。
 - **本轮进展：** 远程模式下 Core 的本地启动兼容层不再注册 Message persistence consumer，也不初始化消息 topic；消息写入与 topic ownership 继续收敛到 Message Service，新增 ownership 单测并由 Compose 配置门禁固定全局 transport 为 gRPC。
-- **本轮进展：** Gateway 已直接注册消息历史与 Sync HTTP 路由并通过受认证的 Message/Sync RPC 访问；Core 仅在 embedded 模式注册对应 HTTP/WS 数据路由，remote 模式的公共消息与同步入口已收口到 Gateway。Core 内部系统消息组合仍需后续改为受控远程 Capability。
+- **本轮进展：** Gateway 已直接注册消息历史与 Sync HTTP 路由并通过受认证的 Message/Sync RPC 访问；Core 仅在 embedded 模式注册对应 HTTP/WS 数据路由，remote 模式的公共消息与同步入口已收口到 Gateway。Core 内部系统消息已通过受限 Message RPC 接入，连接建立采用惰性 adapter。
 - **本轮进展：** Message Core Capability 改为惰性连接：构造时不拨号，首次调用或依赖就绪探针按当前 RPC 认证配置建立连接；连接失败不进入缓存，Core 恢复后可重试，新增冷启动/重试/关闭回归测试。完整隔离 Compose 和共享环境证据仍待补齐。
 
 ### AD-047：受限实验主机的 Elasticsearch 磁盘水位需要隔离约束
