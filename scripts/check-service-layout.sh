@@ -361,8 +361,12 @@ if rg --quiet 'internal/compat/service' "${root_dir}/internal" --glob '*.go' --g
   echo "production code must depend on service-owned contracts, not internal/compat/service" >&2
   exit 1
 fi
-if rg --quiet 'internal/bootstrap/embedded' "${root_dir}/internal/services/core/server" "${root_dir}/internal/services/core/bootstrap" --glob '*.go' --glob '!embedded_compat.go'; then
+if rg --quiet 'internal/bootstrap/embedded' "${root_dir}/internal/services/core/server" "${root_dir}/internal/services/core/bootstrap" --glob '*.go' --glob '!**/embedded_compat.go' --glob '!**/*_test.go'; then
   echo "Core server/bootstrap must not depend on embedded composition; keep that dependency in embedded_compat.go only" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap/embedded' "${root_dir}/cmd/services" "${root_dir}/internal/services" --glob '*.go' --glob '!**/embedded_compat.go' --glob '!**/*_test.go'; then
+  echo "service code must not depend on embedded composition; keep the rollback bridge in Core embedded_compat.go only" >&2
   exit 1
 fi
 if ! git -C "${root_dir}" ls-files --error-unmatch docs/architecture/SERVICE-BOUNDARIES.md >/dev/null 2>&1; then
