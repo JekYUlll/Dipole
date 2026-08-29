@@ -1,4 +1,4 @@
-package repository_test
+package searchmysql_test
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
+	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/search/infrastructure/mysql"
 )
 
 func TestSearchIndexRepositoryContract(t *testing.T) {
