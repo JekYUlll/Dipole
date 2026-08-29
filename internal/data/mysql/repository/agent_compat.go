@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	mysqlData "github.com/JekYUlll/Dipole/internal/data/mysql"
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 )
 

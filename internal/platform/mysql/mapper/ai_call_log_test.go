@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 

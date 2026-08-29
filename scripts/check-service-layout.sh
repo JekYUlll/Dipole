@@ -39,6 +39,14 @@ if [[ -e "${root_dir}/internal/data/mysql/store.go" ]]; then
   echo "MySQL transaction implementation remains in legacy internal/data/mysql" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/platform/mysql/generated/db.go" || ! -f "${root_dir}/internal/platform/mysql/mapper/message.go" ]]; then
+  echo "SQLC generated code and mapper must remain under internal/platform/mysql" >&2
+  exit 1
+fi
+if [[ -d "${root_dir}/internal/data/mysql/generated" || -d "${root_dir}/internal/data/mysql/mapper" ]]; then
+  echo "legacy SQLC generated or mapper directory remains under internal/data/mysql" >&2
+  exit 1
+fi
 if [[ -d "${root_dir}/internal/data/elasticsearch" ]]; then
   echo "legacy Elasticsearch adapter directory remains under internal/data" >&2
   exit 1
