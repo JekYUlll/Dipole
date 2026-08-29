@@ -7,14 +7,12 @@ import (
 
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
-	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
-	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
@@ -22,25 +20,15 @@ import (
 )
 
 const (
-	gatewayServiceName  = "dipole-gateway"
-	coreServiceName     = "dipole-core"
-	messageServiceName  = "dipole-message"
-	searchServiceName   = "dipole-search"
-	syncServiceName     = "dipole-sync"
-	agentServiceName    = "dipole-agent"
-	realtimeServiceName = "dipole-realtime"
+	gatewayServiceName = "dipole-gateway"
+	coreServiceName    = "dipole-core"
+	messageServiceName = "dipole-message"
+	searchServiceName  = "dipole-search"
+	syncServiceName    = "dipole-sync"
+	agentServiceName   = "dipole-agent"
 )
 
 type InternalRPCServer = platformrpc.Server
-
-func NewDeliveryObservationRPCServer(cfg config.InternalRPC, adapter *deliverygrpc.ShadowServer) (*InternalRPCServer, error) {
-	if adapter == nil {
-		return nil, errors.New("delivery observation rpc adapter is required")
-	}
-	return newInternalRPCServer(cfg, cfg.DeliveryObservationListenAddress, []string{realtimeServiceName}, func(server *grpc.Server) {
-		deliveryv1.RegisterNodeDeliveryServiceServer(server, adapter)
-	})
-}
 
 func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability) (*InternalRPCServer, error) {
 	return newCoreRPCServer(cfg, capability, nil)

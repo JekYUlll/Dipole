@@ -271,7 +271,7 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 		Enabled: true, SharedSecret: "test-secret", DeliveryObservationListenAddress: "127.0.0.1:0",
 		DialTimeoutSeconds: 2,
 	}
-	server, err := NewDeliveryObservationRPCServer(cfg, receiver)
+	server, err := gatewaybootstrap.NewDeliveryObservationRPCServer(cfg, receiver)
 	if err != nil {
 		t.Fatalf("start delivery observation rpc: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 	})
 
 	connection, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
-		Service: realtimeServiceName, Secret: cfg.SharedSecret,
+		Service: "dipole-realtime", Secret: cfg.SharedSecret,
 	})
 	if err != nil {
 		t.Fatalf("dial delivery observation as Realtime: %v", err)
@@ -312,13 +312,13 @@ func TestDeliveryObservationRPCReportsBackpressureOverTCP(t *testing.T) {
 		Enabled: true, SharedSecret: "test-secret", DeliveryObservationListenAddress: "127.0.0.1:0",
 		DialTimeoutSeconds: 2,
 	}
-	server, err := NewDeliveryObservationRPCServer(cfg, receiver)
+	server, err := gatewaybootstrap.NewDeliveryObservationRPCServer(cfg, receiver)
 	if err != nil {
 		t.Fatalf("start delivery observation rpc: %v", err)
 	}
 	t.Cleanup(func() { server.Close(context.Background()) })
 	connection, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
-		Service: realtimeServiceName, Secret: cfg.SharedSecret,
+		Service: "dipole-realtime", Secret: cfg.SharedSecret,
 	})
 	if err != nil {
 		t.Fatalf("dial delivery observation: %v", err)
