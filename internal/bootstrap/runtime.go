@@ -333,7 +333,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		return nil, fmt.Errorf("register kafka handlers failed: %w", registerErr)
 	}
 	if kafkaCfg.Enabled && platformKafka.Client != nil && coreOwnsMessagePersistence(gatewayCfg.Mode, messageCfg.Transport) {
-		if err := platformKafka.Client.EnsureTopics(kafkaManagedTopics()); err != nil {
+		if err := platformKafka.Client.EnsureTopics(appComposition.ManagedKafkaTopics()); err != nil {
 			return nil, fmt.Errorf("ensure kafka topics failed: %w", err)
 		}
 		logger.Info("kafka topics ensured",

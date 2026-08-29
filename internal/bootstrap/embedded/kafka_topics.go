@@ -1,6 +1,6 @@
-package bootstrap
+package embedded
 
-func kafkaManagedTopics() []string {
+func ManagedKafkaTopics() []string {
 	return []string{
 		"message.direct.send_requested",
 		"message.direct.created",
