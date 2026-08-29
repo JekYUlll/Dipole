@@ -210,7 +210,7 @@
 - **本轮进展：** Core Admin domain 及测试已迁入 `internal/services/core/domain/admin/`；HTTP/DTO 与测试调用已迁移到 Core-owned Admin contract，删除无调用者的 `internal/compat/service/admin_compat.go`，User 权限错误继续共享同一错误值。
 - **本轮进展：** Core Session domain 及测试已迁入 `internal/services/core/domain/session/`；设备会话 DTO、HTTP、Core Session Kick 和 Gateway Kafka 测试已迁移到 Core-owned contract，删除无调用者的 `internal/compat/service/session_compat.go`，设备会话 HTTP 与事件 contract 保持兼容。
 - **本轮进展：** Core User domain 及测试已迁入 `internal/services/core/domain/user/`；User HTTP/DTO 及测试调用已迁移到 Core-owned User contract，删除无调用者的 `internal/compat/service/user_compat.go`，头像对象存储与用户管理 HTTP contract 保持兼容。
-- **本轮进展：** Core Contact domain 及测试已迁入 `internal/services/core/domain/contact/`；`internal/compat/service/contact_compat.go` 仅保留类型、错误、常量和构造入口兼容层，联系人 HTTP 与事件 contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Contact domain 及测试已迁入 `internal/services/core/domain/contact/`；联系人 DTO、HTTP、Gateway Kafka 测试和错误契约已迁移到 Core-owned Contact contract，删除无调用者的 `internal/compat/service/contact_compat.go`，联系人 HTTP 与事件 contract 保持兼容。
 - **本轮进展：** Core Conversation domain 及测试已迁入 `internal/services/core/domain/conversation/`；`internal/compat/service/conversation_compat.go` 仅保留类型、错误和构造入口兼容层，Conversation HTTP、已读回执和投影观察 contract 保持兼容，旧实现路径由结构门禁阻止回流。
 - **本轮进展：** Sync domain 及测试已迁入 `internal/services/sync/domain/`；全仓调用审计确认 `internal/compat/service/sync_compat.go` 无生产或测试调用者，已删除该兼容入口并收紧服务布局门禁，设备 Cursor、群组 checkpoint 和增量同步 contract 保持兼容。
 - **本轮进展：** Message event contract 与 Sync projection 实现及测试已迁入 `internal/services/message/domain/`；`internal/compat/service/message_event_compat.go` 仅保留类型、错误和函数兼容入口，事件、Search mutation 和 Inbox locator contract 保持兼容，旧实现路径由结构门禁阻止回流。
