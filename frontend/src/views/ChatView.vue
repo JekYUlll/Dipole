@@ -590,12 +590,13 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
-import { sha256Hex, uploadMultipartParts } from '@/upload/multipartUpload'
+import { sha256Hex, uploadMultipartParts, uploadPresignedPart } from '@/upload/multipartUpload'
 
 const router = useRouter()
 const auth = useAuthStore()
 const chat = useChatStore()
 const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
+const presignedMultipartEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_ENABLED === 'true'
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -1399,7 +1400,33 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
   }
 
   try {
+    let presignedParts = new Map<number, string>()
+    if (presignedMultipartEnabled) {
+      const partNumbers = Array.from({ length: init.total_parts }, (_, index) => index + 1)
+        .filter(partNumber => !skipParts.has(partNumber))
+      if (partNumbers.length > 0) {
+        const response = await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/presign`, {
+          part_numbers: partNumbers,
+        }) as { parts: Array<{ part_number: number; url: string }> }
+        if (!response?.parts?.every(part => part.url?.trim())) {
+          throw new Error('multipart presign response contains an invalid URL')
+        }
+        presignedParts = new Map(response.parts.map(part => [part.part_number, part.url]))
+        if (partNumbers.some(partNumber => !presignedParts.has(partNumber))) {
+          throw new Error('multipart presign response is incomplete')
+        }
+      }
+    }
     await uploadMultipartParts(file, init.chunk_size, init.total_parts, async (partNumber, chunk) => {
+      if (presignedParts.has(partNumber)) {
+        const presignedURL = presignedParts.get(partNumber)!
+        const etag = await uploadPresignedPart(presignedURL, chunk)
+        await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/${partNumber}/register`, {
+          etag,
+          size: chunk.size,
+        })
+        return
+      }
       const checksum = await sha256Hex(chunk)
       await api.put(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/${partNumber}`, chunk, {
         headers: {
