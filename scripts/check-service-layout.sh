@@ -274,8 +274,13 @@ if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/service
   exit 1
 fi
 
-if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
+if rg --quiet 'coreauth\.AgentMCPResourceIdentifier' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
   echo "Gateway bootstrap must use application Agent MCP resource contracts" >&2
+  exit 1
+fi
+
+if ! rg --quiet 'gateway\.NewServerWithDependencies\(' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
+  echo "Gateway runtime must use the explicit dependency-injection constructor" >&2
   exit 1
 fi
 
