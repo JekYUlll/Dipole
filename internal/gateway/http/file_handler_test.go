@@ -14,19 +14,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 )
 
 type stubFileService struct {
 	uploadFn            func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
-	initiateMultipartFn func(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error)
+	initiateMultipartFn func(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
 	uploadPartFn        func(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error
 	completeMultipartFn func(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	abortMultipartFn    func(uploaderUUID, sessionID string) error
-	downloadFn          func(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error)
-	openContentFn       func(currentUserUUID, fileUUID string) (*service.FileContentResult, error)
+	downloadFn          func(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error)
+	openContentFn       func(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error)
 }
 
 type stubFileLimiter struct {
@@ -40,21 +40,21 @@ func (s *stubFileService) UploadMessageFile(uploaderUUID string, header *multipa
 	return s.uploadFn(uploaderUUID, header)
 }
 
-func (s *stubFileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error) {
+func (s *stubFileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error) {
 	if s.downloadFn == nil {
 		return nil, nil
 	}
 	return s.downloadFn(currentUserUUID, fileUUID)
 }
 
-func (s *stubFileService) OpenContent(currentUserUUID, fileUUID string) (*service.FileContentResult, error) {
+func (s *stubFileService) OpenContent(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error) {
 	if s.openContentFn == nil {
 		return nil, nil
 	}
 	return s.openContentFn(currentUserUUID, fileUUID)
 }
 
-func (s *stubFileService) InitiateMultipartUpload(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error) {
+func (s *stubFileService) InitiateMultipartUpload(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error) {
 	if s.initiateMultipartFn == nil {
 		return nil, nil
 	}
@@ -173,11 +173,11 @@ func TestFileHandlerDownloadSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := newFileHandler(&stubFileService{
-		downloadFn: func(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error) {
+		downloadFn: func(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error) {
 			if currentUserUUID != "U100" || fileUUID != "F100" {
 				t.Fatalf("unexpected download args: %s %s", currentUserUUID, fileUUID)
 			}
-			return &service.FileDownloadResult{
+			return &corefile.FileDownloadResult{
 				FileID:      "F100",
 				FileName:    "hello.txt",
 				FileSize:    5,
@@ -204,11 +204,11 @@ func TestFileHandlerContentSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := newFileHandler(&stubFileService{
-		openContentFn: func(currentUserUUID, fileUUID string) (*service.FileContentResult, error) {
+		openContentFn: func(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error) {
 			if currentUserUUID != "U100" || fileUUID != "F100" {
 				t.Fatalf("unexpected open content args: %s %s", currentUserUUID, fileUUID)
 			}
-			return &service.FileContentResult{
+			return &corefile.FileContentResult{
 				FileID:      "F100",
 				FileName:    "image.png",
 				ContentType: "image/png",
@@ -241,11 +241,11 @@ func TestFileHandlerInitiateMultipartSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := newFileHandler(&stubFileService{
-		initiateMultipartFn: func(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error) {
+		initiateMultipartFn: func(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error) {
 			if uploaderUUID != "U100" || input.FileName != "big.bin" || input.FileSize != 12 {
 				t.Fatalf("unexpected multipart init args: %s %+v", uploaderUUID, input)
 			}
-			return &service.InitiateMultipartUploadResult{
+			return &corefile.InitiateMultipartUploadResult{
 				SessionID:  "MU100",
 				ChunkSize:  5,
 				TotalParts: 3,
