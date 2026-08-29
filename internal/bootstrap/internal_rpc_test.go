@@ -21,8 +21,13 @@ import (
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
+	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	gatewaybootstrap "github.com/JekYUlll/Dipole/internal/services/gateway/bootstrap"
+	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
+	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
+	syncbootstrap "github.com/JekYUlll/Dipole/internal/services/sync/bootstrap"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	"google.golang.org/grpc"
@@ -234,7 +239,7 @@ func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 	})
 
 	cfg.CoreTarget = server.Address()
-	client, connection, err := DialCoreCapability(context.Background(), cfg)
+	client, connection, err := messagebootstrap.DialCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial core capability: %v", err)
 	}
@@ -471,7 +476,7 @@ func TestGatewayUsesItsOwnAuthenticatedCoreIdentity(t *testing.T) {
 		server.Close(ctx)
 	})
 	cfg.CoreTarget = server.Address()
-	client, connection, err := DialGatewayCoreCapability(context.Background(), cfg)
+	client, connection, err := gatewaybootstrap.DialGatewayCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial gateway core capability: %v", err)
 	}
@@ -491,7 +496,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 	}
 	t.Cleanup(func() { server.Close(context.Background()) })
 	cfg.CoreTarget = server.Address()
-	gatewayClient, gatewayConnection, err := DialGatewayAgentCapability(context.Background(), cfg)
+	gatewayClient, gatewayConnection, err := gatewaybootstrap.DialGatewayAgentCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -554,7 +559,7 @@ func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	}
 
 	cfg.CoreTarget = server.Address()
-	gatewayClient, gatewayConnection, err := DialGatewayAgentCapability(context.Background(), cfg)
+	gatewayClient, gatewayConnection, err := gatewaybootstrap.DialGatewayAgentCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -583,7 +588,7 @@ func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 		coreServer.Close(ctx)
 	})
 	cfg.CoreTarget = coreServer.Address()
-	core, coreConnection, err := DialSearchCoreCapability(context.Background(), cfg)
+	core, coreConnection, err := searchbootstrap.DialSearchCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial Core as Search service: %v", err)
 	}
@@ -596,7 +601,7 @@ func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 		t.Fatalf("expected Search identity to be denied unrelated Core capability, got %v", err)
 	}
 
-	searchServer, err := NewSearchRPCServer(cfg, rpcSearchStub{})
+	searchServer, err := searchbootstrap.NewSearchRPCServer(cfg, rpcSearchStub{})
 	if err != nil {
 		t.Fatalf("start Search rpc server: %v", err)
 	}
@@ -606,7 +611,7 @@ func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 		searchServer.Close(ctx)
 	})
 	cfg.SearchTarget = searchServer.Address()
-	search, searchConnection, err := DialSearchApplication(context.Background(), cfg)
+	search, searchConnection, err := searchbootstrap.DialSearchApplication(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial Search application: %v", err)
 	}
@@ -632,7 +637,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 		coreServer.Close(ctx)
 	})
 	cfg.CoreTarget = coreServer.Address()
-	core, coreConnection, err := DialSyncCoreCapability(context.Background(), cfg)
+	core, coreConnection, err := syncbootstrap.DialSyncCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial Core as Sync service: %v", err)
 	}
@@ -645,7 +650,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 		t.Fatalf("expected Sync identity to be denied unrelated Core capability, got %v", err)
 	}
 
-	syncServer, err := NewSyncRPCServer(cfg, rpcSyncStub{})
+	syncServer, err := syncbootstrap.NewSyncRPCServer(cfg, rpcSyncStub{})
 	if err != nil {
 		t.Fatalf("start Sync rpc server: %v", err)
 	}
@@ -655,7 +660,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 		syncServer.Close(ctx)
 	})
 	cfg.SyncTarget = syncServer.Address()
-	syncApplication, syncConnection, err := DialCoreSyncApplication(context.Background(), cfg)
+	syncApplication, syncConnection, err := appComposition.DialCoreSyncApplication(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial Sync application as Core: %v", err)
 	}
@@ -674,7 +679,7 @@ func TestInternalRPCRejectsMissingRuntimeCredentials(t *testing.T) {
 	if _, err := NewCoreRPCServer(config.InternalRPC{Enabled: true, CoreListenAddress: "127.0.0.1:0"}, rpcCoreStub{}); err == nil {
 		t.Fatal("expected core rpc server without shared secret to fail")
 	}
-	if _, _, err := DialCoreCapability(context.Background(), config.InternalRPC{Enabled: true, CoreTarget: "127.0.0.1:1"}); err == nil {
+	if _, _, err := messagebootstrap.DialCoreCapability(context.Background(), config.InternalRPC{Enabled: true, CoreTarget: "127.0.0.1:1"}); err == nil {
 		t.Fatal("expected core rpc client without shared secret to fail")
 	}
 }
@@ -702,7 +707,7 @@ func TestCoreRPCServerAndClientUseMutualTLS(t *testing.T) {
 		server.Close(ctx)
 	})
 	cfg.CoreTarget = server.Address()
-	client, connection, err := DialCoreCapability(context.Background(), cfg)
+	client, connection, err := messagebootstrap.DialCoreCapability(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("dial mtls core capability: %v", err)
 	}
@@ -718,7 +723,7 @@ func TestInternalRPCRejectsPlaintextOutsideLoopback(t *testing.T) {
 		t.Fatal("expected non-loopback plaintext listener to fail")
 	}
 	cfg.CoreTarget = "10.0.0.1:9091"
-	if _, _, err := DialCoreCapability(context.Background(), cfg); err == nil {
+	if _, _, err := messagebootstrap.DialCoreCapability(context.Background(), cfg); err == nil {
 		t.Fatal("expected non-loopback plaintext target to fail")
 	}
 }

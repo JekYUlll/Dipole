@@ -63,6 +63,21 @@ jq -e '
   and .services.gateway.depends_on.sync.condition == "service_healthy"
 ' <<<"${default_microservices_config}" >/dev/null
 
+active_agent_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
+  DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
+    docker compose -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/agent-active.yml config --format json
+})"
+jq -e '
+  .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "remote"
+  and .services.agent.environment.DIPOLE_AGENT_CANDIDATE_VERSION == "agent-runtime@compose-check"
+  and .services.agent.environment.DIPOLE_AGENT_RELEASE_MANIFEST == "/run/dipole/release/manifest.json"
+  and any(.services.agent.volumes[]; (.source | endswith("/tmp/dipole-agent-release-manifest-check.json"))
+    and .target == "/run/dipole/release/manifest.json" and .read_only == true)
+' <<<"${active_agent_config}" >/dev/null
+
 primary_hydration_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_CASSANDRA_ENABLED=true \

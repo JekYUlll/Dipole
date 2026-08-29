@@ -1,0 +1,8 @@
+services:
+  agent:
+    volumes:
+      - ${DIPOLE_AGENT_RELEASE_MANIFEST_FILE:?DIPOLE_AGENT_RELEASE_MANIFEST_FILE is required}:/run/dipole/release/manifest.json:ro
+    environment:
+      DIPOLE_AGENT_RUNTIME_MODE: remote
+      DIPOLE_AGENT_CANDIDATE_VERSION: ${DIPOLE_AGENT_CANDIDATE_VERSION:?DIPOLE_AGENT_CANDIDATE_VERSION is required}
+      DIPOLE_AGENT_RELEASE_MANIFEST: /run/dipole/release/manifest.json
