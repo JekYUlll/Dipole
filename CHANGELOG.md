@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Gateway 服务新增 `internal/services/gateway/bootstrap/` 入口边界，`cmd/services/gateway` 已停止直接依赖共享 `internal/bootstrap`；实时投递 authority、Kafka、Redis、RPC 和 WS/TLS 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
 - Sync 服务新增 `internal/services/sync/bootstrap/` 入口边界，`cmd/services/sync` 已停止直接依赖共享 `internal/bootstrap`；Kafka projector、Cassandra hydration、数据库和 gRPC 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
 - Message 服务新增 `internal/services/message/bootstrap/` 入口边界，`cmd/services/message` 已停止直接依赖共享 `internal/bootstrap`；Kafka、Outbox、Cassandra routing、gRPC 和 readiness 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
 - Search 服务新增 `internal/services/search/bootstrap/` 入口边界，`cmd/services/search` 已停止直接依赖共享 `internal/bootstrap`；底层运行时保留兼容 facade，便于后续独立抽离 gRPC、metrics 和 readiness 基础设施并支持快速回滚。

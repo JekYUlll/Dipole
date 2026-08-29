@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
+	gatewaybootstrap "github.com/JekYUlll/Dipole/internal/services/gateway/bootstrap"
 	"go.uber.org/zap"
 )
 
@@ -22,7 +22,7 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	runtime, err := bootstrap.InitializeGateway(ctx)
+	runtime, err := gatewaybootstrap.InitializeService(ctx)
 	if err != nil {
 		logger.L().Fatal("gateway initialize failed", zap.Error(err))
 	}
@@ -30,7 +30,7 @@ func main() {
 
 	srv := runtime.Server()
 	serverErr := make(chan error, 1)
-	go func() { serverErr <- bootstrap.RunGatewayServer(srv, config.TLSConfig()) }()
+	go func() { serverErr <- gatewaybootstrap.RunServer(srv, config.TLSConfig()) }()
 	select {
 	case err := <-serverErr:
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -40,7 +40,7 @@ func main() {
 	case <-ctx.Done():
 	}
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), bootstrap.GatewayShutdownTimeout())
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), gatewaybootstrap.ShutdownTimeout())
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.L().Fatal("gateway graceful shutdown failed", zap.Error(err))
