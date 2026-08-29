@@ -44,6 +44,7 @@
 
 ## [Unreleased]
 
+- 2026-08-30：前端 Pencil 设计门禁新增批准导出清单校验，覆盖基础页面、Search、Sync 和 Agent 评审资产；缺失或空导出会在 `npm run test:design` 阶段 fail closed，不改变运行时行为。
 - 2026-08-30：复核 SQLC-only 数据访问边界：`scripts/check-sqlc.sh`、服务布局门禁和 Go 全仓回归均通过；生产 Go 源码与 `go.mod`/`go.sum` 未发现 GORM/`AutoMigrate` 回流，`AD-010` 继续保持已解决。
 - 2026-08-30：复跑 `scripts/smoke-runtime-dependency-readiness.sh`，确认 readiness 探针超时修复在完整微服务拓扑中生效；Core/Message/Sync/Gateway 冷启动、Gateway assignment、Elasticsearch 故障降级/恢复和核心服务不重启均通过，临时资源自动清理。
 - 2026-08-30：为 `scripts/smoke-runtime-dependency-readiness.sh` 增加 `docker compose exec` 10 秒硬超时，避免 readiness 探针在 CLI/容器异常时无限等待；修复后完整 smoke 通过 Elasticsearch 停止/恢复、Search readiness 降级恢复、Gateway assignment 和核心服务容器不重启校验。
