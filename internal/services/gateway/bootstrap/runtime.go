@@ -20,6 +20,7 @@ import (
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	"github.com/JekYUlll/Dipole/internal/services/gateway/server"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
@@ -247,7 +248,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		}
 	}
 
-	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
+	srv, err := gateway.NewServerWithDependencies(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
 		Messages:           messages,
 		Sync:               syncApplication,
 		Core:               core,
@@ -257,6 +258,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		AgentDefinitions:   agentSubscriptions,
 		AgentMemories:      agentMemories,
 		AgentMCP:           agentMCP,
+		TokenResolver:      coreauth.NewTokenService(),
 		Presence:           wsTransport.NewRedisPresenceTracker(presence),
 		Limiter:            platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
 		AgentMCPLimiter:    platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),

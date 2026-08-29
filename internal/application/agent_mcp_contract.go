@@ -25,6 +25,12 @@ type TokenSessionResolver interface {
 	ResolveSession(string) (*AgentTokenSession, error)
 }
 
+type TokenResolver interface {
+	TokenSessionResolver
+	Resolve(string) (string, error)
+	ResolveAgentMCPAccessToken(string, string, string) (*AgentTokenSession, error)
+}
+
 func AgentMCPResourceIdentifier(configured string) string {
 	if resource := strings.TrimSpace(configured); resource != "" {
 		return resource

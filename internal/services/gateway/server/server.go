@@ -40,6 +40,7 @@ type Dependencies struct {
 	AgentDefinitions   AgentDefinitionCatalogApplication
 	AgentMemories      AgentMemoryControlApplication
 	AgentMCP           AgentMCPApplication
+	TokenResolver      application.TokenResolver
 	Presence           wsTransport.PresenceTracker
 	Limiter            MessageRateLimiter
 	AgentMCPLimiter    AgentMCPRateLimiter
@@ -61,6 +62,15 @@ type Server struct {
 }
 
 func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
+	if dependencies.TokenResolver == nil {
+		dependencies.TokenResolver = coreauth.NewTokenService()
+	}
+	return NewServerWithDependencies(coreTarget, dependencies)
+}
+
+// NewServerWithDependencies builds Gateway with all authentication behavior
+// supplied by its composition root.
+func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*Server, error) {
 	if dependencies.Messages == nil {
 		return nil, errors.New("gateway message application is required")
 	}
@@ -75,16 +85,15 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	engine := gin.New()
 	engine.Use(middleware.Correlation(), logger.GinLogger(), logger.GinRecovery(), cors.Default())
 	hub := wsTransport.NewHub(wsTransport.WithPresenceTracker(dependencies.Presence))
-	tokenService := coreauth.NewTokenService()
 	userFinder := coreUserFinder{core: dependencies.Core}
-	authenticator := wsTransport.NewAuthenticator(tokenService, userFinder)
+	authenticator := wsTransport.NewAuthenticator(dependencies.TokenResolver, userFinder)
 	limiter := dependencies.Limiter
 	if limiter == nil {
 		limiter = platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
 	}
 	dispatcher := wsTransport.NewDispatcher(hub, dependencies.Messages, nil, false).WithLimiter(limiter)
 	wsHandler := wsTransport.NewHandler(authenticator, hub, dispatcher)
-	auth := middleware.Auth(tokenService, userFinder)
+	auth := middleware.Auth(dependencies.TokenResolver, userFinder)
 	messageHandler := httpHandler.NewMessageHandler(dependencies.Messages)
 
 	engine.GET("/health", func(c *gin.Context) {
@@ -107,7 +116,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 	}
 	if dependencies.Search != nil {
 		searchHandler := NewSearchHandler(dependencies.Search)
-		engine.GET("/api/v1/messages/search", middleware.Auth(tokenService, userFinder), searchHandler.Search)
+		engine.GET("/api/v1/messages/search", middleware.Auth(dependencies.TokenResolver, userFinder), searchHandler.Search)
 	}
 	if dependencies.AgentTasks != nil {
 		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
@@ -135,7 +144,7 @@ func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
 		if err := application.ValidateAgentMCPResource(application.AgentMCPResourceIdentifier(config.AuthConfig().AgentMCPResource)); err != nil {
 			return nil, errors.New("gateway Agent MCP resource is invalid")
 		}
-		auth := middleware.AgentMCPAuth(tokenService, userFinder)
+		auth := middleware.AgentMCPAuth(dependencies.TokenResolver, userFinder)
 		agentMCPLimiter := dependencies.AgentMCPLimiter
 		if agentMCPLimiter == nil {
 			agentMCPLimiter = platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
