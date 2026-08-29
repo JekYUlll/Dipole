@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Core HTTP/WS server、静态资源和通知适配器已从横向 `internal/server/` 迁入 `internal/services/core/server/`，Core 独立与 embedded 入口共用服务自有边界；旧目录扫描契约同步更新，HTTP、WS 和回滚行为保持兼容。
 - 2026-08-30：服务布局门禁新增 shared `internal/bootstrap` 根目录生产 Go 文件回流检查，当前 embedded runtime 物理路径和各独立服务 bootstrap 边界由自动化契约持续保护。
 - 2026-08-30：embedded 聚合 runtime 已从共享 `internal/bootstrap` 迁入 `internal/bootstrap/embedded/runtime/` 子包，Core embedded 兼容入口直接引用 embedded-owned runtime；共享 bootstrap 根目录不再持有生产级聚合实现，生命周期、Kafka、transport 和回滚语义保持兼容。
 - 2026-08-30：embedded 聚合的 Message persistence ownership 策略及测试已迁入 `internal/bootstrap/embedded/`，共享 bootstrap 仅保留 runtime 生命周期编排；local/gRPC/remote 判断和回滚语义保持兼容。
@@ -736,7 +737,7 @@
 - **本轮进展：** Agent Task Timeline 路由页面外壳已与组件共同使用共享 `--dp-*` token；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
 - **本轮进展：** Agent Event Subscription 管理页已接入共享 `--dp-*` 主题 token，并以组件测试锁定 token 映射；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
 - **本轮进展：** Agent Memory 管理页已通过后置主题覆盖接入共享 `--dp-*` token，兼容保留现有状态结构；其余 Agent/IM 页面迁移及截图视觉回归仍待完成。
-- **本轮进展：** 2026-08-29 Agent Runtime 与 Frontend 测试、类型检查和生产构建通过，嵌入式 `internal/server/webapp` 已同步到同一构建产物；完整页面视觉回归仍由 F4 跟踪。
+- **本轮进展：** 2026-08-29 Agent Runtime 与 Frontend 测试、类型检查和生产构建通过，嵌入式 `internal/services/core/server/webapp` 已同步到同一构建产物；完整页面视觉回归仍由 F4 跟踪。
 - **本轮进展：** Agent Task Timeline 已增加 Playwright authenticated mock 流程，固定路由 flag、Bearer 请求、cursor 参数和低敏展示边界；截图级跨浏览器视觉回归仍待完成。
 - **本轮进展：** Agent Approval 与 Elicitation 表单已迁移到共享 `--dp-*` token，并以源码契约测试锁定画布、表面、字体和状态色边界；截图级视觉回归仍待完成。
 - **本轮进展：** Agent Approval 页面已增加 Playwright authenticated mock 流程，固定审批请求体、Bearer、失败隐藏和移动端布局边界；截图级视觉回归仍待完成。
