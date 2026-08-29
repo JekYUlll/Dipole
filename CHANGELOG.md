@@ -31,7 +31,8 @@
 - Core Group application 装配已迁入 `internal/services/core/application/`；Server 继续使用原群组 HTTP contract，同时将群组 store、事件、热群、文件、对象存储和系统消息依赖收敛到 Core 服务 factory。
 - Core File application 装配已迁入 `internal/services/core/application/`；Messaging composition root 继续使用原文件 HTTP contract，同时将 File metadata、Message store 和对象存储依赖收敛到 Core 服务 factory。
 - Core Auth/Admin/Session application 装配已迁入 `internal/services/core/application/`；Server 继续使用原 HTTP contract，同时将认证、后台统计和设备会话依赖收敛到 Core 服务 factory。
-- Core Group domain 实现及测试已迁入 `internal/services/core/domain/`；旧 `internal/service` 仅保留兼容类型和错误别名，现有 HTTP、DTO 与 Kafka contract 保持兼容。
+- Core Group domain 实现及测试已迁入 `internal/services/core/domain/group/`；旧 `internal/service` 仅保留兼容类型和错误别名，现有 HTTP、DTO 与 Kafka contract 保持兼容。
+- Core File domain、Redis 分片会话实现及测试已迁入 `internal/services/core/domain/file/`；旧 `internal/service` 仅保留兼容类型和错误别名，现有文件 HTTP 与 DTO contract 保持兼容。
 - 聚合 repository composition 已显式保存 Core、Message、Sync、Agent 四类 process-owned repository 分组，并由 embedded 兼容入口复用；为后续独立启动链切换保留可回滚边界。
 - 新增 `CoreProcessRepositories`，集中装配 Core 所有的 SQLC repository，并由聚合 `NewRepositories` 复用；现有 embedded 入口保持兼容，便于后续 Core 独立 runtime 切换。
 - 新增 `AgentProcessRepositories`，集中装配 Agent-owned SQLC repository，并由聚合入口复用；Core 兼容 Capability 继续通过 port 使用，便于后续 TS Agent Runtime 独立接管。

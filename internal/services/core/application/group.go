@@ -6,7 +6,7 @@ import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 )
 
 type GroupHotGroupReader interface {
