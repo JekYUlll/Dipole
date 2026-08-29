@@ -1,5 +1,6 @@
 # 更新日志
 
+- Agent 增加独立 `deploy/microservices/agent-active.yml` 部署 override：显式要求 candidate 和 release manifest 文件，并以只读方式挂载；默认 Compose 仍为 shadow，移除 override 即可回滚。
 - 2026-08-30：重新执行 Sync Cassandra primary Compose smoke，验证 Cassandra schema init、Core/Message/Sync 依赖 readiness、primary hydration 配置和 Sync `/readyz`；临时拓扑自动清理，生产 Cassandra 主读保持关闭。
 - Agent 微服务 Compose 增加显式 Runtime mode、candidate 和 release manifest 路径契约：默认固定 `shadow` 且不挂载 manifest，active override 必须只读挂载 `user_gray` 清单；回滚恢复 shadow 配置即可。
 - 2026-08-30：重新执行 Kafka rebalance 隔离 smoke，验证双 consumer 成员、成员退出后的六分区接管和 lag 归零；临时集群自动清理，生产 offset、retry/DLQ 和 consumer group 配置保持不变。
