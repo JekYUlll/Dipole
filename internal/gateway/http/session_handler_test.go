@@ -11,18 +11,18 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
 type stubSessionService struct {
-	listUserDevicesFn       func(userUUID string) ([]*service.DeviceSessionView, error)
+	listUserDevicesFn       func(userUUID string) ([]*coresession.DeviceSessionView, error)
 	forceLogoutConnectionFn func(userUUID, connectionID string) error
 	forceLogoutAllFn        func(userUUID, currentToken string) error
 }
 
-func (s *stubSessionService) ListUserDevices(userUUID string) ([]*service.DeviceSessionView, error) {
+func (s *stubSessionService) ListUserDevices(userUUID string) ([]*coresession.DeviceSessionView, error) {
 	return s.listUserDevicesFn(userUUID)
 }
 
@@ -38,11 +38,11 @@ func TestSessionHandlerListDevicesSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewSessionHandler(&stubSessionService{
-		listUserDevicesFn: func(userUUID string) ([]*service.DeviceSessionView, error) {
+		listUserDevicesFn: func(userUUID string) ([]*coresession.DeviceSessionView, error) {
 			if userUUID != "U100" {
 				t.Fatalf("unexpected user uuid: %s", userUUID)
 			}
-			return []*service.DeviceSessionView{
+			return []*coresession.DeviceSessionView{
 				{
 					ConnectionID: "C100",
 					Device:       "desktop",
@@ -71,7 +71,7 @@ func TestSessionHandlerForceLogoutDeviceNotFound(t *testing.T) {
 
 	handler := NewSessionHandler(&stubSessionService{
 		forceLogoutConnectionFn: func(userUUID, connectionID string) error {
-			return service.ErrSessionNotFound
+			return coresession.ErrSessionNotFound
 		},
 	})
 
@@ -125,7 +125,7 @@ func TestSessionHandlerListDevicesFailure(t *testing.T) {
 	t.Parallel()
 
 	handler := NewSessionHandler(&stubSessionService{
-		listUserDevicesFn: func(userUUID string) ([]*service.DeviceSessionView, error) {
+		listUserDevicesFn: func(userUUID string) ([]*coresession.DeviceSessionView, error) {
 			return nil, errors.New("redis unavailable")
 		},
 	})
