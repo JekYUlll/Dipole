@@ -24,6 +24,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
@@ -31,7 +32,7 @@ import (
 type Runtime struct {
 	server      *server.Server
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
-	outboxFlow  *outboxRelay
+	outboxFlow  *messagekafka.Relay
 	messageFlow *messageApplicationTransport
 	syncFlow    *syncApplicationTransport
 	coreRPC     *InternalRPCServer
@@ -347,7 +348,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		logger.Info("kafka consumer started")
 	}
 	if kafkaCfg.Enabled && platformKafka.Client != nil {
-		rt.outboxFlow = newOutboxRelay(repos.Outbox)
+		rt.outboxFlow = messagekafka.NewRelay(repos.Outbox)
 		if rt.outboxFlow != nil {
 			rt.outboxFlow.Start()
 			logger.Info("outbox relay started")
