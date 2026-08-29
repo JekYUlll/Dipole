@@ -1063,3 +1063,14 @@
 - **现状：** Core standalone 使用空 Message repository 构造 embedded facade，联系人和群组触发的系统消息无法明确进入 Message Service 的独立写路径。
 - **解决方式：** Message RPC 增加 Core-only system direct/group command；Core standalone 使用懒连接 adapter，首次调用才执行带健康检查的 RPC 连接，避免 Core 与 Message 同时启动时形成阻塞环；embedded 继续使用本地 adapter。
 - **验证：** 协议生成检查、Compose 默认远程 transport 检查、Message RPC handler、Core/Message/Server 定向测试和全量 Go 测试通过；未认证 system command 被拒绝。
+
+### AD-054：大文件上传仍经 Core 业务服务串行中转
+
+- **优先级：** P1
+- **状态：** 暂缓
+- **发现日期：** 2026-08-30
+- **影响范围：** 大文件上传吞吐、Core 连接占用、断点恢复、对象存储清理和上传完整性
+- **现状：** 项目已经使用 MinIO 原生 S3 Multipart Upload；超过 Web 端 `4 MiB` 阈值后由 Core 逐片接收并调用 `PutObjectPart`，默认单文件上限为 `50 MiB`、分片大小为 `5 MiB`，会话与 part ETag 保存在 Redis。当前前端按顺序上传，分片请求经过业务服务，暂未提供预签名直传、并发重试、断点恢复和 checksum 校验。
+- **风险：** 文件越大，Core 的请求连接、带宽和超时压力越高；客户端中断后需要重新上传已完成分片，Redis/MinIO 的过期 upload 清理依赖后续运维闭环，内容完整性主要依赖 MinIO part 完成结果。
+- **计划：** 在 A7 中增加受限预签名 part URL、有界并发与重试、暂停/恢复、文件与 part checksum、Complete/Abort 幂等、未完成 Multipart 生命周期清理和真实 MinIO 集成验收；旧单请求与当前服务端 Multipart 路径保留为 feature flag 回滚路径。
+- **验证：** 当前 MinIO Multipart 单元/服务契约和 HTTP handler 测试已覆盖初始化、分片、完成、缺片、越权及 Abort 基本语义；A7 完成前不宣称已具备生产级断点续传和高吞吐直传能力。

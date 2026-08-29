@@ -318,6 +318,22 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 **验收：** 离线、多设备、热群、重放、Cursor 恢复和客户端升级测试通过；关闭 Redis 后仍可恢复持久同步状态。
 
+### A7：大文件上传与 MinIO Multipart 增强
+
+**当前基线：** 文件大小超过 Web 端 `4 MiB` 阈值后，Core File 通过 `initiate -> upload part -> complete` HTTP 流程调用 MinIO 原生 S3 Multipart Upload；当前默认单文件上限为 `50 MiB`、分片大小为 `5 MiB`，上传会话和 part ETag 保存在 Redis，失败路径支持 Abort。小文件仍保留单请求 `PutObject` 路径。
+
+- [x] 已完成 MinIO `NewMultipartUpload`、`PutObjectPart`、`CompleteMultipartUpload` 和 `AbortMultipartUpload` 的服务端链路。
+- [x] 已完成文件所有权校验、分片序号/大小校验、会话 TTL、缺片拒绝、完成后再写 `uploaded_files` 和失败清理。
+- [x] 已完成前端按文件大小选择单请求或 Multipart 上传，并在分片失败时主动取消服务端会话。
+- [ ] 将分片上传升级为 MinIO 预签名 URL 直传，Core 只负责初始化、签发受限 part URL、完成和取消，降低大文件对业务服务带宽与连接的占用。
+- [ ] 增加前端有界并发、指数退避、单 part 重试、暂停/继续和断点恢复；会话恢复必须绑定用户、对象键、文件大小、内容类型和 upload ID。
+- [ ] 增加整文件 SHA-256、part checksum 和完成结果校验，防止网络重试或客户端异常导致内容静默错误。
+- [ ] 增加 MinIO 未完成 Multipart 生命周期清理、Redis 会话过期扫描、完成/取消幂等和孤儿对象 reconciliation；指标至少覆盖 active、complete、abort、expired、retry、checksum mismatch 与耗时分位数。
+- [ ] 将大文件上限、分片大小、并发数、URL TTL 和失败重试次数纳入版本化配置与发布清单，保留旧单请求路径作为可即时回切的兼容实现。
+- [ ] 用真实 MinIO 集成测试覆盖大文件、多 part、重复 part、乱序 part、断网重试、过期会话、Abort、Complete 幂等、权限越界和服务重启恢复；补齐网关限流与代理超时验证。
+
+**验收：** 预签名直传在授权范围内完成 Multipart；暂停/恢复、重试、校验和清理可观测；MinIO 故障和客户端中断均能安全回滚到旧路径，未完成 upload 不长期占用对象存储。
+
 ## 8. 阶段三：Agent 化
 
 ### G1：固化迁移基线与 Capability API
