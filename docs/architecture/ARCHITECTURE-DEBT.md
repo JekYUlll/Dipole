@@ -450,7 +450,7 @@
 - **状态：** 已解决
 - **发现日期：** 2026-08-26
 - **解决日期：** 2026-08-27
-- **影响范围：** `internal/modules/ai/tools.go`、会话读取、用户资料、系统消息发送
+- **影响范围：** `internal/services/agent/legacy/tools.go`、会话读取、用户资料、系统消息发送
 - **解决方式：** Embedded Go/Eino Service 从已校验的触发 Message 与关联上下文生成 `ExecutionContext`，注入 principal、Agent、触发消息、会话和 request/trace/event ID。五个 Tool Schema 均移除 `user_uuid`，读取和系统消息目标只使用上下文 principal；上下文缺失或发送 Agent 不匹配时 fail closed。
 - **验证：** `dipole.agent.eval.v1` 保留两条恶意 `U999` 覆盖用例，结果改为 `identity.execution_context` 与 `principal_enforced`；单元测试覆盖全部 Tool 缺少上下文拒绝、schema 身份字段扫描、发送 Agent 不匹配和 Service 派生链。
 - **后续边界：** tenant、委托身份和细粒度权限继续由 G1 Capability API 承担，不能重新加入模型可控身份参数。

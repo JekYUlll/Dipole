@@ -91,7 +91,8 @@ if [[ ! -f "${root_dir}/services/realtime-delivery/CMakeLists.txt" || ! -f "${ro
   echo "Realtime Delivery is outside the services boundary" >&2
   exit 1
 fi
-if [[ -e "${root_dir}/agent-runtime" || -e "${root_dir}/realtime-delivery" ]]; then
+if git -C "${root_dir}" ls-files --error-unmatch agent-runtime >/dev/null 2>&1 || \
+  git -C "${root_dir}" ls-files --error-unmatch realtime-delivery >/dev/null 2>&1; then
   echo "legacy polyglot service directory remains at repository root" >&2
   exit 1
 fi

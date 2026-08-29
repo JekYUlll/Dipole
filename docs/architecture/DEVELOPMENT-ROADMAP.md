@@ -257,10 +257,10 @@
 
 推荐模块结构：
 
-- `internal/modules/ai/domain`
-- `internal/modules/ai/application`
-- `internal/modules/ai/infrastructure`
-- `internal/modules/ai/delivery/http`
+- `services/agent-runtime/src/domain`
+- `services/agent-runtime/src/application`
+- `services/agent-runtime/src/infrastructure`
+- `services/agent-runtime/src/delivery/http`
 
 开发内容：
 

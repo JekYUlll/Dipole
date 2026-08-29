@@ -13,11 +13,11 @@ import (
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
-	aiModule "github.com/JekYUlll/Dipole/internal/modules/ai"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
 	"github.com/JekYUlll/Dipole/internal/service"
+	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )

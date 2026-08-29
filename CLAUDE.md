@@ -41,7 +41,7 @@ HTTP/WebSocket → Handler → Service → Repository → Store (MySQL + Redis)
 - `internal/data/mysql/repository` — sqlc-backed adapters for application data ports
 - `internal/handler/http` — Gin handlers; thin layer that calls services and writes responses
 - `internal/transport/ws` — WebSocket hub, client lifecycle, message dispatcher, presence integration
-- `internal/modules/ai` — Eino-based AI assistant; has its own DB user (`UserTypeAssistant`) and is initialized at bootstrap
+- `internal/services/agent/legacy` — Eino-based AI assistant; has its own DB user (`UserTypeAssistant`) and is initialized at bootstrap
 - `internal/platform` — infrastructure abstractions: Kafka publisher, Redis cache, MinIO storage, bloom filters, rate limiter, presence tracker
 
 ## Non-Obvious Design Decisions
