@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：复跑 `scripts/smoke-cassandra-read-routing.sh`，隔离环境真实验证 migration v50、Cassandra Timeline 页面主读，以及 payload 损坏和缺行按同一 locator 回退 MySQL；资源自动清理，生产主读比例、共享环境窗口、责任人批准和可执行回切仍未启用。
 - 2026-08-30：Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配已从横向 `internal/gateway/` 迁入 `internal/services/gateway/server/`；Gateway bootstrap 直接引用服务自有实现，HTTP contract 与远程回滚行为保持兼容。
 - 2026-08-30：Core HTTP/WS server、静态资源和通知适配器已从横向 `internal/server/` 迁入 `internal/services/core/server/`，Core 独立与 embedded 入口共用服务自有边界；旧目录扫描契约同步更新，HTTP、WS 和回滚行为保持兼容。
 - 2026-08-30：服务布局门禁新增 shared `internal/bootstrap` 根目录生产 Go 文件回流检查，当前 embedded runtime 物理路径和各独立服务 bootstrap 边界由自动化契约持续保护。
