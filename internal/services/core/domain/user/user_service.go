@@ -1,4 +1,4 @@
-package service
+package coreuser
 
 import (
 	"context"
@@ -14,9 +14,11 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
+	coreadmin "github.com/JekYUlll/Dipole/internal/services/core/domain/admin"
 )
 
 var (
+	ErrAdminRequired            = coreadmin.ErrAdminRequired
 	ErrUserNotFound             = errors.New("user not found")
 	ErrUserPermissionDenied     = errors.New("user permission denied")
 	ErrEmptyProfileUpdate       = errors.New("empty profile update")
@@ -126,7 +128,7 @@ func (s *UserService) SearchUsers(currentUser *model.User, input SearchUsersInpu
 
 func (s *UserService) ListUsersForAdmin(currentUser *model.User, input AdminListUsersInput) ([]*model.User, error) {
 	if !currentUser.IsAdmin {
-		return nil, ErrAdminRequired
+		return nil, coreadmin.ErrAdminRequired
 	}
 
 	if input.Status != nil && !isValidUserStatus(*input.Status) {
@@ -163,7 +165,7 @@ func (s *UserService) UpdateProfile(currentUser *model.User, targetUUID string, 
 
 func (s *UserService) UpdateStatus(currentUser *model.User, targetUUID string, status int8) (*model.User, error) {
 	if !currentUser.IsAdmin {
-		return nil, ErrAdminRequired
+		return nil, coreadmin.ErrAdminRequired
 	}
 	if !isValidUserStatus(status) {
 		return nil, ErrInvalidUserStatus

@@ -5,7 +5,7 @@ import (
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/service"
+	coreuser "github.com/JekYUlll/Dipole/internal/services/core/domain/user"
 )
 
 type UserDependencies struct {
@@ -17,11 +17,11 @@ type UserDependencies struct {
 
 // LocalUserApplication keeps Core user use cases behind the Core service boundary.
 type LocalUserApplication struct {
-	*service.UserService
+	*coreuser.UserService
 }
 
 func NewUserApplication(repository applicationPort.UserStore, dependencies UserDependencies) *LocalUserApplication {
-	userService := service.NewUserService(repository).WithAvatarStorage(
+	userService := coreuser.NewUserService(repository).WithAvatarStorage(
 		dependencies.Files,
 		dependencies.Storage,
 		dependencies.AvatarMaxBytes,
