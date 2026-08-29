@@ -7,13 +7,11 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	appcomposition "github.com/JekYUlll/Dipole/internal/app"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	"github.com/JekYUlll/Dipole/internal/data/mysql/generated"
-	sqlcrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/data/mysqlconfig"
 	shadowdata "github.com/JekYUlll/Dipole/internal/data/shadow"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -21,6 +19,7 @@ import (
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	syncprojector "github.com/JekYUlll/Dipole/internal/projector/sync"
 	syncapplication "github.com/JekYUlll/Dipole/internal/services/sync/application"
+	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 	"github.com/apache/cassandra-gocql-driver/v2"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
@@ -79,7 +78,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			return nil, fmt.Errorf("verify Sync Service database permissions: %w", err)
 		}
 	}
-	primaryHydrator, err := sqlcrepository.NewMySQLSyncMessageHydrator(generated.New(db))
+	primaryHydrator, err := syncmysql.NewMySQLSyncMessageHydrator(generated.New(db))
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("compose MySQL Sync message hydrator: %w", err)
@@ -118,7 +117,7 @@ func initializeSyncService(ctx context.Context, rpcCfg config.InternalRPC, mysql
 			hydrator = fallbackHydrator
 		}
 	}
-	repositories, err := appcomposition.NewSyncProcessRepositoriesWithHydrator(db, hydrator)
+	repositories, err := syncmysql.NewProcessRepositories(db, hydrator)
 	if err != nil {
 		runtime.Close()
 		return nil, fmt.Errorf("compose Sync Service repositories: %w", err)

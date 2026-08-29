@@ -31,6 +31,18 @@ if [[ ! -f "${root_dir}/internal/services/sync/domain/sync_service.go" ]]; then
   echo "Sync domain implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/sync/infrastructure/mysql/sync_repository.go" ]]; then
+  echo "Sync MySQL repository is outside its service boundary" >&2
+  exit 1
+fi
+if rg --quiet 'internal/app(/|["`])' "${root_dir}/internal/bootstrap/sync_runtime.go"; then
+  echo "standalone Sync runtime must not depend on aggregate internal/app composition" >&2
+  exit 1
+fi
+if ! rg --quiet 'services/sync/infrastructure/mysql' "${root_dir}/internal/bootstrap/sync_runtime.go"; then
+  echo "standalone Sync runtime must use Sync-owned repository composition" >&2
+  exit 1
+fi
 if [[ ! -f "${root_dir}/internal/services/message/application/application.go" ]]; then
   echo "Message application implementation is outside its service boundary" >&2
   exit 1
@@ -159,6 +171,10 @@ if [[ -e "${root_dir}/internal/service/message_event.go" || -e "${root_dir}/inte
 fi
 if [[ -e "${root_dir}/internal/data/mysql/repository/message.go" ]]; then
   echo "legacy Message MySQL repository remains in shared repository package" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/data/mysql/repository/sync.go" || -e "${root_dir}/internal/data/mysql/repository/sync_projection.go" || -e "${root_dir}/internal/data/mysql/repository/sync_hydrator.go" ]]; then
+  echo "legacy Sync MySQL implementation remains in shared repository package" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/service/group_service.go" ]]; then
