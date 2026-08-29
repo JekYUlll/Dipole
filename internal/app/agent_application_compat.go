@@ -10,7 +10,6 @@ import (
 
 // Agent application implementations live under the Agent service boundary.
 // These aliases preserve the embedded composition root during migration.
-type PersistentAgentApprovalServiceV1 = agentapplication.PersistentAgentApprovalServiceV1
 type PersistentAgentWorkflowRepairAuditServiceV1 = agentapplication.PersistentAgentWorkflowRepairAuditServiceV1
 type PersistentAgentWorkflowRepairPrepareServiceV1 = agentapplication.PersistentAgentWorkflowRepairPrepareServiceV1
 type PersistentAgentWorkflowRepairExecutorV1 = agentapplication.PersistentAgentWorkflowRepairExecutorV1
@@ -21,14 +20,6 @@ type PersistentAgentRunAdmissionV1 = agentapplication.PersistentAgentRunAdmissio
 type AgentMemoryTaskReaderV1 = agentapplication.AgentMemoryTaskReaderV1
 type AgentMessageCommandExecutionServiceV1 = agentapplication.AgentMessageCommandExecutionServiceV1
 type PersistentAgentRuntimePromotionControlServiceV1 = agentapplication.PersistentAgentRuntimePromotionControlServiceV1
-
-func NewPersistentAgentApprovalServiceV1(store application.AgentPolicyStoreV1) (*PersistentAgentApprovalServiceV1, error) {
-	return agentapplication.NewPersistentAgentApprovalServiceV1(store)
-}
-
-func NewPersistentAgentApprovalServiceV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time) (*PersistentAgentApprovalServiceV1, error) {
-	return agentapplication.NewPersistentAgentApprovalServiceV1WithClock(store, now)
-}
 
 func NewPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery) (application.AgentToolInvocationAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(store, resolver, approvals, receipts)
