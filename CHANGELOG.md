@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Gateway Kafka 注册器与 realtime authority handler factory 已迁入 `internal/services/gateway/infrastructure/kafka`，共享 bootstrap 降为兼容转发；Gateway 的订阅注册、热群 detector、Notifier 和 fence 组合由服务边界统一持有。
 - Gateway group message delivery handler 已迁入 `internal/services/gateway/infrastructure/kafka`，普通群逐用户 fan-out、hot-group notify 聚合、文件映射和 Timeline notify 均由服务自有实现持有；Gateway Kafka 共享 handler 实现已清理完毕。
 - Gateway direct message delivery handler 已迁入 `internal/services/gateway/infrastructure/kafka`，保留文件消息映射、Timeline notify 三种模式和 WS 上下文传播；group message delivery 继续独立迁移。
 - Gateway 群事件 Kafka handler（`group.created`、`group.updated`、成员变更和解散）已迁入 `internal/services/gateway/infrastructure/kafka`，新增泛型 fan-out 契约测试；Core 的会话初始化解码保持原有归属。

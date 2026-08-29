@@ -21,7 +21,6 @@ import (
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
-	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
 
@@ -124,7 +123,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		if err != nil {
 			return err
 		}
-		if err := registerGatewayKafkaHandlers(hub, authority, nil); err != nil {
+		if err := RegisterGatewayKafkaHandlers(hub, authority, nil); err != nil {
 			return err
 		}
 	}
@@ -137,85 +136,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 }
 
 func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
-	if platformKafka.Subscriber == nil {
-		return nil
-	}
-	if hub == nil {
-		return fmt.Errorf("gateway kafka event sender is required")
-	}
-	return registerGatewayKafkaHandlers(hub, authority, fence)
-}
-
-func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
-	hotGroups := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
-	notifier := gatewaykafka.NewNotifier(hub, gatewaykafka.DefaultNotifyWindow)
-	platformKafka.Subscriber.Register("group.created", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
-		return wsTransport.GroupCreatedEventData{
-			GroupUUID: p.GroupUUID, Name: p.Name, Notice: p.Notice, Avatar: p.Avatar,
-			MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
-		}
-	}))
-	timelineNotifyMode := config.MessageConfig().TimelineNotifyMode
-	directHandler, groupHandler, err := gatewayMessageDeliveryHandlers(authority, hub, hotGroups, notifier, timelineNotifyMode)
-	if err != nil {
-		return err
-	}
-	directHandler = gatewaykafka.FenceMessageDeliveryHandler(authority, fence, directHandler)
-	groupHandler = gatewaykafka.FenceMessageDeliveryHandler(authority, fence, groupHandler)
-	platformKafka.Subscriber.Register("message.direct.created", directHandler)
-	platformKafka.Subscriber.Register("message.group.created", groupHandler)
-	platformKafka.Subscriber.Register("conversation.direct.read", gatewaykafka.NewDirectReadHandler(hub))
-	platformKafka.Subscriber.Register("group.updated", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupUpdated, func(p service.GroupEventPayload) wsTransport.GroupUpdatedEventData {
-		return wsTransport.GroupUpdatedEventData{
-			GroupUUID: p.GroupUUID, Name: p.Name, Notice: p.Notice, Avatar: p.Avatar,
-			OperatorUUID: p.OperatorUUID, UpdatedAt: p.OccurredAt,
-		}
-	}))
-	platformKafka.Subscriber.Register("group.members.added", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupMembersAdded, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
-		return wsTransport.GroupMembersChangedEventData{
-			GroupUUID: p.GroupUUID, MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
-		}
-	}))
-	platformKafka.Subscriber.Register("group.members.removed", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupMembersRemoved, func(p service.GroupEventPayload) wsTransport.GroupMembersChangedEventData {
-		return wsTransport.GroupMembersChangedEventData{
-			GroupUUID: p.GroupUUID, MemberUUIDs: p.MemberUUIDs, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
-		}
-	}))
-	platformKafka.Subscriber.Register("group.dismissed", gatewaykafka.NewGroupEventHandler(hub, wsTransport.TypeGroupDismissed, func(p service.GroupEventPayload) wsTransport.GroupDismissedEventData {
-		return wsTransport.GroupDismissedEventData{
-			GroupUUID: p.GroupUUID, GroupName: p.GroupName, OperatorUUID: p.OperatorUUID, OccurredAt: p.OccurredAt,
-		}
-	}))
-	platformKafka.Subscriber.Register("session.force_logout", gatewaykafka.NewSessionKickHandler(hub))
-	platformKafka.Subscriber.Register("contact.friend.deleted", gatewaykafka.NewContactFriendDeletedHandler(hub))
-	return nil
-}
-
-func gatewayMessageDeliveryHandlers(
-	authority realtimeDelivery.Authority,
-	hub kafkaWSEventSender,
-	hotGroups gatewaykafka.GroupHeatReader,
-	notifier *gatewaykafka.Notifier,
-	timelineNotifyMode string,
-) (platformKafka.Handler, platformKafka.Handler, error) {
-	switch authority {
-	case realtimeDelivery.AuthorityGo, realtimeDelivery.AuthorityShadow:
-		return gatewaykafka.NewDirectMessageHandler(hub, timelineNotifyMode), gatewaykafka.NewGroupMessageHandler(hub, hotGroups, notifier, timelineNotifyMode), nil
-	case realtimeDelivery.AuthorityCPP:
-		return checkpointMessageDeliveryHandler("direct"), checkpointMessageDeliveryHandler("group"), nil
-	default:
-		return nil, nil, fmt.Errorf("unsupported Gateway realtime delivery authority %q", authority)
-	}
-}
-
-func checkpointMessageDeliveryHandler(label string) platformKafka.Handler {
-	return func(_ context.Context, event platformKafka.Event) error {
-		if _, err := decodeMessageEventPayload(event); err != nil {
-			logger.Warn("decode "+label+" message for delivery checkpoint failed", zap.Error(err))
-			return err
-		}
-		return nil
-	}
+	return gatewaykafka.RegisterHandlers(hub, authority, fence)
 }
 
 func logKafkaEventHandler(topic string) platformKafka.Handler {

@@ -36,7 +36,7 @@ func (s *recoveringAuthorityFenceStub) Assert(_ context.Context, _ realtimeDeliv
 
 func TestGatewayMessageHandlersCheckpointOnlyInCPPMode(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, group, err := gatewayMessageDeliveryHandlers(
+	direct, group, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityCPP,
 		sender,
 		fixedGroupHeat{},
@@ -59,7 +59,7 @@ func TestGatewayMessageHandlersCheckpointOnlyInCPPMode(t *testing.T) {
 
 func TestGatewayCheckpointHandlerRejectsMalformedMessage(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, _, err := gatewayMessageDeliveryHandlers(
+	direct, _, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityCPP,
 		sender,
 		fixedGroupHeat{},
@@ -81,7 +81,7 @@ func TestGatewayCheckpointHandlerRejectsMalformedMessage(t *testing.T) {
 
 func TestGatewayMessageHandlersKeepGoWritesInShadowMode(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, _, err := gatewayMessageDeliveryHandlers(
+	direct, _, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityShadow,
 		sender,
 		fixedGroupHeat{},
@@ -102,7 +102,7 @@ func TestGatewayMessageHandlersKeepGoWritesInShadowMode(t *testing.T) {
 
 func TestGatewayMessageHandlerChecksSharedFenceBeforeClientWrite(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, _, err := gatewayMessageDeliveryHandlers(
+	direct, _, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityGo,
 		sender,
 		fixedGroupHeat{},
@@ -137,7 +137,7 @@ func TestGatewayMessageHandlerChecksSharedFenceBeforeClientWrite(t *testing.T) {
 
 func TestGatewayMessageHandlerContinuesSameRecordAfterFenceRecovery(t *testing.T) {
 	sender := &recordingWSEventSender{}
-	direct, _, err := gatewayMessageDeliveryHandlers(
+	direct, _, err := gatewaykafka.NewMessageDeliveryHandlers(
 		realtimeDelivery.AuthorityGo,
 		sender,
 		fixedGroupHeat{},
