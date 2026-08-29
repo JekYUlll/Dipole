@@ -16,36 +16,20 @@ import (
 
 // Repositories contains one repository instance for each application process.
 type Repositories struct {
-	CoreProcess            *CoreProcessRepositories
-	MessageProcess         *MessageProcessRepositories
-	SyncProcess            *SyncProcessRepositories
-	AgentProcess           *AgentProcessRepositories
-	Users                  application.UserStore
-	Messages               application.MessageStore
-	Files                  application.FileMetadataStore
-	Conversations          application.ConversationStore
-	Contacts               application.ContactStore
-	Groups                 application.GroupStore
-	Admin                  application.AdminOverviewStore
-	Sync                   application.SyncStore
-	Search                 application.SearchIndex
-	AICallLogs             application.AICallLogStore
-	AgentPolicy            application.AgentPolicyStoreV1
-	AgentTaskTimeline      application.AgentTaskTimelineStoreV1
-	AgentDefinitionCatalog application.AgentDefinitionCatalogStoreV1
-	AgentApprovalGrants    application.AgentApprovalGrantStoreV1
-	AgentPromotions        application.AgentRuntimePromotionGrantStoreV1
-	AgentPromotionControls application.AgentRuntimePromotionControlStoreV1
-	AgentReadinessEvidence application.AgentMCPReadinessEvidenceStoreV1
-	AgentSubscriptions     application.AgentEventSubscriptionStoreV1
-	AgentRepairs           application.AgentWorkflowRepairAuditStoreV1
-	AgentArtifacts         application.AgentArtifactStoreV1
-	AgentMemories          application.AgentMemoryStoreV1
-	AgentMemoryOwners      application.AgentMemoryOwnerStoreV1
-	AgentMemoryPromotions  application.AgentMemoryCandidatePromotionStoreV1
-	AgentToolAudits        application.AgentToolInvocationStoreV1
-	AgentToolRounds        application.AgentMCPToolRoundStoreV1
-	Outbox                 application.OutboxRelayStore
+	CoreProcess    *CoreProcessRepositories
+	MessageProcess *MessageProcessRepositories
+	SyncProcess    *SyncProcessRepositories
+	AgentProcess   *AgentProcessRepositories
+	Users          application.UserStore
+	Messages       application.MessageStore
+	Files          application.FileMetadataStore
+	Conversations  application.ConversationStore
+	Contacts       application.ContactStore
+	Groups         application.GroupStore
+	Admin          application.AdminOverviewStore
+	Sync           application.SyncStore
+	Search         application.SearchIndex
+	Outbox         application.OutboxRelayStore
 }
 
 type CoreProcessRepositories = coremysql.ProcessRepositories
@@ -83,22 +67,6 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("compose Agent repositories: %w", err)
 	}
 	repos.AgentProcess = agentRepos
-	repos.AICallLogs = agentRepos.AICallLogs
-	repos.AgentPolicy = agentRepos.Policy
-	repos.AgentTaskTimeline = agentRepos.TaskTimeline
-	repos.AgentDefinitionCatalog = agentRepos.DefinitionCatalog
-	repos.AgentApprovalGrants = agentRepos.ApprovalGrants
-	repos.AgentPromotions = agentRepos.Promotions
-	repos.AgentPromotionControls = agentRepos.PromotionControls
-	repos.AgentReadinessEvidence = agentRepos.ReadinessEvidence
-	repos.AgentSubscriptions = agentRepos.Subscriptions
-	repos.AgentRepairs = agentRepos.Repairs
-	repos.AgentArtifacts = agentRepos.Artifacts
-	repos.AgentMemories = agentRepos.Memories
-	repos.AgentMemoryOwners = agentRepos.MemoryOwners
-	repos.AgentMemoryPromotions = agentRepos.MemoryPromotions
-	repos.AgentToolAudits = agentRepos.ToolAudits
-	repos.AgentToolRounds = agentRepos.ToolRounds
 	messageRepos, err := NewMessageProcessRepositoriesWithInboxWrites(db, true)
 	if err != nil {
 		return nil, fmt.Errorf("compose Message repositories: %w", err)
