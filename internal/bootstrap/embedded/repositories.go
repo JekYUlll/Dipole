@@ -5,12 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
-	searchmysql "github.com/JekYUlll/Dipole/internal/services/search/infrastructure/mysql"
 	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 )
 
@@ -20,7 +17,6 @@ type Repositories struct {
 	MessageProcess *MessageProcessRepositories
 	SyncProcess    *SyncProcessRepositories
 	AgentProcess   *AgentProcessRepositories
-	Search         application.SearchIndex
 }
 
 type CoreProcessRepositories = coremysql.ProcessRepositories
@@ -62,10 +58,5 @@ func NewRepositories(db *sql.DB) (*Repositories, error) {
 		return nil, fmt.Errorf("compose Sync repositories: %w", err)
 	}
 	repos.SyncProcess = syncRepos
-	searchAdapter, err := searchmysql.NewSearchIndexRepository(generated.New(db))
-	if err != nil {
-		return nil, fmt.Errorf("create sqlc search index repository: %w", err)
-	}
-	repos.Search = searchAdapter
 	return repos, nil
 }
