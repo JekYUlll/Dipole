@@ -35,6 +35,10 @@ if rg --quiet 'platformHotGroup\.NewRedisDetector\(' "${root_dir}/internal/boots
 	echo "Hot Group production composition must inject the platform Redis client" >&2
 	exit 1
 fi
+if rg --quiet 'platformPresence\.NewRedisPresence\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/server" --glob '*.go'; then
+	echo "Presence production composition must inject the platform Redis client" >&2
+	exit 1
+fi
 if [[ ! -f "${root_dir}/internal/platform/cassandra/README.md" || ! -f "${root_dir}/internal/platform/cassandra/timeline.go" ]]; then
   echo "shared Cassandra adapters must remain under internal/platform/cassandra" >&2
   exit 1
