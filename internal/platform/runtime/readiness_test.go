@@ -65,3 +65,13 @@ func TestAuthorityFenceReadinessProbeFailsClosed(t *testing.T) {
 		t.Fatalf("readiness error = %v", err)
 	}
 }
+
+func TestKafkaConsumerReadinessProbeRequiresInitialAssignment(t *testing.T) {
+	probe := KafkaConsumerReadinessProbe("kafka-assignment", nil)
+	if probe.Name != "kafka-assignment" || !probe.RequireInitialSuccess {
+		t.Fatalf("unexpected kafka consumer readiness probe: %+v", probe)
+	}
+	if err := probe.Check(t.Context()); err == nil || !strings.Contains(err.Error(), "unavailable") {
+		t.Fatalf("nil consumer readiness error = %v", err)
+	}
+}
