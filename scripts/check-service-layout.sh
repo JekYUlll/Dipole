@@ -47,6 +47,10 @@ if [[ ! -f "${root_dir}/internal/services/core/application/contact.go" ]]; then
   echo "Core contact application is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/core/application/group.go" ]]; then
+  echo "Core group application is outside its service boundary" >&2
+  exit 1
+fi
 if ! rg --quiet '^type CoreProcessRepositories struct' "${root_dir}/internal/app/repositories.go"; then
   echo "Core process repository composition is missing" >&2
   exit 1
