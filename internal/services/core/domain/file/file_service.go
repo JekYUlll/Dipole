@@ -98,6 +98,7 @@ type FileService struct {
 	multipartChunkSize  int64
 	multipartSessionTTL time.Duration
 	downloadURLTTL      time.Duration
+	multipartMetrics    *MultipartMetrics
 }
 
 func NewFileService(repo fileRepository, messageRepo fileMessageRepository, storage fileStorage) *FileService {
@@ -124,6 +125,20 @@ func newFileService(repo fileRepository, messageRepo fileMessageRepository, stor
 		multipartSessionTTL: multipartSessionTTL,
 		downloadURLTTL:      downloadURLTTL,
 	}
+}
+
+// WithMultipartMetrics attaches an optional collector without changing the
+// file application port or the embedded construction path.
+func (s *FileService) WithMultipartMetrics(metrics *MultipartMetrics) *FileService {
+	s.multipartMetrics = metrics
+	return s
+}
+
+func (s *FileService) MultipartMetrics() *MultipartMetrics {
+	if s == nil {
+		return nil
+	}
+	return s.multipartMetrics
 }
 
 type InitiateMultipartUploadInput struct {
@@ -225,6 +240,9 @@ func (s *FileService) GetOwnedFile(uploaderUUID, fileUUID string) (*model.Upload
 }
 
 func (s *FileService) InitiateMultipartUpload(uploaderUUID string, input InitiateMultipartUploadInput) (*InitiateMultipartUploadResult, error) {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("initiate", outcome, started) }()
 	if s.storage == nil {
 		return nil, ErrFileStorageUnavailable
 	}
@@ -275,6 +293,7 @@ func (s *FileService) InitiateMultipartUpload(uploaderUUID string, input Initiat
 		_ = s.storage.AbortMultipartUpload(ctx, upload.ObjectKey, upload.UploadID)
 		return nil, fmt.Errorf("persist multipart session: %w", err)
 	}
+	outcome = "success"
 
 	return &InitiateMultipartUploadResult{
 		SessionID:  session.SessionID,
@@ -314,6 +333,9 @@ func (s *FileService) GetMultipartUploadStatus(uploaderUUID, sessionID string) (
 }
 
 func (s *FileService) PresignMultipartParts(uploaderUUID, sessionID string, partNumbers []int) ([]MultipartPartUploadURL, error) {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("presign", outcome, started) }()
 	signer, ok := s.storage.(multipartPartURLSigner)
 	if !ok {
 		return nil, ErrFileStorageUnavailable
@@ -350,10 +372,14 @@ func (s *FileService) PresignMultipartParts(uploaderUUID, sessionID string, part
 		}
 		result = append(result, MultipartPartUploadURL{PartNumber: partNumber, URL: presignedURL, ExpiresAt: expiresAt})
 	}
+	outcome = "success"
 	return result, nil
 }
 
 func (s *FileService) RegisterMultipartPart(uploaderUUID, sessionID string, partNumber int, input RegisterMultipartPartInput) error {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("register", outcome, started) }()
 	inspector, ok := s.storage.(multipartPartInspector)
 	if !ok {
 		return ErrFileStorageUnavailable
@@ -374,10 +400,17 @@ func (s *FileService) RegisterMultipartPart(uploaderUUID, sessionID string, part
 	if part == nil || part.PartNumber != partNumber || part.Size != input.Size || !strings.EqualFold(strings.Trim(part.ETag, "\""), strings.TrimSpace(strings.Trim(input.ETag, "\""))) {
 		return ErrMultipartPartInvalid
 	}
-	return s.sessionStore.SavePart(ctx, session.SessionID, part, s.effectiveMultipartSessionTTL())
+	if err := s.sessionStore.SavePart(ctx, session.SessionID, part, s.effectiveMultipartSessionTTL()); err != nil {
+		return err
+	}
+	outcome = "success"
+	return nil
 }
 
 func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("upload_part", outcome, started) }()
 	if s.storage == nil {
 		return ErrFileStorageUnavailable
 	}
@@ -416,6 +449,7 @@ func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNu
 	if err := s.sessionStore.SavePart(ctx, session.SessionID, part, s.effectiveMultipartSessionTTL()); err != nil {
 		return fmt.Errorf("persist multipart part: %w", err)
 	}
+	outcome = "success"
 	return nil
 }
 
@@ -432,6 +466,9 @@ func validateMultipartPartSHA256(expected string, actual []byte) error {
 }
 
 func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error) {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("complete", outcome, started) }()
 	if s.storage == nil {
 		return nil, ErrFileStorageUnavailable
 	}
@@ -480,11 +517,15 @@ func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*
 	if err := s.sessionStore.Delete(ctx, session.SessionID); err != nil {
 		return nil, fmt.Errorf("delete multipart session: %w", err)
 	}
+	outcome = "success"
 
 	return record, nil
 }
 
 func (s *FileService) AbortMultipartUpload(uploaderUUID, sessionID string) error {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("abort", outcome, started) }()
 	if s.storage == nil {
 		return ErrFileStorageUnavailable
 	}
@@ -502,6 +543,7 @@ func (s *FileService) AbortMultipartUpload(uploaderUUID, sessionID string) error
 	if err := s.sessionStore.Delete(ctx, session.SessionID); err != nil {
 		return fmt.Errorf("delete multipart session: %w", err)
 	}
+	outcome = "success"
 	return nil
 }
 
