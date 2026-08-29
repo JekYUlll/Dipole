@@ -10,9 +10,7 @@ import (
 
 // Agent application implementations live under the Agent service boundary.
 // These aliases preserve the embedded composition root during migration.
-type StaticAgentExecutionPolicyV1 = agentapplication.StaticAgentExecutionPolicyV1
 type PersistentAgentExecutionPolicyV1 = agentapplication.PersistentAgentExecutionPolicyV1
-type AgentMemoryTaskReaderV1 = agentapplication.AgentMemoryTaskReaderV1
 
 func NewPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery) (application.AgentToolInvocationAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(store, resolver, approvals, receipts)
@@ -24,10 +22,6 @@ func NewPersistentAgentToolInvocationAuditServiceV1WithClock(store application.A
 
 func NewPersistentAgentExecutionPolicyV1WithClock(store application.AgentPolicyStoreV1, now func() time.Time) (*PersistentAgentExecutionPolicyV1, error) {
 	return agentapplication.NewPersistentAgentExecutionPolicyV1WithClock(store, now)
-}
-
-func NewStaticAgentExecutionPolicyV1(permissions []string, scopes []application.AgentResourceScopeV1) (*StaticAgentExecutionPolicyV1, error) {
-	return agentapplication.NewStaticAgentExecutionPolicyV1(permissions, scopes)
 }
 
 func NewPersistentAgentExecutionPolicyV1(store application.AgentPolicyStoreV1) (*PersistentAgentExecutionPolicyV1, error) {
