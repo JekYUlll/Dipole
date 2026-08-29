@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：在最新 `master` 上重新执行 `scripts/smoke-microservices.sh`，真实验证 Core、Message、Sync、Gateway、Agent 及 MySQL、Redis、Kafka、MinIO 冷启动 readiness、metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等；隔离拓扑自动清理，生产流量与 ownership 配置保持不变。
 - 2026-08-30：将 Core RPC 测试 helper 切换到 Core-owned bootstrap，删除无生产调用者的 `internal/bootstrap.NewCoreRPCServer` 公开 facade；Core capability 的认证、mTLS 和协议行为保持兼容。
 - 2026-08-30：将 Delivery Observation RPC 的测试调用切换到 Gateway-owned bootstrap，删除无生产调用者的 `internal/bootstrap` facade；Realtime 服务身份、mTLS transport 和 backpressure contract 保持兼容。
 - 2026-08-30：收敛 embedded runtime 的 metrics 入口，删除无生产调用者的 `internal/bootstrap` 转发层，测试迁入 `internal/platform/runtime` 并直接验证平台 API；指标启停、地址校验和 typed-nil collector 语义保持不变。
