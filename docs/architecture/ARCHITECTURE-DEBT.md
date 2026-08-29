@@ -172,6 +172,7 @@
 - **下一步：** 保持实验栈与生产配置分离，定期清理 Docker volume 并在共享环境补充磁盘告警；生产部署遵循 Elasticsearch 官方水位和容量门禁。
 - **验证：** 2026-08-29 storage-lab smoke 通过 Cassandra 5.0.9、Elasticsearch 9.5.2 和 MinIO CRUD，且未产生生产流量。
 - **本轮进展：** Cassandra hydration/read-routing smoke 改用动态宿主机端口并反查映射，消除并行实验之间的固定端口竞争；默认仍只运行隔离实验，不改变生产端口或主读开关。
+- **本轮进展：** 2026-08-29 现场验证确认 storage-lab 失败由宿主机 `95.9%` 磁盘使用率触发 Elasticsearch `high=95%` 分配保护；仅在 lab Compose 将 low/high/flood-stage 调整为 `90%/99%/99.5%`，并为 API 探针增加有界重试。修复后 Cassandra 5.0.9、Elasticsearch 9.5.2 和 MinIO 隔离 CRUD smoke 通过，生产配置保持不变。
 
 ### AD-046：Timeline repair worker 尚未纳入默认服务拓扑
 
