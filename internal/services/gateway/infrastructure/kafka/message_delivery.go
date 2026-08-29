@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -27,19 +27,19 @@ func NewDirectMessageHandler(hub EventSender, timelineNotifyMode string) platfor
 	}
 }
 
-func decodeMessageEventPayload(event platformKafka.Event) (service.MessageEventPayload, error) {
+func decodeMessageEventPayload(event platformKafka.Event) (messagedomain.MessageEventPayload, error) {
 	envelope, err := requireEnvelope(event)
 	if err != nil {
-		return service.MessageEventPayload{}, err
+		return messagedomain.MessageEventPayload{}, err
 	}
-	payload, err := service.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
+	payload, err := messagedomain.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
 	if err != nil {
-		return service.MessageEventPayload{}, fmt.Errorf("decode message event contract: %w", err)
+		return messagedomain.MessageEventPayload{}, fmt.Errorf("decode message event contract: %w", err)
 	}
 	return payload, nil
 }
 
-func chatMessageData(payload service.MessageEventPayload) wsTransport.ChatMessageData {
+func chatMessageData(payload messagedomain.MessageEventPayload) wsTransport.ChatMessageData {
 	return wsTransport.ChatMessageData{
 		MessageID: payload.MessageID, MessageSeq: payload.MessageSeq,
 		FromUUID: payload.SenderUUID, TargetUUID: payload.TargetUUID,
@@ -48,7 +48,7 @@ func chatMessageData(payload service.MessageEventPayload) wsTransport.ChatMessag
 	}
 }
 
-func payloadToWSFile(payload service.MessageEventPayload) *wsTransport.FilePayload {
+func payloadToWSFile(payload messagedomain.MessageEventPayload) *wsTransport.FilePayload {
 	if payload.MessageType != model.MessageTypeFile {
 		return nil
 	}
@@ -59,7 +59,7 @@ func payloadToWSFile(payload service.MessageEventPayload) *wsTransport.FilePaylo
 	}
 }
 
-func timelineNotifyData(envelope *platformKafka.Envelope, payload service.MessageEventPayload, mode string) (wsTransport.SyncItemNotifyData, bool) {
+func timelineNotifyData(envelope *platformKafka.Envelope, payload messagedomain.MessageEventPayload, mode string) (wsTransport.SyncItemNotifyData, bool) {
 	if (mode != wsTransport.TimelineNotifyShadow && mode != wsTransport.TimelineNotifyPrimary) ||
 		payload.MessageSeq == 0 || strings.TrimSpace(payload.MessageID) == "" || strings.TrimSpace(payload.ConversationKey) == "" {
 		return wsTransport.SyncItemNotifyData{}, false

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
@@ -108,7 +107,7 @@ func TestKafkaMySQLDualRunIntegration(t *testing.T) {
 		t.Fatalf("seed Message-owned Inbox projection: %v", err)
 	}
 	fanout := true
-	directPayload := service.MessageEventPayload{
+	directPayload := messagedomain.MessageEventPayload{
 		MessageID: direct.MessageUUID, ConversationKey: direct.ConversationKey, MessageSeq: direct.MessageSeq,
 		SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
 		RecipientUUIDs: direct.RecipientUUIDs, SyncFanout: &fanout, SentAt: time.Now().UTC(),
@@ -130,7 +129,7 @@ func TestKafkaMySQLDualRunIntegration(t *testing.T) {
 	}
 
 	noFanout := false
-	hotPayload := service.MessageEventPayload{
+	hotPayload := messagedomain.MessageEventPayload{
 		MessageID: "M-SYNC-HOT", ConversationKey: "group:G-HOT", MessageSeq: 21,
 		SenderUUID: "U100", TargetUUID: "G-HOT", TargetType: model.MessageTargetGroup,
 		RecipientUUIDs: []string{"U100", "U200"}, SyncFanout: &noFanout, SentAt: time.Now().UTC(),
@@ -139,7 +138,7 @@ func TestKafkaMySQLDualRunIntegration(t *testing.T) {
 	if got := countProjectionRows(t, db, hotPayload.MessageID); got != 0 {
 		t.Fatalf("hot-group event created %d Inbox rows", got)
 	}
-	poisonPayload := service.MessageEventPayload{
+	poisonPayload := messagedomain.MessageEventPayload{
 		MessageID: "M-SYNC-POISON", ConversationKey: "group:G-POISON", MessageSeq: 22,
 		SenderUUID: "U100", TargetUUID: "G-POISON", TargetType: model.MessageTargetGroup,
 		SyncFanout: &catchupFanout, SentAt: time.Now().UTC(),
@@ -155,7 +154,7 @@ func TestKafkaMySQLDualRunIntegration(t *testing.T) {
 	}
 }
 
-func publishUntilCommitted(t *testing.T, ctx context.Context, publisher *platformkafka.Publisher, consumer *platformkafka.Consumer, topic, key string, payload service.MessageEventPayload, minimum uint64) {
+func publishUntilCommitted(t *testing.T, ctx context.Context, publisher *platformkafka.Publisher, consumer *platformkafka.Consumer, topic, key string, payload messagedomain.MessageEventPayload, minimum uint64) {
 	t.Helper()
 	deadline := time.NewTicker(400 * time.Millisecond)
 	defer deadline.Stop()
@@ -174,7 +173,7 @@ func publishUntilCommitted(t *testing.T, ctx context.Context, publisher *platfor
 	}
 }
 
-func publishEventEventually(t *testing.T, ctx context.Context, publisher *platformkafka.Publisher, topic, key string, payload service.MessageEventPayload) {
+func publishEventEventually(t *testing.T, ctx context.Context, publisher *platformkafka.Publisher, topic, key string, payload messagedomain.MessageEventPayload) {
 	t.Helper()
 	ticker := time.NewTicker(200 * time.Millisecond)
 	defer ticker.Stop()

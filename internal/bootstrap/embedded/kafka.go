@@ -19,6 +19,7 @@ import (
 	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
 	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	"go.uber.org/zap"
 )
@@ -259,15 +260,15 @@ func handleAIDirectReply(aiService *aiModule.Service) platformKafka.Handler {
 	}
 }
 
-func decodeMessageEventPayload(event platformKafka.Event) (service.MessageEventPayload, error) {
+func decodeMessageEventPayload(event platformKafka.Event) (messagedomain.MessageEventPayload, error) {
 	envelope, err := requireEnvelope(event)
 	if err != nil {
-		return service.MessageEventPayload{}, err
+		return messagedomain.MessageEventPayload{}, err
 	}
 
-	payload, err := service.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
+	payload, err := messagedomain.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
 	if err != nil {
-		return service.MessageEventPayload{}, fmt.Errorf("decode message event contract: %w", err)
+		return messagedomain.MessageEventPayload{}, fmt.Errorf("decode message event contract: %w", err)
 	}
 
 	return payload, nil
@@ -295,7 +296,7 @@ func requireEnvelope(event platformKafka.Event) (*platformKafka.Envelope, error)
 	return event.Envelope, nil
 }
 
-func servicePayloadToMessage(payload service.MessageEventPayload) *model.Message {
+func servicePayloadToMessage(payload messagedomain.MessageEventPayload) *model.Message {
 	return &model.Message{
 		UUID:            payload.MessageID,
 		ConversationKey: payload.ConversationKey,
