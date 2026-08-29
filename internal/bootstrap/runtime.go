@@ -32,8 +32,8 @@ type Runtime struct {
 	server      *server.Server
 	router      *wsTransport.PubSubRouter // nil 表示单节点模式（Kafka 或 Presence 未启用）
 	outboxFlow  *messagekafka.Relay
-	messageFlow *messageApplicationTransport
-	syncFlow    *syncApplicationTransport
+	messageFlow *appComposition.MessageApplicationTransport
+	syncFlow    *appComposition.SyncApplicationTransport
 	coreRPC     *InternalRPCServer
 	metrics     *platformObservability.MetricsServer
 }
@@ -275,7 +275,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		logger.Info("core rpc server started", zap.String("addr", coreRPC.Address()))
 	}
-	messageFlow, err := newMessageApplicationTransport(ctx, messageCfg, rpcCfg, localMessaging.Messages)
+	messageFlow, err := appComposition.NewMessageApplicationTransport(ctx, messageCfg, rpcCfg, localMessaging.Messages)
 	if err != nil {
 		if coreRPC != nil {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -284,7 +284,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		}
 		return nil, fmt.Errorf("initialize message transport: %w", err)
 	}
-	syncFlow, err := newSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
+	syncFlow, err := appComposition.NewSyncApplicationTransport(ctx, config.SyncConfig(), rpcCfg, localMessaging.Sync)
 	if err != nil {
 		messageFlow.Close()
 		if coreRPC != nil {
@@ -386,23 +386,6 @@ func (r *Runtime) Server() *server.Server {
 	}
 
 	return r.server
-}
-
-func RunServer(srv *server.Server, tlsCfg config.TLS) error {
-	if !tlsCfg.Enabled {
-		return srv.Run(config.Addr())
-	}
-
-	if err := platformRuntime.ValidateTLSFiles(tlsCfg); err != nil {
-		return err
-	}
-
-	logger.Info("tls enabled",
-		zap.String("cert_file", tlsCfg.CertFile),
-		zap.String("key_file", tlsCfg.KeyFile),
-	)
-
-	return srv.RunTLS(config.Addr(), tlsCfg.CertFile, tlsCfg.KeyFile)
 }
 
 func (r *Runtime) Close() {

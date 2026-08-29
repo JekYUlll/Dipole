@@ -261,6 +261,74 @@ if [[ -d "${root_dir}/internal/projector/cassandra" ]]; then
   echo "legacy Cassandra projector directory remains outside the Message service boundary" >&2
   exit 1
 fi
+for legacy_message_transport in message_transport.go message_shadow.go message_transport_test.go message_shadow_test.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_message_transport}" ]]; then
+    echo "embedded Message transport implementation remains in shared bootstrap: ${legacy_message_transport}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+  echo "embedded runtime must use the embedded-owned Message transport" >&2
+  exit 1
+fi
+if rg --quiet 'newMessageApplicationTransport|messageApplicationTransport' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "legacy Message transport symbols remain in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/bootstrap/embedded/message_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/message_shadow.go" ]]; then
+  echo "embedded Message transport implementation is missing from embedded composition" >&2
+  exit 1
+fi
+for legacy_sync_transport in sync_transport.go sync_shadow.go sync_transport_test.go sync_shadow_test.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_sync_transport}" ]]; then
+    echo "embedded Sync transport implementation remains in shared bootstrap: ${legacy_sync_transport}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+  echo "embedded runtime must use the embedded-owned Sync transport" >&2
+  exit 1
+fi
+if rg --quiet 'newSyncApplicationTransport|syncApplicationTransport' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "legacy Sync transport symbols remain in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/bootstrap/embedded/sync_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/sync_shadow.go" ]]; then
+  echo "embedded Sync transport implementation is missing from embedded composition" >&2
+  exit 1
+fi
+if rg --quiet 'NewMessageRPCServer|DialCoreMessageApplication|DialMessageApplication' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Message RPC compatibility facade remains in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'NewSearchRPCServer|NewSyncRPCServer' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Search/Sync RPC server facades remain in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'DialSearchApplication|DialSyncApplication|DialCoreSyncApplication' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Search/Sync RPC client facades remain in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'DialSearchCoreCapability|DialSyncCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Search/Sync Core client facades remain in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'DialGatewayCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Gateway Core client facade remains in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet 'DialGatewayAgentCapability|DialCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
+  echo "retired Gateway/Message client facades remain in shared bootstrap" >&2
+  exit 1
+fi
+if rg --quiet '^func RunServer\(' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "shared bootstrap RunServer facade remains; use service-owned entrypoints" >&2
+  exit 1
+fi
+if rg --quiet '^func RestrictCoreServiceMethods\(' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "shared Core policy facade remains; keep policy implementation private to its server" >&2
+  exit 1
+fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
   if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
     echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2

@@ -1,5 +1,6 @@
 # 更新日志
 
+- Agent Runtime active 启动增加 release manifest 绑定：必须提供 manifest 文件、candidate 必须一致且阶段必须为 `user_gray`；默认 shadow 路径不变，缺失/读取失败/阶段或版本漂移均 fail closed。
 - Go/Eino 兼容 Agent 基线已从 `internal/modules/ai/` 收敛到 `internal/services/agent/legacy/`；bootstrap import 与相关文档同步更新，保留 TS Runtime 接管前的回滚路径。
 - 服务布局门禁已固定 Agent legacy 目录归属，并阻止 `internal/modules/ai/` 回流。
 
@@ -18,6 +19,17 @@
 
 ## [Unreleased]
 
+- 将仅供 embedded 聚合运行时使用的 Sync transport/shadow 实现迁入 `internal/bootstrap/embedded/`，共享 bootstrap 只保留生命周期编排；local/grpc/shadow 回退、设备 checkpoint 和同步查询语义保持不变。
+- 删除经调用审计确认无调用者的 shared `NewMessageRPCServer`、`DialMessageApplication` 和 `DialCoreMessageApplication` facade；Message RPC server/client 统一由 Message/Gateway/embedded 自有 bootstrap 持有。
+- 删除经调用审计确认仅被 contract 测试使用的 shared `NewSearchRPCServer` 与 `NewSyncRPCServer` facade；测试和生产入口统一使用 Search/Sync 自有 bootstrap。
+- 删除经调用审计确认无生产调用者的 shared `DialSearchApplication`、`DialSyncApplication` 与 `DialCoreSyncApplication` facade；测试改用 Search bootstrap 或 embedded-owned client，RPC 认证和协议语义保持兼容。
+- 删除经调用审计确认无生产调用者的 shared `DialSearchCoreCapability` 与 `DialSyncCoreCapability` facade；RPC contract 测试改用 Search/Sync 自有 bootstrap，Core capability 身份限制保持不变。
+- 删除经调用审计确认无生产调用者的 shared `DialGatewayCoreCapability` facade；Gateway contract 测试和生产 runtime 统一使用 Gateway 自有 bootstrap。
+- 将 Gateway Agent capability client 与 Message Core capability client 迁入对应服务 bootstrap，删除 shared `DialGatewayAgentCapability`、`DialCoreCapability` 及其通用拨号实现；身份和权限 contract 保持兼容。
+- 删除经调用审计确认无调用者的 shared `internal/bootstrap.RunServer`；Core、Gateway 服务入口继续使用各自 bootstrap，embedded 聚合只保留初始化和生命周期组合。
+- 删除无调用者的导出 `RestrictCoreServiceMethods` 包装；Core RPC server 继续使用内部私有策略实现，Agent/Search/Sync 权限规则保持不变。
+- 将仅供 embedded 聚合运行时使用的 Message transport/shadow 实现迁入 `internal/bootstrap/embedded/`，共享 bootstrap 只保留生命周期编排；transport 行为、local/grpc/shadow 回退和测试语义保持不变。
+- 删除经调用审计确认无生产或测试调用者的 shared Core Agent RPC control 包装 `NewCoreRPCServerWithAgentControl`；仍在 embedded contract 和运行时使用的 Agent RPC 装配保持不变。
 - 将 Cassandra Projector runtime 从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap`；独立工具改用 Message-owned bootstrap，Cassandra Timeline projection、Kafka consumer group 和回滚语义保持不变。
 - 删除经全仓调用审计确认无调用者的 Core、Agent、Search repository alias 及 `internal/data/mysql` 历史兼容目录；各服务 SQLC repository 现在完全由服务 infrastructure 持有。
 - 删除经全仓调用审计确认无调用者的 `internal/data/mysql/store_compat.go`；MySQL 事务边界统一由 `internal/platform/mysql` 持有，剩余历史 repository alias 继续按实际调用者治理。

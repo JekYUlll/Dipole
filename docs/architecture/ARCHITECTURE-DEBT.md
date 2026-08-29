@@ -10,6 +10,17 @@
 
 ### 本轮进展
 
+- 2026-08-30：调用审计确认导出 `RestrictCoreServiceMethods` 无仓内调用者，已删除 shared policy 包装；Core RPC server 保留私有权限策略，已有 Agent/Search/Sync 权限 contract 不变。
+- 2026-08-30：shared `internal/bootstrap.RunServer` 已完成调用审计并退休；Core/Gateway 的 TLS 与服务启动入口由各自 bootstrap 持有，embedded 聚合不再暴露通用 server runner。
+- 2026-08-30：Gateway Agent 与 Message Core capability client 已迁入各自服务 bootstrap，shared `DialGatewayAgentCapability`、`DialCoreCapability` 和通用 caller dialer 已删除；Gateway/Message 服务身份、Core 权限范围和回滚行为保持兼容。
+- 2026-08-30：Gateway Core capability client facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；Gateway 自有 bootstrap 直接持有 client 身份和平台 transport，Core 权限校验与回滚行为保持兼容。
+- 2026-08-30：Search/Sync Core capability client facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；Search/Sync 自有 bootstrap 直接持有服务身份和平台 RPC transport，权限校验与回滚行为保持兼容。
+- 2026-08-30：Search/Sync RPC client facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；Gateway、Search、Sync 与 embedded 各自持有所需 client 装配，协议、身份和回滚行为保持兼容。
+- 2026-08-30：Search/Sync RPC server facade 已完成调用者迁移并从 shared `internal/bootstrap` 删除；contract 测试直接使用各服务 bootstrap，服务协议、认证和回滚行为保持兼容。
+- 2026-08-30：调用审计确认 shared Message RPC server/client facade 无仓内调用者，已删除 `NewMessageRPCServer`、`DialMessageApplication` 和 `DialCoreMessageApplication`；Message、Gateway 与 embedded 各自使用服务边界内的 RPC 装配，协议和认证行为保持兼容。
+- 2026-08-30：Sync transport/shadow 已从共享 `internal/bootstrap` 迁入 `internal/bootstrap/embedded/`，embedded runtime 改用 embedded-owned transport；local/grpc/shadow 回退和 checkpoint 语义保持兼容，shared bootstrap 的 Message/Sync transport 实现均已完成物理收敛。
+- 2026-08-30：Message transport/shadow 已从共享 `internal/bootstrap` 迁入 `internal/bootstrap/embedded/`，embedded runtime 改用 embedded-owned transport；local/grpc/shadow 回退语义保持兼容，Sync transport 仍待独立切片收敛。
+- 2026-08-30：调用审计确认 `internal/bootstrap.NewCoreRPCServerWithAgentControl` 无生产或测试调用者，已删除该 shared RPC 包装；`NewCoreRPCServerWithAgent` 与 `WithAgentControlAndProjection` 因仍有 contract/embedded 调用继续保留。
 - 2026-08-30：Cassandra Projector runtime 已从共享 `internal/bootstrap` 迁入 Message bootstrap，`cmd/tools/cassandra-projector` 直接使用服务自有入口；共享 bootstrap 不再持有 Cassandra Projector 生命周期，projection 与回滚语义保持稳定。
 - 2026-08-30：全仓调用审计确认 Core、Agent、Search repository alias 无仓内调用者，已删除三组 alias、目录说明及 `internal/data/mysql` 历史兼容目录；服务 SQLC repository 由各自 infrastructure 唯一持有，门禁已阻止旧目录回流。
 - 2026-08-30：全仓调用审计确认 `internal/data/mysql/store_compat.go` 无仓内调用者，已删除该 Store facade；MySQL 事务边界继续由 `internal/platform/mysql` 唯一持有，Core/Agent/Search repository alias 仍按调用者保留。
@@ -63,7 +74,7 @@
 - 2026-08-29：Gateway 生产 RPC server/client 已迁入 Gateway bootstrap 并直接使用平台 transport，覆盖 Message、Sync、Core、Search 和 realtime delivery observation；Kafka handler 仍保留共享兼容边界，后续继续收敛。
 - 2026-08-29：Sync 生产 RPC adapter 已迁入 Sync bootstrap 并直接使用平台 transport，保留原有 Core capability 调用方身份和 query server 白名单；剩余 legacy 依赖继续按服务切片收敛。
 - 2026-08-29：Message 生产 RPC adapter 已迁入 Message bootstrap 并直接使用平台 transport，runtime 的 RPC server 字段也已切换为 `internal/platform/rpc.Server`，不再依赖共享 bootstrap RPC 类型；Lazy Core、权限校验和其他服务基础设施兼容边界仍待后续切片收敛。
-- 2026-08-29：Embedded 兼容入口 `internal/bootstrap.NewMessageRPCServer` 已降为转发 Message bootstrap 的服务自有实现，共享 RPC 文件不再重复注册 Message adapter；旧调用者和回滚路径保持兼容。
+- 2026-08-29：Embedded 兼容入口 `internal/bootstrap.NewMessageRPCServer` 曾转发 Message bootstrap 的服务自有实现；后续调用审计已确认无仓内调用者并于 2026-08-30 退休。
 - 2026-08-29：Message bootstrap 的惰性 Core 重试测试已改用本地最小 gRPC adapter，测试包不再反向依赖共享 bootstrap，进一步固定 Message 服务的物理边界。
 - 2026-08-29：Embedded Kafka 装配已直接注册 Message-owned persistence handlers，删除无外部调用者的共享 `RegisterMessageKafkaHandlers` 包装，Message Kafka 兼容表面进一步缩小。
 - 2026-08-29：Embedded runtime 已直接持有并创建 `messagekafka.Relay`，删除仅供旧 bootstrap 内部使用的 Outbox alias/构造包装；Outbox 启动条件和 embedded 回滚语义保持兼容。
@@ -353,6 +364,7 @@
 - **本轮进展：** 新增 `dipole.agent.release-manifest.v1`，把 candidate、模型、Prompt、Capability Schema、Memory Policy 和 offline Eval Suite SHA-256 绑定，并要求 promotion 仅使用 `shadow` 阶段清单；真实 Project Guardian 语料、共享观察窗口和用户灰度仍未完成。
 - **本轮进展：** release manifest 已接入 promotion publication 的显式新入口和 CLI；manifest 哈希随 Artifact/receipt 持久化，携带 manifest 的请求无法绕过 shadow 阶段或 Eval Suite 绑定，旧证据回放保持兼容。
 - **本轮进展：** release manifest 增加单步阶段转移与回滚校验，禁止跨越 `offline`、`shadow`、`user_gray` 的相邻门禁；该函数只生成新 manifest，仍需 operator 证据才能改变实际 Runtime 开关。
+- **本轮进展：** active Runtime 启动已强制读取 release manifest，并校验 `user_gray` 阶段与 candidate 一致；缺失、读取失败或版本/阶段漂移均 fail closed，默认 shadow 和 Go/Eino 回滚路径保持不变。真实五类评测、共享环境观察窗口和用户灰度仍待完成。
 
 ### AD-037：MCP 网络入口尚缺 OAuth、外部连接与写能力门禁
 

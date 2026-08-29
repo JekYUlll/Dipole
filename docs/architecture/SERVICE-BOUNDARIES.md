@@ -54,11 +54,12 @@
 - Sync MySQL repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 与 embedded 兼容入口均通过服务专属 composition，旧共享 repository 仅保留兼容入口。
 - Sync Kafka Projector 已迁入 `internal/services/sync/infrastructure/kafka/`，直接复用 Message domain 的事件 contract；旧 `internal/projector/sync/` 路径由结构门禁阻止回流，Inbox 写责任仍遵循 atomic/projector 可回滚开关。
 - Sync 独立 runtime 已直接装配 Sync infrastructure composition，`internal/app` 仅保留 embedded 聚合兼容入口；Inbox 查询、checkpoint 和 hydration contract 保持兼容。
+- embedded-only Message/Sync transport 与 shadow adapter 位于 `internal/bootstrap/embedded/`；共享 `internal/bootstrap` 只负责 embedded 生命周期编排，不再持有两类领域 transport 实现。
 - Inbox ownership 配置要求：Message `projector` 模式必须与启用的 Sync projector 和 Kafka 一起发布；`atomic` 模式保留为立即回滚路径，配置校验在连接副作用前 fail closed。
 - Message application 已迁入 `internal/services/message/application/`；该目录只依赖共享 MessageStore、Core Capability、事件发布 port 和 Message application port，embedded 与独立 Message runtime 共用该装配。
 - Message event contract 与 Sync projection 已迁入 `internal/services/message/domain/`；`send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka/`，旧 `internal/service` 仅保留类型、错误和函数兼容入口，事件版本、Mutation、Search 和 Inbox locator contract 保持兼容。
 - Message MySQL repository 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/services/message/infrastructure/kafka` 负责 Outbox relay，`internal/platform/mysql/generated` 与事务 Store 仍作为基础设施共享，`messages`、Metadata、Outbox 和可选 Inbox 原子写入由 Message process 组合。
-- Message Cassandra Projector 的 projection 与 runtime 已分别归属 `internal/services/message/infrastructure/cassandra/` 和 `internal/services/message/bootstrap/`；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。
+- Message Cassandra Projector 的 projection 与 runtime 已分别归属 `internal/services/message/infrastructure/cassandra/` 和 `internal/services/message/bootstrap/`；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。Message RPC server/client 由 Message、Gateway 和 embedded 自有 bootstrap 持有，embedded-only Message transport/shadow 位于 `internal/bootstrap/embedded/`。
 - Message 独立 runtime 已直接使用 Message infrastructure composition、Message application factory 和自有惰性 Core Capability adapter；`internal/app` 仅保留 embedded 聚合兼容入口，独立 Message 启动不再依赖聚合 repository composition。
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
