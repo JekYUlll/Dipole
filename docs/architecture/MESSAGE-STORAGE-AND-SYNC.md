@@ -7,7 +7,7 @@
 
 同时也会说明当前 Dipole 的实现方式、与典型现代 IM 方案的差异，以及如果未来要继续演进，适合怎样推进。
 
-本文同时记录设计方向和当前落地状态。2026-08-26 已完成第一阶段 `User Sync Inbox`，会话内 `seq`、设备游标和 `read_seq` 继续分阶段推进。
+本文同时记录设计方向和当前落地状态。当前已落地 `User Sync Inbox`、会话内 `message_seq`、设备 Sync Cursor 和 `read_seq`；旧 `after_id`、`/messages/offline` 仅作为兼容路径保留。
 
 ## 1. Timeline 模型
 
@@ -139,8 +139,8 @@ Dipole 已经具备“消息存储库”，并在本轮升级中加入第一版�
 
 对应代码：
 
-- [message.go](../../internal/model/message.go)
-- [message.go](../../internal/data/mysql/repository/message.go)
+- [Message domain](../../internal/services/message/domain/)
+- [Message MySQL infrastructure](../../internal/services/message/infrastructure/mysql/)
 
 当前消息的组织方式是：
 
@@ -170,7 +170,7 @@ Dipole 已经具备“消息存储库”，并在本轮升级中加入第一版�
 
 - 在线实时推送：WebSocket
 - 离线补拉：`ListOfflineByUserUUID(...)`
-- 热群补拉：`group.message.notify + GET /messages/group/:group_uuid?after_id=...`
+- 热群补拉：`group.message.notify + GET /messages/group/:group_uuid?after_seq=...`
 
 Redis 在这里承担的是：
 
@@ -216,43 +216,43 @@ GET /api/v1/sync?after_seq=1002&limit=100
 
 当前方案的限制：
 
-- 当前只有用户级 Inbox，还没有设备级持久化游标
+- 设备级持久化游标已由 Sync Service 管理，Web IndexedDB 仍按发布门禁默认关闭
 - 尚未设置 Inbox TTL，也没有基于设备完成度的安全回收
-- 会话历史仍使用 `messages.id`，还没有会话内单调递增 `seq`
-- `conversations` 仍保存结果型 `unread_count`，还没有 `read_seq`
+- 旧 `messages.id` 和 `after_id` 仍服务于兼容客户端，新链路使用会话内单调递增 `message_seq`
+- `conversations` 已支持 `read_seq`；旧 `unread_count` 仅保留兼容字段和展示投影语义
 - 热群同步需要客户端同时维护群 Timeline 游标
 
-这说明当前方案适合作为中小规模、功能逐步完善阶段的实现方式，但距离更完整的现代 IM 双库模型还有一段。
+这说明当前方案已经形成 Message Store + Sync Store 的双库逻辑模型，仍有 Cassandra Sync hydration、Web 真实观测窗口和默认主读切换等发布门禁待完成。
 
-## 7. 如果未来要改造，应该如何推进
+## 7. 已完成改造与后续推进
 
-当前不建议直接大改。更稳的做法是按阶段推进。
+核心双 Timeline 已完成逻辑落地，后续工作围绕真实观测、灰度切换和存储实现收敛推进。
 
 ### 第一阶段：先明确逻辑模型
 
-在设计上先引入“消息同步库”的概念，但暂时不改主链路。
+消息系统当前明确区分两个逻辑模型：
 
 建议先统一抽象出两个概念：
 
 - 会话 Timeline：对应 `messages`
-- 接收端 Timeline：未来的 `sync inbox`
+- 接收端 Timeline：当前的 `user_sync_inbox`
 
 这一步的目标是：
 
 - 把存储和同步的职责边界说清楚
-- 为后续改造预留模型，不打断现有功能推进
+- 让 Message、Sync、Gateway 和客户端共享稳定的游标语义
 
-### 第二阶段：先做最小的接收端 Timeline（已完成）
+### 第二阶段：接收端 Timeline（已完成）
 
 在不推翻现有消息系统的前提下，新增一张或一套逻辑上的同步库，例如：
 
 - `user_sync_inbox`
 
-字段可以先很简单：
+核心字段包括：
 
 - `id`
 - `user_uuid`
-- `seq_id`
+- `sync_seq`
 - `message_uuid`
 - `conversation_key`
 - `created_at`
@@ -264,9 +264,9 @@ GET /api/v1/sync?after_seq=1002&limit=100
 - 先服务离线补拉和多端同步
 - 不急着替换现有所有读取路径
 
-### 第三阶段：让多端同步优先走同步库（进行中）
+### 第三阶段：多端同步灰度（进行中）
 
-在同步库稳定之后，可以逐步把下面这些能力迁到它上面：
+在同步库稳定之后，按观测门禁逐步让下面这些能力使用它：
 
 - 离线消息补拉
 - 多端首次同步
@@ -308,24 +308,15 @@ GET /api/v1/sync?after_seq=1002&limit=100
 - 更偏高频补拉、短生命周期：Redis 很有吸引力
 - 更偏海量持久化和高 TPS：再考虑更专门的底层存储
 
-## 8. 为什么现在不立刻改造
+## 8. 当前剩余发布门禁
 
 第一版 Inbox 已经以兼容方式落地。后续仍按独立阶段推进，因为这些改造会影响客户端协议和数据迁移：
 
-- 会话内 `seq` 与历史游标切换
-- 设备级 Cursor
-- `read_seq` 与未读计算
-- Inbox TTL 和回收水位
+- Cassandra Sync hydration 与主读切换
+- Web 真实观测窗口和 IndexedDB 默认启用
+- Inbox TTL 与安全回收水位
 
-相比这些点，引入独立消息同步库属于更偏架构演进的工作。
-
-它值得做，但适合在：
-
-- 主链路已经稳定
-- 多端同步诉求更强
-- 对接收端级别状态有更明确要求
-
-之后再推进。
+这些门禁通过后，再逐步收紧旧离线接口和兼容游标的使用范围。
 
 ## 9. 总结
 
@@ -334,11 +325,12 @@ GET /api/v1/sync?after_seq=1002&limit=100
 - 消息存储库：按会话存全量历史
 - 消息同步库：按接收端存待同步消息
 
-Dipole 当前已经具备前者：
+Dipole 当前已经具备两者：
 
-- `messages` 表就是会话级消息存储库
+- `messages` 表和 Message Service 组成会话级消息存储库
+- `user_sync_inbox` 和 Sync Service 组成用户级消息同步库
 
-Dipole 当前已经具备后者的第一版：
+Dipole 当前已经具备后者的第一版实现：
 
 - `user_sync_inbox` 提供用户级同步 Timeline
 - `/api/v1/sync` 提供 `after_seq` 增量读取
