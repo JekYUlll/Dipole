@@ -14,6 +14,7 @@ import (
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	corecontact "github.com/JekYUlll/Dipole/internal/services/core/domain/contact"
 	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
@@ -33,7 +34,7 @@ func TestDomainEventSchemasMatchProducerContracts(t *testing.T) {
 			name: "group", schemaFile: "group-event.schema.json", eventType: "group.created",
 			eventTypes: []string{"group.created", "group.dismissed", "group.members.added", "group.members.removed", "group.updated"},
 			definition: "group_payload",
-			payload: GroupEventPayload{
+			payload: coregroup.GroupEventPayload{
 				GroupUUID: "G1", Name: "Group", OperatorUUID: "U1",
 				MemberUUIDs: []string{"U1"}, RecipientUUIDs: []string{"U1"}, OccurredAt: now,
 			},

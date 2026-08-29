@@ -6,13 +6,14 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
 )
 
 // NewGroupEventHandler builds a Gateway fan-out handler for a group event.
 func NewGroupEventHandler[T any](
 	hub EventSender,
 	eventType string,
-	buildData func(service.GroupEventPayload) T,
+	buildData func(coregroup.GroupEventPayload) T,
 ) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		envelope, err := requireEnvelope(event)
