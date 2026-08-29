@@ -52,6 +52,7 @@
 - **风险：** Core 保留本地 Message Application 会让未来 Core HTTP 或内部调用存在越过 Message Service ownership 的可能，当前只能视为启动兼容层，不能直接宣称 Message 写路径已完全单一化。
 - **下一步：** 将 Core 的消息依赖收窄为只读/受控 Capability，或引入显式异步连接状态与远程重连机制；补充 Core HTTP 路由 ownership、Kafka consumer 唯一性和远程冷启动回切证据。
 - **验证门槛：** 默认微服务 Compose 冷启动中 Core、Message、Sync、Gateway 均 healthy；Core 专用 transport 配置单测、远程 Message mTLS contract、端到端消息 smoke 和 Local 回切 smoke 均通过。
+- **本轮进展：** 远程模式下 Core 的本地启动兼容层不再注册 Message persistence consumer，也不初始化消息 topic；消息写入与 topic ownership 继续收敛到 Message Service，新增 ownership 单测并由 Compose 配置门禁固定全局 transport 为 gRPC。
 
 ### AD-047：受限实验主机的 Elasticsearch 磁盘水位需要隔离约束
 
