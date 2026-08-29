@@ -469,6 +469,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 增加独立 `dipole-realtime-primary-*` authority 和默认关闭的显式 primary CLI；terminal ACK/evidence 后提交，partial/error 保留 pending record，shadow 命令与证据保持兼容。
 - [x] 归档真实 primary queue saturation、consume-to-ACK offset 提交、故障 retain 与进程 `SIGKILL` 重放；报告 8/8，窄 terminal evidence/commit 崩溃窗口保持未声明。
 - [x] 与 Go Delivery 并行消费 shadow 流量，按同一 workload 比较投影、节点观察与最终 lag，不重复投递客户端。
+- [x] 提供 `scripts/check-cpp-realtime-container.sh` 容器门禁，复用 Ubuntu 24.04 Dockerfile 并绑定 revision/created/dirty provenance，覆盖宿主机 gRPC C++ 依赖缺失场景。
 - [x] 在仓库自带 Ubuntu 24.04 构建镜像中复核 C++ 依赖、编译和 14 项 CTest；宿主机 gRPC C++ 缺失时保留容器构建作为可复现验证路径。
 - [ ] 通过压测与故障注入证明收益；C3 故障注入已通过，但 2026-08-29 projection microbenchmark 的 C++/Go ops ratio 为 `0.10`，低于 `1.0` 晋级门槛，因此保留 Go projection 并停止当前 C++ projection 替换；只有新的可复现 workload 证明收益后才重新评估。
 

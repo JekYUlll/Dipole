@@ -6,6 +6,8 @@ The executable supports `contract_only` and an explicit `shadow` command. Shadow
 
 ```bash
 ./scripts/check-cpp-realtime.sh
+# When host gRPC C++ packages are unavailable:
+./scripts/check-cpp-realtime-container.sh
 ```
 
 The canonical gate also tests the language-neutral Go/C++ same-workload comparison report. The comparison folds retry attempts by Kafka coordinate, binds both input files and candidate revisions, and fails closed on final transport or workload drift. See `contracts/realtime-delivery-comparison/v1/`.
@@ -50,6 +52,12 @@ The independent image builds and runs all CTests on Ubuntu 24.04 before copying 
 
 ```bash
 docker build -f realtime-delivery/Dockerfile -t dipole-realtime-delivery:local .
+```
+
+The container gate wraps this build and supplies revision/created/dirty provenance labels:
+
+```bash
+./scripts/check-cpp-realtime-container.sh
 ```
 
 The image is not referenced by production Compose until the remaining routing and comparison gates pass.

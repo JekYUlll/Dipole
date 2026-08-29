@@ -62,6 +62,8 @@
 
 ### 验证
 
+- C++ Realtime Delivery 增加 `scripts/check-cpp-realtime-container.sh` 容器门禁：复用 Ubuntu 24.04 Dockerfile，自动绑定 revision/created/dirty provenance，在宿主机缺少 gRPC C++ 开发包时仍可复现依赖、编译和 CTest 验证；该门禁不改变 Go 默认投递 authority。
+
 - 2026-08-29 复核平台静态与协议门禁：Go 全量测试、sqlc、Go/TS Proto、Compose、架构文档、Web Sync 观察和 Agent OTel 检查均通过；C++ Realtime Delivery 通过仓库自带 Ubuntu 24.04 构建镜像完成编译与 14/14 CTest。宿主机缺少 `grpc++ >= 1.51` 时应使用 `realtime-delivery/Dockerfile` 或显式依赖根目录，不能将宿主机失败误判为源码失败。
 
 - 平台级门禁与 Agent 观测链路复核通过：`scripts/check-go.sh`、`check-sqlc.sh`、`check-compose.sh`、`check-architecture-docs.sh` 和 `check-agent-otel-observability.sh` 全部通过；独立 OTel smoke 验证 trace 经 Collector 写入并可由 Tempo 查询。
