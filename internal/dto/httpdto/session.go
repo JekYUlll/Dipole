@@ -3,7 +3,7 @@ package httpdto
 import (
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/service"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 )
 
 type DeviceSessionResponse struct {

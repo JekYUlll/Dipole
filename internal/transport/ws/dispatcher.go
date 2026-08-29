@@ -11,9 +11,9 @@ import (
 	"go.uber.org/zap"
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type inboundHandler interface {

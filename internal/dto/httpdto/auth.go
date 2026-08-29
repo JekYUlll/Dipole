@@ -3,8 +3,8 @@ package httpdto
 import (
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type RegisterRequest struct {

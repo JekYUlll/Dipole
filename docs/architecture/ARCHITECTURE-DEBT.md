@@ -7,6 +7,10 @@
 - 状态使用：`暂缓`、`处理中`、`已解决`、`接受风险`。
 - 优先级使用：`P0` 阻断发布、`P1` 应在正式启用相关能力前解决、`P2` 进入后续迭代、`P3` 按需清理。
 - 新问题使用连续编号 `AD-NNN`，保留历史编号，不复用已关闭条目。
+
+### 本轮进展
+
+- 2026-08-29：兼容别名已从 `internal/service` 收纳到 `internal/compat/service`；`internal/service` 仅保留共享事件发布契约与实现，后续仍需逐步迁移调用方并缩减兼容入口。
 - 开始处理时补充负责人或关联 Issue/PR；解决后记录提交、验证方式和完成日期。
 - 本台账描述风险和演进方向，不代表当前迭代立即修改对应实现。
 
@@ -52,17 +56,17 @@
 - **本轮进展：** Core Group application 装配已迁入 `internal/services/core/application/`，Server 通过服务专属 factory 注入 Group/User store、事件、热群、文件、对象存储和系统消息；底层 `internal/service` 实现暂保留，群组 HTTP contract 和回滚入口未改变。
 - **本轮进展：** Core File application 装配已迁入 `internal/services/core/application/`，Messaging composition root 通过服务专属 factory 注入 File metadata、Message store 和对象存储；底层 `internal/service` 实现暂保留，文件 HTTP contract 和回滚入口未改变。
 - **本轮进展：** Core Auth/Admin/Session application 装配已迁入 `internal/services/core/application/`，Server 继续使用原 HTTP contract，同时将认证、后台统计和设备会话的 legacy Service 构造收敛到 Core adapter；底层实现暂保留，回滚入口未改变。
-- **本轮进展：** Core Group domain 实现及测试已迁入 `internal/services/core/domain/group/`；`internal/service/group_compat.go` 仅保留类型和错误别名，HTTP/DTO/Kafka contract 暂不改变，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Core File domain、Redis 分片会话实现及测试已迁入 `internal/services/core/domain/file/`；`internal/service/file_compat.go` 仅保留类型和错误别名，文件 HTTP/DTO contract 暂不改变，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Core Auth domain 及测试已迁入 `internal/services/core/domain/auth/`；`internal/service/auth_compat.go` 与 `token_compat.go` 仅保留兼容别名，Middleware、Gateway、WS 和 HTTP contract 暂不改变，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Core Admin domain 及测试已迁入 `internal/services/core/domain/admin/`；`internal/service/admin_compat.go` 仅保留类型、错误和构造入口兼容层，User 权限错误继续共享同一错误值，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Core Session domain 及测试已迁入 `internal/services/core/domain/session/`；`internal/service/session_compat.go` 仅保留类型、错误和构造入口兼容层，设备会话 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Core User domain 及测试已迁入 `internal/services/core/domain/user/`；`internal/service/user_compat.go` 仅保留类型、错误和构造入口兼容层，头像对象存储与用户管理 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Core Contact domain 及测试已迁入 `internal/services/core/domain/contact/`；`internal/service/contact_compat.go` 仅保留类型、错误、常量和构造入口兼容层，联系人 HTTP 与事件 contract 保持兼容，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Core Conversation domain 及测试已迁入 `internal/services/core/domain/conversation/`；`internal/service/conversation_compat.go` 仅保留类型、错误和构造入口兼容层，Conversation HTTP、已读回执和投影观察 contract 保持兼容，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Sync domain 及测试已迁入 `internal/services/sync/domain/`；`internal/service/sync_compat.go` 仅保留错误和构造入口兼容层，设备 Cursor、群组 checkpoint 和增量同步 contract 保持兼容，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Message event contract 与 Sync projection 实现及测试已迁入 `internal/services/message/domain/`；`internal/service/message_event_compat.go` 仅保留类型、错误和函数兼容入口，事件、Search mutation 和 Inbox locator contract 保持兼容，旧实现路径由结构门禁阻止回流。
-- **本轮进展：** Message 核心 domain 实现及测试已迁入 `internal/services/message/domain/`；`internal/service/message_event_compat.go` 继续提供兼容类型、错误和构造入口，消息发送、历史查询、幂等、Outbox、Seq、文件授权和热群策略 contract 保持兼容，旧核心实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Group domain 实现及测试已迁入 `internal/services/core/domain/group/`；`internal/compat/service/group_compat.go` 仅保留类型和错误别名，HTTP/DTO/Kafka contract 暂不改变，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core File domain、Redis 分片会话实现及测试已迁入 `internal/services/core/domain/file/`；`internal/compat/service/file_compat.go` 仅保留类型和错误别名，文件 HTTP/DTO contract 暂不改变，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Auth domain 及测试已迁入 `internal/services/core/domain/auth/`；`internal/compat/service/auth_compat.go` 与 `token_compat.go` 仅保留兼容别名，Middleware、Gateway、WS 和 HTTP contract 暂不改变，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Admin domain 及测试已迁入 `internal/services/core/domain/admin/`；`internal/compat/service/admin_compat.go` 仅保留类型、错误和构造入口兼容层，User 权限错误继续共享同一错误值，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Session domain 及测试已迁入 `internal/services/core/domain/session/`；`internal/compat/service/session_compat.go` 仅保留类型、错误和构造入口兼容层，设备会话 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core User domain 及测试已迁入 `internal/services/core/domain/user/`；`internal/compat/service/user_compat.go` 仅保留类型、错误和构造入口兼容层，头像对象存储与用户管理 HTTP contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Contact domain 及测试已迁入 `internal/services/core/domain/contact/`；`internal/compat/service/contact_compat.go` 仅保留类型、错误、常量和构造入口兼容层，联系人 HTTP 与事件 contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Core Conversation domain 及测试已迁入 `internal/services/core/domain/conversation/`；`internal/compat/service/conversation_compat.go` 仅保留类型、错误和构造入口兼容层，Conversation HTTP、已读回执和投影观察 contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Sync domain 及测试已迁入 `internal/services/sync/domain/`；`internal/compat/service/sync_compat.go` 仅保留错误和构造入口兼容层，设备 Cursor、群组 checkpoint 和增量同步 contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Message event contract 与 Sync projection 实现及测试已迁入 `internal/services/message/domain/`；`internal/compat/service/message_event_compat.go` 仅保留类型、错误和函数兼容入口，事件、Search mutation 和 Inbox locator contract 保持兼容，旧实现路径由结构门禁阻止回流。
+- **本轮进展：** Message 核心 domain 实现及测试已迁入 `internal/services/message/domain/`；`internal/compat/service/message_event_compat.go` 继续提供兼容类型、错误和构造入口，消息发送、历史查询、幂等、Outbox、Seq、文件授权和热群策略 contract 保持兼容，旧核心实现路径由结构门禁阻止回流。
 - **本轮进展：** Message 专属 sqlc MySQL repository 及 contract tests 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/data/mysql/repository/message_compat.go` 仅保留兼容别名和构造入口，生成代码、事务 Store 和消息表 ownership 保持稳定，旧共享 repository 路径由结构门禁阻止回流。
 - **本轮进展：** Message 独立 runtime 已直接装配 `internal/services/message/infrastructure/mysql` 与 Message application，移除对 `internal/app` 聚合 Composition Root 的依赖；服务布局门禁已固定该启动边界，embedded 聚合入口继续保留作为回滚路径。
 - **本轮进展：** Sync repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`，独立 Sync runtime 已移除对 `internal/app` 聚合装配的依赖；旧 repository 兼容入口和 embedded 回滚路径保留。

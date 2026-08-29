@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/gateway"
 	"github.com/JekYUlll/Dipole/internal/logger"
@@ -16,7 +17,6 @@ import (
 	platformPresence "github.com/JekYUlll/Dipole/internal/platform/presence"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
-	"github.com/JekYUlll/Dipole/internal/service"
 	"github.com/JekYUlll/Dipole/internal/store"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	agentv1 "github.com/JekYUlll/Dipole/internal/transport/grpc/gen/agent/v1"

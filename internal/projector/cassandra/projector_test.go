@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 type createdMessagePayload = service.MessageEventPayload

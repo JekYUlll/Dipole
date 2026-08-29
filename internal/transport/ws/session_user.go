@@ -3,8 +3,8 @@ package ws
 import (
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 // SessionUser carries only the user identity needed during a websocket session.
