@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	syncbackfill "github.com/JekYUlll/Dipole/internal/operations/sync/backfill"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 var (
@@ -55,11 +55,11 @@ func (s *SyncReplaySource) ListAfter(ctx context.Context, afterID, throughID uin
 		if envelope.EventType != row.EventType {
 			return nil, fmt.Errorf("Sync replay outbox event %d type mismatch: row=%s envelope=%s", row.ID, row.EventType, envelope.EventType)
 		}
-		payload, err := service.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
+		payload, err := messagedomain.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return nil, fmt.Errorf("decode Sync replay payload %d: %w", row.ID, err)
 		}
-		projection, fanout, err := service.MessageSyncProjection(envelope.EventID, envelope.EventType, payload)
+		projection, fanout, err := messagedomain.MessageSyncProjection(envelope.EventID, envelope.EventType, payload)
 		if err != nil {
 			return nil, fmt.Errorf("map Sync replay event %d: %w", row.ID, err)
 		}

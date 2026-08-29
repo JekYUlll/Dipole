@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -150,7 +150,7 @@ func TestDeliverDirectMessageSkipsTimelineNotificationWithoutSequence(t *testing
 
 func directCreatedEvent(t *testing.T, sequence uint64) platformKafka.Event {
 	t.Helper()
-	payload, err := json.Marshal(service.MessageEventPayload{
+	payload, err := json.Marshal(messagedomain.MessageEventPayload{
 		MessageID: "M42", ConversationKey: "direct:U1:U2", MessageSeq: sequence,
 		SenderUUID: "U1", TargetUUID: "U2", TargetType: model.MessageTargetDirect,
 		MessageType: model.MessageTypeText, Content: "secret body", SentAt: time.Now().UTC(),
@@ -165,7 +165,7 @@ func directCreatedEvent(t *testing.T, sequence uint64) platformKafka.Event {
 
 func groupCreatedEvent(t *testing.T) platformKafka.Event {
 	t.Helper()
-	payload, err := json.Marshal(service.MessageEventPayload{
+	payload, err := json.Marshal(messagedomain.MessageEventPayload{
 		MessageID: "MG42", ConversationKey: "group:G1", MessageSeq: 42,
 		SenderUUID: "U1", TargetUUID: "G1", TargetType: model.MessageTargetGroup,
 		MessageType: model.MessageTypeText, Content: "group body", SentAt: time.Now().UTC(),

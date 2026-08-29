@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/operations/search/backfill"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 var (
@@ -63,11 +63,11 @@ func (s *SearchBackfillSource) ListAfter(ctx context.Context, afterID, throughID
 		if envelope.EventType != row.EventType {
 			return nil, fmt.Errorf("Search backfill outbox event %d type mismatch: row=%s envelope=%s", row.ID, row.EventType, envelope.EventType)
 		}
-		payload, err := service.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
+		payload, err := messagedomain.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return nil, fmt.Errorf("decode Search backfill payload %d: %w", row.ID, err)
 		}
-		mutation, err := service.MessageSearchMutation(envelope.EventType, payload)
+		mutation, err := messagedomain.MessageSearchMutation(envelope.EventType, payload)
 		if err != nil {
 			return nil, fmt.Errorf("map Search backfill mutation %d: %w", row.ID, err)
 		}
