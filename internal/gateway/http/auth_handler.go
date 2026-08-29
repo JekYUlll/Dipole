@@ -13,6 +13,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
 type AuthHandler struct {
@@ -199,7 +200,7 @@ func (h *AuthHandler) IssueAgentMCPGrant(c *gin.Context) {
 		UserUUID: user.UUID, Resource: request.Resource, Scopes: request.Scopes, Consent: request.Consent,
 	})
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidAgentMCPGrant) {
+		if errors.Is(err, coreauth.ErrInvalidAgentMCPGrant) {
 			ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "Agent MCP resource, scope, and consent must match the supported grant")
 			return
 		}
