@@ -12,6 +12,7 @@ import (
 	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	routingData "github.com/JekYUlll/Dipole/internal/platform/storage/routing"
 	shadowData "github.com/JekYUlll/Dipole/internal/platform/storage/shadow"
@@ -45,7 +46,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 	if err := validateCassandraShadowConfig(messageCfg, cassandraCfg); err != nil {
 		return nil, err
 	}
-	if err := store.InitMySQLWithConfig(config.MessageMySQLConfig()); err != nil {
+	if err := platformmysql.InitMySQLWithConfig(config.MessageMySQLConfig()); err != nil {
 		return nil, fmt.Errorf("message mysql init failed: %w", err)
 	}
 	if err := store.InitRedis(); err != nil {
@@ -65,7 +66,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 			return nil, fmt.Errorf("message kafka consumer init failed: %w", err)
 		}
 	}
-	runner, err := migration.NewRunner(store.SQLDB, migrations.Files)
+	runner, err := migration.NewRunner(platformmysql.SQLDB, migrations.Files)
 	if err != nil {
 		return nil, fmt.Errorf("initialize message migration validation: %w", err)
 	}
@@ -73,11 +74,11 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("message database schema is not ready: %w", err)
 	}
 	if messageCfg.EnforceDBPermissions {
-		if err := verifyMessageDatabaseBoundary(ctx, store.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
+		if err := verifyMessageDatabaseBoundary(ctx, platformmysql.SQLDB, messageCfg.InboxWriteMode == "atomic"); err != nil {
 			return nil, fmt.Errorf("verify message database permissions: %w", err)
 		}
 	}
-	repos, err := messagemysql.NewProcessRepositories(store.SQLDB, messageCfg.InboxWriteMode == "atomic")
+	repos, err := messagemysql.NewProcessRepositories(platformmysql.SQLDB, messageCfg.InboxWriteMode == "atomic")
 	if err != nil {
 		return nil, fmt.Errorf("compose message repositories: %w", err)
 	}
@@ -165,7 +166,7 @@ func InitializeMessageService(ctx context.Context) (*MessageRuntime, error) {
 		return nil, fmt.Errorf("start message metrics: %w", err)
 	}
 	readinessProbes := []platformObservability.DependencyProbe{
-		mysqlReadinessProbe("mysql", store.SQLDB),
+		mysqlReadinessProbe("mysql", platformmysql.SQLDB),
 		grpcReadinessProbe("core-rpc", runtime.coreConn),
 	}
 	if messageCfg.RuntimeMode == "owner" {
@@ -275,8 +276,8 @@ func (r *MessageRuntime) Close() {
 		_ = store.RDB.Close()
 		store.RDB = nil
 	}
-	if store.SQLDB != nil {
-		_ = store.SQLDB.Close()
-		store.SQLDB = nil
+	if platformmysql.SQLDB != nil {
+		_ = platformmysql.SQLDB.Close()
+		platformmysql.SQLDB = nil
 	}
 }
