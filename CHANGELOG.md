@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent Command 测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中仅供该测试使用的类型与构造转发。
 - Agent Event Subscription 控制面测试已迁入 Agent application 包并直接验证服务实现；删除 `internal/app` 中仅供该测试使用的类型与构造转发。
 - Agent Memory Resolver 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。
 - Agent Runtime Promotion Evidence Review 测试已迁入 Agent application 包并直接使用服务实现，删除聚合 `internal/app` 中对应的类型与构造转发。

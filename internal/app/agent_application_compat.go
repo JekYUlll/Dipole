@@ -14,7 +14,6 @@ type PersistentAgentApprovalServiceV1 = agentapplication.PersistentAgentApproval
 type PersistentAgentTaskControlAuthorizerV1 = agentapplication.PersistentAgentTaskControlAuthorizerV1
 type PersistentAgentTaskWorkflowProjectionServiceV1 = agentapplication.PersistentAgentTaskWorkflowProjectionServiceV1
 type PersistentAgentWorkflowRepairAuditServiceV1 = agentapplication.PersistentAgentWorkflowRepairAuditServiceV1
-type LocalAgentCommandV1 = agentapplication.LocalAgentCommandV1
 type LocalAgentCapabilityV1 = agentapplication.LocalAgentCapabilityV1
 type PersistentAgentWorkflowRepairPrepareServiceV1 = agentapplication.PersistentAgentWorkflowRepairPrepareServiceV1
 type PersistentAgentWorkflowRepairExecutorV1 = agentapplication.PersistentAgentWorkflowRepairExecutorV1
@@ -57,10 +56,6 @@ func NewPersistentAgentWorkflowRepairAuditServiceV1(policies application.AgentPo
 
 func NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, now func() time.Time) (*PersistentAgentWorkflowRepairAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies, repairs, now)
-}
-
-func NewLocalAgentCommandV1(messages agentapplication.AgentCommandMessages) (*LocalAgentCommandV1, error) {
-	return agentapplication.NewLocalAgentCommandV1(messages)
 }
 
 func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentapplication.AgentCapabilityMessages, conversations agentapplication.AgentCapabilityConversations, commands application.AgentCommandV1) (*LocalAgentCapabilityV1, error) {

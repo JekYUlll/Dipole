@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -78,7 +78,7 @@ func TestLocalAgentCommandV1RoutesTrustedIdentityAndCorrelation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new Agent Command: %v", err)
 	}
-	invocation := agentCapabilityTestInvocation()
+	invocation := agentCommandTestInvocation()
 	invocation.RequestID = "REQ-1"
 	invocation.TraceID = "TRACE-1"
 	invocation.EventID = "EVENT-1"
@@ -124,7 +124,7 @@ func TestLocalAgentCommandV1UsesStableIdempotencyKey(t *testing.T) {
 	command := application.AgentMessageCommandV1{
 		CommandID:  "trigger:M100:system-message:1",
 		Kind:       application.AgentMessageCommandSystemMessageV1,
-		Invocation: agentCapabilityTestInvocation(),
+		Invocation: agentCommandTestInvocation(),
 		Content:    "notice",
 	}
 	first, err := commands.SendMessage(context.Background(), command)
@@ -151,7 +151,7 @@ func TestLocalAgentCommandV1RecoversCommittedReceiptAfterUncertainSend(t *testin
 	}
 	command := application.AgentMessageCommandV1{
 		CommandID: "trigger:M100:assistant-reply", Kind: application.AgentMessageCommandAssistantReplyV1,
-		Invocation: agentCapabilityTestInvocation(), Content: "hello",
+		Invocation: agentCommandTestInvocation(), Content: "hello",
 	}
 	clientMessageID := mustAgentCommandClientMessageIDV1(t, command.Kind, command.CommandID)
 	messages.receipt = &application.MessageCommandReceipt{
@@ -172,7 +172,7 @@ func TestLocalAgentCommandV1RejectsAbsentOrConflictingReceipt(t *testing.T) {
 
 	command := application.AgentMessageCommandV1{
 		CommandID: "trigger:M100:system-message", Kind: application.AgentMessageCommandSystemMessageV1,
-		Invocation: agentCapabilityTestInvocation(), Content: "notice",
+		Invocation: agentCommandTestInvocation(), Content: "notice",
 	}
 	clientMessageID := mustAgentCommandClientMessageIDV1(t, command.Kind, command.CommandID)
 	for _, test := range []struct {
@@ -204,7 +204,7 @@ func TestLocalAgentCommandV1PreservesReceiptFailureAndRejectsSendBindingDrift(t 
 
 	command := application.AgentMessageCommandV1{
 		CommandID: "trigger:M100:assistant-reply", Kind: application.AgentMessageCommandAssistantReplyV1,
-		Invocation: agentCapabilityTestInvocation(), Content: "hello",
+		Invocation: agentCommandTestInvocation(), Content: "hello",
 	}
 	receiptErr := errors.New("receipt backend unavailable")
 	messages := &agentCommandMessagesStub{sendErr: context.DeadlineExceeded, receiptErr: receiptErr}
@@ -264,14 +264,14 @@ func TestLocalAgentCommandV1FailsClosed(t *testing.T) {
 	}
 	tests := []application.AgentMessageCommandV1{
 		{CommandID: "C1", Kind: application.AgentMessageCommandAssistantReplyV1, Content: "hello"},
-		{CommandID: "C2", Kind: application.AgentMessageCommandKindV1("unknown"), Invocation: agentCapabilityTestInvocation(), Content: "hello"},
-		{CommandID: "", Kind: application.AgentMessageCommandAssistantReplyV1, Invocation: agentCapabilityTestInvocation(), Content: "hello"},
-		{CommandID: "C4", Kind: application.AgentMessageCommandAssistantReplyV1, Invocation: agentCapabilityTestInvocation(), Content: ""},
+		{CommandID: "C2", Kind: application.AgentMessageCommandKindV1("unknown"), Invocation: agentCommandTestInvocation(), Content: "hello"},
+		{CommandID: "", Kind: application.AgentMessageCommandAssistantReplyV1, Invocation: agentCommandTestInvocation(), Content: "hello"},
+		{CommandID: "C4", Kind: application.AgentMessageCommandAssistantReplyV1, Invocation: agentCommandTestInvocation(), Content: ""},
 	}
-	denied := agentCapabilityTestInvocation()
+	denied := agentCommandTestInvocation()
 	denied.Permissions = nil
 	tests = append(tests, application.AgentMessageCommandV1{CommandID: "C5", Kind: application.AgentMessageCommandAssistantReplyV1, Invocation: denied, Content: "hello"})
-	outOfScope := agentCapabilityTestInvocation()
+	outOfScope := agentCommandTestInvocation()
 	outOfScope.ResourceScopes = []application.AgentResourceScopeV1{{ResourceType: application.AgentResourceTypeConversation, ResourceID: "group:G1", Actions: []string{application.AgentResourceActionWrite}}}
 	tests = append(tests, application.AgentMessageCommandV1{CommandID: "C6", Kind: application.AgentMessageCommandAssistantReplyV1, Invocation: outOfScope, Content: "hello"})
 	for _, command := range tests {
@@ -292,5 +292,21 @@ func TestNewLocalAgentCommandV1RejectsMissingDependency(t *testing.T) {
 
 	if _, err := NewLocalAgentCommandV1(nil); err == nil {
 		t.Fatal("expected missing Message dependency rejection")
+	}
+}
+
+func agentCommandTestInvocation() application.AgentInvocationV1 {
+	return application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", DelegatedByUUID: "U100",
+		Permissions: []string{
+			application.AgentPermissionUserProfileRead,
+			application.AgentPermissionConversationList,
+			application.AgentPermissionConversationRead,
+			application.AgentPermissionMessageWrite,
+		},
+		ResourceScopes: []application.AgentResourceScopeV1{
+			{ResourceType: application.AgentResourceTypeUser, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead}},
+			{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead, application.AgentResourceActionList, application.AgentResourceActionWrite}},
+		},
 	}
 }
