@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 func TestDecodeMessageEventPayloadPreservesSyncFanoutPresence(t *testing.T) {
@@ -75,7 +75,7 @@ func TestDecodeMessageEventPayloadNormalizesLegacyCreatedMutation(t *testing.T) 
 	if err != nil {
 		t.Fatalf("decode legacy created mutation: %v", err)
 	}
-	if decoded.MutationType != service.MessageMutationCreated || decoded.Revision != 1 || decoded.ActorUUID != "U1" {
+	if decoded.MutationType != messagedomain.MessageMutationCreated || decoded.Revision != 1 || decoded.ActorUUID != "U1" {
 		t.Fatalf("unexpected normalized mutation: %+v", decoded)
 	}
 }

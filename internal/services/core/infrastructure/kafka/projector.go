@@ -10,6 +10,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 	"go.uber.org/zap"
 )
 
@@ -65,7 +66,7 @@ func updateConversation(projector conversationProjector, group bool) platformKaf
 		if err != nil {
 			return err
 		}
-		payload, err := service.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
+		payload, err := messagedomain.DecodeMessageEventPayload(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return fmt.Errorf("decode message event contract: %w", err)
 		}
