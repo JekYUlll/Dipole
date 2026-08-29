@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 const (
@@ -61,7 +61,7 @@ func projectionFromEvent(event platformKafka.Event) (cassandradata.TimelineProje
 		return cassandradata.TimelineProjection{}, fmt.Errorf("unsupported Cassandra projection event type %q", eventType)
 	}
 
-	payload, err := service.DecodeMessageEventPayload(eventType, envelope.Payload)
+	payload, err := messagedomain.DecodeMessageEventPayload(eventType, envelope.Payload)
 	if err != nil {
 		return cassandradata.TimelineProjection{}, fmt.Errorf("decode Cassandra projection payload: %w", err)
 	}
