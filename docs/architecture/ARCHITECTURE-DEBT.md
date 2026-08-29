@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Sync 生产 RPC adapter 已迁入 Sync bootstrap 并直接使用平台 transport，保留原有 Core capability 调用方身份和 query server 白名单；剩余 legacy 依赖继续按服务切片收敛。
 - 2026-08-29：Message 生产 RPC adapter 已迁入 Message bootstrap 并直接使用平台 transport，runtime 不再通过共享 bootstrap 注册 Message RPC；Lazy Core、权限校验和其他服务基础设施兼容边界仍待后续切片收敛。
 - 2026-08-29：Search 生产 RPC bootstrap 已脱离 `internal/bootstrap`，直接使用平台 RPC transport；Core capability server 仅作为测试 fixture 使用 legacy helper，避免重复实现 Core 方法权限策略，后续继续迁移 Message、Sync 和 Gateway 协议 adapter。
 - 2026-08-29：Internal RPC 通用 transport 已迁入 `internal/platform/rpc/`，并由旧 `internal/bootstrap` helper 转发；平台层覆盖认证、TLS 1.3 mTLS、health check、拨号超时和优雅关闭，服务协议 adapter 与方法权限仍按服务边界继续收敛。
