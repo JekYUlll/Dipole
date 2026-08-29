@@ -13,7 +13,6 @@ import (
 type PersistentAgentApprovalServiceV1 = agentapplication.PersistentAgentApprovalServiceV1
 type PersistentAgentTaskControlAuthorizerV1 = agentapplication.PersistentAgentTaskControlAuthorizerV1
 type PersistentAgentTaskWorkflowProjectionServiceV1 = agentapplication.PersistentAgentTaskWorkflowProjectionServiceV1
-type AgentRuntimePromotionEvidenceReviewServiceV1 = agentapplication.AgentRuntimePromotionEvidenceReviewServiceV1
 type PersistentAgentWorkflowRepairAuditServiceV1 = agentapplication.PersistentAgentWorkflowRepairAuditServiceV1
 type PersistentAgentEventSubscriptionResolverV1 = agentapplication.PersistentAgentEventSubscriptionResolverV1
 type PersistentAgentEventSubscriptionControlV1 = agentapplication.PersistentAgentEventSubscriptionControlV1
@@ -53,10 +52,6 @@ func NewPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolI
 
 func NewPersistentAgentToolInvocationAuditServiceV1WithClock(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery, now func() time.Time) (application.AgentToolInvocationAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, resolver, approvals, receipts, now)
-}
-
-func NewAgentRuntimePromotionEvidenceReviewServiceV1(controls application.AgentRuntimePromotionControlServiceV1, reader application.AgentRuntimePromotionEvidenceReaderV1) (*AgentRuntimePromotionEvidenceReviewServiceV1, error) {
-	return agentapplication.NewAgentRuntimePromotionEvidenceReviewServiceV1(controls, reader)
 }
 
 func NewPersistentAgentWorkflowRepairAuditServiceV1(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1) (*PersistentAgentWorkflowRepairAuditServiceV1, error) {

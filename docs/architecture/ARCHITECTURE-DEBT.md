@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Runtime Promotion Evidence Review 测试已迁入 `internal/services/agent/application`，其 operator control 与 artifact reader stub 随测试归属迁移，并删除 `internal/app` 对应 facade。
 - 2026-08-29：Memory Owner Control 测试已迁入 `internal/services/agent/application`，其 owner store stub 与 fixture 随测试归属迁移，并删除 `internal/app` 对应 facade。
 - 2026-08-29：Artifact Service 测试已迁入 `internal/services/agent/application`，其 policy、metadata、blob stub 均随测试归属迁移，并删除 `internal/app` 对应 facade。
 - 2026-08-29：Memory Candidate Promotion 测试已迁入 `internal/services/agent/application`，直接覆盖 Agent-owned 实现并删除 `internal/app` 对应 facade。
