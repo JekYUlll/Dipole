@@ -150,7 +150,7 @@ Corpus review v1 将同一 corpus SHA-256 绑定到两个独立 reviewer 的完�
 
 Subscription rollout gate 不信任调用方预先聚合的报告，而是从 corpus、review 与 candidate evidence 重新执行两个 evaluator。只有同一 corpus 的 review 和 candidate 均通过才输出 `eligible`，决策绑定 corpus/review/final-label/candidate evidence/configuration 哈希及 agreement、precision、recall、p95、成本指标。`eligible` 只进入 operator review，不修改 Runtime mode、Trigger mode 或 Capability authority。
 
-默认关闭的 `DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED` 为 `direct_target` 增加在线确定性对照：同一 Kafka 事件在 EventLedger 前调用 Core matcher，只累计固定 `accepted|ignored × match|miss|error` 指标和候选总数，随后仍按 direct-target 结果执行。matcher 失败只记录 error，不能阻断主路径，也不能创建第二个 Task、Workflow 或模型调用。运维与回滚见 `docs/agent-subscription-shadow.md`；该观察证据不能替代 reviewed corpus 与离线 precision/recall 门槛。
+默认关闭的 `DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED` 为 `direct_target` 增加在线确定性对照：同一 Kafka 事件在 EventLedger 前调用 Core matcher，只累计固定 `accepted|ignored × match|miss|error` 指标和候选总数，随后仍按 direct-target 结果执行。matcher 失败只记录 error，不能阻断主路径，也不能创建第二个 Task、Workflow 或模型调用。运维与回滚见 `docs/agent/agent-subscription-shadow.md`；该观察证据不能替代 reviewed corpus 与离线 precision/recall 门槛。
 
 在线对照的 `dipole.agent.subscription-shadow-evidence.v1` 只接受 24 小时以上的 Prometheus 起止快照，绑定 Runtime/config SHA-256、query revision、抓取覆盖率和 `resets()` 结果；至少 100 个事件、95% 抓取、零 reset、零 matcher error 才能形成最多有效 24 小时的 passing evidence。Schema 与 CLI 固定双 authority 为 false，Runtime 启动链不读取该证据。
 

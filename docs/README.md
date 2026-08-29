@@ -16,6 +16,11 @@ scripts/check-architecture-docs.sh
 - [Realtime Delivery](architecture/REALTIME-DELIVERY.md)
 - [Agent Runtime 设计](architecture/AGENT-RUNTIME-DESIGN.md)
 - [仓库结构](architecture/REPOSITORY-STRUCTURE.md)
+- [参考项目与演进原则](architecture/architecture-reference.md)
+- [开发路线图](architecture/DEVELOPMENT-ROADMAP.md)
+- [架构问答与审查](architecture/ARCHITECTURE-QA.md)
+- [消息存储与同步模型](architecture/MESSAGE-STORAGE-AND-SYNC.md)
+- [消息同步策略](architecture/MESSAGE-SYNC-STRATEGY.md)
 
 ## 数据与存储
 
@@ -28,6 +33,7 @@ scripts/check-architecture-docs.sh
 - [Elasticsearch Search](data/ELASTICSEARCH-SEARCH.md)
 - [Search Archive 运行手册](data/SEARCH-ARCHIVE-RUNBOOK.md)
 - [Storage Lab](data/STORAGE-LAB.md)
+- [缓存策略](data/CACHE-STRATEGY.md)
 
 ## 部署与运行
 
@@ -36,18 +42,21 @@ scripts/check-architecture-docs.sh
 - [Search Service 部署](operations/SEARCH-SERVICE-DEPLOYMENT.md)
 - [Web Sync 灰度与回滚](operations/WEB-SYNC-ROLLOUT.md)
 - [重复消息 hydration 灰度](operations/DUPLICATE-HYDRATION-ROLLOUT.md)
+- [TLS 配置](operations/TLS-SETUP.md)
+- [待办事项](operations/TODO.md)
 
 ## Agent Runtime
 
-Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/` 与 `contracts/`：
+Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/agent/` 与 `contracts/`：
 
-- [Agent Artifact 对账](agent-artifact-reconcile.md)
-- [Agent 外部 MCP](agent-external-mcp.md)
-- [Agent MCP 授权](agent-mcp-authorization.md)
-- [Agent Memory Observation](agent-memory-observation.md)
-- [Agent OpenTelemetry 运维](agent-otel-operations.md)
-- [Agent Subscription Shadow](agent-subscription-shadow.md)
-- [Agent Timeline Repair 运维](AGENT-TIMELINE-REPAIR-OPERATIONS.md)
+- [Agent Artifact 对账](agent/agent-artifact-reconcile.md)
+- [Agent 外部 MCP](agent/agent-external-mcp.md)
+- [Agent MCP 授权](agent/agent-mcp-authorization.md)
+- [Agent Memory Observation](agent/agent-memory-observation.md)
+- [Agent OpenTelemetry 运维](agent/agent-otel-operations.md)
+- [Agent Subscription Shadow](agent/agent-subscription-shadow.md)
+- [Agent Timeline Repair 运维](agent/AGENT-TIMELINE-REPAIR-OPERATIONS.md)
+- [Agent 前置能力清单](agent/ai-readiness-checklist.md)
 
 ## 前端设计
 
@@ -58,7 +67,9 @@ Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/` �
 
 - [性能基线](performance/PERFORMANCE-BASELINE.md)
 - [Benchmark 目录](../benchmarks/)
+- [负载测试报告](performance/LOAD-TEST-REPORT.md)
 
-## 本地参考与历史材料
+## 指南与参考
 
-部分早期方案、问答和本地参考文件通过 `.gitignore` 单文件规则保留，不承担当前实现契约。它们转为正式文档前，需要先完成代码、配置、运行手册和测试对齐，再加入架构清单。
+- [面试问答](guides/INTERVIEW-QA.md)
+- [参考项目目录说明](references/README.md)

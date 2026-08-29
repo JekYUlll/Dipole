@@ -44,7 +44,7 @@
 - **现状：** 已提供独立 `dipole-agent-task-timeline-repair` 镜像二进制、专用最小权限账号和默认关闭的 `agent-timeline-repair` Compose profile；隔离 MySQL 进程级 smoke 已验证 claim/replay、completed 收敛和事件幂等，并新增短窗口失败/持续 retry 的 Prometheus 告警规则与 promtool 测试，worker 仍需 operator 显式启用。
 - **风险：** 未完成共享环境 operator 灰度、指标抓取和告警演练前，Timeline repair intent 仍可能停留在 pending/retry，不能宣称生产自动修复闭环。
 - **下一步：** 在隔离环境启用 profile，验证 readiness、repair counter、重启恢复与回滚；证据完整后再评估默认拓扑或告警策略。
-- **运维约束：** 启用、暂停和回切步骤已收敛到 `docs/AGENT-TIMELINE-REPAIR-OPERATIONS.md`；当前仍要求显式 profile、完整窗口和原始指标快照，未满足时保持默认关闭。
+- **运维约束：** 启用、暂停和回切步骤已收敛到 `docs/agent/AGENT-TIMELINE-REPAIR-OPERATIONS.md`；当前仍要求显式 profile、完整窗口和原始指标快照，未满足时保持默认关闭。
 - **本轮进展：** repair binary 增加 `-once` 有界执行模式，已由隔离 smoke 真实验证单批次完成；共享环境仍需 operator 灰度和告警演练。
 - **本轮进展：** Compose repair 权限初始化已收敛为同一密码变量，覆盖值会在授权 SQL 后显式更新，危险 SQL 字符 fail closed；仍需共享环境轮换和回滚演练。
 - **本轮进展：** 新增 Compose profile 级隔离 smoke，先断言 v49 migration/Timeline 表，再验证专用权限、worker `readyz`、持续 replay 和 event UUID 幂等；演练发现 MySQL `Asia/Shanghai` 与 Go UTC 的 DATETIME 比较偏移，已将 Compose MySQL 固定为 UTC，并改用同步 `compose run --rm` 执行一次性 migration。共享环境 operator 灰度、指标抓取和轮换/回滚演练仍待完成。
@@ -379,8 +379,8 @@
 - **发现日期：** 2026-08-26
 - **解决日期：** 2026-08-27
 - **影响范围：** `docs/*.md`、架构决策可追溯性
-- **解决方式：** 移除 `docs/*.md` 通配忽略，以 `docs/architecture-docs.manifest` 固定 canonical 架构文档集合；历史问答、面试资料和本地参考改用文件级忽略规则，`docs/architecture-reference.md` 继续保持本地未跟踪。
-- **验证：** `scripts/check-architecture-docs.sh` 校验清单文件存在且已被 Git 跟踪，拒绝通配忽略回归，并验证本地架构参考仍被显式忽略。
+- **解决方式：** 移除 `docs/*.md` 通配忽略，以 `docs/architecture-docs.manifest` 固定 canonical 文档集合；架构、Agent、数据、运行、性能和指南文档按职责归档，参考材料纳入 `docs/architecture/architecture-reference.md`。
+- **验证：** `scripts/check-architecture-docs.sh` 校验清单文件存在且已被 Git 跟踪，拒绝通配忽略回归，并验证根目录 Markdown 仅保留项目入口、更新日志和协作约定。
 - **长期约束：** 新增长期架构约束时同步更新 manifest、实现文档和更新日志；本地草稿晋级前先完成代码与配置对齐。
 
 ### AD-008：Agent Tool 允许模型提供用户身份参数
