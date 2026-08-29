@@ -16,6 +16,7 @@
 ## [Unreleased]
 
 ### 变更
+- Agent Workflow Repair 增加跨 Go/TypeScript 对齐的 projection hash precondition guard，执行前校验 active executor grant、grant version、Task 绑定和当前/目标 projection 哈希；该 guard 无副作用。
 - 重整仓库文档布局：根目录 README 聚焦项目介绍、架构概览、快速开始和验证入口；架构、数据、运行、前端和性能文档统一归档到 `docs/` 分类目录，并由 `docs/README.md` 集中导航。
 - 将长期运行的 Go 服务入口统一归档到 `cmd/services/`，保留一次性迁移、回填和对账工具在 `cmd/` 顶层，降低微服务部署边界与运维工具的混淆。
 - 将一次性迁移、回填、对账、证据采集和诊断工具统一归档到 `cmd/tools/`，并同步构建脚本、运行手册和测试引用。
