@@ -269,6 +269,7 @@
 
 - **优先级：** P1
 - **状态：** 处理中
+- **2026-08-30 复跑：** 在含超时探针的当前基线再次完成 readiness smoke；完整微服务拓扑的冷启动、Gateway assignment、Elasticsearch 故障降级/恢复和核心服务容器不重启均通过，临时资源已清理。共享环境发布和可执行回滚 receipt 仍待完成。
 - **2026-08-30 验证：** readiness smoke 通过 Core/Message/Sync/Gateway 冷启动、Gateway assignment、Elasticsearch 停止后的 Search/Indexer readiness 降级与恢复，并确认核心服务容器未因依赖退化重启；同时为探针增加 10 秒 `docker compose exec` 超时，避免异常时无限等待。共享环境发布、Kafka ownership 深度核对和可执行回滚 receipt 仍待完成。
 - **发现日期：** 2026-08-29
 - **影响范围：** Core/Message 微服务冷启动、Compose 健康依赖、消息表写入 ownership
