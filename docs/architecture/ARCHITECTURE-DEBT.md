@@ -12,6 +12,7 @@
 
 - 2026-08-29：Kafka 三节点 quorum、consumer rebalance 和 Prometheus observability smoke 均通过，验证 RF=3/min ISR=2 下的 broker 故障拒绝与恢复、6 分区 ownership 接管、lag 归零及 retry/DLQ/ISR 指标；同时修复 cluster profile 漏挂 duplicate hydration 和 Agent Timeline repair rule files，并加入 Compose 挂载门禁。共享候选环境的 Kafka ownership 切换与可执行回滚 receipt 仍待完成。
 - 2026-08-29：新增 `deploy/microservices/inbox-projector.yml` 可回滚 override，将 Message projector ownership、最小 MySQL 账号和 Sync projector 开关绑定到同一配置切片；`scripts/check-compose.sh` 已加入一致性门禁，实际候选环境切换仍待维护窗口 receipt。
+- 2026-08-29：重新通过 `scripts/smoke-sync-write-ownership.sh`，真实 MySQL 8.4 验证 atomic/projector 最小权限、Inbox 写责任切换和 rollback contract；该证据支持候选部署，仍不替代共享环境的 Kafka ownership 与生产回切 receipt。
 - 2026-08-29：MySQL 全局连接初始化已从 `internal/store` 收敛到 `internal/platform/mysql`，Core、Message、embedded runtime、Bloom 和维护工具已切换新入口；`internal/store/mysql_compat.go` 仅保留回滚兼容，Redis 全局状态仍待后续单独收敛。
 - 2026-08-29：Redis 客户端初始化和全局状态已从 `internal/store` 收敛到 `internal/platform/cache`，Core、Gateway、Message、Presence、Hot Group、限流和 realtime 运维工具已切换新入口；`internal/store/redis_compat.go` 仅保留回滚兼容。
 - 2026-08-29：Hot Group Detector 已支持显式 Redis 客户端并由生产 Composition Root 注入，结构门禁阻止生产装配回到无参数全局构造；兼容构造仍保留，Presence 和限流的显式客户端注入继续作为后续切片。
