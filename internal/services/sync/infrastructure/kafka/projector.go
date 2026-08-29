@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformkafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 var topics = []string{"message.direct.created", "message.group.created"}
@@ -49,9 +49,9 @@ func projectionFromEvent(event platformkafka.Event) (*model.SyncProjection, bool
 	if event.Envelope == nil {
 		return nil, false, errors.New("Kafka envelope is required")
 	}
-	payload, err := service.DecodeMessageEventPayload(event.Envelope.EventType, event.Envelope.Payload)
+	payload, err := messagedomain.DecodeMessageEventPayload(event.Envelope.EventType, event.Envelope.Payload)
 	if err != nil {
 		return nil, false, fmt.Errorf("decode Sync projection payload: %w", err)
 	}
-	return service.MessageSyncProjection(event.Envelope.EventID, event.Envelope.EventType, payload)
+	return messagedomain.MessageSyncProjection(event.Envelope.EventID, event.Envelope.EventType, payload)
 }
