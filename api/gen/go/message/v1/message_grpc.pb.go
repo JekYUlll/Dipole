@@ -23,6 +23,8 @@ const (
 	MessageService_SendGroupText_FullMethodName            = "/dipole.message.v1.MessageService/SendGroupText"
 	MessageService_SendDirectFile_FullMethodName           = "/dipole.message.v1.MessageService/SendDirectFile"
 	MessageService_SendGroupFile_FullMethodName            = "/dipole.message.v1.MessageService/SendGroupFile"
+	MessageService_SendSystemDirectMessage_FullMethodName  = "/dipole.message.v1.MessageService/SendSystemDirectMessage"
+	MessageService_SendSystemGroupMessage_FullMethodName   = "/dipole.message.v1.MessageService/SendSystemGroupMessage"
 	MessageService_GetMessageCommandReceipt_FullMethodName = "/dipole.message.v1.MessageService/GetMessageCommandReceipt"
 	MessageService_ListDirectHistory_FullMethodName        = "/dipole.message.v1.MessageService/ListDirectHistory"
 	MessageService_ListGroupHistory_FullMethodName         = "/dipole.message.v1.MessageService/ListGroupHistory"
@@ -37,6 +39,8 @@ type MessageServiceClient interface {
 	SendGroupText(ctx context.Context, in *SendGroupTextRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	SendDirectFile(ctx context.Context, in *SendDirectFileRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	SendGroupFile(ctx context.Context, in *SendGroupFileRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	SendSystemDirectMessage(ctx context.Context, in *SendSystemDirectMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	SendSystemGroupMessage(ctx context.Context, in *SendSystemGroupMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	GetMessageCommandReceipt(ctx context.Context, in *GetMessageCommandReceiptRequest, opts ...grpc.CallOption) (*GetMessageCommandReceiptResponse, error)
 	ListDirectHistory(ctx context.Context, in *ListDirectHistoryRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
 	ListGroupHistory(ctx context.Context, in *ListGroupHistoryRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
@@ -91,6 +95,26 @@ func (c *messageServiceClient) SendGroupFile(ctx context.Context, in *SendGroupF
 	return out, nil
 }
 
+func (c *messageServiceClient) SendSystemDirectMessage(ctx context.Context, in *SendSystemDirectMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_SendSystemDirectMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) SendSystemGroupMessage(ctx context.Context, in *SendSystemGroupMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_SendSystemGroupMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) GetMessageCommandReceipt(ctx context.Context, in *GetMessageCommandReceiptRequest, opts ...grpc.CallOption) (*GetMessageCommandReceiptResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetMessageCommandReceiptResponse)
@@ -139,6 +163,8 @@ type MessageServiceServer interface {
 	SendGroupText(context.Context, *SendGroupTextRequest) (*SendMessageResponse, error)
 	SendDirectFile(context.Context, *SendDirectFileRequest) (*SendMessageResponse, error)
 	SendGroupFile(context.Context, *SendGroupFileRequest) (*SendMessageResponse, error)
+	SendSystemDirectMessage(context.Context, *SendSystemDirectMessageRequest) (*SendMessageResponse, error)
+	SendSystemGroupMessage(context.Context, *SendSystemGroupMessageRequest) (*SendMessageResponse, error)
 	GetMessageCommandReceipt(context.Context, *GetMessageCommandReceiptRequest) (*GetMessageCommandReceiptResponse, error)
 	ListDirectHistory(context.Context, *ListDirectHistoryRequest) (*ListMessagesResponse, error)
 	ListGroupHistory(context.Context, *ListGroupHistoryRequest) (*ListMessagesResponse, error)
@@ -164,6 +190,12 @@ func (UnimplementedMessageServiceServer) SendDirectFile(context.Context, *SendDi
 }
 func (UnimplementedMessageServiceServer) SendGroupFile(context.Context, *SendGroupFileRequest) (*SendMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendGroupFile not implemented")
+}
+func (UnimplementedMessageServiceServer) SendSystemDirectMessage(context.Context, *SendSystemDirectMessageRequest) (*SendMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendSystemDirectMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) SendSystemGroupMessage(context.Context, *SendSystemGroupMessageRequest) (*SendMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendSystemGroupMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) GetMessageCommandReceipt(context.Context, *GetMessageCommandReceiptRequest) (*GetMessageCommandReceiptResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMessageCommandReceipt not implemented")
@@ -270,6 +302,42 @@ func _MessageService_SendGroupFile_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_SendSystemDirectMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendSystemDirectMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SendSystemDirectMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SendSystemDirectMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SendSystemDirectMessage(ctx, req.(*SendSystemDirectMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_SendSystemGroupMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendSystemGroupMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SendSystemGroupMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SendSystemGroupMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SendSystemGroupMessage(ctx, req.(*SendSystemGroupMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_GetMessageCommandReceipt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMessageCommandReceiptRequest)
 	if err := dec(in); err != nil {
@@ -364,6 +432,14 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendGroupFile",
 			Handler:    _MessageService_SendGroupFile_Handler,
+		},
+		{
+			MethodName: "SendSystemDirectMessage",
+			Handler:    _MessageService_SendSystemDirectMessage_Handler,
+		},
+		{
+			MethodName: "SendSystemGroupMessage",
+			Handler:    _MessageService_SendSystemGroupMessage_Handler,
 		},
 		{
 			MethodName: "GetMessageCommandReceipt",

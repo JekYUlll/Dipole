@@ -817,3 +817,14 @@
 - **现状：** Message domain 曾直接导入 `internal/services/core/domain/file`，仅用于复用文件存储、缺失和权限错误值，形成跨服务 domain 依赖。
 - **解决方式：** 将三个跨服务文件错误提升到 `internal/application`，Core File domain 与 Message domain 均引用 application contract；增加服务布局门禁，阻止 Message 重新依赖 Core domain 实现。
 - **验证：** Message/Core File/兼容服务定向测试、`scripts/check-service-layout.sh` 和 `CGO_ENABLED=0 go test ./...` 通过；错误值身份保持兼容。
+
+### AD-053：Core standalone 系统消息曾回落到本地 Message facade
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-29
+- **完成日期：** 2026-08-29
+- **影响范围：** Core/Message 启动依赖、联系人与群组系统消息、Message 写入 ownership
+- **现状：** Core standalone 使用空 Message repository 构造 embedded facade，联系人和群组触发的系统消息无法明确进入 Message Service 的独立写路径。
+- **解决方式：** Message RPC 增加 Core-only system direct/group command；Core standalone 使用懒连接 adapter，首次调用才执行带健康检查的 RPC 连接，避免 Core 与 Message 同时启动时形成阻塞环；embedded 继续使用本地 adapter。
+- **验证：** 协议生成检查、Compose 默认远程 transport 检查、Message RPC handler、Core/Message/Server 定向测试和全量 Go 测试通过；未认证 system command 被拒绝。

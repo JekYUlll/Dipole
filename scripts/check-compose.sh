@@ -38,7 +38,7 @@ jq -e '
   and .services.migrate.entrypoint == ["/app/service"]
   and .services.core.image == "dipole-core:latest"
   and .services.core.entrypoint == ["/app/service"]
-  and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "local"
+  and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "grpc"
   and .services.core.environment.DIPOLE_MESSAGE_TRANSPORT == "grpc"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
