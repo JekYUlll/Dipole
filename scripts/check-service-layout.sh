@@ -142,7 +142,7 @@ if rg --quiet 'platformPresence\.NewRedisPresence\(' "${root_dir}/internal/boots
 	echo "Presence production composition must inject the platform Redis client" >&2
 	exit 1
 fi
-if rg --quiet 'platformRateLimit\.NewLimiter\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/services/core/server" "${root_dir}/internal/gateway" --glob '*.go'; then
+if rg --quiet 'platformRateLimit\.NewLimiter\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/services/core/server" "${root_dir}/internal/services/gateway/server" "${root_dir}/internal/gateway/http" --glob '*.go'; then
 	echo "Rate limiter production composition must inject the platform Redis client" >&2
 	exit 1
 fi
@@ -233,7 +233,7 @@ if [[ -d "${root_dir}/internal/data/routing" || -d "${root_dir}/internal/data/sh
   echo "legacy storage decorator directories remain under internal/data" >&2
   exit 1
 fi
-for runtime_consumer_dir in internal/operations internal/platform internal/services internal/bootstrap internal/services/core/server internal/gateway internal/transport; do
+for runtime_consumer_dir in internal/operations internal/platform internal/services internal/bootstrap internal/services/core/server internal/services/gateway/server internal/gateway/http internal/transport; do
   if rg --quiet 'internal/data/mysql/repository' "${root_dir}/${runtime_consumer_dir}" --glob '*.go'; then
     echo "new runtime code must use service-owned MySQL repositories; legacy repository aliases are compatibility-only" >&2
     exit 1
@@ -567,7 +567,7 @@ if [[ -e "${root_dir}/internal/app/search.go" || -e "${root_dir}/internal/app/se
   echo "legacy shared Search application path remains under internal/app" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/gateway/search_handler.go" ]]; then
+if [[ ! -f "${root_dir}/internal/services/gateway/server/search_handler.go" ]]; then
   echo "Gateway Search HTTP handler is outside the Gateway boundary" >&2
   exit 1
 fi
@@ -781,7 +781,7 @@ if [[ -e "${root_dir}/internal/bootstrap/gateway_runtime.go" ]]; then
   echo "Gateway runtime remains in shared bootstrap" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/services/gateway/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/gateway|internal/platform/cache|internal/platform/presence' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
+if [[ ! -f "${root_dir}/internal/services/gateway/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/services/gateway/server|internal/platform/cache|internal/platform/presence' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
   echo "Gateway runtime must remain under its service bootstrap boundary" >&2
   exit 1
 fi
