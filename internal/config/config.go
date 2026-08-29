@@ -923,6 +923,17 @@ func MessageConfig() Message {
 	}
 }
 
+// CoreMessageConfig allows the Core process to bootstrap without making its
+// readiness depend on the Message RPC server. Other processes keep using the
+// shared message.transport setting.
+func CoreMessageConfig() Message {
+	message := MessageConfig()
+	if transport := strings.TrimSpace(os.Getenv("DIPOLE_CORE_MESSAGE_TRANSPORT")); transport != "" {
+		message.Transport = strings.ToLower(transport)
+	}
+	return message
+}
+
 func MessageMySQLConfig() MySQL {
 	MustLoad()
 	return mergeMySQLConfig(MySQLConfig(), MySQL{

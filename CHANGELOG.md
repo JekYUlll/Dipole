@@ -16,6 +16,7 @@
 ## [Unreleased]
 
 ### 变更
+- 微服务 Compose 为 Core 增加独立的 `DIPOLE_CORE_MESSAGE_TRANSPORT` 启动配置，默认使用本地消息实现完成 Core readiness；全局 `DIPOLE_MESSAGE_TRANSPORT=grpc` 继续保留给 Gateway/远程调用方，解除 Core/Message 冷启动环。
 - Sync 微服务 Compose 补齐 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION`、`DIPOLE_CASSANDRA_ENABLED` 和 `DIPOLE_CASSANDRA_HOSTS` 配置契约；primary hydration 仍默认关闭，启用时保留 shadow 互斥和 MySQL 即时回退。
 - 在干净提交 `fe84b7b` 上重建并验证七个候选微服务镜像，确认 revision、`dirty=false`、服务二进制标签一致；独立消息流程再次通过 Inbox、`before_seq` 历史读取和 `after_seq` 增量读取。
 - 候选微服务消息 smoke 增加 Seq Timeline 验收：同一消息写入后分别通过 `before_seq=0` 和 `after_seq=0` 查询，并校验 `message_seq` 持久化结果，补齐历史读取与增量读取证据。

@@ -329,6 +329,7 @@ services:
       <<: [*internal-rpc, *dependency-readiness]
       DIPOLE_SERVER_PORT: "8081"
       DIPOLE_GATEWAY_MODE: remote
+      DIPOLE_CORE_MESSAGE_TRANSPORT: ${DIPOLE_CORE_MESSAGE_TRANSPORT:-local}
       DIPOLE_AUTH_AGENT_MCP_RESOURCE: ${DIPOLE_AGENT_MCP_RESOURCE:-https://dipole.local/api/v1/agent/mcp}
       DIPOLE_MESSAGE_TRANSPORT: grpc
       DIPOLE_INTERNAL_RPC_CORE_LISTEN_ADDRESS: 0.0.0.0:9091

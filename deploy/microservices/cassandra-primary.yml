@@ -46,7 +46,7 @@ services:
     environment:
       # Keep candidate bootstrap one-way while the production remote cycle is tracked.
       DIPOLE_GATEWAY_MODE: embedded
-      DIPOLE_MESSAGE_TRANSPORT: local
+      DIPOLE_CORE_MESSAGE_TRANSPORT: local
 
   message:
     depends_on:

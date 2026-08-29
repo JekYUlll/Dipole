@@ -42,6 +42,17 @@
 - **本轮进展：** 2026-08-29 以 `ISOLATED_IMAGES=1` 运行依赖 readiness smoke，Kafka assignment 建立、Search/Indexer 候选服务、Elasticsearch 停止降级与恢复、核心容器身份稳定性均通过；生产切换与回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-29 基础微服务 Compose 切换为逐服务镜像与统一 `/app/service` 入口，补充 repair worker 镜像构建；基础核心 smoke、Search profile 消息 smoke 和 repair profile v50 恢复/幂等 smoke 均通过。共享环境 Kafka ownership、发布切换与可执行回滚 receipt 仍待完成。
 
+### AD-049：Core 与 Message 远程初始化存在双向依赖
+
+- **优先级：** P1
+- **状态：** 处理中
+- **发现日期：** 2026-08-29
+- **影响范围：** Core/Message 微服务冷启动、Compose 健康依赖、消息表写入 ownership
+- **现状：** Core 初始化远程 Message Application，Message 初始化 Core Capability RPC，双方在服务尚未监听时会形成冷启动环。Core 现支持独立的 `DIPOLE_CORE_MESSAGE_TRANSPORT` 覆盖，微服务 Compose 默认让 Core 使用本地实现，Message 仍通过 Core Capability RPC 启动；全局 Message transport 继续由远程 Gateway 使用 gRPC。
+- **风险：** Core 保留本地 Message Application 会让未来 Core HTTP 或内部调用存在越过 Message Service ownership 的可能，当前只能视为启动兼容层，不能直接宣称 Message 写路径已完全单一化。
+- **下一步：** 将 Core 的消息依赖收窄为只读/受控 Capability，或引入显式异步连接状态与远程重连机制；补充 Core HTTP 路由 ownership、Kafka consumer 唯一性和远程冷启动回切证据。
+- **验证门槛：** 默认微服务 Compose 冷启动中 Core、Message、Sync、Gateway 均 healthy；Core 专用 transport 配置单测、远程 Message mTLS contract、端到端消息 smoke 和 Local 回切 smoke 均通过。
+
 ### AD-047：受限实验主机的 Elasticsearch 磁盘水位需要隔离约束
 
 - **优先级：** P2

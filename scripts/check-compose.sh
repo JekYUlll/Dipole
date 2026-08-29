@@ -20,6 +20,7 @@ jq -e '
   and .services.migrate.entrypoint == ["/app/service"]
   and .services.core.image == "dipole-core:latest"
   and .services.core.entrypoint == ["/app/service"]
+  and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "local"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
   and .services.message.image == "dipole-message:latest"
@@ -54,7 +55,7 @@ jq -e '
   and .services.sync.depends_on["cassandra-init"].condition == "service_completed_successfully"
   and any(.services.sync.volumes[]; (.source | endswith("/configs/config.cassandra-primary.yaml")) and .target == "/app/configs/config.yaml")
   and .services.core.environment.DIPOLE_GATEWAY_MODE == "embedded"
-  and .services.core.environment.DIPOLE_MESSAGE_TRANSPORT == "local"
+  and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "local"
   and .services.message.depends_on.core.condition == "service_healthy"
   and .services.sync.environment.DIPOLE_CASSANDRA_ENABLED == "true"
   and .services.sync.environment.DIPOLE_CASSANDRA_HOSTS == "cassandra:9042"

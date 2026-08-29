@@ -188,7 +188,7 @@ dipole-message    Message command / history / idempotency / outbox
 Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件和持久化游标后再独立。User、Group、Contact 和 File 继续留在 Core。
 
 - [x] 为 Core、Message、Gateway、Sync、Search、Search Indexer 与 migration 使用各自只包含 `/app/service` 的镜像；legacy Compose 继续保留共享镜像回滚路径。
-- [x] 增加独立微服务 Compose，Core/Message/Gateway 使用 TLS 1.3 mTLS、独立 caller 与健康依赖启动。
+- [x] 增加独立微服务 Compose，Core/Message/Gateway 使用 TLS 1.3 mTLS、独立 caller 与健康依赖启动；Core 使用独立本地消息启动兼容配置解除冷启动环，远程 Message ownership 仍由 AD-049 跟踪。
 - [x] Gateway 不依赖 MySQL service，Core 与 Message 继续使用当前 MySQL schema，表级账号由 AD-015 跟踪。
 - [x] 增加可重复 smoke，覆盖 migration、冷启动、Gateway health、Core HTTP 代理和 remote WS 所有权。
 - [x] 在独立 Compose project 和新构建镜像上完成全量微服务部署 smoke；readiness、指标、TLS 1.3 mTLS、Core 代理和 remote WS ownership 通过，HTTP 探针失败具备有界重试和超时。
