@@ -100,6 +100,31 @@ for compatibility_readme in \
     exit 1
   fi
 done
+ # Compatibility roots may retain adapters and tests, but must not become a
+ # new shared implementation area as services are extracted.
+for compatibility_file in \
+  internal/app/agent_application_compat.go \
+  internal/app/agent_repository_compat.go \
+  internal/app/composition_compat.go \
+  internal/app/core_capability.go \
+  internal/app/core_repository_compat.go \
+  internal/app/sync_repository_compat.go \
+  internal/store/mysql_compat.go \
+  internal/store/redis_compat.go; do
+  if [[ ! -f "${root_dir}/${compatibility_file}" ]]; then
+    echo "required compatibility adapter is missing: ${compatibility_file}" >&2
+    exit 1
+  fi
+done
+while IFS= read -r compatibility_file; do
+  case "${compatibility_file}" in
+    internal/app/agent_application_compat.go|internal/app/agent_repository_compat.go|internal/app/composition_compat.go|internal/app/core_capability.go|internal/app/core_repository_compat.go|internal/app/sync_repository_compat.go|internal/app/README.md|internal/store/README.md|internal/store/mysql_compat.go|internal/store/redis_compat.go|internal/data/mysql/README.md|internal/data/mysql/store_compat.go|internal/data/mysql/repository/README.md|internal/data/mysql/repository/agent_compat.go|internal/data/mysql/repository/core_compat.go|internal/data/mysql/repository/message_compat.go|internal/data/mysql/repository/search_index_compat.go|internal/data/mysql/repository/sync_compat.go|internal/app/*_test.go) ;;
+    *)
+      echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
+      exit 1
+      ;;
+  esac
+done < <(git -C "${root_dir}" ls-files -- internal/app internal/store internal/data/mysql | sort -u)
 if [[ ! -f "${root_dir}/internal/platform/cache/redis.go" || ! -f "${root_dir}/internal/platform/cache/redis_cache.go" ]]; then
 	echo "shared Redis client and cache helpers must remain under internal/platform/cache" >&2
 	exit 1
