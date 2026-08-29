@@ -58,6 +58,24 @@ func (gatewayMessageStub) ListOfflineMessages(string, uint, int) ([]*model.Messa
 	return nil, nil
 }
 
+type gatewaySyncStub struct{}
+
+func (gatewaySyncStub) List(string, uint64, int) (*application.SyncPage, error) {
+	return &application.SyncPage{}, nil
+}
+func (gatewaySyncStub) GetCheckpoint(string, string) (*model.DeviceSyncCheckpoint, error) {
+	return &model.DeviceSyncCheckpoint{}, nil
+}
+func (gatewaySyncStub) AdvanceCheckpoint(string, string, uint64) (*model.DeviceSyncCheckpoint, error) {
+	return &model.DeviceSyncCheckpoint{}, nil
+}
+func (gatewaySyncStub) ListGroupCheckpoints(string, string, []string) ([]*model.GroupSyncCheckpoint, error) {
+	return nil, nil
+}
+func (gatewaySyncStub) AdvanceGroupCheckpoint(string, string, string, uint64) (*model.GroupSyncCheckpoint, error) {
+	return &model.GroupSyncCheckpoint{}, nil
+}
+
 type gatewayCoreStub struct{}
 
 type gatewayLimiterStub struct{}
@@ -293,6 +311,37 @@ func TestGatewayOwnsHealthAndProxiesCoreHTTP(t *testing.T) {
 	}
 	if proxied.StatusCode != http.StatusCreated || proxied.Header.Get("X-Core-Path") != "/api/v1/contacts" || string(body) != "core-response" {
 		t.Fatalf("unexpected proxy response: code=%d headers=%v body=%q", proxied.StatusCode, proxied.Header, string(body))
+	}
+}
+
+func TestGatewayOwnsMessageAndSyncReadRoutes(t *testing.T) {
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	gateway, err := NewServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Sync: gatewaySyncStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+
+	routes := map[string]bool{}
+	for _, route := range gateway.Engine().Routes() {
+		routes[route.Method+" "+route.Path] = true
+	}
+	for _, route := range []string{
+		http.MethodGet + " /api/v1/messages/offline",
+		http.MethodGet + " /api/v1/messages/direct/:target_uuid",
+		http.MethodGet + " /api/v1/messages/group/:group_uuid",
+		http.MethodGet + " /api/v1/sync",
+		http.MethodGet + " /api/v1/sync/checkpoint",
+		http.MethodPatch + " /api/v1/sync/checkpoint",
+		http.MethodPost + " /api/v1/sync/comparison",
+		http.MethodGet + " /api/v1/sync/groups/checkpoints",
+		http.MethodPatch + " /api/v1/sync/groups/:group_uuid/checkpoint",
+	} {
+		if !routes[route] {
+			t.Fatalf("gateway route missing: %s", route)
+		}
 	}
 }
 

@@ -11,7 +11,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 | 目录 | 服务职责 | 当前制品 |
 | --- | --- | --- |
 | `cmd/services/core` | 用户、群组、联系人、文件和会话核心 | `dipole-server` |
-| `cmd/services/gateway` | HTTP、WebSocket、认证上下文和实时投递 | `dipole-gateway` |
+| `cmd/services/gateway` | HTTP、WebSocket、认证上下文、消息/同步查询和实时投递 | `dipole-gateway` |
 | `cmd/services/message` | 消息命令、历史、幂等、Outbox 和 Message Store | `dipole-message` |
 | `cmd/services/sync` | 用户 Inbox Timeline 和设备同步 | `dipole-sync` |
 | `cmd/services/search` | Elasticsearch 只读查询 | `dipole-search` |
