@@ -193,7 +193,7 @@ func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 		}
 	}))
 	platformKafka.Subscriber.Register("session.force_logout", deliverSessionKickHandler(hub))
-	platformKafka.Subscriber.Register("contact.friend.deleted", deliverContactFriendDeletedHandler(hub))
+	platformKafka.Subscriber.Register("contact.friend.deleted", gatewaykafka.NewContactFriendDeletedHandler(hub))
 	return nil
 }
 
@@ -535,31 +535,6 @@ func deliverSessionKickHandler(hub kafkaWSEventSender) platformKafka.Handler {
 		}
 
 		hub.DisconnectConnections(payload.UserUUID, payload.ConnectionIDs, payload.Reason)
-		return nil
-	}
-}
-
-func deliverContactFriendDeletedHandler(hub kafkaWSEventSender) platformKafka.Handler {
-	return func(ctx context.Context, event platformKafka.Event) error {
-		_ = ctx
-
-		envelope, err := requireEnvelope(event)
-		if err != nil {
-			logger.Warn("decode contact friend deleted envelope failed", zap.Error(err))
-			return err
-		}
-
-		payload, err := service.DecodeContactFriendDeletedPayload(envelope.EventType, envelope.Payload)
-		if err != nil {
-			logger.Warn("decode contact friend deleted payload failed", zap.Error(err))
-			return err
-		}
-
-		sendEventToUser(ctx, hub, payload.UserUUID, wsTransport.TypeContactFriendDeleted, wsTransport.ContactFriendDeletedEventData{
-			UserUUID:   payload.UserUUID,
-			FriendUUID: payload.FriendUUID,
-			OccurredAt: payload.OccurredAt,
-		})
 		return nil
 	}
 }
