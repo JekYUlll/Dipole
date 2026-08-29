@@ -23,6 +23,8 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
+	syncbootstrap "github.com/JekYUlll/Dipole/internal/services/sync/bootstrap"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	"google.golang.org/grpc"
@@ -596,7 +598,7 @@ func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 		t.Fatalf("expected Search identity to be denied unrelated Core capability, got %v", err)
 	}
 
-	searchServer, err := NewSearchRPCServer(cfg, rpcSearchStub{})
+	searchServer, err := searchbootstrap.NewSearchRPCServer(cfg, rpcSearchStub{})
 	if err != nil {
 		t.Fatalf("start Search rpc server: %v", err)
 	}
@@ -645,7 +647,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 		t.Fatalf("expected Sync identity to be denied unrelated Core capability, got %v", err)
 	}
 
-	syncServer, err := NewSyncRPCServer(cfg, rpcSyncStub{})
+	syncServer, err := syncbootstrap.NewSyncRPCServer(cfg, rpcSyncStub{})
 	if err != nil {
 		t.Fatalf("start Sync rpc server: %v", err)
 	}

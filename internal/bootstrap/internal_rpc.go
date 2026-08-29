@@ -225,16 +225,6 @@ func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerSer
 	return client, connection, nil
 }
 
-func NewSearchRPCServer(cfg config.InternalRPC, search application.SearchApplication) (*InternalRPCServer, error) {
-	adapter, err := searchgrpc.NewServer(search)
-	if err != nil {
-		return nil, fmt.Errorf("create Search rpc adapter: %w", err)
-	}
-	return newInternalRPCServer(cfg, cfg.SearchListenAddress, []string{gatewayServiceName}, func(server *grpc.Server) {
-		searchv1.RegisterSearchServiceServer(server, adapter)
-	})
-}
-
 func DialSearchApplication(ctx context.Context, cfg config.InternalRPC) (*searchgrpc.Client, *grpc.ClientConn, error) {
 	connection, err := dialInternalRPC(ctx, cfg, cfg.SearchTarget, grpcauth.Credentials{
 		Service: gatewayServiceName,
@@ -249,16 +239,6 @@ func DialSearchApplication(ctx context.Context, cfg config.InternalRPC) (*search
 		return nil, nil, fmt.Errorf("create Search application client: %w", err)
 	}
 	return client, connection, nil
-}
-
-func NewSyncRPCServer(cfg config.InternalRPC, syncApplication application.SyncApplication) (*InternalRPCServer, error) {
-	adapter, err := syncgrpc.NewServer(syncApplication)
-	if err != nil {
-		return nil, fmt.Errorf("create sync rpc adapter: %w", err)
-	}
-	return newInternalRPCServer(cfg, cfg.SyncListenAddress, []string{gatewayServiceName, coreServiceName}, func(server *grpc.Server) {
-		syncv1.RegisterSyncQueryServiceServer(server, adapter)
-	})
 }
 
 func DialSyncApplication(ctx context.Context, cfg config.InternalRPC) (*syncgrpc.Client, *grpc.ClientConn, error) {
