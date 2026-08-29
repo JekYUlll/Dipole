@@ -19,6 +19,18 @@ if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal
   echo "legacy compatibility adapters must be isolated under internal/compat" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/platform/cache/redis.go" || ! -f "${root_dir}/internal/platform/cache/redis_cache.go" ]]; then
+	echo "shared Redis client and cache helpers must remain under internal/platform/cache" >&2
+	exit 1
+fi
+if [[ -e "${root_dir}/internal/store/redis.go" ]]; then
+	echo "legacy Redis client implementation remains under internal/store" >&2
+	exit 1
+fi
+if rg --quiet 'github.com/JekYUlll/Dipole/internal/store' "${root_dir}/internal" "${root_dir}/cmd" --glob '*.go' --glob '!internal/store/*'; then
+	echo "runtime Redis callers must use internal/platform/cache" >&2
+	exit 1
+fi
 if [[ ! -f "${root_dir}/internal/platform/cassandra/README.md" || ! -f "${root_dir}/internal/platform/cassandra/timeline.go" ]]; then
   echo "shared Cassandra adapters must remain under internal/platform/cassandra" >&2
   exit 1

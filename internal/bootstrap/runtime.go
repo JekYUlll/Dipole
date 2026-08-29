@@ -14,6 +14,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
@@ -22,7 +23,6 @@ import (
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
-	"github.com/JekYUlll/Dipole/internal/store"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -61,7 +61,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		zap.String("user", mysqlCfg.User),
 	)
 
-	if err := store.InitRedis(); err != nil {
+	if err := cache.InitRedis(); err != nil {
 		return nil, fmt.Errorf("redis init failed: %w", err)
 	}
 	logger.Info("redis init succeeded",
@@ -309,10 +309,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 	if gatewayCfg.Mode == "embedded" {
 		wsEventSender = srv.WSHub()
 	}
-	if gatewayCfg.Mode == "embedded" && kafkaCfg.Enabled && config.PresenceConfig().Enabled && store.RDB != nil {
+	if gatewayCfg.Mode == "embedded" && kafkaCfg.Enabled && config.PresenceConfig().Enabled && cache.RDB != nil {
 		// NewRedisPresence() 是无状态的，与 server.New() 内部实例共享同一 Redis 连接，无冲突。
 		redisPresence := platformPresence.NewRedisPresence()
-		router := wsTransport.NewPubSubRouter(srv.WSHub(), redisPresence, store.RDB)
+		router := wsTransport.NewPubSubRouter(srv.WSHub(), redisPresence, cache.RDB)
 		if router != nil {
 			router.Start()
 			rt.router = router
