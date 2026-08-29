@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：调用审计确认 embedded Search 字段没有生产或测试使用者，已删除聚合层 Search SQLC 构造；Search Service 继续由 Elasticsearch-owned runtime 独立装配，聚合层仅保留 embedded 回滚所需的四类 process composition。
 - 2026-08-30：embedded repository composition 已将 Core 的 User、Group、Contact、File、Conversation、Admin 仓储访问收敛到 `CoreProcessRepositories`，移除聚合根的 Core 扁平字段，并通过 embedded/Core contract 测试；聚合层当前仅保留 Search 与 process composition 指针。
 - 2026-08-30：embedded repository composition 已将 Message、Outbox、Sync 仓储访问收敛到各自 process 分组，移除聚合根的 Message/Sync 扁平字段，并通过 embedded、Message、Sync contract 测试；Core/Agent 聚合字段继续按后续边界切片收敛。
 - 2026-08-30：embedded repository composition 已将 Agent 全部仓储访问收敛到 `AgentProcessRepositories`，移除聚合根的 Agent 扁平字段，并通过 Agent 初始化与 repository contract 测试；Core/Message/Sync 的聚合字段仍按后续切片收敛。
