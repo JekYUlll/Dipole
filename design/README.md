@@ -2,6 +2,8 @@
 
 `dipole-ui.pen` 是 Dipole 前端的 canonical 可编辑设计文件。产品交互、响应式状态或视觉 token 变化时，应增量修改同一文件，并同步更新 `DESIGN-CHANGELOG.md`。
 
+`export-manifest.json` 是批准评审导出的清单。新增或替换评审图时，先更新清单和设计更新日志，再运行 `npm run test:design`；清单路径相对于 `design/`，目录条目至少需要包含一个 PNG 文件。
+
 ## F1 Frame 与评审导出
 
 | Frame | 评审导出 |
