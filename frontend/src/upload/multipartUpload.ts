@@ -9,7 +9,27 @@ export type MultipartUploadOptions = {
 
 type UploadPart = (partNumber: number, chunk: Blob) => Promise<void>
 
+export type PresignedPartFetch = (
+  input: RequestInfo | URL,
+  init?: RequestInit,
+) => Promise<Response>
+
 const defaultSleep = (delayMs: number) => new Promise<void>(resolve => setTimeout(resolve, delayMs))
+
+export const uploadPresignedPart = async (
+  url: string,
+  chunk: Blob,
+  fetchImpl: PresignedPartFetch = globalThis.fetch.bind(globalThis),
+): Promise<string> => {
+  const response = await fetchImpl(url, {
+    method: 'PUT',
+    body: chunk,
+  })
+  if (!response.ok) throw new Error(`presigned part upload failed with status ${response.status}`)
+  const etag = response.headers.get('ETag')?.trim()
+  if (!etag) throw new Error('presigned part upload did not return an ETag')
+  return etag
+}
 
 export const sha256Hex = async (chunk: Blob): Promise<string | undefined> => {
   if (!globalThis.crypto?.subtle || typeof chunk.arrayBuffer !== 'function') return undefined
