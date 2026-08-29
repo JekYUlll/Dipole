@@ -11,10 +11,10 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/data/mysql"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	platformobservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	agenttimelinereconcile "github.com/JekYUlll/Dipole/internal/reconcile/agenttimeline"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
-	"github.com/JekYUlll/Dipole/internal/store"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -32,12 +32,12 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := store.InitMySQL(); err != nil {
+	if err := platformmysql.InitMySQL(); err != nil {
 		fatal(fmt.Errorf("initialize MySQL: %w", err))
 	}
-	defer store.SQLDB.Close()
+	defer platformmysql.SQLDB.Close()
 
-	mysqlStore, err := mysql.NewStore(store.SQLDB)
+	mysqlStore, err := mysql.NewStore(platformmysql.SQLDB)
 	if err != nil {
 		fatal(err)
 	}
