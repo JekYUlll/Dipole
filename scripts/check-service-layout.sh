@@ -92,8 +92,12 @@ if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/tools/search-alias" "${root_
   echo "Search operation tools must use internal/operations/search" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal/compat/service" ]]; then
-  echo "legacy compatibility adapters must be isolated under internal/compat" >&2
+if [[ ! -f "${root_dir}/internal/compat/README.md" ]]; then
+  echo "legacy compatibility documentation is missing under internal/compat" >&2
+  exit 1
+fi
+if [[ -d "${root_dir}/internal/compat/service" ]]; then
+  echo "retired internal/compat/service test root must not return; use platform/event contract tests" >&2
   exit 1
 fi
 if [[ -d "${root_dir}/internal/app" ]]; then
@@ -108,7 +112,7 @@ while IFS= read -r compatibility_file; do
     continue
   fi
   case "${compatibility_file}" in
-    internal/compat/service/doc.go|internal/compat/service/*_test.go) ;;
+    internal/compat/service/*) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
@@ -385,7 +389,7 @@ if rg --quiet 'services/search/infrastructure/mysql|SearchIndexRepository|genera
   echo "embedded composition must not construct Search-owned index repositories" >&2
   exit 1
 fi
-if rg --quiet 'func (New|new)CoreProcessRepositories|type CoreProcessRepositories struct' "${root_dir}/internal/app" --glob '*.go'; then
+if [[ -d "${root_dir}/internal/app" ]] && rg --quiet 'func (New|new)CoreProcessRepositories|type CoreProcessRepositories struct' "${root_dir}/internal/app" --glob '*.go'; then
   echo "Core repository composition must live in the Core service infrastructure" >&2
   exit 1
 fi
@@ -411,7 +415,7 @@ if [[ ! -f "${root_dir}/internal/services/sync/infrastructure/mysql/sync_reposit
   echo "Sync MySQL repository is outside its service boundary" >&2
   exit 1
 fi
-if rg --quiet 'type SyncProcessRepositories struct|func NewSyncProcessRepositories' "${root_dir}/internal/app" --glob '*.go'; then
+if [[ -d "${root_dir}/internal/app" ]] && rg --quiet 'type SyncProcessRepositories struct|func NewSyncProcessRepositories' "${root_dir}/internal/app" --glob '*.go'; then
   echo "Sync repository composition must live in the Sync service infrastructure" >&2
   exit 1
 fi
@@ -595,11 +599,11 @@ if ! rg --quiet '^type ProcessRepositories struct' "${root_dir}/internal/service
   echo "Agent process repository composition is missing" >&2
   exit 1
 fi
-if rg --quiet '^type LocalCoreCapability struct' "${root_dir}/internal/app"; then
+if [[ -d "${root_dir}/internal/app" ]] && rg --quiet '^type LocalCoreCapability struct' "${root_dir}/internal/app"; then
   echo "legacy shared Core capability implementation remains under internal/app" >&2
   exit 1
 fi
-if rg --quiet '^type LocalMessageApplication struct' "${root_dir}/internal/app"; then
+if [[ -d "${root_dir}/internal/app" ]] && rg --quiet '^type LocalMessageApplication struct' "${root_dir}/internal/app"; then
   echo "legacy shared Message application implementation remains under internal/app" >&2
   exit 1
 fi
