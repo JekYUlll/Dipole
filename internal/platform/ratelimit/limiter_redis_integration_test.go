@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -23,9 +23,9 @@ func TestAgentMCPRateLimitRealRedisContract(t *testing.T) {
 	if err := client.Ping(ctx).Err(); err != nil {
 		t.Fatalf("ping Redis: %v", err)
 	}
-	oldRDB := store.RDB
-	store.RDB = client
-	t.Cleanup(func() { store.RDB = oldRDB; _ = client.Close() })
+	oldRDB := cache.RDB
+	cache.RDB = client
+	t.Cleanup(func() { cache.RDB = oldRDB; _ = client.Close() })
 	principal := fmt.Sprintf("contract-%d", time.Now().UnixNano())
 	key := agentMCPRateKey(principal)
 	t.Cleanup(func() { _ = client.Del(context.Background(), key).Err() })

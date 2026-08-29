@@ -4,9 +4,10 @@
 // fast online-user and online-connection counts without a full scan.
 //
 // Data layout:
-//   presence:user:<uuid>:connections  — HASH  field=connectionID  value=ConnectionState JSON
-//   presence:online_users             — ZSET  member=userUUID     score=expiry unix
-//   presence:online_connections       — ZSET  member=connectionID score=expiry unix
+//
+//	presence:user:<uuid>:connections  — HASH  field=connectionID  value=ConnectionState JSON
+//	presence:online_users             — ZSET  member=userUUID     score=expiry unix
+//	presence:online_connections       — ZSET  member=connectionID score=expiry unix
 package presence
 
 import (
@@ -22,7 +23,7 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 const requestTimeout = time.Second
@@ -116,7 +117,7 @@ func (p *RedisPresence) Unregister(userUUID, connectionID string) {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	pipe := store.RDB.TxPipeline()
+	pipe := cache.RDB.TxPipeline()
 	pipe.HDel(ctx, userConnectionsKey(userUUID), connectionID)
 	pipe.ZRem(ctx, onlineConnectionsKey(), connectionID)
 	remainingCmd := pipe.HLen(ctx, userConnectionsKey(userUUID))
@@ -134,7 +135,7 @@ func (p *RedisPresence) Unregister(userUUID, connectionID string) {
 	if remaining <= 0 {
 		ctx2, cancel2 := withTimeout()
 		defer cancel2()
-		pipe2 := store.RDB.TxPipeline()
+		pipe2 := cache.RDB.TxPipeline()
 		pipe2.Del(ctx2, userConnectionsKey(userUUID))
 		pipe2.ZRem(ctx2, onlineUsersKey(), userUUID)
 		if _, err := pipe2.Exec(ctx2); err != nil {
@@ -163,7 +164,7 @@ func (p *RedisPresence) OnlineUserCount() int {
 	defer cancel()
 
 	p.cleanupExpired(ctx)
-	count, err := store.RDB.ZCard(ctx, onlineUsersKey()).Result()
+	count, err := cache.RDB.ZCard(ctx, onlineUsersKey()).Result()
 	if err != nil {
 		p.log.Warn("count redis online users failed", zap.Error(err))
 		return 0
@@ -181,7 +182,7 @@ func (p *RedisPresence) TotalConnectionCount() int {
 	defer cancel()
 
 	p.cleanupExpired(ctx)
-	count, err := store.RDB.ZCard(ctx, onlineConnectionsKey()).Result()
+	count, err := cache.RDB.ZCard(ctx, onlineConnectionsKey()).Result()
 	if err != nil {
 		p.log.Warn("count redis online connections failed", zap.Error(err))
 		return 0
@@ -199,7 +200,7 @@ func (p *RedisPresence) UserConnectionCount(userUUID string) int {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	count, err := store.RDB.HLen(ctx, userConnectionsKey(userUUID)).Result()
+	count, err := cache.RDB.HLen(ctx, userConnectionsKey(userUUID)).Result()
 	if err != nil {
 		if err != redis.Nil {
 			p.log.Warn("count redis user connections failed",
@@ -215,14 +216,14 @@ func (p *RedisPresence) UserConnectionCount(userUUID string) int {
 
 func (p *RedisPresence) ListUserConnections(userUUID string) ([]ConnectionState, error) {
 	userUUID = strings.TrimSpace(userUUID)
-	if !p.enabled() || userUUID == "" || store.RDB == nil {
+	if !p.enabled() || userUUID == "" || cache.RDB == nil {
 		return []ConnectionState{}, nil
 	}
 
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	values, err := store.RDB.HGetAll(ctx, userConnectionsKey(userUUID)).Result()
+	values, err := cache.RDB.HGetAll(ctx, userConnectionsKey(userUUID)).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return []ConnectionState{}, nil
@@ -260,7 +261,7 @@ func (p *RedisPresence) writeState(state ConnectionState) error {
 	}
 
 	expiresAt := time.Now().UTC().Add(p.ttl())
-	pipe := store.RDB.TxPipeline()
+	pipe := cache.RDB.TxPipeline()
 	pipe.HSet(ctx, userConnectionsKey(state.UserUUID), state.ConnectionID, payload)
 	pipe.Expire(ctx, userConnectionsKey(state.UserUUID), p.ttl())
 	pipe.ZAdd(ctx, onlineUsersKey(), redis.Z{
@@ -282,19 +283,19 @@ func (p *RedisPresence) refreshUserExpiry(userUUID string) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	return store.RDB.ZAdd(ctx, onlineUsersKey(), redis.Z{
+	return cache.RDB.ZAdd(ctx, onlineUsersKey(), redis.Z{
 		Score:  float64(time.Now().UTC().Add(p.ttl()).Unix()),
 		Member: userUUID,
 	}).Err()
 }
 
 func (p *RedisPresence) cleanupExpired(ctx context.Context) {
-	if ctx == nil || !p.enabled() || store.RDB == nil {
+	if ctx == nil || !p.enabled() || cache.RDB == nil {
 		return
 	}
 
 	now := time.Now().UTC().Unix()
-	pipe := store.RDB.TxPipeline()
+	pipe := cache.RDB.TxPipeline()
 	pipe.ZRemRangeByScore(ctx, onlineUsersKey(), "-inf", fmt.Sprintf("%d", now))
 	pipe.ZRemRangeByScore(ctx, onlineConnectionsKey(), "-inf", fmt.Sprintf("%d", now))
 	if _, err := pipe.Exec(ctx); err != nil {
@@ -315,7 +316,7 @@ func (p *RedisPresence) enabled() bool {
 }
 
 func (p *RedisPresence) shouldRun(userUUID, connectionID string) bool {
-	return p.enabled() && store.RDB != nil && strings.TrimSpace(userUUID) != "" && strings.TrimSpace(connectionID) != ""
+	return p.enabled() && cache.RDB != nil && strings.TrimSpace(userUUID) != "" && strings.TrimSpace(connectionID) != ""
 }
 
 func withTimeout() (context.Context, context.CancelFunc) {

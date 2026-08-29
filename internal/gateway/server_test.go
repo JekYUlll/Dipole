@@ -16,7 +16,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/store"
+	"github.com/JekYUlll/Dipole/internal/platform/cache"
 )
 
 type gatewayMessageStub struct{}
@@ -368,11 +368,11 @@ func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 		t.Fatalf("start miniredis: %v", err)
 	}
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() {
-		_ = store.RDB.Close()
-		store.RDB = previousRedis
+		_ = cache.RDB.Close()
+		cache.RDB = previousRedis
 	})
 	proxied := 0
 	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
@@ -416,11 +416,11 @@ func TestGatewayOwnsAuthenticatedAgentSubscriptionListAndRevoke(t *testing.T) {
 		t.Fatalf("start miniredis: %v", err)
 	}
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() {
-		_ = store.RDB.Close()
-		store.RDB = previousRedis
+		_ = cache.RDB.Close()
+		cache.RDB = previousRedis
 	})
 	proxied := 0
 	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
@@ -490,9 +490,9 @@ func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
 	t.Chdir("../..")
 	mr, _ := miniredis.Run()
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
 	core := httptest.NewServer(http.NotFoundHandler())
 	defer core.Close()
 	memories := &gatewayAgentMemoryStub{}
@@ -552,9 +552,9 @@ func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
 	t.Chdir("../..")
 	mr, _ := miniredis.Run()
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
 	core := httptest.NewServer(http.NotFoundHandler())
 	defer core.Close()
 	catalog := &gatewayAgentDefinitionStub{}
@@ -578,11 +578,11 @@ func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
 	t.Chdir("../..")
 	mr, _ := miniredis.Run()
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() {
-		_ = store.RDB.Close()
-		store.RDB = previousRedis
+		_ = cache.RDB.Close()
+		cache.RDB = previousRedis
 	})
 	core := httptest.NewServer(http.NotFoundHandler())
 	defer core.Close()
@@ -643,9 +643,9 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 		t.Fatalf("start miniredis: %v", err)
 	}
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
 	proxied := 0
 	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) { proxied++; writer.WriteHeader(http.StatusTeapot) }))
 	defer core.Close()
@@ -692,9 +692,9 @@ func TestGatewayOwnsAuthenticatedAgentMCPRoute(t *testing.T) {
 		t.Fatalf("start miniredis: %v", err)
 	}
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
 	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) { writer.WriteHeader(http.StatusTeapot) }))
 	defer core.Close()
 	mcp := &gatewayAgentMCPStub{}
@@ -744,9 +744,9 @@ func TestGatewayRateLimitsAgentMCPByAuthenticatedPrincipalAndAllowsDeleteCleanup
 		t.Fatalf("start miniredis: %v", err)
 	}
 	defer mr.Close()
-	previousRedis := store.RDB
-	store.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = store.RDB.Close(); store.RDB = previousRedis })
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
 	core := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) { writer.WriteHeader(http.StatusTeapot) }))
 	defer core.Close()
 	mcp := &gatewayAgentMCPStub{}
