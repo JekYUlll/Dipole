@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Search Indexer 服务新增 `internal/services/search-indexer/bootstrap/` 入口边界，`cmd/services/search-indexer` 已停止直接依赖共享 `internal/bootstrap`；Kafka、Elasticsearch、metrics 和 readiness 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
 - Core 服务新增 `internal/services/core/bootstrap/` 入口边界，`cmd/services/core` 已停止直接依赖共享 `internal/bootstrap`，并显式区分独立 Core 与 embedded 回滚模式；RPC、Kafka、storage 和 readiness 运行时暂保留兼容 facade。
 - Gateway 服务新增 `internal/services/gateway/bootstrap/` 入口边界，`cmd/services/gateway` 已停止直接依赖共享 `internal/bootstrap`；实时投递 authority、Kafka、Redis、RPC 和 WS/TLS 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。
 - Sync 服务新增 `internal/services/sync/bootstrap/` 入口边界，`cmd/services/sync` 已停止直接依赖共享 `internal/bootstrap`；Kafka projector、Cassandra hydration、数据库和 gRPC 运行时暂保留兼容 facade，支持后续分步抽离与快速回滚。

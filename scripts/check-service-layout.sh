@@ -663,6 +663,18 @@ if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/core/main.go"; then
   echo "Core entrypoint must not depend directly on shared bootstrap" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/search-indexer/bootstrap/entrypoint.go" || ! -f "${root_dir}/internal/services/search-indexer/bootstrap/README.md" ]]; then
+  echo "Search Indexer bootstrap boundary is missing" >&2
+  exit 1
+fi
+if ! rg --quiet 'internal/services/search-indexer/bootstrap' "${root_dir}/cmd/services/search-indexer/main.go"; then
+  echo "Search Indexer entrypoint must use its service-owned bootstrap boundary" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/search-indexer/main.go"; then
+  echo "Search Indexer entrypoint must not depend directly on shared bootstrap" >&2
+  exit 1
+fi
 
 for legacy in server gateway message-service sync-service search-service search-indexer; do
   if [[ -e "${root_dir}/cmd/${legacy}" ]]; then
