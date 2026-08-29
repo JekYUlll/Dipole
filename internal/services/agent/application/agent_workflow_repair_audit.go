@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"context"
@@ -17,10 +17,11 @@ type PersistentAgentWorkflowRepairAuditServiceV1 struct {
 }
 
 func NewPersistentAgentWorkflowRepairAuditServiceV1(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1) (*PersistentAgentWorkflowRepairAuditServiceV1, error) {
-	return newPersistentAgentWorkflowRepairAuditServiceV1(policies, repairs, time.Now)
+	return NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies, repairs, time.Now)
 }
 
-func newPersistentAgentWorkflowRepairAuditServiceV1(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, now func() time.Time) (*PersistentAgentWorkflowRepairAuditServiceV1, error) {
+// NewPersistentAgentWorkflowRepairAuditServiceV1WithClock keeps audit tests deterministic.
+func NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, now func() time.Time) (*PersistentAgentWorkflowRepairAuditServiceV1, error) {
 	if policies == nil || repairs == nil || now == nil {
 		return nil, errors.New("Agent policy, repair audit store, and clock are required")
 	}

@@ -16,7 +16,7 @@ func TestWorkflowRepairAuditRequiresGrantAndTwoDistinctApprovers(t *testing.T) {
 		TaskUUID: "TASK-1", Workflow: &application.AgentTaskWorkflowProjectionV1{TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "WR-1", Status: application.AgentTaskWorkflowStatusRunning, Revision: 2},
 	}}}
 	repairs := newRepairAuditStoreStubV1(now)
-	service, _ := newPersistentAgentWorkflowRepairAuditServiceV1(policies, repairs, func() time.Time { return now })
+	service, _ := NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies, repairs, func() time.Time { return now })
 	request := repairProposalRequestV1(now)
 	if _, err := service.Propose(context.Background(), "UNGRANTED", request); !errors.Is(err, application.ErrAgentWorkflowRepairDenied) {
 		t.Fatalf("ungranted propose: %v", err)
@@ -42,7 +42,7 @@ func TestWorkflowRepairAuditRejectsConflictingReplayAndRejectionWins(t *testing.
 	now := time.Date(2026, 8, 28, 0, 0, 0, 0, time.UTC)
 	policies := &agentPolicyStoreStub{tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", Workflow: &application.AgentTaskWorkflowProjectionV1{TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "WR-1", Status: application.AgentTaskWorkflowStatusRunning, Revision: 2}}}}
 	repairs := newRepairAuditStoreStubV1(now)
-	service, _ := newPersistentAgentWorkflowRepairAuditServiceV1(policies, repairs, func() time.Time { return now })
+	service, _ := NewPersistentAgentWorkflowRepairAuditServiceV1WithClock(policies, repairs, func() time.Time { return now })
 	proposal, _ := service.Propose(context.Background(), "PROPOSER", repairProposalRequestV1(now))
 	if _, err := service.Decide(context.Background(), "APPROVER-1", proposal.ProposalUUID, application.AgentWorkflowRepairDecisionRejected); err != nil {
 		t.Fatal(err)

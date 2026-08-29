@@ -187,7 +187,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow projection: %w", composeErr)
 		}
-		workflowRepairAudit, composeErr := appComposition.NewPersistentAgentWorkflowRepairAuditServiceV1(repos.AgentPolicy, repos.AgentRepairs)
+		workflowRepairAudit, composeErr := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(repos.AgentPolicy, repos.AgentRepairs)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow repair audit: %w", composeErr)
 		}
@@ -195,11 +195,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Runtime promotion control: %w", composeErr)
 		}
-		readinessEvidence, composeErr := appComposition.NewPersistentAgentMCPReadinessEvidencePublisherV1(repos.AgentReadinessEvidence)
+		readinessEvidence, composeErr := agentapplication.NewPersistentAgentMCPReadinessEvidencePublisherV1(repos.AgentReadinessEvidence)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP readiness evidence Publisher: %w", composeErr)
 		}
-		readinessResolver, composeErr := appComposition.NewPersistentAgentMCPReadinessEvidenceResolverV1(repos.AgentReadinessEvidence, time.Now)
+		readinessResolver, composeErr := agentapplication.NewPersistentAgentMCPReadinessEvidenceResolverV1(repos.AgentReadinessEvidence, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP readiness evidence Resolver: %w", composeErr)
 		}
@@ -227,11 +227,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory candidate promotion service: %w", composeErr)
 		}
-		toolAudits, composeErr := appComposition.NewPersistentAgentToolInvocationAuditServiceV1(repos.AgentToolAudits, resolver, repos.AgentPolicy, localMessaging.Messages)
+		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(repos.AgentToolAudits, resolver, repos.AgentPolicy, localMessaging.Messages)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Tool invocation audit: %w", composeErr)
 		}
-		toolRounds, composeErr := appComposition.NewPersistentAgentMCPToolRoundServiceV1(repos.AgentToolRounds, repos.AgentToolAudits)
+		toolRounds, composeErr := agentapplication.NewPersistentAgentMCPToolRoundServiceV1(repos.AgentToolRounds, repos.AgentToolAudits)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP Tool round receipts: %w", composeErr)
 		}
@@ -261,7 +261,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 				return nil, fmt.Errorf("compose Agent Artifact service: %w", artifactErr)
 			}
 			artifactService = persistentArtifacts
-			promotionEvidence, artifactErr = appComposition.NewAgentRuntimePromotionEvidenceReviewServiceV1(promotionControls, persistentArtifacts)
+			promotionEvidence, artifactErr = agentapplication.NewAgentRuntimePromotionEvidenceReviewServiceV1(promotionControls, persistentArtifacts)
 			if artifactErr != nil {
 				return nil, fmt.Errorf("compose Agent Runtime promotion evidence review: %w", artifactErr)
 			}
