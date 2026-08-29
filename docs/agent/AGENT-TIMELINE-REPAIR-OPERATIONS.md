@@ -17,7 +17,7 @@ worker 支持常驻轮询和显式 `-once` 两种模式。常驻模式适合 Com
 从源码构建候选镜像后，先执行完整 profile 级部署验收：
 
 ```bash
-BUILD_IMAGE=1 DIPOLE_IMAGE=dipole-server:timeline-repair-smoke \
+BUILD_IMAGE=1 DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE=dipole-agent-timeline-repair:timeline-repair-smoke \
   scripts/smoke-agent-timeline-repair-compose.sh
 ```
 

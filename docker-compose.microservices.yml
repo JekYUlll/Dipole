@@ -1,5 +1,4 @@
 x-dipole-service: &dipole-service
-  image: ${DIPOLE_IMAGE:-dipole-server:latest}
   restart: unless-stopped
   env_file:
     - path: .env
@@ -273,8 +272,9 @@ services:
 
   migrate:
     <<: *dipole-service
+    image: ${DIPOLE_MIGRATE_IMAGE:-dipole-migrate:latest}
+    entrypoint: ["/app/service"]
     restart: "no"
-    entrypoint: ["/app/dipole-migrate"]
     command: ["-direction", "up"]
     depends_on:
       mysql:
@@ -309,7 +309,8 @@ services:
 
   core:
     <<: *dipole-service
-    entrypoint: ["/app/dipole-server"]
+    image: ${DIPOLE_CORE_IMAGE:-dipole-core:latest}
+    entrypoint: ["/app/service"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
@@ -358,7 +359,8 @@ services:
 
   message:
     <<: *dipole-service
-    entrypoint: ["/app/dipole-message"]
+    image: ${DIPOLE_MESSAGE_IMAGE:-dipole-message:latest}
+    entrypoint: ["/app/service"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
@@ -395,7 +397,8 @@ services:
 
   sync:
     <<: *dipole-service
-    entrypoint: ["/app/dipole-sync"]
+    image: ${DIPOLE_SYNC_IMAGE:-dipole-sync:latest}
+    entrypoint: ["/app/service"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
@@ -432,8 +435,9 @@ services:
   agent-timeline-repair:
     profiles: ["agent-timeline-repair"]
     <<: *dipole-service
+    image: ${DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE:-dipole-agent-timeline-repair:latest}
+    entrypoint: ["/app/service"]
     restart: unless-stopped
-    entrypoint: ["/app/dipole-agent-task-timeline-repair"]
     depends_on:
       mysql-permissions:
         condition: service_completed_successfully
@@ -455,7 +459,8 @@ services:
   search-indexer:
     profiles: ["search"]
     <<: *dipole-service
-    entrypoint: ["/app/dipole-search-indexer"]
+    image: ${DIPOLE_SEARCH_INDEXER_IMAGE:-dipole-search-indexer:latest}
+    entrypoint: ["/app/service"]
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -478,7 +483,8 @@ services:
   search:
     profiles: ["search"]
     <<: *dipole-service
-    entrypoint: ["/app/dipole-search"]
+    image: ${DIPOLE_SEARCH_IMAGE:-dipole-search:latest}
+    entrypoint: ["/app/service"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
@@ -507,7 +513,8 @@ services:
 
   gateway:
     <<: *dipole-service
-    entrypoint: ["/app/dipole-gateway"]
+    image: ${DIPOLE_GATEWAY_IMAGE:-dipole-gateway:latest}
+    entrypoint: ["/app/service"]
     volumes:
       - ./configs/config.dist.yaml:/app/configs/config.yaml:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-./certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro

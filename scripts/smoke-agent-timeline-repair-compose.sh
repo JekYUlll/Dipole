@@ -7,16 +7,18 @@ compose_file="${root_dir}/docker-compose.microservices.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-timeline-repair-compose-${RANDOM}-$$}"
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
-  image_name="${IMAGE_NAME:-dipole-server}"
+  image_name="${IMAGE_NAME:-dipole-agent-timeline-repair}"
   image_tag="${IMAGE_TAG:-agent-timeline-repair-compose-smoke}"
-  IMAGE_NAME="${image_name}" IMAGE_TAG="${image_tag}" "${script_dir}/docker-build.sh" build
-  export DIPOLE_IMAGE="${image_name}:${image_tag}"
+  "${script_dir}/docker-build.sh" backend
+  DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE="${image_name}:${image_tag}" \
+    "${script_dir}/docker-build-microservice-images.sh"
+  export DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE="${image_name}:${image_tag}"
 fi
 
-: "${DIPOLE_IMAGE:=dipole-server:latest}"
+: "${DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE:=dipole-agent-timeline-repair:latest}"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
 : "${DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD:=repair-compose-password}"
-export DIPOLE_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD
+export DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD
 
 compose() {
   docker compose -p "${project_name}" -f "${compose_file}" --profile agent-timeline-repair "$@"

@@ -1,10 +1,10 @@
 # 微服务镜像隔离
 
-Dipole 的 Go 服务入口已经按部署边界拆分到 `cmd/services/`。当前过渡部署仍使用包含多个二进制的共享镜像，便于保持旧 Compose 和回滚路径稳定。
+Dipole 的 Go 服务入口已经按部署边界拆分到 `cmd/services/`。微服务 Compose 默认使用每服务一个只包含 `/app/service` 的镜像；旧共享镜像仍保留在 legacy Compose 和显式回滚变量中。
 
 ## 候选镜像
 
-`deploy/images/go-service.Dockerfile` 是单服务镜像模板。每次构建只复制一个指定二进制到 `/app/service`，镜像不携带其他服务或一次性工具。`migrate` 与六个长期服务都使用同一模板，保证 schema 迁移和服务代码来自同一构建基线。`isolated-images.yml` 同时覆盖旧 Compose entrypoint，避免共享镜像的二进制路径泄漏到候选部署。
+`deploy/images/go-service.Dockerfile` 是单服务镜像模板。每次构建只复制一个指定二进制到 `/app/service`，镜像不携带其他服务或一次性工具。`migrate`、六个长期服务和可选 repair worker 都使用同一模板，保证 schema 迁移和服务代码来自同一构建基线；基础微服务 Compose 与 override 均固定使用 `/app/service`。
 
 ```bash
 scripts/docker-build.sh backend
@@ -43,11 +43,11 @@ DIPOLE_GATEWAY_IMAGE=registry.example/dipole-gateway:candidate \
 scripts/docker-build-microservice-images.sh
 ```
 
-构建脚本会为每个镜像写入 Git revision、构建时间和 dirty provenance。它只构建镜像，不修改 Compose、数据库、Kafka consumer group 或 authority。
+构建脚本会为每个镜像写入 Git revision、构建时间和 dirty provenance，包含可选的 `agent-timeline-repair` worker 镜像。它只构建镜像，不修改数据库、Kafka consumer group 或 authority。
 
 ## 切换与回滚
 
-当前 `docker-compose.microservices.yml` 继续使用 `DIPOLE_IMAGE` 共享镜像。验证候选镜像时，以 Compose override 将对应服务的 `image` 替换为单服务标签，并保留原变量作为回滚值：
+当前 `docker-compose.microservices.yml` 默认使用 `DIPOLE_*_IMAGE` 单服务标签。验证候选镜像时可通过这些变量绑定不可变标签；回滚时将每个变量统一指向已验证的旧共享镜像，或使用 legacy Compose，不需要回滚 schema、offset 或 authority：
 
 ```bash
 docker compose \
@@ -56,11 +56,11 @@ docker compose \
   config --quiet
 ```
 
-若候选服务未通过 readiness、RPC、消息写入或 Seq Timeline 读取 smoke，移除 override 即回到共享镜像；该过程不需要回滚 schema、offset 或 authority。
+若候选服务未通过 readiness、RPC、消息写入或 Seq Timeline 读取 smoke，将对应服务变量恢复为已验证旧标签；该过程不需要回滚 schema、offset 或 authority。
 
 ## 门禁
 
 - 每个候选镜像必须只包含 `/app/service` 及运行时证书/时区文件。
 - 构建前必须存在对应 `dist/dipole-*` 二进制。
 - 生产切换前仍需通过 `scripts/smoke-microservice-isolated-images.sh`、`scripts/smoke-microservices.sh` 和依赖 readiness 检查。
-- 本切片不改变默认 Go authority、Kafka topic、数据库权限或 Agent 开关。
+- 本切片不改变默认 Go authority、Kafka topic、数据库权限或 Agent 开关；`docker-compose.dist.yml` 继续保留 legacy 单体节点回滚路径。

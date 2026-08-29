@@ -29,6 +29,7 @@ declare -a services=(
   "sync:dipole-sync"
   "search:dipole-search"
   "search-indexer:dipole-search-indexer"
+  "agent-timeline-repair:dipole-agent-task-timeline-repair"
 )
 
 for service_binary in "${services[@]}"; do
@@ -36,6 +37,7 @@ for service_binary in "${services[@]}"; do
   binary=${service_binary#*:}
   case "${service}" in
     search-indexer) image_variable=DIPOLE_SEARCH_INDEXER_IMAGE ;;
+    agent-timeline-repair) image_variable=DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE ;;
     *) image_variable="DIPOLE_${service^^}_IMAGE" ;;
   esac
   image=${!image_variable:-dipole-${service}:latest}
