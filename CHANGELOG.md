@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Message `send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka`；独立 Message runtime 直接注册服务 handler，embedded 保留兼容注册包装。
 - Message Outbox relay 已下沉至 `internal/services/message/infrastructure/kafka`；独立 Message runtime 直接使用服务实现，embedded 回滚路径保留薄兼容包装。
 - Message shadow runtime 的 Query-only adapter 及契约测试已迁入 `internal/services/message/bootstrap/`，删除共享 bootstrap 中对应兼容 alias/构造转发；shadow 写拒绝和查询透传语义保持不变。
 - Message bootstrap 已接管惰性 Core Capability adapter 及其重试测试，runtime 不再通过共享 `internal/bootstrap` facade 获取 Core capability；旧共享拨号能力仍为其他兼容调用者保留。
