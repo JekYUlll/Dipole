@@ -36,7 +36,7 @@ test('lists owner Memories and revokes with audited confirmation', async ({ page
   })
 
   await page.goto('/app/agent/memories')
-  await expect(page.getByRole('heading', { name: '长期记忆' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '长期记忆', exact: true })).toBeVisible()
   await expect(page.getByText('UNTRUSTED MEMORY')).toBeVisible()
   await expect(page.getByText('MSG-1')).toBeVisible()
   await page.locator('[data-agent-memory-revoke="MEM-1"]').click()
