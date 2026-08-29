@@ -598,6 +598,7 @@
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
 ### 修复
+- Go 质量门禁默认采用 `CGO_ENABLED=0`，与服务镜像的静态构建保持一致；需要平台原生依赖的检查仍可显式设置 `CGO_ENABLED=1`。
 
 - 存储实验 Compose 支持 Cassandra 宿主机动态端口；hydration 与 read-routing smoke 启动后反查实际映射，修复并行运行共享固定 `19042` 导致的假失败。默认使用随机端口，也可通过 `DIPOLE_CASSANDRA_LAB_PORT` 显式覆盖。
 
