@@ -1,12 +1,15 @@
-package service
+package coreadmin
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
+
+var ErrAdminRequired = errors.New("admin required")
 
 type adminOverviewRepository interface {
 	OverviewCounts() (*application.AdminOverviewCounts, error)
