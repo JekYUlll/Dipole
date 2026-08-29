@@ -100,10 +100,10 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 		}
 	}
 	required := map[string]any{
-		"users": repos.Users, "messages": repos.Messages, "files": repos.Files,
+		"users": repos.Users, "messages": repos.MessageProcess.Messages, "files": repos.Files,
 		"conversations": repos.Conversations, "contacts": repos.Contacts,
-		"groups": repos.Groups, "admin": repos.Admin, "sync": repos.Sync,
-		"ai_call_logs": repos.AgentProcess.AICallLogs, "agent_policy": repos.AgentProcess.Policy, "outbox": repos.Outbox,
+		"groups": repos.Groups, "admin": repos.Admin, "sync": repos.SyncProcess.Sync,
+		"ai_call_logs": repos.AgentProcess.AICallLogs, "agent_policy": repos.AgentProcess.Policy, "outbox": repos.MessageProcess.Outbox,
 	}
 	for name, repository := range required {
 		if repository == nil {
@@ -134,13 +134,13 @@ func TestNewRepositoriesBuildsSQLCRepositorySet(t *testing.T) {
 	if _, ok := repos.Conversations.(*coremysql.ConversationRepository); !ok {
 		t.Fatalf("expected sqlc conversation repository, got %T", repos.Conversations)
 	}
-	if _, ok := repos.Messages.(*messagemysql.MessageRepository); !ok {
-		t.Fatalf("expected sqlc message repository, got %T", repos.Messages)
+	if _, ok := repos.MessageProcess.Messages.(*messagemysql.MessageRepository); !ok {
+		t.Fatalf("expected sqlc message repository, got %T", repos.MessageProcess.Messages)
 	}
-	if _, ok := repos.Sync.(*syncmysql.SyncRepository); !ok {
-		t.Fatalf("expected sqlc sync repository, got %T", repos.Sync)
+	if _, ok := repos.SyncProcess.Sync.(*syncmysql.SyncRepository); !ok {
+		t.Fatalf("expected sqlc sync repository, got %T", repos.SyncProcess.Sync)
 	}
-	if _, ok := repos.Outbox.(*messagemysql.OutboxRepository); !ok {
-		t.Fatalf("expected sqlc outbox repository, got %T", repos.Outbox)
+	if _, ok := repos.MessageProcess.Outbox.(*messagemysql.OutboxRepository); !ok {
+		t.Fatalf("expected sqlc outbox repository, got %T", repos.MessageProcess.Outbox)
 	}
 }
