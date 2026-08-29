@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Message bootstrap 已接管惰性 Core Capability adapter 及其重试测试，runtime 不再通过共享 `internal/bootstrap` facade 获取 Core capability；旧共享拨号能力仍为其他兼容调用者保留。
 - 五条主要 Epic 分支已同步到当前 `master` 基线并推送：`epic/01-microservices`、`epic/02-storage-architecture`、`epic/03-agent-runtime`、`epic/04-cpp-realtime`、`epic/05-frontend-experience`；后续里程碑开发可继续保持阶段隔离。
 - 删除已无实现的 `internal/app/agent_application_compat.go`，同步收紧服务布局门禁和仓库边界文档，避免通过空兼容文件维持过时结构。
 - Agent Execution Policy 测试已直接使用 Agent application 的持久策略构造器；删除 `internal/app` 中无调用的策略 alias 与构造转发，进一步收敛 embedded compatibility facade。
