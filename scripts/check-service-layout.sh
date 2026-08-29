@@ -679,7 +679,7 @@ if [[ ! -f "${root_dir}/internal/platform/runtime/metrics.go" || ! -f "${root_di
   echo "shared runtime metrics and readiness platform boundary is missing" >&2
   exit 1
 fi
-for runtime_file in runtime.go core_runtime.go gateway_runtime.go cassandra_projector_runtime.go; do
+for runtime_file in runtime.go core_runtime.go cassandra_projector_runtime.go; do
   if [[ -f "${root_dir}/internal/bootstrap/${runtime_file}" ]] && ! rg --quiet 'internal/platform/runtime' "${root_dir}/internal/bootstrap/${runtime_file}"; then
     echo "runtime bootstrap must use internal/platform/runtime: ${runtime_file}" >&2
     exit 1
@@ -722,6 +722,14 @@ if [[ -e "${root_dir}/internal/bootstrap/message_runtime.go" ]]; then
 fi
 if [[ ! -f "${root_dir}/internal/services/message/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/services/message/infrastructure' "${root_dir}/internal/services/message/bootstrap/runtime.go"; then
   echo "Message runtime must remain under its service bootstrap boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/internal/bootstrap/gateway_runtime.go" ]]; then
+  echo "Gateway runtime remains in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/gateway/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/gateway|internal/platform/cache|internal/platform/presence' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
+  echo "Gateway runtime must remain under its service bootstrap boundary" >&2
   exit 1
 fi
 

@@ -19,7 +19,7 @@ func TestGatewayRuntimeHasNoDatabaseOwnership(t *testing.T) {
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", ".."))
 	paths := []string{
 		filepath.Join(repositoryRoot, "cmd", "services", "gateway", "main.go"),
-		filepath.Join(repositoryRoot, "internal", "bootstrap", "gateway_runtime.go"),
+		filepath.Join(repositoryRoot, "internal", "services", "gateway", "bootstrap", "runtime.go"),
 		filepath.Join(repositoryRoot, "internal", "gateway", "server.go"),
 	}
 	for _, path := range paths {
