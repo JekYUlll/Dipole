@@ -18,6 +18,8 @@
 
 ## [Unreleased]
 
+- 服务布局门禁已同步移除已退休的 `internal/app/core_capability.go` 必需登记项，避免已删除的孤立 facade 阻断后续结构检查。
+- Core 已删除无调用者的 `internal/app/core_capability.go` 兼容构造入口；Core 能力继续由服务自身 application 与 embedded composition 装配。
 - Core 已移除无调用者的旧 `validateStandaloneCoreMode` compatibility facade，并将模式校验测试归属 `internal/services/core/bootstrap`；embedded 组合逻辑与回滚入口保持不变。
 - Core bootstrap 已将 embedded 初始化兼容入口隔离到独立 `embedded_compat.go`；独立 Core entrypoint 文件不再直接依赖旧 bootstrap，embedded 回滚 API 保持兼容。
 - Core 独立服务入口已自有 HTTP/TLS 启动与证书文件校验，embedded 模式仍通过兼容入口保留原有回滚路径；新增架构测试锁定服务入口不再转发旧 bootstrap 的 `RunServer`。

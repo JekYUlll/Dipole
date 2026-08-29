@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-29：服务布局门禁已同步删除 Core capability facade 的历史必需登记，当前兼容根目录只保留仍有调用者的 adapter、说明文件与兼容测试。
+- 2026-08-29：全仓调用审计确认 `internal/app/core_capability.go` 无生产或测试调用者，已删除该孤立兼容构造；Core application 和 embedded repository composition 继续作为唯一装配路径。
 - 2026-08-29：Core 独立 runtime 的模式校验已完成测试归属迁移，删除旧 bootstrap 中无生产调用者的重复 facade；embedded 组合入口仍保留，Core standalone 与 remote/embedded 模式约束由服务自身测试锁定。
 - 2026-08-29：Core bootstrap 已将 embedded 初始化别名与独立入口物理拆分；`entrypoint.go` 现在完全脱离旧 bootstrap，兼容路径集中在 `embedded_compat.go`，独立服务与 embedded 回滚行为保持不变。
 - 2026-08-29：Core 服务入口已收回自身 HTTP/TLS 启动逻辑，旧 bootstrap 仅继续承担 embedded 初始化兼容；独立 Core 的 TLS 文件校验、日志和优雅运行入口由服务 bootstrap 自有，新增架构测试防止旧 RunServer 转发回流。
