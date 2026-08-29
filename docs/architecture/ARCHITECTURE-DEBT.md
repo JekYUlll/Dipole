@@ -433,6 +433,7 @@
 - **本轮进展：** Workflow Repair Audit 测试已直接切换 Agent application 构造器，继续验证修复提案 evidence 绑定、双人审批、冲突重放和拒绝优先；聚合 `internal/app` 中对应兼容入口已删除。
 - **本轮进展：** Workflow Repair Prepare 测试已直接切换 Agent application 构造器，继续验证已批准 quorum、执行计划幂等和未批准/绑定不匹配拒绝；聚合 `internal/app` 中对应兼容入口已删除。
 - **本轮进展：** Workflow Repair Executor 测试已直接切换 Agent application 构造器，继续验证新鲜授权、提交/回滚事务、前置条件失败和执行状态落账；聚合 `internal/app` 中对应兼容入口已删除。
+- **本轮进展：** Message Command Execution 测试已直接切换 Agent application 构造器，继续验证已绑定 Tool、Command 派生、identity/argument drift 拒绝和依赖 fail-closed；聚合 `internal/app` 中对应兼容入口已删除。
 - **本轮进展：** Shadow 指标已修正为记录原始候选集合大小，避免以匹配数替代候选数造成成本证据偏差；后续灰度仍需共享环境抓取和完整窗口。
 - **本轮进展：** Shadow metrics observer 已在运行时拒绝闭集之外的 outcome，保持 Prometheus label vocabulary 与 evidence schema 一致；共享环境窗口仍待完成。
 - **本轮进展：** 只读 Prometheus Collector 已对响应体实施 256 KiB 流式上限，并在超限、读取失败或 JSON 异常时统一 fail-closed；共享环境窗口与发布 artifact 交叉核对仍待完成。
