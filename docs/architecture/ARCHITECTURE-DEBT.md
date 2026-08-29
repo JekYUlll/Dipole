@@ -340,6 +340,8 @@
 - **本轮进展：** 在同一 v49 隔离迁移环境重新执行 Cassandra read-routing smoke，Cassandra 页面读取、payload 损坏和缺失行回退 MySQL 均通过；生产主读比例、共享环境窗口和责任人批准保持未启用。
 - **本轮进展：** storage-lab Compose 改用动态 Cassandra 宿主机端口，hydration 与 read-routing smoke 已并行通过，分别验证 hydration/Metadata 回填和 Cassandra 主读及损坏/缺失回退；临时资源自动清理，生产主读和共享环境证据门槛保持不变。
 - **本轮进展：** 2026-08-29 为 Sync 微服务 Compose 补齐 primary hydration、Cassandra enabled/hosts 的显式环境契约，并以 Compose gate 固定默认关闭与显式启用值；实际 Cassandra 主读、共享环境观测、责任人批准和可执行回切仍待完成。
+- **本轮进展：** 增加显式 `cassandra-primary` Compose profile、Cassandra schema init 和 Sync `service_completed_successfully` 依赖，结构门禁验证 profile 只在显式启用时接线；真实消息 hydration、共享环境观测、责任人批准和可执行回切仍待完成。
+- **本轮进展：** 增加可重复 `smoke-sync-cassandra-primary-compose.sh`，在临时容器网络中验证 Cassandra schema init、Sync primary 配置与 readiness，完成后自动清理 volume；真实 Inbox 消息 hydration、共享环境观测、责任人批准和可执行回切仍待完成。
 - **本轮进展：** 2026-08-29 修正 migration integration v50 基线与 Metadata 测试回退步数，重新通过隔离 hydration smoke；v12 legacy-message backfill、重复响应恢复和 Legacy ID 恢复证据已闭合，生产主读与共享环境窗口仍未启用。
 - **建议方向：** A5 Search 与 A4 Cassandra 均已具备不可变归档恢复源；重复发送 hydration 与 Timeline notification shadow 均已具备严格 24 小时晋级规则。Web Sync 观察现可用候选 commit/bundle 哈希绑定的 Session/Evidence 归档，仍需在完整服务 Prometheus 和真实客户端流量上运行并固定对象版本。随后继续通知 shadow 证据归档、Sync Cassandra hydration 主读/fallback 和重复发送 hydration 灰度，再引入 `full / metadata_only` 写模式。
 - **处理门槛：** 完成固定快照备份与校验、事件回放演练、Sync/Offline 比较、幂等和文件授权契约、至少一个兼容窗口的 Cassandra 稳定主读，并记录可执行回滚期限与责任人；旧 Offline 退役后撤销 Message 对 `groups/group_members` 的临时读取。

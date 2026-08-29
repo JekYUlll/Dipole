@@ -41,6 +41,26 @@ jq -e '
   and .services.sync.environment.DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION == "true"
 ' <<<"${primary_hydration_config}" >/dev/null
 
+primary_profile_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+    docker compose --profile cassandra-primary \
+      -f docker-compose.microservices.yml \
+      -f deploy/microservices/cassandra-primary.yml config --format json
+})"
+jq -e '
+  .services.cassandra.profiles == ["cassandra-primary"]
+  and .services["cassandra-init"].depends_on.cassandra.condition == "service_healthy"
+  and .services["cassandra-init"].command == ["cqlsh cassandra -f /schema/001_timeline.cql"]
+  and .services.sync.depends_on["cassandra-init"].condition == "service_completed_successfully"
+  and any(.services.sync.volumes[]; (.source | endswith("/configs/config.cassandra-primary.yaml")) and .target == "/app/configs/config.yaml")
+  and .services.core.environment.DIPOLE_GATEWAY_MODE == "embedded"
+  and .services.core.environment.DIPOLE_MESSAGE_TRANSPORT == "local"
+  and .services.message.depends_on.core.condition == "service_healthy"
+  and .services.sync.environment.DIPOLE_CASSANDRA_ENABLED == "true"
+  and .services.sync.environment.DIPOLE_CASSANDRA_HOSTS == "cassandra:9042"
+  and .services.sync.environment.DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION == "true"
+' <<<"${primary_profile_config}" >/dev/null
+
 isolated_microservices_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   docker compose --profile search -f docker-compose.microservices.yml -f deploy/microservices/isolated-images.yml config --format json

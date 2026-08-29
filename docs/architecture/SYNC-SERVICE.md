@@ -83,6 +83,14 @@ sync:
 
 Cassandra-first primary hydration 使用 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION=true`，并同时设置 `DIPOLE_CASSANDRA_ENABLED=true` 与 `DIPOLE_CASSANDRA_HOSTS`。微服务 Compose 已提供这三个环境变量，默认分别为 `false`、`false` 和 `127.0.0.1:19042`；primary 与 shadow 互斥，Cassandra 失败会按同一 locator 整批回退 MySQL。切换前必须使用实际 Cassandra 网络地址、独立观测窗口和 AD-043 evidence gate，默认配置不自动启用。
 
+隔离联调可以显式加载 `deploy/microservices/cassandra-primary.yml` 与 `--profile cassandra-primary`。该 profile 只启动 Cassandra 和一次性 schema init，并让 Sync 等待 init 成功后以 Cassandra-first 模式就绪。候选 smoke 额外将 Core 置于本地消息传输模式，绕开当前 Core/Message 远程初始化环，专门验证 Sync 的 Cassandra 主 hydration；默认微服务 Compose 不受影响。移除 profile 或关闭 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION` 即可回到 MySQL 主读，数据和设备 Cursor 不需要逆向迁移。
+
+可重复执行以下 smoke 验证真实容器网络中的 profile、schema init 和 Sync readiness：
+
+```bash
+scripts/smoke-sync-cassandra-primary-compose.sh
+```
+
 Sync 新 consumer group 从 Kafka earliest retained offset 建立；已经提交过 offset 的 group 继续从自身 checkpoint 恢复。该语义关闭“Replay 固定快照后、consumer 首次建组前”的跳过窗口。Kafka retention 之前的消息由 Outbox Replay 覆盖，缺少 created Outbox 的早期行由历史 baseline 覆盖。
 
 写责任切换观察窗按以下顺序执行：
