@@ -4,7 +4,7 @@
 >
 > 基线：`7a209ae merge: record eino agentic capability assessment`
 >
-> 更新日期：2026-08-29
+> 更新日期：2026-08-30
 
 ## 1. 目标
 
@@ -20,6 +20,27 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 当前微服务 Go 全量测试已在干净 worktree 中通过：测试显式绑定版本化 `configs/config.dist.yaml`，不改变生产配置搜索路径。
 
 整个过程采用 Strangler Fig 和事件驱动抽离，任何阶段结束时都必须存在可部署、可测试、可回滚的版本。
+
+## 1.1 开发期部署与负载测试策略
+
+开发期远程验证采用双环境分工，避免在资源受限的本机运行完整集群：
+
+| 环境 | 已核验资源 | 用途 | 限制 |
+| --- | --- | --- | --- |
+| `remote-gpu` / LAB113 | 224 vCPU、188 GiB 内存、约 1.1 TiB 可用磁盘、4 张 RTX 4090、Docker 29.1.3 | 完整微服务 Compose、Kafka/存储实验、Agent Runtime、分级负载与故障演练 | 仅开发/隔离数据；Agent 模型和 GPU 压测必须单独标注，不能外推为生产容量 |
+| `TencentCloud_01` | 2 vCPU、2 GiB 内存、50 GiB 磁盘、Docker 26.1.4 | 轻量启动、API/WS smoke、小并发回归、低资源兼容性检查 | 不承载 Cassandra/Elasticsearch 全量集群、完整可观测性或高并发基线 |
+| 本机 | 16 vCPU、27 GiB 内存、根分区剩余约 19 GiB、交换区接近耗尽 | 单元测试、静态检查、镜像构建前置检查 | 暂停完整集群和大规模压测，先处理磁盘/交换区压力 |
+
+开发期远程部署必须满足以下门禁：
+
+- [ ] 远程主机建立独立工作目录和 Compose project，禁止复用未知业务容器、卷、端口和数据库。
+- [ ] 使用提交绑定的不可变镜像或源码版本，记录 revision、镜像摘要、配置摘要和主机资源快照。
+- [ ] 先执行 readiness、migration、服务布局、mTLS、Kafka lag 和健康检查，再开始负载测试。
+- [ ] 负载矩阵至少区分轻量 TencentCloud smoke、Remote GPU 单节点基线、Remote GPU 故障演练；报告记录 CPU、内存、磁盘、网络、P50/P95/P99、Kafka lag 和错误率。
+- [ ] 压测期间不使用生产凭据、不暴露管理端口；结束后仅清理本次 Compose project 的容器和卷，并保留脱敏证据。
+- [ ] 任一 readiness、数据一致性、错误率或资源水位门禁失败，停止加压并回到上一配置；未取得共享环境批准前不做公网流量切换。
+
+建议顺序：先在 Remote GPU 完成完整拓扑和基线，再将同一镜像与受限资源配置部署到 TencentCloud_01 做兼容性回归。TencentCloud_01 的结果只用于低资源行为验证，Remote GPU 的结果只用于开发阶段相对比较；两者均不替代生产容量评估。
 
 ## 2. 演进原则
 
