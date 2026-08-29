@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Sync transport/shadow 已从共享 `internal/bootstrap` 迁入 `internal/bootstrap/embedded/`，embedded runtime 改用 embedded-owned transport；local/grpc/shadow 回退和 checkpoint 语义保持兼容，shared bootstrap 的 Message/Sync transport 实现均已完成物理收敛。
 - 2026-08-30：Message transport/shadow 已从共享 `internal/bootstrap` 迁入 `internal/bootstrap/embedded/`，embedded runtime 改用 embedded-owned transport；local/grpc/shadow 回退语义保持兼容，Sync transport 仍待独立切片收敛。
 - 2026-08-30：调用审计确认 `internal/bootstrap.NewCoreRPCServerWithAgentControl` 无生产或测试调用者，已删除该 shared RPC 包装；`NewCoreRPCServerWithAgent` 与 `WithAgentControlAndProjection` 因仍有 contract/embedded 调用继续保留。
 - 2026-08-30：Cassandra Projector runtime 已从共享 `internal/bootstrap` 迁入 Message bootstrap，`cmd/tools/cassandra-projector` 直接使用服务自有入口；共享 bootstrap 不再持有 Cassandra Projector 生命周期，projection 与回滚语义保持稳定。

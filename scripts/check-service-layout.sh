@@ -279,6 +279,24 @@ if [[ ! -f "${root_dir}/internal/bootstrap/embedded/message_transport.go" || ! -
   echo "embedded Message transport implementation is missing from embedded composition" >&2
   exit 1
 fi
+for legacy_sync_transport in sync_transport.go sync_shadow.go sync_transport_test.go sync_shadow_test.go; do
+  if [[ -e "${root_dir}/internal/bootstrap/${legacy_sync_transport}" ]]; then
+    echo "embedded Sync transport implementation remains in shared bootstrap: ${legacy_sync_transport}" >&2
+    exit 1
+  fi
+done
+if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+  echo "embedded runtime must use the embedded-owned Sync transport" >&2
+  exit 1
+fi
+if rg --quiet 'newSyncApplicationTransport|syncApplicationTransport' "${root_dir}/internal/bootstrap" --glob '*.go'; then
+  echo "legacy Sync transport symbols remain in shared bootstrap" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/bootstrap/embedded/sync_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/sync_shadow.go" ]]; then
+  echo "embedded Sync transport implementation is missing from embedded composition" >&2
+  exit 1
+fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
   if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
     echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2
