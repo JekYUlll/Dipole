@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：Agent Runtime TypeScript generated protobuf 已与当前 Go contract 对齐，补齐 system-message RPC；Runtime 完整测试、typecheck、build 和 proto drift 均通过，下一步继续验证独立 Runtime 的真实服务启动与事件触发。
 - 2026-08-29：assistant seed 已迁移到 `internal/services/core/application`，独立 Core 与 embedded 路径共享 Core-owned 初始化；Core bootstrap 的旧业务初始化依赖已清除，剩余兼容依赖集中在 embedded composition 和少量平台生命周期 facade。
 - 2026-08-29：Core Conversation Kafka projection 已迁移到 `internal/services/core/infrastructure/kafka`，独立 runtime 直接使用服务自有 projector；旧 bootstrap 仅保留兼容转发，assistant seed 仍待进一步迁移。
 - 2026-08-29：复核生产 Go 代码、`go.mod`/`go.sum` 和 sqlc 生成漂移，确认当前无 GORM 运行时引用或模块依赖；服务布局门禁新增 GORM 回流检查，继续保障 `database/sql + sqlc` 统一数据访问边界。
