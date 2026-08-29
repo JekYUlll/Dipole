@@ -15,7 +15,6 @@ type PersistentAgentExecutionPolicyV1 = agentapplication.PersistentAgentExecutio
 type PersistentAgentInvocationResolverV1 = agentapplication.PersistentAgentInvocationResolverV1
 type PersistentAgentRunAdmissionV1 = agentapplication.PersistentAgentRunAdmissionV1
 type AgentMemoryTaskReaderV1 = agentapplication.AgentMemoryTaskReaderV1
-type AgentMessageCommandExecutionServiceV1 = agentapplication.AgentMessageCommandExecutionServiceV1
 
 func NewPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery) (application.AgentToolInvocationAuditServiceV1, error) {
 	return agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(store, resolver, approvals, receipts)
@@ -51,10 +50,6 @@ func NewStaticAgentExecutionPolicyV1(permissions []string, scopes []application.
 
 func NewPersistentAgentExecutionPolicyV1(store application.AgentPolicyStoreV1) (*PersistentAgentExecutionPolicyV1, error) {
 	return agentapplication.NewPersistentAgentExecutionPolicyV1(store)
-}
-
-func NewAgentMessageCommandExecutionV1(tools application.AgentToolInvocationReaderV1, resolver application.AgentInvocationResolverV1, commands application.AgentCommandV1) (*AgentMessageCommandExecutionServiceV1, error) {
-	return agentapplication.NewAgentMessageCommandExecutionV1(tools, resolver, commands)
 }
 
 func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.AgentPolicyStoreV1, tenantID, agentUUID string, permissions []string, scopes []application.AgentResourceScopeV1) error {
