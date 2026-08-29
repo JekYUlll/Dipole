@@ -63,4 +63,16 @@ for service in core message sync gateway; do
   compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/metrics | grep -q 'dipole_service_ready{service="dipole-'
 done
 
+compose exec -T agent node -e '
+const http = require("node:http");
+const paths = ["/livez", "/readyz"];
+Promise.all(paths.map(path => new Promise((resolve, reject) => {
+  const request = http.get(`http://127.0.0.1:8091${path}`, response => {
+    response.resume();
+    response.on("end", () => response.statusCode === 200 ? resolve() : reject(new Error(`${path}: ${response.statusCode}`)));
+  });
+  request.on("error", reject);
+}))).catch(error => { console.error(error.message); process.exit(1); });
+'
+
 echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership"
