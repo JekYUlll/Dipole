@@ -806,3 +806,14 @@
 - **现状：** MySQL 事务 Store 已位于 `internal/platform/mysql`；迁移 runner、DSN 组装和运维 adapter 曾继续分散在旧数据目录。
 - **解决方式：** migration runner 和 DSN 配置迁入 MySQL 平台目录，Agent/Cassandra/Search/Sync adapter 按操作域迁入 `internal/operations/<service>/<operation>/mysql/`，`internal/data/mysql` 保留兼容别名与构造转发。
 - **验证：** 操作域、MySQL 平台和工具包定向测试通过；结构门禁阻止旧 adapter、migration 和 DSN 目录回流。
+
+### AD-052：Message domain 直接依赖 Core 文件 domain
+
+- **优先级：** P1
+- **状态：** 已解决
+- **发现日期：** 2026-08-29
+- **完成日期：** 2026-08-29
+- **影响范围：** Message/Core 服务物理拆分、共享错误契约和兼容 HTTP 错误映射
+- **现状：** Message domain 曾直接导入 `internal/services/core/domain/file`，仅用于复用文件存储、缺失和权限错误值，形成跨服务 domain 依赖。
+- **解决方式：** 将三个跨服务文件错误提升到 `internal/application`，Core File domain 与 Message domain 均引用 application contract；增加服务布局门禁，阻止 Message 重新依赖 Core domain 实现。
+- **验证：** Message/Core File/兼容服务定向测试、`scripts/check-service-layout.sh` 和 `CGO_ENABLED=0 go test ./...` 通过；错误值身份保持兼容。
