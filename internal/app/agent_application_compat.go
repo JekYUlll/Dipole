@@ -10,7 +10,6 @@ import (
 
 // Agent application implementations live under the Agent service boundary.
 // These aliases preserve the embedded composition root during migration.
-type PersistentAgentWorkflowRepairPrepareServiceV1 = agentapplication.PersistentAgentWorkflowRepairPrepareServiceV1
 type PersistentAgentWorkflowRepairExecutorV1 = agentapplication.PersistentAgentWorkflowRepairExecutorV1
 type StaticAgentExecutionPolicyV1 = agentapplication.StaticAgentExecutionPolicyV1
 type PersistentAgentExecutionPolicyV1 = agentapplication.PersistentAgentExecutionPolicyV1
@@ -69,14 +68,6 @@ func agentTaskUUIDV1(request application.AgentExecutionPolicyStartV1) string {
 
 func clonePolicyScopesV1(scopes []application.AgentResourceScopeV1) []application.AgentResourceScopeV1 {
 	return agentapplication.ClonePolicyScopesV1(scopes)
-}
-
-func NewPersistentAgentWorkflowRepairPrepareServiceV1(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, executions application.AgentWorkflowRepairExecutionStoreV1) (*PersistentAgentWorkflowRepairPrepareServiceV1, error) {
-	return agentapplication.NewPersistentAgentWorkflowRepairPrepareServiceV1(policies, repairs, executions)
-}
-
-func NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, executions application.AgentWorkflowRepairExecutionStoreV1, now func() time.Time) (*PersistentAgentWorkflowRepairPrepareServiceV1, error) {
-	return agentapplication.NewPersistentAgentWorkflowRepairPrepareServiceV1WithClock(policies, repairs, executions, now)
 }
 
 func NewPersistentAgentWorkflowRepairExecutorV1(policies application.AgentPolicyStoreV1, repairs application.AgentWorkflowRepairAuditStoreV1, executions application.AgentWorkflowRepairExecutionStoreV1, transaction application.AgentWorkflowRepairTransactionalStoreV1) (*PersistentAgentWorkflowRepairExecutorV1, error) {
