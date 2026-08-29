@@ -27,13 +27,13 @@ services:
       cassandra:
         condition: service_healthy
     volumes:
-      - ./db/cassandra/001_timeline.cql:/schema/001_timeline.cql:ro
+      - ../../db/cassandra/001_timeline.cql:/schema/001_timeline.cql:ro
     entrypoint: ["/bin/sh", "-ec"]
     command: ["cqlsh cassandra -f /schema/001_timeline.cql"]
 
   sync:
     volumes:
-      - ./configs/config.cassandra-primary.yaml:/app/configs/config.yaml:ro
+      - ../../configs/config.cassandra-primary.yaml:/app/configs/config.yaml:ro
     depends_on:
       cassandra-init:
         condition: service_completed_successfully
