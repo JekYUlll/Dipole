@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	cassandradata "github.com/JekYUlll/Dipole/internal/data/cassandra"
 	mysqldata "github.com/JekYUlll/Dipole/internal/data/mysql"
+	cassandradata "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	cassandrareconcile "github.com/JekYUlll/Dipole/internal/reconcile/cassandra"
 )
 
