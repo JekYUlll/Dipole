@@ -1,6 +1,6 @@
 package httpdto
 
-import "github.com/JekYUlll/Dipole/internal/service"
+import "github.com/JekYUlll/Dipole/internal/compat/service"
 
 type UpdateProfileRequest struct {
 	Nickname  *string `json:"nickname"`

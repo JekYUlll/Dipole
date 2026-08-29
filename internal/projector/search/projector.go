@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 var topics = []string{

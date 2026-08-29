@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/JekYUlll/Dipole/internal/service"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 

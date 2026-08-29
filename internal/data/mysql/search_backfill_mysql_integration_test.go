@@ -10,11 +10,11 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	searchbackfill "github.com/JekYUlll/Dipole/internal/backfill/search"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/data/migration"
 	mysqlStore "github.com/JekYUlll/Dipole/internal/data/mysql"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 func TestSearchBackfillSourceAndCheckpointContract(t *testing.T) {
