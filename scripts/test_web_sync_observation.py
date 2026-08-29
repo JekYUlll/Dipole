@@ -7,6 +7,7 @@ from pathlib import Path
 from scripts.web_sync_observation import (
     build_final_evidence,
     build_session,
+    build_status,
     verify_candidate,
     write_immutable_json,
 )
@@ -101,6 +102,11 @@ class WebSyncObservationTest(unittest.TestCase):
         session = self._session()
         with self.assertRaises(ValueError):
             build_final_evidence(session, START + timedelta(hours=23, minutes=59), FakePrometheus(clean_final_values()))
+
+    def test_status_rejects_capture_before_session_start(self):
+        session = self._session()
+        with self.assertRaisesRegex(ValueError, "cannot precede"):
+            build_status(session, START - timedelta(seconds=1), FakePrometheus(clean_final_values()))
 
     def test_candidate_verification_rejects_commit_or_bundle_drift(self):
         with tempfile.TemporaryDirectory() as directory:
