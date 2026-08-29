@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-29：微服务隔离 smoke 已实际验证 Agent Runtime health endpoint、Kafka shadow consumer group 加入和主/retry 分区分配；脚本新增 Agent endpoint 回归检查。尚未执行真实 message publish 到 Agent Task 的生产语义验证，需保留 shadow 与独立 ledger 证据边界。
 - 2026-08-29：独立 Agent Runtime 已完成默认安全配置的进程 smoke，`/livez`、`/readyz` 和 SIGINT 退出均通过；真实 Kafka/Temporal/Capability RPC 联调仍需按环境准备外部依赖和可回滚 receipt。
 - 2026-08-29：Agent Runtime TypeScript generated protobuf 已与当前 Go contract 对齐，补齐 system-message RPC；Runtime 完整测试、typecheck、build 和 proto drift 均通过，下一步继续验证独立 Runtime 的真实服务启动与事件触发。
 - 2026-08-29：assistant seed 已迁移到 `internal/services/core/application`，独立 Core 与 embedded 路径共享 Core-owned 初始化；Core bootstrap 的旧业务初始化依赖已清除，剩余兼容依赖集中在 embedded composition 和少量平台生命周期 facade。
