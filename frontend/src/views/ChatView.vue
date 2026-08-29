@@ -649,6 +649,18 @@ const mediaPreviewInflight = new Map<string, Promise<void>>()
 
 const directUploadThresholdBytes = 4 * 1024 * 1024
 const maxTextMessageRunes = 1000
+type MultipartUploadInit = {
+  session_id: string
+  chunk_size: number
+  total_parts: number
+}
+
+type StoredMultipartUpload = MultipartUploadInit & {
+  file_name: string
+  file_size: number
+  content_type: string
+  last_modified: number
+}
 type PendingWsMessage = {
   type: 'chat.send' | 'chat.send_file'
   data: Record<string, unknown> & { client_message_id: string }
@@ -1307,6 +1319,43 @@ const saveProfile = async () => {
   }
 }
 
+const multipartSessionKey = (file: File) => `dipole:multipart:${file.name}:${file.size}:${file.lastModified}:${file.type || 'application/octet-stream'}`
+
+const readStoredMultipartUpload = (file: File): StoredMultipartUpload | null => {
+  try {
+    const raw = localStorage.getItem(multipartSessionKey(file))
+    if (!raw) return null
+    const stored = JSON.parse(raw) as StoredMultipartUpload
+    if (stored.file_name !== file.name || stored.file_size !== file.size || stored.last_modified !== file.lastModified) return null
+    if (!stored.session_id || stored.chunk_size <= 0 || stored.total_parts <= 0) return null
+    return stored
+  } catch {
+    return null
+  }
+}
+
+const storeMultipartUpload = (file: File, init: MultipartUploadInit) => {
+  try {
+    localStorage.setItem(multipartSessionKey(file), JSON.stringify({
+      ...init,
+      file_name: file.name,
+      file_size: file.size,
+      content_type: file.type || 'application/octet-stream',
+      last_modified: file.lastModified,
+    } satisfies StoredMultipartUpload))
+  } catch {
+    // Multipart remains usable when browser storage is unavailable.
+  }
+}
+
+const clearStoredMultipartUpload = (file: File) => {
+  try {
+    localStorage.removeItem(multipartSessionKey(file))
+  } catch {
+    // Browser storage failures must not mask the upload result.
+  }
+}
+
 const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
   if (file.size <= directUploadThresholdBytes) {
     uploadingFileLabel.value = '上传中...'
@@ -1315,11 +1364,39 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
     return await api.post('/api/v1/files', formData) as { file_id: string }
   }
 
-  const init = await api.post('/api/v1/files/uploads/initiate', {
-    file_name: file.name,
-    file_size: file.size,
-    content_type: file.type || 'application/octet-stream',
-  }) as { session_id: string; chunk_size: number; total_parts: number }
+  const contentType = file.type || 'application/octet-stream'
+  const stored = readStoredMultipartUpload(file)
+  let init: MultipartUploadInit | null = null
+  let skipParts = new Set<number>()
+
+  if (stored && stored.content_type === contentType) {
+    try {
+      const status = await api.get(`/api/v1/files/uploads/${encodeURIComponent(stored.session_id)}`) as {
+        session_id: string
+        file_name: string
+        file_size: number
+        chunk_size: number
+        total_parts: number
+        uploaded_parts: Array<{ part_number: number; size: number }>
+      }
+      if (status.session_id === stored.session_id && status.file_name === file.name && status.file_size === file.size && status.chunk_size === stored.chunk_size && status.total_parts === stored.total_parts) {
+        init = stored
+        skipParts = new Set(status.uploaded_parts.map(part => part.part_number))
+      }
+    } catch {
+      // Expired or inaccessible sessions are replaced below.
+    }
+  }
+
+  if (!init) {
+    clearStoredMultipartUpload(file)
+    init = await api.post('/api/v1/files/uploads/initiate', {
+      file_name: file.name,
+      file_size: file.size,
+      content_type: contentType,
+    }) as MultipartUploadInit
+    storeMultipartUpload(file, init)
+  }
 
   try {
     await uploadMultipartParts(file, init.chunk_size, init.total_parts, async (partNumber, chunk) => {
@@ -1333,18 +1410,22 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
     }, {
       concurrency: 3,
       maxRetries: 2,
+      skipParts,
       onPartComplete: (completedParts, totalParts) => {
         uploadingFileLabel.value = `上传中 ${completedParts}/${totalParts}...`
       },
     })
     uploadingFileLabel.value = '合并文件中...'
-    return await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/complete`) as { file_id: string }
+    const result = await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/complete`) as { file_id: string }
+    clearStoredMultipartUpload(file)
+    return result
   } catch (err) {
     try {
       await api.delete(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}`)
     } catch {
       // 上传失败时尽力清理服务端会话，避免 Redis 和 MinIO 留下无主分片。
     }
+    clearStoredMultipartUpload(file)
     throw err
   }
 }
