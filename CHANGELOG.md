@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 补齐兼容目录的结构说明：`internal/app`、`internal/data/mysql`、历史 repository aliases 和 `internal/store` 均增加 ownership/迁移出口 README，服务布局门禁将其作为仓库导航约束；未改变兼容入口和运行时行为。
 - 收敛 MySQL repository 调用边界：Sync 运维、Message/Sync/Cassandra 集成测试和 embedded composition 测试改用对应服务自有 SQLC repository；历史 `internal/data/mysql/repository` 兼容别名继续保留，但结构门禁禁止新的运行时代码依赖该路径。
 - Compose 结构门禁新增 Core/Message 默认拓扑循环依赖检查：默认微服务配置禁止双方互相 `depends_on`，并继续要求 Core 使用远程 gRPC transport；Cassandra primary 的 embedded/local 回滚覆盖层保持兼容。
 - Message Service 对 Core Capability RPC 改用惰性连接与就绪探针：Core 未监听时 Message 仍可完成启动，失败连接不缓存并在后续请求或探针中重试；关闭和 embedded/local 回退语义保持兼容。
