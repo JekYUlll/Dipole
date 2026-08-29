@@ -56,7 +56,7 @@
 采集并保存 v1 input：
 
 ```bash
-cd agent-runtime
+cd services/agent-runtime
 npm run eval:subscription-shadow-collect -- --request=/secure/subscription-shadow-collection.json \
   > /secure/subscription-shadow-input.json
 ```
@@ -66,7 +66,7 @@ Collector 不修改 Runtime、Prometheus 或 Trigger mode，也不在输出中�
 生成证据：
 
 ```bash
-cd agent-runtime
+cd services/agent-runtime
 npm run eval:subscription-shadow-evidence -- --input=/secure/subscription-shadow-input.json
 ```
 

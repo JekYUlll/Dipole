@@ -11,6 +11,10 @@ if [[ ! -f "${root_dir}/docs/architecture/SERVICE-BOUNDARIES.md" ]]; then
   echo "service boundary manifest is missing: docs/architecture/SERVICE-BOUNDARIES.md" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/services/README.md" ]]; then
+  echo "polyglot service directory index is missing: services/README.md" >&2
+  exit 1
+fi
 if ! git -C "${root_dir}" ls-files --error-unmatch docs/architecture/SERVICE-BOUNDARIES.md >/dev/null 2>&1; then
   echo "service boundary manifest is not tracked: docs/architecture/SERVICE-BOUNDARIES.md" >&2
   exit 1
@@ -25,6 +29,18 @@ if [[ -e "${root_dir}/internal/app/search.go" || -e "${root_dir}/internal/app/se
 fi
 if [[ ! -f "${root_dir}/internal/gateway/search_handler.go" ]]; then
   echo "Gateway Search HTTP handler is outside the Gateway boundary" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/services/agent-runtime/package.json" || ! -f "${root_dir}/services/agent-runtime/src/index.ts" ]]; then
+  echo "Agent Runtime is outside the services boundary" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/services/realtime-delivery/CMakeLists.txt" || ! -f "${root_dir}/services/realtime-delivery/src/main.cpp" ]]; then
+  echo "Realtime Delivery is outside the services boundary" >&2
+  exit 1
+fi
+if [[ -e "${root_dir}/agent-runtime" || -e "${root_dir}/realtime-delivery" ]]; then
+  echo "legacy polyglot service directory remains at repository root" >&2
   exit 1
 fi
 if [[ -e "${root_dir}/internal/handler/http/search_handler.go" || -e "${root_dir}/internal/handler/http/search_handler_test.go" ]]; then

@@ -4,7 +4,7 @@ set -euo pipefail
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 compose_file="$root_dir/deploy/agent/external-mcp-shadow-drill.compose.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-mcp-drill-${RANDOM}-$$}"
-evidence_path="${DIPOLE_AGENT_MCP_DRILL_EVIDENCE:-$root_dir/agent-runtime/.artifacts/external-mcp-shadow-drill.json}"
+evidence_path="${DIPOLE_AGENT_MCP_DRILL_EVIDENCE:-$root_dir/services/agent-runtime/.artifacts/external-mcp-shadow-drill.json}"
 fixture_dir="$(mktemp -d)"
 fixture_pid=""
 fixture_ready="$fixture_dir/ready.json"
@@ -75,7 +75,7 @@ test -s "$fixture_ready" || {
 }
 fixture_address="$(jq -er '.address | select(type == "string" and length > 0)' "$fixture_ready")"
 
-cd "$root_dir/agent-runtime"
+cd "$root_dir/services/agent-runtime"
 export DIPOLE_AGENT_FULL_STACK_DRILL=true
 export DIPOLE_TEST_AGENT_MYSQL_URL="mysql://root:drill-root@127.0.0.1:${DIPOLE_AGENT_DRILL_MYSQL_PORT}/dipole"
 export DIPOLE_TEST_AGENT_KAFKA_BROKERS="127.0.0.1:${DIPOLE_AGENT_DRILL_KAFKA_PORT}"

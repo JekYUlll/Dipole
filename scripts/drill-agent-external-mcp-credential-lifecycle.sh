@@ -2,12 +2,12 @@
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-evidence_path="${DIPOLE_AGENT_CREDENTIAL_LIFECYCLE_EVIDENCE:-$root_dir/agent-runtime/.artifacts/external-mcp-credential-lifecycle.json}"
+evidence_path="${DIPOLE_AGENT_CREDENTIAL_LIFECYCLE_EVIDENCE:-$root_dir/services/agent-runtime/.artifacts/external-mcp-credential-lifecycle.json}"
 
 mkdir -p "$(dirname "$evidence_path")"
 rm -f "$evidence_path"
 
-cd "$root_dir/agent-runtime"
+cd "$root_dir/services/agent-runtime"
 export DIPOLE_AGENT_CREDENTIAL_LIFECYCLE_DRILL=true
 export DIPOLE_AGENT_CREDENTIAL_LIFECYCLE_EVIDENCE="$evidence_path"
 npm test -- --run src/runtime/external-mcp-credential-lifecycle-drill.integration.test.ts

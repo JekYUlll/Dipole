@@ -24,7 +24,7 @@ __pycache__/
 tmp/
 frontend/chat-server
 node_modules/
-agent-runtime/.artifacts/
+services/agent-runtime/.artifacts/
 frontend/playwright-report/
 frontend/test-results/
 

@@ -510,7 +510,7 @@
 - **性能门禁：** 2026-08-29 对同一 direct created v1 事件执行 100,000 次 Go/C++ JSON 解码与投影，结果计数一致但 C++/Go ops ratio 约为 `0.10`，低于 `1.0` 晋级门槛；当前保留 Go projection，C++ 仅保留故障隔离、authority 和后续连接/批处理数据面评估边界。
 - **追加验证：** 当前候选 revision `c063594` 重新执行 100,000 次固定 workload，C++/Go ops ratio 为 `0.0976283897`，结果计数一致且仍为 `blocked`；证据归档于 `benchmarks/c2-cpp-projection-benchmark-2026-08-29-rerun/`，继续保留 Go projection。
 - **追加验证：** 当前 `master` 基线 `92d0c58` 在 Ubuntu 24.04 容器中完成依赖安装、CMake Release 构建和 14/14 CTest，镜像 provenance 为 `dirty=false`；Go/C++ projection 性能对照仍低于晋级阈值，C++ 继续保持候选数据面，不改变默认 Go authority。
-- **构建验证：** 2026-08-29 使用 `realtime-delivery/Dockerfile` 在 Ubuntu 24.04 隔离环境完成 C++ 依赖安装、镜像构建和 14/14 CTest；宿主机缺少 `grpc++ >= 1.51` 仅影响本地直接运行，不改变源码门禁结论。
+- **构建验证：** 2026-08-29 使用 `services/realtime-delivery/Dockerfile` 在 Ubuntu 24.04 隔离环境完成 C++ 依赖安装、镜像构建和 14/14 CTest；宿主机缺少 `grpc++ >= 1.51` 仅影响本地直接运行，不改变源码门禁结论。
 - **验证入口：** 已增加 `scripts/check-cpp-realtime-container.sh`，统一复用上述 Dockerfile 并绑定 revision、created、dirty provenance；容器门禁通过不会改变默认 Go authority 或放宽 C3 灰度条件。
 - **兼容说明：** tracked deployment 继续默认 Go；关闭该债务只表示 C3 切流协议与回切证据门槛完成，启用 C++ authority 仍需要独立的灰度发布决策和显式配置。
 

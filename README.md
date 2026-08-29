@@ -83,6 +83,7 @@ npm run build
 文档按主题归档在 [`docs/`](docs/README.md)，根目录只保留项目入口、滚动更新日志和仓库协作规则。
 
 - [架构与演进](docs/README.md#架构与演进)
+- [多语言服务目录](services/README.md)
 - [数据与存储](docs/README.md#数据与存储)
 - [部署与运行](docs/README.md#部署与运行)
 - [Agent Runtime](docs/README.md#agent-runtime)

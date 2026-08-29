@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 
 const sourceUrl = new URL("../db/queries/agent_model_audit.sql", import.meta.url);
-const outputUrl = new URL("../agent-runtime/src/models/mysql-model-audit-queries.ts", import.meta.url);
+const outputUrl = new URL("../services/agent-runtime/src/models/mysql-model-audit-queries.ts", import.meta.url);
 const source = await readFile(sourceUrl, "utf8");
 const entries = [...source.matchAll(/^-- name: (\w+) :\w+\n([\s\S]*?)(?=^-- name:|(?![\s\S]))/gm)];
 

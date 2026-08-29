@@ -19,7 +19,7 @@ else
 fi
 
 "${docker_bin}" build \
-  --file "${root_dir}/realtime-delivery/Dockerfile" \
+  --file "${root_dir}/services/realtime-delivery/Dockerfile" \
   --tag "${image}" \
   --build-arg "DIPOLE_VCS_REVISION=${revision}" \
   --build-arg "DIPOLE_BUILD_CREATED=${created}" \

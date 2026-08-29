@@ -82,7 +82,7 @@ services:
 
   agent:
     build:
-      context: ./agent-runtime
+      context: ./services/agent-runtime
       dockerfile: Dockerfile
     image: ${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
     restart: unless-stopped
@@ -153,7 +153,7 @@ services:
     profiles: ["realtime-cpp"]
     build:
       context: .
-      dockerfile: realtime-delivery/Dockerfile
+      dockerfile: services/realtime-delivery/Dockerfile
     image: ${DIPOLE_REALTIME_IMAGE:-dipole-realtime-delivery:latest}
     restart: unless-stopped
     volumes:

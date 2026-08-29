@@ -25,7 +25,7 @@ done
 curl -fsS http://127.0.0.1:13133/ >/dev/null
 curl -fsS http://127.0.0.1:3200/ready >/dev/null
 
-npm --prefix "$root_dir/agent-runtime" run build >/dev/null
+npm --prefix "$root_dir/services/agent-runtime" run build >/dev/null
 trace_id=$(
   cd "$root_dir"
   DIPOLE_AGENT_OTEL_ENABLED=true \
@@ -33,8 +33,8 @@ trace_id=$(
   OTEL_TRACES_SAMPLER_ARG=1 \
   OTEL_SERVICE_NAME=dipole-agent-smoke \
   node --input-type=module <<'NODE'
-import { createAgentObservabilityRuntime, loadAgentObservabilityConfig } from "./agent-runtime/dist/observability/agent-observability-runtime.js";
-import { AgentTelemetry } from "./agent-runtime/dist/observability/agent-telemetry.js";
+import { createAgentObservabilityRuntime, loadAgentObservabilityConfig } from "./services/agent-runtime/dist/observability/agent-observability-runtime.js";
+import { AgentTelemetry } from "./services/agent-runtime/dist/observability/agent-telemetry.js";
 
 const runtime = createAgentObservabilityRuntime(loadAgentObservabilityConfig(process.env));
 runtime.start();

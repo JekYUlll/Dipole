@@ -18,8 +18,8 @@
 `offline-suite.json` 是 deterministic synthetic foundation，输入和输出遵循 `offline-suite.schema.json` 与 `offline-report.schema.json`。每个 Suite 必须同时包含 outcome、trajectory、permission、retrieval 和 cost，case ID 在 Suite 内唯一；Runtime 对规范化 Suite 计算 SHA-256，并且报告只保留稳定 ID、失败原因和数值指标，不回显消息或模型正文。
 
 ```bash
-cd agent-runtime
-npm run eval:offline -- --suite=../contracts/agent-evals/v1/offline-suite.json
+cd services/agent-runtime
+npm run eval:offline -- --suite=../../contracts/agent-evals/v1/offline-suite.json
 ```
 
 退出码 `0` 表示全部 case 通过，`2` 表示有效 Suite 存在评测失败，`1` 表示参数或契约无效。当前 fixture 用于验证 Harness 语义，真实 Shadow Task adapter、人工标注 corpus 和检索相关性基线由 `AD-038` 跟踪。
@@ -33,7 +33,7 @@ npm run eval:offline -- --suite=../contracts/agent-evals/v1/offline-suite.json
 运行前为独立只读账号应用 `configs/mysql/agent-eval-grants.dist.sql`，并以受控 Secret 配置连接：
 
 ```bash
-cd agent-runtime
+cd services/agent-runtime
 export DIPOLE_AGENT_EVAL_MYSQL_URL='mysql://dipole_agent_eval:...@mysql:3306/dipole'
 npm run eval:shadow -- --manifest=../path/to/reviewed-shadow-manifest.json
 ```
@@ -47,10 +47,10 @@ Adapter 从真实 `Task/Run/Plan/Step/Artifact/ModelCall/ToolCall` 生成 observ
 `memory-correction-manifest.schema.json` 与 `memory-correction-observation.schema.json` 定义语言中立的 append-only correction 审计输入。Observation 由受控测试或审计采集器生成，必须绑定 predecessor/successor、完整 lineage、exact replay、drift conflict、owner/foreign 授权和 successor-only retrieval，并证明过程没有模型、Tool、Token 或模型成本。
 
 ```bash
-cd agent-runtime
+cd services/agent-runtime
 npm run eval:memory-correction -- \
-  --manifest=../contracts/agent-evals/v1/memory-correction-manifest.example.json \
-  --observation=../contracts/agent-evals/v1/memory-correction-observation.example.json
+  --manifest=../../contracts/agent-evals/v1/memory-correction-manifest.example.json \
+  --observation=../../contracts/agent-evals/v1/memory-correction-observation.example.json
 ```
 
 两个输入文件各自限制为 64 KiB，未知字段、正文载荷、证据漂移和非零模型调用均 fail closed。输出复用标准五类离线报告，只包含候选版本、摘要 ID、失败原因和数值指标，不回显 Memory、principal 或正文。该命令只读取文件，不连接生产数据库，也不会创建或修改 Memory。
