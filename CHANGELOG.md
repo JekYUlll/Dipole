@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：收紧 embedded 聚合的服务边界：仅允许 Core 的显式 `embedded_compat.go` 作为本地兼容/回滚桥接，新增结构门禁与 Core bootstrap 回归测试，阻止独立服务重新依赖 `internal/bootstrap/embedded`。
 - 2026-08-30：修正 C++ Realtime Delivery CMake 根目录探测并通过标准容器门禁；Ubuntu 24.04 容器构建、14/14 CTest 和镜像打包均通过，本机 host gate 因缺少 `grpc++` 依赖暂不能运行，C++ primary 仍保持关闭。
 - 2026-08-30：修正 C++ Realtime Delivery 的 CMake 根目录探测：同时支持源码仓库和独立容器构建上下文，按 canonical delivery proto 与 fence testdata 定位 `api/`、`contracts/`，避免本地配置误解析到 `services/api`。
 - 2026-08-30：Agent Runtime 对 `DIPOLE_AGENT_RUNTIME_MODE` 增加显式枚举校验，除 `shadow`/`remote` 外的值现在 fail closed，避免拼写错误静默回退到 Shadow。

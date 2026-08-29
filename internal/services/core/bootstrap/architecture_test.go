@@ -36,3 +36,23 @@ func TestCoreServiceEntrypointUsesOwnedRuntime(t *testing.T) {
 		t.Fatalf("Core service entrypoint must own its HTTP/TLS server startup")
 	}
 }
+
+func TestEmbeddedRollbackBridgeOwnsAggregateDependency(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("embedded_compat.go"))
+	if err != nil {
+		t.Fatalf("read Core embedded compatibility bridge: %v", err)
+	}
+	if !strings.Contains(string(source), "internal/bootstrap/embedded/runtime") {
+		t.Fatalf("Core embedded compatibility bridge must point to the aggregate runtime")
+	}
+
+	for _, path := range []string{"runtime.go", "rpc.go", "messaging.go"} {
+		serviceSource, err := os.ReadFile(filepath.Join(path))
+		if err != nil {
+			t.Fatalf("read Core bootstrap source %s: %v", path, err)
+		}
+		if strings.Contains(string(serviceSource), "internal/bootstrap/embedded") {
+			t.Fatalf("Core bootstrap file %s must not depend on embedded composition", path)
+		}
+	}
+}
