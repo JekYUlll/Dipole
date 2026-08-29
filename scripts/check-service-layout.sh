@@ -39,12 +39,12 @@ if [[ ! -f "${root_dir}/internal/services/message/domain/message_event.go" ]]; t
   echo "Message event domain implementation is outside its service boundary" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/services/message/infrastructure/mysql/message_repository.go" ]]; then
-  echo "Message MySQL repository is outside its service boundary" >&2
-  exit 1
-fi
 if [[ ! -f "${root_dir}/internal/services/message/domain/sync_projection.go" ]]; then
   echo "Message Sync projection implementation is outside its service boundary" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/message/infrastructure/mysql/message_repository.go" ]]; then
+  echo "Message MySQL repository is outside its service boundary" >&2
   exit 1
 fi
 if [[ ! -f "${root_dir}/internal/services/core/application/application.go" ]]; then
