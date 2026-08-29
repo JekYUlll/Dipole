@@ -56,7 +56,7 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 - `internal/platform/cassandra/` 只允许存放 Cassandra 连接、Timeline 和 hydration 存储适配器；服务业务策略应位于对应服务边界。
 - `internal/platform/storage/` 及其 `routing/`、`shadow/` 子包只允许存放跨服务存储适配器和可回退迁移装饰器；不得在其中新增 Message/Sync 业务规则。
 - `internal/platform/elasticsearch/` 只允许存放 Search/Indexer 共用的 Elasticsearch 客户端、Alias、mapping 和 projection adapter；搜索权限和事件编排必须位于对应服务边界。
-- `internal/platform/mysql/` 只允许存放基于 database/sql + SQLC 的共享连接、Queries、generated 输出、mapper 和事务边界；业务仓储进入对应服务，旧 `internal/data/mysql/store_compat.go` 只保留兼容转发。
+- `internal/platform/mysql/` 只允许存放基于 database/sql + SQLC 的共享连接、全局初始化、Queries、generated 输出、mapper 和事务边界；业务仓储进入对应服务，旧 `internal/data/mysql/store_compat.go` 与 `internal/store/mysql_compat.go` 只保留兼容转发。
 - `internal/services/sync/infrastructure/kafka/` 只允许存放 Sync owned 的 Kafka consumer/projector；跨服务消息事件解码复用 Message domain contract，禁止恢复 `internal/projector/sync/`。
 - `internal/services/search/infrastructure/kafka/` 只允许存放 Search Indexer owned 的 Kafka consumer/projector；跨服务消息事件解码复用 Message domain contract，禁止恢复 `internal/projector/search/`。
 - `internal/services/message/infrastructure/cassandra/` 只允许存放 Message owned 的 Cassandra Timeline projector；连接和通用 Timeline adapter 仍位于 `internal/platform/cassandra/`，禁止恢复 `internal/projector/cassandra/`。

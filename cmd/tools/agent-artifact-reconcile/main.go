@@ -10,11 +10,11 @@ import (
 	"syscall"
 
 	"github.com/JekYUlll/Dipole/internal/config"
+	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	platformstorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	artifactreconcile "github.com/JekYUlll/Dipole/internal/reconcile/artifact"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
-	"github.com/JekYUlll/Dipole/internal/store"
 )
 
 func main() {
@@ -26,10 +26,10 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if err := store.InitMySQL(); err != nil {
+	if err := platformmysql.InitMySQL(); err != nil {
 		fatal(fmt.Errorf("initialize MySQL: %w", err))
 	}
-	defer store.SQLDB.Close()
+	defer platformmysql.SQLDB.Close()
 	storageCfg := config.StorageConfig()
 	source, err := platformstorage.NewAgentArtifactObjectSourceV1(ctx, platformstorage.AgentArtifactAuditConfigV1{
 		Endpoint: storageCfg.ArtifactEndpoint, AccessKey: storageCfg.ArtifactAuditAccessKey,
@@ -39,7 +39,7 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	metadata, err := agentmysql.NewAgentArtifactRepository(generated.New(store.SQLDB))
+	metadata, err := agentmysql.NewAgentArtifactRepository(generated.New(platformmysql.SQLDB))
 	if err != nil {
 		fatal(err)
 	}
