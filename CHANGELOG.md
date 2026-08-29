@@ -599,6 +599,7 @@
 - 更新 OpenAPI/Swagger 文档，加入同步接口及其请求、响应模型。
 
 ### 修复
+- 修正 Timeline repair Compose smoke 与运维手册的迁移基线至 v50，避免 v50 schema 在部署前置检查中被误判为旧版本。
 - 修正 MySQL migration integration 的当前版本基线至 v50，并校正 Metadata 回填测试的回退步数；隔离 Cassandra/Sync hydration smoke 现可真实覆盖 v12 `message_metadata` legacy-message backfill。
 - Go 质量门禁默认采用 `CGO_ENABLED=0`，与服务镜像的静态构建保持一致；需要平台原生依赖的检查仍可显式设置 `CGO_ENABLED=1`。
 

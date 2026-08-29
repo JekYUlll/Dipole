@@ -43,8 +43,8 @@ timeline_table=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
   -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'dipole' AND table_name = 'agent_task_timeline_events';")
 timezone_state=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
   -e 'SELECT @@global.time_zone, @@session.time_zone;')
-if [[ "${migration_state}" != $'49\t49' || "${timeline_table}" != "1" || "${timezone_state}" != $'+00:00\t+00:00' ]]; then
-  printf 'Compose migration preflight failed: state=%q timeline_table=%q (want version/count 49/49 and table=1)\n' \
+if [[ "${migration_state}" != $'50\t50' || "${timeline_table}" != "1" || "${timezone_state}" != $'+00:00\t+00:00' ]]; then
+  printf 'Compose migration preflight failed: state=%q timeline_table=%q (want version/count 50/50 and table=1)\n' \
     "${migration_state}" "${timeline_table}" >&2
   printf 'Compose timezone preflight failed: timezone_state=%q (want +00:00/+00:00)\n' "${timezone_state}" >&2
   compose logs migrate >&2 || true
