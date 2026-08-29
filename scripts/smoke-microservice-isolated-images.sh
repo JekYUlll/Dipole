@@ -27,13 +27,18 @@ export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
 compose() {
   local -a profile_args=()
+  local -a overlay_args=()
   if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
     profile_args+=(--profile search)
+  fi
+  if [[ "${SMOKE_INBOX_PROJECTOR:-0}" == "1" ]]; then
+    overlay_args+=( -f "${root_dir}/deploy/microservices/inbox-projector.yml" )
   fi
   docker compose -p "${project}" \
     "${profile_args[@]}" \
     -f "${root_dir}/deploy/compose/docker-compose.microservices.yml" \
     -f "${root_dir}/deploy/microservices/isolated-images.yml" \
+    "${overlay_args[@]}" \
     -f "${ports_file}" "$@"
 }
 
@@ -173,8 +178,12 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
   test "${message_count}" = "1"
   outbox_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
     -e "SELECT COUNT(*) FROM outbox_events WHERE value LIKE '%${message_content}%';")
-  inbox_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
-    -e "SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid=i.message_uuid WHERE m.content='${message_content}' AND i.user_uuid='${target_uuid}';")
+  for _ in $(seq 1 30); do
+    inbox_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
+      -e "SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid=i.message_uuid WHERE m.content='${message_content}' AND i.user_uuid='${target_uuid}';")
+    [[ "${inbox_count}" == "1" ]] && break
+    sleep 1
+  done
   test "${outbox_count}" = "1"
   test "${inbox_count}" = "1"
   history_response=$(curl --fail --silent --show-error --connect-timeout 2 --max-time 5 \
@@ -192,4 +201,5 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
   printf 'isolated candidate message flow passed: sender=%s target=%s\n' "${sender_uuid}" "${target_uuid}"
 fi
 
-printf 'isolated microservices smoke passed: project=%s gateway_port=%s search_profile=%s\n' "${project}" "${gateway_port}" "${SMOKE_SEARCH_PROFILE:-0}"
+printf 'isolated microservices smoke passed: project=%s gateway_port=%s search_profile=%s inbox_projector=%s\n' \
+  "${project}" "${gateway_port}" "${SMOKE_SEARCH_PROFILE:-0}" "${SMOKE_INBOX_PROJECTOR:-0}"
