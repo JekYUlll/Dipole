@@ -63,7 +63,7 @@
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
 - 服务入口只能通过 Composition Root 装配这些实现；禁止在 Handler、Transport 或另一个服务的业务包中直接创建具体 Repository。
 - 服务入口优先依赖自身的 `internal/services/<service>/bootstrap`；尚未完成运行时基础设施拆分的服务，可以通过该目录的兼容 facade 过渡，但入口不得直接引用共享 `internal/bootstrap`。
-- `internal/data/mysql/repository/` 仅允许保留兼容别名、构造转发和迁移期间的兼容测试辅助代码；具体 SQLC repository 必须位于其服务的 infrastructure 边界。
+- `internal/data/mysql/repository/` 仅允许保留仍有回滚调用者的兼容别名、构造转发和迁移期间的兼容测试辅助代码；Message 与 Sync repository facade 已完成调用审计并退役，具体 SQLC repository 必须位于其服务的 infrastructure 边界。
 - 业务服务不得跨边界写入其他服务拥有的表。查询应通过 application port、RPC 或版本化事件完成。
 - `cmd/tools` 的回填、对账和证据程序可以复用只读 application port，但不能成为长期服务的隐式写入口。
 

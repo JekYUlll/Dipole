@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：全仓调用审计确认 Message/Sync repository facade 无生产或测试调用者，已删除 `internal/data/mysql/repository/message_compat.go` 与 `sync_compat.go`，并收紧服务布局门禁；Core、Agent、Search 兼容入口及 `internal/store` 回滚入口继续保留。
 - 2026-08-29：调用审计确认 `internal/bootstrap.RegisterGatewayKafkaHandlers` 已无调用者，embedded 装配已直接使用 Gateway infrastructure 注册器并删除 facade；Gateway Kafka 兼容入口完成退休。
 - 2026-08-29：Gateway runtime 已直接调用 Gateway Kafka infrastructure 注册器，移除生产路径对 `internal/bootstrap` Kafka 兼容入口的依赖；架构测试锁定 runtime 不得回流共享 bootstrap。
 - 2026-08-29：Gateway Kafka 注册器与 authority handler factory 已迁入 `internal/services/gateway/infrastructure/kafka/`，`internal/bootstrap` 仅保留兼容转发及 Core/Message projection；Gateway Kafka 装配边界已完成收敛。
@@ -136,7 +137,7 @@
 - **下一步：** 以 application port 和 contract test 为边界，按 Core、Message、Sync、Search、Agent 顺序拆分 Composition Root、业务实现和数据访问包；每次迁移保持旧入口可回切，并同步更新服务边界清单。
 - **验证门槛：** 新增服务必须有独立入口、构建制品、数据 ownership、依赖清单、contract test 和回滚说明；结构门禁、Go 全量测试、镜像隔离检查和对应服务 smoke 必须通过。
 - **本轮进展：** 已新增服务入口索引、服务边界清单和结构门禁检查；本条债务保留，代表代码物理边界尚未全部收敛。
-- **验证记录：** 当前分支全量 `CGO_ENABLED=0 go test ./...` 通过，根级目录白名单、服务布局和架构文档门禁通过；兼容 facade 仍保留为 embedded 测试与回滚边界，暂不删除。
+- **验证记录：** 当前分支全量 `CGO_ENABLED=0 go test ./...` 通过，根级目录白名单、服务布局和架构文档门禁通过；仍有调用者的兼容 facade 保留为 embedded 测试与回滚边界，已完成审计的 Message/Sync facade 不再保留。
 - **本轮进展：** Agent infrastructure contract tests 已切换到 Agent-owned application constructors，Agent 服务结构门禁现在阻止对聚合 `internal/app` 的直接依赖；Core 兼容层和其他共享基础设施仍按后续切片继续收敛。
 - **本轮进展：** Core Auth TokenService 已通过 `internal/platform/cache` 访问 Redis 撤销状态，移除 Core domain 对 `internal/store` 的直接依赖；Redis 缺失时仍保持 fail-closed，其他 Core Redis 使用点继续按后续切片收敛。
 - **本轮进展：** Core 文件分片会话已通过 `internal/platform/cache` 执行 Redis raw read、transaction、hash 和 delete，domain 实现移除对 `internal/store` 的直接依赖；上传会话事务与失败回滚语义保持不变，其他 Core Redis 使用点继续按后续切片收敛。
