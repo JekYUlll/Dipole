@@ -1,4 +1,4 @@
-package service
+package coreuser
 
 import (
 	"context"
