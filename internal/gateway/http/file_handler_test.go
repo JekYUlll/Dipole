@@ -24,6 +24,7 @@ type stubFileService struct {
 	initiateMultipartFn func(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
 	statusMultipartFn   func(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error)
 	presignMultipartFn  func(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error)
+	registerMultipartFn func(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error
 	uploadPartFn        func(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error
 	completeMultipartFn func(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	abortMultipartFn    func(uploaderUUID, sessionID string) error
@@ -75,6 +76,13 @@ func (s *stubFileService) PresignMultipartParts(uploaderUUID, sessionID string, 
 		return nil, nil
 	}
 	return s.presignMultipartFn(uploaderUUID, sessionID, partNumbers)
+}
+
+func (s *stubFileService) RegisterMultipartPart(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error {
+	if s.registerMultipartFn == nil {
+		return nil
+	}
+	return s.registerMultipartFn(uploaderUUID, sessionID, partNumber, input)
 }
 
 func (s *stubFileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
@@ -376,6 +384,31 @@ func TestFileHandlerPresignMultipartPartsSuccess(t *testing.T) {
 
 	handler.PresignMultipartParts(context)
 
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestFileHandlerRegisterMultipartPartSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&stubFileService{
+		registerMultipartFn: func(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error {
+			if uploaderUUID != "U100" || sessionID != "MU100" || partNumber != 1 || input.ETag != "etag-1" || input.Size != 5 {
+				t.Fatalf("unexpected register args: %s %s %d %+v", uploaderUUID, sessionID, partNumber, input)
+			}
+			return nil
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/files/uploads/MU100/parts/1/register", strings.NewReader(`{"etag":"etag-1","size":5}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "session_id", Value: "MU100"}, {Key: "part_number", Value: "1"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.RegisterMultipartPart(context)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
