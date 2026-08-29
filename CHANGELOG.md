@@ -21,6 +21,7 @@
 - 整理多语言微服务目录：将 TypeScript Agent Runtime 和 C++ Realtime Delivery 从根目录收敛到 `services/`，同步更新 Compose、Docker、生成脚本、测试门禁和运行文档；Go 长期服务继续统一使用 `cmd/services/` 入口，根目录不再承载多语言服务源码。
 
 ### 变更
+- 将跨 Message/Sync 复用的 Cassandra Timeline、连接和 hydration 适配器从 `internal/data/cassandra` 收纳到 `internal/platform/cassandra`，新增目录职责说明和结构门禁；服务业务 projection 与编排保持原有边界。
 - 将 Core、Sync 和 Message 的旧服务兼容入口从 `internal/service` 收纳到 `internal/compat/service`，新增兼容层说明与结构门禁；共享事件发布契约继续留在 `internal/service`，业务行为和回滚入口保持兼容。
 - Core 文件分片会话的 Redis 访问已收敛到 `internal/platform/cache`，domain 保留会话协议并移除对聚合 `internal/store` 的直接依赖；事务写入、缺失 Redis 和上传回滚语义保持兼容。
 - Core Auth TokenService 的 Redis 撤销状态访问已收敛到 `internal/platform/cache`，移除对 `internal/store` 全局客户端的直接依赖；写入和校验在 Redis 不可用时保持 fail-closed。

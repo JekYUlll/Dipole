@@ -19,6 +19,10 @@ if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal
   echo "legacy compatibility adapters must be isolated under internal/compat" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/platform/cassandra/README.md" || ! -f "${root_dir}/internal/platform/cassandra/timeline.go" ]]; then
+  echo "shared Cassandra adapters must remain under internal/platform/cassandra" >&2
+  exit 1
+fi
 for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
   if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
     echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2
