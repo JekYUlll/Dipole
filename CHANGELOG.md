@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Agent Runtime 独立进程 smoke 已验证默认安全配置下的 `/livez`、`/readyz` 和 SIGINT 优雅退出；Kafka、Temporal、MCP 与 Task Control 保持关闭，避免将本地启动验证误作外部依赖联调。
 - Agent Runtime TypeScript protobuf generated files 已按当前 `api/proto` 重新生成，补齐 Message system-message RPC 并通过 proto drift 检查；Agent Runtime `661 passed / 27 skipped`，typecheck 和 build 均通过。
 - AI assistant 用户 seed 已下沉到 `internal/services/core/application`，独立 Core 与 embedded 回滚路径共享 Core-owned 初始化能力；Core bootstrap 不再依赖旧 bootstrap 的 assistant seed facade，并新增缺失 Store 的测试覆盖。
 - Core Conversation Kafka projection 已迁入 `internal/services/core/infrastructure/kafka`，独立 Core 直接注册 group/message projection；旧 `internal/bootstrap` 入口降为兼容转发，事件版本解码、Conversation Seq 映射和错误传播保持不变。
