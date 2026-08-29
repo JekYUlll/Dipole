@@ -14,6 +14,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
+	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
@@ -236,13 +237,7 @@ func dialCoreCapabilityAs(ctx context.Context, cfg config.InternalRPC, callerSer
 }
 
 func NewMessageRPCServer(cfg config.InternalRPC, messages application.MessageApplication) (*InternalRPCServer, error) {
-	adapter, err := messagegrpc.NewServer(messages)
-	if err != nil {
-		return nil, fmt.Errorf("create message rpc adapter: %w", err)
-	}
-	return newInternalRPCServer(cfg, cfg.MessageListenAddress, []string{gatewayServiceName, coreServiceName}, func(server *grpc.Server) {
-		messagev1.RegisterMessageServiceServer(server, adapter)
-	})
+	return messagebootstrap.NewMessageRPCServer(cfg, messages)
 }
 
 func DialMessageApplication(ctx context.Context, cfg config.InternalRPC) (*messagegrpc.Client, *grpc.ClientConn, error) {

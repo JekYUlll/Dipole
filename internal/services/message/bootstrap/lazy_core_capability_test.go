@@ -5,10 +5,13 @@ import (
 	"testing"
 	"time"
 
+	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
-	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
+	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
+	"google.golang.org/grpc"
 )
 
 func TestLazyCoreCapabilityDoesNotBlockMessageStartupAndRetries(t *testing.T) {
@@ -34,12 +37,18 @@ func TestLazyCoreCapabilityDoesNotBlockMessageStartupAndRetries(t *testing.T) {
 		t.Fatal("failed lazy dial must not be cached")
 	}
 
-	server, err := legacybootstrap.NewCoreRPCServer(config.InternalRPC{
+	adapter, err := coregrpc.NewServer(messageCoreCapabilityStub{})
+	if err != nil {
+		t.Fatalf("create Core RPC adapter: %v", err)
+	}
+	server, err := platformrpc.NewServer(config.InternalRPC{
 		Enabled:            true,
 		SharedSecret:       "test-secret",
 		CoreListenAddress:  "127.0.0.1:0",
 		DialTimeoutSeconds: 1,
-	}, messageCoreCapabilityStub{})
+	}, "127.0.0.1:0", []string{"dipole-message"}, func(server *grpc.Server) {
+		corev1.RegisterCoreCapabilityServiceServer(server, adapter)
+	}, coregrpc.RestrictServiceMethods)
 	if err != nil {
 		t.Fatalf("start Core RPC server: %v", err)
 	}
