@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
 func TestPersistentAgentTaskWorkflowProjectionServiceBindsTaskRunAndRevision(t *testing.T) {
@@ -13,7 +14,7 @@ func TestPersistentAgentTaskWorkflowProjectionServiceBindsTaskRunAndRevision(t *
 		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100", Status: application.AgentTaskStatusRunning}},
 		runs:  map[string]*application.AgentRunV1{"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning}},
 	}
-	service, err := NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
+	service, err := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
 	if err != nil {
 		t.Fatalf("new projection service: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestPersistentAgentTaskWorkflowProjectionServiceRejectsBindingAndTerminalDr
 		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100", Status: application.AgentTaskStatusRunning}},
 		runs:  map[string]*application.AgentRunV1{"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusCompleted}},
 	}
-	service, _ := NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
+	service, _ := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
 	base := application.AgentTaskWorkflowProjectionRequestV1{
 		Projection: application.AgentTaskWorkflowProjectionV1{
 			TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
@@ -66,7 +67,7 @@ func TestPersistentAgentTaskWorkflowProjectionListsFixedShadowCohort(t *testing.
 	store := &agentPolicyStoreStub{tasks: map[string]*application.AgentTaskV1{
 		"TASK-1": {TaskUUID: "TASK-1", Workflow: &application.AgentTaskWorkflowProjectionV1{TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1"}},
 	}}
-	service, _ := NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
+	service, _ := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
 	page, err := service.ListProjectionSnapshots(context.Background(), "", 10)
 	if err != nil || len(page.Tasks) != 1 || page.Tasks[0].TaskUUID != "TASK-1" || page.NextCursor != "" {
 		t.Fatalf("projection page: %+v err=%v", page, err)
