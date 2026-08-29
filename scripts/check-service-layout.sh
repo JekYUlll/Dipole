@@ -35,6 +35,10 @@ if [[ ! -f "${root_dir}/internal/services/core/application/application.go" ]]; t
   echo "Core capability implementation is outside its service boundary" >&2
   exit 1
 fi
+if [[ ! -f "${root_dir}/internal/services/core/application/conversation.go" ]]; then
+  echo "Core conversation application is outside its service boundary" >&2
+  exit 1
+fi
 if rg --quiet '^type LocalCoreCapability struct' "${root_dir}/internal/app"; then
   echo "legacy shared Core capability implementation remains under internal/app" >&2
   exit 1

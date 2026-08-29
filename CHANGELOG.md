@@ -22,6 +22,7 @@
 - Sync application 装配已迁入 `internal/services/sync/application/`；`internal/app` 仅通过 `SyncApplication` port 组合，embedded Core 兼容路径和独立 Sync runtime 的行为保持一致。
 - Message application 装配已迁入 `internal/services/message/application/`；保留 Agent command、Outbox 和消息持久化扩展能力，embedded Core 与独立 Message runtime 继续使用同一服务专属 factory。
 - Core capability 实现已迁入 `internal/services/core/application/`；factory 改用用户、联系人、群组、文件和会话查询所需的最小接口，embedded 兼容构造入口保留，便于后续 Core 服务独立部署。
+- Core Conversation application 装配已迁入 `internal/services/core/application/`；Core 的 embedded 与独立 runtime 共用服务专属 local adapter，底层 ConversationService 保持兼容并列入后续物理迁移。
 - Search application 已从共享 `internal/app` 迁移到 `internal/services/search/application/`，Search runtime 保持原 application port 不变；结构门禁会阻止旧实现路径回流。
 - 微服务远程模式下 Gateway 直接拥有消息历史与 Sync HTTP 路由，新增 Sync gRPC 连接和 readiness 依赖；Core 仅在 embedded 模式注册消息/同步数据路由，减少 Core HTTP 反代对服务 ownership 的绕行。
 - Gateway 现在直接拥有消息历史和 Sync HTTP 路由，并通过 Message/Sync gRPC 客户端访问；Core 在 `gateway.mode=remote` 下不再注册消息/同步 HTTP 与 WebSocket 数据路由，embedded 模式继续保留兼容入口。

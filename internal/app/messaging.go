@@ -33,7 +33,7 @@ type MessagingServices struct {
 	Core          applicationPort.CoreCapability
 	Files         *service.FileService
 	Messages      *messageapplication.LocalApplication
-	Conversations *service.ConversationService
+	Conversations *coreapplication.LocalConversationApplication
 	Sync          applicationPort.SyncApplication
 }
 
@@ -57,12 +57,14 @@ func NewMessagingServices(repos *Repositories, dependencies MessagingDependencie
 		Core:     core,
 		Files:    files,
 		Messages: messages,
-		Conversations: service.NewConversationService(
+		Conversations: coreapplication.NewConversationApplication(
 			repos.Conversations,
 			repos.Users,
 			repos.Groups,
-			dependencies.ConversationNotifier,
-			dependencies.Events,
+			coreapplication.ConversationDependencies{
+				Notifier: dependencies.ConversationNotifier,
+				Events:   dependencies.Events,
+			},
 		),
 		Sync: syncapplication.New(repos.Sync, core),
 	}
