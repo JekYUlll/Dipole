@@ -8,13 +8,13 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/config"
-	sqlcrepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	syncbackfill "github.com/JekYUlll/Dipole/internal/operations/sync/backfill"
 	syncreconcile "github.com/JekYUlll/Dipole/internal/operations/sync/reconcile"
 	syncreplaymysql "github.com/JekYUlll/Dipole/internal/operations/sync/replay/mysql"
 	platformmysql "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	mysqlconfig "github.com/JekYUlll/Dipole/internal/platform/mysql/config"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
+	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -45,7 +45,7 @@ func RunSyncReplay(ctx context.Context, options SyncReplayOptions) (syncbackfill
 	if err != nil {
 		return syncbackfill.Result{}, err
 	}
-	target, err := sqlcrepository.NewSyncProjectionRepository(store)
+	target, err := syncmysql.NewSyncProjectionRepository(store)
 	if err != nil {
 		return syncbackfill.Result{}, err
 	}

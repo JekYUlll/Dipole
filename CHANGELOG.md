@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- 收敛 MySQL repository 调用边界：Sync 运维、Message/Sync/Cassandra 集成测试和 embedded composition 测试改用对应服务自有 SQLC repository；历史 `internal/data/mysql/repository` 兼容别名继续保留，但结构门禁禁止新的运行时代码依赖该路径。
 - Compose 结构门禁新增 Core/Message 默认拓扑循环依赖检查：默认微服务配置禁止双方互相 `depends_on`，并继续要求 Core 使用远程 gRPC transport；Cassandra primary 的 embedded/local 回滚覆盖层保持兼容。
 - Message Service 对 Core Capability RPC 改用惰性连接与就绪探针：Core 未监听时 Message 仍可完成启动，失败连接不缓存并在后续请求或探针中重试；关闭和 embedded/local 回退语义保持兼容。
 - 更新平台演进计划的当前基线，使部署入口、Gateway/Message/Sync ownership、MySQL/Kafka/Cassandra/Redis 分层和 Go/Eino 到 TS Runtime 的过渡状态与仓库现状一致；保留 embedded 与 shadow/primary 回滚边界。

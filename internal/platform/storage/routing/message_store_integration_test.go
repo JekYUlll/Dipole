@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/internal/config"
-	mysqlRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
 	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
+	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -33,11 +33,11 @@ func TestCassandraReadRouterMySQLFallbackContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create MySQL store: %v", err)
 	}
-	primary, err := mysqlRepository.NewMessageRepository(mysqlStore)
+	primary, err := messagemysql.NewMessageRepository(mysqlStore)
 	if err != nil {
 		t.Fatalf("create MySQL message repository: %v", err)
 	}
-	highWater := mysqlRepository.NewConversationSequenceRepository(generated.New(db))
+	highWater := messagemysql.NewConversationSequenceRepository(generated.New(db))
 
 	session, err := cassandraData.OpenSession(config.Cassandra{
 		Enabled: true, Hosts: hosts, Keyspace: "dipole_message_shadow",

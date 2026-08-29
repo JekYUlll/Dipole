@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/JekYUlll/Dipole/db/migrations"
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
 	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
+	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 )
 
 func TestSQLCMessageSyncSequenceFollowsCommitOrder(t *testing.T) {
@@ -139,7 +139,7 @@ func TestSQLCDeviceSyncCheckpointIsMonotonicUnderConcurrency(t *testing.T) {
 	if err := runner.Up(context.Background()); err != nil {
 		t.Fatalf("migrate contract database: %v", err)
 	}
-	repo, err := sqlcRepository.NewSyncRepository(generated.New(db))
+	repo, err := syncmysql.NewSyncRepository(generated.New(db))
 	if err != nil {
 		t.Fatalf("create sync repository: %v", err)
 	}

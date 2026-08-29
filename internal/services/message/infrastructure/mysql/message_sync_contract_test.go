@@ -10,12 +10,12 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/application"
-	sqlcRepository "github.com/JekYUlll/Dipole/internal/data/mysql/repository"
 	"github.com/JekYUlll/Dipole/internal/model"
 	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	messagemysql "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/mysql"
+	syncmysql "github.com/JekYUlll/Dipole/internal/services/sync/infrastructure/mysql"
 )
 
 type messageSyncStores struct {
@@ -103,11 +103,11 @@ func TestMessageSyncRepositoryContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create sqlc message repository: %v", err)
 	}
-	sqlcSync, err := sqlcRepository.NewSyncRepository(generated.New(db))
+	sqlcSync, err := syncmysql.NewSyncRepository(generated.New(db))
 	if err != nil {
 		t.Fatalf("create sqlc sync repository: %v", err)
 	}
-	sqlcProjection, err := sqlcRepository.NewSyncProjectionRepository(mysqlStore)
+	sqlcProjection, err := syncmysql.NewSyncProjectionRepository(mysqlStore)
 	if err != nil {
 		t.Fatalf("create sqlc Sync projection repository: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestMessageInboxWriteOwnershipCanMoveToProjectorAndRollBack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create projector-mode repository: %v", err)
 	}
-	projection, err := sqlcRepository.NewSyncProjectionRepository(store)
+	projection, err := syncmysql.NewSyncProjectionRepository(store)
 	if err != nil {
 		t.Fatalf("create Sync projector: %v", err)
 	}
