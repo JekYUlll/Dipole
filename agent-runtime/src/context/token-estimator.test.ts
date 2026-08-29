@@ -42,6 +42,17 @@ describe("route-aware token estimation", () => {
     expect(estimator.estimate("abcdefgh")).toBe(5);
   });
 
+  it("uses injected route tokenizer adapters and keeps other routes conservative", () => {
+    const estimator = createConservativeRouteEstimator(["gateway/tokenized", "gateway/fallback"], [
+      { route: "gateway/tokenized", contextWindowTokens: 32_768, utf8BytesPerToken: 4, safetyMarginBps: 1_000 },
+      { route: "gateway/fallback", contextWindowTokens: 16_384, utf8BytesPerToken: 4, safetyMarginBps: 1_000 }
+    ], [{ route: "gateway/tokenized", id: "fixture-tokenizer-v1", contextWindowTokens: 32_768, count: text => text.length }]);
+
+    expect(estimator.estimate("abcdefgh")).toBe(8);
+    expect(estimator.contextWindowTokens).toBe(16_384);
+    expect(estimator.id).toMatch(/^route-calibrated-v1:sha256:/);
+  });
+
   it("evaluates a reproducible multilingual and structured calibration corpus", () => {
     const estimator = createConservativeRouteEstimator(["gateway/calibrated"], [
       { route: "gateway/calibrated", contextWindowTokens: 32_768, utf8BytesPerToken: 2, safetyMarginBps: 2_500 }
@@ -61,5 +72,12 @@ describe("route-aware token estimation", () => {
       { route: "b", contextWindowTokens: 8_192, utf8BytesPerToken: 3, safetyMarginBps: 1_000 }
     ])).toThrow(/unknown route/);
     expect(() => parseRouteContextProfiles("not-json")).toThrow(/JSON/);
+    expect(() => createConservativeRouteEstimator(["a"], [], [
+      { route: "a", id: "duplicate", contextWindowTokens: 8_192, count: () => 1 },
+      { route: "a", id: "duplicate-2", contextWindowTokens: 8_192, count: () => 1 }
+    ])).toThrow(/unique/);
+    expect(() => createConservativeRouteEstimator(["a"], [], [
+      { route: "b", id: "unknown", contextWindowTokens: 8_192, count: () => 1 }
+    ])).toThrow(/unknown route/);
   });
 });

@@ -3,7 +3,7 @@
   "candidate": "2e4babfb766aed4c512844653bf76622452db61c",
   "evidenceCapturedAt": "2026-08-27T08:00:00.000Z",
   "evidenceSha256": "a95ecdbf8023b555cff2c6ec5b4f62e3dccb62b8f3abb0ce157e514fdab4c533",
-  "estimatorId": "route-calibrated-v1:sha256:a64dbad22ae551d5fffe117711aa8e0af22f77c7ed06e23c26e3a4239e7ea6da",
+  "estimatorId": "route-calibrated-v1:sha256:597b970fa91e846b0a0d8ae6407dba279cc77e051068954ec7d58553a7ec7afe",
   "contextWindowTokens": 32768,
   "fallbackRoutes": [],
   "caseCount": 5,
@@ -73,5 +73,5 @@
   ],
   "underestimates": [],
   "eligible": true,
-  "reportSha256": "d65192c2e0c4ed8f9d631a197c5f0667fb3e69bcf00fc3c80032dc93b9092be6"
+  "reportSha256": "d5bce2090f8d4b4c6af786d75dee656fd9dd33554ecaf8026e5880abe4863562"
 }

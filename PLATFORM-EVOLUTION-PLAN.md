@@ -374,6 +374,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Capability Registry 注册阶段限制 Schema 摘要关键字、`properties` 嵌套和 4 KiB 大小，并覆盖未知字段/超限回归测试，防止 descriptor 成为未治理的模型输入通道。
   - [x] Registry 注册后深度冻结 descriptor snapshot，阻止外部修改风险、权限和 Schema，并通过 descriptor 不可变回归测试。
   - [x] Context Compiler 为 selected fragment 写入 `contentSha256`，Shadow Plan 仅保存哈希和 provenance 元数据，支持低敏重放校验而不持久化 prompt 正文。
+  - [x] 增加 provider-neutral `RouteTokenizerAdapter` 注入边界：真实 tokenizer 可按 route 提供稳定 ID、上下文窗口和 token 计数；未配置 route 继续使用经校准的保守 UTF-8 fallback，生产接入仍需候选模型校准证据。
 - [ ] 引入 Working、Episodic、Semantic、Procedural 和 Observational Memory，并记录来源与作用域。
   - [x] migration v29、sqlc Store 与受认证 Core RPC 建立默认关闭的 scoped Memory 读取基础；Task/Run 固定 principal、tenant、Agent 和 conversation read scope，受控 Shadow 启用后 TS 按独立预算以 `untrusted` provenance fragment 注入 Context。
   - [x] 增加 Gateway principal 派生的 owner list/revoke API、稳定分页、追加式撤销审计和默认关闭的 Pencil/Vue 管理页面；公开结果省略内部 provenance URI，自动写入保持关闭。
