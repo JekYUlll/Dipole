@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "typecheck": "vue-tsc --noEmit",
     "build": "vue-tsc && vite build",
     "test": "vitest run",
     "test:toolchain": "node --test toolchain.test.mjs",
