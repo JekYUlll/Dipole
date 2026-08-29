@@ -328,6 +328,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 已完成前端按文件大小选择单请求或 Multipart 上传，并在分片失败时主动取消服务端会话。
 - [x] 建立 MinIO 预签名 Multipart part URL 契约：Core 按归属会话校验 part 编号并批量签发绑定 `uploadId + partNumber` 的短期 URL；现有 Core 中转路径继续作为默认回滚路径。
 - [x] Web 端接入默认关闭的预签名直传试运行：按 part 批量签发 URL，浏览器直接 PUT 到 MinIO，再经 Core 登记并核验 ETag/尺寸；失败继续 Abort 并回切旧中转路径。
+- [x] 为三套 Compose 的 `minio-init` 增加显式平台存储 CORS 配置：仅允许部署清单中的 Web Origin、`PUT/GET/HEAD` 和 `ETag` 暴露，不使用通配来源；生产域名需通过部署覆盖文件替换。
 - [ ] 将分片上传流量切换为 MinIO 预签名 URL 直传，Core 只负责初始化、签发受限 part URL、登记 ETag/尺寸、完成和取消，降低大文件对业务服务带宽与连接的占用。
 - [x] 增加前端有界并发、指数退避和单 part 重试；当前默认 3 路并发、最多 2 次重试，失败仍由上层取消整个 Multipart 会话。
 - [x] 增加客户端断点恢复基础：Web 按文件指纹保存 session，恢复前通过受保护状态接口校验文件元数据并跳过服务端已确认 part；完成或失败取消后清理本地 session。
