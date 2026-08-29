@@ -21,6 +21,8 @@ type AgentRuntimePromotionEvidenceReviewServiceV1 = agentapplication.AgentRuntim
 type PersistentAgentWorkflowRepairAuditServiceV1 = agentapplication.PersistentAgentWorkflowRepairAuditServiceV1
 type PersistentAgentArtifactServiceV1 = agentapplication.PersistentAgentArtifactServiceV1
 type PersistentAgentMemoryOwnerControlV1 = agentapplication.PersistentAgentMemoryOwnerControlV1
+type PersistentAgentEventSubscriptionResolverV1 = agentapplication.PersistentAgentEventSubscriptionResolverV1
+type PersistentAgentEventSubscriptionControlV1 = agentapplication.PersistentAgentEventSubscriptionControlV1
 
 func NewPersistentAgentApprovalGrantResolverV1(store application.AgentApprovalGrantStoreV1) (*PersistentAgentApprovalGrantResolverV1, error) {
 	return agentapplication.NewPersistentAgentApprovalGrantResolverV1(store)
@@ -92,4 +94,16 @@ func NewPersistentAgentArtifactServiceV1(policies agentapplication.AgentArtifact
 
 func NewPersistentAgentMemoryOwnerControlV1(store application.AgentMemoryOwnerStoreV1, now func() time.Time) (*PersistentAgentMemoryOwnerControlV1, error) {
 	return agentapplication.NewPersistentAgentMemoryOwnerControlV1(store, now)
+}
+
+func NewPersistentAgentEventSubscriptionResolverV1(store application.AgentEventSubscriptionStoreV1, definitions agentapplication.AgentSubscriptionDefinitionReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionResolverV1, error) {
+	return agentapplication.NewPersistentAgentEventSubscriptionResolverV1(store, definitions, now)
+}
+
+func NewPersistentAgentEventSubscriptionControlV1(store application.AgentEventSubscriptionStoreV1, definitions agentapplication.AgentSubscriptionDefinitionReaderV1, conversations agentapplication.AgentSubscriptionConversationReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionControlV1, error) {
+	return agentapplication.NewPersistentAgentEventSubscriptionControlV1(store, definitions, conversations, now)
+}
+
+func validSubscriptionDefinitionV1(definition *application.AgentDefinitionVersionV1, item application.AgentEventSubscriptionV1, request application.AgentEventSubscriptionMatchRequestV1, activeAt time.Time) bool {
+	return agentapplication.ValidSubscriptionDefinitionV1(definition, item, request, activeAt)
 }

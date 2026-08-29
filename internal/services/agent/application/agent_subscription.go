@@ -1,4 +1,4 @@
-package app
+package agentapplication
 
 import (
 	"bytes"
@@ -15,28 +15,28 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 )
 
-type agentSubscriptionDefinitionReaderV1 interface {
+type AgentSubscriptionDefinitionReaderV1 interface {
 	GetDefinitionVersion(ctx context.Context, definitionUUID string, version uint64) (*application.AgentDefinitionVersionV1, error)
 }
 
-type agentSubscriptionConversationReaderV1 interface {
+type AgentSubscriptionConversationReaderV1 interface {
 	ListSearchConversationKeys(userUUID string) ([]string, error)
 }
 
 type PersistentAgentEventSubscriptionResolverV1 struct {
 	store       application.AgentEventSubscriptionStoreV1
-	definitions agentSubscriptionDefinitionReaderV1
+	definitions AgentSubscriptionDefinitionReaderV1
 	now         func() time.Time
 }
 
 type PersistentAgentEventSubscriptionControlV1 struct {
 	store         application.AgentEventSubscriptionStoreV1
-	definitions   agentSubscriptionDefinitionReaderV1
-	conversations agentSubscriptionConversationReaderV1
+	definitions   AgentSubscriptionDefinitionReaderV1
+	conversations AgentSubscriptionConversationReaderV1
 	now           func() time.Time
 }
 
-func NewPersistentAgentEventSubscriptionControlV1(store application.AgentEventSubscriptionStoreV1, definitions agentSubscriptionDefinitionReaderV1, conversations agentSubscriptionConversationReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionControlV1, error) {
+func NewPersistentAgentEventSubscriptionControlV1(store application.AgentEventSubscriptionStoreV1, definitions AgentSubscriptionDefinitionReaderV1, conversations AgentSubscriptionConversationReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionControlV1, error) {
 	if store == nil || definitions == nil || conversations == nil {
 		return nil, errors.New("Agent Event Subscription store, Definition reader and conversation reader are required")
 	}
@@ -77,7 +77,7 @@ func (s *PersistentAgentEventSubscriptionControlV1) Create(ctx context.Context, 
 		TenantID: request.TenantID, AgentUUID: definition.AgentUUID, EventType: request.EventType,
 		ResourceType: request.ResourceType, ResourceID: request.ResourceID,
 	}
-	if definition.OwnerUUID != principalUUID || !validSubscriptionDefinitionV1(definition, item, matchRequest, s.now().UTC()) {
+	if definition.OwnerUUID != principalUUID || !ValidSubscriptionDefinitionV1(definition, item, matchRequest, s.now().UTC()) {
 		return nil, application.ErrAgentSubscriptionDenied
 	}
 	expectedEventType, validKey := subscriptionConversationEventTypeV1(request.ResourceID)
@@ -134,7 +134,7 @@ func (s *PersistentAgentEventSubscriptionControlV1) ListEligibleConversations(ct
 			TenantID: request.TenantID, AgentUUID: definition.AgentUUID, EventType: eventType,
 			ResourceType: "conversation", ResourceID: conversationKey,
 		}
-		if validSubscriptionDefinitionV1(definition, item, match, s.now().UTC()) {
+		if ValidSubscriptionDefinitionV1(definition, item, match, s.now().UTC()) {
 			items = append(items, application.AgentSubscriptionConversationOptionV1{ConversationKey: conversationKey, EventType: eventType})
 		}
 	}
@@ -313,7 +313,7 @@ func anySubscriptionControlBlankV1(values ...string) bool {
 	return false
 }
 
-func NewPersistentAgentEventSubscriptionResolverV1(store application.AgentEventSubscriptionStoreV1, definitions agentSubscriptionDefinitionReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionResolverV1, error) {
+func NewPersistentAgentEventSubscriptionResolverV1(store application.AgentEventSubscriptionStoreV1, definitions AgentSubscriptionDefinitionReaderV1, now func() time.Time) (*PersistentAgentEventSubscriptionResolverV1, error) {
 	if store == nil || definitions == nil {
 		return nil, errors.New("Agent Event Subscription store and Definition reader are required")
 	}
@@ -345,7 +345,7 @@ func (r *PersistentAgentEventSubscriptionResolverV1) MatchEventSubscriptions(ctx
 			return nil, application.ErrAgentSubscriptionInvalid
 		}
 		definition, lookupErr := r.definitions.GetDefinitionVersion(ctx, item.DefinitionUUID, item.DefinitionVersion)
-		if lookupErr != nil || !validSubscriptionDefinitionV1(definition, item, request, activeAt) {
+		if lookupErr != nil || !ValidSubscriptionDefinitionV1(definition, item, request, activeAt) {
 			return nil, application.ErrAgentSubscriptionInvalid
 		}
 	}
@@ -353,7 +353,7 @@ func (r *PersistentAgentEventSubscriptionResolverV1) MatchEventSubscriptions(ctx
 	return items, nil
 }
 
-func validSubscriptionDefinitionV1(definition *application.AgentDefinitionVersionV1, item application.AgentEventSubscriptionV1, request application.AgentEventSubscriptionMatchRequestV1, activeAt time.Time) bool {
+func ValidSubscriptionDefinitionV1(definition *application.AgentDefinitionVersionV1, item application.AgentEventSubscriptionV1, request application.AgentEventSubscriptionMatchRequestV1, activeAt time.Time) bool {
 	if definition == nil || definition.Validate() != nil || definition.Status != application.AgentDefinitionStatusActive || definition.RevokedAt != nil ||
 		definition.DefinitionUUID != item.DefinitionUUID || definition.Version != item.DefinitionVersion ||
 		definition.TenantID != request.TenantID || definition.AgentUUID != request.AgentUUID || activeAt.Before(definition.ValidFrom) ||

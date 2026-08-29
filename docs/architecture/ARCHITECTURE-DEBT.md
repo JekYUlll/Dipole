@@ -95,6 +95,7 @@
 - **本轮进展：** 2026-08-29 继续将 Agent Definition Catalog、Memory Candidate Promotion 和 Task Workflow Projection application 实现迁入同一服务边界；embedded 兼容转发保持，结构门禁已扩展覆盖六类已迁移实现。其余 Agent application、聚合 Composition Root、独立数据库账号和服务自治仍待继续收敛。
 - **本轮进展：** 2026-08-29 继续将 MCP readiness、MCP tool round、tool invocation audit、Runtime promotion evidence 和 Workflow repair audit application 实现迁入 Agent 服务边界；Bootstrap 与 SQLC 契约测试已直接使用服务包，结构门禁覆盖十一类已迁移实现。Agent capability/command、execution policy、Memory owner、Subscription、Artifact、Workflow repair executor 及聚合 Composition Root仍待继续收敛。
 - **本轮进展：** 2026-08-29 将 Agent Artifact 和 Memory Owner application 实现迁入 Agent 服务边界；Bootstrap 已直接使用服务包，Artifact policy 依赖改为显式接口，结构门禁覆盖十三类已迁移实现。Agent capability/command、execution policy、Subscription、Workflow repair executor 及聚合 Composition Root仍待继续收敛。
+- **本轮进展：** 2026-08-29 将 Agent Event Subscription application 实现迁入 Agent 服务边界；Bootstrap 已直接使用服务包，结构门禁覆盖十四类已迁移实现。Agent capability/command、execution policy、Workflow repair executor 及聚合 Composition Root仍待继续收敛。
 
 ### AD-049：Core 与 Message 远程初始化存在双向依赖
 
