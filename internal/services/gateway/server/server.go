@@ -25,7 +25,6 @@ import (
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformRateLimit "github.com/JekYUlll/Dipole/internal/platform/ratelimit"
-	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 )
@@ -59,13 +58,6 @@ type Server struct {
 	wsHub      *wsTransport.Hub
 	mu         sync.Mutex
 	httpServer *http.Server
-}
-
-func NewServer(coreTarget string, dependencies Dependencies) (*Server, error) {
-	if dependencies.TokenResolver == nil {
-		dependencies.TokenResolver = coreauth.NewTokenService()
-	}
-	return NewServerWithDependencies(coreTarget, dependencies)
 }
 
 // NewServerWithDependencies builds Gateway with all authentication behavior
