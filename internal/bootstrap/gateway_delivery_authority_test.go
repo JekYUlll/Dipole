@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
+	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -39,7 +40,7 @@ func TestGatewayMessageHandlersCheckpointOnlyInCPPMode(t *testing.T) {
 		realtimeDelivery.AuthorityCPP,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
@@ -62,7 +63,7 @@ func TestGatewayCheckpointHandlerRejectsMalformedMessage(t *testing.T) {
 		realtimeDelivery.AuthorityCPP,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
@@ -84,7 +85,7 @@ func TestGatewayMessageHandlersKeepGoWritesInShadowMode(t *testing.T) {
 		realtimeDelivery.AuthorityShadow,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
@@ -105,7 +106,7 @@ func TestGatewayMessageHandlerChecksSharedFenceBeforeClientWrite(t *testing.T) {
 		realtimeDelivery.AuthorityGo,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {
@@ -140,7 +141,7 @@ func TestGatewayMessageHandlerContinuesSameRecordAfterFenceRecovery(t *testing.T
 		realtimeDelivery.AuthorityGo,
 		sender,
 		fixedGroupHeat{},
-		newHotGroupNotifyAggregator(sender, 0),
+		gatewaykafka.NewNotifier(sender, 0),
 		wsTransport.TimelineNotifyOff,
 	)
 	if err != nil {

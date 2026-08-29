@@ -21,6 +21,7 @@ import (
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	aiModule "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
+	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
@@ -153,7 +154,7 @@ func RegisterGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDeli
 
 func registerGatewayKafkaHandlers(hub kafkaWSEventSender, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
 	hotGroups := platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB)
-	notifier := newHotGroupNotifyAggregator(hub, hotGroupNotifyWindow)
+	notifier := gatewaykafka.NewNotifier(hub, gatewaykafka.DefaultNotifyWindow)
 	platformKafka.Subscriber.Register("group.created", deliverGroupEventHandler(hub, wsTransport.TypeGroupCreated, func(p service.GroupEventPayload) wsTransport.GroupCreatedEventData {
 		return wsTransport.GroupCreatedEventData{
 			GroupUUID: p.GroupUUID, Name: p.Name, Notice: p.Notice, Avatar: p.Avatar,
@@ -222,7 +223,7 @@ func gatewayMessageDeliveryHandlers(
 	authority realtimeDelivery.Authority,
 	hub kafkaWSEventSender,
 	hotGroups groupHeatReader,
-	notifier *hotGroupNotifyAggregator,
+	notifier *gatewaykafka.Notifier,
 	timelineNotifyMode string,
 ) (platformKafka.Handler, platformKafka.Handler, error) {
 	switch authority {
@@ -335,7 +336,7 @@ func deliverDirectMessageHandler(hub kafkaWSEventSender, timelineNotifyMode stri
 	}
 }
 
-func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReader, notifier *hotGroupNotifyAggregator, timelineNotifyMode string) platformKafka.Handler {
+func deliverGroupMessageHandler(hub kafkaWSEventSender, hotGroups groupHeatReader, notifier *gatewaykafka.Notifier, timelineNotifyMode string) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		_ = ctx
 

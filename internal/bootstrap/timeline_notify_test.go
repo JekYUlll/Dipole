@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformHotGroup "github.com/JekYUlll/Dipole/internal/platform/hotgroup"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -105,7 +106,7 @@ func TestDeliverGroupMessageKeepsHotGroupAggregation(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			sender := &recordingWSEventSender{}
-			aggregator := newHotGroupNotifyAggregator(sender, time.Millisecond)
+			aggregator := gatewaykafka.NewNotifier(sender, time.Millisecond)
 			if err := deliverGroupMessageHandler(sender, fixedGroupHeat{hot: test.hot}, aggregator, wsTransport.TimelineNotifyShadow)(context.Background(), groupCreatedEvent(t)); err != nil {
 				t.Fatalf("deliver group event: %v", err)
 			}

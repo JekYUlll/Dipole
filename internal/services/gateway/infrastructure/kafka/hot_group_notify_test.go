@@ -1,4 +1,4 @@
-package bootstrap
+package kafka
 
 import (
 	"sync"
@@ -29,19 +29,11 @@ func (s *stubHotGroupHub) SendEventToUser(userUUID, eventType string, data any) 
 	return 1
 }
 
-func (s *stubHotGroupHub) DisconnectConnections(userUUID string, connectionIDs []string, reason string) int {
-	return 0
-}
-
-func (s *stubHotGroupHub) DisconnectAllConnections(userUUID string, reason string) int {
-	return 0
-}
-
 func TestHotGroupNotifyAggregatorCoalescesWindow(t *testing.T) {
 	t.Parallel()
 
 	hub := &stubHotGroupHub{}
-	aggregator := newHotGroupNotifyAggregator(hub, 20*time.Millisecond)
+	aggregator := NewNotifier(hub, 20*time.Millisecond)
 
 	aggregator.Enqueue("G100", wsTransport.GroupMessageNotifyData{
 		GroupUUID:       "G100",

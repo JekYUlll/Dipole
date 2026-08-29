@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Gateway 热群通知聚合器及其测试已迁入 `internal/services/gateway/infrastructure/kafka`，共享 Kafka handler 改用服务自有 `Notifier` 与默认窗口；完整消息投递 handler 继续按依赖闭包分阶段迁移。
 - 删除已无生产调用者的共享 readiness 实现与重复测试，Kafka assignment、authority fence 和依赖监控统一由 `internal/platform/runtime` 持有并验证。
 - 时间线通知模式校验已下沉到 `internal/platform/runtime.ValidateTimelineNotifyMode`，Gateway、Core 和 embedded runtime 统一使用平台启动校验；删除共享 bootstrap 的重复实现与无调用者兼容入口。
 - TLS 证书与私钥路径校验已下沉至 `internal/platform/runtime.ValidateTLSFiles`，Core、Gateway 和 embedded runtime 统一使用平台实现；删除共享 bootstrap 的重复 helper，TLS 启动失败语义保持一致。
