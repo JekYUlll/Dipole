@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：收紧 Memory candidate 解析边界，正文和 compact 摘要均拒绝凭据模式；新增绕过 ObservationWorker 的 fail-closed 测试，保持自动 Memory 写入关闭。
 - 2026-08-30：收紧 Agent Task Timeline 的 TS RPC 客户端响应校验，拒绝跨任务、空事件 ID、重复或倒序 `event_seq`，新增 fail-closed 契约测试；不改变服务端协议和默认关闭状态。
 - 2026-08-30：完成逐服务镜像候选拓扑验证：基于干净 `master` revision 重建 Go 服务镜像，并在 Search profile 隔离 Compose 中验证 Core、Message、Sync、Gateway、Search 和 Search Indexer 的 health/readiness；证据归档于 `benchmarks/ad048-independent-images-2026-08-30/receipt.json`，生产切换仍保持关闭。
 - 2026-08-30：收紧 embedded 聚合的服务边界：仅允许 Core 的显式 `embedded_compat.go` 作为本地兼容/回滚桥接，新增结构门禁与 Core bootstrap 回归测试，阻止独立服务重新依赖 `internal/bootstrap/embedded`。
