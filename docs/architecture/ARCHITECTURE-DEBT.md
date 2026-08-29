@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Agent Runtime 配置解析新增 `shadow|remote` 严格枚举和非法值 fail-closed 回归测试；该修复防止配置拼写错误被静默降级，不改变默认 Shadow 或 active promotion 门禁。
 - 2026-08-30：前端新增 Agent 路由安全契约测试，覆盖认证保护、独立 flag fail-closed 回退和 5 条页面路由清单；该测试只锁定现有安全边界，不代表 Agent active authority 或相关生产能力已开启。
 - 2026-08-30：前端设计计划已按当前 Router 清单校正：Login/Chat 与 5 条受 flag 保护的 Agent 页面路由已记录，Search/Sync 标注为 Chat 工作区能力；未完成的 Contact、Group、File、Device、Settings 和真实视觉回归继续保留为待办。
 - 2026-08-30：Web Sync Observation CLI 新增 Session 起点校验，早于 `started_at` 的 status 采样统一拒绝并由回归测试锁定；该修复只强化证据时间完整性，不改变 24 小时晋级门槛或生产开关。
