@@ -35,6 +35,10 @@ type multipartPresignService interface {
 	PresignMultipartParts(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error)
 }
 
+type multipartPartRegisterService interface {
+	RegisterMultipartPart(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error
+}
+
 type FileHandler struct {
 	service        fileService
 	maxUploadBytes int64
@@ -344,6 +348,51 @@ func (h *FileHandler) PresignMultipartParts(c *gin.Context) {
 		return
 	}
 	Success(c, httpdto.ToFileMultipartPresignResponse(result))
+}
+
+// RegisterMultipartPart godoc
+// @Summary 登记已直传分片
+// @Tags File
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Param part_number path int true "分片编号"
+// @Param request body httpdto.FileMultipartPartRegisterRequest true "分片 ETag 和尺寸"
+// @Success 200 {object} MultipartPartResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id}/parts/{part_number}/register [post]
+func (h *FileHandler) RegisterMultipartPart(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	registrar, ok := h.service.(multipartPartRegisterService)
+	if !ok {
+		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "multipart part registration is unavailable")
+		return
+	}
+	partNumber, err := strconv.Atoi(c.Param("part_number"))
+	if err != nil || partNumber <= 0 {
+		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "invalid multipart part number")
+		return
+	}
+	var req httpdto.FileMultipartPartRegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "invalid multipart part registration")
+		return
+	}
+	if err := registrar.RegisterMultipartPart(currentUser.UUID, c.Param("session_id"), partNumber, corefile.RegisterMultipartPartInput{ETag: req.ETag, Size: req.Size}); err != nil {
+		h.handleMultipartError(c, err)
+		return
+	}
+	Success(c, gin.H{"part_number": partNumber})
 }
 
 // UploadPart godoc
