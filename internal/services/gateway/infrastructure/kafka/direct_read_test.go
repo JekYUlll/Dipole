@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
-	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
 
@@ -35,7 +35,7 @@ func TestNewDirectReadHandlerPreservesReceiptAndContext(t *testing.T) {
 	sender := &directReadSender{}
 	ctx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R1", TraceID: "T1", EventID: "E1"})
 	readAt := time.Now().UTC().Truncate(time.Millisecond)
-	payload, err := json.Marshal(coreconversation.ConversationReadReceipt{
+	payload, err := json.Marshal(application.ConversationReadReceipt{
 		ReaderUUID: "U1", TargetUUID: "U2", TargetType: model.MessageTargetDirect,
 		ConversationKey: "direct:U1:U2", LastReadMessageUUID: "M9", LastReadSeq: 9, ReadAt: readAt,
 	})

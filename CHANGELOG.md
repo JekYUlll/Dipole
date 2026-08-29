@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：将 Gateway Kafka 消费所需的群组、会话强制退出、联系人删除和会话已读事件 payload/decoder 下沉到 `internal/application`；Gateway 不再编译期依赖 Core domain，新增服务布局门禁防止该依赖回流，事件 JSON 与投递语义保持兼容。
 - 2026-08-30：调用审计确认 embedded `NewMessageProcessRepositories` 包装无独立语义，已删除并让 embedded aggregate 直接调用 Message-owned SQLC constructor；inbox 写入开关和回滚配置保持显式传递。
 - 2026-08-30：审计确认 embedded `Repositories.Search` 无生产或测试调用者，删除 embedded Search SQLC 构造和冗余字段；Search Service 继续由 Elasticsearch-owned runtime 独立装配。
 - 2026-08-30：embedded repository composition 将 Core 的 User、Group、Contact、File、Conversation、Admin 仓储统一收回 `CoreProcessRepositories`，移除聚合根的 Core 扁平字段；Core HTTP 适配、assistant 初始化和 embedded 回滚语义保持兼容。
