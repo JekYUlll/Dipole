@@ -20,6 +20,11 @@ test('Vite config preserves the Dipole base path and output boundary', async () 
   assert.equal(config.server.proxy['/api'].changeOrigin, true)
 })
 
+test('frontend exposes the documented typecheck command', async () => {
+  const packageJSON = JSON.parse(await readFile(resolve(projectRoot, 'package.json'), 'utf8'))
+  assert.equal(packageJSON.scripts.typecheck, 'vue-tsc --noEmit')
+})
+
 test('Vite development proxy forwards HTTP and WebSocket upgrades', async (t) => {
   let httpPath = ''
   let upgradePath = ''
