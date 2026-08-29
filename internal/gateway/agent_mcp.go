@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 var agentMCPIdentifier = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
 )
 
 func TestPresentUserForViewerReturnsPublicProfileForOtherUser(t *testing.T) {

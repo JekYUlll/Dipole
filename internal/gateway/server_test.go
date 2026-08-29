@@ -14,8 +14,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
 	"github.com/JekYUlll/Dipole/internal/store"
 )
 

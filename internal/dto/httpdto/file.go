@@ -1,8 +1,8 @@
 package httpdto
 
 import (
+	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
-	"github.com/JekYUlll/Dipole/internal/service"
 	"time"
 )
 
