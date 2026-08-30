@@ -19,20 +19,12 @@ describe('ContactDirectory', () => {
     expect(wrapper.find('[data-contact-action]').exists()).toBe(false)
   })
 
-  it('clears stale contacts when the authoritative read fails', async () => {
-    let calls = 0
-    const wrapper = mount(ContactDirectory, {
-      props: { client: { list: async () => {
-        calls += 1
-        if (calls === 1) return contacts
-        throw new Error('unavailable')
-      } } },
-    })
-    await flushPromises()
-    await wrapper.get('[data-contact-retry]').trigger('click')
+  it('keeps the directory empty when the authoritative read fails', async () => {
+    const wrapper = mount(ContactDirectory, { props: { client: { list: async () => { throw new Error('unavailable') } } } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('联系人目录暂时不可用')
     expect(wrapper.text()).not.toContain('Lin Qiao')
+    expect(wrapper.get('[data-contact-retry]').exists()).toBe(true)
   })
 })
