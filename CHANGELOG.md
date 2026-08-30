@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 在 `bed7a5d0` 重跑 C3 同契约 Go/C++ projection benchmark。Ubuntu 24.04 builder 的 CTest `14/14` 通过，但 C++/Go 吞吐比为 `0.239956`，低于 `1.0` 晋级门槛，判定 `blocked`；Go 继续作为投递 authority，未启动 Dipole 长驻容器或切换灰度。
+
 - 2026-08-31：Remote GPU 在隔离 worktree 为当前 `2ca6b199` 生成 A6 Web Sync Shadow 候选包；Vue production build 与 14 项 observation contract 测试通过，归档以 `0600` 保存并固定 SHA-256。该工件只作为真实观察的不可变输入；主机有 25 个活动登录会话，未启动 Compose、Prometheus 或客户端流量窗口。
 
 - 2026-08-31：Remote GPU 在 `7601e78e` 上完成 A7 Multipart 故障矩阵：确定性 File/Gateway/cleanup contract、Prometheus 7 条告警规则、真实 MinIO/Redis 对账及 Redis restart 注入均通过。矩阵使用随机名称、loopback 绑定的临时容器并在退出后确认清理；默认上传模式仍为 `relay`，预签名直传切流继续需要 24 小时受控证据。
