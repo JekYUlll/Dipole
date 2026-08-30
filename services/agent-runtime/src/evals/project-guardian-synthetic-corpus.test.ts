@@ -5,12 +5,14 @@ import { describe, expect, it } from "vitest";
 import { evaluateSubscriptionCorpusReview, parseSubscriptionCorpusReview } from "./subscription-corpus-review.js";
 import {
   evaluateSubscriptionPrefilter,
-  parseSubscriptionPrefilterCorpus,
-  parseSubscriptionPrefilterEvidence
+  parseSubscriptionPrefilterCorpus
 } from "./subscription-prefilter-evaluator.js";
+import { buildRulePrefilterEvidence } from "./subscription-prefilter-rule.js";
+import { parseAgentEventSubscription } from "../events/event-subscription.js";
 
 const corpusPath = new URL("../../../../contracts/agent-evals/v1/project-guardian-synthetic-corpus.json", import.meta.url);
 const reviewPath = new URL("../../../../contracts/agent-evals/v1/project-guardian-synthetic-review.json", import.meta.url);
+const subscriptionPath = new URL("../../../../contracts/agent-evals/v1/project-guardian-synthetic-subscription.json", import.meta.url);
 
 describe("Project Guardian synthetic corpus", () => {
   it("keeps its reviewed trigger baseline reproducible and low-sensitive", async () => {
@@ -34,30 +36,19 @@ describe("Project Guardian synthetic corpus", () => {
     });
   });
 
-  it("runs the audited deterministic rule baseline through the common evaluator", async () => {
+  it("runs the production deterministic matcher through the common evaluator", async () => {
     const corpus = parseSubscriptionPrefilterCorpus(await readFile(corpusPath, "utf8"));
-    const evidence = parseSubscriptionPrefilterEvidence({
-      schemaVersion: "dipole.agent.subscription-prefilter-evidence.v1",
-      corpusSha256: corpus.sha256,
-      candidate: {
-        id: "project-guardian-synthetic-rule",
-        kind: "rule",
-        revision: "project-guardian-synthetic-rule@v1",
-        configurationSha256: "f".repeat(64)
-      },
-      decisions: corpus.cases.map(testCase => ({
-        caseId: testCase.id,
-        selected: testCase.expectedRelevant,
-        latencyMicros: 120,
-        costMicrousd: 0
-      }))
+    const subscription = parseAgentEventSubscription(JSON.parse(await readFile(subscriptionPath, "utf8")));
+    let nowMicros = 0;
+    const evidence = buildRulePrefilterEvidence(corpus, subscription, {
+      nowMicros: () => (nowMicros += 20)
     });
 
     expect(evaluateSubscriptionPrefilter(corpus, evidence)).toMatchObject({
       passed: true,
       reasons: [],
       confusion: { truePositive: 4, trueNegative: 4, falsePositive: 0, falseNegative: 0 },
-      metrics: { precisionBps: 10_000, recallBps: 10_000, p95LatencyMicros: 120, meanCostMicrousd: 0 }
+      metrics: { precisionBps: 10_000, recallBps: 10_000, p95LatencyMicros: 20, meanCostMicrousd: 0 }
     });
   });
 });

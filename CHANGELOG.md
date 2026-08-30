@@ -1,6 +1,6 @@
 # 更新日志
 
-- 2026-08-30：Agent Project Guardian 增加版本化低敏 subscription 预筛语料：四类关注项目状态、四类干扰事件、双 reviewer 100% agreement 与共享 deterministic evaluator 已纳入回归。Remote GPU Node 22 验证 Agent Runtime `133` 个测试文件、`695` 项通过，typecheck/build 通过；素材固定使用 synthetic `fixture:` 标识，不含真实会话、用户或模型输出。真实 corpus、retrieval relevance、候选模型成本阈值和 shared shadow 观察仍由 `AD-038` 管理。
+- 2026-08-30：Agent Project Guardian 增加版本化低敏 subscription 预筛语料：四类关注项目状态、四类干扰事件、双 reviewer 100% agreement 与共享 deterministic evaluator 已纳入回归。规则 evidence 直接复用 production `matchEventSubscriptions`，避免测试手写 decision 造成语义分叉。Remote GPU Node 22 验证 Agent Runtime `133` 个测试文件、`695` 项通过，typecheck/build 通过；素材固定使用 synthetic `fixture:` 标识，不含真实会话、用户或模型输出。真实 corpus、retrieval relevance、候选模型成本阈值和 shared shadow 观察仍由 `AD-038` 管理。
 
 - 2026-08-30：F2 Group Directory 完成 Pencil canonical desktop/mobile 目录、loading/empty/unavailable/dismissed/hot-group 状态矩阵、三个复用组件和批准导出，并交付认证只读 `/groups` 路由。目录从会话投影派生范围后读取权威群详情，异常时清空旧状态；Remote GPU Node 22 通过 36 个前端测试文件、152 项测试、typecheck 与 production build。热群继续采用 `notify + pull`，群成员与管理写操作未在目录中开放。
 
