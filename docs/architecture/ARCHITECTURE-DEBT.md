@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：control handler 到 executor 的内存集成测试已锁定 Gateway 认证、最小 handoff body、进程内去重和固定 Runtime lease owner；它不提供 provider、Store 或默认 bootstrap 证据，外部 callback 继续关闭。
+
 - 2026-08-31：Runtime 增加未装配 control service adapter，将 Gateway 已认证的 handoff ID/correlation 映射到固定 Runtime lease owner 的 executor 请求；optional field 不显式传递 `undefined`，维持 exact optional type 约束。adapter 不接收用户主体或授权码，`index.ts` 和默认 listener 均未装配。
 
 - 2026-08-31：Runtime 增加默认未装配的 OAuth callback handoff executor 组合 seam，覆盖 claim、key open、AAD binding、processor 和 complete/release。只有解封前失败或显式 retryable 结果会释放 lease；未知 processor 结果保持 lease，防止重复外部副作用。它不含 provider 实现，`index.ts`、配置和 HTTP route 均未接线。
