@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：远端开发测试流程增加 Go 工具链预检并固定 `GOTOOLCHAIN=local`，在 Remote GPU 仅有 Go 1.22.2、项目要求 Go 1.26.0 时快速失败，避免因隐式下载工具链造成网络超时；当前未启动容器，待远端维护窗口补齐 Go 1.26+ 后继续执行 canonical 测试。
+
 - 2026-08-30：Multipart 策略接口加入三份静态 Swagger 文档；当前 Go 1.27 环境下 `swag` 生成器仍受历史注释/标准库解析兼容影响，运行时路由与静态文档已保持一致。
 
 - 2026-08-30：Multipart 策略接入运行时：Core 新增认证的 `/api/v1/files/uploads/policy`，前端按服务端版本策略执行阈值、并发、重试和预签名候选模式；策略异常或接口不可用时回退到 `v1/relay`，默认生产流量保持不变。
@@ -121,6 +123,7 @@
 
 ## [Unreleased]
 
+- 新增 Remote GPU 测试入口 `scripts/remote-dev.sh test`，远端执行 Go canonical 测试、Compose、服务布局和架构文档门禁；测试阶段不启动容器，继续保留部署动作的活动用户保护。
 - Remote GPU 管理员工作目录已重新同步到正式 `master` 提交 `27138a32`；当前主机仍有活动实验，未启动构建或服务。
 - Remote GPU 构建入口已完成一次安全阻断验证：同步成功后检测到 23 个登录用户和 5 个 GPU 任务，在构建前退出且无容器/镜像副作用；维护窗口开启后可直接重试。
 - Remote GPU 主机前置修复完成：`admin1` 已加入 Docker 组并安装 Compose v2，管理员工作流 preflight 通过；由于仍有活动实验，服务构建与启动继续由 fail-closed 保护阻止。

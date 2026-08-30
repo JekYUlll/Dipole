@@ -10,7 +10,7 @@ REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose
 
 usage() {
   cat <<'EOF'
-Usage: scripts/remote-dev.sh <sync|preflight|build|smoke-lite|bench|down>
+Usage: scripts/remote-dev.sh <sync|preflight|test|build|smoke-lite|bench|down>
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE.
@@ -71,6 +71,19 @@ export COMPOSE_PROJECT_NAME="\$project"
 export DIPOLE_HOST_PROFILE=remote-gpu
 case "${action}" in
   preflight) scripts/check-dev-host.sh remote-gpu ;;
+  test)
+    required_go="go1.26"
+    actual_go="$(GOTOOLCHAIN=local go env GOVERSION 2>/dev/null || true)"
+    if [[ -z "\$actual_go" ]]; then
+      printf 'remote test refused: local Go toolchain is unavailable; install %s or newer\n' "\$required_go" >&2
+      exit 4
+    fi
+    if [[ "$(printf '%s\n' "\$required_go" "\$actual_go" | sort -V | tail -n 1)" != "\$actual_go" ]]; then
+      printf 'remote test refused: requires Go %s+, found %s; implicit toolchain download is disabled\n' "\$required_go" "\$actual_go" >&2
+      exit 4
+    fi
+    GOTOOLCHAIN=local scripts/check-go.sh && scripts/check-compose.sh && scripts/check-service-layout.sh && scripts/check-architecture-docs.sh
+    ;;
   build) scripts/docker-build-microservice-images.sh ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
   bench) scripts/bench/run_bench.sh ;;
@@ -85,6 +98,7 @@ require_command ssh
 case "${1:-}" in
   sync) sync_revision ;;
   preflight) run_remote preflight ;;
+  test) sync_revision; run_remote test ;;
   build) sync_revision; guard_start; run_remote build ;;
   smoke-lite) sync_revision; guard_start; run_remote smoke-lite ;;
   bench) sync_revision; guard_start; run_remote bench ;;
