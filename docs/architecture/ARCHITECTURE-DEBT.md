@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Runtime 增加默认未装配的 OAuth callback handoff executor 组合 seam，覆盖 claim、key open、AAD binding、processor 和 complete/release。只有解封前失败或显式 retryable 结果会释放 lease；未知 processor 结果保持 lease，防止重复外部副作用。它不含 provider 实现，`index.ts`、配置和 HTTP route 均未接线。
+
 - 2026-08-31：Core claim 响应新增仅 Runtime mTLS 可见的 `owner_user_id`，补足 envelope AAD 的 owner binding；Runtime client 在解封前强制校验该字段。该兼容字段不进入 Gateway control HTTP、浏览器、Kafka、Temporal、日志或审计。executor、key open、code exchange、token lifecycle、browser binding 与 callback route 仍未装配。
 
 - 2026-08-31：Runtime 增加未装配的 OAuth callback handoff terminal client。它经 `dipole-agent` mTLS 通道只提交 handoff ID、lease owner 与 correlation，并严格校验无敏感字段的 ID 回包；错误、冲突回包与无效输入统一失败关闭。`index.ts`、control handler 与默认配置均未注入该 client，key open、code exchange、token lifecycle、browser binding 与 callback route 保持关闭。另为四个既有生成 gRPC 回调补充协议元素类型，恢复锁定 TypeScript 的 no-implicit-any gate。
