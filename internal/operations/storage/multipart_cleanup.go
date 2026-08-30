@@ -10,6 +10,8 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
+const maxMultipartCleanupErrors = 32
+
 type MultipartUploadCandidate struct {
 	ObjectKey string    `json:"object_key"`
 	UploadID  string    `json:"upload_id"`
@@ -19,17 +21,19 @@ type MultipartUploadCandidate struct {
 }
 
 type MultipartCleanupReport struct {
-	Bucket     string                     `json:"bucket"`
-	Prefix     string                     `json:"prefix"`
-	Cutoff     time.Time                  `json:"cutoff"`
-	Execute    bool                       `json:"execute"`
-	Complete   bool                       `json:"complete"`
-	Scanned    int                        `json:"scanned"`
-	Selected   int                        `json:"selected"`
-	Aborted    int                        `json:"aborted"`
-	Failed     int                        `json:"failed"`
-	Errors     []string                   `json:"errors,omitempty"`
-	Candidates []MultipartUploadCandidate `json:"candidates"`
+	Bucket          string                     `json:"bucket"`
+	Prefix          string                     `json:"prefix"`
+	Cutoff          time.Time                  `json:"cutoff"`
+	Execute         bool                       `json:"execute"`
+	Complete        bool                       `json:"complete"`
+	Scanned         int                        `json:"scanned"`
+	Selected        int                        `json:"selected"`
+	Aborted         int                        `json:"aborted"`
+	Failed          int                        `json:"failed"`
+	ErrorCount      int                        `json:"error_count"`
+	Errors          []string                   `json:"errors,omitempty"`
+	ErrorsTruncated bool                       `json:"errors_truncated,omitempty"`
+	Candidates      []MultipartUploadCandidate `json:"candidates"`
 }
 
 type MultipartClient interface {
@@ -42,12 +46,24 @@ func RunMultipartCleanup(ctx context.Context, client MultipartClient, bucket, pr
 		Bucket: bucket, Prefix: prefix, Cutoff: cutoff.UTC(), Execute: execute, Complete: true,
 		Candidates: make([]MultipartUploadCandidate, 0),
 	}
+	if client == nil {
+		report.Complete = false
+		report.Failed++
+		report.ErrorCount++
+		report.Errors = append(report.Errors, "MinIO client is required")
+		return report
+	}
 	for upload := range client.ListIncompleteUploads(ctx, bucket, prefix, true) {
 		report.Scanned++
 		if upload.Err != nil {
 			report.Complete = false
 			report.Failed++
-			report.Errors = append(report.Errors, fmt.Sprintf("list MinIO upload: %v", upload.Err))
+			report.ErrorCount++
+			if len(report.Errors) < maxMultipartCleanupErrors {
+				report.Errors = append(report.Errors, fmt.Sprintf("list MinIO upload: %v", upload.Err))
+			} else {
+				report.ErrorsTruncated = true
+			}
 			continue
 		}
 		if upload.Initiated.IsZero() || !upload.Initiated.Before(cutoff) {
