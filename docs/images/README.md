@@ -2,6 +2,9 @@
 
 These SVG assets are the repository's source-of-truth README identity. They are intentionally dependency-free so GitHub, package registries and documentation render them consistently.
 
+The historical blue PNG logo has been retired. New documentation must use one of
+the SVG assets below so the repository keeps a consistent visual identity.
+
 | Asset | Intended use |
 | --- | --- |
 | `dipole-wordmark.svg` | Repository header and landing pages. |

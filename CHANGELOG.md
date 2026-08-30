@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：移除无引用的旧蓝色 PNG 主标；项目入口统一使用深青绿与橙色 Signal SVG 视觉系统。
+
 - 2026-08-30：Remote GPU 已为 `b0e4f2523392796837af6130f6c3b27c5b5400de` 生成不可变 Web Sync Shadow bundle `web-sync-shadow-b0e4f2523392-20260830`，SHA-256 为 `7d815e968dfd489b8c6ec43f7ebe27a46cac15e28b593bb414db904a945151a5`。构建与归档准备完成，尚未连接 Prometheus 或启动 24 小时真实流量观察。
 
 - 2026-08-30：修正 Web Sync 候选 bundle 默认来源至 Vite 实际生产输出 `internal/services/core/server/webapp`，避免发布归档错误读取已废弃的 `frontend/dist` 并在远端构建后失败。
