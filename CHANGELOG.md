@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增隔离业务集群生命周期入口 `scripts/bench/business_cluster_topology.sh`，提供 `config/up/status/down`、活动会话保护、GPU 并行资源提示和无卷删除回滚；真实业务故障演练继续要求显式批准与独立 project。
+
 - 2026-08-30：新增业务集群 Compose override，将 Kafka 三节点和 Redis Sentinel 接入微服务业务服务的客户端配置；默认单节点 Compose 继续作为回滚路径，完整业务故障切换仍需 Remote GPU 验收。
 
 - 2026-08-30：新增业务依赖拓扑契约，明确单节点微服务 Compose、Kafka/Redis 组件级集群演练和未来业务集群的证据边界；`check-compose.sh` 在缺少契约或出现业务集群误宣称时 fail closed，默认部署路径保持不变。
