@@ -23,6 +23,8 @@ Dipole provides a real-time IM core with a gradual path to independently deploya
   <img src="docs/images/dipole-agent-mark.svg" width="180" alt="Dipole Agent" />
 </p>
 
+<p align="center"><sub>One visual system for the realtime IM data plane and the governed Agent runtime.</sub></p>
+
 | Area | Current responsibility |
 | --- | --- |
 | **IM Core** | Authentication, users, contacts, groups, messages and conversations in Go. |
