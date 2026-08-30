@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -43,6 +44,7 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 	t.Cleanup(func() {
 		_ = client.RemoveObject(context.Background(), bucket, "message-files/multipart-integration.bin", minio.RemoveObjectOptions{})
 		_ = client.RemoveObject(context.Background(), bucket, "message-files/multipart-abort-integration.bin", minio.RemoveObjectOptions{})
+		_ = client.RemoveObject(context.Background(), bucket, "message-files/multipart-interrupted-integration.bin", minio.RemoveObjectOptions{})
 		_ = client.RemoveBucket(context.Background(), bucket)
 	})
 
@@ -105,4 +107,48 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 	if err := uploader.AbortMultipartUpload(ctx, abortUpload.ObjectKey, abortUpload.UploadID); err != nil {
 		t.Fatalf("repeat abort multipart upload: %v", err)
 	}
+
+	// A client connection can fail while MinIO is reading a part. The same
+	// part number must remain retryable so the client can resume the session.
+	interruptedUpload, err := uploader.InitiateMessageMultipartUpload(ctx, "multipart-interrupted-integration.bin", "application/octet-stream")
+	if err != nil {
+		t.Fatalf("initiate interrupted upload: %v", err)
+	}
+	interruptedPart := bytes.Repeat([]byte("i"), 5*1024*1024)
+	_, err = uploader.UploadMultipartPart(ctx, interruptedUpload.ObjectKey, interruptedUpload.UploadID, 1,
+		&interruptingReader{reader: bytes.NewReader(interruptedPart), failAfter: int64(len(interruptedPart) / 2)}, int64(len(interruptedPart)))
+	if !errors.Is(err, errMultipartClientInterrupted) {
+		t.Fatalf("interrupted part error=%v, want %v", err, errMultipartClientInterrupted)
+	}
+	if _, err := uploader.UploadMultipartPart(ctx, interruptedUpload.ObjectKey, interruptedUpload.UploadID, 1,
+		bytes.NewReader(interruptedPart), int64(len(interruptedPart))); err != nil {
+		t.Fatalf("retry interrupted part: %v", err)
+	}
+	if err := uploader.AbortMultipartUpload(ctx, interruptedUpload.ObjectKey, interruptedUpload.UploadID); err != nil {
+		t.Fatalf("abort resumed interrupted upload: %v", err)
+	}
+}
+
+var errMultipartClientInterrupted = errors.New("multipart client interrupted")
+
+type interruptingReader struct {
+	reader    io.Reader
+	failAfter int64
+	read      int64
+}
+
+func (r *interruptingReader) Read(p []byte) (int, error) {
+	if r.read >= r.failAfter {
+		return 0, errMultipartClientInterrupted
+	}
+	remaining := r.failAfter - r.read
+	if int64(len(p)) > remaining {
+		p = p[:remaining]
+	}
+	n, err := r.reader.Read(p)
+	r.read += int64(n)
+	if err != nil {
+		return n, err
+	}
+	return n, nil
 }
