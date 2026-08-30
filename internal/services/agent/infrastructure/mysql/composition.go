@@ -29,6 +29,7 @@ type ProcessRepositories struct {
 	MemoryPromotions  application.AgentMemoryCandidatePromotionStoreV1
 	ToolAudits        application.AgentToolInvocationStoreV1
 	ToolRounds        application.AgentMCPToolRoundStoreV1
+	OAuthTransactions application.AgentOAuthAuthorizationTransactionStoreV1
 }
 
 func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
@@ -64,6 +65,10 @@ func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent MCP Tool round repository: %w", err)
 	}
+	oauthTransactions, err := NewAgentOAuthAuthorizationTransactionRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent OAuth authorization transaction repository: %w", err)
+	}
 	promotionControls, err := NewAgentRuntimePromotionControlRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
@@ -77,7 +82,7 @@ func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
 		DefinitionCatalog: policy, ApprovalGrants: policy, Promotions: policy,
 		Subscriptions: policy, Repairs: policy, Artifacts: artifacts,
 		Memories: memories, MemoryOwners: memories, MemoryPromotions: memories,
-		ToolAudits: toolAudits, ToolRounds: toolRounds,
+		ToolAudits: toolAudits, ToolRounds: toolRounds, OAuthTransactions: oauthTransactions,
 		PromotionControls: promotionControls, ReadinessEvidence: readinessEvidence,
 	}, nil
 }

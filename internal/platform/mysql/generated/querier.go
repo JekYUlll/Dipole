@@ -44,6 +44,7 @@ type Querier interface {
 	CompleteSearchBackfillJob(ctx context.Context, arg CompleteSearchBackfillJobParams) (sql.Result, error)
 	CompleteSyncReplayJob(ctx context.Context, arg CompleteSyncReplayJobParams) (sql.Result, error)
 	ConsumeAgentApproval(ctx context.Context, arg ConsumeAgentApprovalParams) (int64, error)
+	ConsumeAgentOAuthAuthorizationTransaction(ctx context.Context, arg ConsumeAgentOAuthAuthorizationTransactionParams) (int64, error)
 	CountAgentWorkflowRepairDecisions(ctx context.Context, proposalUuid string) (CountAgentWorkflowRepairDecisionsRow, error)
 	CountNonPublishedSearchOutboxThrough(ctx context.Context, throughID uint64) (int64, error)
 	CountPublishedSearchOutboxThrough(ctx context.Context, throughID uint64) (int64, error)
@@ -103,6 +104,7 @@ type Querier interface {
 	GetAgentMemoryLineageBackfillHighWatermark(ctx context.Context) (int64, error)
 	GetAgentMemoryLineageBackfillJob(ctx context.Context, jobName string) (AgentMemoryLineageBackfillJob, error)
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
+	GetAgentOAuthAuthorizationTransaction(ctx context.Context, transactionUuid string) (AgentOauthAuthorizationTransaction, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
 	GetAgentRuntimePromotionGrant(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
 	GetAgentRuntimePromotionGrantForUpdate(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
@@ -168,6 +170,7 @@ type Querier interface {
 	InsertAgentMemoryTaskLineage(ctx context.Context, arg InsertAgentMemoryTaskLineageParams) error
 	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error
 	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
+	InsertAgentOAuthAuthorizationTransaction(ctx context.Context, arg InsertAgentOAuthAuthorizationTransactionParams) (int64, error)
 	InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error)
 	InsertAgentRuntimePromotionGrant(ctx context.Context, arg InsertAgentRuntimePromotionGrantParams) (int64, error)
 	InsertAgentRuntimePromotionProposal(ctx context.Context, arg InsertAgentRuntimePromotionProposalParams) (int64, error)

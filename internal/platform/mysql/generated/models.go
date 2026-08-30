@@ -331,6 +331,20 @@ type AgentMemoryLineageBackfillJob struct {
 	UpdatedAt             time.Time
 }
 
+type AgentOauthAuthorizationTransaction struct {
+	ID                 uint64
+	TransactionUuid    string
+	OwnerUserUuid      string
+	Issuer             string
+	RedirectUri        string
+	StateSha256        string
+	SealedCodeVerifier string
+	ExpiresAt          time.Time
+	ConsumedAt         sql.NullTime
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
 type AgentRun struct {
 	ID               uint64
 	RunUuid          string
