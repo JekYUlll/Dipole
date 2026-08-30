@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：补充开发与远程资源工作流：Remote GPU 存在其他 GPU 任务时允许启动 CPU/容器型 Dipole 构建、Smoke 和压力测试；新增独立 Compose project、资源快照、GPU 显式申请和禁止触碰他人任务的边界。GPU 忙碌本身不再作为开发启动阻断条件。
+
 - 2026-08-30：新增隔离 MinIO Multipart 生命周期 smoke，真实验证乱序分片、同编号分片替换、按序 Complete、对象内容校验和重复 Abort；脚本使用临时容器并自动清理，不改变默认 relay 路径。
 
 - 2026-08-30：复核 Agent Runtime 独立门禁：Vitest `125` 个测试文件通过、`665` 个测试通过，TypeScript typecheck 与生产 build 均通过；误用 Jest 的 `--runInBand` 仅记录为命令兼容性提示，项目标准入口保持 `npm test`。
