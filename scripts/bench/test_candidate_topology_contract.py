@@ -42,6 +42,10 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("--wait-timeout", script)
         self.assertLess(script.index("/app/dipole-migrate"), script.index("dipole-node1 dipole-node2"))
         self.assertIn("docker compose", script)
+        self.assertNotIn('--project-directory "${ROOT_DIR}"', script)
+        self.assertIn("prepare_certs", script)
+        self.assertIn("dipole-local-key.pem", script)
+        self.assertIn("require_command openssl", script)
         self.assertNotIn("down --volumes", script)
 
     def test_isolated_message_flow_checks_timeline_reads(self):
