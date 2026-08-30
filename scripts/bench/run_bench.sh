@@ -9,6 +9,7 @@ TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_ID="${RUN_ID:-g0-${TIMESTAMP}}"
 SCENARIO="${SCENARIO:-mixed}"
 SCENARIO_FILTER="${SCENARIO_FILTER:-}"
+REPORT_SCENARIO="${SCENARIO_FILTER:-${SCENARIO}}"
 BASE_URL="${BASE_URL:-http://127.0.0.1:8081}"
 NODE1_WS="${NODE1_WS:-ws://127.0.0.1:8081}"
 NODE2_WS="${NODE2_WS:-ws://127.0.0.1:8082}"
@@ -242,7 +243,7 @@ lag_samples="$(jq --raw-input --slurp 'split("\n") | map(select(length > 0) | to
 cpu_model="$(awk -F ': ' '/model name/ { print $2; exit }' /proc/cpuinfo)"
 jq -n \
   --arg run_id "${RUN_ID}" \
-  --arg scenario "${SCENARIO}" \
+  --arg scenario "${REPORT_SCENARIO}" \
   --arg captured_at "${TIMESTAMP}" \
   --arg git_commit "${git_commit}" \
   --arg cpu "${cpu_model}" \
