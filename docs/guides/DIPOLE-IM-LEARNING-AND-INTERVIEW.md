@@ -19,7 +19,7 @@
 | MinIO Multipart 与恢复上传 | 已验证（隔离 Remote GPU） | [平台演进计划](../architecture/PLATFORM-EVOLUTION-PLAN.md) |
 | Contact 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/ContactDirectory.vue` |
 | Group 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/GroupDirectory.vue` |
-| File 目录读取 | 本地契约已验证，Remote GPU 前端门禁待执行 | `frontend/src/components/FileDirectory.vue` |
+| File 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/FileDirectory.vue` |
 | Cassandra、Elasticsearch、C++ 数据面切流 | 默认关闭 / 规划中 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md) |
 
 #### Sync Timeline 与可靠消息
@@ -48,14 +48,14 @@
 
 #### File 目录读取
 
-- **状态：** 本地契约已验证，Remote GPU 前端门禁待执行
+- **状态：** 已验证（隔离 Remote GPU 前端门禁）
 - **简历句：** 为文件元数据建立 owner-scoped 的只读目录：SQLC 使用稳定文件 UUID cursor 查询，Core 通过版本化 gRPC 传递低敏投影，HTTP 与 Vue 端都阻止对象键、存储 URL、校验值和上传会话进入目录。
 - **对外表述：** 文件数据面与目录读取分开治理。浏览器获取目录后仍须为每个下载请求重新获得授权 URL，避免把长期存储位置作为列表数据暴露或缓存。
 - **演示：** 访问 `/files`，展示文件名、大小、内容类型和创建时间；令目录请求失败后，页面进入不可用状态且清空旧条目；点击下载时才请求单文件授权链接。
-- **证据：** `db/queries/file.sql`、`internal/services/core/application/application.go`、`api/proto/dipole/core/v1/core.proto`、`internal/gateway/http/file_handler_test.go`、`frontend/src/api/files.test.ts`、`frontend/src/components/FileDirectory.test.ts` 与 `design/exports/file-directory-review.png`。
+- **证据：** `db/queries/file.sql`、`internal/services/core/application/application.go`、`api/proto/dipole/core/v1/core.proto`、`internal/gateway/http/file_handler_test.go`、`frontend/src/api/files.test.ts`、`frontend/src/components/FileDirectory.test.ts` 与 `design/exports/file-directory-review.png`；Remote GPU Node 22 在 `a29d9927` 通过 38 个测试文件、157 项测试、typecheck 和 production build。
 - **追问：** “为什么不把 MinIO URL 放进列表响应？” 目录是低敏投影，下载 URL 具有短期授权语义；每次下载重新授权能让所有权和过期策略在服务端集中执行。
 - **限制：** 当前目录不提供上传、删除、分享、跨浏览器视觉回归或预签名上传默认切流；上传继续从会话编辑器进入既有 Multipart 路径。
-- **下一步：** 完成 Remote GPU Node 22 前端门禁后，独立设计删除、分享或文件关联写路径的授权、审计和回退契约。
+- **下一步：** 独立设计删除、分享或文件关联写路径的授权、审计和回退契约。
 - **复核条件：** 修改 `/api/v1/files` projection、Core File RPC、文件 cursor、下载授权或任何文件写入口时。
 
 #### Contact 目录读取

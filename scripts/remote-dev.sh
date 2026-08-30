@@ -191,9 +191,10 @@ case "${action}" in
       exit 4
     fi
     cleanup_webapp() {
-      if [[ -n "\$(git diff -- "\$webapp_dir")" ]]; then
-        git diff -- "\$webapp_dir" | git apply --reverse || true
-      fi
+      # Vite can replace tracked hashed assets as well as add new ones. Restore
+      # the known generated directory from the pinned revision before removing
+      # any untracked build output.
+      git restore --source=HEAD --worktree -- "\$webapp_dir"
       untracked="\$(git ls-files --others --exclude-standard -- "\$webapp_dir")"
       if [[ -n "\$untracked" ]]; then
         git clean -f -- \$untracked
