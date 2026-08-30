@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 `scripts/remote-dev.test.mjs` 远程开发入口契约测试，覆盖提交绑定同步、Node 锁文件保护、`webapp` 构建产物清理、Node 版本门禁及活动主机下的构建/Smoke/Benchmark 保护；`4/4` 通过。
+
 - 2026-08-30：在 Remote GPU 对 `master` revision `b96403b0` 重新执行 Go canonical 门禁；全部白名单 Go 包测试、服务布局和架构文档检查通过，未启动 Compose，远端源码工作树保持干净。
 
 - 2026-08-30：修复 Remote GPU `node-test` 的构建产物污染：测试前检查 `internal/services/core/server/webapp` 是否干净，退出时仅恢复该目录的 tracked diff 并清理本次生成的 untracked 资产；Agent Runtime 与 Frontend 验证可持续运行且不留下远端源码变更。
