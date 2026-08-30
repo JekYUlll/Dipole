@@ -12,6 +12,7 @@
 | 理解 Memory 生命周期 | [Memory Observation](agent-memory-observation.md) |
 | 配置事件订阅与 Shadow | [Subscription Shadow](agent-subscription-shadow.md) |
 | 运维 Timeline repair | [Timeline Repair 运维](AGENT-TIMELINE-REPAIR-OPERATIONS.md) |
+| 部署 user-gray Active Runtime | [Active 部署运行手册](AGENT-ACTIVE-DEPLOYMENT.md) |
 | 接入 MCP 与权限控制 | [MCP 授权](agent-mcp-authorization.md)、[外部 MCP](agent-external-mcp.md) |
 | 配置 Trace 与告警 | [OpenTelemetry 运维](agent-otel-operations.md) |
 

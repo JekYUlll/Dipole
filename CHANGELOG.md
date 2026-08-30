@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 Agent Active 部署运行手册，明确 user-gray 的 Provider、Kafka、Temporal、Capability RPC、五类 Eval、operator grant 与维护窗口证据边界，并提供静态渲染和移除 override 的回滚步骤。
+
 - 2026-08-30：Agent active Compose overlay 现要求独立 Kafka consumer group、OpenAI-compatible Provider、v2 Context profile 与 Temporal endpoint/namespace/task queue，并强制 `ai_sdk` 和 `read_active`；缺少任一输入即在 Compose 渲染阶段拒绝。基础微服务 Compose 继续固定 Shadow，移除 override 可立即回滚。
 
 - 2026-08-30：Agent Runtime 的 `ai_sdk` 模式改为显式 OpenAI-compatible Provider adapter；Provider name 绑定全部模型 route 前缀，base URL、API key 与 route 在启动前校验，避免把字符串 route 作为模型对象使用。默认 `metadata` 路径保持不创建 Provider，真实 active 仍需独立完成 Temporal、Kafka、Capability RPC 和 authority 证据。

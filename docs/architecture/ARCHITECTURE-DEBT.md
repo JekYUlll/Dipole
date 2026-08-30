@@ -520,6 +520,7 @@
 - **本轮进展：** release manifest 增加单步阶段转移与回滚校验，禁止跨越 `offline`、`shadow`、`user_gray` 的相邻门禁；该函数只生成新 manifest，仍需 operator 证据才能改变实际 Runtime 开关。
 - **本轮进展：** active Runtime 启动已强制读取 release manifest，并校验 `user_gray` 阶段与 candidate 一致；缺失、读取失败或版本/阶段漂移均 fail closed，默认 shadow 和 Go/Eino 回滚路径保持不变。真实五类评测、共享环境观察窗口和用户灰度仍待完成。
 - **本轮进展：** 增加独立 `deploy/microservices/agent-active.yml` override，要求显式 candidate、manifest、独立 Kafka group、OpenAI-compatible Provider、v2 Context profile 与 Temporal endpoint/namespace/queue，并验证只读挂载；基础 Compose 仍固定 shadow，移除 override 即可回滚。生产 active 仍待真实五类评测、共享环境观察窗口和用户灰度。
+- **本轮进展：** Active 部署运行手册已记录 input、静态渲染、共享环境证据、低敏记录和回滚步骤；Compose 成功只作为配置检查，不能替代 user-gray authority 验收。
 - **本轮进展：** 微服务 Compose 已显式固定 Agent 默认 `shadow`、candidate 和 manifest 路径；默认不挂载 manifest，active override 必须以只读方式提供 `user_gray` 清单，防止部署层绕过启动绑定。生产 active 仍待真实五类评测、共享环境观察窗口和用户灰度。
 
 ### AD-037：MCP 网络入口尚缺 OAuth、外部连接与写能力门禁
