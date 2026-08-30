@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：本机 `planning-with-files` 更新至上游稳定版 `v3.11.2`；移出重复的 `.agents` skill 安装，仅保留 `.codex` canonical 来源，并在 Codex 适配器层加入同 session/项目根短窗口去重。真实并行 Bash 验证确认三次触发只注入一份计划上下文，旧版本与 hook 配置已保留在日期备份目录。
+
 - 2026-08-30：新增 `scripts/remote-dev.test.mjs` 远程开发入口契约测试，覆盖提交绑定同步、Node 锁文件保护、`webapp` 构建产物清理、Node 版本门禁及活动主机下的构建/Smoke/Benchmark 保护；`4/4` 通过。
 
 - 2026-08-30：在 Remote GPU 对 `master` revision `b96403b0` 重新执行 Go canonical 门禁；全部白名单 Go 包测试、服务布局和架构文档检查通过，未启动 Compose，远端源码工作树保持干净。
