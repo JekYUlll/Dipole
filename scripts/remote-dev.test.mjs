@@ -48,6 +48,16 @@ test("benchmark uses an explicit k6 binary and has a Docker fallback on remote h
   assert.match(source, /if \[\[ "\\\$project" == dipole-c1\* \]\]/);
 });
 
+test("benchmark workload overrides are forwarded through an explicit allowlist", () => {
+  assert.ok(source.includes('BENCH_SCENARIO_FILTER="${DIPOLE_BENCH_SCENARIO_FILTER:-}"'));
+  assert.ok(source.includes('BENCH_GROUP_MAX_DURATION="${DIPOLE_BENCH_GROUP_MAX_DURATION:-}"'));
+  assert.ok(source.includes('bench_scenario_filter="\\${8:-}"'));
+  assert.ok(source.includes('bench_group_size="\\${11:-}"'));
+  assert.ok(source.includes('bench_env+=(SCENARIO_FILTER="\\$bench_scenario_filter")'));
+  assert.ok(source.includes('bench_env+=(GROUP_SIZE="\\$bench_group_size")'));
+  assert.ok(source.includes('bench_env+=(RUN_ID="\\$bench_run_id")'));
+});
+
 test("candidate image builds are explicit and carry source provenance", () => {
   assert.match(source, /REMOTE_BUILD_CANDIDATE="\$\{DIPOLE_REMOTE_BUILD_CANDIDATE:-0\}"/);
   assert.match(source, /candidate_tag="dipole-server:c1-\\\$\(git rev-parse --short HEAD\)"/);
