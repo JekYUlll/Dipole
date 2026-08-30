@@ -599,6 +599,7 @@ import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, Publ
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
 import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPartWithRefresh } from '@/upload/multipartUpload'
+import { withMultipartUploadLease } from '@/upload/multipartLease'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -1440,7 +1441,7 @@ const clearStoredMultipartUpload = (file: File) => {
   }
 }
 
-const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
+const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }> => {
   const policy = await loadMultipartUploadPolicy()
   if (file.size <= policy.direct_upload_threshold_bytes) {
     uploadingFileLabel.value = '上传中...'
@@ -1556,6 +1557,9 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
     throw err
   }
 }
+
+const uploadChatFile = (file: File): Promise<{ file_id: string }> =>
+  withMultipartUploadLease(multipartSessionKey(file), () => uploadChatFileUnderLease(file))
 
 const switchToContacts = async () => {
   navTab.value = 'contacts'
