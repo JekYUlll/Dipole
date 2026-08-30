@@ -6,6 +6,11 @@ test.beforeEach(async ({ page, browserName }) => {
     localStorage.setItem('dipole.web.token', 'task-create-visual-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
+  await page.route('**/api/v1/users/me', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ code: 0, data: { uuid: 'U100', nickname: 'Owner', avatar: '', signature: '' } }),
+  }))
 })
 
 test('keeps the default-off task creation surface aligned with the Pencil baseline', async ({ page }) => {
