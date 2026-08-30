@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Runtime 增加未装配的 OAuth callback handoff terminal client。它经 `dipole-agent` mTLS 通道只提交 handoff ID、lease owner 与 correlation，并严格校验无敏感字段的 ID 回包；错误、冲突回包与无效输入统一失败关闭。`index.ts`、control handler 与默认配置均未注入该 client，key open、code exchange、token lifecycle、browser binding 与 callback route 保持关闭。另为四个既有生成 gRPC 回调补充协议元素类型，恢复锁定 TypeScript 的 no-implicit-any gate。
+
 - 2026-08-31：Core 增加默认未装配的 OAuth callback handoff `Complete`/`Release` RPC。两者仅信任 `dipole-agent` mTLS caller，并将 handoff ID 与 lease owner 交给 SQLC Store 的条件终态转换；任何 principal、授权码、密文、key 或 token 均不进入请求或响应，缺 Store 固定 `Unavailable`。TypeScript proto 生成器优先复用已安装的锁定 `protoc`，隔离 Remote GPU 无需再次下载编译器。Runtime 终态 client、key open、code exchange、token 生命周期、browser binding 与 callback route 继续关闭。
 
 - 2026-08-31：Runtime 增加未装配的 OAuth callback handoff control handler。它独立于用户任务控制认证，只接受 Gateway service secret、严格单字段 `{handoff_id}` 与可选 correlation，principal header 直接拒绝；成功固定 `202`。有界进程内去重在一个 Runtime 生命周期内避免重复下游派发，派发失败释放 claim；重启后的 recovery 继续依赖 Core conditional lease。`index.ts`、环境变量和默认 listener 未装配该 handler，Store writer、browser binding、complete/release、code exchange 与 token 生命周期保持关闭。

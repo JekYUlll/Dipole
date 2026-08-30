@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff terminal client。它用 `dipole-agent` mTLS metadata 仅提交 handoff ID 和 lease owner，以精确 ID 回包结束或释放租约；principal、授权码、密文、key 与 token 都不会进入该调用。无效输入、回包冲突或 Core 错误均 fail closed，`index.ts` 和 control handler 未注入它。同时为四个既有生成 gRPC 回调补充显式协议元素类型，恢复锁定 TypeScript 的完整 typecheck。
+
 - 2026-08-31：Agent Capability 增加默认未装配的 OAuth callback handoff 终态 RPC。`CompleteOAuthCallbackHandoff` 与 `ReleaseOAuthCallbackHandoff` 仅接受 `dipole-agent` mTLS caller 的 handoff ID 和 lease owner，Core 以 SQLC 条件更新复核有效 lease 后返回无敏感字段的 ID；缺 Store、越权、无效或过期 lease 均 fail closed。TypeScript 生成脚本会优先复用已安装的锁定 `protoc`，确保隔离 Remote GPU 可重复生成。Runtime 终态 client、key open、code exchange、token 生命周期与 callback route 继续未装配。
 
 - 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff control handler。它仅认证 `dipole-gateway` service secret，拒绝任何 principal header 和非单字段 `{handoff_id}` body，成功返回 `202`；有界进程内去重避免重复通知的重复下游派发，失败会释放记录以支持重试。该 handler 未接入 `index.ts`、未读取环境变量、未启动 claim/exchange，因此默认网络 surface 不变。

@@ -78,4 +78,4 @@ The exact dual-channel transport and failure contract is maintained in
 
 ## Current Safe Surface
 
-The deployment surface remains unchanged: no OAuth HTTP callback route, no Runtime handoff receiver, no token exchange, no token persistence and no active configuration flag. `ConsumeOAuthAuthorizationTransaction` and callback handoff RPCs remain internal; the latter additionally require an explicitly injected Store and `dipole-agent` mTLS caller.
+The deployment surface remains unchanged: no OAuth HTTP callback route, no Runtime handoff receiver, no token exchange, no token persistence and no active configuration flag. Runtime contains unmounted claim and terminal clients; `index.ts` does not construct either. `ConsumeOAuthAuthorizationTransaction` and callback handoff RPCs remain internal; the latter additionally require an explicitly injected Store and `dipole-agent` mTLS caller.

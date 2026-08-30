@@ -2,7 +2,16 @@ import * as grpc from "@grpc/grpc-js";
 
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
-import type { AppendAgentTaskTimelineEventResponse, ConversationSearchEvidence, ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
+import type {
+  AgentContextMemory as AgentContextMemoryProto,
+  AgentEventSubscription as AgentEventSubscriptionProto,
+  AgentResourceScope,
+  AppendAgentTaskTimelineEventResponse,
+  ConversationSearchEvidence,
+  ConversationSnapshot,
+  ListAgentTaskTimelineResponse,
+  TaskWorkflowProjectionSnapshot
+} from "../generated/dipole/agent/v1/agent.js";
 import type { Message as AgentMessage } from "../generated/dipole/message/v1/message.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
@@ -348,7 +357,7 @@ export class AgentCapabilityRPCClient {
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Event Subscription lookup returned no response"));
         try {
-          resolve(response.subscriptions.map((item) => ({
+          resolve(response.subscriptions.map((item: AgentEventSubscriptionProto) => ({
             subscriptionId: item.subscriptionId,
             definitionId: item.definitionId,
             definitionVersion: Number(item.definitionVersion),
@@ -376,7 +385,7 @@ export class AgentCapabilityRPCClient {
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Memory lookup returned no response"));
         try {
-          resolve(response.memories.map((item) => {
+          resolve(response.memories.map((item: AgentContextMemoryProto) => {
             if (item.provenance === undefined) throw new Error(`Agent Memory ${item.memoryId} has no provenance`);
             if (!["working", "episodic", "semantic", "procedural", "observational"].includes(item.memoryType)) {
               throw new Error(`Agent Memory ${item.memoryId} has unsupported type ${item.memoryType}`);
@@ -768,7 +777,7 @@ export class AgentCapabilityRPCClient {
             tenantId: response.tenantId, principalUuid: response.principalUserId, agentUuid: response.agentId,
             ...(response.delegatedByUserId.trim() === "" ? {} : { delegatedByUuid: response.delegatedByUserId }),
             taskId, runId, mode: response.mode, permissions: response.permissions,
-            resourceScopes: response.resourceScopes.map((scope) => ({
+            resourceScopes: response.resourceScopes.map((scope: AgentResourceScope) => ({
               resourceType: scope.resourceType, resourceId: scope.resourceId, actions: scope.actions
             })),
             approvedCapabilities: response.approvedCapabilities,
@@ -1022,7 +1031,7 @@ export class AgentCapabilityRPCClient {
           return;
         }
         resolve({
-          tasks: response.tasks.map((task) => ({
+          tasks: response.tasks.map((task: TaskWorkflowProjectionSnapshot) => ({
             taskId: task.taskId,
             ...(task.hasWorkflow ? { workflow: {
               workflowId: task.workflowId,
