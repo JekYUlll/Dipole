@@ -73,7 +73,13 @@ if [[ ! -d "$root/.git" ]]; then
   git clone "$remote_url" "$root"
 fi
 cd "$root"
-git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}" || true
+if [[ "$branch" == dipole-dev/* ]]; then
+  # Candidate refs intentionally move after squash merges. Refresh the remote
+  # tracking ref explicitly so the detached commit checkout has no stale-ref warning.
+  git fetch origin "+refs/heads/${branch}:refs/remotes/origin/${branch}"
+else
+  git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
+fi
 git checkout --detach "$commit"
 printf 'remote source ready: commit=%s root=%s\n' "$commit" "$root"
 REMOTE_SYNC
