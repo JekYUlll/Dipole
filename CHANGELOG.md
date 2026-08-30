@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：恢复上一版 Signal Link 品牌资产。主字标与紧凑应用图标回到深青双极和橙色事件脉冲，IM 标识表达消息投递链路，Agent 标识表达受控任务能力；保留既有 SVG 文件名和 README 引用，运行时行为不受影响。
+
 - 2026-08-31：新增认证 `/settings` 页面，提供签名更新、低敏 Device Security 入口、当前客户端同步状态与退出登录。设备详情继续由独立隐私页面负责，设置页不显示 IP、节点或连接标识；路由与 Agent 路由测试解除总数硬编码，后续普通页面增加不会削弱 Agent 的认证/开关断言。
 
 - 2026-08-31：校正 Agent Memory promotion 债务口径：Core receipt commit RPC、TypeScript client、Temporal `promotion_active` Activity、mTLS/双开关与隔离重试、grant 撤销、owner revoke 演练已完成；共享环境 Kafka 触发、Gateway revoke 传输、overlay 回滚和观测证据仍未完成，默认写入路径保持关闭。
