@@ -111,8 +111,8 @@ func TestAgentMemoryControlClientPromotesCandidateWithBoundPrincipal(t *testing.
 	rpc.promoteResponse.Provenance.SourceId = "CAND-1"
 	rpc.promoteResponse.Provenance.Sequence = "REV-1"
 	client, _ := NewAgentMemoryControlClient(rpc, "dipole", time.Second)
-	item, err := client.PromoteCandidate(context.Background(), "U100", "CAND-1", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "REV-1")
-	if err != nil || item.MemoryID != "MEM-CAND-1" || rpc.promoteRequest.GetContext().GetPrincipalUserId() != "U100" || rpc.promoteRequest.GetCandidateSha256() == "" {
+	item, err := client.PromoteCandidate(context.Background(), "U100", "CAND-1", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "REV-1", "semantic")
+	if err != nil || item.MemoryID != "MEM-CAND-1" || rpc.promoteRequest.GetContext().GetPrincipalUserId() != "U100" || rpc.promoteRequest.GetCandidateSha256() == "" || rpc.promoteRequest.GetTargetMemoryType() != "semantic" {
 		t.Fatalf("promotion item=%+v request=%+v err=%v", item, rpc.promoteRequest, err)
 	}
 }

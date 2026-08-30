@@ -815,6 +815,9 @@ message PromoteMemoryCandidateRequest {
   string candidate_id = 3;
   string candidate_sha256 = 4;
   string review_id = 5;
+  // Empty preserves the v1 observational promotion default. Persistent working
+  // memory is rejected by the Agent service because it is task scoped.
+  string target_memory_type = 6;
 }
 
 message PublishMcpReadinessEvidenceRequest {

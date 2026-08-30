@@ -297,8 +297,9 @@ func agentMemoryCorrectHandler(memories AgentMemoryControlApplication) gin.Handl
 
 func agentMemoryCandidatePromoteHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
 	type requestBody struct {
-		CandidateSHA256 string `json:"candidateSha256"`
-		ReviewID        string `json:"reviewId"`
+		CandidateSHA256  string `json:"candidateSha256"`
+		ReviewID         string `json:"reviewId"`
+		TargetMemoryType string `json:"targetMemoryType"`
 	}
 	return func(c *gin.Context) {
 		user, ok := middleware.CurrentUser(c)
@@ -317,12 +318,12 @@ func agentMemoryCandidatePromoteHandler(memories AgentMemoryControlApplication) 
 			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory candidate promotion request"})
 			return
 		}
-		body.CandidateSHA256, body.ReviewID = strings.TrimSpace(body.CandidateSHA256), strings.TrimSpace(body.ReviewID)
-		if len(body.CandidateSHA256) != 64 || !isLowerHex(body.CandidateSHA256) || !validAgentSubscriptionPublicID(body.ReviewID, 72) {
+		body.CandidateSHA256, body.ReviewID, body.TargetMemoryType = strings.TrimSpace(body.CandidateSHA256), strings.TrimSpace(body.ReviewID), strings.TrimSpace(body.TargetMemoryType)
+		if len(body.CandidateSHA256) != 64 || !isLowerHex(body.CandidateSHA256) || !validAgentSubscriptionPublicID(body.ReviewID, 72) || (body.TargetMemoryType != "" && !validPersistentAgentMemoryType(body.TargetMemoryType)) {
 			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory candidate promotion request is invalid"})
 			return
 		}
-		item, err := memories.PromoteCandidate(c.Request.Context(), user.UUID, candidateID, body.CandidateSHA256, body.ReviewID)
+		item, err := memories.PromoteCandidate(c.Request.Context(), user.UUID, candidateID, body.CandidateSHA256, body.ReviewID, body.TargetMemoryType)
 		writeAgentMemoryResult(c, item, err)
 	}
 }

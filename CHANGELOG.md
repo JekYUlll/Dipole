@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Agent Memory candidate promotion 新增显式持久化 `target_memory_type`，贯通 Gateway、版本化 gRPC、Core 与 MySQL 事务。已接受 review 的 owner 可写入 episodic、semantic、procedural 或 observational Memory；空字段保持 observational 兼容，task-scoped working 在 Gateway 与 Core 双层拒绝，重复请求保持幂等。TS receipt v2 到 active executor 的接线仍默认关闭。
+
 - 2026-08-30：Agent Task Timeline v1 增加可选的内容寻址 `artifact_id`，通过 MySQL 主投影与失败修复队列、Core gRPC、TypeScript Runtime 和前端解析贯通。新 `artifact` 事件要求精确小写 SHA-256 ID，其他事件携带该字段会拒绝；该能力只支持 owner-scoped metadata 关联，正文、对象键、下载与 Artifact 页面仍未开放。
 
 - 2026-08-30：学习、简历与面试主文档新增合并切片维护记录模板，要求针对可讲能力同步维护对外表述、演示、证据、追问、限制和复核条件；根 README 增加直接入口，文档叙事继续以代码、契约、测试和运行记录为准。

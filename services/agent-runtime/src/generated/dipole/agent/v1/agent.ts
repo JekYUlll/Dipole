@@ -2602,6 +2602,13 @@ export interface PromoteMemoryCandidateRequest {
      * @generated from protobuf field: string review_id = 5
      */
     reviewId: string;
+    /**
+     * Empty preserves the v1 observational promotion default. Persistent working
+     * memory is rejected by the Agent service because it is task scoped.
+     *
+     * @generated from protobuf field: string target_memory_type = 6
+     */
+    targetMemoryType: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.PublishMcpReadinessEvidenceRequest
@@ -10471,7 +10478,8 @@ class PromoteMemoryCandidateRequest$Type extends MessageType<PromoteMemoryCandid
             { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 3, name: "candidate_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 4, name: "candidate_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 5, name: "review_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 5, name: "review_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "target_memory_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<PromoteMemoryCandidateRequest>): PromoteMemoryCandidateRequest {
@@ -10480,6 +10488,7 @@ class PromoteMemoryCandidateRequest$Type extends MessageType<PromoteMemoryCandid
         message.candidateId = "";
         message.candidateSha256 = "";
         message.reviewId = "";
+        message.targetMemoryType = "";
         if (value !== undefined)
             reflectionMergePartial<PromoteMemoryCandidateRequest>(this, message, value);
         return message;
@@ -10503,6 +10512,9 @@ class PromoteMemoryCandidateRequest$Type extends MessageType<PromoteMemoryCandid
                     break;
                 case /* string review_id */ 5:
                     message.reviewId = reader.string();
+                    break;
+                case /* string target_memory_type */ 6:
+                    message.targetMemoryType = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -10531,6 +10543,9 @@ class PromoteMemoryCandidateRequest$Type extends MessageType<PromoteMemoryCandid
         /* string review_id = 5; */
         if (message.reviewId !== "")
             writer.tag(5, WireType.LengthDelimited).string(message.reviewId);
+        /* string target_memory_type = 6; */
+        if (message.targetMemoryType !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.targetMemoryType);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

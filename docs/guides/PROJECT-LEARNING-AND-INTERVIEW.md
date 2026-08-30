@@ -58,9 +58,20 @@
 | 实时 IM 与 Timeline | **已验证** | 第 3 节后端描述；第 4 节 60 秒/3 分钟介绍 | [消息存储与同步模型](../architecture/MESSAGE-STORAGE-AND-SYNC.md)；“三个 Seq 为什么分开？” |
 | 渐进式微服务与 SQLC | **已验证** | 第 3 节后端描述；第 5 节渐进微服务故事 | [服务边界](../architecture/SERVICE-BOUNDARIES.md)；“为什么不一次性拆分？” |
 | Agent Runtime 与权限 | **已验证** | 第 3 节 Agent 描述；第 5 节 Agent 安全与可恢复执行 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)；“模型为何不能决定权限？” |
+| Owner-reviewed Memory 类型晋级 | **已验证（本地）** | 受控 candidate/review 选择 semantic 等持久类型 | [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)；“为何 working 不能晋级？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件可携带内容寻址 ID，用于定位 owner-scoped metadata 边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、[Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
+
+#### 2026-08-30 · Owner-reviewed Memory 类型晋级
+
+- **状态：** 已验证（本地）
+- **对外表述：** 将 Agent Memory 的类型策略从 Runtime 校验延伸至持久化事务：owner 在已接受 review 后可将 observational candidate 晋级为 semantic、episodic、procedural 或 observational Memory，并由 Gateway、gRPC、Core 和 MySQL 共同校验。
+- **演示：** 使用受控 candidate/review 调用 promotion RPC，指定 `semantic` 后读取返回 Memory 类型；再提交 `working`，确认 Gateway 返回 400 且未触发写入。
+- **证据：** [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)、`internal/services/agent/application/agent_memory_candidate_promotion_test.go`、`internal/transport/grpc/agent/server_test.go`、`internal/services/gateway/server/server_test.go`。
+- **追问：** “为什么 working 不能晋级？” working 只服务当前 Task 的短期推理状态，持久化会扩大生命周期和检索范围；长期 Memory 必须经过 owner review，并在事务内绑定 candidate 与 review。
+- **限制：** 当前路径使用 owner 控制 RPC；TS receipt v2 的短时效和 active-authority 尚未接入独立 executor，不能宣称 active Agent 已自动写入长期 Memory。
+- **复核条件：** 接入 receipt、Temporal Activity、active authority 或增加新的 Memory 类型时。
 
 #### 2026-08-30 · Artifact 与 Task Timeline 关联
 

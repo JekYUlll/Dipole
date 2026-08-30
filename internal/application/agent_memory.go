@@ -248,6 +248,16 @@ func validAgentMemoryTypeV1(value AgentMemoryTypeV1) bool {
 	}
 }
 
+// Persistent candidate promotion must not create task-scoped working memory.
+func IsPersistentAgentMemoryTypeV1(value AgentMemoryTypeV1) bool {
+	switch value {
+	case AgentMemoryTypeEpisodic, AgentMemoryTypeSemantic, AgentMemoryTypeProcedural, AgentMemoryTypeObservational:
+		return true
+	default:
+		return false
+	}
+}
+
 func validAgentMemoryStatusV1(value AgentMemoryStatusV1) bool {
 	return value == AgentMemoryStatusActive || value == AgentMemoryStatusRevoked
 }

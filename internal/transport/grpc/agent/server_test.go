@@ -1031,14 +1031,14 @@ func TestPromoteMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
 	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
 		return server.PromoteMemoryCandidate(ctx, &agentv1.PromoteMemoryCandidateRequest{
 			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", CandidateId: "CAND-1",
-			CandidateSha256: strings.Repeat("a", 64), ReviewId: "REV-1",
+			CandidateSha256: strings.Repeat("a", 64), ReviewId: "REV-1", TargetMemoryType: "semantic",
 		})
 	})
 	if err != nil {
 		t.Fatalf("promote candidate: %v", err)
 	}
 	item := response.(*agentv1.AgentOwnedMemory)
-	if promotion.request.PrincipalUUID != "U100" || promotion.request.TenantID != "dipole" || promotion.request.CandidateUUID != "CAND-1" || item.GetMemoryId() != "MEM-CAND-1" {
+	if promotion.request.PrincipalUUID != "U100" || promotion.request.TenantID != "dipole" || promotion.request.CandidateUUID != "CAND-1" || promotion.request.TargetMemoryType != application.AgentMemoryTypeSemantic || item.GetMemoryId() != "MEM-CAND-1" {
 		t.Fatalf("unexpected promotion request=%+v response=%+v", promotion.request, item)
 	}
 	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {

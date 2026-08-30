@@ -131,10 +131,11 @@ type gatewayAgentDefinitionStub struct {
 }
 
 type gatewayAgentMemoryStub struct {
-	principal, after, memoryID, reason          string
-	content, compactContent                     string
-	expectedVersion                             uint32
-	limit, listCalls, revokeCalls, correctCalls int
+	principal, after, memoryID, reason                        string
+	content, compactContent                                   string
+	targetMemoryType                                          string
+	expectedVersion                                           uint32
+	limit, listCalls, revokeCalls, correctCalls, promoteCalls int
 }
 
 func (s *gatewayAgentMemoryStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error) {
@@ -159,7 +160,9 @@ func (s *gatewayAgentMemoryStub) Correct(_ context.Context, principalUUID, memor
 	}, nil
 }
 
-func (s *gatewayAgentMemoryStub) PromoteCandidate(_ context.Context, principalUUID, candidateID, candidateSHA256, reviewID string) (*AgentMemory, error) {
+func (s *gatewayAgentMemoryStub) PromoteCandidate(_ context.Context, principalUUID, candidateID, candidateSHA256, reviewID, targetMemoryType string) (*AgentMemory, error) {
+	s.principal, s.targetMemoryType = principalUUID, targetMemoryType
+	s.promoteCalls++
 	return &AgentMemory{MemoryID: "MEM-CAND-1", AgentID: "UAI", MemoryType: "observational", Status: "active", ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60, Provenance: AgentMemoryProvenance{SourceType: "memory_candidate", SourceID: candidateID, Sequence: reviewID}, ValidFromUnixMS: 1700000000000, CreatedAtUnixMS: 1700000000000, MemoryRootID: "MEM-CAND-1", MemoryVersion: 1}, nil
 }
 
@@ -552,6 +555,22 @@ func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
 	gateway.Engine().ServeHTTP(correctionResponse, correction)
 	if correctionResponse.Code != http.StatusOK || memories.principal != "U100" || memories.expectedVersion != 1 || memories.content != "Owner is Bob" || memories.reason != "fix owner" || memories.correctCalls != 1 {
 		t.Fatalf("correction code=%d stub=%+v body=%s", correctionResponse.Code, memories, correctionResponse.Body.String())
+	}
+	promote := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memory-candidates/CAND-1/promote", strings.NewReader(`{"candidateSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","reviewId":"REV-1","targetMemoryType":"semantic"}`))
+	promote.Header.Set("Authorization", "Bearer "+token)
+	promote.Header.Set("Content-Type", "application/json")
+	promoteResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(promoteResponse, promote)
+	if promoteResponse.Code != http.StatusOK || memories.promoteCalls != 1 || memories.principal != "U100" || memories.targetMemoryType != "semantic" {
+		t.Fatalf("promote code=%d stub=%+v body=%s", promoteResponse.Code, memories, promoteResponse.Body.String())
+	}
+	working := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memory-candidates/CAND-1/promote", strings.NewReader(`{"candidateSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","reviewId":"REV-1","targetMemoryType":"working"}`))
+	working.Header.Set("Authorization", "Bearer "+token)
+	working.Header.Set("Content-Type", "application/json")
+	workingResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(workingResponse, working)
+	if workingResponse.Code != http.StatusBadRequest || memories.promoteCalls != 1 {
+		t.Fatalf("working promotion code=%d calls=%d body=%s", workingResponse.Code, memories.promoteCalls, workingResponse.Body.String())
 	}
 }
 

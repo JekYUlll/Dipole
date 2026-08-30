@@ -34,6 +34,12 @@ func (s *PersistentAgentMemoryCandidatePromotionServiceV1) Promote(ctx context.C
 	if request.TenantID == "" || request.PrincipalUUID == "" || request.CandidateUUID == "" || request.CandidateSHA256 == "" || request.ReviewUUID == "" {
 		return nil, application.ErrAgentMemoryCandidateInvalid
 	}
+	if request.TargetMemoryType == "" {
+		request.TargetMemoryType = application.AgentMemoryTypeObservational
+	}
+	if !application.IsPersistentAgentMemoryTypeV1(request.TargetMemoryType) {
+		return nil, application.ErrAgentMemoryCandidateInvalid
+	}
 	candidate, err := s.store.GetCandidateForPromotion(ctx, request.TenantID, request.PrincipalUUID, request.CandidateUUID)
 	if err != nil {
 		return nil, fmt.Errorf("get Agent Memory candidate: %w", err)
@@ -54,7 +60,7 @@ func (s *PersistentAgentMemoryCandidatePromotionServiceV1) Promote(ctx context.C
 	}
 	memory := application.AgentMemoryV1{
 		MemoryUUID: stableAgentMemoryCandidateUUIDV1(*candidate), TenantID: candidate.TenantID, PrincipalUUID: candidate.PrincipalUUID, AgentUUID: candidate.AgentUUID,
-		MemoryType: application.AgentMemoryTypeObservational, Status: application.AgentMemoryStatusActive,
+		MemoryType: request.TargetMemoryType, Status: application.AgentMemoryStatusActive,
 		ResourceType: candidate.ResourceType, ResourceID: candidate.ResourceID, Content: candidate.Summary, CompactContent: candidate.Summary,
 		Priority: 60, Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: candidate.CandidateUUID, Sequence: review.ReviewUUID}, ValidFrom: now,
 	}

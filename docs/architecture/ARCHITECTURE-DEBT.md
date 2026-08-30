@@ -1285,9 +1285,9 @@
 - **状态：** 进行中
 - **发现日期：** 2026-08-30
 - **影响范围：** Agent Memory candidate、review、promotion、五类 Memory 生命周期
-- **现状：** Runtime 已统一声明 `working`、`episodic`、`semantic`、`procedural` 和 `observational` 五类类型；candidate 仍只允许 `observational`，review/promotion receipt 记录决策与绑定信息。当前类型策略只负责校验和约束，尚未实现获得 operator authority 后的持久化写入执行器。
-- **本轮进展：** 新增纯 `MemoryTypePolicy` 与 candidate-to-target transition 校验，明确 working 的任务级非持久语义以及其余类型的 review 要求；类型检查不会授予写入权限，默认 Shadow/Remote 保持关闭。
-- **证据：** `services/agent-runtime/src/memory/memory-type-policy.test.ts` 覆盖五类枚举、持久性策略、显式目标类型和 observational candidate 限制；Agent Memory 测试 7 个文件/31 个测试通过，typecheck、文档索引和架构文档门禁通过。
-- **下一步：** 在 active-authority、owner scope、review receipt 和幂等写入条件齐备后，再实现独立 promotion executor；不得把当前纯校验函数直接当作写入授权。
+- **现状：** Runtime 已统一声明 `working`、`episodic`、`semantic`、`procedural` 和 `observational` 五类类型；candidate 仍只允许 `observational`，review/promotion receipt 记录决策与绑定信息。Gateway owner 控制入口已能请求持久 `episodic`、`semantic`、`procedural` 或 `observational` Memory，Core 在 v47 事务内重读 candidate/review、拒绝 task-scoped `working`，并用既有 promotion 记录保证幂等。
+- **本轮进展：** `PromoteMemoryCandidateRequest.target_memory_type` 已贯通 Gateway、Agent gRPC、应用服务和 MySQL 写入；空值兼容既有 `observational`，显式类型与返回 Memory 不一致会 fail closed。新增应用、gRPC 与 Gateway HTTP 回归，覆盖 accepted review、semantic 写入、working 拒绝与调用重放。
+- **证据：** [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)、`internal/services/agent/application/agent_memory_candidate_promotion_test.go`、`internal/transport/grpc/agent/server_test.go`、`internal/services/gateway/server/server_test.go`、`services/agent-runtime/src/memory/memory-type-policy.test.ts`。
+- **下一步：** 将 TS receipt v2 的 target type、短时效和 active-authority 绑定接入独立 executor；当前 owner 控制 RPC 不能替代 active Runtime 自动写入授权，默认 Shadow/Remote 保持关闭。
 
 - **2026-08-30 兼容性补充：** promotion receipt v2 将 observational candidate 与显式目标类型一起绑定至 canonical hash；历史 v1 receipt 保持原语义可读，但因没有目标类型而在 replay 阶段 fail-closed。External MCP Shadow 对 partial enablement 增加零进程启动回归，默认关闭路径继续不构造 Worker、RPC 或网络资源。

@@ -69,7 +69,7 @@ type AgentMemoryControlApplication interface {
 	List(ctx context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error)
 	Revoke(ctx context.Context, principalUUID, memoryID, reason string) (*AgentMemory, error)
 	Correct(ctx context.Context, principalUUID, memoryID string, expectedVersion uint32, content, compactContent, reason string) (*AgentMemoryCorrection, error)
-	PromoteCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, reviewID string) (*AgentMemory, error)
+	PromoteCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, reviewID, targetMemoryType string) (*AgentMemory, error)
 }
 
 type agentMemoryRPC interface {
@@ -186,25 +186,38 @@ func (c *AgentMemoryControlClient) Correct(ctx context.Context, principalUUID, m
 	return &AgentMemoryCorrection{Previous: previous, Corrected: corrected}, nil
 }
 
-func (c *AgentMemoryControlClient) PromoteCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, reviewID string) (*AgentMemory, error) {
-	principalUUID, candidateID, candidateSHA256, reviewID = strings.TrimSpace(principalUUID), strings.TrimSpace(candidateID), strings.TrimSpace(candidateSHA256), strings.TrimSpace(reviewID)
-	if principalUUID == "" || !validAgentSubscriptionPublicID(candidateID, 72) || len(candidateSHA256) != 64 || !isLowerHex(candidateSHA256) || !validAgentSubscriptionPublicID(reviewID, 72) {
+func (c *AgentMemoryControlClient) PromoteCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, reviewID, targetMemoryType string) (*AgentMemory, error) {
+	principalUUID, candidateID, candidateSHA256, reviewID, targetMemoryType = strings.TrimSpace(principalUUID), strings.TrimSpace(candidateID), strings.TrimSpace(candidateSHA256), strings.TrimSpace(reviewID), strings.TrimSpace(targetMemoryType)
+	if principalUUID == "" || !validAgentSubscriptionPublicID(candidateID, 72) || len(candidateSHA256) != 64 || !isLowerHex(candidateSHA256) || !validAgentSubscriptionPublicID(reviewID, 72) || (targetMemoryType != "" && !validPersistentAgentMemoryType(targetMemoryType)) {
 		return nil, ErrAgentMemoryInvalid
 	}
 	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 	response, err := c.rpc.PromoteMemoryCandidate(callCtx, &agentv1.PromoteMemoryCandidateRequest{
 		Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID,
-		CandidateId: candidateID, CandidateSha256: candidateSHA256, ReviewId: reviewID,
+		CandidateId: candidateID, CandidateSha256: candidateSHA256, ReviewId: reviewID, TargetMemoryType: targetMemoryType,
 	})
 	if err != nil {
 		return nil, mapAgentMemoryRPCError(err)
 	}
 	item, err := agentMemoryFromProto(response)
-	if err != nil || item.Provenance.SourceType != "memory_candidate" || item.Provenance.SourceID != candidateID || item.Provenance.Sequence != reviewID || item.Status != "active" {
+	expectedMemoryType := targetMemoryType
+	if expectedMemoryType == "" {
+		expectedMemoryType = "observational"
+	}
+	if err != nil || item.Provenance.SourceType != "memory_candidate" || item.Provenance.SourceID != candidateID || item.Provenance.Sequence != reviewID || item.Status != "active" || item.MemoryType != expectedMemoryType {
 		return nil, ErrAgentMemoryUnavailable
 	}
 	return &item, nil
+}
+
+func validPersistentAgentMemoryType(value string) bool {
+	switch value {
+	case "episodic", "semantic", "procedural", "observational":
+		return true
+	default:
+		return false
+	}
 }
 
 func isLowerHex(value string) bool {

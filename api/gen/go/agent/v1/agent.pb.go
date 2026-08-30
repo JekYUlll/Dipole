@@ -7550,8 +7550,11 @@ type PromoteMemoryCandidateRequest struct {
 	CandidateId     string                 `protobuf:"bytes,3,opt,name=candidate_id,json=candidateId,proto3" json:"candidate_id,omitempty"`
 	CandidateSha256 string                 `protobuf:"bytes,4,opt,name=candidate_sha256,json=candidateSha256,proto3" json:"candidate_sha256,omitempty"`
 	ReviewId        string                 `protobuf:"bytes,5,opt,name=review_id,json=reviewId,proto3" json:"review_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Empty preserves the v1 observational promotion default. Persistent working
+	// memory is rejected by the Agent service because it is task scoped.
+	TargetMemoryType string `protobuf:"bytes,6,opt,name=target_memory_type,json=targetMemoryType,proto3" json:"target_memory_type,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *PromoteMemoryCandidateRequest) Reset() {
@@ -7615,6 +7618,13 @@ func (x *PromoteMemoryCandidateRequest) GetCandidateSha256() string {
 func (x *PromoteMemoryCandidateRequest) GetReviewId() string {
 	if x != nil {
 		return x.ReviewId
+	}
+	return ""
+}
+
+func (x *PromoteMemoryCandidateRequest) GetTargetMemoryType() string {
+	if x != nil {
+		return x.TargetMemoryType
 	}
 	return ""
 }
@@ -8704,13 +8714,14 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x06reason\x18\a \x01(\tR\x06reason\"\x9c\x01\n" +
 	"\x1aCorrectOwnedMemoryResponse\x12=\n" +
 	"\bprevious\x18\x01 \x01(\v2!.dipole.agent.v1.AgentOwnedMemoryR\bprevious\x12?\n" +
-	"\tcorrected\x18\x02 \x01(\v2!.dipole.agent.v1.AgentOwnedMemoryR\tcorrected\"\xe3\x01\n" +
+	"\tcorrected\x18\x02 \x01(\v2!.dipole.agent.v1.AgentOwnedMemoryR\tcorrected\"\x91\x02\n" +
 	"\x1dPromoteMemoryCandidateRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12!\n" +
 	"\fcandidate_id\x18\x03 \x01(\tR\vcandidateId\x12)\n" +
 	"\x10candidate_sha256\x18\x04 \x01(\tR\x0fcandidateSha256\x12\x1b\n" +
-	"\treview_id\x18\x05 \x01(\tR\breviewId\"\x85\x02\n" +
+	"\treview_id\x18\x05 \x01(\tR\breviewId\x12,\n" +
+	"\x12target_memory_type\x18\x06 \x01(\tR\x10targetMemoryType\"\x85\x02\n" +
 	"\"PublishMcpReadinessEvidenceRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x124\n" +

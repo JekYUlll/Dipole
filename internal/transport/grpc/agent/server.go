@@ -248,7 +248,7 @@ func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.Pr
 	}
 	item, err := s.memoryPromotions.Promote(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryCandidatePromotionRequestV1{
 		TenantID: request.GetTenantId(), PrincipalUUID: principal, CandidateUUID: request.GetCandidateId(),
-		CandidateSHA256: request.GetCandidateSha256(), ReviewUUID: request.GetReviewId(),
+		CandidateSHA256: request.GetCandidateSha256(), ReviewUUID: request.GetReviewId(), TargetMemoryType: application.AgentMemoryTypeV1(request.GetTargetMemoryType()),
 	})
 	if err != nil {
 		return nil, agentMemoryCandidatePromotionErrorV1(err)

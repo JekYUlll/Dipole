@@ -53,11 +53,12 @@ type AgentMemoryCandidateReviewV1 struct {
 }
 
 type AgentMemoryCandidatePromotionRequestV1 struct {
-	TenantID        string
-	PrincipalUUID   string
-	CandidateUUID   string
-	CandidateSHA256 string
-	ReviewUUID      string
+	TenantID         string
+	PrincipalUUID    string
+	CandidateUUID    string
+	CandidateSHA256  string
+	ReviewUUID       string
+	TargetMemoryType AgentMemoryTypeV1
 }
 
 type AgentMemoryCandidatePromotionStoreV1 interface {
