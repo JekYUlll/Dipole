@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 在 `6f15f887` 完成不启动 Compose 的完整 Node 门禁：Agent Runtime 通过 `134` 个测试文件、`702` 项测试（另有 `9/30` 项预期跳过），前端通过 `41` 个测试文件、`165` 项测试；两侧 typecheck 与 production build 均通过，生成 Web 产物退出后恢复，候选工作树保持干净。
+
 - 2026-08-31：Remote GPU 候选同步会先拒绝已跟踪的远端修改；对于与目标 Git blob 的 SHA-256 完全一致的未跟踪文件冲突，仅清理可由提交恢复的生成物。内容不同的文件保持原样并 fail closed，避免视觉快照等测试产物阻塞后续已提交 revision。
 
 - 2026-08-31：Settings 的认证页面检查现运行于全部 Playwright 项目，Chromium 保留像素基线，Remote GPU Firefox 已通过真实路由与披露断言。WebKit 二进制已安装，但共享宿主缺少 `libgstreamer-plugins-bad1.0-0` 与 `libavif16`，系统依赖安装留待维护窗口。
