@@ -1503,6 +1503,7 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-08-30：预签名 Multipart Gateway 代理新增可配置上游响应超时，默认 `30s`；上游对象存储超时返回 `502`，避免长连接无限占用，配置异常 fail-closed，relay 回退路径保持不变。
 - 2026-08-30：补充 Multipart HTTP Gateway 初始化限流回归：超过文件上传窗口时在 `initiate` 阶段返回 `429`，不调用 Core/MinIO，并保留 Retry 语义；普通上传和预签名代理默认路径保持不变。
 - 2026-08-30：补充 Multipart reconciliation 指标发布失败测试：模拟原子 rename 目标冲突，确认旧目标不被替换、临时文件自动清理；promtool 告警规则与默认指标路径保持不变。
 - 2026-08-30：Multipart cleanup 将 MinIO `NoSuchUpload` 竞态视为已收敛的幂等结果并记录为 `already_gone`；列举与 Abort 之间 upload 已被其他 worker 清理时不再误报失败，其他 Abort 错误仍保持 fail-closed。

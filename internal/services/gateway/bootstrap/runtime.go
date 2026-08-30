@@ -264,7 +264,12 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 			signedEndpoint = parsed.Host
 		}
 		chunkBytes := storageCfg.MultipartChunkSizeMB * 1024 * 1024
-		presignedUploadProxy, err = gateway.NewPresignedUploadProxy(proxyTarget, signedEndpoint, chunkBytes)
+		presignedUploadProxy, err = gateway.NewPresignedUploadProxyWithTimeout(
+			proxyTarget,
+			signedEndpoint,
+			chunkBytes,
+			time.Duration(storageCfg.PresignedUploadProxyTimeoutSeconds)*time.Second,
+		)
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize presigned upload proxy: %w", err)
