@@ -36,6 +36,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 - [x] 增加 `scripts/check-dev-host.sh` 开发主机 preflight：按 Remote GPU、TencentCloud 和本机 profile 检查资源、Docker 与 Compose 配置；实际远程工作目录、Compose project 和部署证据仍待执行。
 - [x] 增加 `scripts/smoke-microservices-lite.sh` 与依赖闭包契约测试：TencentCloud 只验证 Gateway/Core/Message/Sync 及必要依赖，Agent、Search、Cassandra、可观测性和 C++ 保持关闭；实际远程运行证据仍待维护窗口。
 - [x] 增加 `scripts/remote-dev.sh`：提交绑定同步、Remote GPU 远端构建/Smoke/Benchmark 和 project 级停止统一入口；部署动作默认拒绝活动用户/GPU 任务，避免误占用共享实验主机。
+- [x] 增加业务集群 Compose override：MySQL Router/InnoDB Cluster、Kafka 三节点和 Redis Sentinel 已可在独立 project 中渲染；真实业务故障切换与恢复收敛仍需运行时证据和活动会话批准。
 - [x] 将 Go canonical 测试和架构静态门禁接入 `scripts/remote-dev.sh test`，允许在 Remote GPU 验证提交而不启动 Compose，降低本机测试负载。
 - [x] 将 Agent Runtime 与 Frontend 的 Node 验证接入 `scripts/remote-dev.sh node-test`；Remote GPU 已通过 Agent `125` 个测试文件/`665` 个测试、Frontend `29` 个测试文件/`114` 个测试、typecheck 与生产构建，且构建产物退出清理已验证。
 - [x] 增加 `scripts/bench/http-read-load.sh` 低资源只读 HTTP 探针：固定 GET、并发/超时/预期状态码和 P50/P95/P99 输出；该探针只用于 TencentCloud 兼容性回归，不替代 Remote GPU 的完整 k6 基线。
@@ -64,7 +65,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 
 | 领域 | 当前实现 | 演进起点 |
 | --- | --- | --- |
-| 应用部署 | `cmd/services/` 下的 Core、Gateway、Message、Sync、Search 独立 Go 入口，另有 TS Agent Runtime；embedded 聚合入口保留 | 服务镜像和 Compose 已可独立启动，embedded 模式作为回滚路径 |
+| 应用部署 | `cmd/services/` 下的 Core、Gateway、Message、Sync、Search 独立 Go 入口，另有 TS Agent Runtime；embedded 聚合入口保留 | 单节点服务 Compose 和 MySQL Router/Kafka/Redis 业务 override 均可独立渲染，embedded 模式作为回滚路径 |
 | HTTP / WS | Gateway 承担远程模式 HTTP/WebSocket，Core 仅在 embedded 模式保留对应数据面 | Gateway 已通过受认证 RPC 调用 Core、Message、Sync |
 | 消息 | Message Service application + SQLC repository + Outbox | Message 负责消息事实、幂等、Seq 和事件发布，Core 通过 Capability/RPC 协作 |
 | 同步 | Sync Service 管理 MySQL `user_sync_inbox`、设备 Cursor 和群 checkpoint | Cassandra hydration 可选，旧 Offline 接口继续兼容 |
