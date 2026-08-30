@@ -22,6 +22,11 @@ test("remote destructive actions remain behind the active-host guard", () => {
   assert.match(source, /bench\) sync_revision; guard_start; run_remote bench/);
 });
 
+test("multipart smoke is isolated and does not require a GPU-free host", () => {
+  assert.match(source, /multipart-smoke\) sync_revision; run_remote multipart-smoke/);
+  assert.match(source, /multipart-smoke\)[\s\S]*?GOTOOLCHAIN=local scripts\/smoke-minio-multipart\.sh/);
+});
+
 test("remote image builds compile committed backend binaries first", () => {
   assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh backend[\s\S]*?scripts\/docker-build-microservice-images\.sh/);
 });
