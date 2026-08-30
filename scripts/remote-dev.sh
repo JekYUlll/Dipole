@@ -69,13 +69,13 @@ REMOTE_GUARD
 
 run_remote() {
   local action="$1"
-  remote "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" "${REMOTE_K6_IMAGE}" <<REMOTE_RUN
+  remote "${REMOTE_K6_IMAGE}" "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
-node_root="\${4:-}"
-go_root="\${5:-}"
-go_proxy="\${6:-}"
-k6_image="\${7:-}"
+k6_image="\${3:-}"
+node_root="\${5:-}"
+go_root="\${6:-}"
+go_proxy="\${7:-}"
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
   export PATH="\$go_root/bin:\$PATH"
 fi
