@@ -285,6 +285,26 @@ message ConsumeOAuthAuthorizationTransactionResponse {
   int64 expires_at_unix_ms = 5;
 }
 
+// Only the authenticated Agent Runtime may claim a persisted callback handoff.
+// Core chooses the lease duration and recovers all ownership binding itself.
+message ClaimOAuthCallbackHandoffRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string handoff_id = 2;
+  string lease_owner = 3;
+}
+
+message ClaimOAuthCallbackHandoffResponse {
+  string handoff_id = 1;
+  string transaction_id = 2;
+  string issuer = 3;
+  string redirect_uri = 4;
+  string authorization_code_sha256 = 5;
+  string sealed_authorization_code = 6;
+  string runtime_key_id = 7;
+  int64 expires_at_unix_ms = 8;
+  int64 lease_expires_at_unix_ms = 9;
+}
+
 message BeginMcpToolInvocationRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -954,6 +974,7 @@ service AgentCapabilityService {
   rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc ConsumeOAuthAuthorizationTransaction(ConsumeOAuthAuthorizationTransactionRequest) returns (ConsumeOAuthAuthorizationTransactionResponse);
+  rpc ClaimOAuthCallbackHandoff(ClaimOAuthCallbackHandoffRequest) returns (ClaimOAuthCallbackHandoffResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
   rpc ClaimMcpToolRound(ClaimMcpToolRoundRequest) returns (ClaimMcpToolRoundResponse);

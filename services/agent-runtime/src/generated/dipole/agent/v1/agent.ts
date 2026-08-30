@@ -886,6 +886,67 @@ export interface ConsumeOAuthAuthorizationTransactionResponse {
     expiresAtUnixMs: bigint;
 }
 /**
+ * Only the authenticated Agent Runtime may claim a persisted callback handoff.
+ * Core chooses the lease duration and recovers all ownership binding itself.
+ *
+ * @generated from protobuf message dipole.agent.v1.ClaimOAuthCallbackHandoffRequest
+ */
+export interface ClaimOAuthCallbackHandoffRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string handoff_id = 2
+     */
+    handoffId: string;
+    /**
+     * @generated from protobuf field: string lease_owner = 3
+     */
+    leaseOwner: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ClaimOAuthCallbackHandoffResponse
+ */
+export interface ClaimOAuthCallbackHandoffResponse {
+    /**
+     * @generated from protobuf field: string handoff_id = 1
+     */
+    handoffId: string;
+    /**
+     * @generated from protobuf field: string transaction_id = 2
+     */
+    transactionId: string;
+    /**
+     * @generated from protobuf field: string issuer = 3
+     */
+    issuer: string;
+    /**
+     * @generated from protobuf field: string redirect_uri = 4
+     */
+    redirectUri: string;
+    /**
+     * @generated from protobuf field: string authorization_code_sha256 = 5
+     */
+    authorizationCodeSha256: string;
+    /**
+     * @generated from protobuf field: string sealed_authorization_code = 6
+     */
+    sealedAuthorizationCode: string;
+    /**
+     * @generated from protobuf field: string runtime_key_id = 7
+     */
+    runtimeKeyId: string;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 8
+     */
+    expiresAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 lease_expires_at_unix_ms = 9
+     */
+    leaseExpiresAtUnixMs: bigint;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.BeginMcpToolInvocationRequest
  */
 export interface BeginMcpToolInvocationRequest {
@@ -5616,6 +5677,179 @@ class ConsumeOAuthAuthorizationTransactionResponse$Type extends MessageType<Cons
  * @generated MessageType for protobuf message dipole.agent.v1.ConsumeOAuthAuthorizationTransactionResponse
  */
 export const ConsumeOAuthAuthorizationTransactionResponse = new ConsumeOAuthAuthorizationTransactionResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ClaimOAuthCallbackHandoffRequest$Type extends MessageType<ClaimOAuthCallbackHandoffRequest> {
+    constructor() {
+        super("dipole.agent.v1.ClaimOAuthCallbackHandoffRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "handoff_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "lease_owner", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ClaimOAuthCallbackHandoffRequest>): ClaimOAuthCallbackHandoffRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.handoffId = "";
+        message.leaseOwner = "";
+        if (value !== undefined)
+            reflectionMergePartial<ClaimOAuthCallbackHandoffRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ClaimOAuthCallbackHandoffRequest): ClaimOAuthCallbackHandoffRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string handoff_id */ 2:
+                    message.handoffId = reader.string();
+                    break;
+                case /* string lease_owner */ 3:
+                    message.leaseOwner = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ClaimOAuthCallbackHandoffRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string handoff_id = 2; */
+        if (message.handoffId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.handoffId);
+        /* string lease_owner = 3; */
+        if (message.leaseOwner !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.leaseOwner);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ClaimOAuthCallbackHandoffRequest
+ */
+export const ClaimOAuthCallbackHandoffRequest = new ClaimOAuthCallbackHandoffRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ClaimOAuthCallbackHandoffResponse$Type extends MessageType<ClaimOAuthCallbackHandoffResponse> {
+    constructor() {
+        super("dipole.agent.v1.ClaimOAuthCallbackHandoffResponse", [
+            { no: 1, name: "handoff_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "transaction_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "issuer", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "redirect_uri", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "authorization_code_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "sealed_authorization_code", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "runtime_key_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 9, name: "lease_expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ClaimOAuthCallbackHandoffResponse>): ClaimOAuthCallbackHandoffResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.handoffId = "";
+        message.transactionId = "";
+        message.issuer = "";
+        message.redirectUri = "";
+        message.authorizationCodeSha256 = "";
+        message.sealedAuthorizationCode = "";
+        message.runtimeKeyId = "";
+        message.expiresAtUnixMs = 0n;
+        message.leaseExpiresAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<ClaimOAuthCallbackHandoffResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ClaimOAuthCallbackHandoffResponse): ClaimOAuthCallbackHandoffResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string handoff_id */ 1:
+                    message.handoffId = reader.string();
+                    break;
+                case /* string transaction_id */ 2:
+                    message.transactionId = reader.string();
+                    break;
+                case /* string issuer */ 3:
+                    message.issuer = reader.string();
+                    break;
+                case /* string redirect_uri */ 4:
+                    message.redirectUri = reader.string();
+                    break;
+                case /* string authorization_code_sha256 */ 5:
+                    message.authorizationCodeSha256 = reader.string();
+                    break;
+                case /* string sealed_authorization_code */ 6:
+                    message.sealedAuthorizationCode = reader.string();
+                    break;
+                case /* string runtime_key_id */ 7:
+                    message.runtimeKeyId = reader.string();
+                    break;
+                case /* int64 expires_at_unix_ms */ 8:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 lease_expires_at_unix_ms */ 9:
+                    message.leaseExpiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ClaimOAuthCallbackHandoffResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string handoff_id = 1; */
+        if (message.handoffId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.handoffId);
+        /* string transaction_id = 2; */
+        if (message.transactionId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.transactionId);
+        /* string issuer = 3; */
+        if (message.issuer !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.issuer);
+        /* string redirect_uri = 4; */
+        if (message.redirectUri !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.redirectUri);
+        /* string authorization_code_sha256 = 5; */
+        if (message.authorizationCodeSha256 !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.authorizationCodeSha256);
+        /* string sealed_authorization_code = 6; */
+        if (message.sealedAuthorizationCode !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.sealedAuthorizationCode);
+        /* string runtime_key_id = 7; */
+        if (message.runtimeKeyId !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.runtimeKeyId);
+        /* int64 expires_at_unix_ms = 8; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(8, WireType.Varint).int64(message.expiresAtUnixMs);
+        /* int64 lease_expires_at_unix_ms = 9; */
+        if (message.leaseExpiresAtUnixMs !== 0n)
+            writer.tag(9, WireType.Varint).int64(message.leaseExpiresAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ClaimOAuthCallbackHandoffResponse
+ */
+export const ClaimOAuthCallbackHandoffResponse = new ClaimOAuthCallbackHandoffResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocationRequest> {
     constructor() {
@@ -11771,6 +12005,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "AppendAgentTaskTimelineEvent", options: {}, I: AppendAgentTaskTimelineEventRequest, O: AppendAgentTaskTimelineEventResponse },
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },
     { name: "ConsumeOAuthAuthorizationTransaction", options: {}, I: ConsumeOAuthAuthorizationTransactionRequest, O: ConsumeOAuthAuthorizationTransactionResponse },
+    { name: "ClaimOAuthCallbackHandoff", options: {}, I: ClaimOAuthCallbackHandoffRequest, O: ClaimOAuthCallbackHandoffResponse },
     { name: "BeginMcpToolInvocation", options: {}, I: BeginMcpToolInvocationRequest, O: BeginMcpToolInvocationResponse },
     { name: "ResolveMcpToolCommand", options: {}, I: ResolveMcpToolCommandRequest, O: ResolveMcpToolCommandResponse },
     { name: "ClaimMcpToolRound", options: {}, I: ClaimMcpToolRoundRequest, O: ClaimMcpToolRoundResponse },

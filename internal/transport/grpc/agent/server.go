@@ -49,13 +49,24 @@ type Server struct {
 	toolTerminals          application.AgentMCPToolInvocationTerminalServiceV1
 	messageCommands        application.AgentMessageCommandExecutionV1
 	oauthTransactions      application.AgentOAuthAuthorizationTransactionStoreV1
+	oauthCallbackHandoffs  application.AgentOAuthCallbackHandoffStoreV1
 }
+
+const oauthCallbackHandoffLeaseDurationV1 = 30 * time.Second
 
 func (s *Server) WithOAuthAuthorizationTransactions(store application.AgentOAuthAuthorizationTransactionStoreV1) (*Server, error) {
 	if s == nil || store == nil {
 		return nil, errors.New("Agent OAuth authorization transaction store is required")
 	}
 	s.oauthTransactions = store
+	return s, nil
+}
+
+func (s *Server) WithOAuthCallbackHandoffs(store application.AgentOAuthCallbackHandoffStoreV1) (*Server, error) {
+	if s == nil || store == nil {
+		return nil, errors.New("Agent OAuth callback handoff store is required")
+	}
+	s.oauthCallbackHandoffs = store
 	return s, nil
 }
 
@@ -1331,6 +1342,52 @@ func consumeOAuthAuthorizationTransactionV1(ctx context.Context, request *agentv
 	return &agentv1.ConsumeOAuthAuthorizationTransactionResponse{
 		TransactionId: record.TransactionUUID, Issuer: record.Issuer, RedirectUri: record.RedirectURI,
 		SealedCodeVerifier: record.SealedCodeVerifier, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(),
+	}, nil
+}
+
+func (s *Server) ClaimOAuthCallbackHandoff(ctx context.Context, request *agentv1.ClaimOAuthCallbackHandoffRequest) (*agentv1.ClaimOAuthCallbackHandoffResponse, error) {
+	return claimOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func claimOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.ClaimOAuthCallbackHandoffRequest, handoffs application.AgentOAuthCallbackHandoffStoreV1) (*agentv1.ClaimOAuthCallbackHandoffResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" {
+		return nil, status.Error(codes.PermissionDenied, "only Agent Runtime may claim OAuth callback handoffs")
+	}
+	if handoffs == nil {
+		return nil, status.Error(codes.Unavailable, "OAuth callback handoff is unavailable")
+	}
+	handoffID, leaseOwner := strings.TrimSpace(request.GetHandoffId()), strings.TrimSpace(request.GetLeaseOwner())
+	if handoffID == "" || handoffID != request.GetHandoffId() || len(handoffID) > 128 ||
+		leaseOwner == "" || leaseOwner != request.GetLeaseOwner() || len(leaseOwner) > 128 {
+		return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+	}
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	leaseExpiresAt := now.Add(oauthCallbackHandoffLeaseDurationV1)
+	claimed, err := handoffs.ClaimAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), handoffID, leaseOwner, now, leaseExpiresAt)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthCallbackHandoffInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth callback handoff claim failed")
+	}
+	if !claimed {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	record, err := handoffs.GetAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), handoffID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "OAuth callback handoff lookup failed")
+	}
+	if record == nil || record.Status != application.AgentOAuthCallbackHandoffClaimedV1 || record.LeaseOwner != leaseOwner || !record.LeaseExpiresAt.Equal(leaseExpiresAt) || !record.ExpiresAt.After(now) {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	return &agentv1.ClaimOAuthCallbackHandoffResponse{
+		HandoffId: record.HandoffUUID, TransactionId: record.TransactionUUID, Issuer: record.Issuer, RedirectUri: record.RedirectURI,
+		AuthorizationCodeSha256: record.AuthorizationCodeSHA256, SealedAuthorizationCode: record.SealedAuthorizationCode,
+		RuntimeKeyId: record.RuntimeKeyID, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(), LeaseExpiresAtUnixMs: record.LeaseExpiresAt.UnixMilli(),
 	}, nil
 }
 

@@ -7,8 +7,12 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = process.env.DIPOLE_AGENT_PROTO_TS_OUTPUT === undefined
   ? resolve(root, "services/agent-runtime/src/generated")
   : resolve(process.env.DIPOLE_AGENT_PROTO_TS_OUTPUT);
+const protoc = resolve(root, "services/agent-runtime/node_modules/.bin/protoc");
+// The pinned wrapper downloads a matching compiler and standard include set on
+// first use, so generation does not depend on a host-level protobuf package.
+execFileSync(protoc, ["--version"], { cwd: root, stdio: "inherit" });
 const protobufInclude = await resolveProtobufInclude();
-execFileSync("protoc", [
+execFileSync(protoc, [
   `--proto_path=${resolve(root, "api/proto")}`,
   `--plugin=protoc-gen-ts=${resolve(root, "services/agent-runtime/node_modules/.bin/protoc-gen-ts")}`,
   `--ts_out=${output}`,

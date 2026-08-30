@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：OAuth callback handoff 已增加默认未装配的 Core claim RPC。它仅接受 `dipole-agent` 调用方，Core 固定 30 秒租约并从 SQLC handoff Store 恢复 owner/binding；响应只在 mTLS 链中返回 Runtime-only 密文及其校验 metadata。Gateway、浏览器和 RequestContext principal 无法参与 claim，缺 Store 固定 `Unavailable`。Runtime client、Gateway handoff-ID notifier、complete/release RPC、code exchange、token 生命周期与重启/过期租约演练仍未接线。
+
 - 2026-08-31：OAuth callback handoff 的 transport release gate 已拆分 Gateway control HTTP 与 Runtime-to-Core mTLS 两条信任链。前者仅承载 handoff ID 与 correlation，后者由 Core 恢复 owner/binding 并执行条件 lease transition；敏感授权材料禁止进入两条链以外的事件、日志和持久元数据。代码接线、provider retry owner review 与故障演练仍未完成。
 
 - 2026-08-31：Runtime private-key source 已以未装配 Node 文件适配器落地：必须明确映射 key ID、绝对路径、owner 和私有权限，私钥仅在单个 callback 内以 Buffer 传递并在 finally 清零，RSA PKCS#8 modulus 小于 2048 位直接拒绝。它尚未读入 Runtime config、Compose、Gateway 或任何 OAuth HTTP/RPC 路径，默认 surface 不变。

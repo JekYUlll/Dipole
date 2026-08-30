@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Capability 增加默认未装配的 OAuth callback handoff claim RPC。只有 `dipole-agent` mTLS caller 可领取，Core 固定 30 秒租约并从持久化记录恢复 transaction、issuer、redirect、摘要、Runtime key ID 与 Runtime-only 密文；Gateway、浏览器和用户主体均无法影响 owner binding。缺 Store 时固定返回 `Unavailable`，未注册 callback route、Runtime client、code exchange 或 token 生命周期。TypeScript proto 生成器同时改为使用锁定的 `@protobuf-ts/protoc`，避免依赖宿主 protobuf 安装。
+
 - 2026-08-31：固定 Agent OAuth callback handoff 的双通道 transport contract：Gateway 到 Runtime 的私有 control HTTP 仅通知 handoff ID；Runtime 到 Core 使用 `dipole-agent` mTLS 领取、完成或释放 lease。契约明确禁止 code/state/verifier/ciphertext/key/token 进入 HTTP、Kafka、Temporal、日志或审计，并列出重复通知、重启、Core outage 和过期 lease 的验收矩阵。该项未注册任何 route 或 RPC。
 
 - 2026-08-31：Agent Runtime 增加未装配的 OAuth callback private-key source。它仅接受显式 key ID 到绝对路径映射，每次使用检查目录/文件 owner、权限、链接和大小，确认 PKCS#8 RSA modulus 至少 2048 位后才在 callback 内短时提供 Buffer，并在结束时清零。Runtime 默认启动、Gateway、callback route 与 token exchange 均未读取该 source。
