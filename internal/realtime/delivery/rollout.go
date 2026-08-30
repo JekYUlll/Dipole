@@ -31,6 +31,9 @@ func (p RolloutPolicy) Validate() error {
 	if p.Target != AuthorityShadow && p.Target != AuthorityCPP {
 		return fmt.Errorf("realtime rollout target must be shadow or cpp, got %q", p.Target)
 	}
+	if p.Percentage > 100 {
+		return fmt.Errorf("realtime rollout percentage must be between 0 and 100, got %d", p.Percentage)
+	}
 	if p.Salt == "" {
 		return fmt.Errorf("realtime rollout salt is required")
 	}

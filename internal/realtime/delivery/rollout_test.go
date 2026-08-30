@@ -44,9 +44,10 @@ func TestRolloutPolicyDefaultsToGoAtZeroAndTargetsAtHundred(t *testing.T) {
 func TestRolloutPolicyRejectsUnscopedInput(t *testing.T) {
 	base := RolloutPolicy{Scope: GrayScopeUser, Target: AuthorityCPP, Percentage: 10, Salt: "v1"}
 	for name, policy := range map[string]RolloutPolicy{
-		"scope":  {Target: AuthorityCPP, Percentage: 10, Salt: "v1"},
-		"target": {Scope: GrayScopeUser, Target: AuthorityGo, Percentage: 10, Salt: "v1"},
-		"salt":   {Scope: GrayScopeUser, Target: AuthorityCPP, Percentage: 10},
+		"scope":      {Target: AuthorityCPP, Percentage: 10, Salt: "v1"},
+		"target":     {Scope: GrayScopeUser, Target: AuthorityGo, Percentage: 10, Salt: "v1"},
+		"percentage": {Scope: GrayScopeUser, Target: AuthorityCPP, Percentage: 101, Salt: "v1"},
+		"salt":       {Scope: GrayScopeUser, Target: AuthorityCPP, Percentage: 10},
 	} {
 		if _, err := policy.Select("user-a"); err == nil {
 			t.Errorf("%s: expected validation error", name)
