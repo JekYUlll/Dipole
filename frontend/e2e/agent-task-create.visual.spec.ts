@@ -1,16 +1,25 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Route } from '@playwright/test'
 
 test.beforeEach(async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'visual baseline is canonicalized on Chromium')
   await page.addInitScript(() => {
     localStorage.setItem('dipole.web.token', 'task-create-visual-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
+    class VisualWebSocket {
+      static OPEN = 1
+      readyState = VisualWebSocket.OPEN
+      close() { this.readyState = 3 }
+      send() {}
+    }
+    window.WebSocket = VisualWebSocket as unknown as typeof WebSocket
   })
   await page.route('**/api/v1/users/me', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({ code: 0, data: { uuid: 'U100', nickname: 'Owner', avatar: '', signature: '' } }),
   }))
+  await page.route('**/api/v1/conversations?**', route => emptyList(route))
+  await page.route('**/api/v1/contacts', route => emptyList(route))
 })
 
 test('keeps the default-off task creation surface aligned with the Pencil baseline', async ({ page }) => {
@@ -30,3 +39,11 @@ test('exposes the creation route through the authenticated IM navigation only wh
   await expect(page).toHaveURL(/\/app\/agent\/tasks\/new$/)
   await expect(page.getByRole('heading', { name: '创建 Agent 任务' })).toBeVisible()
 })
+
+async function emptyList(route: Route) {
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ code: 0, data: [] }),
+  })
+}
