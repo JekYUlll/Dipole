@@ -98,11 +98,18 @@ const uploadWithRetry = async (
       await uploadPart(partNumber, chunk, signal)
       return
     } catch (error) {
-      if (attempt >= maxRetries) throw error
+      if (attempt >= maxRetries || !isRetryableMultipartUploadError(error)) throw error
       throwIfAborted(signal)
       await waitWithAbort(sleep(retryDelayMs * 2 ** attempt), signal)
     }
   }
+}
+
+// Network failures do not expose an HTTP status and can be transient. Once a
+// presigned PUT has a status, retry only states that can plausibly recover.
+function isRetryableMultipartUploadError(error: unknown): boolean {
+  if (!(error instanceof PresignedPartUploadError)) return true
+  return error.status === 408 || error.status === 429 || error.status >= 500
 }
 
 export const uploadMultipartParts = async (

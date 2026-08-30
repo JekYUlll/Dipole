@@ -359,12 +359,13 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 已完成 MinIO `NewMultipartUpload`、`PutObjectPart`、`CompleteMultipartUpload` 和 `AbortMultipartUpload` 的服务端链路。
 - [x] 已完成文件所有权校验、分片序号/大小校验、会话 TTL、缺片拒绝、完成后再写 `uploaded_files` 和失败清理。
 - [x] 完成阶段已校验每个 part 的实际字节数：前置 part 必须等于声明的分片大小，最后一个 part 必须等于文件剩余大小；Redis 新记录保存 `ETag + Size`，旧 ETag-only 会话安全拒绝完成。
-- [x] 已完成前端按文件大小选择单请求或 Multipart 上传，并在分片失败时主动取消服务端会话。
+- [x] 已完成前端按文件大小选择单请求或 Multipart 上传；分片失败保留服务端会话与本地文件身份，后续可安全续传。
 - [x] 建立 MinIO 预签名 Multipart part URL 契约：Core 按归属会话校验 part 编号并批量签发绑定 `uploadId + partNumber` 的短期 URL；现有 Core 中转路径继续作为默认回滚路径。
-- [x] Web 端接入默认关闭的预签名直传试运行：按 part 批量签发 URL，浏览器直接 PUT 到 MinIO，再经 Core 登记并核验 ETag/尺寸；失败继续 Abort 并回切旧中转路径。
+- [x] Web 端接入默认关闭的预签名直传试运行：按 part 批量签发 URL，浏览器直接 PUT 到 MinIO，再经 Core 登记并核验 ETag/尺寸；失败保留会话供恢复，默认 relay 路径可立即回切。
 - [x] 为预签名直传落地可运行的跨域边界：Gateway 提供默认关闭的同源 S3 PUT 代理，仅转发带完整签名的合法分片并限制请求体；开源 MinIO 的 Bucket CORS API 仍不可用，XML 策略仅作为兼容实现的部署参考。
 - [ ] 将分片上传流量切换为 MinIO 预签名 URL 直传，Core 只负责初始化、签发受限 part URL、登记 ETag/尺寸、完成和取消，降低大文件对业务服务带宽与连接的占用。
-- [x] 增加前端有界并发、指数退避和单 part 重试；当前默认 3 路并发、最多 2 次重试，失败仍由上层取消整个 Multipart 会话。
+- [x] 增加前端有界并发、指数退避和单 part 重试；当前默认 3 路并发、最多 2 次重试，失败保留 session 供后续状态查询与续传。
+  - [x] 重试仅覆盖浏览器网络异常和可恢复的预签名 `408`、`429`、`5xx`；确定不可恢复的预签名 `4xx` 立即返回，避免对对象存储发起无效重复 PUT。
 - [x] 增加客户端断点恢复基础：Web 按文件指纹保存 session，恢复前通过受保护状态接口校验文件元数据并跳过服务端已确认 part；完成或失败取消后清理本地 session。
 - [x] 增加可见的暂停/继续控制；暂停只停止新 part 调度，已完成 part、Redis 会话和本地文件指纹保留，继续时仍绑定用户、对象键、文件大小、内容类型和 upload ID；刷新页面后可通过既有恢复入口继续。
 - [x] 增加受所有权保护的 Multipart 会话状态查询，返回已完成 part 的编号、ETag 和实际尺寸，为后续浏览器暂停/恢复跳过已完成分片提供服务端 contract。
@@ -388,6 +389,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 可选真实 MinIO 代理 smoke 已覆盖一分片 UploadPart、S3 Host 签名、ETag、Complete 和对象内容核验，并自动清理测试对象；完整故障矩阵仍待完成。
   - [x] 真实 MinIO 集成契约增加上传流中断后复用同一 part 编号重试、Complete 和对象内容校验；该测试验证中断错误不污染最终对象，完整浏览器断网、过期会话和网关限流矩阵仍待完成。
   - [x] Web Multipart 调度器支持可选 `AbortSignal`：取消会传播到 presigned PUT、relay API 和 part 重试边界；页面卸载只取消在途请求并保留可恢复 session，默认上传策略保持不变。
+  - [x] Web 调度器已通过断连、限流、上游 `5xx` 与永久 `4xx` 单元矩阵验证重试分类；该证据覆盖浏览器调度逻辑，真实代理和跨网络故障仍待隔离环境验收。
   - [x] Remote GPU 真实 MinIO restart smoke 已验证首个 part 写入后服务重启、续传、Complete 和最终对象内容一致；测试使用隔离持久卷并自动清理，浏览器断网、过期会话、网关限流和跨存储矩阵仍待完成。
   - [x] Remote GPU 真实 MinIO cleanup smoke 已验证未完成 upload 的实际 listing、cutoff 选择、Abort 和清理后重新列举；测试使用隔离桶并自动清理，完整浏览器/网关/跨存储故障矩阵仍待完成。
   - [x] cleanup smoke 已覆盖 MinIO listing 收敛等待与完整对象键隔离，确认服务端实际 Abort 后无残留；生产 cleanup 的 `message-files/` 前缀和默认 dry-run 语义保持不变。

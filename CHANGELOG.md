@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：收敛 Web Multipart 故障重试：浏览器断连及 `408`、`429`、`5xx` 保持指数退避；确定不可恢复的预签名 `4xx` 立即上抛，避免重复 PUT。专项 28 项测试、类型检查与生产构建通过；默认 `relay` 路径和预签名切流开关保持不变。
+
 - 2026-08-30：Remote GPU 隔离验证 MinIO Multipart lifecycle 与 restart smoke：乱序/替换分片、完成、内容校验、重复 Abort，以及服务重启后的继续上传均通过；预签名默认切流和浏览器网络故障矩阵继续关闭。
 
 - 2026-08-30：修正 active receipt authority 的默认关闭结构门禁，要求 production Bootstrap 同时保留显式 receipt 开关和 mTLS 前置条件；默认 Agent Runtime 写 Capability 继续禁止注册。

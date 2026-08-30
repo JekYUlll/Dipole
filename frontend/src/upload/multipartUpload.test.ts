@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart, uploadPresignedPartWithRefresh } from './multipartUpload'
+import { PresignedPartUploadError, sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart, uploadPresignedPartWithRefresh } from './multipartUpload'
 import { withMultipartUploadLease, type MultipartLockManager } from './multipartLease'
 
 describe('same-origin presigned upload URL', () => {
@@ -168,6 +168,53 @@ describe('uploadMultipartParts', () => {
 
     expect(attempts).toHaveBeenCalledTimes(3)
     expect(sleeps).toEqual([10, 20])
+  })
+
+  it.each([408, 429, 500, 503])('retries transient presigned HTTP status %i', async status => {
+    const attempts = vi.fn()
+    const sleeps: number[] = []
+
+    await uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      if (attempts.mock.calls.length === 1) throw new PresignedPartUploadError(status)
+    }, {
+      maxRetries: 2,
+      retryDelayMs: 10,
+      sleep: async delayMs => { sleeps.push(delayMs) },
+    })
+
+    expect(attempts).toHaveBeenCalledTimes(2)
+    expect(sleeps).toEqual([10])
+  })
+
+  it.each([400, 404, 409, 413])('does not retry a permanent presigned HTTP status %i', async status => {
+    const attempts = vi.fn()
+    const sleeps = vi.fn(async () => undefined)
+
+    await expect(uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      throw new PresignedPartUploadError(status)
+    }, {
+      maxRetries: 2,
+      sleep: sleeps,
+    })).rejects.toMatchObject({ status })
+
+    expect(attempts).toHaveBeenCalledOnce()
+    expect(sleeps).not.toHaveBeenCalled()
+  })
+
+  it('retries a browser network disconnect because it has no HTTP status', async () => {
+    const attempts = vi.fn()
+
+    await uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      if (attempts.mock.calls.length === 1) throw new TypeError('Failed to fetch')
+    }, {
+      maxRetries: 1,
+      sleep: async () => undefined,
+    })
+
+    expect(attempts).toHaveBeenCalledTimes(2)
   })
 
   it('stops before retrying when the upload signal is aborted', async () => {

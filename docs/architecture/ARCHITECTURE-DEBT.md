@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：Web Multipart 重试已按故障类别收敛：浏览器网络异常及预签名 `408`、`429`、`5xx` 保留指数退避，确定的预签名 `4xx` 不再重复 PUT。专项 28 项 Vitest、typecheck 与生产构建通过；该结果限于客户端调度，真实代理断网和跨网络故障矩阵继续由 `AD-055` 跟踪。
+
 - 2026-08-30：Remote GPU 使用显式 `DIPOLE_REMOTE_GO_ROOT` 复核 MinIO Multipart lifecycle 与 restart smoke，确认分片状态可跨服务重启恢复并完成内容校验；客户端断网、签名服务故障、跨标签页互斥与预签名默认切流仍待完成。
 
 - 2026-08-30：Remote GPU 全量 Go 门禁发现 active receipt authorizer 接线与旧 default-off 结构断言冲突，已改为检查显式开关与 mTLS 条件；该修复不提升默认 active 权限，联合环境证据仍待完成。
@@ -1179,6 +1181,7 @@
 - **告警进展：** Multipart 规则已消费 reconciliation gauges，新增漂移、扫描不完整和超过 15 分钟未刷新的告警，并以 `promtool` 触发时序测试锁定；规则仍需在真实 Prometheus/Alertmanager 环境完成抓取、路由和通知验收。
 - **本轮进展：** 新增默认 dry-run 的 `dipole-multipart-cleanup` 工具，按 MinIO `message-files/` 未完成 upload 的发起时间筛选，执行必须显式 `--execute --confirm`，输出逐 upload 状态并保留单项失败；`--redis-orphans` 增加有界 Redis meta/parts 扫描，识别无 TTL meta 和 meta 已过期的孤儿 parts，只有 `--execute --confirm` 才删除孤儿 parts，并以回归测试保证重复执行幂等、扫描截断显式标记不完整；新增按归属会话批量签发、绑定 `uploadId + partNumber` 的短期预签名 part URL contract，以及直传后由 MinIO 实际元数据核验并登记 ETag/尺寸的接口；Web 已接入默认关闭的直传试运行 flag。真实验收确认当前开源 MinIO 不支持 Bucket CORS API，三套 Compose 已移除会失败的 `mc cors set` 初始化命令；Gateway 已增加默认关闭的同源 S3 PUT 代理，校验签名字段、固定 bucket、PUT 方法和分片体积，XML 策略仅保留给支持 Bucket CORS 的对象存储部署参考。可选真实 MinIO 集成测试已验证代理转发、S3 Host 签名、ETag、Complete 和对象内容，并自动清理测试对象；Core 已接入低基数 Multipart operation counter/histogram；Multipart 初始化可绑定整文件 SHA-256，`storage.multipart_require_checksum` 开启后 Complete 会校验已完成对象并清理不匹配对象；现有中转路径仍为默认回滚路径，完整 MinIO upload reconciliation、Redis 告警与默认切流仍待补齐。
 - **验证：** 当前 MinIO Multipart 单元/服务契约和 HTTP handler 测试已覆盖初始化、分片、完成、缺片、越权及 Abort 基本语义；服务端完成阶段已校验 part 实际大小、请求实际读取长度、part SHA-256 和可选整文件 SHA-256，状态查询已覆盖所有权边界，前端 Multipart helper 的并发、分片边界、重试、checksum 探测、跳过已确认 part 和永久失败停止调度测试通过；Redis 孤儿扫描、代理转发和可选真实 MinIO Multipart 流程已有隔离验证；隔离 MinIO 实测 Multipart CORS 配置返回 `501 NotImplemented`，生产默认继续使用可回滚的 Core 中转路径。
+- **本轮进展：** Web 调度器现区分可恢复故障：无状态的浏览器断连，以及预签名 PUT 的 `408`、`429`、`5xx` 采用原有指数退避；确定的 `4xx` 立即失败。28 项专项 Vitest 覆盖该分类、暂停/恢复、取消、续传和跨标签锁，typecheck 与生产构建通过；真实代理、浏览器离线切换和跨网络恢复仍待独立环境证据。
 - **本轮进展：** Web Multipart 增加可见的暂停/继续控制；暂停仅阻止新 part 调度，不 Abort 或清理 Redis/MinIO 会话，继续时复用原 `upload_id` 并继续跳过已确认 part。上传 helper 已覆盖暂停等待和恢复调度测试，前端专项测试、typecheck 与生产构建通过；预签名默认切流、完整生命周期告警和真实故障矩阵仍待完成。
 - **本轮进展：** 新增 `contracts/multipart-upload/v1` 版本化策略和 SHA-256 release manifest，统一记录直传阈值、文件上限、分片大小、并发、重试、退避和预签名 URL TTL；校验脚本强制默认 `relay` 与旧路径回切，当前只完成配置契约门禁，尚未切换生产流量。
 - **本轮进展：** Core 增加认证的 Multipart policy 查询，前端按服务端策略执行阈值、并发、重试和预签名模式，并对版本/字段异常 fail closed 后回退 `v1/relay`；源码注释和三份静态 Swagger 文档均已同步，生成器在当前 Go 1.27 标准库解析下仍需后续工具链升级，预签名默认切流仍待共享环境证据。
