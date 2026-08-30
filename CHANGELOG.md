@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：新增 `multipart-restart-smoke` 远程故障验证：首个分片上传后重启隔离 MinIO 容器，再继续上传并完成对象，使用独立持久卷并在退出时清理；新增 Go smoke tool、远程入口和操作说明，不申请 GPU。
 - 2026-08-30：将预签名过期恢复提炼为可复用的 `uploadPresignedPartWithRefresh` 原语，并新增 403 -> 刷新签名 -> 重试测试；上传测试 `12/12`、Frontend typecheck 通过，页面层只负责签名 API 与 URL 映射。
 - 2026-08-30：Multipart 预签名分片上传新增 `401/403` 过期恢复：保留 HTTP 状态、按分片重新获取签名并交给既有指数退避重试；失败 session 继续保留，成功 Complete 仍清理本地状态。上传测试 `11/11`、Frontend typecheck/build 通过。
 - 2026-08-30：修复大文件 Multipart 上传失败后的断点续传行为：分片或 Complete 失败时保留服务端 session 与本地文件身份，后续重试通过 status 跳过已完成分片；成功 Complete 仍清理本地 session，服务端已完成记录保持幂等。Frontend `29/114`、typecheck 和生产构建通过。

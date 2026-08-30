@@ -42,6 +42,8 @@ scripts/remote-dev.sh build
 
 `multipart-smoke` 只创建脚本自有的随机命名临时 MinIO 容器，使用 `GOTOOLCHAIN=local` 和 `DIPOLE_REMOTE_GO_ROOT` 提供的远端 Go 工具链；该动作不申请 GPU，也不经过活动 GPU 阻断，但仍要求脚本退出时完成容器清理。
 
+`multipart-restart-smoke` 在相同隔离边界内上传首个分片，重启临时 MinIO 容器，再继续上传并完成对象，用于验证 Multipart 数据卷持久性。该动作不申请 GPU，不触碰其他容器或卷。
+
 管理员已将 Go 1.27.0 以用户态方式放置于 `/home/admin1/.local/go-1.27.0`。使用该工具链执行远端测试：
 
 ```bash

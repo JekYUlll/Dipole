@@ -14,7 +14,7 @@ REMOTE_BUILD_CANDIDATE="${DIPOLE_REMOTE_BUILD_CANDIDATE:-0}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|multipart-smoke|bench|down>
+Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|multipart-smoke|multipart-restart-smoke|bench|down>
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
@@ -156,6 +156,9 @@ case "${action}" in
   multipart-smoke)
     GOTOOLCHAIN=local scripts/smoke-minio-multipart.sh
     ;;
+  multipart-restart-smoke)
+    GOTOOLCHAIN=local scripts/smoke-minio-multipart-restart.sh
+    ;;
   bench) scripts/bench/run_bench.sh ;;
   down) docker compose -p "\$project" -f "${REMOTE_COMPOSE_FILE}" down --remove-orphans ;;
   *) echo "unsupported remote action: ${action}" >&2; exit 2 ;;
@@ -173,6 +176,7 @@ case "${1:-}" in
   build) sync_revision; guard_start; run_remote build ;;
   smoke-lite) sync_revision; guard_start; run_remote smoke-lite ;;
   multipart-smoke) sync_revision; run_remote multipart-smoke ;;
+  multipart-restart-smoke) sync_revision; run_remote multipart-restart-smoke ;;
   bench) sync_revision; guard_start; run_remote bench ;;
   down) run_remote down ;;
   *) usage; exit 2 ;;
