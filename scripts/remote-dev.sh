@@ -131,6 +131,22 @@ bench_hot_group_message_threshold="\${18:-}"
 for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id bench_hot_group_warmup_messages bench_hot_group_activation_wait_ms bench_script bench_phone_prefix bench_hot_group_member_count_threshold bench_hot_group_message_threshold; do
   [[ "\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]] && printf -v "\$bench_arg" '%s' ''
 done
+if [[ -z "\$go_root" ]]; then
+  selected_go=""
+  selected_version=""
+  while IFS= read -r candidate_go; do
+    candidate_version="\$(GOTOOLCHAIN=local "\$candidate_go" version 2>/dev/null | awk '{print \$3}')"
+    [[ "\$candidate_version" == go[0-9]* ]] || continue
+    if [[ -z "\$selected_version" || "\$(printf '%s\n' "\$selected_version" "\$candidate_version" | sort -V | tail -n 1)" == "\$candidate_version" ]]; then
+      selected_go="\$candidate_go"
+      selected_version="\$candidate_version"
+    fi
+  done < <(find /home/admin1/.local -maxdepth 4 -type f -path '*/bin/go' -perm -111 -print 2>/dev/null | sort -V)
+  if [[ -n "\$selected_go" ]]; then
+    go_root="\${selected_go%/bin/go}"
+    printf 'remote Go toolchain auto-selected: root=%s version=%s\n' "\$go_root" "\$selected_version" >&2
+  fi
+fi
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
   export PATH="\$go_root/bin:\$PATH"
 fi
