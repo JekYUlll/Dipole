@@ -153,16 +153,16 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 		bytes.NewReader([]byte("cleanup-part")), int64(len("cleanup-part"))); err != nil {
 		t.Fatalf("upload cleanup part: %v", err)
 	}
-	if err := waitForIncompleteUpload(ctx, client, bucket, "message-files/", staleUpload.UploadID); err != nil {
+	if err := waitForIncompleteUpload(ctx, client, bucket, staleUpload.ObjectKey, staleUpload.UploadID); err != nil {
 		t.Fatal(err)
 	}
 
 	cleanupReport := storageops.RunMultipartCleanup(ctx, minioCleanupClient{client: client, core: minio.Core{Client: client}},
-		bucket, "message-files/", time.Now().UTC().Add(time.Hour), true)
+		bucket, staleUpload.ObjectKey, time.Now().UTC().Add(time.Hour), true)
 	if !cleanupReport.Complete || cleanupReport.Selected != 1 || cleanupReport.Aborted != 1 || cleanupReport.Failed != 0 {
 		t.Fatalf("unexpected cleanup report: %+v", cleanupReport)
 	}
-	for upload := range client.ListIncompleteUploads(ctx, bucket, "message-files/", true) {
+	for upload := range client.ListIncompleteUploads(ctx, bucket, staleUpload.ObjectKey, true) {
 		if upload.Err != nil {
 			t.Fatalf("list uploads after cleanup: %v", upload.Err)
 		}
