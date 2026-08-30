@@ -71,7 +71,19 @@ export COMPOSE_PROJECT_NAME="\$project"
 export DIPOLE_HOST_PROFILE=remote-gpu
 case "${action}" in
   preflight) scripts/check-dev-host.sh remote-gpu ;;
-  test) scripts/check-go.sh && scripts/check-compose.sh && scripts/check-service-layout.sh && scripts/check-architecture-docs.sh ;;
+  test)
+    required_go="go1.26"
+    actual_go="$(GOTOOLCHAIN=local go env GOVERSION 2>/dev/null || true)"
+    if [[ -z "\$actual_go" ]]; then
+      printf 'remote test refused: local Go toolchain is unavailable; install %s or newer\n' "\$required_go" >&2
+      exit 4
+    fi
+    if [[ "$(printf '%s\n' "\$required_go" "\$actual_go" | sort -V | tail -n 1)" != "\$actual_go" ]]; then
+      printf 'remote test refused: requires Go %s+, found %s; implicit toolchain download is disabled\n' "\$required_go" "\$actual_go" >&2
+      exit 4
+    fi
+    GOTOOLCHAIN=local scripts/check-go.sh && scripts/check-compose.sh && scripts/check-service-layout.sh && scripts/check-architecture-docs.sh
+    ;;
   build) scripts/docker-build-microservice-images.sh ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
   bench) scripts/bench/run_bench.sh ;;
