@@ -54,6 +54,15 @@ def clean_final_values():
     }
 
 
+def clean_archive():
+    return {
+        "uri": "s3://dipole-evidence/web-sync/session.json",
+        "object_version": "version-001",
+        "etag": "a" * 32,
+        "retention_until": "2026-09-30T00:00:00Z",
+    }
+
+
 class WebSyncObservationTest(unittest.TestCase):
     def test_language_neutral_contracts_are_strict_and_versioned(self):
         root = Path("contracts/web-sync-observation/v1")
@@ -145,11 +154,12 @@ class WebSyncObservationTest(unittest.TestCase):
 
     def test_finalize_archives_eligible_clean_window(self):
         session = self._session()
-        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()))
+        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()), archive=clean_archive())
         self.assertEqual(evidence["schema_version"], "dipole.web-sync.observation-evidence.v1")
         self.assertEqual(evidence["decision"], "eligible")
         self.assertEqual(evidence["issues"], [])
         self.assertRegex(evidence["snapshot_sha256"], r"^[a-f0-9]{64}$")
+        self.assertEqual(evidence["archive"]["object_version"], "version-001")
         self.assertRegex(evidence["evidence_sha256"], r"^[a-f0-9]{64}$")
 
     def test_finalize_archives_blocked_window_without_weakening_thresholds(self):
@@ -157,9 +167,24 @@ class WebSyncObservationTest(unittest.TestCase):
         values = clean_final_values()
         values["dipole:web_sync_shadow:terminal_differences_24h"] = 1
         values["dipole:web_sync_shadow:promotion_ready"] = 0
-        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(values))
+        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(values), archive=clean_archive())
         self.assertEqual(evidence["decision"], "blocked")
         self.assertIn("terminal differences must be zero", evidence["issues"])
+
+    def test_finalize_blocks_without_archive_receipt(self):
+        session = self._session()
+        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()))
+        self.assertEqual(evidence["decision"], "blocked")
+        self.assertIn("evidence archive receipt is required", evidence["issues"])
+
+    def test_archive_receipt_rejects_expired_or_non_opaque_metadata(self):
+        session = self._session()
+        for archive in (
+            {**clean_archive(), "retention_until": "2026-08-29T00:00:00Z"},
+            {**clean_archive(), "uri": "https://example.test/evidence"},
+        ):
+            with self.assertRaises(ValueError):
+                build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()), archive=archive)
 
     def test_evidence_write_is_immutable(self):
         with tempfile.TemporaryDirectory() as directory:
