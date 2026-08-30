@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 在用户态 Go 1.27.0 下对 `master` 提交 `9c0f2702` 完成远端 canonical 门禁；Go 白名单测试、服务布局和架构文档检查全部通过，未启动 Compose 或创建容器，构建/Smoke/Benchmark 继续遵守活动用户保护。
+
 - 2026-08-30：Multipart reconciliation 工具新增可选 `--metrics-output`，以原子替换方式输出固定名称、低基数 Prometheus textfile gauges，覆盖扫描状态、漂移数量和最后运行时间；默认不创建指标文件，JSON、退出码和删除保护语义保持不变。
 
 - 2026-08-30：新增 [开发工作流与提速规则](docs/operations/DEVELOPMENT-WORKFLOW.md)，将活动计划、历史记录、快速门禁、共享环境演练、Epic 同步和 worktree 生命周期分层；确认当前瓶颈来自计划上下文膨胀与验证串行化，后续按 30 分钟切片和一次性 Epic 同步执行。
