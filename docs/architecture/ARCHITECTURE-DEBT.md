@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Agent Runtime 增加显式 `test:temporal:integration` 门禁，Remote GPU 已在内存 Temporal Test Server 上通过 Agent Task 与 reviewed Memory promotion 的 `9` 项 durable workflow 用例。它覆盖任务恢复、审批、输入、超时、取消、步数预算、后效重放和 receipt 重试；该证据不连接 Compose、Kafka、Core、MySQL 或 production authority，AD-009、AD-061 的共享环境要求不变。
+
 - 2026-08-31：Agent Task Timeline 的组件测试统一提供 `RouterLink` 桩，消除读取、失败与 Artifact metadata 链接状态中的未解析组件警告。该测试卫生改动不扩张 Artifact 内容访问、路由或 Agent authority；跨浏览器和共享环境证据继续由 AD-044、AD-009 跟踪。
 
 - 2026-08-31：交互式 Agent Task 创建现有默认关闭的认证前端入口。页面仅提交本地幂等键与目标文本，并在严格验证 `accepted` 回包后跳转既有只读 Timeline；principal、tenant、Agent、Tool、Memory 和 Runtime 控制不进入浏览器输入。Remote GPU Node 22 已通过定向 `15` 项 Vitest、typecheck 与 production build。Pencil canonical 创建 desktop/mobile/五态画板、三项复用组件和 2x 导出已完成，Chromium 认证 fixture 已固定初始表单的截图回归；Firefox/WebKit、交互状态和共享环境切流继续由 AD-044 跟踪，active authority 仍由 AD-009 管理。

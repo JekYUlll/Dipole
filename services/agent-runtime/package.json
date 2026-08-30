@@ -30,6 +30,7 @@
     "promotion:check": "tsx src/promotion/promotion-check-cli.ts",
     "promotion:publish": "tsx src/promotion/promotion-evidence-publish-cli.ts",
     "promotion:memory-worker-drill": "tsx src/promotion/memory-promotion-worker-drill-cli.ts",
+    "test:temporal:integration": "DIPOLE_AGENT_TEMPORAL_INTEGRATION=true vitest run src/temporal/agent-task-workflow.integration.test.ts src/temporal/agent-memory-promotion-workflow.integration.test.ts",
     "mcp:readiness:publish": "tsx src/mcp/external-mcp-readiness-publish-cli.ts",
     "mcp:credential-drill:check": "tsx src/runtime/external-mcp-credential-lifecycle-evidence-cli.ts",
     "mcp:shadow-drill:check": "tsx src/runtime/external-mcp-shadow-drill-evidence-cli.ts",
