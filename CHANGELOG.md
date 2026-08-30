@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 Agent Task Timeline Chromium visual regression，以受控低敏 fixture 固定 revision、Capability、等待审批、分页入口和 raw event kind 展示边界；学习与面试主文档同步加入滚动维护契约、设计证据与对应追问，其他浏览器和全页面视觉基线仍待完成。
+
 - 2026-08-30：通过真实 Pencil CLI 与原子 safe-edit 包装器完成 Agent Task Timeline desktop/mobile/state-matrix 增量设计，新增只读 metadata/provenance 组件和批准导出；完整页面视觉基线与其余前端流程继续按设计计划推进。
 
 - 2026-08-30：项目学习与面试主文档增加服务边界、SQLC、Temporal Durable Approval、远程验证和 C++ 数据面证据速查与高频追问，明确区分已验证、默认关闭和规划能力。

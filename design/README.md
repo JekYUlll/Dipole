@@ -99,6 +99,8 @@ Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 
 
 Vue 实现位于 `frontend/src/components/AgentTaskTimeline.vue`，路由为 `/agent/tasks/:taskId/timeline`，由 `VITE_AGENT_TASK_TIMELINE_ENABLED=true` 显式启用。设计稿不表示 active Agent authority、MCP continuation 或写 Capability 已开放。
 
+当前 Vue 只读页面的 Chromium visual baseline 位于 `frontend/e2e/agent-task-timeline.visual.spec.ts`；它使用受控低敏 fixture 固定 revision、Capability、等待审批、分页入口与 event kind 展示边界，不能替代全页面或跨浏览器视觉验收。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。

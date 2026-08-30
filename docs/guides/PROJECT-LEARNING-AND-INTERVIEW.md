@@ -17,6 +17,20 @@
 - **默认关闭**：实现与门禁存在，生产切流仍缺共享环境或审批证据。
 - **规划中**：只记录设计方向，不能写入简历成果。
 
+### 滚动维护契约
+
+本文件是学习、答辩和面试叙事的主入口。架构设计、运行手册、测试报告、设计稿和更新日志保留各自的事实细节；本文件只汇总可讲结论、证据链接、追问和限制，避免复制后发生漂移。
+
+| 触发项 | 本文档必须同步的内容 | 可引用的事实源 |
+| --- | --- | --- |
+| 新增或改变服务/数据边界 | 简历描述、60 秒/3 分钟介绍、至少一个取舍问答 | 架构计划、服务边界、契约与 migration |
+| 新增用户可见流程或 Pencil 基线 | 产品演示步骤、界面状态和视觉回归证据 | `design/`、前端设计计划、Playwright 用例 |
+| 新增 Agent 能力或权限状态 | Capability 边界、审批链与默认开关 | Agent Runtime 设计、授权与部署手册 |
+| 取得性能、远程或故障演练结果 | 可复现环境、指标、适用范围和限制 | 基准报告、运行记录、更新日志 |
+| 切换默认路径或发现风险 | 状态标签、限制和下一步 | 架构债务台账、回滚手册 |
+
+每个合并切片至少复核本文档是否受影响；若无变化，在切片的测试/合并记录中注明“面试叙事无变化”。所有描述继续遵守证据优先：实现与测试齐备才标记为“已验证”，部署门禁齐备但缺共享环境证据标记为“默认关闭”，设计或待验收内容标记为“规划中”。
+
 ## 2. 一句话定位
 
 Dipole 是一个面向实时协作与 Agent 能力演进的现代 IM 平台：Go 承担 IM 领域与一致性边界，Kafka 解耦事件与投影，TypeScript Runtime 承担可恢复 Agent Task，并以渐进式微服务化和可回滚切换替代一次性重写。
@@ -80,6 +94,7 @@ Dipole 是我持续迭代的现代 IM 项目。核心消息链路由 Go 服务�
 | 渐进微服务 | 接口、契约、Shadow、独立入口和 embedded 回滚并存，降低一次性拆分风险 | [服务边界](../architecture/SERVICE-BOUNDARIES.md)、[微服务部署](../architecture/MICROSERVICES-DEPLOYMENT.md) |
 | Agent 安全 | ExecutionContext 和 Capability policy 位于模型外层，Tool 与权限分离 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、[MCP 授权](../agent/agent-mcp-authorization.md) |
 | Agent 可恢复执行 | Temporal 保存任务状态，人工输入与审批可恢复；模型输出仍受审计和预算约束 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、[Active 部署运行手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md) |
+| 设计到实现闭环 | Pencil canonical frame 定义只读 Timeline 的信息边界，Chromium snapshot 固定当前 Vue 页面，后续页面与跨浏览器基线独立推进 | [前端设计计划](../frontend/FRONTEND-DESIGN-PLAN.md)、[设计说明](../../design/README.md)、`frontend/e2e/agent-task-timeline.visual.spec.ts` |
 
 ## 6. 高频追问
 
@@ -119,6 +134,10 @@ Workflow 先通过 Core 创建持久 Approval，再进入 `waiting_approval`。S
 
 当前 Go Delivery 仍是权威路径。C++ 候选聚焦连接、批量投递、背压和节点级 fanout 等数据面工作；它需要在稳定协议之上用相同流量、同一指标和自动回切策略证明收益。这样语言边界有明确性能动机，也避免为了技术栈展示而把 CRUD 领域拆到 C++。
 
+### 如何证明前端设计稿没有停留在静态展示？
+
+设计以 canonical Pencil frame、共享 `--dp-*` token 和受控 Playwright fixture 形成三层闭环。以 Agent Task Timeline 为例，Pencil 定义 desktop/mobile/state matrix 和低敏 metadata 边界；Vue 路由与组件测试固定状态机映射；Chromium visual test 再固定当前只读页面的 revision、Capability、分页入口及 raw event kind 不直接呈现。该基线不代表所有页面、所有浏览器或 active Agent 已完成验收，剩余范围继续由前端计划和 AD-044 管理。
+
 更多网络、存储、性能、SQLC、MCP、C++ 与故障恢复问题见 [详细面试问答](INTERVIEW-QA.md)。
 
 ## 7. 学习路线
@@ -139,3 +158,4 @@ Workflow 先通过 Core 创建持久 Approval，再进入 `waiting_approval`。S
 3. 从 [性能基线](../performance/PERFORMANCE-BASELINE.md) 选择一组结果，并说明其环境与局限。
 4. 从 [架构债务台账](../architecture/ARCHITECTURE-DEBT.md) 选择一个未完成项，准备解释风险和计划。
 5. 使用 60 秒和 3 分钟版本各练习一次，再从详细题库抽取 5 个追问。
+6. 对照最近一次合并切片的测试记录，确认本文件的状态标签、证据链接和限制未过期。

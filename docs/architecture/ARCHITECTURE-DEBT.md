@@ -61,6 +61,7 @@
 - 2026-08-30：本机开发工具链已切换至 `planning-with-files` 上游稳定版 `v3.11.2`，并移除重复 `.agents` skill 来源；Codex 适配器对并行 PreToolUse/PostToolUse 采用同 session/项目根短窗口去重，三次真实并行 Bash 仅产生一份计划上下文。该改动只约束开发期提示频率，不改变项目运行时或 Agent authority。
 - 2026-08-30：复核官方 Eino 上游：稳定版本仍为 `v0.9.17`，最新为 `v0.10.0-alpha.26` 预发布版；v0.10 方向包含 runner-managed Session、可重放中间件状态、后台任务和 Automemory，但官方明确 alpha 期间可能发生破坏性 API/行为变化。暂不升级生产 Go/Eino 回滚链路，后续仅在隔离 spike 分支评估与 TS Runtime/Temporal/Memory 的边界映射。
 - 2026-08-30：修正平台演进计划中滞后的 Agent/Frontend 质量数字和 F4 描述，明确已验证的 token、流程与跨浏览器功能范围，同时保留截图级视觉基线、真实 Pencil CLI 增量编辑和共享环境门禁为未完成项。
+- 2026-08-30：Agent Task Timeline 的 Chromium visual E2E 使用受控低敏 fixture 固定只读 revision、Capability、等待审批和分页入口，并确认 raw event kind 不直接进入页面。该基线只覆盖 Chromium 当前布局；其余页面、浏览器与完整视觉验收继续由 AD-044 跟踪。
 - 2026-08-30：主线综合复核通过架构文档、服务布局、SQLC 与 Go 全量 test/vet 门禁；文档目录继续保持根目录入口、`docs/` 分类和历史证据分离，后续共享环境切换仍需独立运行证据。
 - 2026-08-30：在 `master` revision `a3a433be` 上通过 Remote GPU Node 验证：Agent Runtime `125/665`、Frontend `29/114`、typecheck 与构建均通过；`node-test` 已增加 `webapp` 脏状态前置拒绝和退出清理，远端 detached worktree 验证后保持干净。该证据覆盖开发期 Node 质量门禁，不替代共享环境 Compose、负载和生产切换证据。
 - 2026-08-30：在 `master` revision `b96403b0` 上通过 Remote GPU Go canonical 门禁：白名单 Go test、服务布局和架构文档检查全部通过，未启动 Compose，远端源码工作树保持干净。该证据覆盖开发期代码质量基线，不替代共享环境服务发布、负载和故障演练证据。
