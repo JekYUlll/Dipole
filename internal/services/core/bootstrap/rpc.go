@@ -7,12 +7,14 @@ import (
 
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
+	searchv1 "github.com/JekYUlll/Dipole/api/gen/go/search/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	corerpc "github.com/JekYUlll/Dipole/internal/services/core/rpc"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	messagegrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/message"
+	searchgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/search"
 	"google.golang.org/grpc"
 )
 
@@ -48,6 +50,22 @@ func dialCoreMessageApplication(ctx context.Context, cfg config.InternalRPC) (*m
 	if err != nil {
 		_ = connection.Close()
 		return nil, nil, err
+	}
+	return client, connection, nil
+}
+
+func dialCoreSearchApplication(ctx context.Context, cfg config.InternalRPC) (*searchgrpc.Client, *grpc.ClientConn, error) {
+	connection, err := platformrpc.Dial(ctx, cfg, cfg.SearchTarget, grpcauth.Credentials{
+		Service: coreServiceName,
+		Secret:  cfg.SharedSecret,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial Search rpc: %w", err)
+	}
+	client, err := searchgrpc.NewClientForService(searchv1.NewSearchServiceClient(connection), coreServiceName)
+	if err != nil {
+		_ = connection.Close()
+		return nil, nil, fmt.Errorf("create Search application client: %w", err)
 	}
 	return client, connection, nil
 }

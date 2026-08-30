@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Core 新增默认关闭的受控 `conversation.search` assembly。启用需 mTLS，Core 以独立身份调用 Search，再以持久 Task/Run 恢复 principal、scope 和 capability policy；Search RPC 仅允许 Gateway 与 Core 服务身份。默认 Compose 固定关闭，生产检索流量未启用。
+
 - 2026-08-31：Compose 部署层显式固定 Agent retrieval 与 retrieval-to-Context 为关闭：基础 Shadow、active read 和 External MCP Shadow overlay 均写入 `false`，`check-compose.sh` 复核渲染结果，防止宿主环境变量意外扩张默认只读能力面。
 
 - 2026-08-31：将默认 Signal Link 品牌从偏蓝变体恢复为深青绿与橙色事件脉冲方案，统一主字标、IM 标识与 Agent 标识。保留 SVG 文件名和现有 README 引用，运行时行为不受影响。

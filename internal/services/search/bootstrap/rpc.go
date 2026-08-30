@@ -35,7 +35,7 @@ func NewSearchRPCServer(cfg config.InternalRPC, search application.SearchApplica
 	if err != nil {
 		return nil, fmt.Errorf("create Search rpc adapter: %w", err)
 	}
-	return platformrpc.NewServer(cfg, cfg.SearchListenAddress, []string{"dipole-gateway"}, func(server *grpc.Server) {
+	return platformrpc.NewServer(cfg, cfg.SearchListenAddress, []string{"dipole-gateway", "dipole-core"}, func(server *grpc.Server) {
 		searchv1.RegisterSearchServiceServer(server, adapter)
 	})
 }

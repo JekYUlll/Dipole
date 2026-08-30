@@ -170,6 +170,7 @@ type InternalRPC struct {
 	SearchTarget                             string `mapstructure:"search_target"`
 	SyncListenAddress                        string `mapstructure:"sync_listen_address"`
 	SyncTarget                               string `mapstructure:"sync_target"`
+	AgentConversationSearchEnabled           bool   `mapstructure:"agent_conversation_search_enabled"`
 	AgentMemoryPromotionReceiptCommitEnabled bool   `mapstructure:"agent_memory_promotion_receipt_commit_enabled"`
 	DeliveryObservationEnabled               bool   `mapstructure:"delivery_observation_enabled"`
 	DeliveryObservationListenAddress         string `mapstructure:"delivery_observation_listen_address"`
@@ -1051,6 +1052,7 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.SearchTarget = strings.TrimSpace(cfg.GetString("internal_rpc.search_target"))
 	internalRPC.SyncListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.sync_listen_address"))
 	internalRPC.SyncTarget = strings.TrimSpace(cfg.GetString("internal_rpc.sync_target"))
+	internalRPC.AgentConversationSearchEnabled = cfg.GetBool("internal_rpc.agent_conversation_search_enabled")
 	internalRPC.AgentMemoryPromotionReceiptCommitEnabled = cfg.GetBool("internal_rpc.agent_memory_promotion_receipt_commit_enabled")
 	internalRPC.DeliveryObservationEnabled = cfg.GetBool("internal_rpc.delivery_observation_enabled")
 	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))

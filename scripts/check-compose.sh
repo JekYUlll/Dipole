@@ -96,6 +96,7 @@ jq -e '
   and .services.core.entrypoint == ["/app/service"]
   and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "grpc"
   and .services.core.environment.DIPOLE_MESSAGE_TRANSPORT == "grpc"
+  and .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_CONVERSATION_SEARCH_ENABLED == "false"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
   and .services.message.image == "dipole-message:latest"

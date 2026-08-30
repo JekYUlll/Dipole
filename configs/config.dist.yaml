@@ -193,6 +193,8 @@ internal_rpc:
   search_target: 127.0.0.1:9093
   sync_listen_address: 127.0.0.1:9094
   sync_target: 127.0.0.1:9094
+  # Core-to-Search Agent retrieval remains disabled until mTLS and Shadow evidence are reviewed.
+  agent_conversation_search_enabled: false
   # Core receipt commit stays disabled until active authority and mTLS evidence are approved.
   agent_memory_promotion_receipt_commit_enabled: false
   # C2 shadow receiver only records validated node batches; it never delivers to WebSocket clients.
