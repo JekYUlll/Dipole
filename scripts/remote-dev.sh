@@ -136,7 +136,7 @@ case "${action}" in
       npm --prefix "\$app" run build
     done
     ;;
-  build) scripts/docker-build-microservice-images.sh ;;
+  build) scripts/docker-build.sh backend && scripts/docker-build-microservice-images.sh ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
   bench) scripts/bench/run_bench.sh ;;
   down) docker compose -p "\$project" -f "${REMOTE_COMPOSE_FILE}" down --remove-orphans ;;
