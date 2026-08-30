@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：远程 Dockerized k6 wrapper 额外挂载 `/tmp`，允许 benchmark/recovery 报告使用宿主临时目录并被容器正常写回；仓库挂载、UID/GID 映射和隔离网络保持不变。
+
 - 2026-08-30：完成 C1 候选业务拓扑节点恢复演练：在 `d8b0e4a9`、隔离 `dipole-c1` 三节点环境中停止并恢复 `dipole-node2`，不可用观测 `518ms`、恢复健康 `16093ms`；consumer group 稳定成员 `72`，恢复后 `40/40` 消息接受/持久化/投递，HTTP failure `0%`，Kafka lag `0`。证据归档于 `benchmarks/c1-node2-recovery-d8b0e4a9/`，外部 GPU 任务保持运行。
 
 - 2026-08-30：修复 Remote GPU 活动会话批准参数未跨 SSH 透传的问题；`DIPOLE_REMOTE_ALLOW_ACTIVE=1` 现在由远端启动门禁显式接收，GPU 任务并行策略和活跃用户默认保护保持不变。
