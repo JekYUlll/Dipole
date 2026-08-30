@@ -6,18 +6,24 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/application"
 	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
+	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
+	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
@@ -87,31 +93,63 @@ func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
 		t.Fatalf("resolve persisted invocation: %v", err)
 	}
 	receipt := receiptCommitRequest(t, invocation, admitted.TaskUUID, admitted.RunUUID, candidateID, candidateSHA256, reviewID, now)
-	first, err := commits.CommitMemoryPromotionReceipt(ctx, receipt)
+	server, err := agentgrpc.NewMemoryPromotionReceiptServer(commits)
 	if err != nil {
-		t.Fatalf("commit receipt: %v", err)
+		t.Fatalf("create Core receipt adapter: %v", err)
 	}
-	if first == nil || first.MemoryType != application.AgentMemoryTypeSemantic || first.Status != application.AgentMemoryStatusActive {
-		t.Fatalf("committed Memory=%+v", first)
+	request := receiptCommitRPCRequest(receipt)
+	firstResponse, err := invokeAgentReceiptCommit(ctx, server, request)
+	if err != nil {
+		t.Fatalf("commit receipt through Core adapter: %v", err)
 	}
-	assertReceiptPromotionStored(t, ctx, db, candidateID, first.MemoryUUID, 1)
+	if firstResponse.GetMemoryType() != string(application.AgentMemoryTypeSemantic) || firstResponse.GetStatus() != string(application.AgentMemoryStatusActive) {
+		t.Fatalf("committed receipt response=%+v", firstResponse)
+	}
+	assertReceiptPromotionStored(t, ctx, db, candidateID, firstResponse.GetMemoryId(), 1)
 
-	replayed, err := commits.CommitMemoryPromotionReceipt(ctx, receipt)
+	replayed, err := invokeAgentReceiptCommit(ctx, server, request)
 	if err != nil {
-		t.Fatalf("replay receipt: %v", err)
+		t.Fatalf("replay receipt through Core adapter: %v", err)
 	}
-	if replayed == nil || replayed.MemoryUUID != first.MemoryUUID {
-		t.Fatalf("replayed Memory=%+v, want %q", replayed, first.MemoryUUID)
+	if replayed.GetMemoryId() != firstResponse.GetMemoryId() || replayed.GetReceiptSha256() != request.GetReceiptSha256() {
+		t.Fatalf("replayed receipt response=%+v, want Memory=%q receipt=%q", replayed, firstResponse.GetMemoryId(), request.GetReceiptSha256())
 	}
-	assertReceiptPromotionStored(t, ctx, db, candidateID, first.MemoryUUID, 1)
+	assertReceiptPromotionStored(t, ctx, db, candidateID, firstResponse.GetMemoryId(), 1)
 
 	if revoked, revokeErr := policy.RevokeRuntimePromotionGrant(ctx, grant.GrantUUID, now); revokeErr != nil || !revoked {
 		t.Fatalf("revoke promotion grant: revoked=%v err=%v", revoked, revokeErr)
 	}
-	if _, err := commits.CommitMemoryPromotionReceipt(ctx, receipt); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
-		t.Fatalf("revoked grant receipt error=%v, want policy denied", err)
+	if _, err := invokeAgentReceiptCommit(ctx, server, request); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("revoked grant receipt code=%s err=%v, want permission denied", status.Code(err), err)
 	}
-	assertReceiptPromotionStored(t, ctx, db, candidateID, first.MemoryUUID, 1)
+	assertReceiptPromotionStored(t, ctx, db, candidateID, firstResponse.GetMemoryId(), 1)
+}
+
+func receiptCommitRPCRequest(receipt application.AgentMemoryPromotionReceiptCommitRequestV1) *agentv1.CommitMemoryPromotionReceiptRequest {
+	return &agentv1.CommitMemoryPromotionReceiptRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), ReceiptId: receipt.ReceiptID, ReceiptSha256: receipt.ReceiptSHA256,
+		SchemaVersion: receipt.SchemaVersion, Status: receipt.Status, TaskId: receipt.TaskUUID, RunId: receipt.RunUUID,
+		CandidateId: receipt.CandidateUUID, CandidateSha256: receipt.CandidateSHA256, ReviewId: receipt.ReviewUUID,
+		PolicyVersion: receipt.PolicyVersion, TargetMemoryType: string(receipt.TargetMemoryType),
+		CreatedAtUnixMs: receipt.CreatedAt.UnixMilli(), ExpiresAtUnixMs: receipt.ExpiresAt.UnixMilli(),
+	}
+}
+
+func invokeAgentReceiptCommit(ctx context.Context, server *agentgrpc.MemoryPromotionReceiptServer, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
+	interceptor, err := grpcauth.NewUnaryServerInterceptor("receipt-mysql-contract-secret", "dipole-agent")
+	if err != nil {
+		return nil, err
+	}
+	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(
+		"x-dipole-caller-service", "dipole-agent", "x-dipole-service-token", "receipt-mysql-contract-secret",
+	))
+	response, err := interceptor(ctx, request, nil, func(authenticated context.Context, value any) (any, error) {
+		return server.CommitMemoryPromotionReceipt(authenticated, value.(*agentv1.CommitMemoryPromotionReceiptRequest))
+	})
+	if err != nil {
+		return nil, err
+	}
+	return response.(*agentv1.CommitMemoryPromotionReceiptResponse), nil
 }
 
 func createReceiptContractPolicy(t *testing.T, ctx context.Context, policy *sqlcRepository.AgentPolicyRepository, now time.Time) (application.AgentDefinitionVersionV1, application.AgentRuntimePromotionGrantV1) {
