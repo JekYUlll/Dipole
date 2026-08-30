@@ -27,7 +27,7 @@ REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|sync-ownership|multipart-smoke|multipart-restart-smoke|bench|recovery|down>
+Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|sync-ownership|web-sync-bundle|multipart-smoke|multipart-restart-smoke|bench|recovery|down>
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
@@ -229,6 +229,13 @@ case "${action}" in
   sync-ownership)
     GOTOOLCHAIN=local scripts/smoke-sync-write-ownership.sh
     ;;
+  web-sync-bundle)
+    bundle="/tmp/\${project}-web-sync-shadow-\$(git rev-parse --short HEAD).tar"
+    scripts/package-web-sync-bundle.sh \
+      --candidate-version "web-sync-shadow-\$(git rev-parse --short HEAD)" \
+      --mode shadow \
+      --output "\$bundle"
+    ;;
   multipart-smoke)
     GOTOOLCHAIN=local scripts/smoke-minio-multipart.sh
     ;;
@@ -325,6 +332,7 @@ case "${1:-}" in
   build) sync_revision; guard_start; run_remote build ;;
   smoke-lite) sync_revision; guard_start; run_remote smoke-lite ;;
   sync-ownership) sync_revision; run_remote sync-ownership ;;
+  web-sync-bundle) sync_revision; run_remote web-sync-bundle ;;
   multipart-smoke) sync_revision; run_remote multipart-smoke ;;
   multipart-restart-smoke) sync_revision; run_remote multipart-restart-smoke ;;
   bench) sync_revision; guard_start; run_remote bench ;;
