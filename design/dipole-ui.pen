@@ -37149,6 +37149,1281 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "o0VFpz",
+      "x": 37210,
+      "y": 0,
+      "name": "Component/Settings Profile",
+      "reusable": true,
+      "width": 560,
+      "fill": "$surface",
+      "cornerRadius": 14,
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 16,
+      "padding": 20,
+      "children": [
+        {
+          "type": "frame",
+          "id": "h4Vio",
+          "name": "Profile Component Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 5,
+          "children": [
+            {
+              "type": "text",
+              "id": "E8m7K",
+              "name": "Profile Component Eyebrow",
+              "fill": "$accent-strong",
+              "content": "PERSONAL PROFILE",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1.2
+            },
+            {
+              "type": "text",
+              "id": "SOszY",
+              "name": "Profile Component Title",
+              "fill": "$ink",
+              "content": "个人资料",
+              "fontFamily": "$font-display",
+              "fontSize": 22,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "p8GnG",
+              "name": "Profile Component Copy",
+              "fill": "$ink-soft",
+              "content": "签名只展示给当前账户授权的会话。",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "IqY47",
+          "name": "Profile Signature Field",
+          "width": "fill_container",
+          "fill": "$surface-muted",
+          "cornerRadius": 10,
+          "layout": "vertical",
+          "gap": 7,
+          "padding": 14,
+          "children": [
+            {
+              "type": "text",
+              "id": "VjynO",
+              "name": "Profile Signature Label",
+              "fill": "$ink",
+              "content": "个人签名",
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "rurtt",
+              "name": "Profile Signature Value",
+              "fill": "$ink-soft",
+              "content": "让每一次协作都能留下清晰的上下文。",
+              "fontFamily": "$font-body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "gtCWH",
+              "name": "Profile Signature Count",
+              "fill": "$ink-faint",
+              "content": "18 / 120",
+              "fontFamily": "$font-data",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "lGXBn",
+          "name": "Profile Component Actions",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "zzejB",
+              "name": "Profile Device Link",
+              "fill": "$accent-strong",
+              "content": "管理设备会话  →",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "YzX85",
+              "name": "Profile Save Button",
+              "fill": "$accent-strong",
+              "cornerRadius": 8,
+              "padding": [
+                10,
+                14
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "SQmBq",
+                  "name": "Profile Save Label",
+                  "fill": "$text-inverse",
+                  "content": "保存更改",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "huTAg",
+      "x": 37210,
+      "y": 360,
+      "name": "Component/Settings Sync Status",
+      "reusable": true,
+      "width": 560,
+      "fill": "$surface",
+      "cornerRadius": 14,
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 15,
+      "padding": 20,
+      "children": [
+        {
+          "type": "frame",
+          "id": "DB2PU",
+          "name": "Sync Component Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "g8xIs",
+              "name": "Sync Component Heading",
+              "layout": "vertical",
+              "gap": 5,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "DFrhv",
+                  "name": "Sync Component Eyebrow",
+                  "fill": "$accent-strong",
+                  "content": "LOCAL SYNC",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "text",
+                  "id": "Y2OvJg",
+                  "name": "Sync Component Title",
+                  "fill": "$ink",
+                  "content": "客户端同步",
+                  "fontFamily": "$font-display",
+                  "fontSize": 22,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "H8q3B",
+              "name": "Sync Ready Badge",
+              "fill": "$accent-soft",
+              "cornerRadius": 99,
+              "padding": [
+                6,
+                10
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pk7RZ",
+                  "name": "Sync Ready Label",
+                  "fill": "$accent-strong",
+                  "content": "已保护",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "abuFq",
+          "name": "Sync Component Metrics",
+          "width": "fill_container",
+          "gap": 10,
+          "children": [
+            {
+              "type": "frame",
+              "id": "XXFQz",
+              "name": "Sync Metric 本地状态",
+              "width": "fill_container",
+              "fill": "$surface-muted",
+              "cornerRadius": 10,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 13,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pVD7V",
+                  "name": "Sync Metric Label 本地状态",
+                  "fill": "$ink-soft",
+                  "content": "本地状态",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "P1w1d",
+                  "name": "Sync Metric Value 本地状态",
+                  "fill": "$ink",
+                  "content": "可用",
+                  "fontFamily": "$font-data",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "r3T8ba",
+              "name": "Sync Metric 安全游标",
+              "width": "fill_container",
+              "fill": "$surface-muted",
+              "cornerRadius": 10,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 13,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wrzlz",
+                  "name": "Sync Metric Label 安全游标",
+                  "fill": "$ink-soft",
+                  "content": "安全游标",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "OPWIZ",
+                  "name": "Sync Metric Value 安全游标",
+                  "fill": "$ink",
+                  "content": "12,842",
+                  "fontFamily": "$font-data",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "RevCZ",
+          "name": "Sync Component Help",
+          "fill": "$ink-soft",
+          "content": "同步状态仅用于本机恢复，不包含消息正文或设备识别信息。",
+          "fontFamily": "$font-body",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "qPDIy",
+      "x": 37210,
+      "y": 680,
+      "name": "Component/Settings Logout Boundary",
+      "reusable": true,
+      "width": 560,
+      "fill": "$danger-soft",
+      "cornerRadius": 14,
+      "stroke": "$danger",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 14,
+      "padding": 20,
+      "children": [
+        {
+          "type": "text",
+          "id": "v9sIzJ",
+          "name": "Logout Component Eyebrow",
+          "fill": "$danger",
+          "content": "SESSION BOUNDARY",
+          "fontFamily": "$font-data",
+          "fontSize": 10,
+          "fontWeight": "700",
+          "letterSpacing": 1.2
+        },
+        {
+          "type": "text",
+          "id": "z0OiOq",
+          "name": "Logout Component Title",
+          "fill": "$ink",
+          "content": "退出当前账户",
+          "fontFamily": "$font-display",
+          "fontSize": 22,
+          "fontWeight": "800"
+        },
+        {
+          "type": "text",
+          "id": "yckDJ",
+          "name": "Logout Component Copy",
+          "fill": "$ink-soft",
+          "content": "退出会撤销当前会话并清理本机保存的账户数据。",
+          "fontFamily": "$font-body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "zLmMG",
+          "name": "Logout Component Action",
+          "width": "fill_container",
+          "justifyContent": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "CWbxI",
+              "name": "Logout Button",
+              "fill": "$danger",
+              "cornerRadius": 8,
+              "padding": [
+                10,
+                14
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "R1rlL",
+                  "name": "Logout Button Label",
+                  "fill": "$text-inverse",
+                  "content": "退出登录",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "anv5W",
+      "x": 37870,
+      "y": 0,
+      "name": "Settings/Desktop/Account",
+      "clip": true,
+      "width": 1440,
+      "height": 980,
+      "fill": "$canvas",
+      "children": [
+        {
+          "type": "frame",
+          "id": "q0hZRm",
+          "name": "Settings Rail",
+          "width": 260,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 24,
+          "padding": [
+            34,
+            28
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "jOzo4",
+              "name": "Settings Rail Brand",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "exuPj",
+                  "name": "Settings Rail Brand Name",
+                  "fill": "$text-inverse",
+                  "content": "DIPOLE",
+                  "fontFamily": "$font-data",
+                  "fontSize": 20,
+                  "fontWeight": "800",
+                  "letterSpacing": 2
+                },
+                {
+                  "type": "text",
+                  "id": "fLOr2",
+                  "name": "Settings Rail Brand Subline",
+                  "fill": "#B7C7C0",
+                  "content": "ACCOUNT CENTER",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.3
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "x06Eoe",
+              "name": "Settings Rail Navigation",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "H0GNR",
+                  "name": "Settings Rail Nav 工作区",
+                  "width": "fill_container",
+                  "fill": "$rail",
+                  "cornerRadius": 8,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fPOeV",
+                      "name": "Settings Rail Nav Label 工作区",
+                      "fill": "#B7C7C0",
+                      "content": "工作区",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BphLW",
+                  "name": "Settings Rail Nav 设备会话",
+                  "width": "fill_container",
+                  "fill": "$rail",
+                  "cornerRadius": 8,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Mktjo",
+                      "name": "Settings Rail Nav Label 设备会话",
+                      "fill": "#B7C7C0",
+                      "content": "设备会话",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "OxRhu",
+                  "name": "Settings Rail Nav 设置",
+                  "width": "fill_container",
+                  "fill": "$rail-soft",
+                  "cornerRadius": 8,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "IeQON",
+                      "name": "Settings Rail Nav Label 设置",
+                      "fill": "$text-inverse",
+                      "content": "设置",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bf5ZU",
+              "name": "Settings Rail Footnote",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "AoEup",
+                  "name": "Settings Rail Footnote Label",
+                  "fill": "$ink-faint",
+                  "content": "ACCOUNT SCOPE",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2
+                },
+                {
+                  "type": "text",
+                  "id": "FBu3A",
+                  "name": "Settings Rail Footnote Copy",
+                  "fill": "#B7C7C0",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "权限和本机同步状态会以当前账户为边界。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Z329FW",
+          "name": "Settings Account Content",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 18,
+          "padding": [
+            42,
+            54
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "TVy9f",
+              "name": "Settings Account Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pIofX",
+                  "name": "Settings Account Header Copy",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XwwvA",
+                      "name": "Settings Account Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "ACCOUNT SETTINGS",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.3
+                    },
+                    {
+                      "type": "text",
+                      "id": "h0I3K",
+                      "name": "Settings Account Title",
+                      "fill": "$ink",
+                      "content": "设置",
+                      "fontFamily": "$font-display",
+                      "fontSize": 38,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "DuJgK",
+                      "name": "Settings Account Subtitle",
+                      "fill": "$ink-soft",
+                      "content": "管理个人资料、本机同步与当前会话。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hvpql",
+                  "name": "Settings Account State",
+                  "fill": "$accent-soft",
+                  "cornerRadius": 99,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VfpeL",
+                      "name": "Settings Account State Label",
+                      "fill": "$accent-strong",
+                      "content": "账户已验证",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "c5idq",
+              "name": "Settings Account Stack",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 14,
+              "children": [
+                {
+                  "id": "f8Wzl7",
+                  "type": "ref",
+                  "ref": "o0VFpz",
+                  "name": "Settings Desktop Profile",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "D3B224",
+                  "type": "ref",
+                  "ref": "huTAg",
+                  "name": "Settings Desktop Sync",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "mqOMu",
+                  "type": "ref",
+                  "ref": "qPDIy",
+                  "name": "Settings Desktop Logout",
+                  "width": "fill_container"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "b45W5",
+      "x": 39460,
+      "y": 0,
+      "name": "Settings/Mobile/Account",
+      "clip": true,
+      "width": 390,
+      "height": 1040,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 14,
+      "padding": [
+        20,
+        16
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "gme0P",
+          "name": "Settings Mobile Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "frame",
+              "id": "YwqJ7",
+              "name": "Settings Mobile Header Row",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "t8fOip",
+                  "name": "Settings Mobile Back Link",
+                  "fill": "$accent-strong",
+                  "content": "← 工作区",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "v4imF2",
+                  "name": "Settings Mobile Verified Badge",
+                  "fill": "$accent-soft",
+                  "cornerRadius": 99,
+                  "padding": [
+                    5,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fDRCK",
+                      "name": "Settings Mobile Verified Label",
+                      "fill": "$accent-strong",
+                      "content": "已验证",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "ImfJM",
+              "name": "Settings Mobile Eyebrow",
+              "fill": "$accent-strong",
+              "content": "ACCOUNT SETTINGS",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1.2
+            },
+            {
+              "type": "text",
+              "id": "HDnw2",
+              "name": "Settings Mobile Title",
+              "fill": "$ink",
+              "content": "设置",
+              "fontFamily": "$font-display",
+              "fontSize": 32,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "rX5oB",
+              "name": "Settings Mobile Subtitle",
+              "fill": "$ink-soft",
+              "content": "个人资料、本机同步与当前会话。",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "MRxKa",
+          "name": "Settings Mobile Stack",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "id": "ckW2d",
+              "type": "ref",
+              "ref": "o0VFpz",
+              "name": "Settings Mobile Profile",
+              "width": "fill_container",
+              "descendants": {
+                "h4Vio": {
+                  "gap": 4
+                }
+              }
+            },
+            {
+              "id": "j3GVb",
+              "type": "ref",
+              "ref": "huTAg",
+              "name": "Settings Mobile Sync",
+              "width": "fill_container"
+            },
+            {
+              "id": "kZSIG",
+              "type": "ref",
+              "ref": "qPDIy",
+              "name": "Settings Mobile Logout",
+              "width": "fill_container"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ZuDcu",
+      "x": 39970,
+      "y": 0,
+      "name": "Settings/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 820,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": [
+        36,
+        42
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "rHdIq",
+          "name": "Settings State Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 7,
+          "children": [
+            {
+              "type": "text",
+              "id": "D7Uevu",
+              "name": "Settings State Eyebrow",
+              "fill": "$accent-strong",
+              "content": "SETTINGS STATE MATRIX",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1.3
+            },
+            {
+              "type": "text",
+              "id": "ceY8b",
+              "name": "Settings State Title",
+              "fill": "$ink",
+              "content": "账户设置的可恢复状态",
+              "fontFamily": "$font-display",
+              "fontSize": 32,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "cYUKm",
+              "name": "Settings State Copy",
+              "fill": "$ink-soft",
+              "content": "失败状态保留本地已编辑内容；同步与会话边界始终以当前账户为准。",
+              "fontFamily": "$font-body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "iIwm5",
+          "name": "Settings State Cards",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "YDf9F",
+              "name": "Settings State 正在加载",
+              "width": "fill_container",
+              "height": 335,
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 18,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ZE1zt",
+                  "name": "Settings State Tag 正在加载",
+                  "fill": "$surface",
+                  "cornerRadius": 99,
+                  "padding": [
+                    6,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "RSlb4",
+                      "name": "Settings State Tag Label 正在加载",
+                      "fill": "$ink-soft",
+                      "content": "LOADING",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "rbkU8",
+                  "name": "Settings State Card Title 正在加载",
+                  "fill": "$ink",
+                  "content": "正在加载",
+                  "fontFamily": "$font-display",
+                  "fontSize": 21,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "k4oRS",
+                  "name": "Settings State Card Copy 正在加载",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "账户资料正在读取，表单保持不可编辑。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "REcAN",
+                  "name": "Settings State Action 正在加载",
+                  "fill": "$ink-soft",
+                  "cornerRadius": 8,
+                  "padding": [
+                    9,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gRhFf",
+                      "name": "Settings State Action Label 正在加载",
+                      "fill": "$text-inverse",
+                      "content": "请稍候",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Mck31",
+              "name": "Settings State 已保存",
+              "width": "fill_container",
+              "height": 335,
+              "fill": "$accent-soft",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 18,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VBAqM",
+                  "name": "Settings State Tag 已保存",
+                  "fill": "$surface",
+                  "cornerRadius": 99,
+                  "padding": [
+                    6,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "uWExD",
+                      "name": "Settings State Tag Label 已保存",
+                      "fill": "$accent-strong",
+                      "content": "SAVED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "eJtdS",
+                  "name": "Settings State Card Title 已保存",
+                  "fill": "$ink",
+                  "content": "已保存",
+                  "fontFamily": "$font-display",
+                  "fontSize": 21,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "d9RyB8",
+                  "name": "Settings State Card Copy 已保存",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "签名已保存到当前账户，安全入口保持可用。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "tUKEU",
+                  "name": "Settings State Action 已保存",
+                  "fill": "$accent-strong",
+                  "cornerRadius": 8,
+                  "padding": [
+                    9,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "OUWt5",
+                      "name": "Settings State Action Label 已保存",
+                      "fill": "$text-inverse",
+                      "content": "查看资料",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SsJFW",
+              "name": "Settings State 服务不可用",
+              "width": "fill_container",
+              "height": 335,
+              "fill": "$warning-soft",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 18,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bPRhJ",
+                  "name": "Settings State Tag 服务不可用",
+                  "fill": "$surface",
+                  "cornerRadius": 99,
+                  "padding": [
+                    6,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Mp80T",
+                      "name": "Settings State Tag Label 服务不可用",
+                      "fill": "$warning",
+                      "content": "UNAVAILABLE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "f1yYyq",
+                  "name": "Settings State Card Title 服务不可用",
+                  "fill": "$ink",
+                  "content": "服务不可用",
+                  "fontFamily": "$font-display",
+                  "fontSize": 21,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "RnPmO",
+                  "name": "Settings State Card Copy 服务不可用",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保留本地草稿并显示可重试操作。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "YrbTo",
+                  "name": "Settings State Action 服务不可用",
+                  "fill": "$warning",
+                  "cornerRadius": 8,
+                  "padding": [
+                    9,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "oDq2c",
+                      "name": "Settings State Action Label 服务不可用",
+                      "fill": "$text-inverse",
+                      "content": "重试",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "QLzdr",
+              "name": "Settings State 同步需处理",
+              "width": "fill_container",
+              "height": 335,
+              "fill": "$danger-soft",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 18,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "d9sRV",
+                  "name": "Settings State Tag 同步需处理",
+                  "fill": "$surface",
+                  "cornerRadius": 99,
+                  "padding": [
+                    6,
+                    9
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "B9CHUv",
+                      "name": "Settings State Tag Label 同步需处理",
+                      "fill": "$danger",
+                      "content": "SYNC ERROR",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "N0CtX",
+                  "name": "Settings State Card Title 同步需处理",
+                  "fill": "$ink",
+                  "content": "同步需处理",
+                  "fontFamily": "$font-display",
+                  "fontSize": 21,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "ue2eq",
+                  "name": "Settings State Card Copy 同步需处理",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "本地游标异常时提示恢复，消息正文继续隐藏。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "l1hS9",
+                  "name": "Settings State Action 同步需处理",
+                  "fill": "$danger",
+                  "cornerRadius": 8,
+                  "padding": [
+                    9,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "i36yN",
+                      "name": "Settings State Action Label 同步需处理",
+                      "fill": "$text-inverse",
+                      "content": "重试",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Dc6eO",
+          "name": "Settings State Boundary",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": 12,
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "gap": 12,
+          "padding": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "By5WZ",
+              "name": "Settings State Boundary Label",
+              "fill": "$accent-strong",
+              "content": "DATA BOUNDARY",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1.1
+            },
+            {
+              "type": "text",
+              "id": "x0dmCw",
+              "name": "Settings State Boundary Copy",
+              "fill": "$ink-soft",
+              "content": "设备详情由专用页面处理；设置页不展示 IP、节点或连接标识。",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

@@ -16,6 +16,7 @@
 | Design Review Checklist | `exports/review-checklist.png` |
 | 完整画布总览 | `exports/dipole-ui-overview.png` |
 | Group Directory desktop/mobile/state matrix | `exports/group-v1/` |
+| Settings desktop/mobile/state matrix | `exports/settings-v1/` |
 | Device Security desktop/mobile/state matrix | `exports/device-security-*-review.png` |
 
 ## 当前 Frame
@@ -86,6 +87,15 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 - `Device Session Row`、`Device Trust Status`、`Session Sign-out Confirmation`：页面与状态矩阵共用的组件。
 
 批准的 2x 预览位于 `exports/device-security-*-review.png`。设计只展示设备标签、粗粒度浏览器或设备说明、相对活动时间和当前/信任状态；IP、节点、连接 ID、用户 ID、Token、精确位置与原始 User-Agent 不进入 UI。后续 Vue 页面从认证会话调用既有设备列表与登出 API，单设备和全部其他设备动作均需要明确确认并以权威响应收敛。
+
+### Settings v1
+
+- `Settings/Desktop/Account`：深色导航轨和暖白账户工作区，分为个人资料、同步状态与会话退出边界。
+- `Settings/Mobile/Account`：390px 单列布局，保留资料、低敏设备安全入口、本机同步状态和退出操作。
+- `Settings/State Matrix`：覆盖 loading、保存成功、服务不可用和同步异常；失败时保留本地草稿并提供重试。
+- `Component/Settings Profile`、`Component/Settings Sync Status`、`Component/Settings Logout Boundary`：资料、低敏同步与危险会话操作的共享组件。
+
+批准的 2x 预览位于 `exports/settings-v1/`。页面仅复用认证 profile API、本机 safe cursor、设备安全入口和退出会话；IP、节点、连接 ID、消息正文、对象存储信息和设备原始标识不进入设置页。
 
 ### Agent Workflow Repair v1
 

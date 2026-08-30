@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：完成 Settings 的 canonical Pencil desktop/mobile/四态设计、批准 PNG 导出和 Chromium 受控截图基线。认证账户页继续只呈现签名、本机同步状态、Device Security 入口和当前会话退出边界，跨浏览器视觉回归保持后续独立切片。
+
 - 2026-08-31：Core 新增默认关闭的受控 `conversation.search` assembly。启用需 mTLS，Core 以独立身份调用 Search，再以持久 Task/Run 恢复 principal、scope 和 capability policy；Search RPC 仅允许 Gateway 与 Core 服务身份。默认 Compose 固定关闭，生产检索流量未启用。
 
 - 2026-08-31：Compose 部署层显式固定 Agent retrieval 与 retrieval-to-Context 为关闭：基础 Shadow、active read 和 External MCP Shadow overlay 均写入 `false`，`check-compose.sh` 复核渲染结果，防止宿主环境变量意外扩张默认只读能力面。

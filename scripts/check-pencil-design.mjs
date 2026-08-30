@@ -31,6 +31,7 @@ const requiredFrames = [
   'Group/Desktop/Directory', 'Group/Mobile/Directory', 'Group/State Matrix',
   'File/Desktop/Directory', 'File/Mobile/Directory', 'File/State Matrix',
   'Device/Desktop/Sessions', 'Device/Mobile/Sessions', 'Device/State Matrix',
+  'Settings/Desktop/Account', 'Settings/Mobile/Account', 'Settings/State Matrix',
   'Agent Repair/Desktop/Proposed', 'Agent Repair/Mobile/Approval',
   'Agent Elicitation/Desktop/Form', 'Agent Elicitation/Mobile/Form',
   'Agent Subscription/Desktop/Manage', 'Agent Subscription/Mobile/Revoke',

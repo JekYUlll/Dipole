@@ -13,6 +13,7 @@
     { "path": "exports/contact-v1", "purpose": "contact-v1" },
     { "path": "exports/group-v1", "purpose": "group-v1" },
     { "path": "exports/file-directory-review.png", "purpose": "file-directory-v1" },
+    { "path": "exports/settings-v1", "purpose": "settings-v1" },
     { "path": "exports/device-security-desktop-review.png", "purpose": "device-security-desktop-v1" },
     { "path": "exports/device-security-mobile-review.png", "purpose": "device-security-mobile-v1" },
     { "path": "exports/device-security-state-matrix-review.png", "purpose": "device-security-state-matrix-v1" },
