@@ -61,11 +61,11 @@ run_go_test() {
 (
   cd "$root_dir"
   run_go_test env DIPOLE_TEST_SYNC_MYSQL_DSN="dipole_sync:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
-    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/bootstrap -run '^TestSyncDatabaseBoundaryWithMySQLAccount$' -count=1
+    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/services/sync/bootstrap -run '^TestSyncDatabaseBoundaryWithMySQLAccount$' -count=1
   run_go_test env DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN="dipole_message_projector:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
-    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/bootstrap -run '^TestMessageProjectorDatabaseBoundaryWithMySQLAccount$' -count=1
+    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/services/message/infrastructure/mysql -run '^TestMessageProjectorDatabaseBoundaryWithMySQLAccount$' -count=1
   run_go_test env DIPOLE_TEST_MESSAGE_ATOMIC_MYSQL_DSN="dipole_message:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
-    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/bootstrap -run '^TestMessageAtomicDatabaseBoundaryWithMySQLAccount$' -count=1
+    LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/services/message/infrastructure/mysql -run '^TestMessageAtomicDatabaseBoundaryWithMySQLAccount$' -count=1
   run_go_test env DIPOLE_TEST_MESSAGE_PROJECTOR_MYSQL_DSN="dipole_message_projector:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
     LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu go test ./internal/services/message/infrastructure/mysql -run '^TestMessageProjectorAccountWritesMessageAndOutbox$' -count=1
   run_go_test env DIPOLE_TEST_MESSAGE_ATOMIC_MYSQL_DSN="dipole_message:change-me@tcp(127.0.0.1:${port})/dipole?parseTime=true" \
