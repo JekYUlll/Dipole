@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修复 Remote GPU 活动会话批准参数未跨 SSH 透传的问题；`DIPOLE_REMOTE_ALLOW_ACTIVE=1` 现在由远端启动门禁显式接收，GPU 任务并行策略和活跃用户默认保护保持不变。
+
 - 2026-08-30：统一 Remote GPU 并行启动行为：CPU/容器型 Dipole 构建、Smoke 和压力测试在检测到既有 GPU 任务时继续执行并记录资源快照；活跃登录用户仍默认阻断，`DIPOLE_REMOTE_ALLOW_ACTIVE=1` 仅用于明确批准的活动会话。隔离 Compose project、资源边界和自动清理策略保持不变。
 
 - 2026-08-30：改进 Remote GPU benchmark 入口，新增受控的 `DIPOLE_BENCH_SCENARIO_FILTER`、`DIPOLE_BENCH_GROUP_MAX_DURATION`、`DIPOLE_BENCH_USER_COUNT`、`DIPOLE_BENCH_GROUP_SIZE` 和 `DIPOLE_BENCH_RUN_ID` 转发；后续可从本地统一触发 group-only、规模和可比性 workload，避免手工远端脚本参数漂移。

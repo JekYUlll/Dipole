@@ -24,6 +24,8 @@ test("remote destructive actions remain behind the active-user guard", () => {
 
 test("existing GPU tasks are observed without blocking development actions", () => {
   assert.match(source, /active_users=.*gpu_processes=.*\\n/);
+  assert.match(source, /remote "guard" "\$\{DIPOLE_REMOTE_ALLOW_ACTIVE:-0\}"/);
+  assert.match(source, /approved="\$\{3:-0\}"/);
   assert.match(source, /active_users.*DIPOLE_REMOTE_ALLOW_ACTIVE/);
   assert.doesNotMatch(source, /if \[\[ "\$users" != "0" \|\| "\$gpu" != "0"/);
   assert.match(source, /proceeding with existing GPU tasks/);
