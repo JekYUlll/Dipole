@@ -1,17 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="420" height="160" viewBox="0 0 420 160" role="img" aria-labelledby="title desc">
   <title id="title">Dipole Agent</title>
-  <desc id="desc">Dipole Agent mark for governed AI workflows.</desc>
-  <defs>
-    <linearGradient id="agent-blue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2768f5"/>
-      <stop offset="1" stop-color="#0b3ed0"/>
-    </linearGradient>
-  </defs>
-  <rect width="420" height="160" rx="26" fill="#f2f6ff"/>
-  <path d="M50 43C28 56 15 78 15 102c0 21 12 39 31 49 12 6 23-1 23-14v-29c0-9 7-16 16-16V43c-11-6-23-6-35 0Z" fill="url(#agent-blue)"/>
-  <path d="M120 43c22 13 35 35 35 59 0 21-12 39-31 49-12 6-23-1-23-14v-29c0-9-7-16-16-16V43c11-6 23-6 35 0Z" fill="url(#agent-blue)"/>
-  <path d="M85 92c5 0 10 2 14 6-4 4-9 6-14 6s-10-2-14-6c4-4 9-6 14-6Z" fill="#f2f6ff"/>
-  <circle cx="137" cy="41" r="9" fill="#22a699"/>
-  <text x="186" y="69" fill="#112653" font-family="DejaVu Sans, sans-serif" font-size="29" font-weight="700">DIPOLE AGENT</text>
-  <text x="186" y="101" fill="#53617b" font-family="DejaVu Sans, sans-serif" font-size="15" font-weight="700" letter-spacing="1.1">CONTEXT / CAPABILITY / MEMORY</text>
+  <desc id="desc">A governed Agent capability mark for the Dipole Agent project.</desc>
+  <rect width="420" height="160" rx="26" fill="#f6f3eb"/>
+  <path d="M54 108 V52 H112 L134 74 V108 Z" fill="#0c354c"/>
+  <path d="M68 83 H120 M94 57 V109" stroke="#f7f4ee" stroke-width="7" stroke-linecap="round"/>
+  <path d="M146 80 H206" stroke="#e47a36" stroke-width="7" stroke-linecap="round" stroke-dasharray="8 9"/>
+  <circle cx="225" cy="80" r="20" fill="#e47a36"/>
+  <text x="254" y="73" fill="#102f40" font-family="DejaVu Sans, sans-serif" font-size="25" font-weight="700">AGENT</text>
+  <text x="254" y="103" fill="#4e6877" font-family="DejaVu Sans, sans-serif" font-size="14" font-weight="600">TRUSTED TASKS</text>
+  <text x="254" y="127" fill="#4e6877" font-family="DejaVu Sans, sans-serif" font-size="14" font-weight="600">AND CAPABILITIES</text>
 </svg>

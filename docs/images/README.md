@@ -8,4 +8,4 @@ These SVG assets are the repository's source-of-truth README identity. They are 
 | `dipole-im-mark.svg` | IM-focused materials and architecture documents. |
 | `dipole-agent-mark.svg` | Agent Runtime-focused materials and architecture documents. |
 
-Keep the paired blue signal mark, light canvas and dark-blue typography aligned across new assets. The green dot identifies the Agent runtime only; it should not be used to imply that privileged Agent capabilities are enabled by default.
+Keep the deep-teal signal, orange event pulse and restrained light canvas aligned across new assets. The Agent mark represents governed tasks and capabilities only; it should not be used to imply that privileged Agent capabilities are enabled by default.

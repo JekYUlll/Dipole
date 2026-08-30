@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：按项目视觉方向恢复 README 的深青/橙色 Signal 品牌：双极主标表达事件脉冲，IM 与 Agent 分别表达消息投递和受控能力。蓝色 SVG 版本不再作为项目入口视觉，运行时行为不受影响。
+
 - 2026-08-30：Remote GPU 一次性 worktree 通过 External MCP Shadow 全栈演练：隔离 MySQL/Kafka、Temporal、mTLS Core fixture 与本地 MCP 共同验证 2 个事件、持久 ledger、1 次 allowlisted Tool/Artifact、同 group 重启去重和过期 readiness 拒绝。证据固定为 `production_authority=false`，未连接共享服务或外部 MCP。
 
 - 2026-08-30：统一 README SVG 品牌资产与既有蓝色 Dipole 主标：主标、IM 与 Agent 图形共享双极信号母版，并新增资产用途说明。此次调整只影响开源项目介绍与文档呈现，不改变服务、协议或 Agent 权限状态。

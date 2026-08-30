@@ -12,7 +12,7 @@
 
 - 2026-08-30：Remote GPU 隔离 External MCP Shadow drill 已通过 MySQL EventLedger、Kafka consumer、Temporal、Go Core mTLS fixture 与本地 MCP 的完整链路，并验证重启重复事件不产生第二次 Tool 调用、过期 readiness 拒绝且 `production_authority=false`。共享 Core/Kafka/Temporal、真实外部 DNS/TLS、凭据轮换或吊销、Provider owner 与 Shadow tenant 观测仍未覆盖，外部 MCP 和 active authority 继续默认关闭。
 
-- 2026-08-30：README 品牌资产已统一为蓝色双极信号视觉，并为 IM、Agent 材料限定各自的图形用途；品牌 SVG 为静态文档资产，不将 Agent 标记或绿色识别点解释为 active authority 已启用，避免对外材料误导运行状态。
+- 2026-08-30：README 品牌资产已恢复为深青/橙色 Signal 视觉，并为 IM、Agent 材料限定各自的图形用途；品牌 SVG 为静态文档资产，不将 Agent 标记解释为 active authority 已启用，避免对外材料误导运行状态。
 
 - 2026-08-30：Agent active overlay 的 Kafka group 启动边界现由 Runtime config、Kafka consumer 与 Compose 静态门禁共同限制：active 仅接受 `dipole-agent-active-*`，shadow 仅接受 `dipole-agent-shadow-*`。单元测试已覆盖 active 消息至 Temporal dispatcher 的确定性 Task binding；Remote GPU 隔离 Node 22 worktree 的独立全量 Runtime 测试、typecheck 与 build 均通过。真实 Kafka broker、Core mTLS、Temporal Worker、grant 和 Memory 提交仍未纳入同一演练，`AD-009` 继续开放。
 
