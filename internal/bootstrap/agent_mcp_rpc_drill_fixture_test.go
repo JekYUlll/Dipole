@@ -33,23 +33,25 @@ const agentMCPRPCDrillSecret = "agent-mcp-rpc-drill-secret"
 
 type agentMCPRPCDrillFixture struct {
 	agentv1.UnimplementedAgentCapabilityServiceServer
-	mu               sync.Mutex
-	commands         map[string]*agentv1.ResolveMcpToolCommandResponse
-	rounds           map[string]*agentv1.FinishMcpToolRoundRequest
-	finishedStatuses []string
-	artifactCount    int
-	rpcCallCount     int
-	statePath        string
-	stalePath        string
+	mu                         sync.Mutex
+	commands                   map[string]*agentv1.ResolveMcpToolCommandResponse
+	rounds                     map[string]*agentv1.FinishMcpToolRoundRequest
+	finishedStatuses           []string
+	artifactCount              int
+	memoryPromotionCommitCount int
+	rpcCallCount               int
+	statePath                  string
+	stalePath                  string
 }
 
 type agentMCPRPCDrillState struct {
-	SchemaVersion    string   `json:"schema_version"`
-	RPCType          string   `json:"rpc_type"`
-	RPCAuthenticated bool     `json:"rpc_authenticated"`
-	RPCCallCount     int      `json:"rpc_call_count"`
-	ArtifactCount    int      `json:"artifact_count"`
-	FinishedStatuses []string `json:"finished_statuses"`
+	SchemaVersion              string   `json:"schema_version"`
+	RPCType                    string   `json:"rpc_type"`
+	RPCAuthenticated           bool     `json:"rpc_authenticated"`
+	RPCCallCount               int      `json:"rpc_call_count"`
+	ArtifactCount              int      `json:"artifact_count"`
+	MemoryPromotionCommitCount int      `json:"memory_promotion_commit_count"`
+	FinishedStatuses           []string `json:"finished_statuses"`
 }
 
 func TestAgentMCPRPCDrillFixtureAuthentication(t *testing.T) {
@@ -61,15 +63,24 @@ func TestAgentMCPRPCDrillFixtureAuthentication(t *testing.T) {
 	if response, err := valid.MatchEventSubscriptions(context.Background(), drillMatchRequest()); err != nil || len(response.GetSubscriptions()) != 1 {
 		t.Fatalf("valid mTLS Agent call response=%+v err=%v", response, err)
 	}
+	if response, err := valid.CommitMemoryPromotionReceipt(context.Background(), drillMemoryPromotionCommitRequest()); err != nil || response.GetMemoryId() != "MEM-COMMIT-CAND-1" || response.GetMemoryType() != "semantic" {
+		t.Fatalf("valid mTLS receipt commit response=%+v err=%v", response, err)
+	}
 
 	wrongSecret := dialAgentMCPRPCDrillClient(t, server.Address(), certs.ca, certs.agentCert, certs.agentKey, "wrong-secret", agentServiceName)
 	if _, err := wrongSecret.MatchEventSubscriptions(context.Background(), drillMatchRequest()); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("wrong secret code=%s", status.Code(err))
 	}
+	if _, err := wrongSecret.CommitMemoryPromotionReceipt(context.Background(), drillMemoryPromotionCommitRequest()); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("wrong secret receipt commit code=%s", status.Code(err))
+	}
 
 	wrongIdentity := dialAgentMCPRPCDrillClient(t, server.Address(), certs.ca, certs.messageCert, certs.messageKey, agentMCPRPCDrillSecret, agentServiceName)
 	if _, err := wrongIdentity.MatchEventSubscriptions(context.Background(), drillMatchRequest()); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("wrong certificate identity code=%s", status.Code(err))
+	}
+	if _, err := wrongIdentity.CommitMemoryPromotionReceipt(context.Background(), drillMemoryPromotionCommitRequest()); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("wrong certificate receipt commit code=%s", status.Code(err))
 	}
 
 	withoutCertificate := dialAgentMCPRPCDrillClient(t, server.Address(), certs.ca, "", "", agentMCPRPCDrillSecret, agentServiceName)
@@ -275,6 +286,22 @@ func (f *agentMCPRPCDrillFixture) CreateArtifact(_ context.Context, request *age
 	}}, nil
 }
 
+func (f *agentMCPRPCDrillFixture) CommitMemoryPromotionReceipt(_ context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
+	if request.GetSchemaVersion() != "dipole.agent.memory-promotion-receipt.v2" || request.GetStatus() != "prepared" ||
+		request.GetCandidateId() == "" || request.GetReviewId() == "" || request.GetReceiptSha256() == "" {
+		return nil, status.Error(codes.InvalidArgument, "drill Memory promotion receipt is invalid")
+	}
+	f.mu.Lock()
+	f.rpcCallCount++
+	f.memoryPromotionCommitCount++
+	f.writeStateLocked()
+	f.mu.Unlock()
+	return &agentv1.CommitMemoryPromotionReceiptResponse{
+		MemoryId: "MEM-COMMIT-" + request.GetCandidateId(), MemoryType: request.GetTargetMemoryType(), Status: "active", ReceiptSha256: request.GetReceiptSha256(),
+		Provenance: &agentv1.AgentMemoryProvenance{SourceType: "memory_candidate", SourceId: request.GetCandidateId(), Sequence: request.GetReviewId()},
+	}, nil
+}
+
 func (f *agentMCPRPCDrillFixture) recordCall() {
 	f.mu.Lock()
 	f.rpcCallCount++
@@ -295,7 +322,8 @@ func (f *agentMCPRPCDrillFixture) writeStateLocked() {
 	if err := writeAgentMCPRPCDrillJSONRaw(f.statePath, agentMCPRPCDrillState{
 		SchemaVersion: "dipole.agent.mcp-rpc-drill-state.v1", RPCType: "go_internal_grpc_mtls",
 		RPCAuthenticated: true, RPCCallCount: f.rpcCallCount, ArtifactCount: f.artifactCount,
-		FinishedStatuses: append([]string(nil), f.finishedStatuses...),
+		MemoryPromotionCommitCount: f.memoryPromotionCommitCount,
+		FinishedStatuses:           append([]string(nil), f.finishedStatuses...),
 	}); err != nil {
 		panic("Agent MCP RPC drill state write failed")
 	}
@@ -367,6 +395,16 @@ func dialAgentMCPRPCDrillClient(t *testing.T, address, caPath, certPath, keyPath
 func drillMatchRequest() *agentv1.MatchEventSubscriptionsRequest {
 	return &agentv1.MatchEventSubscriptionsRequest{TenantId: "dipole", AgentId: "UAI-DRILL", EventType: "message.direct.created",
 		ResourceType: "conversation", ResourceId: "direct:U100:U200"}
+}
+
+func drillMemoryPromotionCommitRequest() *agentv1.CommitMemoryPromotionReceiptRequest {
+	createdAt := time.UnixMilli(1_700_000_000_000).UTC()
+	return &agentv1.CommitMemoryPromotionReceiptRequest{
+		ReceiptId: "MEM-PROMOTE-" + strings.Repeat("a", 64), ReceiptSha256: strings.Repeat("a", 64),
+		SchemaVersion: "dipole.agent.memory-promotion-receipt.v2", Status: "prepared", TaskId: "TASK-1", RunId: "RUN-1",
+		CandidateId: "CAND-1", CandidateSha256: strings.Repeat("b", 64), ReviewId: "REV-1", PolicyVersion: "memory-v1", TargetMemoryType: "semantic",
+		CreatedAtUnixMs: createdAt.UnixMilli(), ExpiresAtUnixMs: createdAt.Add(time.Minute).UnixMilli(),
+	}
 }
 
 func drillIdentifier(prefix string, length int, parts ...string) string {
