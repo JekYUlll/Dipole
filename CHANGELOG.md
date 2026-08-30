@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：收紧 SQLC-only 数据访问门禁：`check-sqlc.sh` 现作为唯一权威入口，拒绝 GORM module、任意 Go import/selector 和运行时 `AutoMigrate`，并以临时 Git fixture 覆盖 SQLC-only 基线及三类回流场景，防止后续微服务与多语言演进重新引入第二套 ORM 模型。
+
 - 2026-08-30：Remote GPU 为 `253cf3d29ec79a0f58bcc06c58f5fbad20974b45` 生成不可变 Web Sync Shadow bundle `/tmp/dipole-dev-horeb-web-sync-shadow-253cf3d2.tar`，SHA-256 为 `f4a3a90c5ed5d7d04575a9b939ca738b7e6bd92f53fe3ef818a7249941725f9d`。该动作未启动 Compose、Prometheus 或客户端流量，只提供后续 Observation Session 的候选输入。
 
 - 2026-08-30：收紧 Go/Eino Agent 迁移边界：服务布局门禁要求 production legacy import 只能来自 embedded Kafka composition，`github.com/cloudwego/eino` 只能位于 `internal/services/agent/legacy`。独立 TypeScript Runtime、Gateway 与服务入口无法绕过 Capability、Temporal 与 promotion 门禁回接旧链路。

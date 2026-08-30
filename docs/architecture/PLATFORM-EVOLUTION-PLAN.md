@@ -165,7 +165,7 @@ Redis 继续存储 Presence、连接路由、热点状态、限流和短期缓�
 - [x] 迁移 Message、Outbox、Sync 事务和 `FOR UPDATE` 锁，并执行真实 MySQL 并发测试。
 - [x] 删除 GORM adapter、model tag、SQLite 方言测试和 `gorm.io/*` 依赖。
 
-**验收：** 服务启动不修改 schema；SQL migration、生成漂移、Repository contract、MySQL 集成和回滚测试通过；生产代码不再导入 GORM。
+**验收：** 服务启动不修改 schema；SQL migration、生成漂移、Repository contract、MySQL 集成和回滚测试通过；`check-sqlc.sh` 拒绝 GORM module/import/selector 与 `AutoMigrate` 回流。
 
 详细步骤见 [GORM 到 sqlc 迁移计划](../data/DATA-ACCESS-MIGRATION.md)。
 
