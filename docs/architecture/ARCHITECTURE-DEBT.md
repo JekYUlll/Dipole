@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：C1 recovery 复盘发现 Dockerized k6 只挂载仓库目录时无法写入 `/tmp` 报告目录；已通过显式只读边界之外的 `/tmp` 挂载修复容器输出路径，后续远程演练可复用统一 wrapper。
+
 - 2026-08-30：Remote GPU 在存在 `2` 个外部 GPU 任务期间完成 C1 候选 `dipole-node2` stop/start 恢复证据；恢复时间线、PID 变化、镜像 revision、40/40 post-load 和 Kafka lag 已通过 `recovery-report.v1` 校验，候选拓扑清理后无残留。该证据关闭本轮节点恢复观察项，业务拓扑 broker/Redis 故障、背压和 C++ 性能门禁仍按阶段计划开放。
 
 - 2026-08-30：远程并行启动回归发现批准标志只存在于本地 shell，未传入远端 heredoc，导致即使用户已批准仍被活动会话拒绝；已改为显式 SSH positional argument，并由契约测试覆盖。GPU 任务仍只记录快照，活跃用户仍需明确批准。
