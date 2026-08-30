@@ -2,7 +2,7 @@
 
 ## Status
 
-`foundation in progress; callback route blocked`。当前已具备 discovery、PKCE、密封 verifier、SQLC transaction、Core consume RPC、未装配 Gateway client，以及 `000053` durable handoff persistence。它们不能单独构成可发布 callback。
+`foundation in progress; callback route blocked`。当前已具备 discovery、PKCE、密封 verifier、SQLC transaction、Core consume RPC、未装配 Gateway client、`000053` durable handoff persistence，以及 Runtime public-key envelope v1。它们不能单独构成可发布 callback。
 
 ## Why The Gate Exists
 
@@ -53,7 +53,7 @@ stateDiagram-v2
   exchanged --> purged: retention job removes ciphertext
 ```
 
-`callback_recorded` stores the authorization code only as a KMS/envelope-encrypted ciphertext for the Runtime key boundary, together with its SHA-256, transaction binding, expiry and idempotency key. Gateway cannot decrypt it. The code hash is unique per transaction; Runtime records token-exchange terminal state before exposing completion. A failed Runtime delivery therefore remains retryable without a second browser callback, while a duplicate callback cannot create a second exchange. `000053` currently treats this ciphertext as opaque: selecting a concrete envelope/KMS scheme and implementing its writer/reader remain release prerequisites.
+`callback_recorded` stores the authorization code only as a KMS/envelope-encrypted ciphertext for the Runtime key boundary, together with its SHA-256, transaction binding, expiry and idempotency key. Gateway cannot decrypt it. The code hash is unique per transaction; Runtime records token-exchange terminal state before exposing completion. A failed Runtime delivery therefore remains retryable without a second browser callback, while a duplicate callback cannot create a second exchange. Envelope v1 now fixes a hybrid RSA-OAEP-SHA256 + AES-256-GCM format and binding AAD in `contracts/agent-oauth-callback-handoff/v1`; Runtime key provisioning, Store writer/reader and exchange seam remain release prerequisites.
 
 ## Boundaries
 

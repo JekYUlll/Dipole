@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：OAuth callback handoff envelope v1 已提供 Gateway public-key seal 与 Runtime private-key open 原语。每个 handoff 使用独立 AES-256-GCM data key，Runtime public key 只用于 RSA-OAEP-SHA256 包装；AAD 同时绑定 handoff、transaction、owner、issuer、redirect、code digest、key ID 和 RFC3339 毫秒 expiry。代码仍未读取/装配 Runtime key、未写 handoff Store、未注册 RPC/HTTP 或换码，默认 OAuth surface 不变。
+
 - 2026-08-31：Agent OAuth callback handoff 已增加 Agent-owned SQLC durable record：`000053` 只保存 Runtime key ID、code SHA-256、Runtime-only ciphertext 和受信 binding；状态仅允许 `callback_recorded`、`exchange_claimed`、`exchanged`。条件领取允许恢复已过期租约，领取租约受 handoff expiry 限制；完成和释放都要求当前 lease owner 与未过期租约。该层未装配 Gateway callback、envelope encryption、Runtime claim/exchange 或 token 生命周期，默认没有生产写入，发布门禁继续生效。
 
 - 2026-08-31：OAuth callback handoff 已增加发布前设计门禁。当前单次 consume 无法在 Runtime 不可达后可靠重放，也尚未定义从 callback opaque state 恢复 transaction/owner 的受信 correlation；因此禁止注册 callback HTTP route。后续必须先交付 browser binding、issuer/redirect 校验、Runtime-key 加密的 durable handoff、lease/terminal state 和故障演练，详见 `docs/agent/agent-oauth-callback-handoff.md`。

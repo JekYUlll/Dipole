@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：增加 Agent OAuth callback Runtime envelope v1。Gateway 仅用 Runtime RSA public key 通过 OAEP-SHA256 封装每次 handoff 的 AES-256-GCM data key；授权码密文以完整 handoff binding 作为 AAD，Runtime 只用私钥解封并重算 code SHA-256。Go/TypeScript 各自对版本、base64url、长度、RSA/OAEP、AAD、摘要和毫秒时间 fail closed。该原语未接入 callback route、Store writer、Runtime claim、code exchange 或 token 持久化。
+
 - 2026-08-31：Agent OAuth callback handoff 增加 SQLC durable persistence foundation：migration `000053` 保存 Runtime-key 标识、授权码 SHA-256、Runtime-only 密文、transaction/owner/issuer/redirect binding 与有限状态。领取以条件更新实现；租约不得跨越授权过期时间，完成和失败释放均绑定尚有效的 Runtime lease，重启后可从同一 handoff 恢复。该层尚未注册 browser callback、密钥封装、Runtime 领取 RPC、code exchange 或 token 写入，默认部署仍为零 OAuth callback 流量。
 
 - 2026-08-31：补充 Agent OAuth callback handoff 的发布前设计门禁与故障矩阵。明确当前 Core 单次 consume 不支持 Runtime 不可达后的可靠重试，且 callback correlation 尚未定义；因此继续不注册 callback HTTP route。后续 handoff 需要 browser binding、issuer/redirect 核对、Runtime-key ciphertext、lease 状态与 controlled provider 演练。
