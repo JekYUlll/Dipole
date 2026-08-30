@@ -17,6 +17,8 @@ BENCH_GROUP_MAX_DURATION="${DIPOLE_BENCH_GROUP_MAX_DURATION:-}"
 BENCH_USER_COUNT="${DIPOLE_BENCH_USER_COUNT:-}"
 BENCH_GROUP_SIZE="${DIPOLE_BENCH_GROUP_SIZE:-}"
 BENCH_RUN_ID="${DIPOLE_BENCH_RUN_ID:-}"
+BENCH_HOT_GROUP_WARMUP_MESSAGES="${DIPOLE_BENCH_HOT_GROUP_WARMUP_MESSAGES:-}"
+BENCH_HOT_GROUP_ACTIVATION_WAIT_MS="${DIPOLE_BENCH_HOT_GROUP_ACTIVATION_WAIT_MS:-}"
 REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"
 
 usage() {
@@ -28,6 +30,7 @@ Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT, DIPOLE_REMOTE_BUILD_CANDIDATE.
   Benchmark overrides: DIPOLE_BENCH_SCENARIO_FILTER, DIPOLE_BENCH_GROUP_MAX_DURATION,
   DIPOLE_BENCH_USER_COUNT, DIPOLE_BENCH_GROUP_SIZE, DIPOLE_BENCH_RUN_ID.
+  DIPOLE_BENCH_HOT_GROUP_WARMUP_MESSAGES, DIPOLE_BENCH_HOT_GROUP_ACTIVATION_WAIT_MS.
   Set DIPOLE_REMOTE_ALLOW_ACTIVE=1 only during an explicitly approved window.
 EOF
 }
@@ -86,8 +89,11 @@ run_remote() {
   local bench_user_count="${BENCH_USER_COUNT:-$REMOTE_EMPTY_ARG}"
   local bench_group_size="${BENCH_GROUP_SIZE:-$REMOTE_EMPTY_ARG}"
   local bench_run_id="${BENCH_RUN_ID:-$REMOTE_EMPTY_ARG}"
+  local bench_hot_group_warmup_messages="${BENCH_HOT_GROUP_WARMUP_MESSAGES:-$REMOTE_EMPTY_ARG}"
+  local bench_hot_group_activation_wait_ms="${BENCH_HOT_GROUP_ACTIVATION_WAIT_MS:-$REMOTE_EMPTY_ARG}"
   remote "${remote_k6_image}" "${action}" "${remote_node_root}" "${remote_go_root}" "${remote_go_proxy}" \
-    "${bench_scenario_filter}" "${bench_group_max_duration}" "${bench_user_count}" "${bench_group_size}" "${bench_run_id}" <<REMOTE_RUN
+    "${bench_scenario_filter}" "${bench_group_max_duration}" "${bench_user_count}" "${bench_group_size}" "${bench_run_id}" \
+    "${bench_hot_group_warmup_messages}" "${bench_hot_group_activation_wait_ms}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
 k6_image="\${3:-}"
@@ -99,7 +105,9 @@ bench_group_max_duration="\${9:-}"
 bench_user_count="\${10:-}"
 bench_group_size="\${11:-}"
 bench_run_id="\${12:-}"
-for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id; do
+bench_hot_group_warmup_messages="\${13:-}"
+bench_hot_group_activation_wait_ms="\${14:-}"
+for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id bench_hot_group_warmup_messages bench_hot_group_activation_wait_ms; do
   [[ "\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]] && printf -v "\$bench_arg" '%s' ''
 done
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
@@ -205,6 +213,8 @@ case "${action}" in
     [[ -n "\$bench_user_count" ]] && bench_env+=(USER_COUNT="\$bench_user_count")
     [[ -n "\$bench_group_size" ]] && bench_env+=(GROUP_SIZE="\$bench_group_size")
     [[ -n "\$bench_run_id" ]] && bench_env+=(RUN_ID="\$bench_run_id")
+    [[ -n "\$bench_hot_group_warmup_messages" ]] && bench_env+=(HOT_GROUP_WARMUP_MESSAGES="\$bench_hot_group_warmup_messages")
+    [[ -n "\$bench_hot_group_activation_wait_ms" ]] && bench_env+=(HOT_GROUP_ACTIVATION_WAIT_MS="\$bench_hot_group_activation_wait_ms")
     if command -v k6 >/dev/null 2>&1; then
       env "\${bench_env[@]}" scripts/bench/run_bench.sh
     else

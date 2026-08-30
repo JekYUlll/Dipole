@@ -62,6 +62,8 @@ test("benchmark positional forwarding preserves empty optional values", () => {
   assert.ok(source.includes('REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"'));
   assert.ok(source.includes('local remote_go_proxy="${REMOTE_GOPROXY:-$REMOTE_EMPTY_ARG}"'));
   assert.ok(source.includes('local bench_scenario_filter="${BENCH_SCENARIO_FILTER:-$REMOTE_EMPTY_ARG}"'));
+  assert.ok(source.includes('local bench_hot_group_warmup_messages="${BENCH_HOT_GROUP_WARMUP_MESSAGES:-$REMOTE_EMPTY_ARG}"'));
+  assert.ok(source.includes('bench_hot_group_activation_wait_ms="\\${14:-}"'));
   assert.ok(source.includes('[[ "\\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]]'));
 });
 
