@@ -662,6 +662,8 @@ Agent 与 C++ 在 A6 之后可以并行推进，但不得在同一里程碑分�
 
 ## 15. 分支与合并策略
 
+开发切片执行、验证分层、planning-with-files 模式和 worktree 生命周期遵循 [开发工作流与提速规则](../operations/DEVELOPMENT-WORKFLOW.md)。活动计划只承载当前阶段和下一切片，历史证据进入 `progress.md`、更新日志和架构债务台账。
+
 ### 主要分支
 
 | 分支 | 覆盖范围 | 创建基线 | 合并条件 |
