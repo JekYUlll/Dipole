@@ -4,6 +4,8 @@
 
 `dipole-multipart-cleanup` 同时检查 MinIO 未完成 Multipart 和可选的 Redis Multipart 会话异常。默认输出报告，不执行删除。
 
+MinIO 列举过程中的任意错误都会将报告标记为 `complete=false` 并使命令失败，即使此前已经发现了部分候选。执行清理前必须确认报告完整；不完整报告只能保留为诊断证据，不能作为删除依据。
+
 ## 预览
 
 先使用生产配置执行 MinIO dry-run：

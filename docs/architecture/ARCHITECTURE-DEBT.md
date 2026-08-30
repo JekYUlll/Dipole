@@ -1215,3 +1215,8 @@
 - **C1 200 成员规模证据：** 2026-08-30 使用本地正式入口在 Remote GPU 完成 `group_blast` 200/200 VU；10/10 群消息 accepted/persisted，Inbox `2000` 行，1990/1990 预期回执，投递率 `100%`，HTTP failure `0%`，P50/P95/P99 `121/167/169ms`，Kafka lag `1 -> 0`。Node1/2/3 CPU 峰值 `72.14%/20.99%/19.85%`，峰值 RSS `77.14/74.22/67.79 MiB`；热群读扩散、背压和业务拓扑故障回切仍未完成。
 - **C1 热群 notify/pull 观察证据：** 2026-08-30 使用 `bench_group.js`、200 成员群和 `HOT_GROUP_WARMUP_MESSAGES=60` 完成 20 条正式消息；`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`，群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。该结果支持 hot-group 读扩散行为观察，但当时报告阈值字段为空，不能单独证明具体阈值配置；后续入口已支持显式转发阈值，背压和故障回切仍待完成。
 - **C1 热群入口修复：** 远程 benchmark 入口现支持 `BENCH_SCRIPT`、独立 `PHONE_PREFIX`、warm-up、激活等待和成员/消息阈值转发，默认行为保持兼容；setup 曾因复用已有 `138` 号码空间失败，已通过独立号码空间回归并将账号冲突风险纳入运行手册。
+### AD-059 Multipart cleanup scan completeness
+
+- **状态：** 改进已合入；真实 MinIO/Redis 故障矩阵仍待 Remote GPU 维护窗口。
+- **约束：** MinIO listing error 必须使 cleanup report `complete=false` 并 fail closed；dry-run 默认保持只读，执行模式仍要求显式确认。
+- **证据：** `internal/operations/storage/multipart_cleanup_test.go` 覆盖列举错误、部分候选和失败返回语义。
