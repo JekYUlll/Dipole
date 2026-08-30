@@ -9,14 +9,15 @@ REMOTE_PROJECT="${DIPOLE_REMOTE_PROJECT:-dipole-dev-${USER:-developer}}"
 REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose.microservices.yml}"
 REMOTE_GO_ROOT="${DIPOLE_REMOTE_GO_ROOT:-}"
 REMOTE_GOPROXY="${DIPOLE_REMOTE_GOPROXY:-}"
+REMOTE_NODE_ROOT="${DIPOLE_REMOTE_NODE_ROOT:-/home/admin1/.local/node-22.12.0}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/remote-dev.sh <sync|preflight|test|build|smoke-lite|bench|down>
+Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|bench|down>
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
-  DIPOLE_REMOTE_GOPROXY.
+  DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT.
   Set DIPOLE_REMOTE_ALLOW_ACTIVE=1 only during an explicitly approved window.
 EOF
 }
@@ -66,11 +67,12 @@ REMOTE_GUARD
 
 run_remote() {
   local action="$1"
-  remote "${action}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" <<REMOTE_RUN
+  remote "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
-go_root="\${4:-}"
-go_proxy="\${5:-}"
+node_root="\${4:-}"
+go_root="\${5:-}"
+go_proxy="\${6:-}"
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
   export PATH="\$go_root/bin:\$PATH"
 fi
@@ -95,6 +97,45 @@ case "${action}" in
     fi
     GOTOOLCHAIN=local scripts/check-go.sh && scripts/check-compose.sh && scripts/check-service-layout.sh && scripts/check-architecture-docs.sh
     ;;
+  node-test)
+    if [[ -n "\$node_root" && -x "\$node_root/bin/node" ]]; then
+      export PATH="\$node_root/bin:\$PATH"
+    fi
+    actual_node="\$(node --version 2>/dev/null || true)"
+    if [[ -z "\$actual_node" ]]; then
+      printf 'remote node-test refused: Node 22+ is unavailable; set DIPOLE_REMOTE_NODE_ROOT\n' >&2
+      exit 4
+    fi
+    required_node="v22.0.0"
+    if [[ "\$(printf '%s\n' "\$required_node" "\$actual_node" | sort -V | tail -n 1)" != "\$actual_node" ]]; then
+      printf 'remote node-test refused: requires Node %s+, found %s\n' "\$required_node" "\$actual_node" >&2
+      exit 4
+    fi
+    webapp_dir="internal/services/core/server/webapp"
+    if [[ -n "\$(git status --porcelain -- "\$webapp_dir")" ]]; then
+      printf 'remote node-test refused: generated webapp output is dirty; clean %s first\n' "\$webapp_dir" >&2
+      exit 4
+    fi
+    cleanup_webapp() {
+      if [[ -n "\$(git diff -- "\$webapp_dir")" ]]; then
+        git diff -- "\$webapp_dir" | git apply --reverse || true
+      fi
+      untracked="\$(git ls-files --others --exclude-standard -- "\$webapp_dir")"
+      if [[ -n "\$untracked" ]]; then
+        git clean -f -- \$untracked
+      fi
+    }
+    trap cleanup_webapp EXIT
+    for app in services/agent-runtime frontend; do
+      if [[ ! -d "\$app/node_modules" ]]; then
+        npm --prefix "\$app" ci --ignore-scripts --no-audit --no-fund
+      fi
+      npm --prefix "\$app" install --include=optional --ignore-scripts --package-lock=false --no-audit --no-fund
+      npm --prefix "\$app" test -- --run
+      npm --prefix "\$app" run typecheck
+      npm --prefix "\$app" run build
+    done
+    ;;
   build) scripts/docker-build-microservice-images.sh ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
   bench) scripts/bench/run_bench.sh ;;
@@ -110,6 +151,7 @@ case "${1:-}" in
   sync) sync_revision ;;
   preflight) run_remote preflight ;;
   test) sync_revision; run_remote test ;;
+  node-test) sync_revision; run_remote node-test ;;
   build) sync_revision; guard_start; run_remote build ;;
   smoke-lite) sync_revision; guard_start; run_remote smoke-lite ;;
   bench) sync_revision; guard_start; run_remote bench ;;
