@@ -53,8 +53,8 @@ func main() {
 	redisScanCount := flag.Int64("redis-scan-count", 100, "Redis SCAN batch size")
 	redisMaxKeys := flag.Int64("redis-max-keys", 10000, "maximum Redis keys to inspect per key family")
 	flag.Parse()
-	if *olderThan <= 0 || (*execute && !*confirm) || *redisScanCount <= 0 || *redisMaxKeys <= 0 || (*reconcileFailOnDrift && !*reconcile) || (*metricsOutput != "" && !*reconcile) {
-		fmt.Fprintln(os.Stderr, "older-than, redis-scan-count and redis-max-keys must be positive; --execute requires --confirm; --reconcile-fail-on-drift and --metrics-output require --reconcile")
+	if *olderThan <= 0 || (*execute && !*confirm) || *redisScanCount <= 0 || *redisMaxKeys <= 0 || (*reconcileFailOnDrift && !*reconcile) {
+		fmt.Fprintln(os.Stderr, "older-than, redis-scan-count and redis-max-keys must be positive; --execute requires --confirm; --reconcile-fail-on-drift requires --reconcile")
 		os.Exit(2)
 	}
 	if err := config.Load(); err != nil {
@@ -73,7 +73,8 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	report := storageops.RunMultipartCleanup(ctx, minioMultipartClient{client: client, core: minio.Core{Client: client}}, cfg.Bucket, storageops.NormalizePrefix(*prefix), time.Now().UTC().Add(-*olderThan), *execute)
+	started := time.Now()
+	report := storageops.RunMultipartCleanup(ctx, minioMultipartClient{client: client, core: minio.Core{Client: client}}, cfg.Bucket, storageops.NormalizePrefix(*prefix), started.UTC().Add(-*olderThan), *execute)
 	output := cleanupOutput{MultipartCleanupReport: report}
 	var redisClient *redis.Client
 	if *redisOrphans || *reconcile {
@@ -101,7 +102,7 @@ func main() {
 	}
 	output.MultipartCleanupReport = report
 	if *metricsOutput != "" {
-		if err := writeMultipartReconciliationMetrics(*metricsOutput, output.Reconciliation, time.Now().UTC()); err != nil {
+		if err := writeMultipartMetrics(*metricsOutput, &report, output.Reconciliation, time.Now().UTC(), time.Since(started)); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -125,11 +126,37 @@ func reconciliationHasDrift(report *storageops.MultipartReconciliationReport) bo
 }
 
 func writeMultipartReconciliationMetrics(path string, report *storageops.MultipartReconciliationReport, capturedAt time.Time) error {
-	if report == nil {
-		return fmt.Errorf("multipart reconciliation report is required for metrics")
+	return writeMultipartMetrics(path, nil, report, capturedAt, 0)
+}
+
+func writeMultipartMetrics(path string, cleanup *storageops.MultipartCleanupReport, report *storageops.MultipartReconciliationReport, capturedAt time.Time, duration time.Duration) error {
+	if cleanup == nil && report == nil {
+		return fmt.Errorf("multipart cleanup or reconciliation report is required for metrics")
 	}
 	if capturedAt.IsZero() {
 		capturedAt = time.Now().UTC()
+	}
+	var body strings.Builder
+	if cleanup != nil {
+		cleanupComplete := 0
+		if cleanup.Complete {
+			cleanupComplete = 1
+		}
+		body.WriteString("# HELP dipole_multipart_cleanup_complete Whether the last MinIO cleanup scan completed without scan errors.\n")
+		body.WriteString("# TYPE dipole_multipart_cleanup_complete gauge\n")
+		fmt.Fprintf(&body, "dipole_multipart_cleanup_complete %d\n", cleanupComplete)
+		body.WriteString("# HELP dipole_multipart_cleanup_uploads Incomplete Multipart uploads by lifecycle state.\n")
+		body.WriteString("# TYPE dipole_multipart_cleanup_uploads gauge\n")
+		fmt.Fprintf(&body, "dipole_multipart_cleanup_uploads{state=\"active\"} %d\n", cleanup.Scanned)
+		fmt.Fprintf(&body, "dipole_multipart_cleanup_uploads{state=\"expired\"} %d\n", cleanup.Selected)
+		fmt.Fprintf(&body, "dipole_multipart_cleanup_uploads{state=\"aborted\"} %d\n", cleanup.Aborted)
+		fmt.Fprintf(&body, "dipole_multipart_cleanup_uploads{state=\"failed\"} %d\n", cleanup.Failed)
+		body.WriteString("# HELP dipole_multipart_cleanup_duration_seconds Duration of the last MinIO cleanup scan.\n")
+		body.WriteString("# TYPE dipole_multipart_cleanup_duration_seconds gauge\n")
+		fmt.Fprintf(&body, "dipole_multipart_cleanup_duration_seconds %.9f\n", duration.Seconds())
+	}
+	if report == nil {
+		return publishMetricsFile(path, body.String())
 	}
 	complete := 0
 	if report.Complete {
@@ -139,7 +166,6 @@ func writeMultipartReconciliationMetrics(path string, report *storageops.Multipa
 	if reconciliationHasDrift(report) {
 		drift = 1
 	}
-	var body strings.Builder
 	body.WriteString("# HELP dipole_multipart_reconciliation_complete Whether the last reconciliation scan completed without scan errors.\n")
 	body.WriteString("# TYPE dipole_multipart_reconciliation_complete gauge\n")
 	fmt.Fprintf(&body, "dipole_multipart_reconciliation_complete %d\n", complete)
@@ -164,6 +190,10 @@ func writeMultipartReconciliationMetrics(path string, report *storageops.Multipa
 	body.WriteString(strconv.FormatInt(capturedAt.Unix(), 10))
 	body.WriteByte('\n')
 
+	return publishMetricsFile(path, body.String())
+}
+
+func publishMetricsFile(path, contents string) error {
 	path = filepath.Clean(path)
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
@@ -184,7 +214,7 @@ func writeMultipartReconciliationMetrics(path string, report *storageops.Multipa
 	if err := temporary.Chmod(0o640); err != nil {
 		return fmt.Errorf("set metrics file mode: %w", err)
 	}
-	if _, err := temporary.WriteString(body.String()); err != nil {
+	if _, err := temporary.WriteString(contents); err != nil {
 		return fmt.Errorf("write metrics file: %w", err)
 	}
 	if err := temporary.Sync(); err != nil {
