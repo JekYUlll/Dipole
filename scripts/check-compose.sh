@@ -4,14 +4,14 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT_DIR"
 
-# Keep component-level cluster smoke separate from the single-node business
-# Compose until a real business cluster overlay is available.
+# Keep component-level cluster smoke separate from the business cluster
+# composition, while validating the latter as an explicit override.
 business_topology_doc="docs/architecture/BUSINESS-TOPOLOGY.md"
 [[ -f "$business_topology_doc" ]] || {
   echo "business topology contract is missing: ${business_topology_doc}" >&2
   exit 1
 }
-grep -F "当前仓库已具备 Kafka 三节点和 Redis Sentinel 的组件能力，微服务默认路径仍是单节点。" \
+grep -F "当前仓库已具备可渲染的 Kafka 三节点、Redis Sentinel 业务组合拓扑，微服务默认路径仍是单节点。" \
   "$business_topology_doc" >/dev/null || {
   echo "business topology contract must remain fail-closed" >&2
   exit 1
@@ -21,6 +21,7 @@ grep -F "当前仓库已具备 Kafka 三节点和 Redis Sentinel 的组件能力
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
 for file in docker-compose.yml deploy/compose/docker-compose*.yml; do
+  [[ "$file" == "deploy/compose/docker-compose.business-cluster.yml" ]] && continue
   docker compose -f "$file" config --quiet
 done
 
@@ -39,8 +40,27 @@ check_bind_sources() {
 }
 
 for file in docker-compose.yml deploy/compose/docker-compose*.yml; do
+  [[ "$file" == "deploy/compose/docker-compose.business-cluster.yml" ]] && continue
   check_bind_sources "$file"
 done
+
+business_cluster_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+    docker compose \
+      -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/compose/docker-compose.business-cluster.yml config --format json
+})"
+jq -e '
+  .services.kafka.environment.KAFKA_DEFAULT_REPLICATION_FACTOR == "3"
+  and .services.kafka.environment.KAFKA_MIN_INSYNC_REPLICAS == "2"
+  and .services["kafka-2"].environment.KAFKA_NODE_ID == "2"
+  and .services["kafka-3"].environment.KAFKA_NODE_ID == "3"
+  and .services.core.environment.DIPOLE_KAFKA_BROKERS == "kafka:9092,kafka-2:9092,kafka-3:9092"
+  and .services.message.environment.DIPOLE_KAFKA_REQUIRED_ACKS == "all"
+  and .services.gateway.environment.DIPOLE_REDIS_MODE == "sentinel"
+  and .services.gateway.environment.DIPOLE_REDIS_SENTINEL_MASTER_NAME == "dipole-master"
+  and (.services["sentinel-3"].volumes[0].source | endswith("/deploy/redis/business-sentinel.conf"))
+' <<<"${business_cluster_config}" >/dev/null
 
 cluster_config="$(docker compose --profile observability -f deploy/compose/docker-compose.cluster.yml config --format json)"
 jq -e '

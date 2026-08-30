@@ -1,0 +1,183 @@
+# Business dependency overlay.
+# Use with docker-compose.microservices.yml; the base file remains the rollback path.
+services:
+  kafka:
+    environment:
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+
+  kafka-2:
+    image: apache/kafka:3.9.0
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka_business_2_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9092'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  kafka-3:
+    image: apache/kafka:3.9.0
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka_business_3_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9092'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    command: ["redis-server", "--appendonly", "yes", "--replica-serve-stale-data", "yes"]
+
+  redis-2:
+    image: redis:7.4
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--replicaof", "redis", "6379"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - redis_business_2_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  redis-3:
+    image: redis:7.4
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--replicaof", "redis", "6379"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - redis_business_3_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  sentinel-1:
+    image: redis:7.4
+    restart: unless-stopped
+    command: ["sh", "-ec", "cp /etc/redis/sentinel.conf /tmp/sentinel.conf && exec redis-sentinel /tmp/sentinel.conf"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      redis-2:
+        condition: service_healthy
+      redis-3:
+        condition: service_healthy
+    volumes:
+      - ../../deploy/redis/business-sentinel.conf:/etc/redis/sentinel.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  sentinel-2:
+    extends:
+      service: sentinel-1
+
+  sentinel-3:
+    extends:
+      service: sentinel-1
+
+  agent:
+    environment:
+      DIPOLE_AGENT_KAFKA_BROKERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      DIPOLE_AGENT_KAFKA_TOPIC_REPLICATION_FACTOR: "3"
+      DIPOLE_REDIS_MODE: sentinel
+      DIPOLE_REDIS_SENTINEL_MASTER_NAME: dipole-master
+      DIPOLE_REDIS_SENTINEL_ADDRESSES: sentinel-1:26379,sentinel-2:26379,sentinel-3:26379
+
+  realtime-cpp:
+    environment:
+      DIPOLE_REALTIME_KAFKA_BROKERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      DIPOLE_REALTIME_REDIS_SENTINELS: sentinel-1:26379,sentinel-2:26379,sentinel-3:26379
+
+  core:
+    environment:
+      DIPOLE_KAFKA_BROKERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      DIPOLE_KAFKA_REQUIRED_ACKS: all
+      DIPOLE_KAFKA_TOPIC_REPLICATION_FACTOR: "3"
+      DIPOLE_KAFKA_TOPIC_MIN_INSYNC_REPLICAS: "2"
+      DIPOLE_REDIS_MODE: sentinel
+      DIPOLE_REDIS_SENTINEL_MASTER_NAME: dipole-master
+      DIPOLE_REDIS_SENTINEL_ADDRESSES: sentinel-1:26379,sentinel-2:26379,sentinel-3:26379
+
+  message:
+    environment:
+      DIPOLE_KAFKA_BROKERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      DIPOLE_KAFKA_REQUIRED_ACKS: all
+      DIPOLE_KAFKA_TOPIC_REPLICATION_FACTOR: "3"
+      DIPOLE_KAFKA_TOPIC_MIN_INSYNC_REPLICAS: "2"
+      DIPOLE_REDIS_MODE: sentinel
+      DIPOLE_REDIS_SENTINEL_MASTER_NAME: dipole-master
+      DIPOLE_REDIS_SENTINEL_ADDRESSES: sentinel-1:26379,sentinel-2:26379,sentinel-3:26379
+
+  sync:
+    environment:
+      DIPOLE_KAFKA_BROKERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      DIPOLE_KAFKA_REQUIRED_ACKS: all
+      DIPOLE_KAFKA_TOPIC_REPLICATION_FACTOR: "3"
+      DIPOLE_KAFKA_TOPIC_MIN_INSYNC_REPLICAS: "2"
+
+  search-indexer:
+    environment:
+      DIPOLE_KAFKA_BROKERS: kafka:9092,kafka-2:9092,kafka-3:9092
+
+  gateway:
+    environment:
+      DIPOLE_REDIS_MODE: sentinel
+      DIPOLE_REDIS_SENTINEL_MASTER_NAME: dipole-master
+      DIPOLE_REDIS_SENTINEL_ADDRESSES: sentinel-1:26379,sentinel-2:26379,sentinel-3:26379
+
+volumes:
+  kafka_business_2_data:
+  kafka_business_3_data:
+  redis_business_2_data:
+  redis_business_3_data:
