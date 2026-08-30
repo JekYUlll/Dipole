@@ -1,6 +1,6 @@
-# 开发工作流与提速规则
+# 开发工作流与远程资源规则
 
-本文档约束 Dipole 的长期演进任务，目标是在保留可回滚证据的同时缩短每个开发切片的反馈周期。
+本文约束 Dipole 的长期演进，目标是在保留可回滚证据的同时缩短每个开发切片的反馈周期。远程资源规则适用于开发阶段，不改变生产发布审批。
 
 ## 当前瓶颈
 
@@ -10,6 +10,18 @@
 - 每个切片只创建一个 feature worktree；完成合并后保留提交和证据，及时登记为可回收 worktree，避免并行 worktree 无限增长。
 - 五条 Epic 分支只在 `master` 合并后同步，禁止每个 feature 提交都重复执行全量 Epic 合并。
 
+## GPU 任务并行策略
+
+Remote GPU 上存在其他 GPU 任务时，允许启动 Dipole 的开发构建、微服务 Compose、集成 Smoke 和负载测试，前提是：
+
+- 只使用独立的 Compose project、网络、容器名和临时卷；禁止操作共享的 `dipole-node*` 或其他项目资源。
+- 默认不申请 GPU；Go、C++、Kafka、MySQL、Redis、MinIO 和 Agent Runtime 验证均使用 CPU/容器资源。
+- 需要 GPU 的 Agent 或模型任务必须显式声明 `CUDA_VISIBLE_DEVICES`、显存预算和预计时长，并先确认不与现有任务冲突。
+- 压测前记录 GPU 任务快照，结束后再次检查；只报告状态，不停止、重置、迁移或限额其他任务。
+- 宿主机 CPU、内存、磁盘或网络不足时，降低并发、缩小数据集或延后任务；GPU 忙碌本身不构成启动阻断。
+
+经用户授权，远端存在 GPU 任务时不再启用旧的“活动 GPU 默认阻断”规则。该授权只覆盖本开发流程，不能推导为可以停止或重配已有 GPU 任务。
+
 ## 标准切片流程
 
 1. 从当前 `master` 或对应 Epic 分支创建一个 feature 分支。
@@ -17,7 +29,7 @@
 3. 运行快速门禁并检查 `git diff --check`；失败时修复当前切片，不扩展范围。
 4. 更新 `CHANGELOG.md`、`ARCHITECTURE-DEBT.md` 和相关操作手册，记录实际证据及未完成外部门禁。
 5. 推送 feature 分支，合并到 `master`，再一次性同步五条 Epic 分支。
-6. 需要远程或共享环境时，只运行提交绑定的候选 revision；活动用户、GPU 任务或资源不足时默认 fail closed。经明确授权可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`，但仍使用独立 Compose project、目录、凭据和清理流程，不触碰其他用户进程。
+6. 需要远程或共享环境时，只运行提交绑定的候选 revision；允许 GPU 任务并行，但仍使用独立 Compose project、目录、凭据和清理流程，不触碰其他用户进程。
 7. Go 服务镜像构建使用 `dist/` 作为最小上下文；Agent 与 C++ 镜像保留各自 Dockerfile 所需的专用上下文，避免把测试产物、依赖缓存和历史数据重复发送到 Docker daemon。
 
 ## planning-with-files 规则
@@ -31,6 +43,34 @@
 - 普通代码切片以 30 分钟为目标，超过 60 分钟仍未形成可测试增量时，缩小切片或记录阻塞原因。
 - 真实环境证据以维护窗口为边界，等待期间继续推进无需共享状态的契约、回滚和观测工具。
 - 连续两次相同失败才升级为需要人工介入的阻塞；网络、主机占用和凭据问题必须附带原始检查结果。
+
+## 启动与清理
+
+推荐使用随机 project 名和 loopback 端口：
+
+```bash
+project="dipole-dev-$(date +%s)-$RANDOM"
+docker compose -p "$project" -f deploy/compose/docker-compose.microservices.yml up -d --wait
+docker compose -p "$project" -f deploy/compose/docker-compose.microservices.yml down --volumes --remove-orphans
+```
+
+脚本必须使用 `trap` 清理自身资源。`down` 只能使用当前脚本创建的 project，禁止对宿主机执行全局 `docker system prune` 或按模糊名称批量删除。
+
+## GPU 任务检查
+
+检查用于记录和资源规划，不作为无条件的拒绝门禁：
+
+```bash
+nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader
+```
+
+若启动的服务确实需要 GPU，应在运行记录中写明设备、显存预算和隔离方式；若只是 CPU/容器服务，检测到其他 GPU 进程后可以继续。
+
+## 安全边界
+
+- 不读取、记录或传播远端密码、Token 和私钥。
+- 不触碰其他用户的进程、容器、卷、网络、GPU 设备和实验输出。
+- 共享环境故障演练仍需独立维护窗口；本规则只放宽开发阶段的资源并行，不放宽生产切流条件。
 
 ## 回滚
 

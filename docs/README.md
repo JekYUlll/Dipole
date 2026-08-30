@@ -11,6 +11,7 @@ scripts/check-architecture-docs.sh
 - [平台演进计划](architecture/PLATFORM-EVOLUTION-PLAN.md)
 - [架构债务台账](architecture/ARCHITECTURE-DEBT.md)
 - [微服务部署拓扑](architecture/MICROSERVICES-DEPLOYMENT.md)
+- [开发与远程资源工作流](operations/DEVELOPMENT-WORKFLOW.md)
 - [Sync Service](architecture/SYNC-SERVICE.md)
 - [Cassandra Timeline](architecture/CASSANDRA-TIMELINE.md)
 - [Realtime Delivery](architecture/REALTIME-DELIVERY.md)
