@@ -18,6 +18,8 @@
 
 ## [Unreleased]
 
+- 移除遗留单色蓝色 PNG 主标，README 与文档入口统一使用深青色 Signal SVG 视觉系统；双极与橙色事件脉冲继续表达实时协作链路。本项只影响品牌呈现。
+
 - 修复 Gateway 服务入口 `RunServer` 递归调用自身的迁移回归，改为委托服务自有 `RunGatewayServer`；新增架构测试锁定入口委托关系，HTTP/WS 与 TLS 启动路径已通过验证。
 - Gateway runtime 已从共享 `internal/bootstrap` 迁入 `internal/services/gateway/bootstrap`，服务入口直接拥有 HTTP/WS、Redis Presence/限流、Kafka 和实时投递 authority 装配；RPC、TLS 与 Kafka handler 兼容入口保留，旧 runtime 路径由结构门禁阻止回流。
 - Message Service runtime 与配置校验测试已从共享 `internal/bootstrap` 迁入 `internal/services/message/bootstrap`，服务入口直接组合 Message-owned SQLC repository 和现有 Kafka/Cassandra/Outbox 能力；旧共享 runtime 路径由结构门禁阻止回流。

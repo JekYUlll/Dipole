@@ -2,7 +2,10 @@
 
 These SVG assets are the source of truth for the repository identity. They are dependency-free so GitHub, package registries and documentation render them consistently.
 
-The historical blue PNG is deprecated. New documentation should use one of the SVG assets below so the repository keeps a consistent visual identity.
+The historical blue PNG has been retired and is deliberately absent from the
+repository. New documentation must use one of the SVG assets below so the
+repository keeps a consistent visual identity. Do not reintroduce it as a
+README, documentation, package, or application entry asset.
 
 | Asset | Intended use |
 | --- | --- |
