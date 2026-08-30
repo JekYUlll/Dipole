@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：远端测试入口增加可选 `DIPOLE_REMOTE_GOPROXY`，允许通过短期受控缓存代理补齐远端缺失 Go modules；代理地址只存在于运行环境，不写入仓库或持久配置。
+
 - 2026-08-30：为 Remote GPU 增加 `DIPOLE_REMOTE_GO_ROOT` 用户态 Go 工具链入口；已同步 Go 1.27.0 到 `/home/admin1/.local/go-1.27.0`，不修改系统 Go，后续可在远端执行完整 canonical 测试。
 
 - 2026-08-30：远端开发测试流程增加 Go 工具链预检并固定 `GOTOOLCHAIN=local`，在 Remote GPU 仅有 Go 1.22.2、项目要求 Go 1.26.0 时快速失败，避免因隐式下载工具链造成网络超时；当前未启动容器，待远端维护窗口补齐 Go 1.26+ 后继续执行 canonical 测试。
