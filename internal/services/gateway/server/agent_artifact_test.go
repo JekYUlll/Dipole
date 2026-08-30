@@ -52,6 +52,9 @@ func TestAgentArtifactClientBindsPrincipalAndDropsBody(t *testing.T) {
 	if _, err := client.Get(context.Background(), "", strings.Repeat("a", 64)); err != ErrAgentArtifactInvalid {
 		t.Fatalf("empty principal error=%v", err)
 	}
+	if _, err := client.Get(context.Background(), "U100", "ART-1"); err != ErrAgentArtifactInvalid {
+		t.Fatalf("non-digest artifact ID error=%v", err)
+	}
 	rpc.response.Artifact.ContentSha256 = strings.Repeat("0", 64)
 	if _, err := client.Get(context.Background(), "U100", strings.Repeat("a", 64)); err != ErrAgentArtifactUnavailable {
 		t.Fatalf("forged hash error=%v", err)

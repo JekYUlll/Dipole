@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -18,6 +19,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+var agentArtifactIDPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
 var (
 	ErrAgentArtifactInvalid     = errors.New("Agent Artifact request is invalid")
@@ -65,7 +68,7 @@ func NewAgentArtifactClient(rpc agentArtifactRPC, timeout time.Duration) (*Agent
 
 func (c *AgentArtifactClient) Get(ctx context.Context, principalUUID, artifactID string) (*AgentArtifact, error) {
 	principalUUID, artifactID = strings.TrimSpace(principalUUID), strings.TrimSpace(artifactID)
-	if principalUUID == "" || !validAgentSubscriptionPublicID(artifactID, 64) {
+	if principalUUID == "" || !agentArtifactIDPattern.MatchString(artifactID) {
 		return nil, ErrAgentArtifactInvalid
 	}
 	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
@@ -101,7 +104,7 @@ func agentArtifactGetHandler(artifacts AgentArtifactApplication) gin.HandlerFunc
 			return
 		}
 		artifactID := strings.TrimSpace(c.Param("artifact_id"))
-		if artifactID == "" || artifactID != c.Param("artifact_id") || !validAgentSubscriptionPublicID(artifactID, 64) {
+		if artifactID == "" || artifactID != c.Param("artifact_id") || !agentArtifactIDPattern.MatchString(artifactID) {
 			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Artifact ID"})
 			return
 		}
