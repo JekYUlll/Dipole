@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：A6 新增真实 Chromium Sync Timeline 恢复验收，覆盖 IndexedDB 持久化、浏览器重开、从已提交 cursor `2` 继续请求、幂等重 ACK `2` 后推进到 `4`，并确认本地恢复消息先于远端增量交付；Chromium `6` 项通过、`2` 项按条件跳过，未改变 `/sync` 默认路由或切流开关。
 - 2026-08-30：C3 性能基准新增显式 `DIPOLE_REALTIME_BENCH_CONTAINER=1` 模式，使用当前 revision 的 Docker builder 产物运行 C++ benchmark，并在报告记录 runner 来源；解除宿主机 `clang-tidy` 缺失与性能测量之间的耦合，默认路径和 Go authority 保持不变。
 - 2026-08-30：C3 性能基准支持 `DIPOLE_GO_BIN` 注入远端已安装的 Go toolchain，避免 `go run` 因自动下载 toolchain 超时而阻断同版本 C++/Go 对比；默认仍使用 PATH 中的 `go`。
 - 2026-08-30：Remote GPU 在存在 2 个 Python GPU 任务期间完成提交 `7eb11de7` 的容器 C++ benchmark 与 Go 对比，C++ builder CTest `14/14` 通过，C++/Go ratio `0.119227`，按阈值 `1.0` fail closed；报告归档到 `benchmarks/c3-cpp-projection-benchmark-2026-08-30/`，Go 继续作为 authority。

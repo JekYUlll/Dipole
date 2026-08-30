@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：A6 在真实 Chromium 中验证 Sync Timeline 的浏览器重开恢复：第一轮提交并 ACK 到 `2`，重开后先幂等 ACK 已提交 cursor，再从 `after_seq=2` 拉取并提交 `3..4`，最终安全 cursor 为 `4` 且消息无重复；该证据仍为隔离客户端验收，真实部署观察窗口、共享环境切流和旧 Offline 正文退役条件继续开放。
 - 2026-08-30：C3 性能基准增加显式容器 builder 路径，当前 revision、编译器来源和 runner 会进入报告；宿主机缺少 `clang-tidy` 时可独立取得基准，远端缺少 Docker builder 依赖或当前 C++/Go 性能比未达门槛时继续 fail closed。
 - 2026-08-30：记录远端 Go 1.22 PATH 与已安装 Go 1.27 toolchain 的差异，并为 benchmark 增加显式 `DIPOLE_GO_BIN`；网络不可用时仍必须使用已验证本地 toolchain，禁止以自动下载成功推断性能证据有效。
 - 2026-08-30：归档 Remote GPU 同版本容器 benchmark：C++/Go ratio `0.119227`，低于 `1.0` 门槛，C3 性能收益门禁继续阻断 C++ primary/gray rollout；GPU 任务前后均为 2 个且未被操作。
