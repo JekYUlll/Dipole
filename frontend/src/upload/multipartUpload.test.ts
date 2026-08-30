@@ -52,6 +52,16 @@ describe('uploadMultipartParts', () => {
     expect(fetchImpl).toHaveBeenNthCalledWith(2, 'https://minio.test/fresh-part-1', expect.objectContaining({ method: 'PUT' }))
   })
 
+  it('surfaces a presign service outage without repeating the part upload', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 403 }))
+    const refreshURL = vi.fn(async () => { throw new Error('presign service unavailable') })
+
+    await expect(uploadPresignedPartWithRefresh('https://minio.test/stale-part-1', new Blob(['data']), refreshURL, fetchImpl))
+      .rejects.toThrow('presign service unavailable')
+    expect(refreshURL).toHaveBeenCalledOnce()
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
   it('computes a stable SHA-256 checksum when Web Crypto is available', async () => {
     const checksum = await sha256Hex(new Blob(['data']))
     if (checksum === undefined) return
