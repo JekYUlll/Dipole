@@ -2040,161 +2040,102 @@ Kafka 在生产消息时，可以带一个 `key`。只要生产端使用的是�
 
 **答：**
 
-按现代 IM 那套“两库模型”来说：
+有。当前实现已经把历史消息和用户增量同步拆成两套逻辑存储模型：
 
-- 我们已经有“消息存储库”
-  - 对应 `messages`
-- 还没有独立的“消息同步库”
-  - 当前同步更多是从 `messages` 事实库推导出来
+- Message Store：`messages` 按 `conversation_key + message_seq` 保存会话历史，用于漫游、分页和按消息定位。
+- Sync Store：`user_sync_inbox` 按 `user_uuid + sync_seq` 保存用户待同步消息 locator；设备 Cursor 记录每台设备确认到的增量位点。
+- Conversation State：`conversations` 保存最近消息、未读相关状态和 `read_seq`，它是会话视图投影，不承担完整历史或设备同步队列。
 
-Redis 现在主要承担的是：
+客户端以 `after_sync_seq` 拉取 Inbox，再按 locator 补全完整消息。旧 Offline 接口仍在兼容窗口内，不能作为新同步协议的权威路径。
+
+Redis 当前承担：
 
 - 缓存
 - presence
-- 热群页缓存
+- 热群控制与通知辅助
 - 限流和状态层
 
-它还没有承担“每个接收端一个 Timeline”的同步库职责。
+Redis Pub/Sub 的 at-most-once 边界由 Sync Timeline 的持久 Cursor 补齐；它不承载用户同步的权威事实。
 
 ### Q64.1：Redis 现在开了 RDB 和 AOF 吗？
 
 **答：**
 
-当前运行环境里，两者都开着。
+Redis 的 AOF/RDB 是否启用属于具体部署配置，面试时应以该环境的实际 `redis.conf` 或托管服务策略为准，不能把某个开发环境的参数泛化为平台保证。
 
-我实际核对过 Redis 配置：
-
-- `appendonly = yes`
-- `save = 3600 1 300 100 60 10000`
-
-也就是说：
-
-- AOF 开启，用来增强写操作持久化
-- RDB 的定时快照也保留着
-
-对我们当前项目来说，这样的组合比较稳，原因是 Redis 这里承担了：
+无论选用 AOF、RDB 或托管持久化，Dipole 中 Redis 的职责保持为：
 
 - 在线状态
 - 缓存
 - 限流和热点状态
 - 节点间 Pub/Sub 辅助
 
-这类数据里有一部分是可再生的，比如缓存和热点页；也有一部分在节点重启后保留会更顺，比如黑名单和状态类 key。所以当前选择是同时保留 RDB 和 AOF。
+缓存、热点状态和在线路由可通过服务重建或超时失效恢复；设备 Cursor、Inbox locator、Message/Conversation 事务事实仍由 MySQL 的 SQLC 数据访问层保存。
 
 ### Q64.2：既然开了 AOF 和 RDB，为什么还不把 Redis 直接当消息同步库？
 
 **答：**
 
-因为“Redis 能持久化”和“它已经成为消息同步库”是两回事。
+Redis 持久化可以降低某些实时状态重建成本，却无法替代 Sync Store 的事务、游标和恢复语义。当前将 Inbox 和 Cursor 留在 MySQL 有三个直接收益：
 
-要成为文章里说的消息同步库，核心不是只把数据放到 Redis，而是要真正具备：
+- Message、Inbox locator、Conversation Seq、群高水位和 Outbox 可以在受控写模式中保持一致性边界。
+- SQLC 查询、唯一约束和可审计迁移使 Cursor 恢复与幂等修复可验证。
+- Redis 故障、重启或 Pub/Sub 漏投后，客户端仍可从持久 `sync_seq` 补拉。
 
-- 每个接收端一条独立 Timeline
-- 明确的同步位点
-- 固定生命周期和回收策略
-- 多端补拉的一致性模型
-
-我们现在的 Redis 还没有承担这层职责。当前它更偏：
-
-- 缓存
-- 在线状态
-- 热点页
-- 分布式节点间轻量转发
-
-所以即使 Redis 开了持久化，也还没有变成一个“接收端 Timeline 库”。
+后续如果为热点用户引入 Redis 加速层，它只能保存 `user_sync_inbox` 的派生缓存。Cursor 继续写入权威存储，缓存失效或不一致时回退 MySQL，而不会形成第二套同步真相。
 
 ### Q65：Timeline 模型在你们当前系统里怎么体现？
 
 **答：**
 
-现在主要体现在两层：
+当前由三层数据表达：
 
 1. 会话 Timeline
-- 由 `messages + conversation_key` 承担
+- `messages + conversation_key + message_seq` 提供历史漫游和有序分页。
 
-2. 会话摘要索引
-- 由 `conversations` 承担
+2. 用户 Sync Timeline
+- `user_sync_inbox + user_uuid + sync_seq` 提供接收用户的增量同步 locator。
 
-也就是说，我们当前已经有“会话 Timeline”，但还没有“接收端 Timeline”。
+3. 设备与会话状态
+- 设备 Cursor 记录已同步位点；`read_seq` 与 Conversation State 表达已读和最近会话视图；热群的 `pulled_message_seq` 只在客户端 ACK 后单调推进。
 
-### Q66：如果以后真的要引入消息同步库，你会怎么推进？
+普通群允许成员级 Inbox 写扩散；热群保留 `notify + pull`，用会话 Timeline 与高水位减少大群成员数带来的写放大。
 
-**答：**
-
-我不会一上来就把整个消息系统推翻。
-
-更稳的推进方式是：
-
-1. 先在逻辑层引入 `user timeline / sync inbox`
-2. 先对部分同步场景接入
-3. 保留现有 `messages` 作为事实库
-4. 逐步把多端同步从“读事实库派生”迁到“读接收端 Timeline”
-
-这样风险更可控，也更适合在现有系统上逐步演进。
-
-### Q66.1：如果以后真要用 Redis 来做消息同步库，你会怎么设计？
+### Q66：你们接下来如何继续演进这套同步模型？
 
 **答：**
 
-我会先把它定义成“逻辑上的接收端 Timeline”，再去选具体 Redis 结构。
+同步逻辑模型已经落地，接下来的演进按存储、写责任和客户端验证三个维度分别推进：
 
-一个比较自然的第一版会是：
+1. 完成 A6 Web Sync 真实观察窗口：同版本 Shadow bundle、Prometheus、Sync Projector lag、告警和真实 incoming-direct 流量共同满足门禁后，再评估写责任迁移。
+2. 保持 MySQL 为当前读取权威来源，Cassandra hydration 仅做可选 shadow/primary 实验；主读、回退、连续页和对账必须同版本验证。
+3. 在旧 Offline 兼容窗口结束前持续核对设备 Cursor、Inbox 与 Message locator，避免把兼容 API 的全局 ID 语义混入新协议。
 
-- 每个用户一条同步 Timeline
-- 用递增 `seq` 表示同步位点
-- Timeline 中只保留最近一段时间的数据，比如 7 天或 30 天
+微服务抽离、写责任变化和 Cassandra 迁移不能绑定为一次切换。每一项都需要可执行回退、同版本 shadow 与运行证据。
 
-如果用 Redis 落，我会优先考虑两层结构：
+### Q66.1：如果需要用 Redis 优化同步读，你会怎么设计？
 
-1. `ZSet`
-- key 类似：
-  - `sync:user:<user_uuid>`
-- member 放：
-  - `message_uuid` 或 `sync_item_id`
-- score 放：
-  - 递增 `seq`
-- 这样很适合按位点范围拉取
+**答：**
 
-2. `Hash` 或独立对象 key
-- 存同步项详情
-- 例如：
-  - `sync:item:<id>`
-- 里面放：
-  - `message_uuid`
-  - `conversation_key`
-  - `sender_uuid`
-  - `target_uuid`
-  - `sent_at`
-  - 必要的消息摘要
+我会把 Redis 设计为明确可丢弃的 Inbox read-through cache：
 
-客户端同步时就走：
+- key 按用户和连续 `sync_seq` 分区，值只保存 `message_uuid`、会话与 Seq locator 等低冗余数据。
+- MySQL Cursor 始终先提交；缓存失效、超时、版本不匹配或 Redis 故障时直接用 MySQL `user_sync_inbox` 重建响应。
+- TTL 和按位点裁剪只能回收派生副本，不能回收权威 Inbox；清理任务必须保留可观测的命中、回退和重建指标。
 
-- 先拿本地最新 `seq`
-- 再从 `sync:user:<user_uuid>` 里按分数拉 `> seq` 的项目
-- 再批量取详情
-
-如果以后要支持清理，我会加：
-
-- TTL
-- 或按 score 的定期裁剪
-
-这样 Redis 这层就更像“同步收件箱”，而 MySQL `messages` 继续做“消息事实库”。
+这能降低热点同步读压力，同时保留多端恢复和故障演练所需的一致性语义。
 
 ### Q66.2：如果真这么做，为什么还要保留 MySQL 的 `messages`？
 
 **答：**
 
-因为两者解决的是两类问题：
+因为同步读缓存、用户 Inbox 和消息历史的生命周期不同：
 
-- Redis 同步库更适合接收端补拉和短期同步
-- MySQL `messages` 更适合历史漫游、审计、后台检索和长期存储
+- `messages` 是当前 Message Store 权威事实，负责历史漫游、幂等定位、审计和 Cassandra 迁移回退。
+- `user_sync_inbox` 是当前 Sync Store 权威事实，负责用户增量同步、Cursor 恢复和多端补拉。
+- Redis 仅在明确启用后承担派生加速，不能替代以上任一权威模型。
 
-所以更合理的分工通常是：
-
-- Redis：同步 Timeline
-- MySQL：消息事实 Timeline
-
-这样才能把“多端同步”和“历史消息存储”同时做好。
+当 Cassandra 通过 shadow、对账、连续页与回退门禁后，可逐步承担 Message Timeline 的读取压力；这也不会改变 Inbox/Cursor 的独立语义。
 
 ---
 

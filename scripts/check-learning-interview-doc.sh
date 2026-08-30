@@ -69,4 +69,21 @@ for document in "${documents[@]}"; do
   done
 done
 
+# Keep the standalone IM interview Q&A aligned with the current Timeline model.
+im_qa_document="docs/guides/INTERVIEW-QA.md"
+if [[ ! -f "${im_qa_document}" ]] || ! git ls-files --error-unmatch "${im_qa_document}" >/dev/null 2>&1; then
+  echo "IM interview Q&A is missing or untracked: ${im_qa_document}" >&2
+  exit 1
+fi
+for fact in '`user_sync_inbox`' '设备 Cursor' '派生缓存'; do
+  if ! rg --fixed-strings --quiet "${fact}" "${im_qa_document}"; then
+    echo "IM interview Q&A is missing sync model fact: ${fact}" >&2
+    exit 1
+  fi
+done
+if rg --fixed-strings --quiet '还没有独立的“消息同步库”' "${im_qa_document}"; then
+  echo "IM interview Q&A contains a retired sync-store claim" >&2
+  exit 1
+fi
+
 echo "learning and interview documentation gate passed"
