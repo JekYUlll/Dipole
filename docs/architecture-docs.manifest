@@ -9,6 +9,7 @@ docs/architecture/CASSANDRA-TIMELINE.md
 docs/data/ELASTICSEARCH-SEARCH.md
 docs/architecture/AGENT-RUNTIME-DESIGN.md
 docs/agent/AGENT-TIMELINE-REPAIR-OPERATIONS.md
+docs/agent/README.md
 docs/frontend/FRONTEND-DESIGN-PLAN.md
 docs/performance/PERFORMANCE-BASELINE.md
 docs/architecture/REALTIME-DELIVERY.md

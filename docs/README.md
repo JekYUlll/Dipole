@@ -53,6 +53,8 @@ scripts/check-architecture-docs.sh
 
 Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/agent/` 与 `contracts/`：
 
+- [Agent 文档索引](agent/README.md)
+
 - [Agent Artifact 对账](agent/agent-artifact-reconcile.md)
 - [Agent 外部 MCP](agent/agent-external-mcp.md)
 - [Agent MCP 授权](agent/agent-mcp-authorization.md)
