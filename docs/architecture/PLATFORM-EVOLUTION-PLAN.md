@@ -623,6 +623,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Agent Approval 与 Elicitation 已增加 Chromium canonical 截图回归，固定主要桌面布局；其余页面和真实 Pencil 增量编辑仍待完成。
   - [x] Agent Subscription 与 Memory 管理页已增加 Chromium canonical 截图回归，固定治理控制面共享 token；其余页面和真实 Pencil 增量编辑仍待完成。
 - [x] Agent Task Timeline 与 Agent Definition Catalog 已增加 Chromium canonical 截图回归，分别固定低敏任务 metadata/provenance 和精确 Definition/version/scope 的只读边界；其余页面与浏览器截图基线仍待完成。
+  - [x] File Directory 已增加 Chromium canonical 截图回归，固定 owner-scoped 文件 metadata、逐项重新授权下载入口和对象存储信息披露边界；对象存储、上传写路径和其余浏览器视觉回归继续待独立验证。
   - [x] Search Workspace 已清理主题硬编码并统一共享 `--dp-*` token，补充设计契约测试；截图级 Search 视觉回归仍待完成。
   - [x] Search Workspace 已通过 E2E visual harness 固定 Chromium canonical 五态截图，覆盖 Idle、Loading、Results、Empty、Error；真实 Pencil 增量编辑和跨平台截图差异仍待完成。
 

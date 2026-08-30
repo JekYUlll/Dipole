@@ -480,6 +480,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added a Chromium visual baseline for the owner-scoped File Directory. The fixture locks the metadata-only disclosure boundary and per-file authorization entrypoint without contacting object storage.
+
 - 远程开发入口在未指定 `DIPOLE_REMOTE_GO_ROOT` 时会自动选择 `/home/admin1/.local/go-*` 中的最高版本，显式路径仍优先；继续禁止隐式 Go toolchain 下载，减少 Remote GPU 默认 PATH 漂移导致的测试阻断。
 - Web Sync 观察证据现在强制绑定对象存储归档收据：opaque URI、object version、ETag 和未来 retention 截止时间；缺少或过期收据时只能生成 `blocked`，不会误判为可晋级。
 - 远程开发策略更新：Remote GPU 存在 GPU 任务时允许启动 Dipole 的 CPU、Docker、集成测试和压力测试任务；新增 GPU 进程保护、Compose/端口/目录隔离、资源检查和自有资源清理约束，避免把 GPU 占用误判为全局启动阻断条件。
