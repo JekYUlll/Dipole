@@ -54,10 +54,17 @@ remote() {
 
 sync_revision() {
   [[ -z "$(git status --porcelain)" ]] || { echo "commit or stash local changes before remote sync" >&2; exit 2; }
-  local commit remote_url
+  local commit remote_url remote_tip
   commit="$(git rev-parse HEAD)"
   remote_url="$(git remote get-url origin)"
-  git push origin "${commit}:refs/heads/${REMOTE_BRANCH}"
+  remote_tip="$(git ls-remote --heads origin "refs/heads/${REMOTE_BRANCH}" | awk 'NR == 1 { print $1 }')"
+  if [[ "${REMOTE_BRANCH}" == "dipole-dev/"* && -n "${remote_tip}" ]]; then
+    # Candidate refs are per-user, mutable pointers. The exact lease rejects
+    # a concurrent update while allowing a squash-merged revision to sync.
+    git push --force-with-lease="refs/heads/${REMOTE_BRANCH}:${remote_tip}" origin "${commit}:refs/heads/${REMOTE_BRANCH}"
+  else
+    git push origin "${commit}:refs/heads/${REMOTE_BRANCH}"
+  fi
   remote "${REMOTE_BRANCH}" "${commit}" "${remote_url}" <<'REMOTE_SYNC'
 set -euo pipefail
 root="$1"; project="$2"; branch="$3"; commit="$4"; remote_url="$5"

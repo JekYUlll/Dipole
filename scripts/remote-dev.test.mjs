@@ -9,6 +9,13 @@ test("remote sync only accepts a clean committed worktree", () => {
   assert.match(source, /commit or stash local changes before remote sync/);
 });
 
+test("per-user candidate refs use an exact lease while shared refs stay fast-forward only", () => {
+  assert.match(source, /git ls-remote --heads origin "refs\/heads\/\$\{REMOTE_BRANCH\}"/);
+  assert.match(source, /REMOTE_BRANCH\}" == "dipole-dev\/"\*/);
+  assert.match(source, /--force-with-lease="refs\/heads\/\$\{REMOTE_BRANCH\}:\$\{remote_tip\}"/);
+  assert.match(source, /else\n    git push origin "\$\{commit\}:refs\/heads\/\$\{REMOTE_BRANCH\}"/);
+});
+
 test("node verification preserves package locks and cleans generated webapp output", () => {
   assert.match(source, /node-test\)[\s\S]*?--package-lock=false/);
   assert.match(source, /webapp_dir="internal\/services\/core\/server\/webapp"/);

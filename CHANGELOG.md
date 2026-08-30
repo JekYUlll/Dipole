@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修复 Remote GPU 临时候选引用在 squash 合并后的同步失败。默认 `dipole-dev/<user>` 现以远端 tip 的精确 lease 更新，允许复用单一候选引用并拒绝并发覆盖；显式 `master` 或其他共享分支继续只接受快进推送。
+
 - 2026-08-30：将 Dipole Signal 主标及 IM/Agent 标记从偏蓝的渐变校正为深青绿色，保留双极信号、橙色事件脉冲和既有 SVG 文件名，避免 README 与文档入口产生蓝色产品标识的观感。
 
 - 2026-08-30：F2 Device Security 完成 Pencil desktop/mobile/七态设计、认证 `/devices` 路由与严格低敏会话解析。公共设备投影移除 IP、节点和原始 User-Agent；新增 `logout-others` 精确动作，以认证请求的稳定设备 ID 排除当前设备，单设备与批量登出均要求前端明确确认并在结果后重读权威列表。Remote GPU Node 22 已在候选切片通过前端 `40` 个测试文件、`162` 项测试、typecheck 和 production build；Playwright 的 Chromium/Firefox/WebKit binaries 当前不可用，交互执行与 Chromium 像素快照保留为独立环境准备切片。
