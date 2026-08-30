@@ -10,6 +10,10 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU 隔离 Temporal/Core/MySQL mTLS fixture 已补齐 owner-scoped Memory rollback：首个 receipt durable retry 后得到同一条 Memory，grant 撤销后预 admission receipt 被拒绝且候选零写入，最后 owner application control 持久撤销该 Memory。Kafka trigger、Gateway owner revoke 网络传输、共享 authority 与 overlay rollback 未纳入此演练，`AD-009` 继续开放。
+
+- 2026-08-30：学习与面试材料改为双项目叙事：`Dipole IM` 单独维护消息、同步、存储、微服务和文件数据面；`Dipole Agent` 单独维护可信上下文、Capability、Temporal、Memory、MCP 与 active 边界。总入口、README、文档目录、架构清单和自动门禁同时校验两份材料，降低将默认关闭 Agent 能力或 IM 存储实现写入错误项目口径的风险。
+
 - 2026-08-30：Remote GPU 隔离联合演练已将 admission 后 grant 撤销纳入同一 Temporal/Core/MySQL mTLS fixture：同一 active grant 先 admission 两个 Task/Run，首个 receipt 在故障重试后收敛，撤销 grant 后第二个预 admission Run 的 receipt 被 Core 拒绝，MySQL 断言候选未生成 Memory。该证据不包含 Kafka、共享环境 authority、overlay rollback 或业务级 Memory rollback，`AD-009` 继续开放。
 
 - 2026-08-30：Remote GPU 在隔离 worktree 中通过 Temporal/Core/MySQL mTLS 联合演练：临时 MySQL 8.4、实际 `MemoryPromotionReceiptServer`、loopback TCP+mTLS 和内存 Temporal test server 串联；首个 Core 持久提交后，受控 Worker 故障触发 Activity 重试，第二次请求返回同一条 Memory。演练同时修复了重复候选晋级将首次 `ValidFrom` 与重试墙钟时间比较而错误冲突的问题。Kafka、admission 后 grant 撤销和 overlay rollback 尚未纳入同一运行，`AD-009` 继续开放。

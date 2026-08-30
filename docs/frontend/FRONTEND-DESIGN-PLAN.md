@@ -85,7 +85,7 @@ design/
 - [x] Agent Task Timeline 以受控低敏 fixture 固定 Chromium 截图，覆盖 revision、Capability、等待审批与“读取更早事件”入口；原始 event kind 不进入用户可见页面。
 - API 或状态机变化先更新设计稿和设计日志，再实现页面。
 - 每个发布检查 `.pen`、Vue token、Story/fixture 和截图基线是否同步。
-- 每个用户可见切片同步复核 [学习与面试主文档](../guides/PROJECT-LEARNING-AND-INTERVIEW.md) 的演示步骤、证据链接、状态标签和限制。
+- 每个用户可见切片同步复核 [学习与面试入口](../guides/PROJECT-LEARNING-AND-INTERVIEW.md) 中对应 IM 或 Agent 材料的演示步骤、证据链接、状态标签和限制。
 - 每季度清理失效 frame 与重复组件，保留已发布版本标签。
 
 ## 6. 验收标准

@@ -62,7 +62,7 @@ for document in "${legacy_docs[@]}"; do
   fi
 done
 
-allowed_root_docs=(README.md CHANGELOG.md AGENTS.md CLAUDE.md)
+allowed_root_docs=(README.md CHANGELOG.md CONTRIBUTING.md AGENTS.md CLAUDE.md)
 while IFS= read -r document; do
   case " ${allowed_root_docs[*]} " in
     *" ${document} "*) ;;

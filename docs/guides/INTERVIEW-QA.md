@@ -2,13 +2,13 @@
 
 > 这是一份持续维护的讲解材料。涉及旧模块名、旧目录或旧技术栈的答案，应以当前架构文档和代码为准。
 
-投递用描述、现场介绍、状态边界和学习路线见 [项目学习与面试主文档](PROJECT-LEARNING-AND-INTERVIEW.md)。本文保留深入追问与展开答案。
+投递用描述、现场介绍、状态边界和学习路线见 [Dipole IM 项目材料](DIPOLE-IM-LEARNING-AND-INTERVIEW.md)。Agent 相关材料见 [Dipole Agent 项目材料](DIPOLE-AGENT-LEARNING-AND-INTERVIEW.md)。本文只保留 IM 深入追问与展开答案。
 
 ## 1. 项目自我介绍
 
-`Dipole` 是我用 Go 独立设计和持续迭代的一个即时通讯后端项目。我想做的不是一个只会收发文本的小 demo，而是一套链路完整、能体现工程能力的 IM 系统。现在它已经支持用户登录鉴权、好友关系、单聊群聊、会话和未读数、文件消息、分片上传、三节点部署下的在线连接管理，还有一个接在现有消息系统上的 AI 助手。
+`Dipole` 是我用 Go 独立设计和持续迭代的一个即时通讯后端项目。我希望它覆盖一套链路完整、能体现工程能力的 IM 系统：用户登录鉴权、好友关系、单聊群聊、会话和未读数、文件消息、分片上传，以及三节点部署下的在线连接管理。
 
-技术栈上我主要用了 `Go + Gin + sqlc + MySQL + Redis + Kafka + MinIO + WebSocket`，并将 Agent Runtime 独立为 `TypeScript + Node.js` 服务。当前仓库采用面向服务边界的 Monorepo：Core、Gateway、Message、Sync、Search 具备独立入口，消息链路通过 Kafka 和事务型 outbox 解耦，服务仍保留 embedded 兼容路径以支持渐进迁移和回滚。
+技术栈上我主要用了 `Go + Gin + sqlc + MySQL + Redis + Kafka + MinIO + WebSocket`。当前仓库采用面向服务边界的 Monorepo：Core、Gateway、Message、Sync、Search 具备独立入口，消息链路通过 Kafka 和事务型 outbox 解耦，服务仍保留 embedded 兼容路径以支持渐进迁移和回滚。
 
 这个项目里我觉得比较有代表性的点有三个。第一，我把单聊、群聊、会话、文件、已读、离线补拉这些主链路都真正跑通了。第二，我做了三节点部署，结合 Redis presence 和 Pub/Sub，把跨节点 WebSocket 投递串起来了。第三，我针对大群场景做了热点群优化，把完整 push 改成 `notify + pull`，又加了 `singleflight` 和短 TTL 缓存，500 人群压测能稳定在秒级。
 
@@ -22,7 +22,7 @@
 
 **答：**
 
-它是一套采用渐进式微服务边界的 IM 平台。Core、Gateway、Message、Sync、Search 和 Agent Runtime 已有独立的入口或服务目录；embedded 启动路径仍作为兼容与回滚方式保留。相比一次性拆分所有组件，当前方案优先稳定跨服务契约、数据所有权和可回滚门禁。
+它是一套采用渐进式微服务边界的 IM 平台。Core、Gateway、Message、Sync 和 Search 已有独立的入口或服务目录；embedded 启动路径仍作为兼容与回滚方式保留。相比一次性拆分所有组件，当前方案优先稳定跨服务契约、数据所有权和可回滚门禁。
 
 ### Q2：为什么选择模块化单体，而不是一开始做微服务？
 
@@ -37,7 +37,7 @@
 可以分成几层：
 
 - 接入层：Gin HTTP + WebSocket
-- 业务层：Core（Auth、User、Contact、Conversation、Group、File）、Message、Sync、Search、Agent
+- 业务层：Core（Auth、User、Contact、Conversation、Group、File）、Message、Sync、Search
 - 异步层：Kafka producer / consumer + outbox relay
 - 状态层：Redis cache / presence / rate limit / hot-group
 - 存储层：sqlc/MySQL、Kafka、Redis、Cassandra、Elasticsearch、MinIO；其中 Cassandra 和 Elasticsearch 按独立投影及回滚门禁逐步接管
@@ -816,218 +816,7 @@ Kafka 在我们项目里主要承担的是业务事件总线，适合：
 
 ---
 
-## 11. AI 助手
-
-### Q32：AI 助手是怎么接入现有消息体系的？
-
-**答：**
-
-我把 AI 设计成一个特殊用户，给它固定 `assistant_uuid`。用户给它发单聊消息时，消息照常进入现有消息链路；Kafka 在消费 `message.direct.created` 时，如果发现目标是 AI 助手，就会触发 Eino Agent 生成回复，然后把回复再作为普通消息写回现有消息系统。
-
-### Q33：AI 助手现在具备哪些能力？
-
-**答：**
-
-目前已经具备：
-
-- 结合最近对话上下文自动回复
-- `get_user_profile`
-- `get_conversation_context`
-- `search_recent_messages`
-- `send_system_message`
-
-我还单独加了 `ai_call_logs`，用来记录 AI 调用结果和排障信息。
-
-### Q34：为什么把 AI 做成“特殊用户”？
-
-**答：**
-
-因为这样复用现有单聊体系最自然。相比另起一套 AI 专用接口，把 AI 视作特殊用户后，消息、会话、历史、未读、在线投递、前端展示都能复用现有结构，系统整体更统一。
-
-### Q34.1：AI 功能的完整链路是怎么跑起来的？
-
-**答：**
-
-现在 AI 功能是挂在现有单聊消息链上的，完整流程可以这样讲：
-
-1. 用户给 AI 助手发一条单聊消息
-2. 这条消息和普通单聊一样进入：
-   - `message.direct.send_requested`
-   - 落库
-   - outbox
-   - `message.direct.created`
-3. Kafka 消费 `message.direct.created` 时，会额外走一条 AI handler
-4. AI service 先判断：
-   - 目标是不是助手用户
-   - 发送方是不是普通用户
-5. 构建最近会话上下文
-6. 调 Eino Agent + 模型
-7. 如果模型直接返回文本，就调用 `SendAssistantTextMessage(...)`
-8. 如果 tool 已经发出一条系统消息或工具消息，就直接复用那条消息作为回复结果
-9. 最后把这次调用的状态和 token 用量写进 `ai_call_logs`
-
-也就是说，AI 回复最终还是回到了我们现有的消息系统里。
-
-### Q34.2：AI 上下文是怎么构建的？
-
-**答：**
-
-我做了一个 `ContextBuilder`，负责把用户和 AI 助手之间最近一段对话整理成模型能消费的上下文。
-
-当前做法是：
-
-- 先查用户信息
-- 再查 AI 助手用户信息
-- 按两者的 `conversation_key` 取最近 N 条消息
-- 把消息映射成 Eino 的 `schema.Message`
-
-映射时会做一点格式化：
-
-- 文本消息直接保留内容
-- 文件消息会被渲染成一条 `[file] name size content-type ...`
-- 系统消息会带 `[system]` 前缀
-
-另外我还会在最前面补一条系统提示：
-
-- `Current user UUID: ...`
-
-这样模型在调用 tools 时，可以知道当前最终服务的用户是谁。
-
-### Q34.3：AI 现在接了哪些 tools？
-
-**答：**
-
-当前主要有这几个：
-
-- `get_user_profile`
-- `search_recent_messages`
-- `list_user_conversations`
-- `read_conversation`
-- `send_system_message`
-
-它们分别解决：
-
-- 查用户资料
-- 搜最近和 AI 的对话
-- 看用户有哪些会话
-- 读取某个允许访问的会话内容
-- 让 AI 主动发一条系统消息
-
-这些 tools 都是通过 Eino 的 tool calling 接进去的。
-
-### Q34.4：为什么 `read_conversation` 这个 tool 不危险？
-
-**答：**
-
-因为它不是无条件读全库。
-
-当前权限边界是：
-
-- 先确认这个用户视角下确实存在对应 Conversation
-- 再按这个用户可以访问的会话去读消息
-
-所以 AI 读的是“当前用户自己能看到的会话”，不会越权读别人的内容。
-
-### Q34.5：AI 调用日志是怎么做的？
-
-**答：**
-
-我单独建了：
-
-- `ai_call_logs`
-
-主要记录：
-
-- `trigger_message_uuid`
-- `response_message_uuid`
-- `conversation_key`
-- `user_uuid`
-- `assistant_uuid`
-- `provider`
-- `model`
-- `status`
-- `error_message`
-- `prompt_tokens`
-- `completion_tokens`
-- `total_tokens`
-- `latency_ms`
-
-开始处理时先插一条 `pending`，结束后再标成：
-
-- `succeeded`
-- 或 `failed`
-
-这样对排障特别有帮助，比如：
-
-- 为什么 AI 没回
-- 是模型调用失败还是发消息失败
-- token 用量和耗时大概多少
-
-### Q34.6：AI 这条链路有没有做幂等？
-
-**答：**
-
-有一层比较关键的幂等保障：
-
-- `ai_call_logs.trigger_message_uuid` 是唯一键
-
-也就是说，同一条触发消息即使在异步链路里被重复碰到，AI 调用入口也能靠这个唯一键做一定程度的收敛，避免同一条用户消息反复触发多次 AI 回复。
-
-### Q34.7：模型接入是怎么抽象的？
-
-**答：**
-
-我把模型接入收在 `model_factory` 里，当前支持：
-
-- OpenAI 兼容接口
-- Ollama
-
-项目现在实际跑的是：
-
-- `provider: openai`
-- `model: deepseek-chat`
-
-因为 DeepSeek 提供 OpenAI 兼容接口，所以这层抽象后接起来很自然。后面如果想扩更多 provider，也不用动 AI 主链路。
-
-### Q34.8：为什么 AI 没有另起一套专门接口，而是放在 Kafka 消费链上？
-
-**答：**
-
-因为这样和现有消息系统耦合最小、复用最多。
-
-相比额外做一套“调用 AI 接口、再自己拼会话和历史”，现在这条设计能直接复用：
-
-- 消息落库
-- Conversation
-- Kafka 事件流
-- 在线投递
-- 前端聊天页
-
-所以 AI 变成了现有消息系统上的一个自然扩展点。
-
-### Q34.9：如果面试官问“AI 这块最大的 tradeoff 是什么”，你怎么答？
-
-**答：**
-
-我会说最大的 tradeoff 是：
-
-- 复用现有消息系统会让链路很统一
-- 但 AI 能力也会受到现有消息权限和消息格式的约束
-
-比如：
-
-- 如果后面做端到端加密，AI 就会直接受影响
-- 如果要做复杂工具编排，现有单聊触发链路也需要继续演进
-
-当前这版的优势在于：
-
-- 链路很顺
-- 可观察性比较好
-- 很适合作为第一版 AI 能力落地
-
----
-
-## 12. 管理后台与可观测性
+## 11. 管理后台与可观测性
 
 ### Q35：项目有没有后台能力？
 
@@ -1049,7 +838,7 @@ Kafka 在我们项目里主要承担的是业务事件总线，适合：
 
 ---
 
-## 13. 性能与压测
+## 12. 性能与压测
 
 ### Q37：你是怎么发现消息延迟问题的？
 
@@ -1083,7 +872,7 @@ Kafka 在我们项目里主要承担的是业务事件总线，适合：
 
 ---
 
-## 14. 设计取舍
+## 13. 设计取舍
 
 ### Q40：Message Store 和 Sync Store 如何分工？
 
@@ -1256,7 +1045,7 @@ Outbox 保证 Message Store 的事实写入与 `message.created` 事件发布之
 
 ---
 
-## 15. 可能继续追问的问题
+## 14. 可能继续追问的问题
 
 ### Q44：你觉得当前项目还有哪些明显可以继续优化的点？
 
@@ -1281,7 +1070,7 @@ Outbox 保证 Message Store 的事实写入与 `message.created` 事件发布之
 
 ---
 
-## 16. 面试时的回答建议
+## 15. 面试时的回答建议
 
 ### 16.1 回答顺序建议
 
@@ -1319,7 +1108,7 @@ Outbox 保证 Message Store 的事实写入与 `message.created` 事件发布之
 
 ---
 
-## 17. Kafka 深挖题
+## 16. Kafka 深挖题
 
 ### Q46：你们当前 Kafka 的 topic 是怎么命名的？
 
@@ -1792,7 +1581,7 @@ Kafka 在生产消息时，可以带一个 `key`。只要生产端使用的是�
 
 ---
 
-## 18. MySQL 深挖题
+## 17. MySQL 深挖题
 
 ### Q51：你们当前 MySQL 里最核心的表有哪些？
 
@@ -2037,7 +1826,7 @@ Kafka 在生产消息时，可以带一个 `key`。只要生产端使用的是�
 
 ---
 
-## 19. 场景题
+## 18. 场景题
 
 ### Q58：如果某个用户反馈“我明明发成功了，对方没收到”，你会怎么排查？
 
@@ -2245,7 +2034,7 @@ Kafka 在生产消息时，可以带一个 `key`。只要生产端使用的是�
 
 ---
 
-## 20. 设计演进题
+## 19. 设计演进题
 
 ### Q64：你们现在有“消息同步库”吗？
 
@@ -2409,7 +2198,7 @@ Redis 现在主要承担的是：
 
 ---
 
-## 21. 更底层的面试题
+## 20. 更底层的面试题
 
 ### Q67：为什么聊天长连接你选择 WebSocket，而不是纯 HTTP？
 

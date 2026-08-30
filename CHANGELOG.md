@@ -1,5 +1,11 @@
 # 更新日志
 
+- 2026-08-30：主 README 收敛为成熟开源项目入口：新增可维护 SVG 主标、IM/Agent 标记、产品概览、可验证的本地启动与检查入口、文档导航和贡献规范；架构细节、更新日志与面试材料继续归档到对应文档。
+
+- 2026-08-30：Temporal/Core/MySQL receipt 联合演练补齐 owner-scoped Memory rollback：首个 receipt 经 durable retry 收敛为同一条 Memory，撤销 active grant 后预 admission receipt 被拒绝且零写入，owner application control 随后撤销已写入 Memory。Gateway owner revoke 的网络传输、Kafka trigger、共享 overlay rollback 仍待验证。
+
+- 2026-08-30：学习与面试材料拆分为 `Dipole IM` 与 `Dipole Agent` 两个独立项目口径。入口页只负责选择材料和说明受控集成边界；双文档门禁、README、文档目录和架构清单已同步，避免在投递和现场介绍中混用 IM 与 Agent 成果。
+
 - 2026-08-30：Temporal/Core/MySQL receipt 联合演练新增 admission 后 grant 撤销场景：同一有效 grant 预先 admission 两个 Task/Run；首个完成持久重试，撤销后第二个 receipt 经 mTLS 被 Core 拒绝，且候选没有产生 Memory。该隔离证据仍不包含 Kafka 或业务级 Memory rollback。
 
 - 2026-08-30：Remote GPU 隔离联合演练将 Temporal、实际 Core receipt adapter、TCP+mTLS 与临时 MySQL 8.4 串联。首次提交后故意使 Worker Activity 失败，重试复用同一 receipt 并返回同一持久 Memory；同时修复候选晋级在重试时误将首次 `ValidFrom` 视为冲突的问题。Kafka、共享环境 grant 撤销和 overlay 回滚证据仍待完成。

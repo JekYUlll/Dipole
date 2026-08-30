@@ -1,38 +1,69 @@
-# Dipole
+<p align="center">
+  <img src="docs/images/dipole-wordmark.svg" width="560" alt="Dipole: an event-driven collaboration platform" />
+</p>
 
-Dipole 是一个面向实时协作与 Agent 能力演进的现代 IM 平台。项目以 Go 承担 IM 领域服务，Kafka 连接异步事件与投影，MySQL 提供元数据和事务一致性，并逐步引入 Cassandra Timeline、Elasticsearch Search、Redis Realtime State 与独立的 TypeScript Agent Runtime。
+<p align="center">
+  A modern, event-driven collaboration platform for real-time messaging and governed Agent workflows.
+</p>
 
-## 项目定位
+<p align="center">
+  <a href="#quick-start">Quick start</a> &middot;
+  <a href="docs/README.md">Documentation</a> &middot;
+  <a href="services/README.md">Services</a> &middot;
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-Dipole 采用渐进式微服务化路线：先以模块化单体保持开发效率，再沿 Gateway、Message、Sync、Search 和 Agent 边界逐步独立部署。核心设计关注消息幂等、会话序列、用户同步游标、事件投影、故障回切和可观测性。
+## Overview
 
-当前语言职责如下：
+Dipole provides a real-time IM core with a gradual path to independently deployable services. Go owns IM domain consistency, Kafka carries domain events and projections, and SQLC keeps the MySQL access layer explicit. A TypeScript Agent Runtime integrates through versioned capability contracts and remains fail-closed for privileged paths.
 
-| 区域 | 技术 | 职责 |
-| --- | --- | --- |
-| IM Core | Go | 用户、群组、消息、会话和一致性边界 |
-| Agent Runtime | TypeScript / Node.js | Agent Task、工具调用、记忆、审批和工作流 |
-| Frontend | TypeScript / Vue | IM 客户端和 Agent 交互界面 |
-| Event Bus | Kafka | 领域事件、异步投影和服务解耦 |
-| Data Layer | MySQL、Cassandra、Elasticsearch、Redis | 元数据、消息 Timeline、搜索和实时状态 |
+<p align="center">
+  <img src="docs/images/dipole-im-mark.svg" width="180" alt="Dipole IM" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="docs/images/dipole-agent-mark.svg" width="180" alt="Dipole Agent" />
+</p>
 
-## 架构概览
+| Area | Current responsibility |
+| --- | --- |
+| **IM Core** | Authentication, users, contacts, groups, messages and conversations in Go. |
+| **Gateway and delivery** | HTTP/WebSocket access, presence, routing and realtime delivery boundaries. |
+| **Event and data** | Kafka events, MySQL metadata, Redis realtime state, MinIO objects, with Cassandra and Elasticsearch rollout gates. |
+| **Agent Runtime** | TypeScript tasks, ExecutionContext, Capability Policy, Context Compiler and Temporal workflows. |
+
+## Architecture
 
 ```text
-Client -- WS/HTTP --> IM Gateway --> Message Service --> MySQL / Kafka
-                                             |
-                         +-------------------+-------------------+
-                         |                   |                   |
-                    Sync Service      Search Service       Agent Runtime
-                         |                   |                   |
-                    Timeline Store          ES             TS + MCP
+Client -- HTTP / WebSocket --> Gateway --> Core / Message
+                                         |        |
+                                         |        +--> MySQL + transactional outbox
+                                         v
+                                       Kafka
+                         +---------------+---------------+
+                         |               |               |
+                       Sync            Search       Agent Runtime
+                         |               |               |
+                   Timeline store   Elasticsearch   Temporal / MCP
 ```
 
-服务会以兼容的本地实现开始，通过配置切换到独立服务。详细架构决策、迁移边界和当前状态见 [文档目录](docs/README.md)。
+The repository evolves through reversible slices: service contracts precede deployment extraction, and storage migrations use verification and rollback gates. See the [architecture overview](docs/architecture/PLATFORM-EVOLUTION-PLAN.md) for scope, evidence and deferred work.
 
-## 快速开始
+## Highlights
 
-启动基础服务并执行数据库迁移：
+- **Ordered sync model:** conversation sequence, read sequence and per-device cursor contracts support incremental synchronization.
+- **Reliable event boundary:** transactional outbox, idempotent message handling and explicit Kafka projection ownership.
+- **Portable data access:** versioned migrations and `database/sql + sqlc`; GORM is retired from the production data path.
+- **Large-object workflow:** MinIO multipart upload supports resumable sessions, reconciliation and lifecycle cleanup.
+- **Governed Agent execution:** trusted execution context, capability policy, durable Temporal tasks and owner-reviewed Memory promotion.
+
+## Quick Start
+
+### Prerequisites
+
+- Docker Engine with Compose v2
+- Go version declared in [`go.mod`](go.mod)
+- Node.js version declared by [`frontend/.nvmrc`](frontend/.nvmrc) for the web client
+
+### Run the local stack
 
 ```bash
 docker compose up -d mysql redis kafka
@@ -40,25 +71,23 @@ go run ./cmd/tools/migrate -direction up
 go run ./cmd/services/core
 ```
 
-启动前端：
+Run the web client in another terminal:
 
 ```bash
 cd frontend
-nvm use
 npm ci
 npm run dev
 ```
 
-生产数据访问使用 `database/sql + sqlc`。生成代码前安装固定版本的 sqlc：
+For the isolated microservice smoke topology, use:
 
 ```bash
-go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
-scripts/sqlc.sh generate
+scripts/smoke-microservices-lite.sh
 ```
 
-## 验证
+The script creates and removes an isolated Compose project. Remote deployment and load-testing procedures live in the [operations documentation](docs/operations/REMOTE-DEV-DEPLOYMENT.md).
 
-常用门禁：
+## Verify
 
 ```bash
 scripts/check-go.sh
@@ -69,7 +98,7 @@ scripts/check-architecture-docs.sh
 scripts/check-service-layout.sh
 ```
 
-前端验证：
+For frontend checks:
 
 ```bash
 cd frontend
@@ -78,21 +107,20 @@ npm test
 npm run build
 ```
 
-## 文档
+## Documentation
 
-文档按主题归档在 [`docs/`](docs/README.md)，根目录只保留项目入口、滚动更新日志和仓库协作规则。
+- [Documentation index](docs/README.md): architecture, data, operations and frontend design.
+- [Service catalog](services/README.md): Go, TypeScript and C++ service boundaries.
+- [Contracts](contracts/README.md): versioned inter-service protocols.
+- [Learning and interview index](docs/guides/PROJECT-LEARNING-AND-INTERVIEW.md): choose the IM or Agent project narrative.
+- [IM project material](docs/guides/DIPOLE-IM-LEARNING-AND-INTERVIEW.md): IM system design and interview evidence.
+- [Agent project material](docs/guides/DIPOLE-AGENT-LEARNING-AND-INTERVIEW.md): Agent Runtime design and interview evidence.
+- [Changelog](CHANGELOG.md): rolling project updates.
 
-- [架构与演进](docs/README.md#架构与演进)
-- [多语言服务目录](services/README.md)
-- [数据与存储](docs/README.md#数据与存储)
-- [部署与运行](docs/README.md#部署与运行)
-- [Agent Runtime](docs/README.md#agent-runtime)
-- [跨服务契约](contracts/README.md)
-- [前端设计](docs/README.md#前端设计)
-- [性能记录](docs/README.md#性能记录)
-- [学习、简历与面试主文档](docs/guides/PROJECT-LEARNING-AND-INTERVIEW.md)
-- [更新日志](CHANGELOG.md)
+## Contributing
 
-## 开发约定
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change. Each capability slice should include focused tests, documentation updates, a changelog entry and a rollback boundary where it changes runtime behavior.
 
-长期架构约束需要同步实现、测试、文档清单和更新日志。新增服务或数据边界时，优先增加接口与测试，再逐步切换运行拓扑；所有切换都应保留回滚路径。
+## License
+
+Dipole is released under the [MIT License](LICENSE).

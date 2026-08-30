@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="160" viewBox="0 0 420 160" role="img" aria-labelledby="title desc">
+  <title id="title">Dipole Agent</title>
+  <desc id="desc">A governed Agent capability mark for the Dipole Agent project.</desc>
+  <rect width="420" height="160" rx="26" fill="#f6f3eb"/>
+  <path d="M54 108 V52 H112 L134 74 V108 Z" fill="#0c354c"/>
+  <path d="M68 83 H120 M94 57 V109" stroke="#f7f4ee" stroke-width="7" stroke-linecap="round"/>
+  <path d="M146 80 H206" stroke="#e47a36" stroke-width="7" stroke-linecap="round" stroke-dasharray="8 9"/>
+  <circle cx="225" cy="80" r="20" fill="#e47a36"/>
+  <text x="254" y="73" fill="#102f40" font-family="DejaVu Sans, sans-serif" font-size="25" font-weight="700">AGENT</text>
+  <text x="254" y="103" fill="#4e6877" font-family="DejaVu Sans, sans-serif" font-size="14" font-weight="600">TRUSTED TASKS</text>
+  <text x="254" y="127" fill="#4e6877" font-family="DejaVu Sans, sans-serif" font-size="14" font-weight="600">AND CAPABILITIES</text>
+</svg>
