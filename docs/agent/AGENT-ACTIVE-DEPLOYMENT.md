@@ -79,15 +79,16 @@ npm run promotion:memory-worker-drill -- --evidence=/secure/path/worker-drill.js
 
 提交共享环境前，可先运行隔离的跨语言 mTLS RPC drill：
 
-隔离验证按以下顺序执行，三个步骤分别覆盖不同边界，均不代表 active 默认路径已启用：
+隔离验证按以下顺序执行，四个步骤分别覆盖不同边界，均不代表 active 默认路径已启用：
 
 1. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/test-agent-memory-promotion-mysql-contract.sh` 验证 migration、持久 Task/Run、grant、candidate/review、幂等晋级、撤销拒绝，以及临时 CA 下的 Core receipt adapter loopback TCP+mTLS；脚本创建并清理独立 MySQL 容器。
 2. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/drill-agent-memory-promotion-rpc.sh` 验证 TypeScript generated client 到 Go fixture 的 mTLS 身份、protobuf 和低敏回包绑定。
 3. 运行现有 Temporal receipt retry integration，确认同一 prepared receipt 的 Activity 重试语义；该测试仍使用 commit stub。
+4. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go DIPOLE_NODE_BIN=/home/admin1/.local/node-22.12.0/bin/node GOTOOLCHAIN=local scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh` 启动临时 MySQL、实际 Core receipt adapter 与 loopback mTLS fixture，并运行 Temporal Worker；它会在首个持久提交后故意失败一次，再验证同一 receipt 重试返回同一条 MySQL Memory。
 
 2026-08-30 已在 Remote GPU 的一次性 worktree 上以 Node 22 执行该步骤：内存 Temporal test server 的两个 integration case 通过，受控第一次 commit 失败后第二次提交仍复用同一 receipt SHA-256。该记录只证明 Temporal workflow 与 stub 的 durable retry 语义，不能作为 Core、MySQL grant、Kafka 或 active overlay 的联合验收。
 
-只有后续隔离 Core、Temporal 和 MySQL 同时启动，并归档首次提交、同 receipt 重试、admission 后 grant 撤销和 overlay 回滚时，才形成联合演练证据。
+2026-08-30 已在 Remote GPU 一次性 worktree 上通过第 4 步，证明同 receipt 的跨进程 durable retry 与 MySQL 幂等。该测试使用临时 CA、临时数据库与内存 Temporal，不连接 Kafka，也未覆盖 admission 后 grant 撤销或 overlay 回滚；这些仍是共享环境接管的必要证据。
 
 ```bash
 DIPOLE_GO_BIN=/path/to/go-1.26-or-newer/bin/go \

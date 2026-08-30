@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 隔离联合演练将 Temporal、实际 Core receipt adapter、TCP+mTLS 与临时 MySQL 8.4 串联。首次提交后故意使 Worker Activity 失败，重试复用同一 receipt 并返回同一持久 Memory；同时修复候选晋级在重试时误将首次 `ValidFrom` 视为冲突的问题。Kafka、共享环境 grant 撤销和 overlay 回滚证据仍待完成。
+
 - 2026-08-30：将 Agent receipt 的隔离 MySQL 合约提升为 loopback TCP+mTLS：临时 CA、Core 方法白名单、`dipole-agent` 证书身份、protobuf adapter 和 MySQL 持久事务在同一测试链通过。Remote GPU MySQL 8.4 验证通过；Temporal Worker 同组运行仍待完成。
 
 - 2026-08-30：扩展 Agent Memory receipt 的隔离 MySQL 合约至实际 Core receipt adapter：经 Agent service 身份拦截器执行完整 migration、首次提交、同 receipt 幂等重放与 grant 撤销后拒绝。Remote GPU MySQL 8.4 通过；mTLS 网络握手与 Temporal Worker 联合演练继续待完成。

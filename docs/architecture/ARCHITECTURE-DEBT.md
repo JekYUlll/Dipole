@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU 在隔离 worktree 中通过 Temporal/Core/MySQL mTLS 联合演练：临时 MySQL 8.4、实际 `MemoryPromotionReceiptServer`、loopback TCP+mTLS 和内存 Temporal test server 串联；首个 Core 持久提交后，受控 Worker 故障触发 Activity 重试，第二次请求返回同一条 Memory。演练同时修复了重复候选晋级将首次 `ValidFrom` 与重试墙钟时间比较而错误冲突的问题。Kafka、admission 后 grant 撤销和 overlay rollback 尚未纳入同一运行，`AD-009` 继续开放。
+
 - 2026-08-30：Remote GPU 在 `ac7b8790` 一次性 worktree 上通过 receipt MySQL mTLS contract。临时 CA 下的 loopback Core listener 使用项目 `platformrpc.Dial`、Core Agent 方法白名单和 `dipole-agent` 客户端证书；真实 adapter 继续验证首个提交、同 receipt 重放和 admission 后 grant 撤销拒绝。Temporal Worker 与该 TCP/MySQL 链仍未同组运行，`AD-009` 继续开放。
 
 - 2026-08-30：Remote GPU 在 `c88798c3` 一次性 worktree 上通过 MySQL 8.4 receipt contract。真实 `MemoryPromotionReceiptServer` 经 `dipole-agent` 身份拦截器调用持久 Commit Service，完整 migration 覆盖首个提交、同 receipt 重放和 admission 后 grant 撤销拒绝；该测试未建立 mTLS 网络连接或运行 Temporal/Kafka，因此 `AD-009` 的联合证据仍未关闭。
