@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：修复 Agent `conversation.search` 扩展后的 legacy Eino 测试桩漂移。共享桩现记录并返回受控搜索证据，并由编译期 `AgentCapabilityV1` 断言覆盖新增方法；运行时检索开关和生产搜索路径未改变。
+
 - 2026-08-31：新增 `multipart-presigned-rollout/v1` 可执行晋级门禁。候选将 Multipart 默认模式从 `relay` 改为 `presigned` 前，必须提交绑定策略 SHA-256 的 24 小时同版本 evidence，并满足直传样本、fallback/failed/expired/checksum 比率、P95、clear alert、relay 回切演练和独立 reviewer；工具输出可审计 receipt，阻断结果返回退出码 `2`。默认上传策略未改变。
 
 - 2026-08-31：Agent Runtime 增加默认关闭的 `DIPOLE_AGENT_RETRIEVAL_ENABLED`。仅在 AI SDK 与受认证 Capability RPC 同时就绪时，Shadow/Temporal read composition 才注册并向模型公开 `conversation.search`；关闭时模型 allowlist、Registry 与执行 Context 均保持 `conversation.list/read`。Core 继续从 Task/Run 恢复身份并约束权限、scope 与有界 untrusted evidence；Elasticsearch、共享环境检索灰度和生产默认路径未改变。

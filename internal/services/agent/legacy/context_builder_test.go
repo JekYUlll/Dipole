@@ -16,15 +16,21 @@ type stubAgentCapability struct {
 	messages          []*model.Message
 	conversations     []*model.Conversation
 	read              *application.AgentConversationReadV1
+	search            []*application.AgentConversationSearchEvidenceV1
 	sentMessage       *model.Message
 	profileRequested  string
 	directReads       int
 	conversationReads int
+	searchReads       int
+	searchQuery       string
+	searchLimit       int
 	senderUUID        string
 	targetUUID        string
 	content           string
 	err               error
 }
+
+var _ application.AgentCapabilityV1 = (*stubAgentCapability)(nil)
 
 func (s *stubAgentCapability) GetUserProfile(_ context.Context, _ application.AgentInvocationV1, subjectUUID string) (*model.User, error) {
 	if s.err != nil {
@@ -46,6 +52,13 @@ func (s *stubAgentCapability) ListConversations(context.Context, application.Age
 func (s *stubAgentCapability) ReadConversation(context.Context, application.AgentInvocationV1, string, int) (*application.AgentConversationReadV1, error) {
 	s.conversationReads++
 	return s.read, s.err
+}
+
+func (s *stubAgentCapability) SearchConversations(_ context.Context, _ application.AgentInvocationV1, query string, limit int) ([]*application.AgentConversationSearchEvidenceV1, error) {
+	s.searchReads++
+	s.searchQuery = query
+	s.searchLimit = limit
+	return s.search, s.err
 }
 
 func (s *stubAgentCapability) SendSystemMessage(_ context.Context, invocation application.AgentInvocationV1, content string) (*model.Message, error) {

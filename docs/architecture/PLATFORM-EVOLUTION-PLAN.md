@@ -465,6 +465,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [ ] 完成 Context Compiler 的完整检索编排，按预算组合策略、任务、会话证据、检索、Memory 和 Tool Schema。
   - [x] G2/G3 已实现框架中立 Context Compiler v1/v2：全局/section 预算、full/compact/omit、trust boundary、provenance manifest、v22 持久审计、route-specific tokenizer，以及会话证据、Memory 和 Capability descriptor 的确定性编译；完整检索编排与生产上下文灰度继续独立推进。
   - [x] 固定并实现 Agent 检索的 Core-mediated security boundary：Runtime 不直连 Search，Core 从权威 Task/Run 恢复 principal 与 scope；`conversation.search` 使用独立 permission、`conversation/*/read` scope 与 query/结果/正文上限，结果仅作为有界 `untrusted` evidence。默认关闭的 Runtime composition 只在 `DIPOLE_AGENT_RETRIEVAL_ENABLED=true` 时注入 Search Capability；生产 Elasticsearch、跨会话检索与完整检索编排继续关闭。
+  - [x] legacy Eino 测试共享的 `AgentCapabilityV1` stub 已实现 `conversation.search` 并以编译期接口断言锁定，避免 Capability 扩展仅在全量门禁时暴露测试桩漂移。
   - [x] 增加受认证 `conversation.read` Core RPC 与 TS Capability，统一 canonical `conversationId`，完成 direct/group target 解析、Task/Run 身份解析、Core 资源复核、消息映射和 Runtime exact scope 门禁；ModelShadowPlanner/Temporal read activity 已接入最多 20 条 `untrusted` 会话 evidence 的 full/compact 编译。默认关闭的 `DIPOLE_AGENT_RETRIEVAL_ENABLED` 已将受限 `conversation.search` 注册到 AI SDK Shadow/Temporal read allowlist；检索命中编排、route-specific tokenizer 和生产上下文灰度仍待完成。
   - [x] 增加 TS Capability RPC 客户端跨语言契约测试，固定 direct/group target 解析、可信 principal 请求边界、非法 scope 拒绝和响应 target 冲突 fail-closed；分页/检索语义与生产上下文灰度继续按证据推进。
   - [x] Context Compiler v2 接入 route-aware 最大输入窗口，按最小候选 route window 扣除最大输出预算，超出请求在编译前 fail closed；旧 v1 构造保持兼容。
