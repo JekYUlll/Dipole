@@ -24,12 +24,14 @@ class BusinessTopologyContractTest(unittest.TestCase):
         self.assertIn("KAFKA_NODE_ID: 2", kafka)
         self.assertIn("KAFKA_NODE_ID: 3", kafka)
         self.assertIn("sentinel-1:", redis)
-        self.assertIn("业务集群组合拓扑和自动业务回切证据属于后续", docs)
+        self.assertIn("docker-compose.business-cluster.yml", docs)
+        self.assertIn("业务消息链路的自动故障切换、恢复收敛和可执行回滚 receipt 仍属于后续", docs)
 
     def test_compose_checker_keeps_business_failover_claims_fail_closed(self):
         checker = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")
         self.assertIn("BUSINESS-TOPOLOGY.md", checker)
-        self.assertIn("business topology", checker)
+        self.assertIn("BUSINESS-TOPOLOGY.md", checker)
+        self.assertIn("docker-compose.business-cluster.yml", checker)
 
 
 if __name__ == "__main__":
