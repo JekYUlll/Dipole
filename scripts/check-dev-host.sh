@@ -67,6 +67,8 @@ if [[ "${DIPOLE_SKIP_COMPOSE:-0}" != "1" ]]; then
     failures+=("compose=docker-missing")
   elif [[ ! -f "${ROOT_DIR}/${COMPOSE_FILE}" ]]; then
     failures+=("compose-file=${COMPOSE_FILE}:missing")
+  elif ! docker compose version >/dev/null 2>&1; then
+    failures+=("compose=plugin-missing")
   elif ! docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" config --quiet >/dev/null 2>&1; then
     failures+=("compose=config-invalid")
   fi
