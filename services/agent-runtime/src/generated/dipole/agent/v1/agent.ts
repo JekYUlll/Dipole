@@ -12,8 +12,8 @@ import { UnknownFieldHandler } from "@protobuf-ts/runtime";
 import type { PartialMessage } from "@protobuf-ts/runtime";
 import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
-import { Message } from "../../message/v1/message";
-import { RequestContext } from "../../common/v1/context";
+import { Message } from "../../message/v1/message.js";
+import { RequestContext } from "../../common/v1/context.js";
 /**
  * @generated from protobuf message dipole.agent.v1.AdmitRunRequest
  */
@@ -945,6 +945,12 @@ export interface ClaimOAuthCallbackHandoffResponse {
      * @generated from protobuf field: int64 lease_expires_at_unix_ms = 9
      */
     leaseExpiresAtUnixMs: bigint;
+    /**
+     * Returned only to the Runtime mTLS claimant to reconstruct envelope AAD.
+     *
+     * @generated from protobuf field: string owner_user_id = 10
+     */
+    ownerUserId: string;
 }
 /**
  * Completes a claimed handoff after a successful provider exchange.
@@ -5807,7 +5813,8 @@ class ClaimOAuthCallbackHandoffResponse$Type extends MessageType<ClaimOAuthCallb
             { no: 6, name: "sealed_authorization_code", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 7, name: "runtime_key_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
-            { no: 9, name: "lease_expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+            { no: 9, name: "lease_expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 10, name: "owner_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<ClaimOAuthCallbackHandoffResponse>): ClaimOAuthCallbackHandoffResponse {
@@ -5821,6 +5828,7 @@ class ClaimOAuthCallbackHandoffResponse$Type extends MessageType<ClaimOAuthCallb
         message.runtimeKeyId = "";
         message.expiresAtUnixMs = 0n;
         message.leaseExpiresAtUnixMs = 0n;
+        message.ownerUserId = "";
         if (value !== undefined)
             reflectionMergePartial<ClaimOAuthCallbackHandoffResponse>(this, message, value);
         return message;
@@ -5856,6 +5864,9 @@ class ClaimOAuthCallbackHandoffResponse$Type extends MessageType<ClaimOAuthCallb
                     break;
                 case /* int64 lease_expires_at_unix_ms */ 9:
                     message.leaseExpiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string owner_user_id */ 10:
+                    message.ownerUserId = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -5896,6 +5907,9 @@ class ClaimOAuthCallbackHandoffResponse$Type extends MessageType<ClaimOAuthCallb
         /* int64 lease_expires_at_unix_ms = 9; */
         if (message.leaseExpiresAtUnixMs !== 0n)
             writer.tag(9, WireType.Varint).int64(message.leaseExpiresAtUnixMs);
+        /* string owner_user_id = 10; */
+        if (message.ownerUserId !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.ownerUserId);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

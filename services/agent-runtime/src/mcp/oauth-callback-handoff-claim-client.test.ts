@@ -15,6 +15,7 @@ const transactionId = "b".repeat(22);
 const response: ClaimOAuthCallbackHandoffResponse = {
   handoffId,
   transactionId,
+  ownerUserId: "d".repeat(22),
   issuer: "https://auth.example.com/tenant",
   redirectUri: "https://dipole.example.com/oauth/callback",
   authorizationCodeSha256: "c".repeat(64),
@@ -37,7 +38,7 @@ describe("OAuthCallbackHandoffClaimClient", () => {
     const client = new OAuthCallbackHandoffClaimClient(rpc, "runtime-secret", 2_000);
 
     await expect(client.claim({ handoffId, leaseOwner: "runtime-worker-1", requestId: "REQ-1", traceId: "TRACE-1" })).resolves.toMatchObject({
-      handoffId, transactionId, sealedAuthorizationCode: response.sealedAuthorizationCode
+      handoffId, transactionId, ownerUserId: response.ownerUserId, sealedAuthorizationCode: response.sealedAuthorizationCode
     });
     expect(captured.request).toMatchObject({ handoffId, leaseOwner: "runtime-worker-1", context: { callerService: "dipole-agent", principalUserId: "", requestId: "REQ-1", traceId: "TRACE-1" } });
     expect(captured.metadata?.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);

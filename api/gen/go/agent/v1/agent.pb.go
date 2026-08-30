@@ -2688,8 +2688,10 @@ type ClaimOAuthCallbackHandoffResponse struct {
 	RuntimeKeyId            string                 `protobuf:"bytes,7,opt,name=runtime_key_id,json=runtimeKeyId,proto3" json:"runtime_key_id,omitempty"`
 	ExpiresAtUnixMs         int64                  `protobuf:"varint,8,opt,name=expires_at_unix_ms,json=expiresAtUnixMs,proto3" json:"expires_at_unix_ms,omitempty"`
 	LeaseExpiresAtUnixMs    int64                  `protobuf:"varint,9,opt,name=lease_expires_at_unix_ms,json=leaseExpiresAtUnixMs,proto3" json:"lease_expires_at_unix_ms,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Returned only to the Runtime mTLS claimant to reconstruct envelope AAD.
+	OwnerUserId   string `protobuf:"bytes,10,opt,name=owner_user_id,json=ownerUserId,proto3" json:"owner_user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ClaimOAuthCallbackHandoffResponse) Reset() {
@@ -2783,6 +2785,13 @@ func (x *ClaimOAuthCallbackHandoffResponse) GetLeaseExpiresAtUnixMs() int64 {
 		return x.LeaseExpiresAtUnixMs
 	}
 	return 0
+}
+
+func (x *ClaimOAuthCallbackHandoffResponse) GetOwnerUserId() string {
+	if x != nil {
+		return x.OwnerUserId
+	}
+	return ""
 }
 
 // Completes a claimed handoff after a successful provider exchange.
@@ -9211,7 +9220,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
 	"handoff_id\x18\x02 \x01(\tR\thandoffId\x12\x1f\n" +
 	"\vlease_owner\x18\x03 \x01(\tR\n" +
-	"leaseOwner\"\xa7\x03\n" +
+	"leaseOwner\"\xcb\x03\n" +
 	"!ClaimOAuthCallbackHandoffResponse\x12\x1d\n" +
 	"\n" +
 	"handoff_id\x18\x01 \x01(\tR\thandoffId\x12%\n" +
@@ -9222,7 +9231,9 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x19sealed_authorization_code\x18\x06 \x01(\tR\x17sealedAuthorizationCode\x12$\n" +
 	"\x0eruntime_key_id\x18\a \x01(\tR\fruntimeKeyId\x12+\n" +
 	"\x12expires_at_unix_ms\x18\b \x01(\x03R\x0fexpiresAtUnixMs\x126\n" +
-	"\x18lease_expires_at_unix_ms\x18\t \x01(\x03R\x14leaseExpiresAtUnixMs\"\xa1\x01\n" +
+	"\x18lease_expires_at_unix_ms\x18\t \x01(\x03R\x14leaseExpiresAtUnixMs\x12\"\n" +
+	"\rowner_user_id\x18\n" +
+	" \x01(\tR\vownerUserId\"\xa1\x01\n" +
 	"#CompleteOAuthCallbackHandoffRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x1d\n" +
 	"\n" +

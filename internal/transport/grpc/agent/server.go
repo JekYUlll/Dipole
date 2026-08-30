@@ -1387,7 +1387,7 @@ func claimOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.ClaimOAut
 	return &agentv1.ClaimOAuthCallbackHandoffResponse{
 		HandoffId: record.HandoffUUID, TransactionId: record.TransactionUUID, Issuer: record.Issuer, RedirectUri: record.RedirectURI,
 		AuthorizationCodeSha256: record.AuthorizationCodeSHA256, SealedAuthorizationCode: record.SealedAuthorizationCode,
-		RuntimeKeyId: record.RuntimeKeyID, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(), LeaseExpiresAtUnixMs: record.LeaseExpiresAt.UnixMilli(),
+		RuntimeKeyId: record.RuntimeKeyID, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(), LeaseExpiresAtUnixMs: record.LeaseExpiresAt.UnixMilli(), OwnerUserId: record.OwnerUserUUID,
 	}, nil
 }
 

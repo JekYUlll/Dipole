@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：OAuth callback handoff claim 响应增加 Runtime-only `owner_user_id` binding。该字段只在 `dipole-agent` mTLS 领取链返回，用于重建 AES-GCM envelope AAD；Gateway control HTTP、浏览器、Kafka、Temporal、日志和审计均不接触它。Runtime client 对字段缺失或格式异常失败关闭，默认 callback 配置保持关闭。
+
 - 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff terminal client。它用 `dipole-agent` mTLS metadata 仅提交 handoff ID 和 lease owner，以精确 ID 回包结束或释放租约；principal、授权码、密文、key 与 token 都不会进入该调用。无效输入、回包冲突或 Core 错误均 fail closed，`index.ts` 和 control handler 未注入它。同时为四个既有生成 gRPC 回调补充显式协议元素类型，恢复锁定 TypeScript 的完整 typecheck。
 
 - 2026-08-31：Agent Capability 增加默认未装配的 OAuth callback handoff 终态 RPC。`CompleteOAuthCallbackHandoff` 与 `ReleaseOAuthCallbackHandoff` 仅接受 `dipole-agent` mTLS caller 的 handoff ID 和 lease owner，Core 以 SQLC 条件更新复核有效 lease 后返回无敏感字段的 ID；缺 Store、越权、无效或过期 lease 均 fail closed。TypeScript 生成脚本会优先复用已安装的锁定 `protoc`，确保隔离 Remote GPU 可重复生成。Runtime 终态 client、key open、code exchange、token 生命周期与 callback route 继续未装配。

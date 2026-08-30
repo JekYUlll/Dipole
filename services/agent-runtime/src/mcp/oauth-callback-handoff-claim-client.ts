@@ -30,6 +30,7 @@ export interface OAuthCallbackHandoffClaimRequest {
 export interface OAuthCallbackHandoffClaim {
   readonly handoffId: string;
   readonly transactionId: string;
+  readonly ownerUserId: string;
   readonly issuer: string;
   readonly redirectUri: string;
   readonly authorizationCodeSHA256: string;
@@ -78,7 +79,7 @@ export class OAuthCallbackHandoffClaimClient {
 }
 
 function fromProto(expectedHandoffID: string, response: ClaimOAuthCallbackHandoffResponse | undefined): OAuthCallbackHandoffClaim {
-  if (response === undefined || response.handoffId !== expectedHandoffID || !handoffIDPattern.test(response.transactionId) ||
+  if (response === undefined || response.handoffId !== expectedHandoffID || !handoffIDPattern.test(response.transactionId) || !handoffIDPattern.test(response.ownerUserId) ||
       !validURL(response.issuer) || !validURL(response.redirectUri) || !/^[a-f0-9]{64}$/u.test(response.authorizationCodeSha256) ||
       !validEnvelope(response.sealedAuthorizationCode) || !runtimeKeyIDPattern.test(response.runtimeKeyId)) {
     throw new Error("invalid response");
@@ -86,7 +87,7 @@ function fromProto(expectedHandoffID: string, response: ClaimOAuthCallbackHandof
   const expiresAt = dateFromUnixMilliseconds(response.expiresAtUnixMs);
   const leaseExpiresAt = dateFromUnixMilliseconds(response.leaseExpiresAtUnixMs);
   if (expiresAt.getTime() <= Date.now() || leaseExpiresAt.getTime() <= Date.now() || leaseExpiresAt > expiresAt) throw new Error("expired response");
-  return Object.freeze({ handoffId: response.handoffId, transactionId: response.transactionId, issuer: response.issuer, redirectUri: response.redirectUri,
+  return Object.freeze({ handoffId: response.handoffId, transactionId: response.transactionId, ownerUserId: response.ownerUserId, issuer: response.issuer, redirectUri: response.redirectUri,
     authorizationCodeSHA256: response.authorizationCodeSha256, sealedAuthorizationCode: response.sealedAuthorizationCode,
     runtimeKeyId: response.runtimeKeyId, expiresAt, leaseExpiresAt });
 }
