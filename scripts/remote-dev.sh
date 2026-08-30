@@ -27,7 +27,7 @@ REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|multipart-smoke|multipart-restart-smoke|bench|down>
+Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|multipart-smoke|multipart-restart-smoke|bench|recovery|down>
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
@@ -257,6 +257,39 @@ K6_WRAPPER
       env "\${bench_env[@]}" DIPOLE_K6_IMAGE="\$k6_image" K6_BIN="\$k6_wrapper" scripts/bench/run_bench.sh
     fi
     ;;
+  recovery)
+    recovery_env=(
+      COMPOSE_PROJECT_NAME="\$project"
+      COMPOSE_FILE="deploy/compose/docker-compose.dist.yml"
+      TARGET_SERVICE=dipole-node2
+      RESULTS_DIR="/tmp/\${project}-recovery"
+      RUN_ID="\${bench_run_id:-recovery-\$(git rev-parse --short HEAD)}"
+      BASE_URL=http://127.0.0.1:18081
+      NODE1_WS=ws://127.0.0.1:18081
+      NODE2_WS=ws://127.0.0.1:18082
+      NODE1_HEALTH_URL=http://127.0.0.1:18081/health
+      NODE2_HEALTH_URL=http://127.0.0.1:18082/health
+      NODE3_HEALTH_URL=http://127.0.0.1:18083/health
+      USER_COUNT="\${bench_user_count:-20}"
+      PHONE_PREFIX="\${bench_phone_prefix:-136}"
+    )
+    if command -v k6 >/dev/null 2>&1; then
+      env "\${recovery_env[@]}" K6_BIN=k6 scripts/bench/recovery_drill.sh
+    else
+      [[ -n "\$k6_image" ]] || { echo "remote recovery refused: k6 is unavailable and DIPOLE_REMOTE_K6_IMAGE is empty" >&2; exit 4; }
+      docker image inspect "\$k6_image" >/dev/null 2>&1 || docker pull "\$k6_image"
+      k6_wrapper="\$(mktemp)"
+      cleanup_k6_wrapper() { rm -f "\$k6_wrapper"; }
+      trap cleanup_k6_wrapper EXIT
+      cat >"\$k6_wrapper" <<'K6_WRAPPER'
+#!/usr/bin/env bash
+set -euo pipefail
+exec docker run --rm --network host --user "\$(id -u):\$(id -g)" -v "\$PWD:/workspace" -v /tmp:/tmp -w /workspace "\${DIPOLE_K6_IMAGE}" "\$@"
+K6_WRAPPER
+      chmod 700 "\$k6_wrapper"
+      env "\${recovery_env[@]}" DIPOLE_K6_IMAGE="\$k6_image" K6_BIN="\$k6_wrapper" scripts/bench/recovery_drill.sh
+    fi
+    ;;
   down) docker compose -p "\$project" -f "${REMOTE_COMPOSE_FILE}" down --remove-orphans ;;
   *) echo "unsupported remote action: ${action}" >&2; exit 2 ;;
 esac
@@ -275,6 +308,7 @@ case "${1:-}" in
   multipart-smoke) sync_revision; run_remote multipart-smoke ;;
   multipart-restart-smoke) sync_revision; run_remote multipart-restart-smoke ;;
   bench) sync_revision; guard_start; run_remote bench ;;
+  recovery) sync_revision; guard_start; run_remote recovery ;;
   down) run_remote down ;;
   *) usage; exit 2 ;;
 esac

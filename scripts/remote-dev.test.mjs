@@ -20,6 +20,14 @@ test("remote destructive actions remain behind the active-user guard", () => {
   assert.match(source, /build\) sync_revision; guard_start; run_remote build/);
   assert.match(source, /smoke-lite\) sync_revision; guard_start; run_remote smoke-lite/);
   assert.match(source, /bench\) sync_revision; guard_start; run_remote bench/);
+  assert.match(source, /recovery\) sync_revision; guard_start; run_remote recovery/);
+});
+
+test("recovery entry uses candidate ports and a temporary report directory", () => {
+  assert.match(source, /recovery\)[\s\S]*?COMPOSE_FILE="deploy\/compose\/docker-compose\.dist\.yml"/);
+  assert.ok(source.includes('RESULTS_DIR="/tmp/\\${project}-recovery"'));
+  assert.match(source, /recovery\)[\s\S]*?TARGET_SERVICE=dipole-node2/);
+  assert.match(source, /recovery\)[\s\S]*?K6_BIN="\\\$k6_wrapper" scripts\/bench\/recovery_drill\.sh/);
 });
 
 test("existing GPU tasks are observed without blocking development actions", () => {

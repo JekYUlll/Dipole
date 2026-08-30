@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：将 C1 stop/start recovery drill 接入 Remote GPU 统一入口，补齐 `/tmp` 报告挂载和 k6 fallback；真实报告仍要求候选 revision、恢复后 post-load、Kafka lag 和自动清理全部通过，未改变生产默认路径。
+
 - 2026-08-30：C1 recovery 复盘发现 Dockerized k6 只挂载仓库目录时无法写入 `/tmp` 报告目录；已通过显式只读边界之外的 `/tmp` 挂载修复容器输出路径，后续远程演练可复用统一 wrapper。
 
 - 2026-08-30：Remote GPU 在存在 `2` 个外部 GPU 任务期间完成 C1 候选 `dipole-node2` stop/start 恢复证据；恢复时间线、PID 变化、镜像 revision、40/40 post-load 和 Kafka lag 已通过 `recovery-report.v1` 校验，候选拓扑清理后无残留。该证据关闭本轮节点恢复观察项，业务拓扑 broker/Redis 故障、背压和 C++ 性能门禁仍按阶段计划开放。
