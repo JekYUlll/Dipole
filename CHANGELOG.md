@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修复 C1 候选拓扑的 Compose 相对挂载路径和证书前置：移除会把 `../../configs` 解析到仓库外的 `--project-directory`，并由候选脚本按需生成短期开发自签名 Nginx 证书；失败拓扑已清理，未改变生产 Compose。
+
 - 2026-08-30：修复远程 C1 候选构建 heredoc 的变量展开问题；候选 revision、创建时间和镜像标签现在均在远端脚本中计算，避免本地未定义变量导致构建提前退出。新增契约断言并通过 Shell、脚本、架构文档和 diff 门禁。
 
 - 2026-08-30：远程构建入口新增默认关闭的 `DIPOLE_REMOTE_BUILD_CANDIDATE=1`，按当前提交额外生成带 OCI revision、创建时间和 `dirty=false` provenance 的 `dipole-server:c1-<commit>` 候选镜像；默认微服务构建路径与回滚行为保持不变，为完整 C1 三节点基线补齐可验证前置。

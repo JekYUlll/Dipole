@@ -33,10 +33,28 @@ usage() {
 
 compose() {
   docker compose \
-    --project-directory "${ROOT_DIR}" \
     --project-name "${C1_PROJECT}" \
     -f "${ROOT_DIR}/${COMPOSE_FILE}" \
     "$@"
+}
+
+prepare_certs() {
+  local cert_dir="${ROOT_DIR}/deploy/compose/certs/local"
+  local cert_file="${cert_dir}/dipole-local.pem"
+  local key_file="${cert_dir}/dipole-local-key.pem"
+
+  mkdir -p "${cert_dir}"
+  if [[ ! -s "${cert_file}" || ! -s "${key_file}" ]]; then
+    umask 077
+    openssl req -x509 -nodes -newkey rsa:2048 \
+      -keyout "${key_file}" \
+      -out "${cert_file}" \
+      -days "${C1_CERT_VALID_DAYS:-7}" \
+      -subj "/CN=dipole-local" \
+      -addext "subjectAltName=DNS:localhost,DNS:dipole.local,IP:127.0.0.1"
+    chmod 600 "${key_file}"
+    chmod 644 "${cert_file}"
+  fi
 }
 
 require_command() {
@@ -99,7 +117,9 @@ done
 case "${1:-}" in
   up)
     require_command curl
+    require_command openssl
     verify_candidate_image "${2:-${C1_IMAGE:-}}"
+    prepare_certs
     compose up -d --wait --wait-timeout "${C1_READY_TIMEOUT_SECONDS}" mysql redis kafka minio
     compose up --no-deps minio-init
     compose run --rm --no-deps --entrypoint /app/dipole-migrate dipole-node1 -direction up
