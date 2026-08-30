@@ -8,7 +8,7 @@
 - 当前路由包含 Login、Chat，以及由 feature flag 保护的 Agent Elicitation、Approval、Task Timeline、Subscription 和 Memory 页面；Search/Sync 作为 Chat 工作区能力接入，复杂交互仍主要集中在 `ChatView.vue`。
 - 已建立 canonical `design/dipole-ui.pen`、设计日志和批准预览目录。
 - Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Agent Workflow Repair 已完成 evidence review、六态矩阵和双人审批设计，普通 Elicitation 已完成来源披露、desktop/mobile Form、七态设计及默认关闭的 Vue 实现，Event Subscription 已完成 owner 管理、六态和 mobile 撤销设计；Login、完整 Chat 和其他现代 IM 页面仍待补齐。
-- 已建立 Vitest + Vue Test Utils + jsdom 基线，以及 Chromium/Firefox/WebKit Playwright IndexedDB 验收；页面流程与视觉回归仍待建立。Agent Task Timeline v1 已先维护独立设计 brief，canonical frame 和视觉回归基线待 Pencil 小批次成功后补齐。
+- 已建立 Vitest + Vue Test Utils + jsdom 基线，以及 Chromium/Firefox/WebKit Playwright IndexedDB 验收；页面流程与视觉回归仍待建立。Agent Task Timeline v1 已通过真实 Pencil CLI 小批次补齐 canonical desktop/mobile/state matrix 和批准导出，组件截图级基线与完整页面视觉回归仍待建立。
 - Pencil CLI 已认证；2026-08-27 本地版本为 `0.3.5`，设计时使用 CLI 内置 skill 读取最新编辑约束。
 
 ## 2. 设计资产
@@ -75,7 +75,7 @@ design/
 
 ### F3：Agent Experience
 
-- Agent Workflow Repair proposal/evidence/approval、普通 Elicitation Form 与 Event Subscription owner 管理已完成 desktop、mobile 和状态契约设计；Elicitation Vue 已接入 authenticated Task query/input/cancel、来源披露、普通字段校验和 fail-closed 不可用状态，入口默认关闭。Agent approval Vue 已接入 authenticated Task query/decision、过期与 fail-closed 状态，入口由 `VITE_AGENT_APPROVAL_ENABLED` 默认关闭。Subscription owner list/revoke 已通过默认关闭的 Gateway HTTP 与 Vue 页面交付，并完成三浏览器路由验收；下一步交付经过鉴权的 Definition 目录，再开放 create。Runtime 继续使用 `direct_target`。Agent Task Timeline v1 已有前端实现和独立设计 brief，canonical desktop/mobile frame、State Matrix 和视觉回归仍待 Pencil 小批次成功后交付；完整 Agent definition、memory 和 artifact 继续按 AD-036 实现 MCP continuation、路由 E2E 与视觉回归。
+- Agent Workflow Repair proposal/evidence/approval、普通 Elicitation Form 与 Event Subscription owner 管理已完成 desktop、mobile 和状态契约设计；Elicitation Vue 已接入 authenticated Task query/input/cancel、来源披露、普通字段校验和 fail-closed 不可用状态，入口默认关闭。Agent approval Vue 已接入 authenticated Task query/decision、过期与 fail-closed 状态，入口由 `VITE_AGENT_APPROVAL_ENABLED` 默认关闭。Subscription owner list/revoke 已通过默认关闭的 Gateway HTTP 与 Vue 页面交付，并完成三浏览器路由验收；下一步交付经过鉴权的 Definition 目录，再开放 create。Runtime 继续使用 `direct_target`。Agent Task Timeline v1 已完成 canonical desktop/mobile frame、State Matrix 和批准导出，完整 Agent definition、memory 和 artifact 继续按 AD-036 实现 MCP continuation、路由 E2E 与视觉回归。
 - UI 状态与 Temporal AgentTask 状态机保持一一映射。
 - 写操作展示风险、影响对象、幂等状态和审计信息。
 

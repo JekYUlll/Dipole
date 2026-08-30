@@ -13,6 +13,8 @@
     { "path": "exports/agent-repair-v1", "purpose": "agent-repair-v1" },
     { "path": "exports/agent-elicitation-v1", "purpose": "agent-elicitation-v1" },
     { "path": "exports/agent-subscription-v1", "purpose": "agent-subscription-v1" },
-    { "path": "exports/agent-subscription-create-v1", "purpose": "agent-subscription-create-v1" }
+    { "path": "exports/agent-subscription-create-v1", "purpose": "agent-subscription-create-v1" },
+    { "path": "exports/agent-timeline-v1/overview.png", "purpose": "agent-task-timeline-v1-canvas" },
+    { "path": "exports/agent-timeline-overview", "purpose": "agent-task-timeline-v1-frames" }
   ]
 }

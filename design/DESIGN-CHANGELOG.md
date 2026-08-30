@@ -14,10 +14,12 @@
 
 ### 验证
 
-- Agent Task Timeline v1 增量设计已建立可复用 brief `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 在两次受限模型调用中均未在超时窗口内完成，safe-edit wrapper 保留 canonical `.pen`，未生成导出图。F3/F4 视觉交付继续保持待处理状态。
+- Agent Task Timeline v1 使用 Pencil CLI `0.3.5`、`scripts/pencil-safe-edit.mjs` 和既有 brief 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、四个复用组件和 2x 导出。F2/F3 未完成页面、完整截图级视觉回归与未覆盖平台场景继续保持待处理状态。
 
 ### 新增
 
+- 增加 Agent Task Timeline desktop/mobile 事件历史和四态矩阵，明确 revision、序号、Capability、状态与低敏 provenance 的只读边界，并归档 `exports/agent-timeline-overview/` 和全画布 `exports/agent-timeline-v1/overview.png`。
+- 增加 Agent Timeline Event、Revision Badge、Provenance Label 和 Unavailable State 四个可复用组件；canonical 文件扩展为 61 个顶层 Frame 和 27 个可复用组件。
 - 增加 Agent Event Subscription desktop/mobile 创建流程和七类创建状态，归档 `exports/agent-subscription-create-v1/` 的 2x 评审基线。
 - 增加 Subscription Create Option 与 Authority Summary 两个可复用组件；canonical 文件扩展为 44 个顶层 Frame 和 21 个可复用组件。
 - 增加 Agent Event Subscription desktop owner 管理页、六态契约矩阵和 mobile 撤销确认层，并保存 `exports/agent-subscription-v1/` 的 2x 评审基线。

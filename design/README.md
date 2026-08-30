@@ -88,6 +88,17 @@ Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 
 
 公开 Gateway owner list/create/revoke HTTP adapter、Vue 管理页、owner-scoped active Definition 目录和 authenticated conversation chooser 已按本设计默认关闭接入，分别由 `gateway.agent_subscription_enabled=false|true` 和 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false|true` 控制。服务端从认证会话派生 principal、固定 tenant，并在创建前后由 Core 复核 Definition、可读会话与 scope；页面查询失败时清空旧候选，创建和撤销均以权威响应收敛。本设计和管理页面不能用于声明 `subscription` Runtime 模式已经可用。
 
+### Agent Task Timeline v1
+
+- `Agent Timeline/Desktop/Events`：只读任务事件历史，展示 Task、revision、event sequence、kind、status、time、Capability 与低敏 provenance label。
+- `Agent Timeline/Mobile/Events`：单列窄屏布局，事件按序分组且不依赖横向滚动。
+- `Agent Timeline/State Matrix`：覆盖 loading、empty、unavailable/retry 与 older-events pagination；不可用状态明确说明历史未加载。
+- `Component/Agent Timeline Event`、`Component/Agent Timeline Revision Badge`、`Component/Agent Timeline Provenance Label` 与 `Component/Agent Timeline Unavailable State`：供后续 Timeline 与审计页面复用。
+
+批准的 2x 预览位于 `exports/agent-timeline-overview/`，全画布记录位于 `exports/agent-timeline-v1/overview.png`。Timeline 只展示持久化低敏元数据，不提供编辑、删除或任务执行控制，也不回放外部 evidence 正文。
+
+Vue 实现位于 `frontend/src/components/AgentTaskTimeline.vue`，路由为 `/agent/tasks/:taskId/timeline`，由 `VITE_AGENT_TASK_TIMELINE_ENABLED=true` 显式启用。设计稿不表示 active Agent authority、MCP continuation 或写 Capability 已开放。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。

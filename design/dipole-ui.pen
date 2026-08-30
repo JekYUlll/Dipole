@@ -23793,6 +23793,2273 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "ZpjIC",
+      "x": 12910,
+      "y": 12540,
+      "name": "Component/Agent Timeline Revision Badge",
+      "reusable": true,
+      "width": 220,
+      "height": 44,
+      "fill": "$accent-soft",
+      "cornerRadius": "$radius-md",
+      "gap": 10,
+      "padding": [
+        9,
+        14
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "h2eUHF",
+          "name": "Revision Badge Label",
+          "fill": "$accent-strong",
+          "content": "CURRENT REVISION",
+          "fontFamily": "$font-data",
+          "fontSize": 9,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "yDyDw",
+          "name": "Revision Badge Value",
+          "fill": "$ink",
+          "content": "rev-14",
+          "fontFamily": "$font-display",
+          "fontSize": 14,
+          "fontWeight": "700"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "aEo4N",
+      "x": 13170,
+      "y": 12540,
+      "name": "Component/Agent Timeline Provenance Label",
+      "reusable": true,
+      "width": 360,
+      "height": 72,
+      "fill": "$warning-soft",
+      "cornerRadius": "$radius-md",
+      "layout": "vertical",
+      "gap": 5,
+      "padding": [
+        12,
+        14
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "R4KAL",
+          "name": "Provenance Label Header",
+          "width": "fill_container",
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "R0Btt",
+              "name": "Provenance Boundary Dot",
+              "fill": "$warning",
+              "width": 8,
+              "height": 8
+            },
+            {
+              "type": "text",
+              "id": "k6kTha",
+              "name": "Provenance Label Title",
+              "fill": "$warning",
+              "content": "METADATA ONLY",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "yOept",
+          "name": "Provenance Label Text",
+          "fill": "$ink-soft",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Evidence excerpts remain untrusted and are shown as source labels only.",
+          "lineHeight": 1.35,
+          "fontFamily": "$font-body",
+          "fontSize": 11,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "wWIIl",
+      "x": 13570,
+      "y": 12540,
+      "name": "Component/Agent Timeline Unavailable State",
+      "reusable": true,
+      "width": 420,
+      "height": 164,
+      "fill": "$surface",
+      "cornerRadius": "$radius-md",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 12,
+      "padding": 20,
+      "children": [
+        {
+          "type": "frame",
+          "id": "J5k4k1",
+          "name": "Unavailable State Header",
+          "width": "fill_container",
+          "gap": 10,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "O4ZKTX",
+              "name": "Unavailable State Icon",
+              "width": 22,
+              "height": 22,
+              "icon": "shield-alert",
+              "library": "lucide",
+              "fill": "$warning"
+            },
+            {
+              "type": "text",
+              "id": "b9syAz",
+              "name": "Unavailable State Title",
+              "fill": "$ink",
+              "content": "History unavailable",
+              "fontFamily": "$font-display",
+              "fontSize": 18,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "M1oGU",
+          "name": "Unavailable State Copy",
+          "fill": "$ink-soft",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "The timeline service did not return history. This state must not imply that events were loaded.",
+          "lineHeight": 1.45,
+          "fontFamily": "$font-body",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "UEQCm",
+          "name": "Unavailable Retry Button",
+          "fill": "$surface-muted",
+          "cornerRadius": "$radius-sm",
+          "gap": 8,
+          "padding": [
+            8,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "awSre",
+              "name": "Retry Button Icon",
+              "width": 14,
+              "height": 14,
+              "icon": "rotate-cw",
+              "library": "lucide",
+              "fill": "$accent-strong"
+            },
+            {
+              "type": "text",
+              "id": "pVlFX",
+              "name": "Retry Button Label",
+              "fill": "$accent-strong",
+              "content": "Retry read only",
+              "fontFamily": "$font-body",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "w4Rv3Q",
+      "x": 14030,
+      "y": 12540,
+      "name": "Component/Agent Timeline Event",
+      "reusable": true,
+      "width": 760,
+      "height": 132,
+      "fill": "$surface",
+      "cornerRadius": "$radius-md",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "gap": 16,
+      "padding": 14,
+      "children": [
+        {
+          "type": "frame",
+          "id": "Xr7aS",
+          "name": "Event Sequence Rail",
+          "width": 86,
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "JxrKJ",
+              "name": "Event Sequence Badge",
+              "width": 38,
+              "height": 38,
+              "fill": "$rail",
+              "cornerRadius": 19,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "V3nRJ",
+                  "name": "Event Sequence Number",
+                  "fill": "$text-inverse",
+                  "content": "03",
+                  "fontFamily": "$font-data",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "J5KW7",
+              "name": "Event Time",
+              "fill": "$ink-faint",
+              "content": "10:42:18",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "rectangle",
+              "id": "oW4J2",
+              "name": "Event Connector Line",
+              "fill": "$line",
+              "width": 1,
+              "height": "fill_container"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uIIQ4",
+          "name": "Event Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "frame",
+              "id": "c91vHV",
+              "name": "Event Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "flDuC",
+                  "name": "Event Kind Badge",
+                  "fill": "$accent-soft",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 6,
+                  "padding": [
+                    6,
+                    10
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "sNaEK",
+                      "name": "Event Kind Icon",
+                      "width": 13,
+                      "height": 13,
+                      "icon": "workflow",
+                      "library": "lucide",
+                      "fill": "$accent-strong"
+                    },
+                    {
+                      "type": "text",
+                      "id": "T3jfB",
+                      "name": "Event Kind Text",
+                      "fill": "$accent-strong",
+                      "content": "tool.result",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "NmOK3",
+                  "name": "Event Status",
+                  "fill": "$accent-strong",
+                  "content": "completed",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "bFPGz",
+              "name": "Event Title",
+              "fill": "$ink",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Capability returned normalized diff metadata",
+              "fontFamily": "$font-display",
+              "fontSize": 16,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "l8KWZ",
+              "name": "Event Metadata Row",
+              "width": "fill_container",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BUGZw",
+                  "name": "Capability Label",
+                  "fill": "$surface-muted",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 6,
+                  "padding": [
+                    5,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "n7msB4",
+                      "name": "Capability Label Icon",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "plug",
+                      "library": "lucide",
+                      "fill": "$ink-soft"
+                    },
+                    {
+                      "type": "text",
+                      "id": "DSIdG",
+                      "name": "Capability Label Text",
+                      "fill": "$ink-soft",
+                      "content": "capability: document.patch",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "mJROs",
+                  "name": "Event Source Note",
+                  "fill": "$ink-faint",
+                  "content": "source: low-sensitivity audit note",
+                  "fontFamily": "$font-body",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "znpgG",
+      "x": 14030,
+      "y": 12770,
+      "name": "Agent Timeline/Desktop/Events",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$surface-app",
+      "children": [
+        {
+          "type": "frame",
+          "id": "D5fTMb",
+          "name": "Timeline Desktop Rail",
+          "width": 256,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 18,
+          "padding": [
+            30,
+            24
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "GT5Sf",
+              "name": "Timeline Rail Brand",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "g4g4u",
+                  "name": "Timeline Rail Brand Mark",
+                  "width": 32,
+                  "height": 32,
+                  "fill": "$accent",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "eYWyH",
+                      "name": "Timeline Rail Brand Icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "activity",
+                      "library": "lucide",
+                      "fill": "$text-inverse"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "hjzZ9",
+                  "name": "Timeline Rail Brand Text",
+                  "fill": "$text-inverse",
+                  "content": "Dipole Agent",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "R2ac7q",
+              "name": "Timeline Rail Section",
+              "fill": "$text-muted",
+              "content": "TASK OBSERVABILITY",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "bVAhS",
+              "name": "Timeline Rail Timeline",
+              "width": "fill_container",
+              "fill": "$rail-soft",
+              "cornerRadius": "$radius-sm",
+              "gap": 10,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "bnU9L",
+                  "name": "Timeline Rail Timeline Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "list-tree",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "text",
+                  "id": "rxGCg",
+                  "name": "Timeline Rail Timeline Label",
+                  "fill": "$text-inverse",
+                  "content": "Timeline",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XoWbK",
+              "name": "Timeline Rail Revisions",
+              "width": "fill_container",
+              "cornerRadius": "$radius-sm",
+              "gap": 10,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "xbPZq",
+                  "name": "Timeline Rail Revisions Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "git-branch",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "w9ULNG",
+                  "name": "Timeline Rail Revisions Label",
+                  "fill": "$text-muted",
+                  "content": "Revisions",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IruHv",
+              "name": "Timeline Rail Capabilities",
+              "width": "fill_container",
+              "cornerRadius": "$radius-sm",
+              "gap": 10,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "O9sNs",
+                  "name": "Timeline Rail Capabilities Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "shield-check",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "DLjJA",
+                  "name": "Timeline Rail Capabilities Label",
+                  "fill": "$text-muted",
+                  "content": "Capabilities",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "eXuvl",
+              "name": "Timeline Rail Approvals",
+              "width": "fill_container",
+              "cornerRadius": "$radius-sm",
+              "gap": 10,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "DIweC",
+                  "name": "Timeline Rail Approvals Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "shield-check",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "ITh3Y",
+                  "name": "Timeline Rail Approvals Label",
+                  "fill": "$text-muted",
+                  "content": "Approvals",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "i7dSe1",
+              "name": "Timeline Rail Spacer",
+              "width": "fill_container",
+              "height": "fill_container"
+            },
+            {
+              "type": "text",
+              "id": "t3YEJP",
+              "name": "Timeline Rail Boundary",
+              "fill": "$text-muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "History view stores metadata, status, timestamps, and source labels only.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "jD7Cq",
+          "name": "Timeline Desktop Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            34,
+            40
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "X9EERk",
+              "name": "Timeline Desktop Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "m1zSYK",
+                  "name": "Timeline Header Copy",
+                  "width": 680,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KI8Oh",
+                      "name": "Timeline Header Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "AGENT TASK TIMELINE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "rPdQi",
+                      "name": "Timeline Header Title",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Execution history for task dp-task-7421",
+                      "fontFamily": "$font-display",
+                      "fontSize": 32,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "T5mqsq",
+                      "name": "Timeline Header Subtitle",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "A read-only chronology of event metadata, capability labels, statuses, and low-sensitivity provenance notes.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "anZSW",
+                  "type": "ref",
+                  "ref": "ZpjIC",
+                  "name": "Timeline Current Revision Badge",
+                  "descendants": {
+                    "yDyDw": {
+                      "content": "rev-14"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Pol9N",
+              "name": "Timeline Trust Boundary Notice",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": "$radius-md",
+              "gap": 12,
+              "padding": [
+                14,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "QxT21",
+                  "name": "Trust Boundary Notice Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "badge-alert",
+                  "library": "lucide",
+                  "fill": "$warning"
+                },
+                {
+                  "type": "text",
+                  "id": "i7h5i",
+                  "name": "Trust Boundary Notice Text",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Untrusted evidence is labeled as external input. This view does not expose raw evidence content and provides no task execution controls.",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ULHUb",
+              "name": "Timeline Task Summary",
+              "width": "fill_container",
+              "height": 104,
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k7R74O",
+                  "name": "Summary Task identity",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 9,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "EM22V",
+                      "name": "Summary Task identity Label",
+                      "fill": "$ink-faint",
+                      "content": "TASK IDENTITY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "GSph8",
+                      "name": "Summary Task identity Value",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "dp-task-7421 / repair.audit",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nJs9N",
+                  "name": "Summary Current revision",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 9,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MWs2x",
+                      "name": "Summary Current revision Label",
+                      "fill": "$ink-faint",
+                      "content": "CURRENT REVISION",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "uOzIK",
+                      "name": "Summary Current revision Value",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "rev-14 live snapshot",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ANqeV",
+                  "name": "Summary Visible range",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 9,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "UuJS6",
+                      "name": "Summary Visible range Label",
+                      "fill": "$ink-faint",
+                      "content": "VISIBLE RANGE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ULtoM",
+                      "name": "Summary Visible range Value",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "events 01-04 of 38",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "P8XClq",
+                  "name": "Summary History source",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 9,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WrEcV",
+                      "name": "Summary History source Label",
+                      "fill": "$ink-faint",
+                      "content": "HISTORY SOURCE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 9,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PLi7x",
+                      "name": "Summary History source Value",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "agent-timeline metadata API",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VxyH6",
+              "name": "Timeline Desktop Content",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 18,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Yjy0y",
+                  "name": "Timeline Event Sequence",
+                  "width": 820,
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "id": "sNHBi",
+                      "type": "ref",
+                      "ref": "w4Rv3Q",
+                      "name": "Timeline Event 01 task.created",
+                      "width": "fill_container",
+                      "height": 132,
+                      "descendants": {
+                        "V3nRJ": {
+                          "content": "01"
+                        },
+                        "J5KW7": {
+                          "content": "10:40:03"
+                        },
+                        "T3jfB": {
+                          "content": "task.created"
+                        },
+                        "NmOK3": {
+                          "content": "recorded",
+                          "fill": "$accent-strong"
+                        },
+                        "bFPGz": {
+                          "content": "Task identity and initial revision registered"
+                        },
+                        "DSIdG": {
+                          "content": "capability: orchestration.plan"
+                        },
+                        "mJROs": {
+                          "content": "source: scheduler metadata"
+                        }
+                      }
+                    },
+                    {
+                      "id": "yByVH",
+                      "type": "ref",
+                      "ref": "w4Rv3Q",
+                      "name": "Timeline Event 02 capability.call",
+                      "width": "fill_container",
+                      "height": 132,
+                      "descendants": {
+                        "V3nRJ": {
+                          "content": "02"
+                        },
+                        "J5KW7": {
+                          "content": "10:41:09"
+                        },
+                        "T3jfB": {
+                          "content": "capability.call"
+                        },
+                        "NmOK3": {
+                          "content": "running",
+                          "fill": "$warning"
+                        },
+                        "bFPGz": {
+                          "content": "Patch proposal prepared for user-visible review"
+                        },
+                        "DSIdG": {
+                          "content": "capability: design.apply"
+                        },
+                        "mJROs": {
+                          "content": "source: tool invocation metadata"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Bs31b",
+                      "type": "ref",
+                      "ref": "w4Rv3Q",
+                      "name": "Timeline Event 03 tool.result",
+                      "width": "fill_container",
+                      "height": 132,
+                      "descendants": {
+                        "V3nRJ": {
+                          "content": "03"
+                        },
+                        "J5KW7": {
+                          "content": "10:42:18"
+                        },
+                        "T3jfB": {
+                          "content": "tool.result"
+                        },
+                        "NmOK3": {
+                          "content": "completed",
+                          "fill": "$accent-strong"
+                        },
+                        "bFPGz": {
+                          "content": "Capability returned normalized diff metadata"
+                        },
+                        "DSIdG": {
+                          "content": "capability: document.patch"
+                        },
+                        "mJROs": {
+                          "content": "source: low-sensitivity audit note"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Z8oZd",
+                      "type": "ref",
+                      "ref": "w4Rv3Q",
+                      "name": "Timeline Event 04 boundary.label",
+                      "width": "fill_container",
+                      "height": 132,
+                      "descendants": {
+                        "V3nRJ": {
+                          "content": "04"
+                        },
+                        "J5KW7": {
+                          "content": "10:43:02"
+                        },
+                        "T3jfB": {
+                          "content": "boundary.label"
+                        },
+                        "NmOK3": {
+                          "content": "completed",
+                          "fill": "$accent-strong"
+                        },
+                        "bFPGz": {
+                          "content": "External evidence marked as untrusted label"
+                        },
+                        "DSIdG": {
+                          "content": "capability: trust.boundary"
+                        },
+                        "mJROs": {
+                          "content": "source: evidence label only"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SsrR7",
+                  "name": "Timeline Metadata Inspector",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jX2AB",
+                      "name": "Inspector Title",
+                      "fill": "$ink",
+                      "content": "Selected event metadata",
+                      "fontFamily": "$font-display",
+                      "fontSize": 20,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "K8S0l",
+                      "name": "Inspector Description",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Event 03 summarizes the capability response without replaying raw evidence. Fields are safe for audit review and support pagination to older events.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "id": "KyjiD",
+                      "type": "ref",
+                      "ref": "aEo4N",
+                      "name": "Inspector Provenance Label",
+                      "width": "fill_container"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "z5hMp",
+                      "name": "Inspector Kind",
+                      "width": "fill_container",
+                      "stroke": "#DDE2DC00",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "padding": [
+                        10,
+                        0
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Dckrc",
+                          "name": "Inspector Kind Label",
+                          "fill": "$ink-faint",
+                          "content": "Kind",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "zyPg3",
+                          "name": "Inspector Kind Value",
+                          "fill": "$ink",
+                          "content": "tool.result",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "D0ke9F",
+                      "name": "Inspector Status",
+                      "width": "fill_container",
+                      "stroke": "#DDE2DC00",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "padding": [
+                        10,
+                        0
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "d6FtZ",
+                          "name": "Inspector Status Label",
+                          "fill": "$ink-faint",
+                          "content": "Status",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Smij5",
+                          "name": "Inspector Status Value",
+                          "fill": "$ink",
+                          "content": "completed",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pHx0h",
+                      "name": "Inspector Capability",
+                      "width": "fill_container",
+                      "stroke": "#DDE2DC00",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "padding": [
+                        10,
+                        0
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "F7ZKC7",
+                          "name": "Inspector Capability Label",
+                          "fill": "$ink-faint",
+                          "content": "Capability",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "TAu6E",
+                          "name": "Inspector Capability Value",
+                          "fill": "$ink",
+                          "content": "document.patch",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Y9Hi92",
+                      "name": "Inspector Revision",
+                      "width": "fill_container",
+                      "stroke": "#DDE2DC00",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "padding": [
+                        10,
+                        0
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "NkcQD",
+                          "name": "Inspector Revision Label",
+                          "fill": "$ink-faint",
+                          "content": "Revision",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "sR6YF",
+                          "name": "Inspector Revision Value",
+                          "fill": "$ink",
+                          "content": "rev-14",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kh2TV",
+                      "name": "Inspector Stored payload",
+                      "width": "fill_container",
+                      "stroke": "#DDE2DC00",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "padding": [
+                        10,
+                        0
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "FEkXh",
+                          "name": "Inspector Stored payload Label",
+                          "fill": "$ink-faint",
+                          "content": "Stored payload",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "VMUAu",
+                          "name": "Inspector Stored payload Value",
+                          "fill": "$ink",
+                          "content": "metadata only",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "H8ML8",
+                      "name": "Older Events Pagination Note",
+                      "width": "fill_container",
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-sm",
+                      "layout": "vertical",
+                      "gap": 8,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SGQTU",
+                          "name": "Pagination Note Title",
+                          "fill": "$ink",
+                          "content": "Older events available",
+                          "fontFamily": "$font-display",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "M7cE0J",
+                          "name": "Pagination Note Copy",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "The timeline indicates 33 older metadata events. Loading them is a read-only pagination action.",
+                          "lineHeight": 1.45,
+                          "fontFamily": "$font-body",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "GyTZl",
+      "x": 15550,
+      "y": 12770,
+      "name": "Agent Timeline/Mobile/Events",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "NSynG",
+          "name": "Timeline Mobile Top Bar",
+          "width": "fill_container",
+          "height": 64,
+          "fill": "$surface",
+          "padding": [
+            0,
+            18
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "EtFSe",
+              "name": "Timeline Mobile Brand",
+              "gap": 9,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "hnC44",
+                  "name": "Timeline Mobile Brand Icon",
+                  "width": 19,
+                  "height": 19,
+                  "icon": "activity",
+                  "library": "lucide",
+                  "fill": "$accent-strong"
+                },
+                {
+                  "type": "text",
+                  "id": "Dv0yw",
+                  "name": "Timeline Mobile Brand Text",
+                  "fill": "$ink",
+                  "content": "Timeline",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "qw0Ij",
+              "name": "Timeline Mobile Readonly Label",
+              "fill": "$ink-faint",
+              "content": "READ ONLY",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "PxWww",
+          "name": "Timeline Mobile Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "r2A9NP",
+              "name": "Timeline Mobile Task Identity",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": "$radius-md",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 9,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "m2WTQ7",
+                  "name": "Mobile Timeline Eyebrow",
+                  "fill": "$accent-strong",
+                  "content": "TASK DP-TASK-7421",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "jTasE",
+                  "name": "Mobile Timeline Title",
+                  "fill": "$ink",
+                  "content": "Execution history",
+                  "fontFamily": "$font-display",
+                  "fontSize": 24,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "Y3qsw",
+                  "name": "Mobile Timeline Subtitle",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Metadata sequence for the current revision. Raw evidence stays outside this view.",
+                  "lineHeight": 1.4,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "f2zbZj",
+                  "name": "Mobile Current Revision Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "uIYsj",
+                      "type": "ref",
+                      "ref": "ZpjIC",
+                      "name": "Mobile Current Revision Badge",
+                      "descendants": {
+                        "yDyDw": {
+                          "content": "rev-14"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "T9GExe",
+              "name": "Timeline Mobile Trust Boundary",
+              "width": "fill_container",
+              "fill": "$warning-soft",
+              "cornerRadius": "$radius-md",
+              "gap": 10,
+              "padding": [
+                12,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "wAVAH",
+                  "name": "Mobile Trust Boundary Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "badge-alert",
+                  "library": "lucide",
+                  "fill": "$warning"
+                },
+                {
+                  "type": "text",
+                  "id": "XRShT",
+                  "name": "Mobile Trust Boundary Text",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Untrusted evidence appears as labels only; no execute, edit, or delete controls are present.",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "c7w1Zm",
+              "name": "Timeline Mobile Event Groups",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "id": "l1a9E",
+                  "type": "ref",
+                  "ref": "w4Rv3Q",
+                  "name": "Mobile Timeline Event 01 task.created",
+                  "width": "fill_container",
+                  "height": 132,
+                  "descendants": {
+                    "Xr7aS": {
+                      "width": 58
+                    },
+                    "JxrKJ": {
+                      "width": 32,
+                      "height": 32,
+                      "cornerRadius": 16
+                    },
+                    "V3nRJ": {
+                      "content": "01",
+                      "fontSize": 12
+                    },
+                    "J5KW7": {
+                      "content": "10:40",
+                      "fontSize": 9
+                    },
+                    "uIIQ4": {
+                      "gap": 6
+                    },
+                    "c91vHV": {
+                      "layout": "horizontal",
+                      "alignItems": "center",
+                      "gap": 6,
+                      "justifyContent": "space_between"
+                    },
+                    "T3jfB": {
+                      "content": "task.created",
+                      "fontSize": 9
+                    },
+                    "NmOK3": {
+                      "content": "recorded",
+                      "fontSize": 10,
+                      "fill": "$warning"
+                    },
+                    "bFPGz": {
+                      "content": "Task identity registered",
+                      "fontSize": 14
+                    },
+                    "l8KWZ": {
+                      "layout": "vertical",
+                      "alignItems": "start",
+                      "gap": 5
+                    },
+                    "DSIdG": {
+                      "content": "capability: orchestration.plan",
+                      "fontSize": 9
+                    },
+                    "mJROs": {
+                      "content": "source: scheduler metadata",
+                      "fontSize": 10
+                    }
+                  }
+                },
+                {
+                  "id": "bQa5U",
+                  "type": "ref",
+                  "ref": "w4Rv3Q",
+                  "name": "Mobile Timeline Event 02 tool.result",
+                  "width": "fill_container",
+                  "height": 132,
+                  "descendants": {
+                    "Xr7aS": {
+                      "width": 58
+                    },
+                    "JxrKJ": {
+                      "width": 32,
+                      "height": 32,
+                      "cornerRadius": 16
+                    },
+                    "V3nRJ": {
+                      "content": "02",
+                      "fontSize": 12
+                    },
+                    "J5KW7": {
+                      "content": "10:42",
+                      "fontSize": 9
+                    },
+                    "uIIQ4": {
+                      "gap": 6
+                    },
+                    "c91vHV": {
+                      "layout": "horizontal",
+                      "alignItems": "center",
+                      "gap": 6,
+                      "justifyContent": "space_between"
+                    },
+                    "T3jfB": {
+                      "content": "tool.result",
+                      "fontSize": 9
+                    },
+                    "NmOK3": {
+                      "content": "completed",
+                      "fontSize": 10,
+                      "fill": "$accent-strong"
+                    },
+                    "bFPGz": {
+                      "content": "Capability returned diff metadata",
+                      "fontSize": 14
+                    },
+                    "l8KWZ": {
+                      "layout": "vertical",
+                      "alignItems": "start",
+                      "gap": 5
+                    },
+                    "DSIdG": {
+                      "content": "capability: document.patch",
+                      "fontSize": 9
+                    },
+                    "mJROs": {
+                      "content": "source: audit note label",
+                      "fontSize": 10
+                    }
+                  }
+                },
+                {
+                  "id": "qRk0c",
+                  "type": "ref",
+                  "ref": "w4Rv3Q",
+                  "name": "Mobile Timeline Event 03 boundary.label",
+                  "width": "fill_container",
+                  "height": 132,
+                  "descendants": {
+                    "Xr7aS": {
+                      "width": 58
+                    },
+                    "JxrKJ": {
+                      "width": 32,
+                      "height": 32,
+                      "cornerRadius": 16
+                    },
+                    "V3nRJ": {
+                      "content": "03",
+                      "fontSize": 12
+                    },
+                    "J5KW7": {
+                      "content": "10:43",
+                      "fontSize": 9
+                    },
+                    "uIIQ4": {
+                      "gap": 6
+                    },
+                    "c91vHV": {
+                      "layout": "horizontal",
+                      "alignItems": "center",
+                      "gap": 6,
+                      "justifyContent": "space_between"
+                    },
+                    "T3jfB": {
+                      "content": "boundary.label",
+                      "fontSize": 9
+                    },
+                    "NmOK3": {
+                      "content": "completed",
+                      "fontSize": 10,
+                      "fill": "$accent-strong"
+                    },
+                    "bFPGz": {
+                      "content": "External evidence marked untrusted",
+                      "fontSize": 14
+                    },
+                    "l8KWZ": {
+                      "layout": "vertical",
+                      "alignItems": "start",
+                      "gap": 5
+                    },
+                    "DSIdG": {
+                      "content": "capability: trust.boundary",
+                      "fontSize": 9
+                    },
+                    "mJROs": {
+                      "content": "source: evidence label only",
+                      "fontSize": 10
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "e9ItIL",
+              "name": "Timeline Mobile Older Events",
+              "width": "fill_container",
+              "fill": "$surface-muted",
+              "cornerRadius": "$radius-sm",
+              "padding": [
+                12,
+                14
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "z8mv8W",
+                  "name": "Mobile Older Events Label",
+                  "fill": "$ink-soft",
+                  "content": "34 older metadata events",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "A5LRX",
+                  "name": "Mobile Older Events Status",
+                  "fill": "$accent-strong",
+                  "content": "paginated",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "yEMJ0",
+      "x": 16020,
+      "y": 12770,
+      "name": "Agent Timeline/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$surface-app",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        36,
+        42
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "A9bhJ",
+          "name": "Timeline State Matrix Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 9,
+          "children": [
+            {
+              "type": "text",
+              "id": "F3n8xU",
+              "name": "Timeline State Matrix Eyebrow",
+              "fill": "$accent-strong",
+              "content": "AGENT TIMELINE STATES",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "dBcmB",
+              "name": "Timeline State Matrix Title",
+              "fill": "$ink",
+              "content": "Read-only history states",
+              "fontFamily": "$font-display",
+              "fontSize": 30,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "DLtuc",
+              "name": "Timeline State Matrix Subtitle",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Each state keeps the trust boundary explicit: timeline content is metadata only, and unavailable states never imply loaded history.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "JA2WH",
+          "name": "Timeline State Matrix Row One",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 18,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ViMqv",
+              "name": "Timeline State Loading",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": "$radius-md",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ZU2Dr",
+                  "name": "Timeline State Loading Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "E1SPC",
+                      "name": "Timeline State Loading Icon Surface",
+                      "width": 44,
+                      "height": 44,
+                      "fill": "$accent-soft",
+                      "cornerRadius": 14,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "qHOnQ",
+                          "name": "Timeline State Loading Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "loader-circle",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "PNhiq",
+                      "name": "Timeline State Loading State Tag",
+                      "fill": "$ink-faint",
+                      "content": "LOADING",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "a1c7nt",
+                  "name": "Timeline State Loading Title",
+                  "fill": "$ink",
+                  "content": "Loading timeline metadata",
+                  "fontFamily": "$font-display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "Wt7cn",
+                  "name": "Timeline State Loading Copy",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "The event list is waiting for the timeline API. Skeleton rows reserve space for sequence, status, time, capability, and provenance labels.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "qoPZw",
+                  "name": "Timeline State Loading Metadata Guardrail",
+                  "width": "fill_container",
+                  "fill": "$surface-muted",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "kDMBf",
+                      "name": "Timeline State Loading Guardrail Icon",
+                      "width": 15,
+                      "height": 15,
+                      "icon": "shield-check",
+                      "library": "lucide",
+                      "fill": "$accent-strong"
+                    },
+                    {
+                      "type": "text",
+                      "id": "NcoCp",
+                      "name": "Timeline State Loading Guardrail Text",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Shows metadata fields and source labels only.",
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HPg2H",
+              "name": "Timeline State Empty",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": "$radius-md",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AmEY0",
+                  "name": "Timeline State Empty Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ZXVQq",
+                      "name": "Timeline State Empty Icon Surface",
+                      "width": 44,
+                      "height": 44,
+                      "fill": "$surface-muted",
+                      "cornerRadius": 14,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "d0vLGs",
+                          "name": "Timeline State Empty Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "inbox",
+                          "library": "lucide",
+                          "fill": "$warning"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "olelI",
+                      "name": "Timeline State Empty State Tag",
+                      "fill": "$ink-faint",
+                      "content": "EMPTY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "evhNF",
+                  "name": "Timeline State Empty Title",
+                  "fill": "$ink",
+                  "content": "No events recorded",
+                  "fontFamily": "$font-display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "dyd9f",
+                  "name": "Timeline State Empty Copy",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "The task has a current identity and revision, but no timeline events have been written yet.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "bYU8V",
+                  "name": "Timeline State Empty Metadata Guardrail",
+                  "width": "fill_container",
+                  "fill": "$surface-muted",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "oe8jE",
+                      "name": "Timeline State Empty Guardrail Icon",
+                      "width": 15,
+                      "height": 15,
+                      "icon": "shield-check",
+                      "library": "lucide",
+                      "fill": "$accent-strong"
+                    },
+                    {
+                      "type": "text",
+                      "id": "beDXd",
+                      "name": "Timeline State Empty Guardrail Text",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Shows metadata fields and source labels only.",
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "TGC4F",
+          "name": "Timeline State Matrix Row Two",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 18,
+          "children": [
+            {
+              "id": "UE09r",
+              "type": "ref",
+              "ref": "wWIIl",
+              "name": "Timeline State Unavailable Retry",
+              "width": "fill_container",
+              "height": "fill_container",
+              "descendants": {
+                "b9syAz": {
+                  "content": "History unavailable"
+                },
+                "M1oGU": {
+                  "content": "The timeline service did not return history. The UI must state that no history was loaded and offer only a read-only retry."
+                },
+                "pVlFX": {
+                  "content": "Retry read only"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "WdkKW",
+              "name": "Timeline State Paginated Older Events",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": "$radius-md",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FidG8",
+                  "name": "Timeline State Paginated Older Events Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "lzeJ2",
+                      "name": "Timeline State Paginated Older Events Icon Surface",
+                      "width": 44,
+                      "height": 44,
+                      "fill": "$accent-soft",
+                      "cornerRadius": 14,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "ruuuz",
+                          "name": "Timeline State Paginated Older Events Icon",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "list-plus",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "bS5Bo",
+                      "name": "Timeline State Paginated Older Events State Tag",
+                      "fill": "$ink-faint",
+                      "content": "PAGINATED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "nJzYo",
+                  "name": "Timeline State Paginated Older Events Title",
+                  "fill": "$ink",
+                  "content": "Older events are paginated",
+                  "fontFamily": "$font-display",
+                  "fontSize": 22,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "oOw61",
+                  "name": "Timeline State Paginated Older Events Copy",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "The current view shows recent events 01-05 while clearly indicating that older metadata events require a read-only page request.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "CBMhr",
+                  "name": "Timeline State Paginated Older Events Metadata Guardrail",
+                  "width": "fill_container",
+                  "fill": "$surface-muted",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "HaKFH",
+                      "name": "Timeline State Paginated Older Events Guardrail Icon",
+                      "width": 15,
+                      "height": 15,
+                      "icon": "shield-check",
+                      "library": "lucide",
+                      "fill": "$accent-strong"
+                    },
+                    {
+                      "type": "text",
+                      "id": "AbPWo",
+                      "name": "Timeline State Paginated Older Events Guardrail Text",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Shows metadata fields and source labels only.",
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BaILv",
+                  "name": "Paginated State Count",
+                  "width": "fill_container",
+                  "fill": "$accent-soft",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pbGvI",
+                      "name": "Paginated State Count Label",
+                      "fill": "$accent-strong",
+                      "content": "Older events",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "mtWSR",
+                      "name": "Paginated State Count Value",
+                      "fill": "$accent-strong",
+                      "content": "33 metadata records",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：通过真实 Pencil CLI 与原子 safe-edit 包装器完成 Agent Task Timeline desktop/mobile/state-matrix 增量设计，新增只读 metadata/provenance 组件和批准导出；完整页面视觉基线与其余前端流程继续按设计计划推进。
+
 - 2026-08-30：项目学习与面试主文档增加服务边界、SQLC、Temporal Durable Approval、远程验证和 C++ 数据面证据速查与高频追问，明确区分已验证、默认关闭和规划能力。
 
 - 2026-08-30：Agent Runtime 在 active 启动链执行只读 profile 校验，Control、MCP Server、External MCP、Memory 或 subscription Shadow 任一开启都会在构造运行资源前停止；Shadow 运维路径保持可配置。

@@ -492,6 +492,7 @@
 - **处理门槛：** 新设计必须同时提交 canonical `.pen`、导出预览、`DESIGN-CHANGELOG.md` 条目和结构/视觉检查结果；未满足前不修改现有设计基线。
 - **本轮进展：** 已保留 `design/agent-task-timeline-v1-brief.md` 作为下一次小批次输入；使用 Pencil `0.3.5` 和受限模型重复尝试仍在超时窗口内未完成，未生成 Timeline frame 或导出图，safe-edit wrapper 验证 canonical 未被覆盖。
 - **本轮进展：** 新增 `design/export-manifest.json` 与设计门禁测试，持续校验现有批准导出资产存在且包含非空 PNG；该切片不宣称 Pencil CLI 增量执行已恢复，Agent Task Timeline F3/F4 仍等待稳定 CLI 结果。
+- **本轮进展：** Pencil `0.3.5` 已通过安全包装器完成 Agent Task Timeline 小批次：canonical `.pen` 原子替换，desktop/mobile/state matrix、四个可复用组件和 2x 导出均已归档，并通过结构门禁。该证据解决 CLI 增量执行与导出闭环；完整页面截图基线、未覆盖平台和其余 F2/F3 页面仍待推进。
 
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
