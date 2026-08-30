@@ -1466,3 +1466,6 @@
 
 - 2026-08-30：扩展 `remote-dev.sh bench` workload 白名单，支持选择 `bench_group.js`、隔离 `PHONE_PREFIX`、warm-up、激活等待和 hot-group 阈值；默认仍使用原有 `bench.js` 和默认参数，入口契约测试 `10/10` 通过。
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
+## Unreleased
+
+- **A7 Multipart cleanup fail-closed**：MinIO 未完成上传扫描错误现在会进入结构化报告并阻止清理命令成功返回，避免部分扫描被误判为完整生命周期证据。

@@ -64,6 +64,22 @@ func TestRunMultipartCleanupExecuteRecordsAbortFailure(t *testing.T) {
 	}
 }
 
+func TestRunMultipartCleanupFailsClosedOnListError(t *testing.T) {
+	now := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC)
+	client := &multipartClientStub{uploads: []minio.ObjectMultipartInfo{
+		{Err: errors.New("minio unavailable")},
+		{Key: "message-files/old.bin", UploadID: "old", Initiated: now.Add(-2 * time.Hour)},
+	}}
+
+	report := RunMultipartCleanup(context.Background(), client, "files", "message-files/", now.Add(-time.Hour), false)
+	if report.Complete || report.Failed != 1 || len(report.Errors) != 1 {
+		t.Fatalf("list failure must make report incomplete: %+v", report)
+	}
+	if report.Selected != 1 || report.Candidates[0].Status != "eligible" {
+		t.Fatalf("valid candidates should remain visible: %+v", report)
+	}
+}
+
 func TestNormalizePrefix(t *testing.T) {
 	if got := NormalizePrefix(" /message-files/ "); got != "message-files/" {
 		t.Fatalf("got %q", got)
