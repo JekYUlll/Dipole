@@ -220,11 +220,16 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
       });
     }
     if (directive.kind === "complete" && shouldCommitMemoryPromotion && promotionReceipt !== undefined) {
-      promotionCommit = await commitPreparedAgentMemoryPromotion({
-        receipt: promotionReceipt,
-        ...(input.admission?.requestId === undefined ? {} : { requestId: input.admission.requestId }),
-        ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
-      });
+      try {
+        promotionCommit = await commitPreparedAgentMemoryPromotion({
+          receipt: promotionReceipt,
+          ...(input.admission?.requestId === undefined ? {} : { requestId: input.admission.requestId }),
+          ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
+        });
+      } catch (error) {
+        state = transitionAgentTask(state, { type: "fail", message: activityFailureMessage(error) });
+        break;
+      }
     }
     state = applyDirective(state, directive, promotionReceipt, promotionCommit);
   }

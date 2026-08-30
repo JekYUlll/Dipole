@@ -118,4 +118,52 @@ describe.skipIf(!enabled)("Temporal Agent Memory promotion intent", () => {
     expect(new Set(committedReceipts)).toEqual(new Set([result.output!.promotionReceipt!.receiptSha256]));
     expect(result.output!.promotionCommit!.receiptSha256).toBe(result.output!.promotionReceipt!.receiptSha256);
   }, 120_000);
+
+  it("finishes the persistent Run as failed when receipt commit exhausts its retries", async () => {
+    const taskQueue = `dipole-agent-memory-promotion-commit-failure-${Date.now()}`;
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const finished: Array<{ runStatus: string; lastError: string }> = [];
+    const activities: AgentTaskWorkerActivities & Pick<AgentMemoryPromotionActivities, "commitPreparedAgentMemoryPromotion"> = {
+      ...foundationAgentTaskActivities,
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "RUN-COMMIT-FAIL-1", runStatus: "running" };
+      },
+      async executeAgentTaskStep() {
+        return { kind: "complete", output: { outcome: "would-commit" } };
+      },
+      async commitPreparedAgentMemoryPromotion() {
+        throw new Error("Core receipt commit remains unavailable");
+      },
+      async finishAgentTask(input) {
+        finished.push({ runStatus: input.runStatus, lastError: input.lastError });
+      }
+    };
+    const worker = await Worker.create({
+      connection: env.nativeConnection,
+      ...(env.namespace === undefined ? {} : { namespace: env.namespace }),
+      taskQueue,
+      workflowsPath: new URL("./agent-task-workflow.ts", import.meta.url).pathname,
+      activities
+    });
+    const result = await worker.runUntil(() => env.client.workflow.execute("agentTaskWorkflow", {
+      taskQueue,
+      workflowId: `dipole-agent-task/memory-promotion-commit-failure-${Date.now()}`,
+      args: [{
+        taskId: "TASK-MEM-COMMIT-FAIL", goal: "commit reviewed memory promotion",
+        memoryPromotion: {
+          tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-MEM-COMMIT-FAIL", runId: "RUN-COMMIT-FAIL-1",
+          candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1",
+          candidateMemoryType: "observational", targetMemoryType: "semantic", expiresAt, commit: true
+        },
+        admission: {
+          tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+          triggerType: "manual", triggerRef: "CAND-1", eventId: "EVENT-1"
+        }
+      }]
+    })) as { status: string; failure?: { message?: string } };
+
+    expect(result.status).toBe("failed");
+    expect(result.failure?.message).toContain("Core receipt commit remains unavailable");
+    expect(finished).toEqual([{ runStatus: "failed", lastError: "Core receipt commit remains unavailable" }]);
+  }, 120_000);
 });
