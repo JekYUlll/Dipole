@@ -121,6 +121,7 @@
 
 ## [Unreleased]
 
+- Remote GPU 管理员工作目录已重新同步到正式 `master` 提交 `27138a32`；当前主机仍有活动实验，未启动构建或服务。
 - Remote GPU 构建入口已完成一次安全阻断验证：同步成功后检测到 23 个登录用户和 5 个 GPU 任务，在构建前退出且无容器/镜像副作用；维护窗口开启后可直接重试。
 - Remote GPU 主机前置修复完成：`admin1` 已加入 Docker 组并安装 Compose v2，管理员工作流 preflight 通过；由于仍有活动实验，服务构建与启动继续由 fail-closed 保护阻止。
 - Remote GPU 管理员工作目录已成功切换到正式 `master` 提交 `b9035b66`；同步链路可用，Docker 权限与 Compose 插件前置现已修复，构建与启动继续等待活动实验释放。
