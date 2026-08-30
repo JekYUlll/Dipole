@@ -4,12 +4,13 @@ export type MultipartUploadOptions = {
   retryDelayMs?: number
   sleep?: (delayMs: number) => Promise<void>
   skipParts?: ReadonlySet<number>
+  signal?: AbortSignal
   onPartComplete?: (completedParts: number, totalParts: number) => void
   isPaused?: () => boolean
   waitUntilResumed?: () => Promise<void>
 }
 
-type UploadPart = (partNumber: number, chunk: Blob) => Promise<void>
+type UploadPart = (partNumber: number, chunk: Blob, signal?: AbortSignal) => Promise<void>
 
 export type PresignedPartFetch = (
   input: RequestInfo | URL,
@@ -47,10 +48,12 @@ export const uploadPresignedPart = async (
   url: string,
   chunk: Blob,
   fetchImpl: PresignedPartFetch = globalThis.fetch.bind(globalThis),
+  signal?: AbortSignal,
 ): Promise<string> => {
   const response = await fetchImpl(url, {
     method: 'PUT',
     body: chunk,
+    signal,
   })
   if (!response.ok) throw new PresignedPartUploadError(response.status)
   const etag = response.headers.get('ETag')?.trim()
@@ -63,12 +66,14 @@ export const uploadPresignedPartWithRefresh = async (
   chunk: Blob,
   refreshURL: () => Promise<string>,
   fetchImpl: PresignedPartFetch = globalThis.fetch.bind(globalThis),
+  signal?: AbortSignal,
 ): Promise<string> => {
   try {
-    return await uploadPresignedPart(url, chunk, fetchImpl)
+    return await uploadPresignedPart(url, chunk, fetchImpl, signal)
   } catch (error) {
     if (!(error instanceof PresignedPartUploadError) || ![401, 403].includes(error.status)) throw error
-    return uploadPresignedPart(await refreshURL(), chunk, fetchImpl)
+    if (signal?.aborted) throw signal.reason ?? createAbortError()
+    return uploadPresignedPart(await refreshURL(), chunk, fetchImpl, signal)
   }
 }
 
@@ -85,14 +90,17 @@ const uploadWithRetry = async (
   maxRetries: number,
   retryDelayMs: number,
   sleep: (delayMs: number) => Promise<void>,
+  signal?: AbortSignal,
 ) => {
   for (let attempt = 0; ; attempt += 1) {
+    throwIfAborted(signal)
     try {
-      await uploadPart(partNumber, chunk)
+      await uploadPart(partNumber, chunk, signal)
       return
     } catch (error) {
       if (attempt >= maxRetries) throw error
-      await sleep(retryDelayMs * 2 ** attempt)
+      throwIfAborted(signal)
+      await waitWithAbort(sleep(retryDelayMs * 2 ** attempt), signal)
     }
   }
 }
@@ -118,6 +126,7 @@ export const uploadMultipartParts = async (
   const retryDelayMs = Math.max(0, options.retryDelayMs ?? 250)
   const sleep = options.sleep ?? defaultSleep
   const skipParts = options.skipParts ?? new Set<number>()
+  throwIfAborted(options.signal)
   let nextPart = 1
   let completedParts = skipParts.size
   let stopped = false
@@ -129,7 +138,8 @@ export const uploadMultipartParts = async (
     while (!stopped) {
       if (options.isPaused?.()) {
         if (options.waitUntilResumed === undefined) throw new Error('paused multipart upload requires a resume handler')
-        await options.waitUntilResumed()
+        await waitWithAbort(options.waitUntilResumed(), options.signal)
+        throwIfAborted(options.signal)
         continue
       }
       const partNumber = nextPart++
@@ -140,7 +150,7 @@ export const uploadMultipartParts = async (
       const start = (partNumber - 1) * chunkSize
       const chunk = file.slice(start, Math.min(start + chunkSize, file.size))
       try {
-        await uploadWithRetry(partNumber, chunk, uploadPart, maxRetries, retryDelayMs, sleep)
+        await uploadWithRetry(partNumber, chunk, uploadPart, maxRetries, retryDelayMs, sleep, options.signal)
         completedParts += 1
         options.onPartComplete?.(completedParts, totalParts)
       } catch (error) {
@@ -153,4 +163,31 @@ export const uploadMultipartParts = async (
 
   await Promise.all(Array.from({ length: concurrency }, worker))
   if (firstError) throw firstError
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw signal.reason ?? createAbortError()
+}
+
+function createAbortError(): Error {
+  return typeof DOMException === 'function'
+    ? new DOMException('The operation was aborted', 'AbortError')
+    : new Error('The operation was aborted')
+}
+
+async function waitWithAbort<T>(pending: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return pending
+  throwIfAborted(signal)
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = () => signal.removeEventListener('abort', onAbort)
+    const onAbort = () => {
+      cleanup()
+      reject(signal.reason ?? createAbortError())
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+    pending.then(
+      (value) => { cleanup(); resolve(value) },
+      (error) => { cleanup(); reject(error) },
+    )
+  })
 }
