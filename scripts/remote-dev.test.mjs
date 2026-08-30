@@ -58,6 +58,12 @@ test("benchmark workload overrides are forwarded through an explicit allowlist",
   assert.ok(source.includes('bench_env+=(RUN_ID="\\$bench_run_id")'));
 });
 
+test("benchmark positional forwarding preserves empty optional values", () => {
+  assert.ok(source.includes('REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"'));
+  assert.ok(source.includes('local bench_scenario_filter="${BENCH_SCENARIO_FILTER:-$REMOTE_EMPTY_ARG}"'));
+  assert.ok(source.includes('[[ "\\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]]'));
+});
+
 test("candidate image builds are explicit and carry source provenance", () => {
   assert.match(source, /REMOTE_BUILD_CANDIDATE="\$\{DIPOLE_REMOTE_BUILD_CANDIDATE:-0\}"/);
   assert.match(source, /candidate_tag="dipole-server:c1-\\\$\(git rev-parse --short HEAD\)"/);
