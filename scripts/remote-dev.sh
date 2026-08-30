@@ -12,6 +12,11 @@ REMOTE_GOPROXY="${DIPOLE_REMOTE_GOPROXY:-}"
 REMOTE_NODE_ROOT="${DIPOLE_REMOTE_NODE_ROOT:-/home/admin1/.local/node-22.12.0}"
 REMOTE_K6_IMAGE="${DIPOLE_REMOTE_K6_IMAGE:-grafana/k6:0.57.0}"
 REMOTE_BUILD_CANDIDATE="${DIPOLE_REMOTE_BUILD_CANDIDATE:-0}"
+BENCH_SCENARIO_FILTER="${DIPOLE_BENCH_SCENARIO_FILTER:-}"
+BENCH_GROUP_MAX_DURATION="${DIPOLE_BENCH_GROUP_MAX_DURATION:-}"
+BENCH_USER_COUNT="${DIPOLE_BENCH_USER_COUNT:-}"
+BENCH_GROUP_SIZE="${DIPOLE_BENCH_GROUP_SIZE:-}"
+BENCH_RUN_ID="${DIPOLE_BENCH_RUN_ID:-}"
 
 usage() {
   cat <<'EOF'
@@ -20,6 +25,8 @@ Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|mul
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
   DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT, DIPOLE_REMOTE_BUILD_CANDIDATE.
+  Benchmark overrides: DIPOLE_BENCH_SCENARIO_FILTER, DIPOLE_BENCH_GROUP_MAX_DURATION,
+  DIPOLE_BENCH_USER_COUNT, DIPOLE_BENCH_GROUP_SIZE, DIPOLE_BENCH_RUN_ID.
   Set DIPOLE_REMOTE_ALLOW_ACTIVE=1 only during an explicitly approved window.
 EOF
 }
@@ -69,13 +76,19 @@ REMOTE_GUARD
 
 run_remote() {
   local action="$1"
-  remote "${REMOTE_K6_IMAGE}" "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" <<REMOTE_RUN
+  remote "${REMOTE_K6_IMAGE}" "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" \
+    "${BENCH_SCENARIO_FILTER}" "${BENCH_GROUP_MAX_DURATION}" "${BENCH_USER_COUNT}" "${BENCH_GROUP_SIZE}" "${BENCH_RUN_ID}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
 k6_image="\${3:-}"
 node_root="\${5:-}"
 go_root="\${6:-}"
 go_proxy="\${7:-}"
+bench_scenario_filter="\${8:-}"
+bench_group_max_duration="\${9:-}"
+bench_user_count="\${10:-}"
+bench_group_size="\${11:-}"
+bench_run_id="\${12:-}"
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
   export PATH="\$go_root/bin:\$PATH"
 fi
@@ -174,6 +187,11 @@ case "${action}" in
         PROCESS_METRICS_SERVICES="dipole-node1 dipole-node2 dipole-node3"
       )
     fi
+    [[ -n "\$bench_scenario_filter" ]] && bench_env+=(SCENARIO_FILTER="\$bench_scenario_filter")
+    [[ -n "\$bench_group_max_duration" ]] && bench_env+=(GROUP_MAX_DURATION="\$bench_group_max_duration")
+    [[ -n "\$bench_user_count" ]] && bench_env+=(USER_COUNT="\$bench_user_count")
+    [[ -n "\$bench_group_size" ]] && bench_env+=(GROUP_SIZE="\$bench_group_size")
+    [[ -n "\$bench_run_id" ]] && bench_env+=(RUN_ID="\$bench_run_id")
     if command -v k6 >/dev/null 2>&1; then
       env "\${bench_env[@]}" scripts/bench/run_bench.sh
     else
