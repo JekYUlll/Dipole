@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：修正远程开发脚本与并行资源政策不一致的问题：GPU 进程只进入资源快照和提示，不再阻断 CPU/容器型开发动作；活跃登录用户仍保持默认阻断。该放宽仅适用于开发阶段，确需 GPU 的 Agent/模型任务仍需单独声明设备、显存预算和冲突检查。
+
 - 2026-08-30：Remote GPU C1 benchmark 入口支持宿主 k6 缺失时使用固定 Dockerized k6，并自动注入 `dipole-c1` 候选端口；修复 SSH 空参数造成的镜像参数偏移和 k6 镜像 entrypoint 重复调用。工作流契约已通过，最终候选拓扑的完整 k6 基线仍需在该 revision 上采集。
 - 2026-08-30：Eino `v0.10.0-alpha.26` 已完成只读 API 评估；其 Session Timeline、Checkpoint/Resume 和 backgroundtask lease/CAS 可作为 adapter 参考，但与现有 Temporal durable execution 重叠，alpha 依赖继续禁止进入默认构建和 active authority。
 - 2026-08-30：跨标签页 Multipart 并发由浏览器 Web Locks 按文件 session 串行化；不支持该 API 的旧浏览器仍可上传，但缺少跨标签页互斥，需要后续兼容策略或最低浏览器版本门禁。
