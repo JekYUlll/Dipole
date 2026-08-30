@@ -1102,6 +1102,7 @@
 - **管理员 preflight 证据：** 2026-08-30 使用 `LAB113-OPS` 完成代码同步并复核资源；首次核验时 `admin1` 不在 `docker` 组，且主机未安装 Docker Compose CLI 插件，因此当时仅能完成代码同步，构建/Compose/压测继续 fail-closed。修复只需在维护窗口由管理员补充 Compose v2 插件并按最小范围授予 Docker 访问，再重新执行 preflight。
 - **前置修复证据：** 2026-08-30 按授权将 `admin1` 加入 `docker` 组，并安装 Ubuntu 24.04 `docker-compose-v2` 2.40.3；新登录会话 Docker daemon 可访问，`scripts/remote-dev.sh preflight` 已通过。活动用户/GPU 保护仍阻止构建与启动。
 - **远端测试阻塞证据：** 2026-08-30 `scripts/remote-dev.sh test` 已完成提交同步，但远端系统 Go 为 1.22.2，项目要求 Go 1.26.0；首次执行尝试联网下载工具链并因网络超时退出，复核使用 `GOTOOLCHAIN=local` 后确认版本不足。脚本现改为禁止隐式下载并快速报告版本缺口；升级 Go 1.26+ 前，远端 Go canonical 测试仍待执行。
+- **用户态工具链证据：** 2026-08-30 已将本机 Go 1.27.0 工具链同步至 Remote GPU `/home/admin1/.local/go-1.27.0`，验证 `go version` 为 `go1.27.0`；系统 Go 1.22.2 未修改。待用 `DIPOLE_REMOTE_GO_ROOT` 重新执行完整远端 canonical 测试。
 - **启动保护证据：** 2026-08-30 执行 `scripts/remote-dev.sh build`，代码同步成功后因 Remote GPU 观测到 `users=23`、`gpu_processes=5` 在构建前退出，未创建镜像或容器；保护逻辑有效。
 - **正式基线复核：** 2026-08-30 通过 `DIPOLE_REMOTE_BRANCH=master scripts/remote-dev.sh sync` 将管理员工作目录更新至 `27138a32`；只完成代码同步，活动用户/GPU 保护继续阻止构建与部署。
 - **正式基线同步证据：** 2026-08-30 已通过管理员 alias 将远端工作目录更新到 `master` 最新已同步提交；未启动容器，Docker 权限与 Compose 插件已就绪，Go 版本缺口和活动用户保护仍阻止完整测试/构建。
