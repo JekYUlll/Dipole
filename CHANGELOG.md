@@ -4,6 +4,7 @@
 - 2026-08-30：C3 性能基准支持 `DIPOLE_GO_BIN` 注入远端已安装的 Go toolchain，避免 `go run` 因自动下载 toolchain 超时而阻断同版本 C++/Go 对比；默认仍使用 PATH 中的 `go`。
 - 2026-08-30：Remote GPU 在存在 2 个 Python GPU 任务期间完成提交 `7eb11de7` 的容器 C++ benchmark 与 Go 对比，C++ builder CTest `14/14` 通过，C++/Go ratio `0.119227`，按阈值 `1.0` fail closed；报告归档到 `benchmarks/c3-cpp-projection-benchmark-2026-08-30/`，Go 继续作为 authority。
 - 2026-08-30：将 C3 Go 对照改为同一 `DeliveryEnvelope`/item projection 后，在 Remote GPU 完成 revision `8a87cc44` 的 10,000 次等价契约 workload；C++/Go ratio `0.247269`，C++ builder CTest `14/14` 通过但仍低于 `1.0` 门槛，报告归档到 `benchmarks/c3-cpp-projection-benchmark-2026-08-30-equivalent/`。
+- 2026-08-30：补充 C3 5 次稳定性采样，C++ 约 `30.76k-31.58k ops/s`、Go 约 `122.12k-125.59k ops/s`，ratio 稳定约 `0.25`；确认性能阻断来自稳定差距，不是单次抖动，采样说明归档在同一 benchmark 目录。
 
 - 2026-08-30：补充开发与远程资源工作流：Remote GPU 存在其他 GPU 任务时允许启动 CPU/容器型 Dipole 构建、Smoke 和压力测试；新增独立 Compose project、资源快照、GPU 显式申请和禁止触碰他人任务的边界。GPU 忙碌本身不再作为开发启动阻断条件。
 
