@@ -172,7 +172,7 @@ MCP Worker command dispatcher 的不可信输入面只包含 Task/Run/Invocation
 
 任务输出同时支持 Message 和 Artifact。报告、任务清单、事故分析和会话摘要保存为版本化 Artifact，元数据进入 MySQL，大对象进入 MinIO。
 
-G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、类型、版本和正文 SHA-256，正文限制 1 MiB，元数据限制 16 KiB。`dipole-agent` 只能为当前运行中的 Shadow Run 创建产物，Gateway 只能以 Task principal 读取；读取和精确重试都会验证对象大小与哈希。当前没有更新、删除、公开 URL、消息转换和 active 模式写入，Pencil 恢复后再交付用户界面。
+G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、类型、版本和正文 SHA-256，正文限制 1 MiB，元数据限制 16 KiB。`dipole-agent` 只能为当前运行中的 Shadow Run 创建产物，Gateway 只能以 Task principal 读取；读取和精确重试都会验证对象大小与哈希。默认关闭的 Gateway metadata seam 只返回 Artifact 身份、Task/Run、类型、版本、标题、媒体类型、摘要、大小和创建时间，并在返回前复核正文长度与 SHA-256；正文、对象键与 metadata JSON 仍不进入浏览器 API。当前没有更新、删除、公开 URL、下载、消息转换和 active 模式写入，Pencil 页面与正文披露策略等待独立契约。
 
 ## 7. 数据模型
 

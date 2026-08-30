@@ -75,7 +75,7 @@ design/
 
 ### F3：Agent Experience
 
-- Agent Workflow Repair proposal/evidence/approval、普通 Elicitation Form 与 Event Subscription owner 管理已完成 desktop、mobile 和状态契约设计；Elicitation Vue 已接入 authenticated Task query/input/cancel、来源披露、普通字段校验和 fail-closed 不可用状态，入口默认关闭。Agent approval Vue 已接入 authenticated Task query/decision、过期与 fail-closed 状态，入口由 `VITE_AGENT_APPROVAL_ENABLED` 默认关闭。Subscription owner list/revoke 已通过默认关闭的 Gateway HTTP 与 Vue 页面交付，并完成三浏览器路由验收。经过鉴权的 Agent Definition 目录已按 canonical desktop/mobile/state matrix 交付，页面严格只读、查询失败清空旧目录；认证读取流程已在 Chromium、Firefox、WebKit 通过，视觉基线继续只固定 Chromium。订阅创建继续独立复核 scope。Runtime 继续使用 `direct_target`。Agent Task Timeline v1 已完成 canonical desktop/mobile frame、State Matrix、批准导出和 Chromium 只读页面视觉基线；完整 memory、artifact、MCP continuation 与其余浏览器视觉回归继续按 AD-036 推进。
+- Agent Workflow Repair proposal/evidence/approval、普通 Elicitation Form 与 Event Subscription owner 管理已完成 desktop、mobile 和状态契约设计；Elicitation Vue 已接入 authenticated Task query/input/cancel、来源披露、普通字段校验和 fail-closed 不可用状态，入口默认关闭。Agent approval Vue 已接入 authenticated Task query/decision、过期与 fail-closed 状态，入口由 `VITE_AGENT_APPROVAL_ENABLED` 默认关闭。Subscription owner list/revoke 已通过默认关闭的 Gateway HTTP 与 Vue 页面交付，并完成三浏览器路由验收。经过鉴权的 Agent Definition 目录已按 canonical desktop/mobile/state matrix 交付，页面严格只读、查询失败清空旧目录；认证读取流程已在 Chromium、Firefox、WebKit 通过，视觉基线继续只固定 Chromium。订阅创建继续独立复核 scope。Runtime 继续使用 `direct_target`。Agent Task Timeline v1 已完成 canonical desktop/mobile frame、State Matrix、批准导出和 Chromium 只读页面视觉基线。Artifact 已具备默认关闭的 owner-scoped metadata API，但页面、正文/下载披露和 Task 关联入口尚未设计或实现；完整 memory、MCP continuation 与其余浏览器视觉回归继续按 AD-036 推进。
 - UI 状态与 Temporal AgentTask 状态机保持一一映射。
 - 写操作展示风险、影响对象、幂等状态和审计信息。
 

@@ -38,6 +38,7 @@ type Gateway struct {
 	AgentSubscriptionTenantID string `mapstructure:"agent_subscription_tenant_id"`
 	AgentMemoryEnabled        bool   `mapstructure:"agent_memory_enabled"`
 	AgentMemoryTenantID       string `mapstructure:"agent_memory_tenant_id"`
+	AgentArtifactEnabled      bool   `mapstructure:"agent_artifact_enabled"`
 	AgentMCPEnabled           bool   `mapstructure:"agent_mcp_enabled"`
 	AgentMCPTarget            string `mapstructure:"agent_mcp_target"`
 }
@@ -801,6 +802,7 @@ func GatewayConfig() Gateway {
 		AgentSubscriptionTenantID: strings.TrimSpace(cfg.GetString("gateway.agent_subscription_tenant_id")),
 		AgentMemoryEnabled:        cfg.GetBool("gateway.agent_memory_enabled"),
 		AgentMemoryTenantID:       strings.TrimSpace(cfg.GetString("gateway.agent_memory_tenant_id")),
+		AgentArtifactEnabled:      cfg.GetBool("gateway.agent_artifact_enabled"),
 		AgentMCPEnabled:           cfg.GetBool("gateway.agent_mcp_enabled"),
 		AgentMCPTarget:            strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
 	}

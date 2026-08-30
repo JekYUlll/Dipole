@@ -250,6 +250,16 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("initialize Agent Memory control client: %w", err)
 		}
 	}
+	var agentArtifacts *gateway.AgentArtifactClient
+	if gatewayCfg.AgentArtifactEnabled {
+		agentArtifacts, err = gateway.NewAgentArtifactClient(
+			agentv1.NewAgentCapabilityServiceClient(coreConn), time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent Artifact client: %w", err)
+		}
+	}
 	var presignedUploadProxy http.Handler
 	var presignedUploadBucket string
 	storageCfg := config.StorageConfig()
@@ -287,6 +297,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		AgentSubscriptions:     agentSubscriptions,
 		AgentDefinitions:       agentSubscriptions,
 		AgentMemories:          agentMemories,
+		AgentArtifacts:         agentArtifacts,
 		AgentMCP:               agentMCP,
 		TokenResolver:          coreauth.NewTokenService(),
 		Presence:               wsTransport.NewRedisPresenceTracker(presence),

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Gateway 新增默认关闭的 owner-scoped Artifact metadata 读取 seam，复用认证 Core gRPC 绑定 principal，并在 Gateway 校验正文长度与 SHA-256 后只返回身份、Task/Run、类型、版本、标题、媒体类型、摘要和大小；Artifact 正文、对象键与 metadata JSON 继续不暴露给浏览器，下载与 Web 页面等待独立契约。
+
 - 2026-08-30：Agent Definition Catalog 的认证读取流程已在 Chromium、Firefox、WebKit 三浏览器通过；视觉快照仍只以 Chromium 固定，未将该功能验收外推为 active Runtime、写 Capability 或共享环境证据。
 
 - 2026-08-30：新增默认关闭的 Agent Definition Catalog：Pencil canonical 设计包含 desktop/mobile/state matrix 与复用组件，Vue 页面通过 authenticated Gateway 查询精确 Definition version 和 scope，异常时清空旧目录；Chromium visual regression 固定只读边界。页面不提供 Runtime、激活、编辑或写 Capability 控制，学习与面试主文档同步增加能力卡片索引。

@@ -39,6 +39,7 @@ type Dependencies struct {
 	AgentSubscriptions     AgentSubscriptionControlApplication
 	AgentDefinitions       AgentDefinitionCatalogApplication
 	AgentMemories          AgentMemoryControlApplication
+	AgentArtifacts         AgentArtifactApplication
 	AgentMCP               AgentMCPApplication
 	TokenResolver          application.TokenResolver
 	Presence               wsTransport.PresenceTracker
@@ -142,6 +143,9 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		engine.POST("/api/v1/agent/memories/:memory_id/revoke", auth, agentMemoryRevokeHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/correct", auth, agentMemoryCorrectHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/promote", auth, agentMemoryCandidatePromoteHandler(dependencies.AgentMemories))
+	}
+	if dependencies.AgentArtifacts != nil {
+		engine.GET("/api/v1/agent/artifacts/:artifact_id", auth, agentArtifactGetHandler(dependencies.AgentArtifacts))
 	}
 	if dependencies.AgentMCP != nil {
 		if err := application.ValidateAgentMCPResource(application.AgentMCPResourceIdentifier(config.AuthConfig().AgentMCPResource)); err != nil {
