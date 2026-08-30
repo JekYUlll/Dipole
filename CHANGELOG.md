@@ -121,6 +121,8 @@
 
 ## [Unreleased]
 
+- Remote GPU 主机前置修复完成：`admin1` 已加入 Docker 组并安装 Compose v2，管理员工作流 preflight 通过；由于仍有活动实验，服务构建与启动继续由 fail-closed 保护阻止。
+- Remote GPU 管理员工作目录已成功切换到正式 `master` 提交 `b9035b66`；同步链路可用，Docker 权限与 Compose 插件前置现已修复，构建与启动继续等待活动实验释放。
 - Remote GPU 管理员工作流已验证 SSH、资源和代码同步；当前 `admin1` 无 Docker socket 访问且主机缺少 Compose v2 插件，preflight 会阻止构建/部署/压测，待维护窗口完成最小权限和插件修复。
 - Remote GPU 工作流默认切换为 SSH alias `LAB113-OPS` 的 `admin1` 账号和 `/home/admin1/workspaces/Dipole`，与实际可用的管理员连接配置一致；凭据仍不写入仓库。
 - preflight 现在区分 Docker Compose 插件缺失和 Compose 文件无效，Remote GPU 缺少 `docker compose` 时会以 `compose=plugin-missing` fail-closed；不会自动安装主机组件。
