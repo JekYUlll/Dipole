@@ -185,42 +185,43 @@ type InternalRPC struct {
 }
 
 type Storage struct {
-	Enabled                       bool   `mapstructure:"enabled"`
-	Provider                      string `mapstructure:"provider"`
-	Endpoint                      string `mapstructure:"endpoint"`
-	PresignEndpoint               string `mapstructure:"presign_endpoint"`
-	PresignedUploadProxyEnabled   bool   `mapstructure:"presigned_upload_proxy_enabled"`
-	MultipartPolicyVersion        string `mapstructure:"multipart_policy_version"`
-	MultipartMode                 string `mapstructure:"multipart_mode"`
-	MultipartRequireChecksum      bool   `mapstructure:"multipart_require_checksum"`
-	AccessKey                     string `mapstructure:"access_key"`
-	SecretKey                     string `mapstructure:"secret_key"`
-	UseSSL                        bool   `mapstructure:"use_ssl"`
-	Bucket                        string `mapstructure:"bucket"`
-	SearchArchiveBucket           string `mapstructure:"search_archive_bucket"`
-	SearchArchiveRetentionDays    int    `mapstructure:"search_archive_retention_days"`
-	MessageArchiveBucket          string `mapstructure:"message_archive_bucket"`
-	MessageArchiveRetentionDays   int    `mapstructure:"message_archive_retention_days"`
-	ArtifactEnabled               bool   `mapstructure:"artifact_enabled"`
-	ArtifactEndpoint              string `mapstructure:"artifact_endpoint"`
-	ArtifactAccessKey             string `mapstructure:"artifact_access_key"`
-	ArtifactSecretKey             string `mapstructure:"artifact_secret_key"`
-	ArtifactUseSSL                bool   `mapstructure:"artifact_use_ssl"`
-	ArtifactBucket                string `mapstructure:"artifact_bucket"`
-	ArtifactAuditAccessKey        string `mapstructure:"artifact_audit_access_key"`
-	ArtifactAuditSecretKey        string `mapstructure:"artifact_audit_secret_key"`
-	ArtifactMaintenanceAccessKey  string `mapstructure:"artifact_maintenance_access_key"`
-	ArtifactMaintenanceSecretKey  string `mapstructure:"artifact_maintenance_secret_key"`
-	PublicBaseURL                 string `mapstructure:"public_base_url"`
-	FileMaxSizeMB                 int64  `mapstructure:"file_max_size_mb"`
-	MultipartChunkSizeMB          int64  `mapstructure:"multipart_chunk_size_mb"`
-	MultipartSessionTTLMin        int    `mapstructure:"multipart_session_ttl_minutes"`
-	MultipartDirectThresholdMB    int64  `mapstructure:"multipart_direct_threshold_mb"`
-	MultipartMaxConcurrency       int    `mapstructure:"multipart_max_concurrency"`
-	MultipartMaxRetries           int    `mapstructure:"multipart_max_retries"`
-	MultipartRetryDelayMS         int    `mapstructure:"multipart_retry_delay_ms"`
-	MultipartPresignURLTTLSeconds int    `mapstructure:"multipart_presign_url_ttl_seconds"`
-	DownloadURLTTLMinutes         int    `mapstructure:"download_url_ttl_minutes"`
+	Enabled                            bool   `mapstructure:"enabled"`
+	Provider                           string `mapstructure:"provider"`
+	Endpoint                           string `mapstructure:"endpoint"`
+	PresignEndpoint                    string `mapstructure:"presign_endpoint"`
+	PresignedUploadProxyEnabled        bool   `mapstructure:"presigned_upload_proxy_enabled"`
+	PresignedUploadProxyTimeoutSeconds int    `mapstructure:"presigned_upload_proxy_timeout_seconds"`
+	MultipartPolicyVersion             string `mapstructure:"multipart_policy_version"`
+	MultipartMode                      string `mapstructure:"multipart_mode"`
+	MultipartRequireChecksum           bool   `mapstructure:"multipart_require_checksum"`
+	AccessKey                          string `mapstructure:"access_key"`
+	SecretKey                          string `mapstructure:"secret_key"`
+	UseSSL                             bool   `mapstructure:"use_ssl"`
+	Bucket                             string `mapstructure:"bucket"`
+	SearchArchiveBucket                string `mapstructure:"search_archive_bucket"`
+	SearchArchiveRetentionDays         int    `mapstructure:"search_archive_retention_days"`
+	MessageArchiveBucket               string `mapstructure:"message_archive_bucket"`
+	MessageArchiveRetentionDays        int    `mapstructure:"message_archive_retention_days"`
+	ArtifactEnabled                    bool   `mapstructure:"artifact_enabled"`
+	ArtifactEndpoint                   string `mapstructure:"artifact_endpoint"`
+	ArtifactAccessKey                  string `mapstructure:"artifact_access_key"`
+	ArtifactSecretKey                  string `mapstructure:"artifact_secret_key"`
+	ArtifactUseSSL                     bool   `mapstructure:"artifact_use_ssl"`
+	ArtifactBucket                     string `mapstructure:"artifact_bucket"`
+	ArtifactAuditAccessKey             string `mapstructure:"artifact_audit_access_key"`
+	ArtifactAuditSecretKey             string `mapstructure:"artifact_audit_secret_key"`
+	ArtifactMaintenanceAccessKey       string `mapstructure:"artifact_maintenance_access_key"`
+	ArtifactMaintenanceSecretKey       string `mapstructure:"artifact_maintenance_secret_key"`
+	PublicBaseURL                      string `mapstructure:"public_base_url"`
+	FileMaxSizeMB                      int64  `mapstructure:"file_max_size_mb"`
+	MultipartChunkSizeMB               int64  `mapstructure:"multipart_chunk_size_mb"`
+	MultipartSessionTTLMin             int    `mapstructure:"multipart_session_ttl_minutes"`
+	MultipartDirectThresholdMB         int64  `mapstructure:"multipart_direct_threshold_mb"`
+	MultipartMaxConcurrency            int    `mapstructure:"multipart_max_concurrency"`
+	MultipartMaxRetries                int    `mapstructure:"multipart_max_retries"`
+	MultipartRetryDelayMS              int    `mapstructure:"multipart_retry_delay_ms"`
+	MultipartPresignURLTTLSeconds      int    `mapstructure:"multipart_presign_url_ttl_seconds"`
+	DownloadURLTTLMinutes              int    `mapstructure:"download_url_ttl_minutes"`
 }
 
 type RateLimit struct {
@@ -472,6 +473,7 @@ func Load() error {
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
 		v.SetDefault("storage.presign_endpoint", "")
 		v.SetDefault("storage.presigned_upload_proxy_enabled", false)
+		v.SetDefault("storage.presigned_upload_proxy_timeout_seconds", 30)
 		v.SetDefault("storage.multipart_policy_version", "v1")
 		v.SetDefault("storage.multipart_mode", "relay")
 		v.SetDefault("storage.multipart_require_checksum", false)
@@ -662,6 +664,8 @@ func Load() error {
 			"storage.provider",
 			"storage.endpoint",
 			"storage.presign_endpoint",
+			"storage.presigned_upload_proxy_enabled",
+			"storage.presigned_upload_proxy_timeout_seconds",
 			"storage.multipart_policy_version",
 			"storage.multipart_mode",
 			"storage.access_key",
@@ -1070,6 +1074,8 @@ func StorageConfig() Storage {
 	storageConfig.Provider = cfg.GetString("storage.provider")
 	storageConfig.Endpoint = cfg.GetString("storage.endpoint")
 	storageConfig.PresignEndpoint = cfg.GetString("storage.presign_endpoint")
+	storageConfig.PresignedUploadProxyEnabled = cfg.GetBool("storage.presigned_upload_proxy_enabled")
+	storageConfig.PresignedUploadProxyTimeoutSeconds = cfg.GetInt("storage.presigned_upload_proxy_timeout_seconds")
 	storageConfig.MultipartPolicyVersion = cfg.GetString("storage.multipart_policy_version")
 	storageConfig.MultipartMode = cfg.GetString("storage.multipart_mode")
 	storageConfig.AccessKey = cfg.GetString("storage.access_key")
