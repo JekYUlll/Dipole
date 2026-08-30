@@ -413,7 +413,7 @@ docs/
 
 #### Eino 版本与能力采用策略
 
-- 当前基线：`Eino v0.9.15`、OpenAI 组件 `v0.1.13`、Ollama 组件 `v0.1.9`。
+- 当前基线：`Eino v0.9.17`、OpenAI 组件 `v0.1.13`、Ollama 组件 `v0.1.9`；alpha 评估结果见 `docs/architecture/EINO-V010-ALPHA-SPIKE.md`。
 - 近期优先：在配置支持多个模型后接入 `ModelRetryConfig` 与 `ModelFailoverConfig`，提高限流、超时和供应方故障下的回复成功率。
 - 中期评估：当客户端支持流式回复、取消生成或新消息抢占旧任务时，再以会话为粒度评估 `TurnLoop`。
 - 按需引入：`AgenticMessage` 适合需要供应方原生工具、缓存或 MCP 语义的模型；`DeepAgents` 适合复杂任务规划和子 Agent 委派。当前单聊助手继续使用 `ChatModelAgent + schema.Message`，保持链路简单。
