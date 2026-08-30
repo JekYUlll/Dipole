@@ -66,6 +66,7 @@
 | Receipt Commit Active Worker | **默认关闭** | 独立 `promotion_active` Worker 需同时通过 Runtime、mTLS、operator authority 与 Core/Runtime 双开关门禁 | [Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)；“为什么仍需要 Core grant？” |
 | Receipt Commit Drill Evidence | **已验证（本地）** | 将共享环境 commit、重试、grant 撤销与回滚演练压缩为低敏、可判定的 evidence record | [Worker drill 契约](../../contracts/agent-memory-promotion/v2/worker-drill-evidence.schema.json)、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)；“CLI 能否代替真实演练？” |
 | Receipt Commit Promotion Compose Gate | **已验证（本地）** | 受控渲染 active + promotion overlay，确认写入前的多重静态开关与 authority | `scripts/check-compose.sh`；“Compose 通过能证明写权限安全吗？” |
+| Receipt Commit mTLS RPC Drill | **已验证（隔离 Remote GPU）** | 用 Go fixture 与 TS generated client 验证跨语言 prepared receipt 的 mTLS 提交 | `scripts/drill-agent-memory-promotion-rpc.sh`；“fixture 能证明真实写入吗？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
@@ -133,6 +134,18 @@
 - **限制：** 未启动 Compose，未连接共享 Core/Kafka，未进行真实 grant 撤销、跨进程 mTLS 或回滚演练。
 - **下一步：** 在维护窗口部署隔离 Core 与 Temporal 后，以受控 candidate/review 验证首次提交、相同 receipt 重试、失效 grant 拒绝与 overlay 回滚。
 - **复核条件：** Node/Temporal SDK、receipt schema、Worker retry、Core RPC 或远程验证工作流变化时。
+
+#### 2026-08-30 · Receipt Commit mTLS RPC Drill
+
+- **状态：** 已验证（隔离 Remote GPU）
+- **简历句：** 为 Agent Memory receipt 建立 Go/TypeScript 跨语言 mTLS 演练，验证 Agent 身份、prepared receipt 的 protobuf 编码与低敏回包绑定。
+- **对外表述：** 通过临时 CA 和 loopback fixture，让 TypeScript generated client 实际调用 Go gRPC 服务；错误 secret 与错误证书会在服务端拒绝。
+- **演示：** 使用 Node 22 与显式 `DIPOLE_GO_BIN` 运行 `scripts/drill-agent-memory-promotion-rpc.sh`，确认 fixture 记录一次 authenticated receipt commit。
+- **证据：** `scripts/drill-agent-memory-promotion-rpc.sh`、`internal/bootstrap/agent_mcp_rpc_drill_fixture_test.go`、`services/agent-runtime/src/capabilities/agent-memory-promotion-rpc-drill.integration.test.ts`。
+- **追问：** “fixture 能证明真实 Memory 写入吗？” 它覆盖 TLS、服务身份、RPC 序列化和 client/server response binding；真实 Core 仍需从持久 Task/Run 恢复主体、复核 grant 与 candidate/review，再执行 MySQL 事务。
+- **限制：** 未启动 Docker、Temporal、Kafka 或 MySQL，且 fixture 不包含真实 Core application service。
+- **下一步：** 在维护窗口将相同 receipt 场景接入隔离 Core、Temporal 和持久 candidate/review，再归档撤销与回滚证据。
+- **复核条件：** 修改 protobuf、mTLS caller policy、receipt schema、TS client 或远端 Go toolchain 时。
 
 #### 2026-08-30 · Temporal Receipt Commit Retry
 

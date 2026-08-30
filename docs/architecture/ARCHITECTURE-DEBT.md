@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：新增 Agent Memory promotion 跨语言 mTLS RPC drill：Go loopback fixture 认证 `dipole-agent`、拒绝错误 secret/证书，TypeScript generated client 提交 prepared receipt 并复核低敏 response binding；脚本支持显式用户态 `DIPOLE_GO_BIN`，避免远端系统 Go 自动下载。该 fixture 不连接 Core 持久事务、Temporal、Kafka 或 grant，真实提交/撤销/回滚仍由 `AD-009` 跟踪。
 - 2026-08-30：Remote GPU 在隔离 Node 22 worktree 上通过 Agent Memory promotion profile、隔离 Temporal receipt retry 与 TypeScript typecheck；运行前后未启动 Dipole Compose 或 GPU workload。该开发期证据不覆盖跨进程 Core、Kafka、真实 grant、撤销或 rollback，`AD-009` 继续开放。
 - 2026-08-30：Agent Memory promotion Compose overlay 已加入正向渲染和缺失 operator authority 的负向门禁，明确 Core receipt commit 与 Agent `promotion_active` 需同时配置；该门禁只覆盖静态配置，真实 Core/Temporal/grant/replay/rollback 联合证据仍是 `AD-009` 的开放条件。
 - 2026-08-30：学习、简历与面试主文档已加入架构文档门禁，入口、核心章节与能力卡片模板字段可自动检查；技术事实仍需在每个合并切片以实现、测试、基准或运行证据人工复核，避免将模板通过误作能力验收。

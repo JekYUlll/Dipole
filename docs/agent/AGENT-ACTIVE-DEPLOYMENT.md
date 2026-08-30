@@ -77,6 +77,15 @@ npm run promotion:memory-worker-drill -- --evidence=/secure/path/worker-drill.js
 
 该 CLI 只接受同一候选的 revision、manifest/configuration/promotion-evidence 摘要、grant ID、Temporal queue、首个 commit、重试结果、失效 grant 拒绝和回滚结果。仅 `eligible` 表示记录完整；它不会访问上述系统或代替原始日志、监控快照和审批工单。
 
+提交共享环境前，可先运行隔离的跨语言 mTLS RPC drill：
+
+```bash
+DIPOLE_GO_BIN=/path/to/go-1.26-or-newer/bin/go \
+  scripts/drill-agent-memory-promotion-rpc.sh
+```
+
+该脚本使用临时 CA、loopback Go fixture 与 TypeScript generated gRPC client，验证 `dipole-agent` 身份、prepared receipt 编码和低敏 response binding。它不启动 Docker、Temporal、Kafka 或 MySQL，不读取 candidate/review 持久状态，也不会写入任何真实 Memory；结果只能作为 RPC 传输和 client/server 契约证据。
+
 ## 5. 渲染与启动
 
 在隔离 project 目录中准备 Secret 注入后，先进行无副作用渲染：
