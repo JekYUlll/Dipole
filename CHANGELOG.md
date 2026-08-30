@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：补充 Remote GPU C1 组件故障证据：独立三 broker Kafka consumer rebalance 在 member 退出后接管全部 6 个 partition 且 lag 恢复为 `0`；独立 Redis Sentinel 在 master 停止后约 4 秒完成切换，客户端读写、Pub/Sub、Presence、热群和限流状态恢复，旧 master 重新加入为 replica。Redis 探针镜像支持 `DIPOLE_REDIS_FAILOVER_PROBE_IMAGE`，避免远端固定镜像未缓存造成阻塞；候选业务拓扑的 Kafka/Redis 自动回切仍待验证。
+
 - 2026-08-30：完成 Remote GPU C1 单节点恢复演练：`dipole-node2` stop/start 后约 `505ms` 观察到不可用、约 `16.0s` 恢复健康，consumer group 稳定恢复为 `72` 个成员；恢复后 40/40 消息接受/持久化/投递，Kafka lag 为 `0`，PID 更换且 revision 未漂移。完整 evidence/report 已归档。
 
 - 2026-08-30：修复 C1 节点 recovery drill 的 Compose 相对路径解析，移除旧的 `--project-directory`，使 stop/start 故障证据与候选拓扑使用同一配置挂载语义；新增契约断言，生产 Compose 不受影响。

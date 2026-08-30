@@ -9,6 +9,7 @@ probe_binary=$(mktemp /tmp/dipole-redis-failover-probe.XXXXXX)
 probe_log=$(mktemp /tmp/dipole-redis-failover.XXXXXX.log)
 probe_container="${project}-probe"
 probe_pid=""
+probe_image="${DIPOLE_REDIS_FAILOVER_PROBE_IMAGE:-alpine:3.22}"
 
 cleanup() {
   local exit_code=$?
@@ -83,7 +84,7 @@ docker run --rm --name "$probe_container" \
   -e DIPOLE_PRESENCE_NODE_ID=gateway-failover-probe \
   -e DIPOLE_RATE_LIMIT_ENABLED=true \
   -e DIPOLE_RATE_LIMIT_LOGIN_LIMIT=1 \
-  alpine:3.21 \
+  "$probe_image" \
   /probe -test.run '^TestRedisSentinelFailoverPreservesRealtimeSemantics$' -test.v >"$probe_log" 2>&1 &
 probe_pid=$!
 
