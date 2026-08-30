@@ -16,13 +16,15 @@ const (
 	AgentCapabilityDirectMessagesRead = "message.direct.read"
 	AgentCapabilityConversationsList  = "conversation.list"
 	AgentCapabilityConversationRead   = "conversation.read"
+	AgentCapabilityConversationSearch = "conversation.search"
 	AgentCapabilityAssistantReplySend = "message.assistant_reply.send"
 	AgentCapabilitySystemMessageSend  = "message.system.send"
 
-	AgentPermissionUserProfileRead  = "user.profile.read"
-	AgentPermissionConversationList = "conversation.list"
-	AgentPermissionConversationRead = "conversation.read"
-	AgentPermissionMessageWrite     = "message.write"
+	AgentPermissionUserProfileRead    = "user.profile.read"
+	AgentPermissionConversationList   = "conversation.list"
+	AgentPermissionConversationRead   = "conversation.read"
+	AgentPermissionConversationSearch = "conversation.search"
+	AgentPermissionMessageWrite       = "message.write"
 
 	AgentResourceTypeUser         = "user"
 	AgentResourceTypeConversation = "conversation"
@@ -103,6 +105,9 @@ var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	},
 	AgentCapabilityConversationRead: {
 		ID: AgentCapabilityConversationRead, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionConversationRead,
+	},
+	AgentCapabilityConversationSearch: {
+		ID: AgentCapabilityConversationSearch, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionConversationSearch,
 	},
 	AgentCapabilityAssistantReplySend: {
 		ID: AgentCapabilityAssistantReplySend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,

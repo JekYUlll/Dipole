@@ -536,4 +536,4 @@ docs/
 - 后续检索通过 Core 的 `AgentCapability` surface 调解：RPC caller 必须是 `dipole-agent` 且公开 request 不含 principal；Core 从权威 Task/Run 恢复 principal、tenant、runtime mode、permission 与 resource scope 后才允许查询。
 - 新 capability 固定为 `conversation.search`，要求独立 permission 与 `conversation/*/read` scope。query、页大小、返回条数、单条正文和总正文均须有硬上限；空 query、超限、scope 漂移、Task/Run 不匹配和 Search 不可用一律 fail closed。
 - Search 结果只以不可执行的 `trust=untrusted` evidence fragment 进入 Context Compiler，记录 Search document 的 message ID、conversation key、sequence、revision 与 query provenance；不得把命中内容提升为 policy、identity、task 或 memory，也不得将原始 Elasticsearch hit、索引名、内部 ID 或请求凭据写入 Task/Run 审计。
-- 首个切片只交付 Core/Proto/TypeScript 契约和 deterministic test。生产 Elasticsearch 连接、默认 Runtime 启用、跨会话全局检索、向量检索及任何 write capability 均保持关闭，待 owner-reviewed evidence 后单独灰度。
+- 首个切片已交付 Core/Proto/TypeScript 契约和 deterministic test，且默认 composition 不注入 Search port、Runtime 不注册该 capability。生产 Elasticsearch 连接、跨会话全局检索灰度、向量检索、Context Compiler retrieval orchestration 及任何 write capability 均保持关闭，待 owner-reviewed evidence 后单独灰度。

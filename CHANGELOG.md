@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：新增默认关闭的 Agent `conversation.search` 契约。Core Agent Capability 从 Task/Run 恢复身份后，经可注入 Search port 查询，要求独立 permission 与 `conversation/*/read` scope；RPC/TS 双端拒绝客户端 principal、超限输入和冲突 evidence，并限制 query、结果数及正文。默认 composition 未注入 Search port，生产 Elasticsearch 与 Runtime 注册继续关闭。
+
 - 2026-08-31：恢复蓝色双极 SVG 品牌体系。README 和文档入口重新采用更高识别度的成对信号标记、冷色画布与深蓝字色；历史单色 PNG 继续弃用。本项只影响品牌呈现。
 
 - 2026-08-30：固定 Agent 检索 Context 的安全契约：Runtime 不直连 Search，后续由 Core 以 Task/Run 恢复的身份、permission 与 scope 调解查询；命中只能作为有界 `untrusted` evidence 进入 Context Compiler。生产 Elasticsearch、默认 Runtime 和跨会话检索继续关闭。

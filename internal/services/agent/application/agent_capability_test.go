@@ -3,6 +3,7 @@ package agentapplication
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/JekYUlll/Dipole/internal/application"
@@ -64,6 +65,19 @@ func (s *agentCapabilityMessagesStub) ListGroupMessages(_ string, target string,
 type agentCapabilityConversationsStub struct {
 	items []*model.Conversation
 	found *model.Conversation
+}
+
+type agentCapabilitySearchStub struct {
+	principal string
+	query     string
+	limit     int
+	documents []*model.MessageSearchDocument
+	err       error
+}
+
+func (s *agentCapabilitySearchStub) Search(principal, query string, limit int) ([]*model.MessageSearchDocument, error) {
+	s.principal, s.query, s.limit = principal, query, limit
+	return s.documents, s.err
 }
 
 func (s *agentCapabilityConversationsStub) ListForAgent(string, int) ([]*model.Conversation, error) {
@@ -191,6 +205,45 @@ func TestLocalAgentCapabilityV1EnforcesResourceScope(t *testing.T) {
 	}
 	if messages.groupTarget != "" {
 		t.Fatalf("out-of-scope read reached Message Application: %q", messages.groupTarget)
+	}
+}
+
+func TestLocalAgentCapabilityV1SearchesThroughPrincipalBoundPort(t *testing.T) {
+	t.Parallel()
+
+	search := &agentCapabilitySearchStub{documents: []*model.MessageSearchDocument{
+		{MessageUUID: "M1", ConversationKey: "group:G1", MessageSeq: 9, Revision: 1, SenderUUID: "U200", MessageType: model.MessageTypeText, Content: strings.Repeat("x", agentSearchContentMaxRunes+1)},
+	}}
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{}, search)
+	if err != nil {
+		t.Fatalf("new Agent Capability: %v", err)
+	}
+	invocation := agentCapabilityTestInvocation()
+	invocation.Permissions = append(invocation.Permissions, application.AgentPermissionConversationSearch)
+	items, err := capability.SearchConversations(context.Background(), invocation, "migration", 20)
+	if err != nil || search.principal != "U100" || search.query != "migration" || search.limit != 20 || len(items) != 1 {
+		t.Fatalf("search binding: items=%+v search=%+v err=%v", items, search, err)
+	}
+	if len([]rune(items[0].Content)) != agentSearchContentMaxRunes || len(items[0].QuerySHA256) != 64 {
+		t.Fatalf("search evidence was not bounded: %+v", items[0])
+	}
+}
+
+func TestLocalAgentCapabilityV1SearchFailsClosedWithoutWildcardScopeOrPort(t *testing.T) {
+	t.Parallel()
+
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
+	if err != nil {
+		t.Fatalf("new Agent Capability: %v", err)
+	}
+	invocation := agentCapabilityTestInvocation()
+	invocation.Permissions = append(invocation.Permissions, application.AgentPermissionConversationSearch)
+	if _, err := capability.SearchConversations(context.Background(), invocation, "migration", 20); !errors.Is(err, application.ErrAgentCapabilityUnavailable) {
+		t.Fatalf("expected unavailable Search port, got %v", err)
+	}
+	invocation.ResourceScopes = []application.AgentResourceScopeV1{{ResourceType: application.AgentResourceTypeConversation, ResourceID: "group:G1", Actions: []string{application.AgentResourceActionRead}}}
+	if _, err := capability.SearchConversations(context.Background(), invocation, "migration", 20); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected narrow scope denial, got %v", err)
 	}
 }
 

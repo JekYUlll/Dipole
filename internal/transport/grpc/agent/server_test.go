@@ -349,6 +349,14 @@ func (s *capabilityStub) ReadConversation(_ context.Context, invocation applicat
 	}, nil
 }
 
+func (s *capabilityStub) SearchConversations(_ context.Context, invocation application.AgentInvocationV1, query string, limit int) ([]*application.AgentConversationSearchEvidenceV1, error) {
+	s.invocation = invocation
+	return []*application.AgentConversationSearchEvidenceV1{{
+		MessageUUID: "M1", ConversationKey: "group:G1", MessageSeq: uint64(limit), Revision: 1,
+		SenderUUID: "U200", MessageType: model.MessageTypeText, Content: query, SentAt: time.UnixMilli(1_000), QuerySHA256: strings.Repeat("a", 64),
+	}}, nil
+}
+
 func TestListConversationsResolvesTrustedTaskIdentity(t *testing.T) {
 	capability := &capabilityStub{}
 	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
@@ -400,6 +408,37 @@ func TestReadConversationRejectsClientPrincipal(t *testing.T) {
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+}
+
+func TestSearchConversationsResolvesTrustedTaskIdentityAndMapsEvidence(t *testing.T) {
+	capability := &capabilityStub{}
+	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "migration", Limit: 20,
+	})
+	if err != nil || capability.invocation.PrincipalUUID != "U100" || len(response.GetEvidence()) != 1 ||
+		response.GetEvidence()[0].GetMessageSeq() != 20 || response.GetEvidence()[0].GetContent() != "migration" {
+		t.Fatalf("unexpected trusted search response: invocation=%+v response=%+v err=%v", capability.invocation, response, err)
+	}
+}
+
+func TestSearchConversationsRejectsClientPrincipalAndInvalidBounds(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	_, err := server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "migration", Limit: 20,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+	_, err = server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "", Limit: 21,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("invalid bounds code = %s, want %s", status.Code(err), codes.InvalidArgument)
 	}
 }
 

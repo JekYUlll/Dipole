@@ -1837,6 +1837,52 @@ func (s *Server) ReadConversation(ctx context.Context, request *agentv1.ReadConv
 	return response, nil
 }
 
+func (s *Server) SearchConversations(ctx context.Context, request *agentv1.SearchConversationsRequest) (*agentv1.SearchConversationsResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	query := strings.TrimSpace(request.GetQuery())
+	limit := int(request.GetLimit())
+	if query == "" || len([]rune(query)) > 256 || limit < 1 || limit > 20 {
+		return nil, status.Error(codes.InvalidArgument, "Agent conversation search request is invalid")
+	}
+	invocation, err := s.resolver.Resolve(ctx, request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task policy denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task policy lookup failed")
+	}
+	items, err := s.capability.SearchConversations(ctx, invocation, query, limit)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentCapabilityDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Capability denied")
+		}
+		if errors.Is(err, application.ErrAgentCapabilityUnavailable) {
+			return nil, status.Error(codes.Unavailable, "Agent conversation search is unavailable")
+		}
+		return nil, status.Error(codes.Internal, "Agent conversation search failed")
+	}
+	response := &agentv1.SearchConversationsResponse{Evidence: make([]*agentv1.ConversationSearchEvidence, 0, len(items))}
+	for _, item := range items {
+		if item != nil {
+			response.Evidence = append(response.Evidence, conversationSearchEvidenceToProto(item))
+		}
+	}
+	return response, nil
+}
+
+func conversationSearchEvidenceToProto(item *application.AgentConversationSearchEvidenceV1) *agentv1.ConversationSearchEvidence {
+	return &agentv1.ConversationSearchEvidence{
+		MessageId: item.MessageUUID, ConversationKey: item.ConversationKey, MessageSeq: item.MessageSeq,
+		Revision: item.Revision, SenderId: item.SenderUUID, MessageType: int32(item.MessageType),
+		Content: item.Content, SentAtUnixMs: item.SentAt.UnixMilli(), QuerySha256: item.QuerySHA256,
+	}
+}
+
 func conversationToProto(item *model.Conversation) *agentv1.ConversationSnapshot {
 	return &agentv1.ConversationSnapshot{
 		ConversationKey: item.ConversationKey, TargetId: item.TargetUUID, TargetType: int32(item.TargetType),

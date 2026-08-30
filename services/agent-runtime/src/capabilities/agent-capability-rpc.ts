@@ -2,7 +2,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
-import type { AppendAgentTaskTimelineEventResponse, ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
+import type { AppendAgentTaskTimelineEventResponse, ConversationSearchEvidence, ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
 import type { Message as AgentMessage } from "../generated/dipole/message/v1/message.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
@@ -138,6 +138,18 @@ export interface ConversationReadResult {
   readonly targetId: string;
   readonly targetType: number;
   readonly messages: readonly AgentMessage[];
+}
+
+export interface ConversationSearchEvidenceResult {
+  readonly messageId: string;
+  readonly conversationKey: string;
+  readonly messageSeq: string;
+  readonly revision: string;
+  readonly senderId: string;
+  readonly messageType: number;
+  readonly content: string;
+  readonly sentAtUnixMs: string;
+  readonly querySha256: string;
 }
 
 export interface AgentTaskControlAuthorization {
@@ -600,6 +612,51 @@ export class AgentCapabilityRPCClient {
           targetType: response.targetType,
           messages: response.messages
         });
+      });
+    });
+  }
+
+  async searchConversations(context: ExecutionContext, query: string, limit: number): Promise<readonly ConversationSearchEvidenceResult[]> {
+    const normalizedQuery = query.trim();
+    const hasSearchPermission = context.permissions.includes("conversation.search");
+    const hasWildcardReadScope = context.resourceScopes.some((scope) =>
+      scope.resourceType === "conversation" && scope.resourceId === "*" && scope.actions.includes("read")
+    );
+    if (!normalizedQuery || Array.from(normalizedQuery).length > 256 || !Number.isInteger(limit) || limit < 1 || limit > 20 ||
+        !hasSearchPermission || !hasWildcardReadScope) {
+      throw new Error("Agent conversation search request is invalid");
+    }
+    const querySha256 = createHash("sha256").update(normalizedQuery, "utf8").digest("hex");
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.searchConversations({
+        context: this.requestContext(context.requestId, context.traceId), taskId: context.taskId, runId: context.runId,
+        query: normalizedQuery, limit
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent conversation search returned no response"));
+          return;
+        }
+        if (response.evidence.length > limit) {
+          reject(new Error("Agent conversation search returned too many results"));
+          return;
+        }
+        const results: ConversationSearchEvidenceResult[] = [];
+        for (const item of response.evidence as ConversationSearchEvidence[]) {
+          const contentLength = Array.from(item.content).length;
+          if (!validBoundedIdentifier(item.messageId, 128) || !validBoundedIdentifier(item.conversationKey, 256) ||
+              item.messageSeq < 1n || item.revision < 1n || !validBoundedIdentifier(item.senderId, 128) ||
+              !Number.isInteger(item.messageType) || contentLength > 2_000 || item.sentAtUnixMs < 0n || item.querySha256 !== querySha256) {
+            reject(new Error("Agent conversation search returned invalid evidence"));
+            return;
+          }
+          results.push({
+            messageId: item.messageId, conversationKey: item.conversationKey, messageSeq: item.messageSeq.toString(),
+            revision: item.revision.toString(), senderId: item.senderId, messageType: item.messageType,
+            content: item.content, sentAtUnixMs: item.sentAtUnixMs.toString(), querySha256: item.querySha256
+          });
+        }
+        resolve(results);
       });
     });
   }

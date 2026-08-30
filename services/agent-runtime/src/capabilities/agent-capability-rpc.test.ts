@@ -118,6 +118,28 @@ describe("AgentCapabilityRPCClient", () => {
     await expect(client.readConversation(context, "direct:U100:U200", 1)).rejects.toThrow("too many messages");
   });
 
+  it("binds search to Task/Run context and rejects conflicting evidence", async () => {
+    const searchConversations = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", query: "migration", limit: 10 });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { evidence: [{
+        messageId: "M1", conversationKey: "group:G1", messageSeq: 9n, revision: 1n, senderId: "U200", messageType: 1,
+        content: "migration evidence", sentAtUnixMs: 1_000n,
+        querySha256: createHash("sha256").update("migration", "utf8").digest("hex")
+      }] });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ searchConversations } as unknown as IAgentCapabilityServiceClient, "secret");
+    const context = conversationReadContext({ permissions: ["conversation.search"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read"] }] });
+    await expect(client.searchConversations(context, "migration", 10)).resolves.toEqual([{
+      messageId: "M1", conversationKey: "group:G1", messageSeq: "9", revision: "1", senderId: "U200", messageType: 1,
+      content: "migration evidence", sentAtUnixMs: "1000", querySha256: createHash("sha256").update("migration", "utf8").digest("hex")
+    }]);
+
+    await expect(client.searchConversations(conversationReadContext(), "migration", 10)).rejects.toThrow("request is invalid");
+  });
+
   it("accepts only ordered timeline events bound to the requested task", async () => {
     const listAgentTaskTimeline = vi.fn((_input, _metadata, _options, callback) => {
       callback(null, {

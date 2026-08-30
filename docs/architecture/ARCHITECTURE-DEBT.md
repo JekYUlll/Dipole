@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：`conversation.search` 已完成 Core/Proto/TS 契约，严格从 Task/Run 恢复 principal，独立检查 permission 与 wildcard read scope，并将 query、结果和正文限制为有界 `untrusted` evidence。默认 composition 不注入 Search port，Runtime 未注册该 capability；生产 Elasticsearch、跨会话灰度与 Context Compiler retrieval orchestration 继续关闭。
+
 - 2026-08-30：固定 Agent 检索 Context 的 fail-closed 边界。`dipole-agent` 不获得 Search 直连身份；后续由 Core Agent Capability 从 Task/Run 恢复 principal、permission 和 scope 后调用检索，结果只能进入有界 `untrusted` evidence。Core/Proto/TS 契约尚待实现，生产 Elasticsearch、默认启用和跨会话检索继续关闭。
 
 - 2026-08-30：平台计划已按当前实现证据重写汇总状态：Context Compiler 已具备 v1/v2 预算、可信度、会话 evidence、Memory、Capability descriptor 和 route tokenizer，完整检索编排与生产灰度继续开放；F2 只剩 Settings，F3 只剩 MCP 多轮/敏感授权/产品编排及未覆盖视觉回归。该项不改变默认关闭的 Runtime 或共享环境证据边界。
