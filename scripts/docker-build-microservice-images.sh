@@ -20,7 +20,7 @@ dirty=false
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   dirty=true
 fi
-context_dir="${ROOT_DIR}/dist"
+context_dir="${root_dir}/dist"
 
 declare -a services=(
   "migrate:dipole-migrate"
