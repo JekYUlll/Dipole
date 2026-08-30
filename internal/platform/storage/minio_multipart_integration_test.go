@@ -120,12 +120,26 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 	if !errors.Is(err, errMultipartClientInterrupted) {
 		t.Fatalf("interrupted part error=%v, want %v", err, errMultipartClientInterrupted)
 	}
-	if _, err := uploader.UploadMultipartPart(ctx, interruptedUpload.ObjectKey, interruptedUpload.UploadID, 1,
-		bytes.NewReader(interruptedPart), int64(len(interruptedPart))); err != nil {
+	retriedPart, err := uploader.UploadMultipartPart(ctx, interruptedUpload.ObjectKey, interruptedUpload.UploadID, 1,
+		bytes.NewReader(interruptedPart), int64(len(interruptedPart)))
+	if err != nil {
 		t.Fatalf("retry interrupted part: %v", err)
 	}
-	if err := uploader.AbortMultipartUpload(ctx, interruptedUpload.ObjectKey, interruptedUpload.UploadID); err != nil {
-		t.Fatalf("abort resumed interrupted upload: %v", err)
+	if _, err := uploader.core.CompleteMultipartUpload(ctx, bucket, interruptedUpload.ObjectKey, interruptedUpload.UploadID,
+		[]minio.CompletePart{{PartNumber: 1, ETag: retriedPart.ETag}}, minio.PutObjectOptions{}); err != nil {
+		t.Fatalf("complete resumed interrupted upload: %v", err)
+	}
+	resumedReader, err := client.GetObject(ctx, bucket, interruptedUpload.ObjectKey, minio.GetObjectOptions{})
+	if err != nil {
+		t.Fatalf("open resumed object: %v", err)
+	}
+	defer resumedReader.Close()
+	resumedContent, err := io.ReadAll(resumedReader)
+	if err != nil {
+		t.Fatalf("read resumed object: %v", err)
+	}
+	if !bytes.Equal(resumedContent, interruptedPart) {
+		t.Fatalf("resumed content length=%d, want %d", len(resumedContent), len(interruptedPart))
 	}
 }
 

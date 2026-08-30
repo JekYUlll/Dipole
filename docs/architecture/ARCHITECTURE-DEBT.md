@@ -1226,3 +1226,4 @@
 - 2026-08-30：Remote GPU Multipart restart smoke 已在 `10cccdd3`、Go `1.27.0` 下通过，确认持久卷可跨 MinIO 重启恢复分片并完成对象；客户端中断、预签名默认切流和跨存储故障矩阵仍未关闭。
 - 2026-08-30：Remote GPU 对 `master` 提交 `bd7283d1` 完成远程 canonical 验证：Go 全量测试、服务布局与架构文档门禁通过；Agent Runtime `125` 个测试文件/`665` 个测试通过并完成 typecheck/build，Frontend `29` 个测试文件/`114` 个测试通过并完成 typecheck/Vite build。该证据覆盖 CPU/Node 验证和远程降载路径，未启动业务 Compose；Node `22.12.0` 与部分依赖声明的 `22.22.2+` engine 警告仍应在后续工具链升级中收敛。
 - 2026-08-30：真实 MinIO Multipart 集成契约新增客户端上传流中断后同 part 重试覆盖；中断尝试返回受控错误，重试可复用 upload session，且失败尝试未进入完成结果。完整浏览器断网、过期会话、网关限流和跨存储故障矩阵仍待 Remote GPU 验证。
+- 2026-08-30：真实 MinIO Multipart 集成契约进一步覆盖中断流同 part 重试后的 Complete 与对象内容校验；失败尝试未进入最终对象，客户端断网、过期会话、网关限流和跨存储故障矩阵仍待 Remote GPU 验证。

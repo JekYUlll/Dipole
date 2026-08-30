@@ -377,7 +377,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 建立 `contracts/multipart-upload/v1` 策略契约、默认策略和 SHA-256 绑定的 release manifest；当前默认 `relay`，`presigned` 仅作为候选模式，契约校验保留旧路径回切要求。
 - [ ] 用真实 MinIO 集成测试覆盖大文件、多 part、重复 part、乱序 part、断网重试、过期会话、Abort、Complete 幂等、权限越界和服务重启恢复；补齐网关限流与代理超时验证。
   - [x] 可选真实 MinIO 代理 smoke 已覆盖一分片 UploadPart、S3 Host 签名、ETag、Complete 和对象内容核验，并自动清理测试对象；完整故障矩阵仍待完成。
-  - [x] 真实 MinIO 集成契约增加上传流中断后复用同一 part 编号重试的覆盖；该测试验证中断错误不污染完成结果，完整浏览器断网、过期会话和网关限流矩阵仍待完成。
+  - [x] 真实 MinIO 集成契约增加上传流中断后复用同一 part 编号重试、Complete 和对象内容校验；该测试验证中断错误不污染最终对象，完整浏览器断网、过期会话和网关限流矩阵仍待完成。
 
 **验收：** 预签名直传在授权范围内完成 Multipart；暂停/恢复、重试、校验和清理可观测；MinIO 故障和客户端中断均能安全回滚到旧路径，未完成 upload 不长期占用对象存储。
 
