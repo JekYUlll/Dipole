@@ -19,6 +19,7 @@ docs/architecture/MESSAGE-STORAGE-AND-SYNC.md
 docs/architecture/MESSAGE-SYNC-STRATEGY.md
 docs/data/CACHE-STRATEGY.md
 docs/operations/TLS-SETUP.md
+docs/operations/DEVELOPMENT-WORKFLOW.md
 docs/operations/TODO.md
 docs/operations/MULTIPART-CLEANUP.md
 docs/performance/LOAD-TEST-REPORT.md
