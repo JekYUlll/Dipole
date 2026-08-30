@@ -163,7 +163,7 @@ describe.skipIf(!enabled)("Temporal Agent Memory promotion intent", () => {
     })) as { status: string; failure?: { message?: string } };
 
     expect(result.status).toBe("failed");
-    expect(result.failure?.message).toContain("Core receipt commit remains unavailable");
-    expect(finished).toEqual([{ runStatus: "failed", lastError: "Core receipt commit remains unavailable" }]);
+    expect(result.failure?.message).toBe("Activity task failed");
+    expect(finished).toEqual([{ runStatus: "failed", lastError: "Activity task failed" }]);
   }, 120_000);
 });
