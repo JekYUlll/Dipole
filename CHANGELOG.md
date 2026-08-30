@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Agent active Compose overlay 现要求独立 Kafka consumer group、OpenAI-compatible Provider、v2 Context profile 与 Temporal endpoint/namespace/task queue，并强制 `ai_sdk` 和 `read_active`；缺少任一输入即在 Compose 渲染阶段拒绝。基础微服务 Compose 继续固定 Shadow，移除 override 可立即回滚。
+
 - 2026-08-30：Agent Runtime 的 `ai_sdk` 模式改为显式 OpenAI-compatible Provider adapter；Provider name 绑定全部模型 route 前缀，base URL、API key 与 route 在启动前校验，避免把字符串 route 作为模型对象使用。默认 `metadata` 路径保持不创建 Provider，真实 active 仍需独立完成 Temporal、Kafka、Capability RPC 和 authority 证据。
 
 - 2026-08-30：Agent Memory promotion receipt 新增 `v2`：将 observational candidate 与显式目标 Memory 类型共同纳入确定性哈希和 Temporal replay 绑定；历史 `v1` receipt 继续可读，但缺少类型绑定时停止 replay 并要求重新审批。External MCP Shadow 组合配置不完整时新增零进程启动回归测试，默认关闭路径保持不创建 Worker、RPC 或网络资源。

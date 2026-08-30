@@ -125,6 +125,15 @@ active_agent_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
   DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
+  DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID=dipole-agent-active-compose-check \
+  DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
+  DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
+  DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
+  DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini \
+  DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
+  DIPOLE_AGENT_TEMPORAL_ADDRESS=temporal:7233 \
+  DIPOLE_AGENT_TEMPORAL_NAMESPACE=dipole \
+  DIPOLE_AGENT_TEMPORAL_TASK_QUEUE=dipole-agent-active-compose-check \
     docker compose -f deploy/compose/docker-compose.microservices.yml \
       -f deploy/microservices/agent-active.yml config --format json
 })"
@@ -132,6 +141,17 @@ jq -e '
   .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "remote"
   and .services.agent.environment.DIPOLE_AGENT_CANDIDATE_VERSION == "agent-runtime@compose-check"
   and .services.agent.environment.DIPOLE_AGENT_RELEASE_MANIFEST == "/run/dipole/release/manifest.json"
+  and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-active-compose-check"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_MODE == "ai_sdk"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_PROVIDER == "openai_compatible"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_PROVIDER_NAME == "openai"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_ROUTES == "openai/gpt-5-mini"
+  and .services.agent.environment.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION == "v2"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ADDRESS == "temporal:7233"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_NAMESPACE == "dipole"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE == "dipole-agent-active-compose-check"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "read_active"
   and any(.services.agent.volumes[]; (.source | endswith("/tmp/dipole-agent-release-manifest-check.json"))
     and .target == "/run/dipole/release/manifest.json" and .read_only == true)
 ' <<<"${active_agent_config}" >/dev/null
@@ -141,6 +161,15 @@ if env -u DIPOLE_AGENT_RELEASE_MANIFEST_FILE -u DIPOLE_AGENT_CANDIDATE_VERSION \
   docker compose -f deploy/compose/docker-compose.microservices.yml \
     -f deploy/microservices/agent-active.yml config --quiet >/dev/null 2>&1; then
   echo "active Agent overlay must reject missing manifest and candidate inputs" >&2
+  exit 1
+fi
+
+if DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
+  DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
+  docker compose -f deploy/compose/docker-compose.microservices.yml \
+    -f deploy/microservices/agent-active.yml config --quiet >/dev/null 2>&1; then
+  echo "active Agent overlay must reject missing provider, Temporal, context, and active Kafka inputs" >&2
   exit 1
 fi
 
