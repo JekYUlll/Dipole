@@ -54,6 +54,16 @@ docker compose -p dipole-tencent-dev \
 
 确认资源水位后再启动最小服务集合；禁止在该主机启用 Cassandra/Elasticsearch 全量实验、三节点压测或长时间 Agent 模型任务。
 
+最小集合以 Gateway 为目标，让 Compose 只拉起它声明的依赖：
+
+```bash
+docker compose -p dipole-tencent-dev \
+  -f deploy/compose/docker-compose.microservices.yml \
+  up -d --wait gateway
+```
+
+不要使用不带服务名的 `up -d`，避免在 2 GiB 主机上同时启动 Agent 或后续新增的可选服务。
+
 ## 停止、证据与回滚
 
 停止时只操作本次 project：
