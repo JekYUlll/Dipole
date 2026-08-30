@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：完成 Eino `v0.10.0-alpha.26` 隔离 spike：核对 ADK Session/Checkpoint/Resume、background task lease/CAS 和 notification outbox，并形成与现有 Temporal + MySQL Task/Run authority 的映射；默认 `v0.9.17` 依赖保持不变。
 - 2026-08-30：为大文件 Multipart session 增加浏览器 Web Locks 独占租约，同一文件在多个标签页中会串行执行，避免重复接管；无 Web Locks 的浏览器保持兼容回退，并新增串行/回退测试，上传测试 `15/15`、Frontend typecheck 通过。
 - 2026-08-30：补充预签名服务不可用回归测试：刷新签名失败时保留原错误、只发起一次失败分片 PUT，不误报上传成功；Multipart 上传测试 `13/13`、Frontend typecheck 通过。
 - 2026-08-30：新增 `multipart-restart-smoke` 远程故障验证：首个分片上传后重启隔离 MinIO 容器，再继续上传并完成对象，使用独立持久卷并在退出时清理；新增 Go smoke tool、远程入口和操作说明，不申请 GPU。
