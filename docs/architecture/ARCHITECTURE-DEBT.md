@@ -63,6 +63,7 @@
 - 2026-08-30：修正平台演进计划中滞后的 Agent/Frontend 质量数字和 F4 描述，明确已验证的 token、流程与跨浏览器功能范围，同时保留截图级视觉基线、真实 Pencil CLI 增量编辑和共享环境门禁为未完成项。
 - 2026-08-30：Agent Task Timeline 的 Chromium visual E2E 使用受控低敏 fixture 固定只读 revision、Capability、等待审批和分页入口，并确认 raw event kind 不直接进入页面。该基线只覆盖 Chromium 当前布局；其余页面、浏览器与完整视觉验收继续由 AD-044 跟踪。
 - 2026-08-30：Agent Definition Catalog 已使用真实 Pencil 增量设计、authenticated Gateway 查询、fail-closed 目录清理和 Chromium visual E2E 固定只读 Definition/version/scope 边界。该切片不开放 Runtime、Definition 写控制、active authority 或跨浏览器视觉验收，剩余产品入口和平台覆盖继续由 AD-036、AD-044 跟踪。
+- 2026-08-30：Definition Catalog 的认证读取与只读边界已在 Chromium、Firefox、WebKit 三浏览器复核；截图基线仍仅覆盖 Chromium，不能替代其余浏览器的像素级评审、active Runtime 或共享环境证据。
 - 2026-08-30：主线综合复核通过架构文档、服务布局、SQLC 与 Go 全量 test/vet 门禁；文档目录继续保持根目录入口、`docs/` 分类和历史证据分离，后续共享环境切换仍需独立运行证据。
 - 2026-08-30：在 `master` revision `a3a433be` 上通过 Remote GPU Node 验证：Agent Runtime `125/665`、Frontend `29/114`、typecheck 与构建均通过；`node-test` 已增加 `webapp` 脏状态前置拒绝和退出清理，远端 detached worktree 验证后保持干净。该证据覆盖开发期 Node 质量门禁，不替代共享环境 Compose、负载和生产切换证据。
 - 2026-08-30：在 `master` revision `b96403b0` 上通过 Remote GPU Go canonical 门禁：白名单 Go test、服务布局和架构文档检查全部通过，未启动 Compose，远端源码工作树保持干净。该证据覆盖开发期代码质量基线，不替代共享环境服务发布、负载和故障演练证据。
