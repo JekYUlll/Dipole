@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Agent active overlay 强制固定 direct-target、Memory、Control、MCP Server 与 External MCP 为关闭；Compose 门禁覆盖 host 环境试图开启 Control/MCP 的回归，user-gray 继续只允许只读 Temporal 路径。
+
 - 2026-08-30：新增 Agent Active 部署运行手册，明确 user-gray 的 Provider、Kafka、Temporal、Capability RPC、五类 Eval、operator grant 与维护窗口证据边界，并提供静态渲染和移除 override 的回滚步骤。
 
 - 2026-08-30：Agent active Compose overlay 现要求独立 Kafka consumer group、OpenAI-compatible Provider、v2 Context profile 与 Temporal endpoint/namespace/task queue，并强制 `ai_sdk` 和 `read_active`；缺少任一输入即在 Compose 渲染阶段拒绝。基础微服务 Compose 继续固定 Shadow，移除 override 可立即回滚。
