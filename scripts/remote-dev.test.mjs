@@ -105,3 +105,11 @@ test("remote node toolchain is explicit and version-gated", () => {
   assert.match(source, /required_node="v22\.0\.0"/);
   assert.match(source, /remote node-test refused: requires Node %s\+/);
 });
+
+test("remote Go toolchain prefers explicit configuration and discovers the newest user-local install", () => {
+  assert.match(source, /if \[\[ -z "\\\$go_root" \]\]; then/);
+  assert.match(source, /find \/home\/admin1\/\.local -maxdepth 4 -type f -path '\*\/bin\/go'/);
+  assert.match(source, /sort -V/);
+  assert.match(source, /remote Go toolchain auto-selected/);
+  assert.match(source, /DIPOLE_REMOTE_GO_ROOT/);
+});

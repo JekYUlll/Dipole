@@ -2,7 +2,7 @@
 
 本文仅用于开发环境，不承诺生产容量，也不替代共享环境发布审批。
 
-Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链，依赖源可通过 `DIPOLE_REMOTE_GOPROXY` 指向受控缓存代理，避免修改系统 Go 和远端网络配置。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
+Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链；未指定时，远程入口会在 `/home/admin1/.local/go-*/bin/go` 中自动选择最高版本，依赖源可通过 `DIPOLE_REMOTE_GOPROXY` 指向受控缓存代理，避免修改系统 Go 和远端网络配置。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
 
 ## 环境选择
 
@@ -44,7 +44,7 @@ scripts/remote-dev.sh build
 
 `multipart-restart-smoke` 在相同隔离边界内上传首个分片，重启临时 MinIO 容器，再继续上传并完成对象，用于验证 Multipart 数据卷持久性。该动作不申请 GPU，不触碰其他容器或卷。
 
-管理员已将 Go 1.27.0 以用户态方式放置于 `/home/admin1/.local/go-1.27.0`。使用该工具链执行远端测试：
+管理员已将 Go 1.27.0 以用户态方式放置于 `/home/admin1/.local/go-1.27.0`。远程入口未指定 `DIPOLE_REMOTE_GO_ROOT` 时会自动发现该工具链；需要固定版本时仍可显式指定：
 
 ```bash
 DIPOLE_REMOTE_BRANCH=master \
