@@ -277,22 +277,24 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		presignedUploadBucket = storageCfg.Bucket
 	}
 
+	gatewayLimiter := platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
 	srv, err := gateway.NewServerWithDependencies(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
-		Messages:              messages,
-		Sync:                  syncApplication,
-		Core:                  core,
-		Search:                search,
-		AgentTasks:            agentTasks,
-		AgentSubscriptions:    agentSubscriptions,
-		AgentDefinitions:      agentSubscriptions,
-		AgentMemories:         agentMemories,
-		AgentMCP:              agentMCP,
-		TokenResolver:         coreauth.NewTokenService(),
-		Presence:              wsTransport.NewRedisPresenceTracker(presence),
-		Limiter:               platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
-		AgentMCPLimiter:       platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
-		PresignedUploadProxy:  presignedUploadProxy,
-		PresignedUploadBucket: presignedUploadBucket,
+		Messages:               messages,
+		Sync:                   syncApplication,
+		Core:                   core,
+		Search:                 search,
+		AgentTasks:             agentTasks,
+		AgentSubscriptions:     agentSubscriptions,
+		AgentDefinitions:       agentSubscriptions,
+		AgentMemories:          agentMemories,
+		AgentMCP:               agentMCP,
+		TokenResolver:          coreauth.NewTokenService(),
+		Presence:               wsTransport.NewRedisPresenceTracker(presence),
+		Limiter:                gatewayLimiter,
+		AgentMCPLimiter:        platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
+		PresignedUploadProxy:   presignedUploadProxy,
+		PresignedUploadBucket:  presignedUploadBucket,
+		PresignedUploadLimiter: gatewayLimiter,
 	})
 	if err != nil {
 		cleanup()
