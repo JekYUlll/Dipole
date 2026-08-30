@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：在 Remote GPU 对 `master` revision `b96403b0` 重新执行 Go canonical 门禁；全部白名单 Go 包测试、服务布局和架构文档检查通过，未启动 Compose，远端源码工作树保持干净。
+
 - 2026-08-30：修复 Remote GPU `node-test` 的构建产物污染：测试前检查 `internal/services/core/server/webapp` 是否干净，退出时仅恢复该目录的 tracked diff 并清理本次生成的 untracked 资产；Agent Runtime 与 Frontend 验证可持续运行且不留下远端源码变更。
 
 - 2026-08-30：同步 `epic/01-microservices`、`epic/02-storage-architecture`、`epic/03-agent-runtime`、`epic/04-cpp-realtime` 和 `epic/05-frontend-experience` 到最新 `master` 基线；核心三阶段分支快进同步，C++/Frontend 扩展分支保留独有提交后完成合并并推送。

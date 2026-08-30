@@ -14,6 +14,7 @@
 - 2026-08-30：修正平台演进计划中滞后的 Agent/Frontend 质量数字和 F4 描述，明确已验证的 token、流程与跨浏览器功能范围，同时保留截图级视觉基线、真实 Pencil CLI 增量编辑和共享环境门禁为未完成项。
 - 2026-08-30：主线综合复核通过架构文档、服务布局、SQLC 与 Go 全量 test/vet 门禁；文档目录继续保持根目录入口、`docs/` 分类和历史证据分离，后续共享环境切换仍需独立运行证据。
 - 2026-08-30：在 `master` revision `a3a433be` 上通过 Remote GPU Node 验证：Agent Runtime `125/665`、Frontend `29/114`、typecheck 与构建均通过；`node-test` 已增加 `webapp` 脏状态前置拒绝和退出清理，远端 detached worktree 验证后保持干净。该证据覆盖开发期 Node 质量门禁，不替代共享环境 Compose、负载和生产切换证据。
+- 2026-08-30：在 `master` revision `b96403b0` 上通过 Remote GPU Go canonical 门禁：白名单 Go test、服务布局和架构文档检查全部通过，未启动 Compose，远端源码工作树保持干净。该证据覆盖开发期代码质量基线，不替代共享环境服务发布、负载和故障演练证据。
 - 2026-08-30：清理开发路线图中对已退役 `internal/service` 的过时依赖描述，改为引用共享兼容适配器和服务边界目录；结构门禁与历史债务记录继续保留对旧路径的负向检查。
 - 2026-08-30：在 `master` revision `801e69ce` 上复跑完整微服务 Compose smoke，逐服务 readiness/metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等均通过；该证据限于隔离拓扑，生产 Kafka ownership、候选发布和可执行回滚 receipt 仍待完成。
 - 2026-08-30：在 `master` revision `69055e87` 上复跑 Cassandra primary Compose smoke，schema init、Sync primary 配置、依赖 readiness 和 `readyz` 通过；该证据只覆盖隔离启动门禁，真实 Inbox hydration、共享环境观测、责任人批准和可执行回切仍待完成。
