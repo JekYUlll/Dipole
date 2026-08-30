@@ -288,6 +288,8 @@ Compose 仍保留 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`、Temporal disabled 
 
 证据默认写入 gitignored 的 `services/agent-runtime/.artifacts/external-mcp-shadow-drill.json`，文件 mode 为 `0600`，只包含 schema、通过状态、隔离类型、采集/失效时间、聚合计数、Core RPC 类型/认证门禁、布尔结果和 canonical `content_sha256`，不包含 tenant、Profile、Task、Event、Tool、路径、端口、消息正文、Token 或底层错误。v1 Schema 保留用于历史解释，`contracts/agent-external-mcp/v2/shadow-drill-evidence.schema.json` 固定当前语言中立结构；Runtime Zod parser 校验 canonical hash、最多 24 小时有效期及当前时钟，脚本末尾通过 `npm run mcp:shadow-drill:check -- --evidence=<path>` 复核完整证据。可用 `DIPOLE_AGENT_MCP_DRILL_EVIDENCE` 指向受控归档路径。内容 hash 用于发现文件漂移，没有签名身份或 production authority；当前 mTLS 证据覆盖隔离 Core composition，真实共享 Core 身份、公共 DNS/证书链/peer pinning、凭据轮换/吊销和 provider owner 仍需独立 Shadow tenant 演练。
 
+2026-08-30 已在 Remote GPU 一次性 worktree 上复核运行该脚本：隔离 MySQL、Kafka、Temporal、Go Core mTLS fixture 与本地 MCP 共同通过。证据为 `outcome=passed`、`event_count=2`、`ledger_completed_event_count=2`、`tool_call_count=1`、`artifact_count=1`；同 consumer group 重启重放被抑制，过期 readiness 被拒绝，Core RPC 的 mTLS 身份拒绝检查通过。该运行使用 disposable 资源并明确返回 `production_authority=false`，没有连接共享 Core、Kafka、Temporal、Provider 或外部 MCP Server。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛
