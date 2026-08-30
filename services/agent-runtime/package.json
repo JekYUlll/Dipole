@@ -41,6 +41,7 @@
     "typecheck": "tsc -p tsconfig.test.json --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.41",
     "@grpc/grpc-js": "1.14.4",
     "@modelcontextprotocol/client": "2.0.0",
     "@modelcontextprotocol/server": "2.0.0",

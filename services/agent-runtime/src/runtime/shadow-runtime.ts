@@ -29,6 +29,12 @@ import {
   type ShadowTaskDispatcher
 } from "../events/shadow-processor.js";
 import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
+import {
+  createOpenAICompatibleModelResolver,
+  loadModelProviderConfig,
+  modelIDForRoute,
+  modelProviderConfigSchema
+} from "../models/openai-compatible-model-provider.js";
 import { ModelRouter } from "../models/model-router.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { MySQLModelAuditStore } from "../models/mysql-model-audit-store.js";
@@ -59,6 +65,7 @@ const shadowRuntimeConfigSchema = z.object({
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
   modelMode: z.enum(["metadata", "ai_sdk"]),
+  modelProvider: modelProviderConfigSchema,
   modelRoutes: z.array(z.string().trim().min(1)),
   contextCompilerVersion: z.enum(["v1", "v2"]),
   memoryEnabled: z.boolean(),
@@ -112,6 +119,22 @@ const shadowRuntimeConfigSchema = z.object({
   }
   if (config.modelMode === "ai_sdk" && config.modelRoutes.length === 0) {
     refinement.addIssue({ code: "custom", message: "Agent model routes are required in AI SDK mode", path: ["modelRoutes"] });
+  }
+  if (config.modelMode === "ai_sdk" && config.modelProvider.kind !== "openai_compatible") {
+    refinement.addIssue({ code: "custom", message: "AI SDK model mode requires an OpenAI-compatible model provider", path: ["modelProvider"] });
+  }
+  if (config.modelMode === "ai_sdk" && config.modelProvider.kind === "openai_compatible") {
+    for (const route of config.modelRoutes) {
+      try {
+        modelIDForRoute(route, config.modelProvider.name);
+      } catch (error) {
+        refinement.addIssue({
+          code: "custom",
+          message: error instanceof Error ? error.message : "Model route does not match the configured provider",
+          path: ["modelRoutes"]
+        });
+      }
+    }
   }
   if (config.contextCompilerVersion === "v1" && config.modelContextProfiles.length > 0) {
     refinement.addIssue({
@@ -201,6 +224,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
     modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
+    modelProvider: loadModelProviderConfig(env),
     modelRoutes: (env.DIPOLE_AGENT_MODEL_ROUTES ?? "").split(",").map((route) => route.trim()).filter(Boolean),
     contextCompilerVersion: env.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION?.trim().toLowerCase() || "v1",
     memoryEnabled: env.DIPOLE_AGENT_MEMORY_ENABLED?.trim().toLowerCase() === "true",
@@ -388,7 +412,7 @@ export function createKafkaShadowRuntime(
   }
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
-      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
+      createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
     ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
     : new MetadataShadowPlanner();
   const consumer = buildKafkaShadowRuntime(
@@ -447,7 +471,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   registry.register(new ConversationListCapability(rpc.client));
   registry.register(new ConversationReadCapability(rpc.client));
   const planner = new ModelShadowPlanner(new ModelRouter(
-    new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
+    createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
   ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
@@ -471,6 +495,10 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
       }
     }
   };
+}
+
+function createAISDKModelClient(config: ShadowRuntimeConfig): AISDKStructuredModelClient {
+  return new AISDKStructuredModelClient(createOpenAICompatibleModelResolver(config.modelProvider));
 }
 
 export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {

@@ -11,7 +11,7 @@ describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
-      contextCompilerVersion: "v1", memoryEnabled: false, triggerMode: "direct_target", capabilityRpc: { enabled: false }
+      modelProvider: { kind: "disabled" }, contextCompilerVersion: "v1", memoryEnabled: false, triggerMode: "direct_target", capabilityRpc: { enabled: false }
     });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "actve" })).toThrow(/must be shadow or remote/);
@@ -34,9 +34,20 @@ describe("shadow runtime composition", () => {
     expect(() => loadShadowRuntimeConfig({
       DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "provider/model"
     })).toThrow(/persistent MySQL model audit/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "provider/model",
+      DIPOLE_AGENT_LEDGER_MODE: "mysql", DIPOLE_AGENT_MYSQL_HOST: "mysql", DIPOLE_AGENT_MYSQL_USER: "agent",
+      DIPOLE_AGENT_MYSQL_PASSWORD: "secret", DIPOLE_AGENT_MYSQL_DATABASE: "dipole",
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
+      DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
+    })).toThrow(/OpenAI-compatible model provider/);
     expect(loadShadowRuntimeConfig({
       DIPOLE_AGENT_MODEL_MODE: "ai_sdk",
-      DIPOLE_AGENT_MODEL_ROUTES: "openai/gpt-5-mini,anthropic/claude-sonnet-4.5",
+      DIPOLE_AGENT_MODEL_ROUTES: "openai/gpt-5-mini,openai/gpt-5-nano",
+      DIPOLE_AGENT_MODEL_PROVIDER: "openai_compatible",
+      DIPOLE_AGENT_MODEL_PROVIDER_NAME: "openai",
+      DIPOLE_AGENT_MODEL_BASE_URL: "https://gateway.example.test/v1",
+      DIPOLE_AGENT_MODEL_API_KEY: "test-model-key",
       DIPOLE_AGENT_LEDGER_MODE: "mysql",
       DIPOLE_AGENT_MYSQL_HOST: "mysql", DIPOLE_AGENT_MYSQL_USER: "agent", DIPOLE_AGENT_MYSQL_PASSWORD: "secret",
       DIPOLE_AGENT_MYSQL_DATABASE: "dipole",
@@ -53,7 +64,8 @@ describe("shadow runtime composition", () => {
       modelMode: "ai_sdk",
       memoryEnabled: true,
       contextCompilerVersion: "v2",
-      modelRoutes: ["openai/gpt-5-mini", "anthropic/claude-sonnet-4.5"],
+      modelRoutes: ["openai/gpt-5-mini", "openai/gpt-5-nano"],
+      modelProvider: { kind: "openai_compatible", name: "openai", baseURL: "https://gateway.example.test/v1" },
       modelBudget: { maxCalls: 2, totalTimeoutMs: 12000, maxOutputTokensPerCall: 256 },
       modelContextProfiles: [{
         route: "openai/gpt-5-mini", contextWindowTokens: 32_768, utf8BytesPerToken: 3, safetyMarginBps: 1_500
@@ -73,6 +85,8 @@ describe("shadow runtime composition", () => {
     })).toThrow(/unknown route/);
     expect(() => loadShadowRuntimeConfig({
       DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "provider/model",
+      DIPOLE_AGENT_MODEL_PROVIDER: "openai_compatible", DIPOLE_AGENT_MODEL_PROVIDER_NAME: "openai",
+      DIPOLE_AGENT_MODEL_BASE_URL: "https://gateway.example.test/v1", DIPOLE_AGENT_MODEL_API_KEY: "test-model-key",
       DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
       DIPOLE_AGENT_LEDGER_MODE: "mysql", DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
       DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "5000"

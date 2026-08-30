@@ -154,19 +154,24 @@ npm run repair:propose -- --input=/path/to/repair-input.json
 
 Shadow 模式仅生成并审计 plan，Policy Engine 拒绝 write/destructive capability。微服务默认使用 MySQL EventLedger，通过 Event ID/Task ID 唯一约束、claim token 与 lease 收敛重启和多副本重复投递；`memory` 只用于显式本地回滚。无效事件直接进入 dead，瞬时处理错误按 `retry_attempt` 有界重试；转移发布失败会让 handler 拒绝完成。migration v20 将 Plan 保存为不可变 Task 快照，并按顺序保存处于 `planned` 状态的结构化 capability Step；远程只读执行与 Step 终态将在 Agent Capability RPC 接入后启用。
 
-模型调用默认关闭。显式开启 AI SDK shadow planner 时配置有序 route 与预算，并通过 `AI_GATEWAY_API_KEY` 提供 Gateway 凭据：
+模型调用默认关闭。显式开启 AI SDK shadow planner 时，必须配置单一 OpenAI-compatible Provider、有序 route 与预算：
 
 ```bash
 DIPOLE_AGENT_MODEL_MODE=ai_sdk \
-DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini,anthropic/claude-sonnet-4.5 \
+DIPOLE_AGENT_MODEL_PROVIDER=openai_compatible \
+DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
+DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.com/v1 \
+DIPOLE_AGENT_MODEL_API_KEY=... \
+DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini,openai/gpt-5-nano \
 DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2 \
 DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
 DIPOLE_AGENT_MODEL_MAX_CALLS=2 \
 DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS=15000 \
 DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS=512 \
-AI_GATEWAY_API_KEY=... \
 npm start
 ```
+
+Provider name 是 route 的稳定前缀，所有 route 必须使用相同前缀，例如 `openai/<model-id>`；Runtime 拒绝跨 Provider route、空密钥、无效 Provider name 和包含凭据/query/fragment 的 base URL，HTTP 仅允许 loopback 开发端点。密钥只从进程环境或部署 Secret 注入，不写入 Compose、Artifact、审计或日志。
 
 Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
 
