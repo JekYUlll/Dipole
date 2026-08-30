@@ -30,6 +30,18 @@ describe('uploadMultipartParts', () => {
     expect(fetchImpl).toHaveBeenCalledWith('https://minio.test/part-1', expect.objectContaining({ method: 'PUT' }))
   })
 
+  it('forwards an abort signal to a presigned part request', async () => {
+    const controller = new AbortController()
+    const fetchImpl = vi.fn(async () => new Response(null, {
+      status: 200,
+      headers: { ETag: '"etag-1"' },
+    }))
+
+    await uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl, controller.signal)
+
+    expect(fetchImpl).toHaveBeenCalledWith('https://minio.test/part-1', expect.objectContaining({ signal: controller.signal }))
+  })
+
   it('rejects a successful direct upload without an ETag', async () => {
     const fetchImpl = vi.fn(async () => new Response(null, { status: 200 }))
     await expect(uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl)).rejects.toThrow('ETag')
@@ -156,6 +168,53 @@ describe('uploadMultipartParts', () => {
 
     expect(attempts).toHaveBeenCalledTimes(3)
     expect(sleeps).toEqual([10, 20])
+  })
+
+  it('stops before retrying when the upload signal is aborted', async () => {
+    const controller = new AbortController()
+    const attempts = vi.fn()
+
+    await expect(uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      throw new Error('temporary failure')
+    }, {
+      maxRetries: 2,
+      retryDelayMs: 10,
+      sleep: async () => controller.abort(),
+      signal: controller.signal,
+    })).rejects.toMatchObject({ name: 'AbortError' })
+
+    expect(attempts).toHaveBeenCalledOnce()
+  })
+
+  it('interrupts a pending retry delay when the upload signal is aborted', async () => {
+    const controller = new AbortController()
+    const attempts = vi.fn()
+
+    const upload = uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      throw new Error('temporary failure')
+    }, {
+      maxRetries: 1,
+      retryDelayMs: 1000,
+      sleep: () => new Promise<void>(() => {}),
+      signal: controller.signal,
+    })
+    setTimeout(() => controller.abort(), 0)
+
+    await expect(upload).rejects.toMatchObject({ name: 'AbortError' })
+    expect(attempts).toHaveBeenCalledOnce()
+  })
+
+  it('fails before scheduling a part when the upload signal is already aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const uploadPart = vi.fn(async () => undefined)
+
+    await expect(uploadMultipartParts(new Blob(['abcd']), 4, 1, uploadPart, {
+      signal: controller.signal,
+    })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(uploadPart).not.toHaveBeenCalled()
   })
 
   it('stops scheduling new parts after a permanent failure', async () => {

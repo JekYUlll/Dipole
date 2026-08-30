@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Web Multipart 上传增加 `AbortSignal` 传播，覆盖 presigned PUT、relay API、part 重试和页面卸载；取消后停止新请求并保留可恢复 session，避免页面销毁后的无效重试。默认 relay/presigned 策略保持不变。
+
 - 2026-08-30：强化 Multipart 中断恢复集成验证：中断流使用同一 part 编号重试后完成上传并校验最终对象内容，确认失败尝试不会污染 Complete 结果；完整浏览器断网、过期会话和网关限流矩阵仍待完成。
 
 - 2026-08-30：扩展真实 MinIO Multipart 集成契约，模拟客户端在 part 读取过程中断后使用同一 part 编号重试，并验证失败尝试不污染后续会话；默认 relay/presigned 开关和生产路径保持不变。完整浏览器断网、过期会话和网关限流矩阵仍待完成。

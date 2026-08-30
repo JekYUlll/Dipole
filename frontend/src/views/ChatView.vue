@@ -657,6 +657,7 @@ const uploadingFileLabel = ref('')
 const multipartUploadActive = ref(false)
 const multipartUploadPaused = ref(false)
 let multipartResumeWaiters: Array<() => void> = []
+let multipartUploadAbortController: AbortController | null = null
 const sendErrorMessage = ref('')
 const mediaPreviewMap = ref<Record<string, string>>({})
 const mediaPreviewInflight = new Map<string, Promise<void>>()
@@ -1286,6 +1287,7 @@ const toggleMultipartUploadPause = () => {
 }
 
 const finishMultipartUploadControls = () => {
+  multipartUploadAbortController = null
   multipartUploadActive.value = false
   multipartUploadPaused.value = false
   const waiters = multipartResumeWaiters
@@ -1452,6 +1454,9 @@ const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }
 
   multipartUploadActive.value = true
   multipartUploadPaused.value = false
+  const abortController = new AbortController()
+  multipartUploadAbortController = abortController
+  const signal = abortController.signal
 
   const contentType = file.type || 'application/octet-stream'
   const stored = readStoredMultipartUpload(file)
@@ -1460,7 +1465,7 @@ const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }
 
   if (stored && stored.content_type === contentType) {
     try {
-      const status = await api.get(`/api/v1/files/uploads/${encodeURIComponent(stored.session_id)}`) as {
+      const status = await api.get(`/api/v1/files/uploads/${encodeURIComponent(stored.session_id)}`, { signal }) as {
         session_id: string
         file_name: string
         file_size: number
@@ -1485,7 +1490,7 @@ const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }
       file_size: file.size,
       content_type: contentType,
       ...(fileSHA256 ? { file_sha256: fileSHA256 } : {}),
-    }) as MultipartUploadInit
+    }, { signal }) as MultipartUploadInit
     storeMultipartUpload(file, init)
   }
 
@@ -1497,7 +1502,7 @@ const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }
       if (partNumbers.length > 0) {
         const response = await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/presign`, {
           part_numbers: partNumbers,
-        }) as { parts: Array<{ part_number: number; url: string }> }
+        }, { signal }) as { parts: Array<{ part_number: number; url: string }> }
         if (!response?.parts?.every(part => part.url?.trim())) {
           throw new Error('multipart presign response contains an invalid URL')
         }
@@ -1507,7 +1512,7 @@ const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }
         }
       }
     }
-    await uploadMultipartParts(file, init.chunk_size, init.total_parts, async (partNumber, chunk) => {
+    await uploadMultipartParts(file, init.chunk_size, init.total_parts, async (partNumber, chunk, partSignal) => {
       if (presignedParts.has(partNumber)) {
         const presignedURL = presignedParts.get(partNumber)!
         const etag = await uploadPresignedPartWithRefresh(
@@ -1516,17 +1521,19 @@ const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }
           async () => {
             const refreshed = await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/presign`, {
               part_numbers: [partNumber],
-            }) as { parts: Array<{ part_number: number; url: string }> }
+            }, { signal: partSignal }) as { parts: Array<{ part_number: number; url: string }> }
             const replacement = refreshed.parts?.find(part => part.part_number === partNumber)?.url?.trim()
             if (!replacement) throw new Error('multipart refresh response is incomplete')
             presignedParts.set(partNumber, replacement)
             return toSameOriginPresignedURL(replacement, presignedMultipartProxyEnabled)
           },
+          undefined,
+          partSignal,
         )
         await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/${partNumber}/register`, {
           etag,
           size: chunk.size,
-        })
+        }, { signal: partSignal })
         return
       }
       const checksum = await sha256Hex(chunk)
@@ -1535,12 +1542,14 @@ const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }
           'Content-Type': 'application/octet-stream',
           ...(checksum ? { 'X-Part-SHA256': checksum } : {}),
         },
+        signal: partSignal,
       })
     }, {
       concurrency: policy.max_concurrency,
       maxRetries: policy.max_retries,
       retryDelayMs: policy.retry_delay_ms,
       skipParts,
+      signal,
       onPartComplete: (completedParts, totalParts) => {
         uploadingFileLabel.value = `上传中 ${completedParts}/${totalParts}...`
       },
@@ -1548,7 +1557,7 @@ const uploadChatFileUnderLease = async (file: File): Promise<{ file_id: string }
       waitUntilResumed: () => new Promise<void>(resolve => multipartResumeWaiters.push(resolve)),
     })
     uploadingFileLabel.value = '合并文件中...'
-    const result = await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/complete`) as { file_id: string }
+    const result = await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/complete`, undefined, { signal }) as { file_id: string }
     clearStoredMultipartUpload(file)
     return result
   } catch (err) {
@@ -2007,6 +2016,8 @@ onBeforeUnmount(() => {
   clearHotGroupPullSchedulers()
   if (syncComparisonTimer) clearTimeout(syncComparisonTimer)
   pendingOutboundMessages.clear()
+  multipartUploadAbortController?.abort()
+  multipartUploadAbortController = null
   revokeMediaPreviewURLs()
   mediaObserver?.disconnect()
 })
