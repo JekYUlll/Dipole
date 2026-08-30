@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：A6 Web Sync Observation 工具新增 5 分钟未来时间偏差门禁，`start/status/finalize` 均拒绝未来时间查询，并补充可注入时钟测试和操作手册说明；该改动只强化证据完整性，未改变客户端默认同步路径或任何切流开关。
+
 - 2026-08-30：本机 `planning-with-files` 更新至上游稳定版 `v3.11.2`；移出重复的 `.agents` skill 安装，仅保留 `.codex` canonical 来源，并在 Codex 适配器层加入同 session/项目根短窗口去重。真实并行 Bash 验证确认三次触发只注入一份计划上下文，旧版本与 hook 配置已保留在日期备份目录。
 
 - 2026-08-30：新增 `scripts/remote-dev.test.mjs` 远程开发入口契约测试，覆盖提交绑定同步、Node 锁文件保护、`webapp` 构建产物清理、Node 版本门禁及活动主机下的构建/Smoke/Benchmark 保护；`4/4` 通过。

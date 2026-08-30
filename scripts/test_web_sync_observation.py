@@ -103,6 +103,29 @@ class WebSyncObservationTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_final_evidence(session, START + timedelta(hours=23, minutes=59), FakePrometheus(clean_final_values()))
 
+    def test_session_rejects_future_start(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "app.js"
+            bundle.write_bytes(b"candidate bundle")
+            with self.assertRaisesRegex(ValueError, "session start cannot be more than 5 minutes"):
+                build_session(
+                    "web-sync-v1",
+                    COMMIT,
+                    bundle,
+                    "http://prometheus:9090",
+                    START,
+                    FakePrometheus(clean_start_values()),
+                    now=START - timedelta(minutes=6),
+                )
+
+    def test_status_and_finalize_reject_future_capture(self):
+        session = self._session()
+        future = START + timedelta(hours=24, minutes=6)
+        with self.assertRaisesRegex(ValueError, "status capture cannot be more than 5 minutes"):
+            build_status(session, future, FakePrometheus(clean_final_values()), now=START + timedelta(hours=24))
+        with self.assertRaisesRegex(ValueError, "observation end cannot be more than 5 minutes"):
+            build_final_evidence(session, future, FakePrometheus(clean_final_values()), now=START + timedelta(hours=24))
+
     def test_status_rejects_capture_before_session_start(self):
         session = self._session()
         with self.assertRaisesRegex(ValueError, "cannot precede"):
