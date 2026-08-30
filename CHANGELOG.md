@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：在 Remote GPU 完成 MinIO Multipart 服务重启恢复 smoke；分片跨重启保留并成功完成对象，临时容器和数据卷已清理，客户端断网与预签名切流仍待验证。
+
 - 2026-08-30：在 Remote GPU 使用现有 Go `1.27.0` 完成隔离 MinIO Multipart smoke，验证乱序/替换/完成/内容校验/重复 Abort；临时容器已清理，完整故障矩阵继续待完成。
 
 - 2026-08-30：对齐 Eino 版本评估状态：`v0.10.0-alpha.26` 只读 spike 报告已归档，当前稳定回滚基线为 `v0.9.17`；未将 alpha API 加入默认构建、Compose 或 Agent authority。

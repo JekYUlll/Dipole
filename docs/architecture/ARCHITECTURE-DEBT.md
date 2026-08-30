@@ -1223,3 +1223,4 @@
 - 2026-08-30：Eino alpha spike 的总计划状态已与 `EINO-V010-ALPHA-SPIKE.md` 对齐；Session/Checkpoint/Background Task/Notification/Tool execution 仅作为 adapter 参考，Temporal、Dipole Capability、owner scope 和审计仍保持权威边界。
 - 2026-08-30：Multipart cleanup 输入边界已加固：未初始化客户端和 MinIO listing error 均 fail-closed，错误详情有界且保留总数；真实 MinIO/Redis 故障矩阵仍待共享维护窗口。
 - 2026-08-30：Remote GPU 隔离 MinIO Multipart smoke 已在 `b8b27a76`、Go `1.27.0` 下通过，基础生命周期证据已归档到运行手册；客户端中断、服务重启、预签名默认切流和跨存储故障矩阵仍为未完成项。
+- 2026-08-30：Remote GPU Multipart restart smoke 已在 `10cccdd3`、Go `1.27.0` 下通过，确认持久卷可跨 MinIO 重启恢复分片并完成对象；客户端中断、预签名默认切流和跨存储故障矩阵仍未关闭。
