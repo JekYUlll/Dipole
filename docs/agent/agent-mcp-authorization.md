@@ -52,4 +52,6 @@ Content-Type: application/json
 
 ## 后续门槛
 
-面向通用 MCP Host 前仍需实现 RFC 9728 Protected Resource Metadata、Authorization Server Metadata、OAuth 2.1 Authorization Code + PKCE 和客户端注册策略。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
+面向通用 MCP Host 前仍需实现 RFC 9728 Protected Resource Metadata、Authorization Server Metadata、OAuth 2.1 Authorization Code + PKCE 和客户端注册策略。`oauth-discovery-pkce.ts` 已提供默认关闭的本地基础：按 RFC 8414 派生 authorization-server metadata URI，要求 issuer 精确匹配、HTTPS 与 `S256`，并只生成 Authorization Code + PKCE 的 verifier/challenge/state 材料。它不执行 discovery HTTP 请求、不保存 verifier/state、不交换 code、不注册客户端，也不读取或写入 refresh token。
+
+后续接线必须将 state 与 verifier 置于短时、owner-scoped 的受保护存储，并在 callback 前复核 issuer、redirect URI、state、PKCE 与 resource binding；不得将它们写入 Profile、Temporal history、Context、Tool 参数、审计或日志。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
