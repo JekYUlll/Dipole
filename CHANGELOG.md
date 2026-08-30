@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback private-key source。它仅接受显式 key ID 到绝对路径映射，每次使用检查目录/文件 owner、权限、链接和大小，确认 PKCS#8 RSA modulus 至少 2048 位后才在 callback 内短时提供 Buffer，并在结束时清零。Runtime 默认启动、Gateway、callback route 与 token exchange 均未读取该 source。
+
 - 2026-08-31：增加 Agent OAuth callback Runtime envelope v1。Gateway 仅用 Runtime RSA public key 通过 OAEP-SHA256 封装每次 handoff 的 AES-256-GCM data key；授权码密文以完整 handoff binding 作为 AAD，Runtime 只用私钥解封并重算 code SHA-256。Go/TypeScript 各自对版本、base64url、长度、RSA/OAEP、AAD、摘要和毫秒时间 fail closed。该原语未接入 callback route、Store writer、Runtime claim、code exchange 或 token 持久化。
 
 - 2026-08-31：Agent OAuth callback handoff 增加 SQLC durable persistence foundation：migration `000053` 保存 Runtime-key 标识、授权码 SHA-256、Runtime-only 密文、transaction/owner/issuer/redirect binding 与有限状态。领取以条件更新实现；租约不得跨越授权过期时间，完成和失败释放均绑定尚有效的 Runtime lease，重启后可从同一 handoff 恢复。该层尚未注册 browser callback、密钥封装、Runtime 领取 RPC、code exchange 或 token 写入，默认部署仍为零 OAuth callback 流量。
