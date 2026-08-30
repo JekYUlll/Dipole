@@ -14,6 +14,18 @@
 scripts/check-dev-host.sh remote-gpu
 ```
 
+日常部署、代码同步、镜像构建和完整压测统一从本机发起远端命令，但实际构建与运行都发生在 Remote GPU；本机不启动完整 Compose：
+
+```bash
+scripts/remote-dev.sh sync       # 仅同步已提交 revision
+scripts/remote-dev.sh preflight  # 只读检查远端
+scripts/remote-dev.sh build      # 远端构建候选镜像
+scripts/remote-dev.sh bench      # 远端运行完整基准
+scripts/remote-dev.sh down       # 仅停止本次 project
+```
+
+脚本默认使用 SSH alias `remote-gpu`、远端目录 `/data/zhangzhuyu/workspaces/Dipole` 和按用户隔离的 Compose project。`build`、`smoke-lite`、`bench` 会拒绝存在登录用户或 GPU 进程的主机；只有取得明确维护窗口后，才可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`，并仍需人工确认不会影响现有实验。
+
 ## Remote GPU 流程
 
 先确认主机没有活动实验需要避让，并使用独立目录、Compose project、端口段和网络。推荐使用提交绑定源码构建候选镜像：
@@ -40,7 +52,7 @@ docker compose -p "${DIPOLE_PROJECT}" \
 scripts/smoke-microservices.sh
 ```
 
-实时数据面候选压测沿用 `scripts/bench/candidate_topology.sh`；Agent 默认保持 shadow 或 off，避免外部模型成本和延迟污染 IM 基线。
+实时数据面候选压测沿用 `scripts/bench/candidate_topology.sh`；Agent 默认保持 shadow 或 off，避免外部模型成本和延迟污染 IM 基线。完整 `k6` 基准和 Docker 构建固定在 Remote GPU 执行；本机仅保留脚本静态检查。
 
 ## TencentCloud 流程
 
