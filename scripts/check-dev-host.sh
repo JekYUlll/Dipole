@@ -39,7 +39,8 @@ case "${PROFILE}" in
 esac
 
 host_cpu="${DIPOLE_HOST_CPU:-$(getconf _NPROCESSORS_ONLN)}"
-host_memory_mib="${DIPOLE_HOST_MEMORY_MIB:-$(awk '/MemTotal:/ {print int($2 / 1024); exit}' /proc/meminfo)}"
+# Available memory reflects pressure from existing experiments better than total RAM.
+host_memory_mib="${DIPOLE_HOST_MEMORY_MIB:-$(awk '/MemAvailable:/ {print int($2 / 1024); exit}' /proc/meminfo)}"
 host_disk_mib="${DIPOLE_HOST_DISK_MIB:-$(df -Pm "${ROOT_DIR}" | awk 'NR==2 {print $4; exit}')}"
 
 failures=()
