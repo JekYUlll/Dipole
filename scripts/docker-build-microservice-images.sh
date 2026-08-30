@@ -20,6 +20,7 @@ dirty=false
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   dirty=true
 fi
+context_dir="${ROOT_DIR}/dist"
 
 declare -a services=(
   "migrate:dipole-migrate"
@@ -49,7 +50,7 @@ for service_binary in "${services[@]}"; do
     --build-arg "DIPOLE_VCS_REVISION=${revision}" \
     --build-arg "DIPOLE_BUILD_CREATED=${created}" \
     --build-arg "DIPOLE_BUILD_DIRTY=${dirty}" \
-    .
+    "${context_dir}"
 done
 
 printf 'microservice images built: revision=%s dirty=%s\n' "${revision}" "${dirty}"
