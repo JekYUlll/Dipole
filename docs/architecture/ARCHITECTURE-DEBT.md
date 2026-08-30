@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：前端 Agent 路由安全契约已补齐新增 Artifact 路由的认证与 feature flag 断言，避免后续路由扩展使静态安全覆盖与实际页面集合漂移；Artifact 继续仅提供默认关闭、owner-scoped metadata 读取。
+
 - 2026-08-30：Remote GPU 隔离 External MCP Shadow drill 已通过 MySQL EventLedger、Kafka consumer、Temporal、Go Core mTLS fixture 与本地 MCP 的完整链路，并验证重启重复事件不产生第二次 Tool 调用、过期 readiness 拒绝且 `production_authority=false`。共享 Core/Kafka/Temporal、真实外部 DNS/TLS、凭据轮换或吊销、Provider owner 与 Shadow tenant 观测仍未覆盖，外部 MCP 和 active authority 继续默认关闭。
 
 - 2026-08-30：README 品牌资产已恢复为深青/橙色 Signal 视觉，并为 IM、Agent 材料限定各自的图形用途；品牌 SVG 为静态文档资产，不将 Agent 标记解释为 active authority 已启用，避免对外材料误导运行状态。

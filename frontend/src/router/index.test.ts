@@ -10,6 +10,7 @@ describe('Agent route security contract', () => {
       'agent-task-input',
       'agent-task-approval',
       'agent-task-timeline',
+      'agent-artifact',
       'agent-subscriptions',
       'agent-definitions',
       'agent-memories',
@@ -17,10 +18,11 @@ describe('Agent route security contract', () => {
       expect(source).toContain(`name: '${routeName}'`)
     }
 
-    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(7)
+    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(8)
     expect(source).toContain("import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'")
+    expect(source).toContain("import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_MEMORIES_ENABLED === 'true'")
