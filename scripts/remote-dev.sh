@@ -67,11 +67,12 @@ REMOTE_GUARD
 
 run_remote() {
   local action="$1"
-  remote "${action}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" "${REMOTE_NODE_ROOT}" <<REMOTE_RUN
+  remote "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
-go_root="\${4:-}"
-go_proxy="\${5:-}"
+node_root="\${4:-}"
+go_root="\${5:-}"
+go_proxy="\${6:-}"
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
   export PATH="\$go_root/bin:\$PATH"
 fi
@@ -97,7 +98,6 @@ case "${action}" in
     GOTOOLCHAIN=local scripts/check-go.sh && scripts/check-compose.sh && scripts/check-service-layout.sh && scripts/check-architecture-docs.sh
     ;;
   node-test)
-    node_root="\${6:-}"
     if [[ -n "\$node_root" && -x "\$node_root/bin/node" ]]; then
       export PATH="\$node_root/bin:\$PATH"
     fi
