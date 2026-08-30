@@ -32467,6 +32467,1862 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "djKD2",
+      "x": 29094,
+      "y": 0,
+      "name": "File Type Badge",
+      "reusable": true,
+      "fill": "$accent-soft",
+      "cornerRadius": 8,
+      "gap": 6,
+      "padding": [
+        6,
+        10
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "NMlbn",
+          "name": "File Type Badge Dot",
+          "fill": "$accent",
+          "width": 7,
+          "height": 7
+        },
+        {
+          "type": "text",
+          "id": "c1neF",
+          "name": "File Type Badge Label",
+          "fill": "$accent-strong",
+          "content": "PDF",
+          "fontFamily": "$font-data",
+          "fontSize": 11,
+          "fontWeight": "700"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "l2FpvH",
+      "x": 29094,
+      "y": 72,
+      "name": "File Directory Row",
+      "reusable": true,
+      "width": 840,
+      "height": 78,
+      "fill": "$surface",
+      "cornerRadius": 12,
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "gap": 14,
+      "padding": [
+        14,
+        18
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "X7km6I",
+          "name": "File Row Icon Surface",
+          "width": 42,
+          "height": 42,
+          "fill": "$surface-muted",
+          "cornerRadius": 10,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "B6F4c",
+              "name": "File Row Icon",
+              "width": 20,
+              "height": 20,
+              "icon": "file-text",
+              "library": "lucide",
+              "fill": "$ink-soft"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "p32sH",
+          "name": "File Row Main",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 5,
+          "children": [
+            {
+              "type": "frame",
+              "id": "m2v81",
+              "name": "File Row Header",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fZtjz",
+                  "name": "File Row Filename",
+                  "fill": "$ink",
+                  "content": "owner-report-q3.pdf",
+                  "fontFamily": "$font-display",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "id": "Ahbat",
+                  "type": "ref",
+                  "ref": "djKD2",
+                  "name": "File Row Type Badge",
+                  "descendants": {
+                    "c1neF": {
+                      "content": "PDF"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "E55ux",
+              "name": "File Row Metadata",
+              "fill": "$ink-faint",
+              "content": "2.4 MB  ·  Updated 2026-08-30 09:42",
+              "fontFamily": "$font-data",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "l409T",
+          "name": "File Row Download",
+          "fill": "$accent",
+          "cornerRadius": 8,
+          "gap": 8,
+          "padding": [
+            9,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "SLGik",
+              "name": "File Row Download Icon",
+              "width": 15,
+              "height": 15,
+              "icon": "download",
+              "library": "lucide",
+              "fill": "$text-inverse"
+            },
+            {
+              "type": "text",
+              "id": "dr0Fd",
+              "name": "File Row Download Label",
+              "fill": "$text-inverse",
+              "content": "Download",
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "700"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "w54YQ3",
+      "x": 29094,
+      "y": 190,
+      "name": "File Directory Empty State",
+      "reusable": true,
+      "width": 430,
+      "height": 148,
+      "fill": "$surface",
+      "cornerRadius": 14,
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 12,
+      "padding": 22,
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "vMzN8",
+          "name": "File Directory Empty Icon Surface",
+          "width": 44,
+          "height": 44,
+          "fill": "$surface-muted",
+          "cornerRadius": 12,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "zRmF1",
+              "name": "File Directory Empty Icon",
+              "width": 22,
+              "height": 22,
+              "icon": "folder-open",
+              "library": "lucide",
+              "fill": "$ink-soft"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "S9vpw",
+          "name": "File Directory Empty Title",
+          "fill": "$ink",
+          "content": "No owner files",
+          "fontFamily": "$font-display",
+          "fontSize": 17,
+          "fontWeight": "800"
+        },
+        {
+          "type": "text",
+          "id": "eFnQU",
+          "name": "File Directory Empty Copy",
+          "fill": "$ink-soft",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "This owner has no readable files in the directory.",
+          "lineHeight": 1.4,
+          "textAlign": "center",
+          "fontFamily": "$font-body",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "bjLMo",
+      "x": 30014,
+      "y": 72,
+      "name": "File/Desktop/Directory",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$canvas",
+      "children": [
+        {
+          "type": "frame",
+          "id": "nr9P8",
+          "name": "File Directory Desktop Rail",
+          "width": 256,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 28,
+          "padding": [
+            32,
+            26
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "rHTmw",
+              "name": "File Directory Rail Brand",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "t50pWm",
+                  "name": "File Directory Brand Mark",
+                  "fill": "$accent",
+                  "width": 12,
+                  "height": 12
+                },
+                {
+                  "type": "text",
+                  "id": "y441j",
+                  "name": "File Directory Brand Name",
+                  "fill": "$text-inverse",
+                  "content": "DIPOLE",
+                  "fontFamily": "$font-display",
+                  "fontSize": 19,
+                  "fontWeight": "800",
+                  "letterSpacing": 1.2
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "VMf7m",
+              "name": "File Directory Rail Section",
+              "fill": "$text-muted",
+              "content": "OWNER WORKSPACE",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "Nj8Ki",
+              "name": "File Directory Rail Files",
+              "width": "fill_container",
+              "fill": "$rail-soft",
+              "cornerRadius": 10,
+              "gap": 10,
+              "padding": [
+                10,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "bSh7b",
+                  "name": "Files Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "folder",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "text",
+                  "id": "UxDCW",
+                  "name": "Files Label",
+                  "fill": "$text-inverse",
+                  "content": "Files",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GJC0x",
+              "name": "File Directory Rail Messages",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                10,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "AYNrB",
+                  "name": "Messages Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "message-square",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "ZnBnX",
+                  "name": "Messages Label",
+                  "fill": "$text-muted",
+                  "content": "Messages",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Wx37e",
+              "name": "File Directory Rail Agents",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                10,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "FYpaM",
+                  "name": "Agents Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "bot",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "U5EvT",
+                  "name": "Agents Label",
+                  "fill": "$text-muted",
+                  "content": "Agents",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GpMjs",
+              "name": "File Directory Rail Settings",
+              "width": "fill_container",
+              "gap": 10,
+              "padding": [
+                10,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "IB9y5",
+                  "name": "Settings Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "sliders-horizontal",
+                  "library": "lucide",
+                  "fill": "$text-muted"
+                },
+                {
+                  "type": "text",
+                  "id": "B4GEsP",
+                  "name": "Settings Label",
+                  "fill": "$text-muted",
+                  "content": "Settings",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "RU0mj",
+              "name": "File Directory Rail Boundary",
+              "fill": "$text-muted",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "READ ONLY\nOWNER SCOPED\nDOWNLOAD ONLY",
+              "lineHeight": 1.8,
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ZYtlq",
+          "name": "File Directory Desktop Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            34,
+            40
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "gXW4O",
+              "name": "File Directory Desktop Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cSOdP",
+                  "name": "File Directory Desktop Heading",
+                  "width": 620,
+                  "layout": "vertical",
+                  "gap": 7,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wTrOR",
+                      "name": "File Directory Desktop Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "OWNER FILE DIRECTORY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 1.2
+                    },
+                    {
+                      "type": "text",
+                      "id": "opbX2",
+                      "name": "File Directory Desktop Title",
+                      "fill": "$ink",
+                      "content": "Read-only files",
+                      "fontFamily": "$font-display",
+                      "fontSize": 34,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "dBZop",
+                      "name": "File Directory Desktop Subtitle",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Browse owner-scoped files available to this conversation. Storage internals remain hidden from the interface.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V4pibg",
+                  "name": "File Directory Read Only Status",
+                  "fill": "$surface",
+                  "cornerRadius": 10,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "gap": 9,
+                  "padding": [
+                    11,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "bdBN5",
+                      "name": "File Directory Lock Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "lock",
+                      "library": "lucide",
+                      "fill": "$accent-strong"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PG6WE",
+                      "name": "File Directory Lock Label",
+                      "fill": "$ink",
+                      "content": "Read-only access",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iG94m",
+              "name": "File Directory Permission Notice",
+              "width": "fill_container",
+              "fill": "$accent-soft",
+              "cornerRadius": 10,
+              "gap": 12,
+              "padding": [
+                13,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "f9xJJs",
+                  "name": "File Directory Notice Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "shield-check",
+                  "library": "lucide",
+                  "fill": "$accent-strong"
+                },
+                {
+                  "type": "text",
+                  "id": "L78ww",
+                  "name": "File Directory Notice Text",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Files are filtered by owner permission. The UI exposes filename, type, size, last updated time, and Download only.",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wtMf9",
+              "name": "File Directory Desktop Content",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "uhHwK",
+                  "name": "File Directory List Region",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "y96Jo",
+                      "name": "File Directory Column Header",
+                      "width": "fill_container",
+                      "padding": [
+                        0,
+                        18
+                      ],
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "D4Dju",
+                          "name": "File Directory Column File",
+                          "fill": "$ink-faint",
+                          "content": "Filename",
+                          "fontFamily": "$font-data",
+                          "fontSize": 10,
+                          "fontWeight": "700",
+                          "letterSpacing": 0.8
+                        },
+                        {
+                          "type": "text",
+                          "id": "Q9iKiU",
+                          "name": "File Directory Column Action",
+                          "fill": "$ink-faint",
+                          "content": "Action",
+                          "fontFamily": "$font-data",
+                          "fontSize": 10,
+                          "fontWeight": "700",
+                          "letterSpacing": 0.8
+                        }
+                      ]
+                    },
+                    {
+                      "id": "N8SK38",
+                      "type": "ref",
+                      "ref": "l2FpvH",
+                      "name": "File Directory Row field-brief-owner-a.pdf",
+                      "width": "fill_container",
+                      "descendants": {
+                        "fZtjz": {
+                          "content": "field-brief-owner-a.pdf"
+                        },
+                        "E55ux": {
+                          "content": "2.4 MB  ·  Updated 2026-08-30 09:42"
+                        }
+                      }
+                    },
+                    {
+                      "id": "SRH4M",
+                      "type": "ref",
+                      "ref": "l2FpvH",
+                      "name": "File Directory Row sensor-readings-aug.csv",
+                      "width": "fill_container",
+                      "descendants": {
+                        "fZtjz": {
+                          "content": "sensor-readings-aug.csv"
+                        },
+                        "E55ux": {
+                          "content": "864 KB  ·  Updated 2026-08-29 18:10"
+                        }
+                      }
+                    },
+                    {
+                      "id": "p3hEjT",
+                      "type": "ref",
+                      "ref": "l2FpvH",
+                      "name": "File Directory Row handoff-notes.md",
+                      "width": "fill_container",
+                      "descendants": {
+                        "fZtjz": {
+                          "content": "handoff-notes.md"
+                        },
+                        "E55ux": {
+                          "content": "38 KB  ·  Updated 2026-08-27 14:25"
+                        }
+                      }
+                    },
+                    {
+                      "id": "PHnkZ",
+                      "type": "ref",
+                      "ref": "l2FpvH",
+                      "name": "File Directory Row calibration-photo.webp",
+                      "width": "fill_container",
+                      "descendants": {
+                        "fZtjz": {
+                          "content": "calibration-photo.webp"
+                        },
+                        "E55ux": {
+                          "content": "1.9 MB  ·  Updated 2026-08-21 11:08"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wsHCg",
+                  "name": "File Directory Detail Guard",
+                  "width": 320,
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": 14,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": 22,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "DhRzW",
+                      "name": "File Directory Guard Title",
+                      "fill": "$ink",
+                      "content": "Access boundary",
+                      "fontFamily": "$font-display",
+                      "fontSize": 20,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Ab3o6",
+                      "name": "Guard Owner scope verified",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "tN8pF",
+                          "name": "Owner scope verified Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        },
+                        {
+                          "type": "text",
+                          "id": "W5gBA5",
+                          "name": "Owner scope verified Text",
+                          "fill": "$ink-soft",
+                          "content": "Owner scope verified",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pCJgG",
+                      "name": "Guard Storage URLs hidden",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "utOp4",
+                          "name": "Storage URLs hidden Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        },
+                        {
+                          "type": "text",
+                          "id": "j0Sh5",
+                          "name": "Storage URLs hidden Text",
+                          "fill": "$ink-soft",
+                          "content": "Storage URLs hidden",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DTeYo",
+                      "name": "Guard Object keys hidden",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "u1q5Y",
+                          "name": "Object keys hidden Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        },
+                        {
+                          "type": "text",
+                          "id": "V4FNLi",
+                          "name": "Object keys hidden Text",
+                          "fill": "$ink-soft",
+                          "content": "Object keys hidden",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FrfM9",
+                      "name": "Guard No upload or delete controls",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "zDduK",
+                          "name": "No upload or delete controls Icon",
+                          "width": 16,
+                          "height": 16,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        },
+                        {
+                          "type": "text",
+                          "id": "B0aKJ",
+                          "name": "No upload or delete controls Text",
+                          "fill": "$ink-soft",
+                          "content": "No upload or delete controls",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "S5zCv",
+      "x": 31534,
+      "y": 72,
+      "name": "File/Mobile/Directory",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "P7lhH",
+          "name": "File Directory Mobile Top Bar",
+          "width": "fill_container",
+          "height": 68,
+          "fill": "$surface",
+          "stroke": "$line",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "padding": [
+            18,
+            20
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "nfBdQ",
+              "name": "File Directory Mobile Brand",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "IWShO",
+                  "name": "File Directory Mobile Brand Mark",
+                  "fill": "$accent",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "text",
+                  "id": "htt1f",
+                  "name": "File Directory Mobile Brand Text",
+                  "fill": "$ink",
+                  "content": "Files",
+                  "fontFamily": "$font-display",
+                  "fontSize": 17,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nQDow",
+              "name": "File Directory Mobile Lock",
+              "fill": "$accent-soft",
+              "cornerRadius": 8,
+              "gap": 7,
+              "padding": [
+                7,
+                9
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "os3OM",
+                  "name": "File Directory Mobile Lock Icon",
+                  "width": 14,
+                  "height": 14,
+                  "icon": "lock",
+                  "library": "lucide",
+                  "fill": "$accent-strong"
+                },
+                {
+                  "type": "text",
+                  "id": "uybj1",
+                  "name": "File Directory Mobile Lock Label",
+                  "fill": "$accent-strong",
+                  "content": "Read only",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "RAyMP",
+          "name": "File Directory Mobile Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": [
+            22,
+            18
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "dbgCR",
+              "name": "File Directory Mobile Eyebrow",
+              "fill": "$accent-strong",
+              "content": "OWNER FILE DIRECTORY",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1
+            },
+            {
+              "type": "text",
+              "id": "uLA3E",
+              "name": "File Directory Mobile Title",
+              "fill": "$ink",
+              "content": "Read-only files",
+              "fontFamily": "$font-display",
+              "fontSize": 28,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "gJJEh",
+              "name": "File Directory Mobile Copy",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Only files this owner can read are listed. Download is the only available action.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "OWdU3",
+              "name": "File Directory Mobile Notice",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                13,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OgPui",
+                  "name": "File Directory Mobile Notice Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "shield-check",
+                  "library": "lucide",
+                  "fill": "$accent-strong"
+                },
+                {
+                  "type": "text",
+                  "id": "ekxly",
+                  "name": "File Directory Mobile Notice Text",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Filename, type, size and time only.",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "T0MXr3",
+              "name": "File Directory Mobile List",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 11,
+              "children": [
+                {
+                  "id": "uWgE8",
+                  "type": "ref",
+                  "ref": "l2FpvH",
+                  "name": "Mobile File Row field-brief-owner-a.pdf",
+                  "width": "fill_container",
+                  "height": 88,
+                  "descendants": {
+                    "fZtjz": {
+                      "content": "field-brief-owner-a.pdf",
+                      "textGrowth": "fixed-width",
+                      "width": 148,
+                      "fontSize": 12
+                    },
+                    "Ahbat/c1neF": {
+                      "fontSize": 9
+                    },
+                    "E55ux": {
+                      "content": "2.4 MB  ·  2026-08-30 09:42",
+                      "textGrowth": "fixed-width",
+                      "width": 148,
+                      "fontSize": 9
+                    },
+                    "l409T": {
+                      "padding": [
+                        8,
+                        9
+                      ]
+                    }
+                  }
+                },
+                {
+                  "id": "o9esU",
+                  "type": "ref",
+                  "ref": "l2FpvH",
+                  "name": "Mobile File Row sensor-readings-aug.csv",
+                  "width": "fill_container",
+                  "height": 88,
+                  "descendants": {
+                    "fZtjz": {
+                      "content": "sensor-readings-aug.csv",
+                      "textGrowth": "fixed-width",
+                      "width": 148,
+                      "fontSize": 12
+                    },
+                    "Ahbat/c1neF": {
+                      "fontSize": 9
+                    },
+                    "E55ux": {
+                      "content": "864 KB  ·  2026-08-29 18:10",
+                      "textGrowth": "fixed-width",
+                      "width": 148,
+                      "fontSize": 9
+                    },
+                    "l409T": {
+                      "padding": [
+                        8,
+                        9
+                      ]
+                    }
+                  }
+                },
+                {
+                  "id": "ia5pp",
+                  "type": "ref",
+                  "ref": "l2FpvH",
+                  "name": "Mobile File Row handoff-notes.md",
+                  "width": "fill_container",
+                  "height": 88,
+                  "descendants": {
+                    "fZtjz": {
+                      "content": "handoff-notes.md",
+                      "textGrowth": "fixed-width",
+                      "width": 148,
+                      "fontSize": 12
+                    },
+                    "Ahbat/c1neF": {
+                      "fontSize": 9
+                    },
+                    "E55ux": {
+                      "content": "38 KB  ·  2026-08-27 14:25",
+                      "textGrowth": "fixed-width",
+                      "width": 148,
+                      "fontSize": 9
+                    },
+                    "l409T": {
+                      "padding": [
+                        8,
+                        9
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "w4Xk5",
+      "x": 32004,
+      "y": 72,
+      "name": "File/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        36,
+        42
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "C9yz5G",
+          "name": "File State Matrix Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "EIZdE",
+              "name": "File State Matrix Eyebrow",
+              "fill": "$accent-strong",
+              "content": "FILE DIRECTORY STATES",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700",
+              "letterSpacing": 1.2
+            },
+            {
+              "type": "text",
+              "id": "jeBII",
+              "name": "File State Matrix Title",
+              "fill": "$ink",
+              "content": "Read-only owner file outcomes",
+              "fontFamily": "$font-display",
+              "fontSize": 32,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "f0eMy",
+              "name": "File State Matrix Copy",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Every state keeps the file directory owner-scoped and avoids storage URLs, object keys, checksums, upload sessions, delete controls, and upload controls.",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "gKXaU",
+          "name": "File State Matrix Row One",
+          "width": "fill_container",
+          "height": 300,
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "EjWkV",
+              "name": "File Loading State",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QqkrL",
+                  "name": "File Loading State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Yoiii",
+                      "name": "File Loading State Identity",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "m5Pdc",
+                          "name": "File Loading State Icon Surface",
+                          "width": 38,
+                          "height": 38,
+                          "fill": "$surface-muted",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "EzYEL",
+                              "name": "File Loading State Icon",
+                              "width": 19,
+                              "height": 19,
+                              "icon": "loader",
+                              "library": "lucide",
+                              "fill": "$accent-strong"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "pIAWk",
+                          "name": "File Loading State Title",
+                          "fill": "$ink",
+                          "content": "Loading",
+                          "fontFamily": "$font-display",
+                          "fontSize": 20,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "Z4EU4P",
+                      "name": "File Loading State Status",
+                      "fill": "$ink-faint",
+                      "content": "Loading",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "VH4gc",
+                  "name": "File Loading State Copy",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Show skeleton rows while resolving owner permission and file metadata. No file identifiers are displayed during this state.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "q1l04A",
+                  "name": "File Loading Skeleton Row 1",
+                  "width": "fill_container",
+                  "height": 44,
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "c3UQqb",
+                      "name": "File Loading Skeleton Icon 1",
+                      "fill": "$surface-muted",
+                      "width": 30,
+                      "height": 30
+                    },
+                    {
+                      "type": "frame",
+                      "id": "t9t8XM",
+                      "name": "File Loading Skeleton Text 1",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "EY0h0",
+                          "name": "File Loading Skeleton Name 1",
+                          "fill": "$line",
+                          "width": 210,
+                          "height": 9
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "O36jZv",
+                          "name": "File Loading Skeleton Meta 1",
+                          "fill": "$line",
+                          "width": 150,
+                          "height": 7
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "kiaR6",
+                      "name": "File Loading Skeleton Button 1",
+                      "fill": "$line",
+                      "width": 80,
+                      "height": 26
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HT3ue",
+                  "name": "File Loading Skeleton Row 2",
+                  "width": "fill_container",
+                  "height": 44,
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "neYhK",
+                      "name": "File Loading Skeleton Icon 2",
+                      "fill": "$surface-muted",
+                      "width": 30,
+                      "height": 30
+                    },
+                    {
+                      "type": "frame",
+                      "id": "O87750",
+                      "name": "File Loading Skeleton Text 2",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "K67iE",
+                          "name": "File Loading Skeleton Name 2",
+                          "fill": "$line",
+                          "width": 210,
+                          "height": 9
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "HdHcm",
+                          "name": "File Loading Skeleton Meta 2",
+                          "fill": "$line",
+                          "width": 150,
+                          "height": 7
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "I3P1HX",
+                      "name": "File Loading Skeleton Button 2",
+                      "fill": "$line",
+                      "width": 80,
+                      "height": 26
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "A8gDH",
+                  "name": "File Loading Skeleton Row 3",
+                  "width": "fill_container",
+                  "height": 44,
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "T85fOA",
+                      "name": "File Loading Skeleton Icon 3",
+                      "fill": "$surface-muted",
+                      "width": 30,
+                      "height": 30
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PaPwm",
+                      "name": "File Loading Skeleton Text 3",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "ciBxv",
+                          "name": "File Loading Skeleton Name 3",
+                          "fill": "$line",
+                          "width": 210,
+                          "height": 9
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 4,
+                          "id": "nWaLt",
+                          "name": "File Loading Skeleton Meta 3",
+                          "fill": "$line",
+                          "width": 150,
+                          "height": 7
+                        }
+                      ]
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 8,
+                      "id": "kg9y2",
+                      "name": "File Loading Skeleton Button 3",
+                      "fill": "$line",
+                      "width": 80,
+                      "height": 26
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bxCMo",
+              "name": "File Empty State Card",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "hVrqE",
+                  "name": "File Empty State Card Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Bc33K",
+                      "name": "File Empty State Card Identity",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "IBltr",
+                          "name": "File Empty State Card Icon Surface",
+                          "width": 38,
+                          "height": 38,
+                          "fill": "$surface-muted",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "wbuN2",
+                              "name": "File Empty State Card Icon",
+                              "width": 19,
+                              "height": 19,
+                              "icon": "folder-open",
+                              "library": "lucide",
+                              "fill": "$accent-strong"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "aGZCl",
+                          "name": "File Empty State Card Title",
+                          "fill": "$ink",
+                          "content": "Empty",
+                          "fontFamily": "$font-display",
+                          "fontSize": 20,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "J6zC6",
+                      "name": "File Empty State Card Status",
+                      "fill": "$ink-faint",
+                      "content": "Empty",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Q2qdU",
+                  "name": "File Empty State Card Copy",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "The owner has no readable files. The reusable empty-state component supplies the visible body copy.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "id": "M1UJfL",
+                  "type": "ref",
+                  "ref": "w54YQ3",
+                  "name": "File Matrix Empty State Instance",
+                  "width": "fill_container",
+                  "height": 142,
+                  "descendants": {
+                    "S9vpw": {
+                      "content": "No owner files"
+                    },
+                    "eFnQU": {
+                      "content": "This owner has no readable files in the directory."
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "a82L36",
+          "name": "File State Matrix Row Two",
+          "width": "fill_container",
+          "height": 300,
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "V5LOEG",
+              "name": "File Error State",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Mfz4r",
+                  "name": "File Error State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Hl6OJ",
+                      "name": "File Error State Identity",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Sl1qX",
+                          "name": "File Error State Icon Surface",
+                          "width": 38,
+                          "height": 38,
+                          "fill": "$danger-soft",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "p5L15",
+                              "name": "File Error State Icon",
+                              "width": 19,
+                              "height": 19,
+                              "icon": "circle-alert",
+                              "library": "lucide",
+                              "fill": "$danger"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "QekUd",
+                          "name": "File Error State Title",
+                          "fill": "$ink",
+                          "content": "Error",
+                          "fontFamily": "$font-display",
+                          "fontSize": 20,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "f9LEI",
+                      "name": "File Error State Status",
+                      "fill": "$ink-faint",
+                      "content": "Error",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "s5UvAr",
+                  "name": "File Error State Copy",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "A transient directory lookup failure. Offer retry without disclosing provider paths, object keys, checksums, or internal request identifiers.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "uBmtV",
+                  "name": "File Error Retry Button",
+                  "fill": "$danger",
+                  "cornerRadius": 8,
+                  "gap": 8,
+                  "padding": [
+                    9,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "cDKMf",
+                      "name": "File Error Retry Icon",
+                      "width": 15,
+                      "height": 15,
+                      "icon": "refresh-cw",
+                      "library": "lucide",
+                      "fill": "$text-inverse"
+                    },
+                    {
+                      "type": "text",
+                      "id": "TrmOM",
+                      "name": "File Error Retry Label",
+                      "fill": "$text-inverse",
+                      "content": "Retry",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wvjtn",
+              "name": "File Permission Denied State",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 14,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 22,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nKAKo",
+                  "name": "File Permission Denied State Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "MPTES",
+                      "name": "File Permission Denied State Identity",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "mKNH1",
+                          "name": "File Permission Denied State Icon Surface",
+                          "width": 38,
+                          "height": 38,
+                          "fill": "$danger-soft",
+                          "cornerRadius": 10,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "BxIE4",
+                              "name": "File Permission Denied State Icon",
+                              "width": 19,
+                              "height": 19,
+                              "icon": "shield-alert",
+                              "library": "lucide",
+                              "fill": "$danger"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "uH2nb",
+                          "name": "File Permission Denied State Title",
+                          "fill": "$ink",
+                          "content": "Permission denied",
+                          "fontFamily": "$font-display",
+                          "fontSize": 20,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "JmMwA",
+                      "name": "File Permission Denied State Status",
+                      "fill": "$ink-faint",
+                      "content": "Permission Denied",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.8
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "rQxRx",
+                  "name": "File Permission Denied State Copy",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "The viewer does not have owner-scoped read access. Keep the directory closed and show no file list or storage details.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "eAWMw",
+                  "name": "File Permission Denied Boundary",
+                  "width": "fill_container",
+                  "fill": "$danger-soft",
+                  "cornerRadius": 10,
+                  "gap": 10,
+                  "padding": [
+                    12,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "ihVln",
+                      "name": "File Permission Denied Boundary Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "lock",
+                      "library": "lucide",
+                      "fill": "$danger"
+                    },
+                    {
+                      "type": "text",
+                      "id": "dtLFT",
+                      "name": "File Permission Denied Boundary Text",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Read access required before filenames are requested.",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

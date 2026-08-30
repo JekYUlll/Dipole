@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：F2 File Directory 完成 Pencil desktop/mobile/状态矩阵、批准导出和认证只读 `/files` 路由。Core 经 SQLC owner-scoped 文件 UUID cursor 和版本化 gRPC 返回低敏目录投影；HTTP、Swagger 与 Vue 严格排除对象键、存储 URL、校验值和上传会话，下载逐项重新授权，读取失败清空旧状态。上传仍由会话编辑器和既有 MinIO Multipart 数据面处理；删除、分享、跨浏览器视觉回归和预签名直传默认切流继续作为独立切片，Remote GPU Node 22 前端门禁待执行。
+
 - 2026-08-30：Agent Project Guardian 增加版本化低敏 subscription 预筛语料：四类关注项目状态、四类干扰事件、双 reviewer 100% agreement 与共享 deterministic evaluator 已纳入回归。规则 evidence 直接复用 production `matchEventSubscriptions`，避免测试手写 decision 造成语义分叉。Remote GPU Node 22 验证 Agent Runtime `133` 个测试文件、`695` 项通过，typecheck/build 通过；素材固定使用 synthetic `fixture:` 标识，不含真实会话、用户或模型输出。真实 corpus、retrieval relevance、候选模型成本阈值和 shared shadow 观察仍由 `AD-038` 管理。
 
 - 2026-08-30：F2 Group Directory 完成 Pencil canonical desktop/mobile 目录、loading/empty/unavailable/dismissed/hot-group 状态矩阵、三个复用组件和批准导出，并交付认证只读 `/groups` 路由。目录从会话投影派生范围后读取权威群详情，异常时清空旧状态；Remote GPU Node 22 通过 36 个前端测试文件、152 项测试、typecheck 与 production build。热群继续采用 `notify + pull`，群成员与管理写操作未在目录中开放。

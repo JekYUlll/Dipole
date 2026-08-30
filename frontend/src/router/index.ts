@@ -28,6 +28,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/files',
+      name: 'files',
+      component: () => import('@/views/FileDirectoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/agent/tasks/:taskId/input',
       name: 'agent-task-input',
       component: () => import('@/views/AgentElicitationView.vue'),

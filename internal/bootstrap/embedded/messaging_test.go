@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
 
@@ -15,7 +16,10 @@ func (stubCoreCapability) GetGroupByUUID(string) (*model.Group, error)          
 func (stubCoreCapability) GetGroupMember(string, string) (*model.GroupMember, error) { return nil, nil }
 func (stubCoreCapability) ListGroupMembers(string) ([]*model.GroupMember, error)     { return nil, nil }
 func (stubCoreCapability) GetOwnedFile(string, string) (*model.UploadedFile, error)  { return nil, nil }
-func (stubCoreCapability) ListSearchConversationKeys(string) ([]string, error)       { return nil, nil }
+func (stubCoreCapability) ListOwnedFiles(string, string, int) (*application.OwnedFilePage, error) {
+	return &application.OwnedFilePage{}, nil
+}
+func (stubCoreCapability) ListSearchConversationKeys(string) ([]string, error) { return nil, nil }
 
 func TestNewMessagingServicesBuildsSharedServiceSet(t *testing.T) {
 	setMessagingTestConfig(t)

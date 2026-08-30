@@ -98,6 +98,11 @@ type UploadedFileResponseEnvelope struct {
 	Data *httpdto.UploadedFileResponse `json:"data"`
 }
 
+type OwnedFileDirectoryResponseEnvelope struct {
+	Code int                                 `json:"code"`
+	Data *httpdto.OwnedFileDirectoryResponse `json:"data"`
+}
+
 type FileDownloadResponseEnvelope struct {
 	Code int                           `json:"code"`
 	Data *httpdto.FileDownloadResponse `json:"data"`

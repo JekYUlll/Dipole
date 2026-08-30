@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -34,6 +35,14 @@ type stubFileService struct {
 
 type stubFileLimiter struct {
 	allowFileUploadFn func(userUUID string) (bool, time.Duration)
+}
+
+type stubOwnedFileDirectory struct {
+	listFn func(uploaderUUID, cursor string, limit int) (*application.OwnedFilePage, error)
+}
+
+func (s stubOwnedFileDirectory) ListOwnedFiles(uploaderUUID, cursor string, limit int) (*application.OwnedFilePage, error) {
+	return s.listFn(uploaderUUID, cursor, limit)
 }
 
 type policyFileService struct {
@@ -162,6 +171,45 @@ func TestFileHandlerMultipartPolicy(t *testing.T) {
 	}
 	if response.Code != code.Success || response.Data.Mode != "relay" || response.Data.MaxConcurrency != 3 {
 		t.Fatalf("unexpected Multipart policy response: %+v", response)
+	}
+}
+
+func TestFileHandlerListsOnlyCurrentOwnerProjection(t *testing.T) {
+	t.Parallel()
+	handler := newFileHandler(&stubFileService{}, 50*1024*1024).WithDirectory(stubOwnedFileDirectory{
+		listFn: func(owner, cursor string, limit int) (*application.OwnedFilePage, error) {
+			if owner != "U100" || cursor != "F200" || limit != 30 {
+				t.Fatalf("unexpected owner directory query: %s %s %d", owner, cursor, limit)
+			}
+			return &application.OwnedFilePage{Files: []*model.UploadedFile{{
+				UUID: "F100", UploaderUUID: owner, FileName: "handoff.md", FileSize: 42,
+				ContentType: "text/markdown", ObjectKey: "must-not-leak", URL: "https://must-not-leak",
+			}}, NextCursor: "F100", HasMore: true}, nil
+		},
+	})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files?cursor=F200", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	handler.ListOwned(context)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	if strings.Contains(recorder.Body.String(), "must-not-leak") || !strings.Contains(recorder.Body.String(), "/api/v1/files/F100/download") {
+		t.Fatalf("unexpected owner directory response: %s", recorder.Body.String())
+	}
+}
+
+func TestFileHandlerOwnerDirectoryFailsClosedWithoutCoreProjection(t *testing.T) {
+	t.Parallel()
+	handler := newFileHandler(&stubFileService{}, 50*1024*1024)
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	handler.ListOwned(context)
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status 503, got %d", recorder.Code)
 	}
 }
 

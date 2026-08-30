@@ -115,6 +115,25 @@ func (c *Client) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFil
 	return fileFromProto(response.GetFile()), nil
 }
 
+func (c *Client) ListOwnedFiles(uploaderUUID, beforeFileUUID string, limit int) (*application.OwnedFilePage, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	defer cancel()
+	response, err := c.rpc.ListOwnedFiles(ctx, &corev1.ListOwnedFilesRequest{
+		Context: c.requestContext(uploaderUUID), UploaderUserId: uploaderUUID,
+		BeforeFileId: beforeFileUUID, Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	page := &application.OwnedFilePage{NextCursor: response.GetNextBeforeFileId(), HasMore: response.GetHasMore()}
+	for _, file := range response.GetFiles() {
+		if file != nil {
+			page.Files = append(page.Files, fileFromProto(file))
+		}
+	}
+	return page, nil
+}
+
 func (c *Client) ListSearchConversationKeys(userUUID string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
 	defer cancel()
@@ -163,5 +182,6 @@ func fileFromProto(file *corev1.FileSnapshot) *model.UploadedFile {
 		FileSize:     file.GetFileSize(),
 		ContentType:  file.GetContentType(),
 		URL:          file.GetUrl(),
+		CreatedAt:    time.UnixMilli(file.GetCreatedAtUnixMilli()).UTC(),
 	}
 }

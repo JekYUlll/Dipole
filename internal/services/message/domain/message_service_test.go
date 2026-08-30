@@ -67,6 +67,10 @@ func (c *stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model
 	return file, nil
 }
 
+func (c *stubCoreCapability) ListOwnedFiles(string, string, int) (*applicationPort.OwnedFilePage, error) {
+	return &applicationPort.OwnedFilePage{}, nil
+}
+
 func (c *stubCoreCapability) GetUserByUUID(userUUID string) (*model.User, error) {
 	c.userLookups = append(c.userLookups, userUUID)
 	return c.users[userUUID], nil

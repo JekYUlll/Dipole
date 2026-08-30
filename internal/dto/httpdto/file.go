@@ -15,6 +15,38 @@ type UploadedFileResponse struct {
 	ContentPath  string `json:"content_path"`
 }
 
+// OwnedFileDirectoryResponse intentionally omits storage location and
+// checksum fields. Download authorization is resolved per file request.
+type OwnedFileDirectoryResponse struct {
+	Files      []OwnedFileDirectoryItem `json:"files"`
+	NextCursor string                   `json:"next_cursor,omitempty"`
+	HasMore    bool                     `json:"has_more"`
+}
+
+type OwnedFileDirectoryItem struct {
+	FileID       string    `json:"file_id"`
+	FileName     string    `json:"file_name"`
+	FileSize     int64     `json:"file_size"`
+	ContentType  string    `json:"content_type"`
+	CreatedAt    time.Time `json:"created_at"`
+	DownloadPath string    `json:"download_path"`
+}
+
+func ToOwnedFileDirectoryResponse(files []*model.UploadedFile, nextCursor string, hasMore bool) *OwnedFileDirectoryResponse {
+	response := &OwnedFileDirectoryResponse{Files: make([]OwnedFileDirectoryItem, 0, len(files)), NextCursor: nextCursor, HasMore: hasMore}
+	for _, file := range files {
+		if file == nil {
+			continue
+		}
+		response.Files = append(response.Files, OwnedFileDirectoryItem{
+			FileID: file.UUID, FileName: file.FileName, FileSize: file.FileSize,
+			ContentType: file.ContentType, CreatedAt: file.CreatedAt,
+			DownloadPath: FileDownloadPath(file.UUID),
+		})
+	}
+	return response
+}
+
 func ToUploadedFileResponse(file *model.UploadedFile) *UploadedFileResponse {
 	if file == nil {
 		return nil

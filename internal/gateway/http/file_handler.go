@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
@@ -43,10 +44,15 @@ type multipartPolicyService interface {
 	MultipartUploadPolicy() corefile.MultipartUploadPolicy
 }
 
+type ownedFileDirectoryService interface {
+	ListOwnedFiles(uploaderUUID, beforeFileUUID string, limit int) (*application.OwnedFilePage, error)
+}
+
 type FileHandler struct {
 	service        fileService
 	maxUploadBytes int64
 	limiter        fileRateLimiter
+	directory      ownedFileDirectoryService
 }
 
 type fileRateLimiter interface {
@@ -67,6 +73,52 @@ func newFileHandler(service fileService, maxUploadBytes int64) *FileHandler {
 func (h *FileHandler) WithLimiter(limiter fileRateLimiter) *FileHandler {
 	h.limiter = limiter
 	return h
+}
+
+// WithDirectory wires the Core-owned file projection. A nil dependency keeps
+// the read endpoint fail-closed while upload/download compatibility remains.
+func (h *FileHandler) WithDirectory(directory ownedFileDirectoryService) *FileHandler {
+	h.directory = directory
+	return h
+}
+
+// ListOwned godoc
+// @Summary 列出当前用户上传的文件
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Param cursor query string false "上一页最后一个文件 ID"
+// @Param limit query int false "每页数量，1-50"
+// @Success 200 {object} OwnedFileDirectoryResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Router /files [get]
+func (h *FileHandler) ListOwned(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	if h.directory == nil {
+		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "owner file directory is unavailable")
+		return
+	}
+	limit := 30
+	if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 50 {
+			ErrorWithCode(c, http.StatusBadRequest, code.FileDirectoryQueryInvalid, "file directory limit must be between 1 and 50")
+			return
+		}
+		limit = parsed
+	}
+	page, err := h.directory.ListOwnedFiles(currentUser.UUID, strings.TrimSpace(c.Query("cursor")), limit)
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.FileDirectoryQueryInvalid, "file directory cursor is invalid")
+		return
+	}
+	Success(c, httpdto.ToOwnedFileDirectoryResponse(page.Files, page.NextCursor, page.HasMore))
 }
 
 // Upload godoc

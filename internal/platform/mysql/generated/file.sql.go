@@ -75,3 +75,54 @@ func (q *Queries) GetUploadedFileByUUID(ctx context.Context, uuid string) (Uploa
 	)
 	return i, err
 }
+
+const listUploadedFilesByUploaderBeforeID = `-- name: ListUploadedFilesByUploaderBeforeID :many
+SELECT id, uuid, uploader_uuid, bucket, object_key, file_name, file_size,
+       content_type, url, created_at, updated_at
+FROM uploaded_files
+WHERE uploader_uuid = ?
+  AND id < ?
+ORDER BY id DESC
+LIMIT ?
+`
+
+type ListUploadedFilesByUploaderBeforeIDParams struct {
+	UploaderUuid string
+	ID           uint64
+	Limit        int32
+}
+
+func (q *Queries) ListUploadedFilesByUploaderBeforeID(ctx context.Context, arg ListUploadedFilesByUploaderBeforeIDParams) ([]UploadedFile, error) {
+	rows, err := q.db.QueryContext(ctx, listUploadedFilesByUploaderBeforeID, arg.UploaderUuid, arg.ID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UploadedFile{}
+	for rows.Next() {
+		var i UploadedFile
+		if err := rows.Scan(
+			&i.ID,
+			&i.Uuid,
+			&i.UploaderUuid,
+			&i.Bucket,
+			&i.ObjectKey,
+			&i.FileName,
+			&i.FileSize,
+			&i.ContentType,
+			&i.Url,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

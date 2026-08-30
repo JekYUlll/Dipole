@@ -1,6 +1,10 @@
 package coreapplication
 
 import (
+	"errors"
+	"math"
+	"strings"
+
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 )
@@ -29,6 +33,7 @@ type groupFinder interface {
 
 type fileFinder interface {
 	GetByUUID(string) (*model.UploadedFile, error)
+	ListByUploaderBeforeID(string, uint, int) ([]*model.UploadedFile, error)
 }
 
 type conversationFinder interface {
@@ -79,6 +84,38 @@ func (c *LocalCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*mode
 		return nil, err
 	}
 	return file, nil
+}
+
+func (c *LocalCoreCapability) ListOwnedFiles(uploaderUUID, beforeFileUUID string, limit int) (*applicationPort.OwnedFilePage, error) {
+	if strings.TrimSpace(uploaderUUID) == "" || limit < 1 || limit > 100 {
+		return nil, errors.New("invalid owned file directory query")
+	}
+
+	beforeID := uint(math.MaxUint)
+	if cursor := strings.TrimSpace(beforeFileUUID); cursor != "" {
+		file, err := c.files.GetByUUID(cursor)
+		if err != nil {
+			return nil, err
+		}
+		if file == nil || file.UploaderUUID != uploaderUUID {
+			return nil, errors.New("owned file directory cursor is invalid")
+		}
+		beforeID = file.ID
+	}
+
+	files, err := c.files.ListByUploaderBeforeID(uploaderUUID, beforeID, limit+1)
+	if err != nil {
+		return nil, err
+	}
+	page := &applicationPort.OwnedFilePage{Files: files}
+	if len(page.Files) > limit {
+		page.HasMore = true
+		page.Files = page.Files[:limit]
+	}
+	if len(page.Files) > 0 {
+		page.NextCursor = page.Files[len(page.Files)-1].UUID
+	}
+	return page, nil
 }
 
 func (c *LocalCoreCapability) ListSearchConversationKeys(userUUID string) ([]string, error) {

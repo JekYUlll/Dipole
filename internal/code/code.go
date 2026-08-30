@@ -96,6 +96,7 @@ const (
 	FileMultipartSessionNotFound int = 100707
 	FileMultipartSessionInvalid  int = 100708
 	FileMultipartPartInvalid     int = 100709
+	FileDirectoryQueryInvalid    int = 100710
 )
 
 const (

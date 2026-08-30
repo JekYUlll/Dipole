@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 增加 File Directory v1 的 desktop/mobile 只读目录、loading/empty/unavailable 状态矩阵及 File Directory Row、File Type Badge、Empty State 三个复用组件。
+- 归档 `exports/file-directory-review.png` 评审基线；目录仅展示 owner-scoped 文件元数据，存储 URL、对象键、校验值、上传会话和删除控制均不进入页面。
 - 增加 Group Directory v1 的 desktop/mobile 目录、五态权威状态矩阵和 Group Row/Status/Member Summary 三个可复用组件。
 - 归档 `exports/group-v1/` 的 2x 评审图；设计只覆盖认证读取、解散只读和热群 `notify + pull`，不开放群管理写操作。
 - 增加 Contact v1 的 desktop/mobile 管理稿、关系状态矩阵和两个可复用组件，覆盖可信联系人、传入/传出申请、备注、拉黑和删除入口。

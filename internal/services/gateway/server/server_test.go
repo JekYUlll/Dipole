@@ -276,7 +276,10 @@ func (gatewayCoreStub) GetGroupByUUID(string) (*model.Group, error)             
 func (gatewayCoreStub) GetGroupMember(string, string) (*model.GroupMember, error) { return nil, nil }
 func (gatewayCoreStub) ListGroupMembers(string) ([]*model.GroupMember, error)     { return nil, nil }
 func (gatewayCoreStub) GetOwnedFile(string, string) (*model.UploadedFile, error)  { return nil, nil }
-func (gatewayCoreStub) ListSearchConversationKeys(string) ([]string, error)       { return nil, nil }
+func (gatewayCoreStub) ListOwnedFiles(string, string, int) (*application.OwnedFilePage, error) {
+	return &application.OwnedFilePage{}, nil
+}
+func (gatewayCoreStub) ListSearchConversationKeys(string) ([]string, error) { return nil, nil }
 
 var _ application.MessageApplication = gatewayMessageStub{}
 var _ application.CoreCapability = gatewayCoreStub{}
