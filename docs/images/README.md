@@ -8,7 +8,8 @@ the SVG assets below so the repository keeps a consistent visual identity.
 | Asset | Intended use |
 | --- | --- |
 | `dipole-wordmark.svg` | Repository header and landing pages. |
+| `dipole-mark.svg` | Square application icon, favicons and compact product entry points. |
 | `dipole-im-mark.svg` | IM-focused materials and architecture documents. |
 | `dipole-agent-mark.svg` | Agent Runtime-focused materials and architecture documents. |
 
-Keep the paired blue signal mark, light canvas and dark-blue typography aligned across new assets. The green dot identifies the Agent runtime only; it should not be used to imply that privileged Agent capabilities are enabled by default.
+Keep the Signal Link geometry, blue primary color and restrained light canvas aligned across new assets. The Agent mark represents governed tasks and capabilities only; it must not imply privileged capabilities are enabled by default.

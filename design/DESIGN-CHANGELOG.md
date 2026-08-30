@@ -16,6 +16,7 @@
 - 增加 Contact v1 的 desktop/mobile 管理稿、关系状态矩阵和两个可复用组件，覆盖可信联系人、传入/传出申请、备注、拉黑和删除入口。
 - 归档 `exports/contact-v1/` 的 2x 评审图；当前仅为设计基线，Vue 路由与交互实现继续待 F2 后续切片接入。
 
+- 新增 `brand-signal-v2-brief.md`，固定实心端点、空心端点与连续连接轨迹的标识方向，覆盖横向字标、方形应用图标和小尺寸单色图标。Pencil CLI 已生成方向性中间评审图，但在安全超时前未完成 canonical `.pen` 保存；SVG 资产可先作为文档入口使用，Pencil 评审 Frame 与正式导出继续待补。
 - 增加本地 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该检查不修改设计文件，也不替代 Pencil 视觉评审。
 - 增加 `design/export-manifest.json` 评审导出清单；设计门禁现在同时校验批准的单文件和导出目录存在且包含非空 PNG，避免设计稿与评审资产发生静默漂移。
 

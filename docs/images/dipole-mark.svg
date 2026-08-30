@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Dipole signal mark</title>
+  <desc id="desc">A compact linked pair of signal endpoints for Dipole.</desc>
+  <rect width="256" height="256" rx="58" fill="#2d63e8"/>
+  <circle cx="89" cy="163" r="43" fill="#ffffff"/>
+  <circle cx="163" cy="89" r="37" fill="#2d63e8" stroke="#ffffff" stroke-width="14"/>
+  <path d="M117 154C116 123 130 105 145 99" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+</svg>

@@ -20,6 +20,10 @@
 
 ## 当前 Frame
 
+### Brand Signal v2
+
+`brand-signal-v2-brief.md` 记录新版标识的评审约束。Pencil CLI 在本轮增量写入超过安全超时前已导出一张方向性评审图，但没有完成 canonical `.pen` 保存，因此该文件尚未形成一个已批准的 Canvas Frame。仓库 SVG 使用同一套 Signal Link 方向交付；后续 Pencil 小批次只补充品牌评审区和导出，不能重建现有页面。
+
 ### Foundations 与组件
 
 - `00 Foundations`：颜色、字体、圆角和间距基线。
