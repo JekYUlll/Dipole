@@ -362,6 +362,7 @@
 - 2026-08-30：新增 `package-web-sync-bundle.sh` 与 3 项回归测试，以干净 Git revision、显式 `shadow|primary|off` 模式和稳定 tar 元数据生成不可覆盖 `web-sync-bundle.v1`；输出固定 `0600`，源目录内输出 fail-closed。该工件为真实观察窗口提供可复核输入，客户端流量和 Prometheus 共享窗口仍待完成。
 - 2026-08-30：`remote-dev.sh web-sync-bundle` 纳入远程 CPU/容器工作流，提交同步后固定生成 shadow bundle 到 `/tmp`，Remote GPU 可在已有 GPU 任务期间执行；入口 16 项契约测试通过，不改变默认 Sync 模式。
 - 2026-08-31：Remote GPU 已为 `45a80b3d475f4ba0317addab9d11ee0cb93397f2` 生成 `web-sync-shadow-45a80b3d` 候选归档，记录于 [A6 bundle 证据](../../benchmarks/a6-web-sync-bundle-45a80b3d/README.md)。该工件只绑定 revision、模式和 SHA-256；因主机存在活动登录会话，隔离 Prometheus smoke 与真实客户端 24 小时窗口尚未启动。
+- 2026-08-31：Remote GPU 在隔离 worktree 为当前 `2ca6b1992d409ad4b4dab4fc86842cd28cc1e543` 生成 `web-sync-shadow-2ca6b199` Shadow 包，SHA-256 为 `d72207d7c70a88d4dc0f11c348c2e545589c3d5dbfd056aab323f1aee78b3b18`，权限 `0600`，记录于 [A6 bundle 证据](../../benchmarks/a6-web-sync-bundle-2ca6b199/README.md)。Vue production build 与 observation contract 的 14 项测试通过；由于主机仍有 25 个活动登录会话，未启动 Compose、Prometheus、Alertmanager 或真实流量窗口，默认客户端模式不变。
 
 ### AD-042：正式技术架构图与已发布分层拓扑发生漂移
 
