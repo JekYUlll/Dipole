@@ -61,7 +61,7 @@ jq -e '
   and .services.gateway.environment.DIPOLE_REDIS_SENTINEL_MASTER_NAME == "dipole-master"
   and .services.mysql.image == "container-registry.oracle.com/mysql/community-router:8.4"
   and .services.mysql.environment.MYSQL_HOST == "mysql-1"
-  and .services.mysql.healthcheck.test[4] == "3306"
+  and any(.services.mysql.healthcheck.test[]?; . == "3306")
   and .services["mysql-cluster-init"].depends_on["mysql-1"].condition == "service_healthy"
   and .services["mysql-cluster-init"].depends_on["mysql-2"].condition == "service_healthy"
   and .services["mysql-cluster-init"].depends_on["mysql-3"].condition == "service_healthy"
