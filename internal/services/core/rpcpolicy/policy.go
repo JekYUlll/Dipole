@@ -43,6 +43,7 @@ func RestrictAgentServiceMethods(ctx context.Context, request any, info *grpc.Un
 		info.FullMethod != agentv1.AgentCapabilityService_CreateArtifact_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_MatchEventSubscriptions_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListContextMemories_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_CommitMemoryPromotionReceipt_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName &&
 		info.FullMethod != healthv1.Health_Check_FullMethodName {

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 `CommitMemoryPromotionReceipt` 内部 protobuf/gRPC seam，仅允许认证的 `dipole-agent` 调用并由 Core caller policy 放行；未注入 commit service 时 fail closed 为 `Unavailable`。Gateway owner RPC 不获得该方法，Temporal Activity、Runtime client、Core bootstrap 和自动写入开关继续关闭。
+
 - 2026-08-30：新增默认未接线的 Core Memory promotion receipt commit service。它从持久化 Task/Run Invocation 恢复 owner，要求 active `dipole-agent` Runtime，并以 TS/Go 共用的毫秒级 ISO canonical SHA-256 向量复核 receipt 后委托既有 candidate/review 幂等事务；RPC、Temporal Activity、启动链和自动写入开关继续关闭。
 
 - 2026-08-30：补充 Agent Memory promotion active executor v1 契约，固定 `dipole-agent` 的专用内部提交边界、Core 侧 Task/Run 身份恢复、active admission/promotion grant 验证、receipt 重算与幂等重放要求。当前仅完成设计与测试矩阵，默认配置继续为 receipt-only，未启用 Runtime 自动写入。

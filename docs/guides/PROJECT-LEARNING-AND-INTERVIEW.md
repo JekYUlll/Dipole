@@ -70,7 +70,7 @@
 - **演示：** 使用受控 candidate/review 调用 promotion RPC，指定 `semantic` 后读取返回 Memory 类型；再提交 `working`，确认 Gateway 返回 400 且未触发写入。
 - **证据：** [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)、`internal/services/agent/application/agent_memory_candidate_promotion_test.go`、`internal/transport/grpc/agent/server_test.go`、`internal/services/gateway/server/server_test.go`。
 - **追问：** “为什么 working 不能晋级？” working 只服务当前 Task 的短期推理状态，持久化会扩大生命周期和检索范围；长期 Memory 必须经过 owner review，并在事务内绑定 candidate 与 review。
-- **限制：** 当前路径使用 owner 控制 RPC；TS receipt v2 的短时效、Core commit service 和独立 active executor 契约已固定，但 Core RPC、Temporal Activity、授权演练和共享环境证据尚未接入，不能宣称 active Agent 已自动写入长期 Memory。
+- **限制：** 当前路径使用 owner 控制 RPC；TS receipt v2、Core commit service、Agent-only internal RPC 和独立 active executor 契约已固定，但 Runtime client、Temporal Activity、Core bootstrap、授权演练和共享环境证据尚未接入，不能宣称 active Agent 已自动写入长期 Memory。
 - **复核条件：** 接入 receipt、Temporal Activity、active authority 或增加新的 Memory 类型时。
 
 #### 2026-08-30 · Artifact 与 Task Timeline 关联

@@ -112,6 +112,17 @@ type agentMemoryCandidatePromotionStub struct {
 	item    application.AgentMemoryV1
 }
 
+type agentMemoryPromotionReceiptCommitStub struct {
+	request application.AgentMemoryPromotionReceiptCommitRequestV1
+	item    application.AgentMemoryV1
+}
+
+func (s *agentMemoryPromotionReceiptCommitStub) CommitMemoryPromotionReceipt(_ context.Context, request application.AgentMemoryPromotionReceiptCommitRequestV1) (*application.AgentMemoryV1, error) {
+	s.request = request
+	item := s.item
+	return &item, nil
+}
+
 func (s *agentMemoryCandidatePromotionStub) Promote(_ context.Context, request application.AgentMemoryCandidatePromotionRequestV1) (*application.AgentMemoryV1, error) {
 	s.request = request
 	item := s.item
@@ -1046,6 +1057,37 @@ func TestPromoteMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent candidate promotion code = %s", status.Code(err))
+	}
+}
+
+func TestCommitMemoryPromotionReceiptIsAgentBoundAndOptIn(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	commit := &agentMemoryPromotionReceiptCommitStub{item: application.AgentMemoryV1{
+		MemoryUUID: "MEM-CAND-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
+		ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: "CAND-1", Sequence: "REV-1"}, ValidFrom: now, CreatedAt: now,
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	request := &agentv1.CommitMemoryPromotionReceiptRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), ReceiptId: "MEM-PROMOTE-" + strings.Repeat("a", 64), ReceiptSha256: strings.Repeat("a", 64),
+		SchemaVersion: application.AgentMemoryPromotionReceiptSchemaV2, Status: application.AgentMemoryPromotionReceiptPrepared,
+		TaskId: "TASK-1", RunId: "RUN-1", CandidateId: "CAND-1", CandidateSha256: strings.Repeat("b", 64), ReviewId: "REV-1", PolicyVersion: "memory-v1", TargetMemoryType: "semantic",
+		CreatedAtUnixMs: now.UnixMilli(), ExpiresAtUnixMs: now.Add(time.Minute).UnixMilli(),
+	}
+	_, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.CommitMemoryPromotionReceipt(ctx, request) })
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("unconfigured commit code = %s", status.Code(err))
+	}
+	server, _ = server.WithMemoryPromotionReceiptCommits(commit)
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.CommitMemoryPromotionReceipt(ctx, request) })
+	if err != nil || response.(*agentv1.AgentOwnedMemory).GetMemoryId() != "MEM-CAND-1" || commit.request.TaskUUID != "TASK-1" || commit.request.TargetMemoryType != application.AgentMemoryTypeSemantic {
+		t.Fatalf("commit response=%+v request=%+v err=%v", response, commit.request, err)
+	}
+	request.Context = grpccommon.RequestContext("", "dipole-gateway")
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) { return server.CommitMemoryPromotionReceipt(ctx, request) })
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Gateway commit code = %s", status.Code(err))
 	}
 }
 

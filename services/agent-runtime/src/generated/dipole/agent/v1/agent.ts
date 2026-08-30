@@ -2611,6 +2611,67 @@ export interface PromoteMemoryCandidateRequest {
     targetMemoryType: string;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.CommitMemoryPromotionReceiptRequest
+ */
+export interface CommitMemoryPromotionReceiptRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string receipt_id = 2
+     */
+    receiptId: string;
+    /**
+     * @generated from protobuf field: string receipt_sha256 = 3
+     */
+    receiptSha256: string;
+    /**
+     * @generated from protobuf field: string schema_version = 4
+     */
+    schemaVersion: string;
+    /**
+     * @generated from protobuf field: string status = 5
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: string task_id = 6
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 7
+     */
+    runId: string;
+    /**
+     * @generated from protobuf field: string candidate_id = 8
+     */
+    candidateId: string;
+    /**
+     * @generated from protobuf field: string candidate_sha256 = 9
+     */
+    candidateSha256: string;
+    /**
+     * @generated from protobuf field: string review_id = 10
+     */
+    reviewId: string;
+    /**
+     * @generated from protobuf field: string policy_version = 11
+     */
+    policyVersion: string;
+    /**
+     * @generated from protobuf field: string target_memory_type = 12
+     */
+    targetMemoryType: string;
+    /**
+     * @generated from protobuf field: int64 created_at_unix_ms = 13
+     */
+    createdAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 14
+     */
+    expiresAtUnixMs: bigint;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.PublishMcpReadinessEvidenceRequest
  */
 export interface PublishMcpReadinessEvidenceRequest {
@@ -10557,6 +10618,156 @@ class PromoteMemoryCandidateRequest$Type extends MessageType<PromoteMemoryCandid
  */
 export const PromoteMemoryCandidateRequest = new PromoteMemoryCandidateRequest$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class CommitMemoryPromotionReceiptRequest$Type extends MessageType<CommitMemoryPromotionReceiptRequest> {
+    constructor() {
+        super("dipole.agent.v1.CommitMemoryPromotionReceiptRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "receipt_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "receipt_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "schema_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 8, name: "candidate_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "candidate_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 10, name: "review_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 11, name: "policy_version", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 12, name: "target_memory_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 13, name: "created_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 14, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CommitMemoryPromotionReceiptRequest>): CommitMemoryPromotionReceiptRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.receiptId = "";
+        message.receiptSha256 = "";
+        message.schemaVersion = "";
+        message.status = "";
+        message.taskId = "";
+        message.runId = "";
+        message.candidateId = "";
+        message.candidateSha256 = "";
+        message.reviewId = "";
+        message.policyVersion = "";
+        message.targetMemoryType = "";
+        message.createdAtUnixMs = 0n;
+        message.expiresAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<CommitMemoryPromotionReceiptRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CommitMemoryPromotionReceiptRequest): CommitMemoryPromotionReceiptRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string receipt_id */ 2:
+                    message.receiptId = reader.string();
+                    break;
+                case /* string receipt_sha256 */ 3:
+                    message.receiptSha256 = reader.string();
+                    break;
+                case /* string schema_version */ 4:
+                    message.schemaVersion = reader.string();
+                    break;
+                case /* string status */ 5:
+                    message.status = reader.string();
+                    break;
+                case /* string task_id */ 6:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 7:
+                    message.runId = reader.string();
+                    break;
+                case /* string candidate_id */ 8:
+                    message.candidateId = reader.string();
+                    break;
+                case /* string candidate_sha256 */ 9:
+                    message.candidateSha256 = reader.string();
+                    break;
+                case /* string review_id */ 10:
+                    message.reviewId = reader.string();
+                    break;
+                case /* string policy_version */ 11:
+                    message.policyVersion = reader.string();
+                    break;
+                case /* string target_memory_type */ 12:
+                    message.targetMemoryType = reader.string();
+                    break;
+                case /* int64 created_at_unix_ms */ 13:
+                    message.createdAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* int64 expires_at_unix_ms */ 14:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CommitMemoryPromotionReceiptRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string receipt_id = 2; */
+        if (message.receiptId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.receiptId);
+        /* string receipt_sha256 = 3; */
+        if (message.receiptSha256 !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.receiptSha256);
+        /* string schema_version = 4; */
+        if (message.schemaVersion !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.schemaVersion);
+        /* string status = 5; */
+        if (message.status !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.status);
+        /* string task_id = 6; */
+        if (message.taskId !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 7; */
+        if (message.runId !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.runId);
+        /* string candidate_id = 8; */
+        if (message.candidateId !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.candidateId);
+        /* string candidate_sha256 = 9; */
+        if (message.candidateSha256 !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.candidateSha256);
+        /* string review_id = 10; */
+        if (message.reviewId !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.reviewId);
+        /* string policy_version = 11; */
+        if (message.policyVersion !== "")
+            writer.tag(11, WireType.LengthDelimited).string(message.policyVersion);
+        /* string target_memory_type = 12; */
+        if (message.targetMemoryType !== "")
+            writer.tag(12, WireType.LengthDelimited).string(message.targetMemoryType);
+        /* int64 created_at_unix_ms = 13; */
+        if (message.createdAtUnixMs !== 0n)
+            writer.tag(13, WireType.Varint).int64(message.createdAtUnixMs);
+        /* int64 expires_at_unix_ms = 14; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(14, WireType.Varint).int64(message.expiresAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CommitMemoryPromotionReceiptRequest
+ */
+export const CommitMemoryPromotionReceiptRequest = new CommitMemoryPromotionReceiptRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class PublishMcpReadinessEvidenceRequest$Type extends MessageType<PublishMcpReadinessEvidenceRequest> {
     constructor() {
         super("dipole.agent.v1.PublishMcpReadinessEvidenceRequest", [
@@ -10941,6 +11152,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "RevokeOwnedMemory", options: {}, I: RevokeOwnedMemoryRequest, O: AgentOwnedMemory },
     { name: "CorrectOwnedMemory", options: {}, I: CorrectOwnedMemoryRequest, O: CorrectOwnedMemoryResponse },
     { name: "PromoteMemoryCandidate", options: {}, I: PromoteMemoryCandidateRequest, O: AgentOwnedMemory },
+    { name: "CommitMemoryPromotionReceipt", options: {}, I: CommitMemoryPromotionReceiptRequest, O: AgentOwnedMemory },
     { name: "AdmitRun", options: {}, I: AdmitRunRequest, O: AdmitRunResponse },
     { name: "CompleteRun", options: {}, I: CompleteRunRequest, O: CompleteRunResponse },
     { name: "FinishRun", options: {}, I: FinishRunRequest, O: FinishRunResponse },

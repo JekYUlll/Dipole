@@ -30,6 +30,7 @@ const (
 	AgentCapabilityService_RevokeOwnedMemory_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/RevokeOwnedMemory"
 	AgentCapabilityService_CorrectOwnedMemory_FullMethodName                    = "/dipole.agent.v1.AgentCapabilityService/CorrectOwnedMemory"
 	AgentCapabilityService_PromoteMemoryCandidate_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/PromoteMemoryCandidate"
+	AgentCapabilityService_CommitMemoryPromotionReceipt_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/CommitMemoryPromotionReceipt"
 	AgentCapabilityService_AdmitRun_FullMethodName                              = "/dipole.agent.v1.AgentCapabilityService/AdmitRun"
 	AgentCapabilityService_CompleteRun_FullMethodName                           = "/dipole.agent.v1.AgentCapabilityService/CompleteRun"
 	AgentCapabilityService_FinishRun_FullMethodName                             = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
@@ -83,6 +84,7 @@ type AgentCapabilityServiceClient interface {
 	RevokeOwnedMemory(ctx context.Context, in *RevokeOwnedMemoryRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
 	CorrectOwnedMemory(ctx context.Context, in *CorrectOwnedMemoryRequest, opts ...grpc.CallOption) (*CorrectOwnedMemoryResponse, error)
 	PromoteMemoryCandidate(ctx context.Context, in *PromoteMemoryCandidateRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
+	CommitMemoryPromotionReceipt(ctx context.Context, in *CommitMemoryPromotionReceiptRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
 	AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error)
 	CompleteRun(ctx context.Context, in *CompleteRunRequest, opts ...grpc.CallOption) (*CompleteRunResponse, error)
 	FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error)
@@ -233,6 +235,16 @@ func (c *agentCapabilityServiceClient) PromoteMemoryCandidate(ctx context.Contex
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AgentOwnedMemory)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_PromoteMemoryCandidate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) CommitMemoryPromotionReceipt(ctx context.Context, in *CommitMemoryPromotionReceiptRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AgentOwnedMemory)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_CommitMemoryPromotionReceipt_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -614,6 +626,7 @@ type AgentCapabilityServiceServer interface {
 	RevokeOwnedMemory(context.Context, *RevokeOwnedMemoryRequest) (*AgentOwnedMemory, error)
 	CorrectOwnedMemory(context.Context, *CorrectOwnedMemoryRequest) (*CorrectOwnedMemoryResponse, error)
 	PromoteMemoryCandidate(context.Context, *PromoteMemoryCandidateRequest) (*AgentOwnedMemory, error)
+	CommitMemoryPromotionReceipt(context.Context, *CommitMemoryPromotionReceiptRequest) (*AgentOwnedMemory, error)
 	AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error)
 	CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error)
 	FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error)
@@ -692,6 +705,9 @@ func (UnimplementedAgentCapabilityServiceServer) CorrectOwnedMemory(context.Cont
 }
 func (UnimplementedAgentCapabilityServiceServer) PromoteMemoryCandidate(context.Context, *PromoteMemoryCandidateRequest) (*AgentOwnedMemory, error) {
 	return nil, status.Error(codes.Unimplemented, "method PromoteMemoryCandidate not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) CommitMemoryPromotionReceipt(context.Context, *CommitMemoryPromotionReceiptRequest) (*AgentOwnedMemory, error) {
+	return nil, status.Error(codes.Unimplemented, "method CommitMemoryPromotionReceipt not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdmitRun not implemented")
@@ -1017,6 +1033,24 @@ func _AgentCapabilityService_PromoteMemoryCandidate_Handler(srv interface{}, ctx
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).PromoteMemoryCandidate(ctx, req.(*PromoteMemoryCandidateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_CommitMemoryPromotionReceipt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitMemoryPromotionReceiptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).CommitMemoryPromotionReceipt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_CommitMemoryPromotionReceipt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).CommitMemoryPromotionReceipt(ctx, req.(*CommitMemoryPromotionReceiptRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1719,6 +1753,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PromoteMemoryCandidate",
 			Handler:    _AgentCapabilityService_PromoteMemoryCandidate_Handler,
+		},
+		{
+			MethodName: "CommitMemoryPromotionReceipt",
+			Handler:    _AgentCapabilityService_CommitMemoryPromotionReceipt_Handler,
 		},
 		{
 			MethodName: "AdmitRun",

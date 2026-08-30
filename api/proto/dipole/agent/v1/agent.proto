@@ -820,6 +820,23 @@ message PromoteMemoryCandidateRequest {
   string target_memory_type = 6;
 }
 
+message CommitMemoryPromotionReceiptRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string receipt_id = 2;
+  string receipt_sha256 = 3;
+  string schema_version = 4;
+  string status = 5;
+  string task_id = 6;
+  string run_id = 7;
+  string candidate_id = 8;
+  string candidate_sha256 = 9;
+  string review_id = 10;
+  string policy_version = 11;
+  string target_memory_type = 12;
+  int64 created_at_unix_ms = 13;
+  int64 expires_at_unix_ms = 14;
+}
+
 message PublishMcpReadinessEvidenceRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -871,6 +888,7 @@ service AgentCapabilityService {
   rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
   rpc CorrectOwnedMemory(CorrectOwnedMemoryRequest) returns (CorrectOwnedMemoryResponse);
   rpc PromoteMemoryCandidate(PromoteMemoryCandidateRequest) returns (AgentOwnedMemory);
+  rpc CommitMemoryPromotionReceipt(CommitMemoryPromotionReceiptRequest) returns (AgentOwnedMemory);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);

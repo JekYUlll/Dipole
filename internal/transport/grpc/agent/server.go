@@ -22,31 +22,32 @@ import (
 
 type Server struct {
 	agentv1.UnimplementedAgentCapabilityServiceServer
-	capability           application.AgentCapabilityV1
-	resolver             application.AgentInvocationResolverV1
-	admission            application.AgentRunAdmissionServiceV1
-	approvals            application.AgentApprovalServiceV1
-	approvalGrants       application.AgentApprovalGrantResolverV1
-	controls             application.AgentTaskControlAuthorizerV1
-	timeline             application.AgentTaskTimelineStoreV1
-	projections          application.AgentTaskWorkflowProjectionServiceV1
-	repairs              application.AgentWorkflowRepairAuditServiceV1
-	repairExecutor       application.AgentWorkflowRepairExecutorV1
-	promotionControls    application.AgentRuntimePromotionControlServiceV1
-	promotionEvidence    application.AgentRuntimePromotionEvidenceReviewServiceV1
-	readinessPublisher   application.AgentMCPReadinessEvidencePublisherV1
-	readinessResolver    application.AgentMCPReadinessEvidenceResolverV1
-	artifacts            application.AgentArtifactServiceV1
-	subscriptions        application.AgentEventSubscriptionResolverV1
-	subscriptionControls application.AgentEventSubscriptionControlServiceV1
-	definitionCatalog    application.AgentDefinitionCatalogServiceV1
-	memories             application.AgentMemoryContextResolverV1
-	memoryControls       application.AgentMemoryOwnerControlServiceV1
-	memoryPromotions     application.AgentMemoryCandidatePromotionServiceV1
-	toolAudits           application.AgentToolInvocationAuditServiceV1
-	toolRounds           application.AgentMCPToolRoundServiceV1
-	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
-	messageCommands      application.AgentMessageCommandExecutionV1
+	capability             application.AgentCapabilityV1
+	resolver               application.AgentInvocationResolverV1
+	admission              application.AgentRunAdmissionServiceV1
+	approvals              application.AgentApprovalServiceV1
+	approvalGrants         application.AgentApprovalGrantResolverV1
+	controls               application.AgentTaskControlAuthorizerV1
+	timeline               application.AgentTaskTimelineStoreV1
+	projections            application.AgentTaskWorkflowProjectionServiceV1
+	repairs                application.AgentWorkflowRepairAuditServiceV1
+	repairExecutor         application.AgentWorkflowRepairExecutorV1
+	promotionControls      application.AgentRuntimePromotionControlServiceV1
+	promotionEvidence      application.AgentRuntimePromotionEvidenceReviewServiceV1
+	readinessPublisher     application.AgentMCPReadinessEvidencePublisherV1
+	readinessResolver      application.AgentMCPReadinessEvidenceResolverV1
+	artifacts              application.AgentArtifactServiceV1
+	subscriptions          application.AgentEventSubscriptionResolverV1
+	subscriptionControls   application.AgentEventSubscriptionControlServiceV1
+	definitionCatalog      application.AgentDefinitionCatalogServiceV1
+	memories               application.AgentMemoryContextResolverV1
+	memoryControls         application.AgentMemoryOwnerControlServiceV1
+	memoryPromotions       application.AgentMemoryCandidatePromotionServiceV1
+	memoryPromotionCommits application.AgentMemoryPromotionReceiptCommitServiceV1
+	toolAudits             application.AgentToolInvocationAuditServiceV1
+	toolRounds             application.AgentMCPToolRoundServiceV1
+	toolTerminals          application.AgentMCPToolInvocationTerminalServiceV1
+	messageCommands        application.AgentMessageCommandExecutionV1
 }
 
 func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMCPReadinessEvidencePublisherV1) (*Server, error) {
@@ -169,6 +170,14 @@ func (s *Server) WithMemoryCandidatePromotions(promotions application.AgentMemor
 	return s, nil
 }
 
+func (s *Server) WithMemoryPromotionReceiptCommits(commits application.AgentMemoryPromotionReceiptCommitServiceV1) (*Server, error) {
+	if s == nil || commits == nil {
+		return nil, errors.New("Agent Memory promotion receipt commit service is required")
+	}
+	s.memoryPromotionCommits = commits
+	return s, nil
+}
+
 func (s *Server) ListOwnedMemories(ctx context.Context, request *agentv1.ListOwnedMemoriesRequest) (*agentv1.ListOwnedMemoriesResponse, error) {
 	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
 	if err != nil {
@@ -256,6 +265,25 @@ func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.Pr
 	return agentOwnedMemoryResponseV1(*item), nil
 }
 
+func (s *Server) CommitMemoryPromotionReceipt(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.AgentOwnedMemory, error) {
+	if err := agentMemoryReceiptCommitCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.memoryPromotionCommits == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory promotion receipt commit is unavailable")
+	}
+	item, err := s.memoryPromotionCommits.CommitMemoryPromotionReceipt(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryPromotionReceiptCommitRequestV1{
+		ReceiptID: request.GetReceiptId(), ReceiptSHA256: request.GetReceiptSha256(), SchemaVersion: request.GetSchemaVersion(), Status: request.GetStatus(),
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), CandidateUUID: request.GetCandidateId(), CandidateSHA256: request.GetCandidateSha256(),
+		ReviewUUID: request.GetReviewId(), PolicyVersion: request.GetPolicyVersion(), TargetMemoryType: application.AgentMemoryTypeV1(request.GetTargetMemoryType()),
+		CreatedAt: time.UnixMilli(request.GetCreatedAtUnixMs()).UTC(), ExpiresAt: time.UnixMilli(request.GetExpiresAtUnixMs()).UTC(),
+	})
+	if err != nil {
+		return nil, agentMemoryPromotionReceiptCommitErrorV1(err)
+	}
+	return agentOwnedMemoryResponseV1(*item), nil
+}
+
 func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
 	authenticated, ok := grpcauth.CallerService(ctx)
 	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
@@ -265,6 +293,15 @@ func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestCon
 		return "", err
 	}
 	return grpccommon.Principal(requestContext)
+}
+
+func agentMemoryReceiptCommitCallerV1(ctx context.Context, requestContext *commonv1.RequestContext) error {
+	authenticated, ok := grpcauth.CallerService(ctx)
+	if !ok || authenticated != "dipole-agent" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
+		return status.Error(codes.PermissionDenied, "only the authenticated Agent Runtime may commit Agent Memory receipts")
+	}
+	_, err := grpccommon.Caller(ctx, requestContext)
+	return err
 }
 
 func agentMemoryOwnerErrorV1(err error) error {
@@ -288,6 +325,19 @@ func agentMemoryCandidatePromotionErrorV1(err error) error {
 		return status.Error(codes.Aborted, err.Error())
 	default:
 		return status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
+	}
+}
+
+func agentMemoryPromotionReceiptCommitErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentExecutionPolicyDenied):
+		return status.Error(codes.PermissionDenied, "Agent Memory promotion receipt execution is denied")
+	case errors.Is(err, application.ErrAgentMemoryCandidateInvalid):
+		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, application.ErrAgentMemoryCandidateConflict):
+		return status.Error(codes.Aborted, err.Error())
+	default:
+		return status.Error(codes.Unavailable, "Agent Memory promotion receipt commit is unavailable")
 	}
 }
 
