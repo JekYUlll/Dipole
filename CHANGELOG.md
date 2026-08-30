@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：扩展真实 MinIO Multipart 集成契约，模拟客户端在 part 读取过程中断后使用同一 part 编号重试，并验证失败尝试不污染后续会话；默认 relay/presigned 开关和生产路径保持不变。完整浏览器断网、过期会话和网关限流矩阵仍待完成。
+
 - 2026-08-30：在 Remote GPU 对 `master` 提交 `bd7283d1` 完成远程 canonical 验证：Go 全量测试、服务布局与架构文档门禁通过；Agent Runtime `125` 个测试文件/`665` 个测试通过并完成 typecheck/build，Frontend `29` 个测试文件/`114` 个测试通过并完成 typecheck/Vite build。验证仅使用 CPU/用户态工具链，未启动业务 Compose 或触碰 GPU 任务；Node `22.12.0` 对部分依赖要求 `22.22.2+` 仅产生非阻断警告。
 
 - 2026-08-30：在 Remote GPU 完成 MinIO Multipart 服务重启恢复 smoke；分片跨重启保留并成功完成对象，临时容器和数据卷已清理，客户端断网与预签名切流仍待验证。
