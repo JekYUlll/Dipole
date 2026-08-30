@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：远程开发入口新增 `multipart-smoke`，统一注入远端 Go toolchain 并固定 `GOTOOLCHAIN=local`；该 CPU/容器型动作允许与 GPU 任务并行，使用脚本自有临时 MinIO 容器和自动清理，新增入口契约测试 `7/7` 通过。
 - 2026-08-30：Remote GPU 在 `master` revision `67235080` 使用已验证 Go 1.27 本地 toolchain 完成 MinIO Multipart 生命周期 smoke；乱序分片、同编号替换、按序 Complete、对象内容校验和重复 Abort 全部通过。首次尝试因 Go 自动工具链下载超时，随后固定 `GOTOOLCHAIN=local` 重试成功；测试容器已自动清理，默认 relay 路径未改变。
 - 2026-08-30：A6 新增真实 Chromium Sync Timeline 恢复验收，覆盖 IndexedDB 持久化、浏览器重开、从已提交 cursor `2` 继续请求、幂等重 ACK `2` 后推进到 `4`，并确认本地恢复消息先于远端增量交付；Chromium `6` 项通过、`2` 项按条件跳过，未改变 `/sync` 默认路由或切流开关。
 - 2026-08-30：C3 性能基准新增显式 `DIPOLE_REALTIME_BENCH_CONTAINER=1` 模式，使用当前 revision 的 Docker builder 产物运行 C++ benchmark，并在报告记录 runner 来源；解除宿主机 `clang-tidy` 缺失与性能测量之间的耦合，默认路径和 Go authority 保持不变。
