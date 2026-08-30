@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：修复 Remote GPU 候选代码同步在 squash 合并后产生的陈旧 tracking ref 警告。`dipole-dev/<user>` 现在只在远端使用受限强制 refspec 刷新，`master` 等共享引用继续普通更新，fetch 失败会直接中止同步；部署与活动用户保护策略未改变。
+
 - 2026-08-31：修复 Agent `conversation.search` 扩展后的 legacy Eino 测试桩漂移。共享桩现记录并返回受控搜索证据，并由编译期 `AgentCapabilityV1` 断言覆盖新增方法；运行时检索开关和生产搜索路径未改变。
 
 - 2026-08-31：新增 `multipart-presigned-rollout/v1` 可执行晋级门禁。候选将 Multipart 默认模式从 `relay` 改为 `presigned` 前，必须提交绑定策略 SHA-256 的 24 小时同版本 evidence，并满足直传样本、fallback/failed/expired/checksum 比率、P95、clear alert、relay 回切演练和独立 reviewer；工具输出可审计 receipt，阻断结果返回退出码 `2`。默认上传策略未改变。

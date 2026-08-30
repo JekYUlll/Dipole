@@ -16,6 +16,12 @@ test("per-user candidate refs use an exact lease while shared refs stay fast-for
   assert.match(source, /else\n    git push origin "\$\{commit\}:refs\/heads\/\$\{REMOTE_BRANCH\}"/);
 });
 
+test("remote candidate tracking refs accept only the expected mutable update", () => {
+  assert.match(source, /if \[\[ "\$branch" == dipole-dev\/\* \]\]; then[\s\S]*?git fetch origin "\+refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
+  assert.match(source, /else\n  git fetch origin "refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
+  assert.doesNotMatch(source, /git fetch origin "refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}" \|\| true/);
+});
+
 test("node verification preserves package locks and cleans generated webapp output", () => {
   assert.match(source, /node-test\)[\s\S]*?--package-lock=false/);
   assert.match(source, /webapp_dir="internal\/services\/core\/server\/webapp"/);
