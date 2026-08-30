@@ -194,6 +194,7 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-active-memory-promotion-compose-check"
   and (.services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID | startswith("dipole-agent-active-"))
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
+  and (.services.agent.environment.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE | startswith("dipole-agent-memory-promotion-"))
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "promotion_active"
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_PROMOTION_COMMIT_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY == "operator_approved"

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：`promotion_active` 现强制使用 `dipole-agent-memory-promotion-` 前缀的独立 Temporal task queue。Runtime profile 和 Compose 渲染门禁会拒绝通用或 read-active 队列，避免 reviewed Memory 提交 Worker 误消费其他任务；默认部署和写入开关不变。
+
 - 2026-08-31：收敛 `promotion_active` 的永久提交失败路径。Memory receipt commit 在 Temporal 用尽重试后，Workflow 现在将错误转换为受限的 Agent Task `failed` 终态并调用既有 `finishAgentTask` 持久化 Run，避免孤立的运行中任务；默认 profile、双开关、mTLS 和共享环境写入状态不变。
 
 - 2026-08-31：默认关闭的 Agent Task 创建页现提供 IM 主界面导航入口。入口同时要求创建页和 Timeline feature flag，点击只跳转受现有路由守卫保护的 `/agent/tasks/new`；不携带身份、配置或任务参数，也不启用 Runtime/Tool/外部服务。

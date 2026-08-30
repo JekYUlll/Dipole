@@ -17,6 +17,9 @@ export function assertActiveMemoryPromotionProfile(profile: ActiveMemoryPromotio
     if (!profile.temporal.enabled || profile.temporal.activityMode !== "promotion_active") {
       throw new Error("Memory promotion commit requires promotion_active Temporal Activities");
     }
+    if (!profile.temporal.taskQueue.startsWith("dipole-agent-memory-promotion-")) {
+      throw new Error("Memory promotion commit requires an isolated promotion Temporal task queue");
+    }
     if (!profile.capabilityRPCEnabled || !profile.capabilityRPCTLS) {
       throw new Error("Memory promotion commit requires Agent Capability RPC mTLS");
     }

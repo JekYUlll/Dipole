@@ -23,6 +23,7 @@ describe("active Memory promotion profile", () => {
 
   it.each([
     ["runtimeMode", "shadow", /active Agent Runtime/i],
+    ["temporal", { ...profile.temporal, taskQueue: "dipole-agent-task-v1" }, /isolated promotion Temporal task queue/i],
     ["capabilityRPCTLS", false, /RPC mTLS/i],
     ["authority", "", /operator-approved/i],
     ["controlEnabled", true, /Control API/i]
