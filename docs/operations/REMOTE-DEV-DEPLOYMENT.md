@@ -2,7 +2,7 @@
 
 本文仅用于开发环境，不承诺生产容量，也不替代共享环境发布审批。
 
-Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
+Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链，避免修改系统 Go。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
 
 ## 环境选择
 
@@ -28,6 +28,14 @@ scripts/remote-dev.sh down       # 仅停止本次 project
 ```
 
 脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。`build`、`smoke-lite`、`bench` 会拒绝存在登录用户或 GPU 进程的主机；只有取得明确维护窗口后，才可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`，并仍需人工确认不会影响现有实验。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
+
+管理员已将 Go 1.27.0 以用户态方式放置于 `/home/admin1/.local/go-1.27.0`。使用该工具链执行远端测试：
+
+```bash
+DIPOLE_REMOTE_BRANCH=master \
+DIPOLE_REMOTE_GO_ROOT=/home/admin1/.local/go-1.27.0 \
+scripts/remote-dev.sh test
+```
 
 ## Remote GPU 流程
 
