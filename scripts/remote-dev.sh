@@ -21,6 +21,8 @@ BENCH_HOT_GROUP_WARMUP_MESSAGES="${DIPOLE_BENCH_HOT_GROUP_WARMUP_MESSAGES:-}"
 BENCH_HOT_GROUP_ACTIVATION_WAIT_MS="${DIPOLE_BENCH_HOT_GROUP_ACTIVATION_WAIT_MS:-}"
 BENCH_SCRIPT="${DIPOLE_BENCH_SCRIPT:-}"
 BENCH_PHONE_PREFIX="${DIPOLE_BENCH_PHONE_PREFIX:-}"
+BENCH_HOT_GROUP_MEMBER_COUNT_THRESHOLD="${DIPOLE_BENCH_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-}"
+BENCH_HOT_GROUP_MESSAGE_THRESHOLD="${DIPOLE_BENCH_HOT_GROUP_MESSAGE_THRESHOLD:-}"
 REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"
 
 usage() {
@@ -35,6 +37,7 @@ Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_BENCH_HOT_GROUP_WARMUP_MESSAGES, DIPOLE_BENCH_HOT_GROUP_ACTIVATION_WAIT_MS.
   DIPOLE_BENCH_SCRIPT may select a repository-relative benchmark script.
   DIPOLE_BENCH_PHONE_PREFIX may select an isolated three-digit test namespace.
+  DIPOLE_BENCH_HOT_GROUP_MEMBER_COUNT_THRESHOLD, DIPOLE_BENCH_HOT_GROUP_MESSAGE_THRESHOLD.
   Set DIPOLE_REMOTE_ALLOW_ACTIVE=1 only during an explicitly approved window.
 EOF
 }
@@ -97,9 +100,12 @@ run_remote() {
   local bench_hot_group_activation_wait_ms="${BENCH_HOT_GROUP_ACTIVATION_WAIT_MS:-$REMOTE_EMPTY_ARG}"
   local bench_script="${BENCH_SCRIPT:-$REMOTE_EMPTY_ARG}"
   local bench_phone_prefix="${BENCH_PHONE_PREFIX:-$REMOTE_EMPTY_ARG}"
+  local bench_hot_group_member_count_threshold="${BENCH_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-$REMOTE_EMPTY_ARG}"
+  local bench_hot_group_message_threshold="${BENCH_HOT_GROUP_MESSAGE_THRESHOLD:-$REMOTE_EMPTY_ARG}"
   remote "${remote_k6_image}" "${action}" "${remote_node_root}" "${remote_go_root}" "${remote_go_proxy}" \
     "${bench_scenario_filter}" "${bench_group_max_duration}" "${bench_user_count}" "${bench_group_size}" "${bench_run_id}" \
-    "${bench_hot_group_warmup_messages}" "${bench_hot_group_activation_wait_ms}" "${bench_script}" "${bench_phone_prefix}" <<REMOTE_RUN
+    "${bench_hot_group_warmup_messages}" "${bench_hot_group_activation_wait_ms}" "${bench_script}" "${bench_phone_prefix}" \
+    "${bench_hot_group_member_count_threshold}" "${bench_hot_group_message_threshold}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
 k6_image="\${3:-}"
@@ -115,7 +121,9 @@ bench_hot_group_warmup_messages="\${13:-}"
 bench_hot_group_activation_wait_ms="\${14:-}"
 bench_script="\${15:-}"
 bench_phone_prefix="\${16:-}"
-for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id bench_hot_group_warmup_messages bench_hot_group_activation_wait_ms bench_script bench_phone_prefix; do
+bench_hot_group_member_count_threshold="\${17:-}"
+bench_hot_group_message_threshold="\${18:-}"
+for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id bench_hot_group_warmup_messages bench_hot_group_activation_wait_ms bench_script bench_phone_prefix bench_hot_group_member_count_threshold bench_hot_group_message_threshold; do
   [[ "\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]] && printf -v "\$bench_arg" '%s' ''
 done
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
@@ -225,6 +233,8 @@ case "${action}" in
     [[ -n "\$bench_hot_group_activation_wait_ms" ]] && bench_env+=(HOT_GROUP_ACTIVATION_WAIT_MS="\$bench_hot_group_activation_wait_ms")
     [[ -n "\$bench_script" ]] && bench_env+=(BENCH_SCRIPT="\$bench_script")
     [[ -n "\$bench_phone_prefix" ]] && bench_env+=(PHONE_PREFIX="\$bench_phone_prefix")
+    [[ -n "\$bench_hot_group_member_count_threshold" ]] && bench_env+=(HOT_GROUP_MEMBER_COUNT_THRESHOLD="\$bench_hot_group_member_count_threshold")
+    [[ -n "\$bench_hot_group_message_threshold" ]] && bench_env+=(HOT_GROUP_MESSAGE_THRESHOLD="\$bench_hot_group_message_threshold")
     if command -v k6 >/dev/null 2>&1; then
       env "\${bench_env[@]}" scripts/bench/run_bench.sh
     else

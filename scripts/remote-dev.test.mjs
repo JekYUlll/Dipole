@@ -68,6 +68,8 @@ test("benchmark positional forwarding preserves empty optional values", () => {
   assert.ok(source.includes('bench_env+=(BENCH_SCRIPT="\\$bench_script")'));
   assert.ok(source.includes('local bench_phone_prefix="${BENCH_PHONE_PREFIX:-$REMOTE_EMPTY_ARG}"'));
   assert.ok(source.includes('bench_env+=(PHONE_PREFIX="\\$bench_phone_prefix")'));
+  assert.ok(source.includes('local bench_hot_group_member_count_threshold="${BENCH_HOT_GROUP_MEMBER_COUNT_THRESHOLD:-$REMOTE_EMPTY_ARG}"'));
+  assert.ok(source.includes('bench_env+=(HOT_GROUP_MESSAGE_THRESHOLD="\\$bench_hot_group_message_threshold")'));
   assert.ok(source.includes('[[ "\\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]]'));
 });
 
