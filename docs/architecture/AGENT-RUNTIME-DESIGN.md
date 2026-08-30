@@ -121,7 +121,7 @@ CREATED → RUNNING → WAITING_INPUT / WAITING_APPROVAL
           COMPLETED / FAILED / CANCELLED
 ```
 
-Task 包含多个 Run，Run 包含 ContextCompile、ModelCall、ToolCall、Approval 和 ArtifactCreate 等 Step。Temporal Workflow ID 使用 Task ID，确保重复 Kafka 事件不会创建重复任务。交互式创建使用 `POST /api/v1/agent/tasks`，请求仅包含 `client_request_id` 与 `goal`；Gateway 从 JWT 派生 principal，再调用 Runtime 私有 `POST /internal/v1/agent/tasks`。Runtime 固定 tenant/Agent identity，并以 `client_request_id` 派生确定性 Task/Event ID。该路由依赖既有 `gateway.agent_control_enabled` 与 `DIPOLE_AGENT_CONTROL_ENABLED` 双侧显式开启，基础 Compose 默认不注册它；请求体携带的身份字段不参与授权。
+Task 包含多个 Run，Run 包含 ContextCompile、ModelCall、ToolCall、Approval 和 ArtifactCreate 等 Step。Temporal Workflow ID 使用 Task ID，确保重复 Kafka 事件不会创建重复任务。交互式创建使用 `POST /api/v1/agent/tasks`，请求仅包含 `client_request_id` 与 `goal`；Gateway 从 JWT 派生 principal，再调用 Runtime 私有 `POST /internal/v1/agent/tasks`。Runtime 固定 tenant/Agent identity，并以 `client_request_id` 派生确定性 Task/Event ID。认证 Vue 入口为 `/agent/tasks/new`，需要 `VITE_AGENT_TASK_CREATE_ENABLED=true` 与 `VITE_AGENT_TIMELINE_ENABLED=true` 同时成立，并且仅在验证 `{taskId,status:"accepted"}` 后跳转只读 Timeline。该路由依赖既有 `gateway.agent_control_enabled` 与 `DIPOLE_AGENT_CONTROL_ENABLED` 双侧显式开启，基础 Compose 默认不注册它；请求体携带的身份字段不参与授权。
 
 ### Context Compiler
 

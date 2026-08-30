@@ -7,6 +7,7 @@ const source = readFileSync(resolve(import.meta.dirname, 'index.ts'), 'utf8')
 describe('Agent route security contract', () => {
   it('keeps every Agent page authenticated and independently flag-gated', () => {
     for (const routeName of [
+      'agent-task-create',
       'agent-task-input',
       'agent-task-approval',
       'agent-task-timeline',
@@ -20,6 +21,7 @@ describe('Agent route security contract', () => {
     }
 
     expect(source).toContain("import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'")
+    expect(source).toContain("import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'")

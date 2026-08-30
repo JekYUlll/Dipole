@@ -48,11 +48,22 @@ export interface AgentTaskState {
 export type AgentElicitationValue = Record<string, string | boolean | string[]>
 
 export interface AgentTaskClient {
+  startTask?(request: AgentTaskStartRequest): Promise<AgentTaskStartResult>
   getTask(taskId: string): Promise<AgentTaskState>
   getTimeline?(taskId: string, after?: string, limit?: number): Promise<AgentTaskTimelinePage>
   provideInput(taskId: string, requestId: string, value: AgentElicitationValue): Promise<void>
   resolveApproval(taskId: string, approvalId: string, decision: 'approved' | 'denied'): Promise<void>
   cancelTask(taskId: string): Promise<void>
+}
+
+export interface AgentTaskStartRequest {
+  clientRequestId: string
+  goal: string
+}
+
+export interface AgentTaskStartResult {
+  taskId: string
+  status: 'accepted'
 }
 
 export interface AgentTaskTimelineEvent {
@@ -106,6 +117,13 @@ export function parseAgentTaskResponse(raw: unknown): AgentTaskState {
 }
 
 export const agentTaskClient: AgentTaskClient = {
+  async startTask(request) {
+    const input = validateAgentTaskStartRequest(request.clientRequestId, request.goal)
+    return parseAgentTaskStartResponse(await api.post('/api/v1/agent/tasks', {
+      client_request_id: input.clientRequestId,
+      goal: input.goal,
+    }))
+  },
   async getTask(taskId) {
     requireIdentity(taskId, 'Task')
     return parseAgentTaskResponse(await api.get(`/api/v1/agent/tasks/${encodeURIComponent(taskId)}`))
@@ -133,6 +151,22 @@ export const agentTaskClient: AgentTaskClient = {
     requireIdentity(taskId, 'Task')
     await api.post(`/api/v1/agent/tasks/${encodeURIComponent(taskId)}/cancel`, { reason: 'user_cancelled' })
   },
+}
+
+export function parseAgentTaskStartResponse(raw: unknown): AgentTaskStartResult {
+  if (!isRecord(raw) || !validIdentity(raw.taskId) || raw.status !== 'accepted') {
+    throw new Error('Agent Task start response is invalid')
+  }
+  return { taskId: raw.taskId as string, status: 'accepted' }
+}
+
+function validateAgentTaskStartRequest(clientRequestId: string, goal: string): AgentTaskStartRequest {
+  const normalizedRequestId = clientRequestId.trim()
+  const normalizedGoal = goal.trim()
+  if (!/^[A-Za-z0-9._:-]{1,64}$/.test(normalizedRequestId) || normalizedGoal.length === 0 || Array.from(normalizedGoal).length > 4000) {
+    throw new Error('Agent Task start request is invalid')
+  }
+  return { clientRequestId: normalizedRequestId, goal: normalizedGoal }
 }
 
 function parseAgentTaskTimelineResponse(raw: unknown): AgentTaskTimelinePage {

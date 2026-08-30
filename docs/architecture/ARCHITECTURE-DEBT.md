@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：交互式 Agent Task 创建现有默认关闭的认证前端入口。页面仅提交本地幂等键与目标文本，并在严格验证 `accepted` 回包后跳转既有只读 Timeline；principal、tenant、Agent、Tool、Memory 和 Runtime 控制不进入浏览器输入。Remote GPU Node 22 已通过定向 `15` 项 Vitest、typecheck 与 production build。Pencil 安全包装器已兼容仓库 brief 文件，但 CLI 在导出前退出，canonical 创建画板和视觉基线继续由 AD-044 跟踪；共享环境切流与 active authority 仍由 AD-009 管理。
+
 - 2026-08-31：Agent Task 控制面已增加默认关闭的交互式创建 seam。公开 Gateway 路由从 JWT 派生 principal，Runtime 私有路由仅接受 `dipole-gateway` 服务身份；tenant/Agent 身份由 Runtime 配置固定，`client_request_id` 生成确定性 Task/Event ID 并交给已有 Temporal dispatcher。Gateway Go 回归与 Remote GPU Node 22 的定向 Vitest `10` 项、typecheck/build 通过。该切片未启用 Compose、Kafka、Temporal 或 active authority，完整用户入口、共享环境联调与回滚证据仍由 AD-009 管理。
 
 - 2026-08-31：Remote GPU 在 `8e99bde7` 以 Node `22.12.0` 复核完整 Agent Runtime 开发期门禁：`134 passed / 9 skipped` 测试文件、`703 passed / 30 skipped` 测试、typecheck 与 production build 均通过，验证后候选工作树干净。该命令未启动 Compose、Kafka、Temporal 或 production Agent authority，不能替代 AD-009、AD-061 的共享环境证据。

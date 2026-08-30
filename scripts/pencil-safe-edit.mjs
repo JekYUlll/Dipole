@@ -11,10 +11,12 @@ const exportPath = option(args, '--export')
 const timeoutMs = Number.parseInt(option(args, '--timeout-ms') ?? '120000', 10)
 const separator = args.indexOf('--')
 const penArgs = separator < 0 ? [] : args.slice(separator + 1)
-const prompt = option(penArgs, '--prompt') ?? option(penArgs, '-p')
+const promptFile = option(penArgs, '--prompt-file') ?? option(penArgs, '-f')
+const explicitPrompt = option(penArgs, '--prompt') ?? option(penArgs, '-p')
+const prompt = explicitPrompt ?? readPromptFile(promptFile)
 
 if (!input || !output || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1_000 || penArgs.length === 0 || !prompt?.trim()) {
-  fail('usage: pencil-safe-edit.mjs --input <file> --output <file> [--export <image>] [--timeout-ms <ms>] -- --prompt <text> [pen arguments]')
+  fail('usage: pencil-safe-edit.mjs --input <file> --output <file> [--export <image>] [--timeout-ms <ms>] -- --prompt <text> | --prompt-file <brief.md> [pen arguments]')
 }
 
 const inputPath = resolve(input)
@@ -25,7 +27,7 @@ const temporaryPath = `${outputPath}.tmp-${process.pid}`
 mkdirSync(dirname(outputPath), { recursive: true })
 rmSync(temporaryPath, { force: true })
 
-const childArgs = ['--in', inputPath, '--out', temporaryPath, ...penArgs]
+const childArgs = ['--in', inputPath, '--out', temporaryPath, ...withoutPromptFile(penArgs), '--prompt', prompt]
 if (exportPath) childArgs.push('--export', resolve(exportPath))
 
 const child = spawn('pen', childArgs, { stdio: 'inherit' })
@@ -74,6 +76,31 @@ function finish(error, code = error ? 1 : 0) {
 function option(values, name) {
   const index = values.indexOf(name)
   return index < 0 ? undefined : values[index + 1]
+}
+
+function readPromptFile(path) {
+  if (!path) return undefined
+  try {
+    return readFileSync(resolve(path), 'utf8')
+  } catch (error) {
+    fail(`cannot read Pencil prompt file: ${error.message}`)
+  }
+}
+
+function withoutPromptFile(values) {
+  const result = []
+  for (let index = 0; index < values.length; index += 1) {
+    if (values[index] === '--prompt-file' || values[index] === '-f') {
+      index += 1
+      continue
+    }
+    if (values[index] === '--prompt' || values[index] === '-p') {
+      index += 1
+      continue
+    }
+    result.push(values[index])
+  }
+  return result
 }
 
 function fail(message) {

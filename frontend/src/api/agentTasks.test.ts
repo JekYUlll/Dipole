@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import api from './index'
-import { agentTaskClient, parseAgentTaskResponse } from './agentTasks'
+import { agentTaskClient, parseAgentTaskResponse, parseAgentTaskStartResponse } from './agentTasks'
 
 const waitingTask = {
   taskId: 'TASK-1', status: 'waiting_input', revision: 22, persistentStatus: 'running',
@@ -59,6 +59,15 @@ describe('Agent Task response parser', () => {
     expect(post).toHaveBeenCalledWith('/api/v1/agent/tasks/TASK-1/approvals/APPROVAL-1', { decision: 'approved' })
     await expect(agentTaskClient.resolveApproval('TASK-1', 'bad approval id', 'approved')).rejects.toThrow(/approval/i)
     await expect(agentTaskClient.resolveApproval('TASK-1', 'APPROVAL-1', 'invalid' as 'approved')).rejects.toThrow(/decision/i)
+  })
+
+  it('starts an idempotent interactive Task and validates the accepted binding', async () => {
+    const post = vi.spyOn(api, 'post').mockResolvedValue({ taskId: 'TASK-1', status: 'accepted' } as never)
+    await expect(agentTaskClient.startTask!({ clientRequestId: 'local:001', goal: '  Summarize unread work  ' }))
+      .resolves.toEqual({ taskId: 'TASK-1', status: 'accepted' })
+    expect(post).toHaveBeenCalledWith('/api/v1/agent/tasks', { client_request_id: 'local:001', goal: 'Summarize unread work' })
+    await expect(agentTaskClient.startTask!({ clientRequestId: 'bad id', goal: 'work' })).rejects.toThrow(/start request/i)
+    expect(() => parseAgentTaskStartResponse({ taskId: 'TASK-1', status: 'running' })).toThrow(/start response/i)
   })
 
   it('fetches and validates an owner-scoped timeline page', async () => {
