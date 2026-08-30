@@ -6,6 +6,16 @@ export interface OAuthAuthorizationServerMetadata {
   readonly tokenEndpoint: string;
 }
 
+export interface OAuthAuthorizationServerDiscoveryOptions {
+  /** Injectable to keep network I/O outside the default Agent Runtime path. */
+  readonly fetcher?: typeof fetch;
+  readonly timeoutMs?: number;
+  readonly maximumBytes?: number;
+}
+
+const defaultDiscoveryTimeoutMs = 10_000;
+const defaultDiscoveryMaximumBytes = 64 * 1024;
+
 export interface PkceAuthorizationRequestInput {
   readonly metadata: OAuthAuthorizationServerMetadata;
   readonly clientId: string;
@@ -48,6 +58,46 @@ export function parseAuthorizationServerMetadata(
   return { issuer: expectedIssuer, authorizationEndpoint, tokenEndpoint };
 }
 
+/**
+ * Fetches the RFC 8414 document at the exact issuer-derived URL. Redirects,
+ * oversized bodies, and non-JSON responses are rejected before parsing.
+ */
+export async function discoverAuthorizationServerMetadata(
+  issuer: string,
+  options: OAuthAuthorizationServerDiscoveryOptions = {}
+): Promise<OAuthAuthorizationServerMetadata> {
+  const metadataURL = authorizationServerMetadataURL(issuer);
+  const timeoutMs = boundedInteger(options.timeoutMs ?? defaultDiscoveryTimeoutMs, "OAuth discovery timeout", 100, 30_000);
+  const maximumBytes = boundedInteger(options.maximumBytes ?? defaultDiscoveryMaximumBytes, "OAuth discovery maximum bytes", 1_024, 256 * 1024);
+  const fetcher = options.fetcher ?? fetch;
+  let response: Response;
+  try {
+    response = await fetcher(metadataURL, {
+      headers: { accept: "application/json" },
+      redirect: "manual",
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch {
+    throw new Error("OAuth authorization server metadata discovery failed");
+  }
+  if (response.status >= 300 && response.status < 400) {
+    throw new Error("OAuth authorization server metadata discovery rejected redirect");
+  }
+  if (!response.ok) throw new Error("OAuth authorization server metadata discovery failed");
+  const contentType = response.headers.get("content-type");
+  if (contentType === null || !/^application\/json(?:\s*;|$)/iu.test(contentType)) {
+    throw new Error("OAuth authorization server metadata response must be JSON");
+  }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(await readBoundedBody(response, maximumBytes)) as unknown;
+  } catch (error) {
+    if (error instanceof Error && error.message === "OAuth authorization server metadata response is too large") throw error;
+    throw new Error("OAuth authorization server metadata response is invalid");
+  }
+  return parseAuthorizationServerMetadata(issuer, raw);
+}
+
 export function createPkceAuthorizationRequest(input: PkceAuthorizationRequestInput): PkceAuthorizationRequest {
   const authorizationEndpoint = canonicalHttpsURL(input.metadata.authorizationEndpoint, "authorization endpoint");
   const redirectURI = canonicalHttpsURL(input.redirectUri, "redirect URI");
@@ -85,6 +135,44 @@ function randomUrlToken(random: (size: number) => Buffer, label: string): string
   const bytes = random(32);
   if (!Buffer.isBuffer(bytes) || bytes.length !== 32) throw new Error(`OAuth ${label} generator returned invalid bytes`);
   return bytes.toString("base64url");
+}
+
+function boundedInteger(value: number, label: string, minimum: number, maximum: number): number {
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) throw new Error(`${label} is invalid`);
+  return value;
+}
+
+async function readBoundedBody(response: Response, maximumBytes: number): Promise<string> {
+  const declaredLength = response.headers.get("content-length");
+  if (declaredLength !== null && (!/^\d+$/u.test(declaredLength) || Number(declaredLength) > maximumBytes)) {
+    throw new Error("OAuth authorization server metadata response is too large");
+  }
+  if (response.body === null) {
+    const body = await response.text();
+    if (new TextEncoder().encode(body).byteLength > maximumBytes) throw new Error("OAuth authorization server metadata response is too large");
+    return body;
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      total += next.value.byteLength;
+      if (total > maximumBytes) throw new Error("OAuth authorization server metadata response is too large");
+      chunks.push(next.value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder().decode(bytes);
 }
 
 function readString(value: Record<string, unknown>, key: string): string {

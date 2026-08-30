@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：OAuth authorization-server metadata discovery 已具备注入式、默认关闭的 RFC 8414 HTTP client：精确 issuer-derived URL、`redirect: manual`、HTTPS、JSON、10 秒和 64 KiB 响应限制，错误统一 fail closed。该函数未接入 Runtime composition；RFC 9728 resource metadata、owner-scoped state/verifier、callback、code exchange、客户端注册、refresh/revoke 与共享环境演练仍未完成。
+
 - 2026-08-31：交互式 Agent Task 创建已从认证 IM 主界面获得默认关闭的导航入口。入口要求创建与 Timeline 双 feature flag，且只导航到既有 guarded route；principal、tenant、Agent、Capability、Memory 与 Runtime 仍由后端恢复或固定。共享环境切流与 active authority 继续由 AD-009 管理。
 
 - 2026-08-31：Agent Runtime 增加显式 `test:temporal:integration` 门禁，Remote GPU 已在内存 Temporal Test Server 上通过 Agent Task 与 reviewed Memory promotion 的 `9` 项 durable workflow 用例。它覆盖任务恢复、审批、输入、超时、取消、步数预算、后效重放和 receipt 重试；该证据不连接 Compose、Kafka、Core、MySQL 或 production authority，AD-009、AD-061 的共享环境要求不变。
