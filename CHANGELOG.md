@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：为 C3 灰度发布增加独立 `RolloutPolicy` 契约，支持按节点/用户作用域使用稳定盐值确定性选择 `go|shadow|cpp` 目标；默认百分比为 Go，配置或 subject 异常 fail closed。当前仅提供纯策略和测试，未接入 Gateway 投递副作用，性能收益与可执行回切门禁保持不变。
+
 - 2026-08-30：校正阶段计划状态：C3 authority、自动回切、Redis/Kafka 故障注入和 C++ primary 隔离证据已完成；C1/C2/C3 主阶段继续保持进行中，剩余门禁为可复现的 C++ 性能收益和按节点/用户灰度发布。避免将已完成故障演练重复排队，也避免提前宣称 C++ 已替换 Go。
 
 - 2026-08-30：补充 Remote GPU C1 组件故障证据：独立三 broker Kafka consumer rebalance 在 member 退出后接管全部 6 个 partition 且 lag 恢复为 `0`；独立 Redis Sentinel 在 master 停止后约 4 秒完成切换，客户端读写、Pub/Sub、Presence、热群和限流状态恢复，旧 master 重新加入为 replica。Redis 探针镜像支持 `DIPOLE_REDIS_FAILOVER_PROBE_IMAGE`，避免远端固定镜像未缓存造成阻塞；候选业务拓扑的 Kafka/Redis 自动回切仍待验证。
