@@ -121,6 +121,8 @@
 
 ## [Unreleased]
 
+- 2026-08-30：完成 Eino 上游复核：当前稳定依赖保持 `v0.9.17`，官方最新预发布为 `v0.10.0-alpha.26`，其 v0.10 方向增加可恢复 Session、可重放中间件状态、后台任务和 Automemory；由于仍处于 alpha 且可能存在破坏性变化，暂不升级生产回滚链路，新增隔离 spike 评估项。
+
 - 2026-08-30：新增 `scripts/smoke-microservices-lite.sh` 与依赖闭包契约测试，以 Gateway 依赖闭包验证 TencentCloud 轻量拓扑的 Gateway/Core/Message/Sync readiness、认证代理和可选服务隔离，默认不启动 Agent、Search、Cassandra、可观测性或 C++；完整 `smoke-microservices.sh` 继续用于 Remote GPU。
 
 - 2026-08-30：改进开发主机 preflight 的内存判定，默认读取 `MemAvailable` 而非物理总内存，避免已有实验造成内存压力时误放行；保留显式覆盖值和原有 fail-closed profile 门禁。
