@@ -23,3 +23,27 @@ groups:
           severity: warning
         annotations:
           summary: Multipart operation p95 latency is high
+
+      - alert: DipoleMultipartReconciliationDrift
+        expr: dipole_multipart_reconciliation_drift > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Multipart reconciliation found cross-store drift
+
+      - alert: DipoleMultipartReconciliationIncomplete
+        expr: dipole_multipart_reconciliation_complete == 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Multipart reconciliation did not complete
+
+      - alert: DipoleMultipartReconciliationStale
+        expr: time() - dipole_multipart_reconciliation_last_run_timestamp_seconds > 900
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Multipart reconciliation metrics are stale
