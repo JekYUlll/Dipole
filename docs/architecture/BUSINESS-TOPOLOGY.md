@@ -8,9 +8,9 @@ Dipole 当前同时保留三种 Compose 拓扑。它们的验证范围必须分�
 | --- | --- | --- | --- | --- |
 | 单节点微服务 | `deploy/compose/docker-compose.microservices.yml` | 单 broker `kafka` | 单实例 `redis` | 本地开发、快速 smoke、回滚 |
 | 基础设施集群 | `deploy/compose/docker-compose.cluster.yml` + `docker-compose.redis-cluster.yml` | 3 节点 KRaft | 3 Redis + 3 Sentinel | Kafka/Redis 组件级演练 |
-| 业务集群 | `deploy/compose/docker-compose.microservices.yml` + `docker-compose.business-cluster.yml` | 3 节点 KRaft | 1 master + 2 replica + 3 Sentinel | 业务故障切换与恢复证据 |
+| 业务集群 | `deploy/compose/docker-compose.microservices.yml` + `docker-compose.business-cluster.yml` | 3 节点 KRaft | MySQL Router + 3 InnoDB 节点；1 Redis master + 2 replica + 3 Sentinel | 业务故障切换与恢复证据 |
 
-基础微服务 Compose 仍通过 `kafka` 和 `redis` 提供单节点回滚路径。业务集群 override 保留这两个服务名作为 broker-1/master，增加其余副本和 Sentinel，并覆盖所有业务服务的客户端拓扑参数。单独启动基础设施集群文件仍只代表组件级演练。
+基础微服务 Compose 仍通过 `kafka`、`redis` 和单节点 `mysql` 提供回滚路径。业务集群 override 保留 `kafka`、`redis`、`mysql` 作为应用侧稳定服务名，其中 `mysql` 改为 MySQL Router，后端由 `mysql-1/2/3` InnoDB Cluster 提供；同时增加 Kafka 副本和 Redis Sentinel，并覆盖所有业务服务的客户端拓扑参数。单独启动基础设施集群文件仍只代表组件级演练。
 
 ## 证据规则
 
@@ -33,9 +33,10 @@ Dipole 当前同时保留三种 Compose 拓扑。它们的验证范围必须分�
 
 1. 所有 Kafka consumer/publisher 使用至少两个可解析的 broker 地址，并将 topic replication、min ISR 和 `acks=all` 显式绑定到环境配置。
 2. Redis 业务服务使用 Sentinel master discovery，不能只覆盖 `redis:6379` 单地址。
-3. 服务 readiness 检查依赖真实的业务客户端连接，而不是仅检查基础设施容器健康状态。
-4. 故障演练使用独立 Compose project、固定 revision、可回滚 receipt，并保存业务层消息、Inbox、lag 和投递结果。
-5. 默认单节点路径保持可用，业务集群切换必须有显式开关和同版本回退路径。
+3. MySQL 业务服务使用 Router writer endpoint，migration、权限初始化和应用连接统一通过 `mysql:3306`，底层成员由 `mysql-cluster-init` 成功完成集群初始化后才允许 Router 启动。
+4. 服务 readiness 检查依赖真实的业务客户端连接，而不是仅检查基础设施容器健康状态。
+5. 故障演练使用独立 Compose project、固定 revision、可回滚 receipt，并保存业务层消息、Inbox、lag 和投递结果。
+6. 默认单节点路径保持可用，业务集群切换必须有显式开关和同版本回退路径。
 
 ## 业务集群入口
 
@@ -65,4 +66,4 @@ scripts/bench/business_cluster_topology.sh down
 
 ## 当前结论
 
-当前仓库已具备可渲染的 Kafka 三节点、Redis Sentinel 业务组合拓扑，微服务默认路径仍是单节点。业务消息链路的自动故障切换、恢复收敛和可执行回滚 receipt 仍属于后续 A6/C1 门禁，暂不宣称完成。
+当前仓库已具备可渲染的 MySQL Router/InnoDB Cluster、Kafka 三节点、Redis Sentinel 业务组合拓扑，微服务默认路径仍是单节点。业务消息链路的自动故障切换、恢复收敛和可执行回滚 receipt 仍属于后续 A6/C1 门禁，暂不宣称完成。

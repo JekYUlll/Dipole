@@ -11,7 +11,7 @@ business_topology_doc="docs/architecture/BUSINESS-TOPOLOGY.md"
   echo "business topology contract is missing: ${business_topology_doc}" >&2
   exit 1
 }
-grep -F "当前仓库已具备可渲染的 Kafka 三节点、Redis Sentinel 业务组合拓扑，微服务默认路径仍是单节点。" \
+grep -F "当前仓库已具备可渲染的 MySQL Router/InnoDB Cluster、Kafka 三节点、Redis Sentinel 业务组合拓扑，微服务默认路径仍是单节点。" \
   "$business_topology_doc" >/dev/null || {
   echo "business topology contract must remain fail-closed" >&2
   exit 1
@@ -59,6 +59,15 @@ jq -e '
   and .services.message.environment.DIPOLE_KAFKA_REQUIRED_ACKS == "all"
   and .services.gateway.environment.DIPOLE_REDIS_MODE == "sentinel"
   and .services.gateway.environment.DIPOLE_REDIS_SENTINEL_MASTER_NAME == "dipole-master"
+  and .services.mysql.image == "container-registry.oracle.com/mysql/community-router:8.4"
+  and .services.mysql.environment.MYSQL_HOST == "mysql-1"
+  and .services.mysql.healthcheck.test[4] == "3306"
+  and .services["mysql-cluster-init"].depends_on["mysql-1"].condition == "service_healthy"
+  and .services["mysql-cluster-init"].depends_on["mysql-2"].condition == "service_healthy"
+  and .services["mysql-cluster-init"].depends_on["mysql-3"].condition == "service_healthy"
+  and .services["mysql-1"].image == "mysql:8.4.8"
+  and .services["mysql-2"].image == "mysql:8.4.8"
+  and .services["mysql-3"].image == "mysql:8.4.8"
   and any(.services["sentinel-3"].volumes[]?;
     (.source? | (type == "string" and endswith("/deploy/redis/business-sentinel.conf")))
   )

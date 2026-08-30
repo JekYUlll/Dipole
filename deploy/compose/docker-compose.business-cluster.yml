@@ -1,6 +1,128 @@
 # Business dependency overlay.
 # Use with docker-compose.microservices.yml; the base file remains the rollback path.
 services:
+  # Keep mysql as the stable application endpoint while routing it to the
+  # three-node InnoDB Cluster below.
+  mysql:
+    image: container-registry.oracle.com/mysql/community-router:8.4
+    restart: unless-stopped
+    depends_on:
+      mysql-cluster-init:
+        condition: service_completed_successfully
+    environment: !override
+      MYSQL_HOST: mysql-1
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root123
+      MYSQL_INNODB_CLUSTER_MEMBERS: 3
+      MYSQL_ROUTER_BOOTSTRAP_EXTRA_OPTIONS: --conf-base-port=3306 --disable-rw-split
+    command: !override []
+    ports: !override []
+    volumes: !override []
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-P", "3306", "-udipole", "-pdipole123"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mysql-1:
+    image: mysql:8.4.8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: dipole
+      MYSQL_USER: dipole
+      MYSQL_PASSWORD: dipole123
+      TZ: Asia/Shanghai
+    command:
+      - --server-id=1
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --log-replica-updates=ON
+      - --binlog-format=ROW
+      - --report-host=mysql-1
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_business_cluster_1_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot123"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mysql-2:
+    image: mysql:8.4.8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: dipole
+      MYSQL_USER: dipole
+      MYSQL_PASSWORD: dipole123
+      TZ: Asia/Shanghai
+    command:
+      - --server-id=2
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --log-replica-updates=ON
+      - --binlog-format=ROW
+      - --report-host=mysql-2
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_business_cluster_2_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot123"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mysql-3:
+    image: mysql:8.4.8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: dipole
+      MYSQL_USER: dipole
+      MYSQL_PASSWORD: dipole123
+      TZ: Asia/Shanghai
+    command:
+      - --server-id=3
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --log-replica-updates=ON
+      - --binlog-format=ROW
+      - --report-host=mysql-3
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_business_cluster_3_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot123"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mysql-cluster-init:
+    image: mysql:8.4.8
+    restart: "no"
+    depends_on:
+      mysql-1:
+        condition: service_healthy
+      mysql-2:
+        condition: service_healthy
+      mysql-3:
+        condition: service_healthy
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+    volumes:
+      - ../../deploy/mysql/init-cluster.js:/init-cluster.js:ro
+      - ../../deploy/mysql/rejoin-instance.js:/rejoin-instance.js:ro
+    entrypoint: ["mysqlsh", "--no-defaults", "--js", "--file", "/init-cluster.js"]
+
   kafka:
     environment:
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
@@ -177,6 +299,9 @@ services:
       DIPOLE_REDIS_SENTINEL_ADDRESSES: sentinel-1:26379,sentinel-2:26379,sentinel-3:26379
 
 volumes:
+  mysql_business_cluster_1_data:
+  mysql_business_cluster_2_data:
+  mysql_business_cluster_3_data:
   kafka_business_2_data:
   kafka_business_3_data:
   redis_business_2_data:
