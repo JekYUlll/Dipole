@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 在提交 `37d02383` 上拉取 `quay.io/prometheus/alertmanager:v0.28.1` 并通过 `amtool check-config`；配置包含全局配置、路由和一个 discard receiver。该证据只验证 Alertmanager 配置，未启动常驻 Compose 服务或外部通知。
+
 - 2026-08-30：开发 observability profile 新增 loopback-only Alertmanager，并由 Prometheus 配置转发告警。仓库 receiver 为 discard，用于配置与投递链路验证；生产通知凭据和目标继续通过受控部署层配置。
 
 - 2026-08-30：Web Sync 开发观察新增隔离 Prometheus smoke 与远程入口；Gateway/Prometheus 宿主端口默认限制为 loopback，验证必要服务 metrics target 后自动清理。该 smoke 不启动 24 小时观察会话，也不构成晋级证据。
