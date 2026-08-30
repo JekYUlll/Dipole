@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Settings 的认证页面检查现运行于全部 Playwright 项目，Chromium 保留像素基线，Remote GPU Firefox 已通过真实路由与披露断言。WebKit 二进制已安装，但共享宿主缺少 `libgstreamer-plugins-bad1.0-0` 与 `libavif16`，系统依赖安装留待维护窗口。
+
 - 2026-08-31：完成 Settings 的 canonical Pencil desktop/mobile/四态设计、批准 PNG 导出和 Chromium 受控截图基线。认证账户页继续只呈现签名、本机同步状态、Device Security 入口和当前会话退出边界，跨浏览器视觉回归保持后续独立切片。
 
 - 2026-08-31：Core 新增默认关闭的受控 `conversation.search` assembly。启用需 mTLS，Core 以独立身份调用 Search，再以持久 Task/Run 恢复 principal、scope 和 capability policy；Search RPC 仅允许 Gateway 与 Core 服务身份。默认 Compose 固定关闭，生产检索流量未启用。

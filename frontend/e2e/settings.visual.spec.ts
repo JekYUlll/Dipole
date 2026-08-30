@@ -13,15 +13,14 @@ const currentUser = {
   created_at: '2026-08-31T08:30:00.000Z',
 }
 
-test.beforeEach(async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'visual baseline is canonicalized on Chromium')
+test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('dipole.web.token', 'settings-visual-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
 })
 
-test('keeps Settings aligned with the Pencil account and disclosure boundary', async ({ page }) => {
+test('keeps Settings aligned with the Pencil account and disclosure boundary', async ({ page, browserName }) => {
   await page.route('**/api/v1/users/me', route => ok(route, currentUser))
 
   await page.goto('/app/settings')
@@ -30,7 +29,9 @@ test('keeps Settings aligned with the Pencil account and disclosure boundary', a
   await expect(page.getByText('打开设备安全')).toBeVisible()
   await expect(page.getByText('安全游标')).toBeVisible()
   await expect(page.getByText('退出当前账户')).toBeVisible()
-  await expect(page.locator('.settings-page')).toHaveScreenshot('settings-chromium.png', { animations: 'disabled' })
+  if (browserName === 'chromium') {
+    await expect(page.locator('.settings-page')).toHaveScreenshot('settings-chromium.png', { animations: 'disabled' })
+  }
 })
 
 async function ok(route: Route, data: unknown) {

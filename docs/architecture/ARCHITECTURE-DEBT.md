@@ -29,7 +29,7 @@
 - 2026-08-31：Remote GPU 候选同步的远端 tracking ref 现仅对 `dipole-dev/<user>` 使用显式强制 refspec，消除 squash 后正常移动造成的非快进警告；共享引用维持普通 fetch，fetch 失败不再被忽略。提交 SHA detached checkout、活动用户保护和 Compose 启动边界保持不变。
 
 - 2026-08-30：F2 Device Security 已完成 Pencil desktop/mobile/七态矩阵、三项复用组件、认证 `/devices` 路由和低敏会话 parser。公共 `DeviceSessionResponse` 现只保留登出所需 connection ID、粗粒度 device/device ID 与时间，IP、节点和原始 User-Agent 不再跨 HTTP 边界；新增 `logout-others` 通过当前稳定 Device ID 排除自身，避免 UI 将全设备退出误写为“其他设备”。Go 定向测试、Pencil/文档门禁以及 Remote GPU Node 22 前端 `40/162`、typecheck/build 已通过；远端 Playwright browser binary 下载未完成，跨浏览器执行、Chromium 像素回归和真实 Redis Presence/跨节点踢出继续待验证。
-- 2026-08-31：F2 Settings 已新增认证 `/settings` 路由与 Chat 入口，签名更新只调用当前 owner 的 profile API，同步状态只读，设备详情跳转既有低敏 `/devices` 页面，退出复用现有会话终止器。canonical Pencil desktop/mobile/四态画板、批准导出与 Chromium 视觉基线已完成；跨浏览器视觉回归仍按 AD-044 跟踪。
+- 2026-08-31：F2 Settings 已新增认证 `/settings` 路由与 Chat 入口，签名更新只调用当前 owner 的 profile API，同步状态只读，设备详情跳转既有低敏 `/devices` 页面，退出复用现有会话终止器。canonical Pencil desktop/mobile/四态画板、批准导出与 Chromium 视觉基线已完成；Remote GPU Firefox 已通过认证路由和披露断言。WebKit 二进制已安装但共享宿主缺少 `libgstreamer-plugins-bad1.0-0` 与 `libavif16`，系统依赖安装和 WebKit 验证继续按 AD-044 跟踪。
 
 - 2026-08-30：校正 External MCP Shadow 文档口径：`external_mcp_shadow` 已作为独占、默认关闭的 Runtime mode 接入 `index.ts`，完整配置才会启动受控 Kafka/Temporal/Capability RPC process；基础 Compose 仍不选择该 mode。隔离全栈证据不覆盖共享 Shadow tenant、真实外部 DNS/TLS、凭据、Provider owner 或生产 authority，相关债务继续开放。
 
