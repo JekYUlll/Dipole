@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	storageops "github.com/JekYUlll/Dipole/internal/operations/storage"
 )
 
 func TestMinIOMultipartUploadLifecycle(t *testing.T) {
@@ -141,6 +144,67 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 	if !bytes.Equal(resumedContent, interruptedPart) {
 		t.Fatalf("resumed content length=%d, want %d", len(resumedContent), len(interruptedPart))
 	}
+
+	staleUpload, err := uploader.InitiateMessageMultipartUpload(ctx, "multipart-cleanup-integration.bin", "application/octet-stream")
+	if err != nil {
+		t.Fatalf("initiate cleanup upload: %v", err)
+	}
+	if _, err := uploader.UploadMultipartPart(ctx, staleUpload.ObjectKey, staleUpload.UploadID, 1,
+		bytes.NewReader([]byte("cleanup-part")), int64(len("cleanup-part"))); err != nil {
+		t.Fatalf("upload cleanup part: %v", err)
+	}
+	if err := waitForIncompleteUpload(ctx, client, bucket, staleUpload.ObjectKey, staleUpload.UploadID); err != nil {
+		t.Fatal(err)
+	}
+
+	cleanupReport := storageops.RunMultipartCleanup(ctx, minioCleanupClient{client: client, core: minio.Core{Client: client}},
+		bucket, staleUpload.ObjectKey, time.Now().UTC().Add(time.Hour), true)
+	if !cleanupReport.Complete || cleanupReport.Selected != 1 || cleanupReport.Aborted != 1 || cleanupReport.Failed != 0 {
+		t.Fatalf("unexpected cleanup report: %+v", cleanupReport)
+	}
+	for upload := range client.ListIncompleteUploads(ctx, bucket, staleUpload.ObjectKey, true) {
+		if upload.Err != nil {
+			t.Fatalf("list uploads after cleanup: %v", upload.Err)
+		}
+		if upload.UploadID == staleUpload.UploadID {
+			t.Fatalf("cleanup left incomplete upload %s", upload.UploadID)
+		}
+	}
+}
+
+func waitForIncompleteUpload(ctx context.Context, client *minio.Client, bucket, prefix, uploadID string) error {
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		for upload := range client.ListIncompleteUploads(ctx, bucket, prefix, true) {
+			if upload.Err != nil {
+				return fmt.Errorf("list uploads while waiting for %s: %w", uploadID, upload.Err)
+			}
+			if upload.UploadID == uploadID {
+				return nil
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for incomplete upload %s: %w", uploadID, ctx.Err())
+		case <-deadline.C:
+			return fmt.Errorf("incomplete upload %s did not appear in listing", uploadID)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+type minioCleanupClient struct {
+	client *minio.Client
+	core   minio.Core
+}
+
+func (c minioCleanupClient) ListIncompleteUploads(ctx context.Context, bucket, prefix string, recursive bool) <-chan minio.ObjectMultipartInfo {
+	return c.client.ListIncompleteUploads(ctx, bucket, prefix, recursive)
+}
+
+func (c minioCleanupClient) AbortMultipartUpload(ctx context.Context, bucket, objectKey, uploadID string) error {
+	return c.core.AbortMultipartUpload(ctx, bucket, objectKey, uploadID)
 }
 
 var errMultipartClientInterrupted = errors.New("multipart client interrupted")
