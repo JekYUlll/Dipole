@@ -13,6 +13,7 @@
 - 2026-08-30：C3 性能基准增加显式容器 builder 路径，当前 revision、编译器来源和 runner 会进入报告；宿主机缺少 `clang-tidy` 时可独立取得基准，远端缺少 Docker builder 依赖或当前 C++/Go 性能比未达门槛时继续 fail closed。
 - 2026-08-30：记录远端 Go 1.22 PATH 与已安装 Go 1.27 toolchain 的差异，并为 benchmark 增加显式 `DIPOLE_GO_BIN`；网络不可用时仍必须使用已验证本地 toolchain，禁止以自动下载成功推断性能证据有效。
 - 2026-08-30：归档 Remote GPU 同版本容器 benchmark：C++/Go ratio `0.119227`，低于 `1.0` 门槛，C3 性能收益门禁继续阻断 C++ primary/gray rollout；GPU 任务前后均为 2 个且未被操作。
+- 2026-08-30：完成更接近同契约的 C++/Go `DeliveryEnvelope` workload，ratio `0.247269` 仍低于门槛；C3 继续保持 Go authority，后续应针对 JSON parse、Protobuf construction 和 allocation profile 做 profiling，禁止仅凭该微基准切流。
 
 - 2026-08-30：补充开发与远程资源工作流，明确 GPU 任务存在时仍可运行不申请 GPU 的 Dipole 构建、Smoke 和压力测试；要求使用隔离 Compose project、记录前后资源快照，并禁止触碰其他任务。共享环境切流和确需 GPU 的 Agent 任务仍保留独立审批与资源门禁。
 
