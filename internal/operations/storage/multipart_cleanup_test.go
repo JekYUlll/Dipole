@@ -80,6 +80,30 @@ func TestRunMultipartCleanupFailsClosedOnListError(t *testing.T) {
 	}
 }
 
+func TestRunMultipartCleanupRejectsNilClient(t *testing.T) {
+	report := RunMultipartCleanup(context.Background(), nil, "files", "message-files/", time.Now(), false)
+	if report.Complete || report.Failed != 1 || report.ErrorCount != 1 {
+		t.Fatalf("nil client must fail closed: %+v", report)
+	}
+	if len(report.Errors) != 1 || report.Errors[0] != "MinIO client is required" {
+		t.Fatalf("unexpected nil client errors: %+v", report)
+	}
+}
+
+func TestRunMultipartCleanupBoundsListErrors(t *testing.T) {
+	uploads := make([]minio.ObjectMultipartInfo, maxMultipartCleanupErrors+4)
+	for i := range uploads {
+		uploads[i].Err = errors.New("temporary listing failure")
+	}
+	report := RunMultipartCleanup(context.Background(), &multipartClientStub{uploads: uploads}, "files", "message-files/", time.Now(), false)
+	if report.Complete || report.ErrorCount != len(uploads) || report.Failed != len(uploads) {
+		t.Fatalf("unexpected bounded error report: %+v", report)
+	}
+	if len(report.Errors) != maxMultipartCleanupErrors || !report.ErrorsTruncated {
+		t.Fatalf("error report was not bounded: %+v", report)
+	}
+}
+
 func TestNormalizePrefix(t *testing.T) {
 	if got := NormalizePrefix(" /message-files/ "); got != "message-files/" {
 		t.Fatalf("got %q", got)
