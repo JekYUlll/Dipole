@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Gateway 增加未装配的 OAuth authorization transaction consume client foundation。它通过已有 Core mTLS 通道只提交 owner、transaction ID 与 state digest，严格复核返回的 HTTPS binding、expiry 与 base64url 密封 verifier；结果类型禁止作为 HTTP/审计/日志载荷。尚未注册 HTTP callback、Runtime handoff、解封、code exchange 或 token 写入。
+
 - 2026-08-31：Core standalone bootstrap 为 OAuth authorization transaction consume 增加显式、默认关闭的 SQLC Store 注入门禁。只有 `internal_rpc.agent_oauth_authorization_transaction_consume_enabled=true` 且内部 RPC mTLS 已开启才装配受限 adapter；它可与 Memory receipt seam 共存，未增加 HTTP callback、verifier 解封、code exchange 或 token 写入。
 
 - 2026-08-31：Agent Capability RPC 新增默认关闭的 OAuth authorization transaction consume seam。仅 `dipole-gateway` 可使用认证 `RequestContext` 派生 owner 并提交 transaction ID/state digest；Core 先核对 owner/state，再以 SQLC 条件更新单次消费，成功时只返回密封 verifier 和固定 issuer/callback binding。默认 composition 未注入 store，调用固定返回 `Unavailable`，未新增 callback HTTP、换码或 token 写入。

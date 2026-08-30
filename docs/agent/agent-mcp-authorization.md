@@ -58,4 +58,6 @@ Content-Type: application/json
 
 Core Agent Capability 已预留 `ConsumeOAuthAuthorizationTransaction` RPC。它仅接受 `dipole-gateway` 服务身份，owner 只从认证 `RequestContext` 恢复；Gateway 只能传递 transaction ID 与 state SHA-256。Core 在返回固定 issuer、callback、expiry 和 sealed verifier 前完成条件消费。Core standalone bootstrap 仅在 `internal_rpc.agent_oauth_authorization_transaction_consume_enabled=true` 与内部 RPC mTLS 同时满足时注入 SQLC Store；默认仍拒绝为 `Unavailable`，因此现有部署不会意外启用 OAuth callback。Gateway 仍不得解封 verifier，也不得将返回载荷写入日志。
 
-当前仍缺少 callback HTTP、RFC 9728 Protected Resource Metadata、Runtime 解封后的 token code exchange、客户端注册、refresh 与撤销流程。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
+Gateway 内部已提供与该 RPC 对应的未装配 client。它仅使用已有 Core mTLS 通道，并校验返回 transaction、HTTPS issuer/callback、expiry 与 base64url 密封 verifier；client result 只能用于后续 Runtime handoff，禁止进入浏览器响应、审计或日志。当前没有 Gateway Dependency、bootstrap 配置或 HTTP route 使用该 client。
+
+当前仍缺少 Gateway 到 Runtime 的短时受认证 handoff、callback HTTP、RFC 9728 Protected Resource Metadata、Runtime 解封后的 token code exchange、客户端注册、refresh 与撤销流程。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
