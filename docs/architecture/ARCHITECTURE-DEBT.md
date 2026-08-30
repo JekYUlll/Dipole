@@ -37,6 +37,8 @@
 
 - 2026-08-30：F2 File Directory 已建立从 SQLC owner-scoped 查询、Core gRPC 到认证 `/files` 的低敏读取边界；前端严格拒绝额外存储字段，读取失败清空旧数据，下载逐项重新授权。Remote GPU Node 22 在 `a29d9927` 通过 38 个测试文件、157 项测试、typecheck 与 production build。上传仍在会话编辑器，文件删除、设备与设置页面、跨浏览器视觉回归和预签名直传默认切流继续按独立切片推进。
 
+- 2026-08-31：F2 File Directory 已新增 Chromium canonical screenshot，受控 fixture 固定 owner-scoped metadata、一次性下载入口和对象键/存储 URL/校验值/上传会话不披露的边界。该视觉基线不访问对象存储，不覆盖上传、删除、下载真实跳转或 Firefox/WebKit，相关能力继续保持独立验证要求。
+
 - 2026-08-30：Remote GPU 已为 `253cf3d29ec79a0f58bcc06c58f5fbad20974b45` 生成 Web Sync Shadow candidate bundle，SHA-256 为 `f4a3a90c5ed5d7d04575a9b939ca738b7e6bd92f53fe3ef818a7249941725f9d`；远端本次未启动 Compose、Prometheus 或客户端流量。当前存在其他用户的活动 tmux 会话，按共享环境保护策略不启动 A6 观察窗口；bundle 仅可作为后续受批准 Observation Session 的输入，不能推导 `promotion_ready`。
 
 - 2026-08-30：Go/Eino legacy 兼容链已由服务布局门禁收口：production code 只允许 embedded Kafka composition 引入 legacy，Eino module import 只允许保留在 `internal/services/agent/legacy`。该约束防止独立 Gateway、Core 或 TypeScript Runtime 绕过 Capability/Temporal/promotion 边界回接旧 Agent；真实 active Runtime 授权与共享环境证据仍按 `AD-009`、`AD-037` 跟踪。
