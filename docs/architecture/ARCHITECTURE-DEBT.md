@@ -1254,4 +1254,5 @@
 - **本轮进展：** HTTP Gateway Multipart 初始化入口增加限流 fail-fast 回归，确认限流请求不会触发 Core/MinIO；文件上传窗口仍复用 Redis-backed `AllowFileUpload`，默认配置保持兼容。
 - **本轮进展：** 预签名 Gateway 代理增加显式上游响应超时配置与 `502` 超时回归，避免对象存储挂起长期占用 Gateway；默认 `30s`，仅启用代理时生效。
 - **本轮进展：** 预签名 Gateway 代理接入按客户端地址的文件上传限流，限流发生在代理调用前并返回 `429`；允许请求才进入 MinIO，原签名与 relay 回退边界不变。
-- **下一步：** 在 Remote GPU 维护窗口补充预签名代理限流故障证据，记录 active/expired/abort/retry 指标并形成完整矩阵后再评估关闭本条债务。
+- **本轮进展：** 新增 fault-matrix 聚合脚本；Remote GPU 确定性 Go 门禁、真实 MinIO/Redis 基础 reconciliation 与 Redis restart smoke 通过，promtool 依赖镜像拉取因 registry 无进展中止，完整矩阵保持未关闭。
+- **下一步：** 在可用 promtool 镜像环境完成告警规则与真实矩阵联合验收，随后记录 active/expired/abort/retry 指标并评估关闭本条债务。
