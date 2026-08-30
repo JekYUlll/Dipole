@@ -17,6 +17,7 @@ BENCH_GROUP_MAX_DURATION="${DIPOLE_BENCH_GROUP_MAX_DURATION:-}"
 BENCH_USER_COUNT="${DIPOLE_BENCH_USER_COUNT:-}"
 BENCH_GROUP_SIZE="${DIPOLE_BENCH_GROUP_SIZE:-}"
 BENCH_RUN_ID="${DIPOLE_BENCH_RUN_ID:-}"
+REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"
 
 usage() {
   cat <<'EOF'
@@ -76,8 +77,13 @@ REMOTE_GUARD
 
 run_remote() {
   local action="$1"
+  local bench_scenario_filter="${BENCH_SCENARIO_FILTER:-$REMOTE_EMPTY_ARG}"
+  local bench_group_max_duration="${BENCH_GROUP_MAX_DURATION:-$REMOTE_EMPTY_ARG}"
+  local bench_user_count="${BENCH_USER_COUNT:-$REMOTE_EMPTY_ARG}"
+  local bench_group_size="${BENCH_GROUP_SIZE:-$REMOTE_EMPTY_ARG}"
+  local bench_run_id="${BENCH_RUN_ID:-$REMOTE_EMPTY_ARG}"
   remote "${REMOTE_K6_IMAGE}" "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" \
-    "${BENCH_SCENARIO_FILTER}" "${BENCH_GROUP_MAX_DURATION}" "${BENCH_USER_COUNT}" "${BENCH_GROUP_SIZE}" "${BENCH_RUN_ID}" <<REMOTE_RUN
+    "${bench_scenario_filter}" "${bench_group_max_duration}" "${bench_user_count}" "${bench_group_size}" "${bench_run_id}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
 k6_image="\${3:-}"
@@ -89,6 +95,9 @@ bench_group_max_duration="\${9:-}"
 bench_user_count="\${10:-}"
 bench_group_size="\${11:-}"
 bench_run_id="\${12:-}"
+for bench_arg in bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id; do
+  [[ "\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]] && printf -v "\$bench_arg" '%s' ''
+done
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
   export PATH="\$go_root/bin:\$PATH"
 fi
