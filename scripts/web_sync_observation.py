@@ -15,6 +15,7 @@ from pathlib import Path
 SESSION_SCHEMA = "dipole.web-sync.observation-session.v1"
 EVIDENCE_SCHEMA = "dipole.web-sync.observation-evidence.v1"
 MINIMUM_WINDOW = timedelta(hours=24)
+MAX_FUTURE_SKEW = timedelta(minutes=5)
 MINIMUM_MATCHES = 100
 ALERT_QUERY = 'count(ALERTS{alertname=~"DipoleSyncProjector(Lag|Retry|DeadLetter)|DipoleWebSync(ShadowDivergence|ShadowOverflow|StorageFull|ClientErrors)",alertstate="firing"})'
 START_QUERIES = {
@@ -55,7 +56,7 @@ class PrometheusClient:
         return document
 
 
-def build_session(candidate_version, git_commit, bundle_path, prometheus_url, started_at, client):
+def build_session(candidate_version, git_commit, bundle_path, prometheus_url, started_at, client, now=None):
     candidate_version = candidate_version.strip()
     git_commit = git_commit.strip().lower()
     if not candidate_version:
@@ -67,6 +68,7 @@ def build_session(candidate_version, git_commit, bundle_path, prometheus_url, st
     if not bundle_path.is_file():
         raise ValueError("candidate Web bundle is required")
     started_at = _utc(started_at)
+    _reject_future_timestamp("session start", started_at, now)
     snapshot = _query_snapshot(client, START_QUERIES, started_at)
     values = snapshot["values"]
     issues = []
@@ -103,10 +105,11 @@ def build_session(candidate_version, git_commit, bundle_path, prometheus_url, st
     }
 
 
-def build_final_evidence(session, ended_at, client):
+def build_final_evidence(session, ended_at, client, now=None):
     _validate_session(session)
     started_at = _parse_time(session["started_at"])
     ended_at = _utc(ended_at)
+    _reject_future_timestamp("observation end", ended_at, now)
     if ended_at - started_at < MINIMUM_WINDOW:
         raise ValueError("Web Sync observation requires a complete 24-hour window")
     snapshot = _query_snapshot(client, FINAL_QUERIES, ended_at)
@@ -143,12 +146,13 @@ def build_final_evidence(session, ended_at, client):
     return evidence
 
 
-def build_status(session, captured_at, client):
+def build_status(session, captured_at, client, now=None):
     _validate_session(session)
     captured_at = _utc(captured_at)
     started_at = _parse_time(session["started_at"])
     if captured_at < started_at:
         raise ValueError("Web Sync observation status cannot precede session start")
+    _reject_future_timestamp("status capture", captured_at, now)
     snapshot = _query_snapshot(client, FINAL_QUERIES, captured_at)
     return {
         "session_id": session["session_id"],
@@ -232,6 +236,12 @@ def _utc(value):
     if value.tzinfo is None:
         raise ValueError("timestamp must include a timezone")
     return value.astimezone(timezone.utc)
+
+
+def _reject_future_timestamp(label, value, now=None):
+    reference = datetime.now(timezone.utc) if now is None else _utc(now)
+    if value > reference + MAX_FUTURE_SKEW:
+        raise ValueError(f"{label} cannot be more than {int(MAX_FUTURE_SKEW.total_seconds() / 60)} minutes in the future")
 
 
 def _iso(value):
