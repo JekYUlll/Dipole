@@ -47,7 +47,7 @@ export function parseGroupDirectoryItem(raw: unknown): Group {
   if (!isRecord(raw) || !exactKeys(raw, groupKeys) || typeof raw.uuid !== 'string' || !identifier.test(raw.uuid) ||
     typeof raw.name !== 'string' || typeof raw.notice !== 'string' || typeof raw.avatar !== 'string' ||
     (status !== 0 && status !== 1) || !nonNegativeInteger(memberCount) || typeof raw.is_hot !== 'boolean' ||
-    !nonNegativeInteger(recentMessageCount) || !Number.isSafeInteger(meRole) || typeof raw.created_at !== 'string' ||
+    !nonNegativeInteger(recentMessageCount) || !safeInteger(meRole) || typeof raw.created_at !== 'string' ||
     (owner !== undefined && !validUser(owner)) || raw.members !== undefined) {
     throw new Error('group directory item is invalid')
   }
@@ -75,5 +75,6 @@ function toUser(value: Record<string, unknown>): PublicUser {
 }
 
 function nonNegativeInteger(value: unknown): value is number { return Number.isSafeInteger(value) && (value as number) >= 0 }
+function safeInteger(value: unknown): value is number { return Number.isSafeInteger(value) }
 function exactKeys(value: Record<string, unknown>, allowed: Set<string>): boolean { return Object.keys(value).every(key => allowed.has(key)) }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value) }
