@@ -111,6 +111,21 @@ case "${action}" in
       printf 'remote node-test refused: requires Node %s+, found %s\n' "\$required_node" "\$actual_node" >&2
       exit 4
     fi
+    webapp_dir="internal/services/core/server/webapp"
+    if [[ -n "\$(git status --porcelain -- "\$webapp_dir")" ]]; then
+      printf 'remote node-test refused: generated webapp output is dirty; clean %s first\n' "\$webapp_dir" >&2
+      exit 4
+    fi
+    cleanup_webapp() {
+      if [[ -n "\$(git diff -- "\$webapp_dir")" ]]; then
+        git diff -- "\$webapp_dir" | git apply --reverse || true
+      fi
+      untracked="\$(git ls-files --others --exclude-standard -- "\$webapp_dir")"
+      if [[ -n "\$untracked" ]]; then
+        git clean -f -- \$untracked
+      fi
+    }
+    trap cleanup_webapp EXIT
     for app in services/agent-runtime frontend; do
       if [[ ! -d "\$app/node_modules" ]]; then
         npm --prefix "\$app" ci --ignore-scripts --no-audit --no-fund
