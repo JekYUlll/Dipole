@@ -8,9 +8,7 @@
 | --- | --- |
 | Capability 与权限 | [Capabilities](agent-capabilities/v1/README.md)、[Policy](agent-policy/v1/README.md) |
 | Task、Artifact 与输入 | [Artifact](agent-artifact/v1/README.md)、[Elicitation](agent-elicitation/v1/README.md)、[Task Timeline](agent-task-timeline/v1/README.md) |
-| Memory 模型与运行时边界 | [Agent Runtime Memory Policy](../docs/architecture/AGENT-RUNTIME-DESIGN.md#memory-policy)、[Memory Observation](../docs/agent/agent-memory-observation.md) |
-| Memory 晋级与评测 | [Memory Promotion](agent-memory-promotion/v1/README.md)、[Memory Prefilter](agent-memory-prefilter/v1/README.md)、[Reviewed Corpus](agent-memory-reviewed-corpus/v1/README.md) |
-| Memory 保留与派生清理 | [Retention](agent-memory-retention/v1/README.md)、[Derived Lineage](agent-memory-derived-lineage/v1/README.md)、[Derived Retention](agent-memory-derived-retention/v1/README.md) |
+| Memory | [Memory Promotion](agent-memory-promotion/v1/README.md)、[Memory Prefilter](agent-memory-prefilter/v1/README.md)、[Reviewed Corpus](agent-memory-reviewed-corpus/v1/README.md)、[Retention](agent-memory-retention/v1/README.md) |
 | 事件与消息动作 | [Commands](agent-commands/v1/README.md) |
 | MCP | 运行时边界见 [Agent MCP 文档](../docs/agent/README.md)，协议输入由服务内 MCP adapter 校验 |
 | 发布与修复 | [Release](agent-release/v1/README.md)、[Promotion v1](agent-promotion/v1/README.md)、[Promotion v2](agent-promotion/v2/README.md)、[Workflow Repair](agent-workflow-repair/v1/README.md)、[Repair Rollout](agent-timeline-repair-rollout/v1/README.md) |

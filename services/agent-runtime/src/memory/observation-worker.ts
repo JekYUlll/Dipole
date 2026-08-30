@@ -2,8 +2,6 @@ import { createHash } from "node:crypto";
 
 import { z } from "zod";
 
-import { observationalCandidateTypeSchema } from "./memory-type-policy.js";
-
 const identifier = z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9_.:/-]*$/);
 const isoDate = z.iso.datetime();
 const contentLimit = 16 * 1024;
@@ -17,7 +15,7 @@ const candidateSchema = z.object({
   tenantId: identifier,
   principalId: identifier,
   agentId: identifier,
-  memoryType: observationalCandidateTypeSchema,
+  memoryType: z.literal("observational"),
   resourceType: identifier,
   resourceId: identifier,
   content: safeCandidateContent(contentLimit, "content"),
