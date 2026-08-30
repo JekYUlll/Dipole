@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 
+- 新增 `settings-v1-brief.md`，约束 Settings 页面只使用可验证的资料、设备 session、同步状态和退出账户能力；通知、主题与其他无持久化接口的偏好不会在页面中伪造为可写开关。Pencil frame 与正式导出仍待小批次成功后补齐。
 - 增加本地 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该检查不修改设计文件，也不替代 Pencil 视觉评审。
 
 ### 变更

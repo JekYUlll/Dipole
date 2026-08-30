@@ -68,7 +68,7 @@ design/
 
 ### F2：现代 IM 完整流程
 
-- Search desktop/mobile 四态和 Vue 工作区已完成；Sync 本地恢复与状态反馈已完成首个切片；继续设计并实现 Contact、Group、File、Device 和 Settings 流程。
+- Search desktop/mobile 四态和 Vue 工作区已完成；Sync 本地恢复与状态反馈已完成首个切片；Settings 已提供认证资料、设备会话安全、同步状态和退出账户的首个 Vue 切片。Contact、Group、File、Device 的完整页面与 Settings 的 Pencil frame/视觉回归继续推进。
 - 将大型 ChatView 渐进拆成可测试组件。
 - 建立 Playwright 路由、交互和视觉回归。
 - IndexedDB 的三浏览器持久化、账号清理与页面中断事务契约已进入 Playwright；继续补齐完整页面路由和截图基线。

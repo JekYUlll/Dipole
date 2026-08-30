@@ -16,6 +16,10 @@
 
 ## 当前 Frame
 
+### Settings v1
+
+`settings-v1-brief.md` 固定认证资料、设备会话安全、只读同步状态和退出账户的页面边界。当前 Vue 页面已复用既有 profile 与 device session API；Pencil frame、批准导出和视觉回归尚未形成，不能把 brief 当作已批准的 canonical 设计。
+
 ### Foundations 与组件
 
 - `00 Foundations`：颜色、字体、圆角和间距基线。

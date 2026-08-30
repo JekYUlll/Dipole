@@ -264,6 +264,7 @@
 - **建议方向：** 将 Pencil CLI 调用拆成小批次、设置任务超时并在每次调用后校验输出文件、节点命名和导出图；失败时保留原文件并记录 CLI/skill 版本，必要时使用已批准 frame 作为回滚点。
 - **处理门槛：** 新设计必须同时提交 canonical `.pen`、导出预览、`DESIGN-CHANGELOG.md` 条目和结构/视觉检查结果；未满足前不修改现有设计基线。
 - **本轮进展：** 已保留 `design/agent-task-timeline-v1-brief.md` 作为下一次小批次输入；使用 Pencil `0.3.5` 和受限模型重复尝试仍在超时窗口内未完成，未生成 Timeline frame 或导出图，safe-edit wrapper 验证 canonical 未被覆盖。
+- **本轮进展：** Settings v1 已先固定为窄范围 brief 并实现可验证的认证 Vue 页面；页面只复用既有 profile/device session API，不宣称不存在的偏好持久化。Settings canonical frame、导出和截图回归仍须按本债务的成功条件补齐。
 
 ### AD-040：WebSocket 查询令牌进入 HTTP 访问日志
 
