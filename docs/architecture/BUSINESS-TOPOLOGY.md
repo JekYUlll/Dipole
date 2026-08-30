@@ -8,9 +8,9 @@ Dipole 当前同时保留三种 Compose 拓扑。它们的验证范围必须分�
 | --- | --- | --- | --- | --- |
 | 单节点微服务 | `deploy/compose/docker-compose.microservices.yml` | 单 broker `kafka` | 单实例 `redis` | 本地开发、快速 smoke、回滚 |
 | 基础设施集群 | `deploy/compose/docker-compose.cluster.yml` + `docker-compose.redis-cluster.yml` | 3 节点 KRaft | 3 Redis + 3 Sentinel | Kafka/Redis 组件级演练 |
-| 业务集群 | 尚未提供 | 业务服务必须使用 broker 列表 | 业务服务必须使用 Sentinel 配置 | 业务故障切换与恢复证据 |
+| 业务集群 | `deploy/compose/docker-compose.microservices.yml` + `docker-compose.business-cluster.yml` | 3 节点 KRaft | 1 master + 2 replica + 3 Sentinel | 业务故障切换与恢复证据 |
 
-当前微服务 Compose 中的业务服务依赖名仍为 `kafka` 和 `redis`，并通过同一文件提供这两个单节点服务。单独启动集群 Compose，或把两个 Compose 文件直接拼接，均不能形成业务集群：前者没有业务容器，后者会产生服务名、依赖条件和网络边界冲突。
+基础微服务 Compose 仍通过 `kafka` 和 `redis` 提供单节点回滚路径。业务集群 override 保留这两个服务名作为 broker-1/master，增加其余副本和 Sentinel，并覆盖所有业务服务的客户端拓扑参数。单独启动基础设施集群文件仍只代表组件级演练。
 
 ## 证据规则
 
@@ -37,6 +37,19 @@ Dipole 当前同时保留三种 Compose 拓扑。它们的验证范围必须分�
 4. 故障演练使用独立 Compose project、固定 revision、可回滚 receipt，并保存业务层消息、Inbox、lag 和投递结果。
 5. 默认单节点路径保持可用，业务集群切换必须有显式开关和同版本回退路径。
 
+## 业务集群入口
+
+渲染并检查业务拓扑：
+
+```bash
+DIPOLE_INTERNAL_RPC_SHARED_SECRET=change-me \
+  docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/compose/docker-compose.business-cluster.yml config --quiet
+```
+
+真正启动前仍需要完成镜像 provenance、Topic 创建和独立 project 参数绑定。故障演练必须通过专用脚本执行，不能直接对共享开发栈执行 `down`。
+
 ## 当前结论
 
-当前仓库已具备 Kafka 三节点和 Redis Sentinel 的组件能力，微服务默认路径仍是单节点。业务集群组合拓扑和自动业务回切证据属于后续 A6/C1 门禁，暂不宣称完成。
+当前仓库已具备可渲染的 Kafka 三节点、Redis Sentinel 业务组合拓扑，微服务默认路径仍是单节点。业务消息链路的自动故障切换、恢复收敛和可执行回滚 receipt 仍属于后续 A6/C1 门禁，暂不宣称完成。
