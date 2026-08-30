@@ -62,3 +62,31 @@ func TestWriteMultipartReconciliationMetricsRequiresReport(t *testing.T) {
 		t.Fatal("nil report was accepted")
 	}
 }
+
+func TestWriteMultipartReconciliationMetricsPublishFailureKeepsTargetAndCleansTemp(t *testing.T) {
+	directory := t.TempDir()
+	target := filepath.Join(directory, "multipart.prom")
+	if err := os.Mkdir(target, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	report := &storageops.MultipartReconciliationReport{Complete: true}
+	if err := writeMultipartReconciliationMetrics(target, report, time.Unix(456, 0).UTC()); err == nil {
+		t.Fatal("publishing over a directory unexpectedly succeeded")
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		t.Fatalf("failed publish removed target: %v", err)
+	}
+	if !info.IsDir() {
+		t.Fatal("failed publish replaced the target")
+	}
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".multipart-reconciliation-") {
+			t.Fatalf("failed publish leaked temporary file %q", entry.Name())
+		}
+	}
+}
