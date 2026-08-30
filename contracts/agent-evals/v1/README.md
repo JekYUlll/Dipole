@@ -26,6 +26,15 @@ npm run eval:offline -- --suite=../../contracts/agent-evals/v1/offline-suite.jso
 
 `security-suite.json` 将五条真实 Runtime 结构性安全探针映射到同一 Harness：MCP 敏感参数外发对应 outcome，同源 Agent 循环对应 trajectory，越权 Capability 对应 permission，Prompt Injection provenance 对应 retrieval，重复事件的 planner 调用上限对应 cost。该 Suite 验证代码路径与稳定证据，不代表模型语义已免疫 Prompt Injection；真实 adversarial model corpus 仍需在 Shadow 晋级前归档。
 
+`project-guardian-synthetic-corpus.json` 与同目录 `project-guardian-synthetic-review.json` 固化 Project Guardian 订阅预筛的低敏基线：四类相关项目状态（承诺截止时间、决策、交付风险、缺失负责人）和四类无关事件均使用 `FIXTURE:` 内容及 `fixture:` 标识。两位独立 reviewer 对完整标签集达成 100% agreement，并通过 `eval:prefilter-review` 与共享 evaluator 复核。该资产用于回归、演示和后续候选比较；它不含真实会话、用户或模型输出，不能作为 production corpus、真实模型效果或 Runtime 灰度的证据。
+
+```bash
+cd services/agent-runtime
+npm run eval:prefilter-review -- \
+  --corpus=../../contracts/agent-evals/v1/project-guardian-synthetic-corpus.json \
+  --review=../../contracts/agent-evals/v1/project-guardian-synthetic-review.json
+```
+
 ## 真实 Shadow Task 适配
 
 `shadow-manifest.schema.json` 将评审标签、Task/Run 绑定、检索阈值和版本化模型价格与数据库 observation 分离。`shadow-manifest.example.json` 只展示格式，其中的 Task、Evidence 和价格均为占位值，不能作为晋级证据。

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "dipole.agent.subscription-corpus-review.v1",
+  "corpusSha256": "5acfbebc402bb3d341d4f379e60fc891d4eb9029708ad5c7e344300b6e342028",
+  "minimumAgreementBps": 10000,
+  "reviews": [
+    {
+      "reviewId": "review:guardian:one",
+      "reviewerId": "reviewer:guardian:one",
+      "labels": [
+        {"caseId": "guardian.acknowledgement", "relevant": false},
+        {"caseId": "guardian.commitment-deadline", "relevant": true},
+        {"caseId": "guardian.decision-recorded", "relevant": true},
+        {"caseId": "guardian.delivery-risk", "relevant": true},
+        {"caseId": "guardian.file-upload", "relevant": false},
+        {"caseId": "guardian.owner-missing", "relevant": true},
+        {"caseId": "guardian.social-message", "relevant": false},
+        {"caseId": "guardian.unrelated-group", "relevant": false}
+      ]
+    },
+    {
+      "reviewId": "review:guardian:two",
+      "reviewerId": "reviewer:guardian:two",
+      "labels": [
+        {"caseId": "guardian.acknowledgement", "relevant": false},
+        {"caseId": "guardian.commitment-deadline", "relevant": true},
+        {"caseId": "guardian.decision-recorded", "relevant": true},
+        {"caseId": "guardian.delivery-risk", "relevant": true},
+        {"caseId": "guardian.file-upload", "relevant": false},
+        {"caseId": "guardian.owner-missing", "relevant": true},
+        {"caseId": "guardian.social-message", "relevant": false},
+        {"caseId": "guardian.unrelated-group", "relevant": false}
+      ]
+    }
+  ]
+}
