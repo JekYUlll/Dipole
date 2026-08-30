@@ -113,6 +113,8 @@ python3 scripts/web_sync_observation.py start \
 
 `start` 会先确认 incoming-direct comparison series 已存在、Sync Projector lag 为零且相关告警没有 firing。Session ID 覆盖候选版本、commit、bundle SHA-256、Prometheus 地址、开始时间和初始原始响应；输出文件使用不可覆盖写入。
 
+工具会拒绝超过当前时钟 5 分钟的开始、状态采集或结束时间。该边界用于防止误用未来时间查询 Prometheus，避免把尚未发生的观察窗口误判为已完成；维护窗口需要校准主机时钟后重新执行命令，不应通过人为调整时间绕过门禁。
+
 观察期间可读取状态，命令不会修改 Session：
 
 ```bash
