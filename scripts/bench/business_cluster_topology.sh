@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 PROJECT="${BUSINESS_CLUSTER_PROJECT:-dipole-business-cluster}"
+export DIPOLE_GATEWAY_PORT="${BUSINESS_CLUSTER_GATEWAY_PORT:-18080}"
 COMPOSE=(
   docker compose
   --project-directory "${ROOT_DIR}"
@@ -19,6 +20,7 @@ Usage: scripts/bench/business_cluster_topology.sh <up|status|down|config>
 
 BUSINESS_CLUSTER_ALLOW_ACTIVE=1 is required for approved active sessions.
 DIPOLE_INTERNAL_RPC_SHARED_SECRET must be set for Compose rendering.
+BUSINESS_CLUSTER_GATEWAY_PORT controls the host Gateway port (default: 18080).
 EOF
 }
 
