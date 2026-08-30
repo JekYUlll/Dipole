@@ -1,4 +1,4 @@
-# Dipole 项目学习与面试主文档
+# Dipole 项目学习、简历与面试主文档
 
 本文档是 Dipole 的简历、现场介绍和复盘入口。内容必须以代码、测试、基准报告和架构文档为依据；详细题库见 [面试问答](INTERVIEW-QA.md)。
 
@@ -30,6 +30,20 @@
 | 切换默认路径或发现风险 | 状态标签、限制和下一步 | 架构债务台账、回滚手册 |
 
 每个合并切片至少复核本文档是否受影响；若无变化，在切片的测试/合并记录中注明“面试叙事无变化”。所有描述继续遵守证据优先：实现与测试齐备才标记为“已验证”，部署门禁齐备但缺共享环境证据标记为“默认关闭”，设计或待验收内容标记为“规划中”。
+
+### 能力卡片模板与索引
+
+每个可讲的合并切片在本文档新增或更新一张能力卡片，固定保留以下字段：`简历句`、`现场演示`、`证据`、`追问`、`限制` 和 `下一步`。更新日志记录变更时间线，能力卡片只保留可复述、可核验的当前结论。
+
+| 能力卡片 | 状态 | 简历句与现场演示入口 | 证据与追问 |
+| --- | --- | --- | --- |
+| 实时 IM 与 Timeline | **已验证** | 第 3 节后端描述；第 4 节 60 秒/3 分钟介绍 | [消息存储与同步模型](../architecture/MESSAGE-STORAGE-AND-SYNC.md)；“三个 Seq 为什么分开？” |
+| 渐进式微服务与 SQLC | **已验证** | 第 3 节后端描述；第 5 节渐进微服务故事 | [服务边界](../architecture/SERVICE-BOUNDARIES.md)；“为什么不一次性拆分？” |
+| Agent Runtime 与权限 | **已验证** | 第 3 节 Agent 描述；第 5 节 Agent 安全与可恢复执行 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)；“模型为何不能决定权限？” |
+| Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.visual.spec.ts`；“为何 Definition 目录不提供激活或编辑？” |
+| Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
+
+能力卡片的现场演示必须使用受控 fixture 或隔离环境；涉及真实消息、外部 MCP、生产凭据和写 Capability 时，先按对应运行手册完成授权与脱敏检查。
 
 ## 2. 一句话定位
 

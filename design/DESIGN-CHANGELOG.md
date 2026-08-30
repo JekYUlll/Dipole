@@ -14,11 +14,14 @@
 
 ### 验证
 
+- Agent Definition Catalog v1 使用 Pencil CLI `0.3.5` 与 `scripts/pencil-safe-edit.mjs` 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、三个复用组件和 2x 导出。Vue 目录页的 Chromium visual baseline 只覆盖受控低敏 metadata 与只读边界，active Runtime 和写 Capability 继续关闭。
 - Agent Task Timeline v1 使用 Pencil CLI `0.3.5`、`scripts/pencil-safe-edit.mjs` 和既有 brief 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、四个复用组件和 2x 导出。F2/F3 未完成页面、完整截图级视觉回归与未覆盖平台场景继续保持待处理状态。
 - Agent Task Timeline Vue 页面新增 Chromium canonical screenshot，使用受控低敏 fixture 固定只读 metadata、Capability、等待审批和分页入口；该验证不涵盖其余浏览器或完整页面基线。
 
 ### 新增
 
+- 增加 Agent Definition Catalog desktop/mobile 目录、loading/empty/unavailable/pagination 状态矩阵和只读 Runtime 边界，并归档 `exports/agent-definition-overview/` 和 `exports/agent-definition-v1/overview.png`。
+- 增加 Agent Definition Row、Scope Chip 和 Status 三个可复用组件；目录设计不提供创建、编辑、激活、删除、模型或 Tool 控制，也不披露 owner、tenant、内部 provenance 或参数。
 - 增加 Agent Task Timeline desktop/mobile 事件历史和四态矩阵，明确 revision、序号、Capability、状态与低敏 provenance 的只读边界，并归档 `exports/agent-timeline-overview/` 和全画布 `exports/agent-timeline-v1/overview.png`。
 - 增加 Agent Timeline Event、Revision Badge、Provenance Label 和 Unavailable State 四个可复用组件；canonical 文件扩展为 61 个顶层 Frame 和 27 个可复用组件。
 - 增加 Agent Event Subscription desktop/mobile 创建流程和七类创建状态，归档 `exports/agent-subscription-create-v1/` 的 2x 评审基线。

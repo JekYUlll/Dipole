@@ -15,6 +15,8 @@
     { "path": "exports/agent-subscription-v1", "purpose": "agent-subscription-v1" },
     { "path": "exports/agent-subscription-create-v1", "purpose": "agent-subscription-create-v1" },
     { "path": "exports/agent-timeline-v1/overview.png", "purpose": "agent-task-timeline-v1-canvas" },
-    { "path": "exports/agent-timeline-overview", "purpose": "agent-task-timeline-v1-frames" }
+    { "path": "exports/agent-timeline-overview", "purpose": "agent-task-timeline-v1-frames" },
+    { "path": "exports/agent-definition-v1/overview.png", "purpose": "agent-definition-v1-canvas" },
+    { "path": "exports/agent-definition-overview", "purpose": "agent-definition-v1-frames" }
   ]
 }

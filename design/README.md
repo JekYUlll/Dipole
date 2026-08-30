@@ -101,6 +101,17 @@ Vue 实现位于 `frontend/src/components/AgentTaskTimeline.vue`，路由为 `/a
 
 当前 Vue 只读页面的 Chromium visual baseline 位于 `frontend/e2e/agent-task-timeline.visual.spec.ts`；它使用受控低敏 fixture 固定 revision、Capability、等待审批、分页入口与 event kind 展示边界，不能替代全页面或跨浏览器视觉验收。
 
+### Agent Definition Catalog v1
+
+- `Agent Definition/Desktop/Catalog`：owner-scoped 的只读 Definition 目录，展示精确版本、会话 scope 与 Runtime 关闭边界。
+- `Agent Definition/Mobile/Catalog`：窄屏单列目录，保留版本、scope、`CATALOG ONLY` 与 `RUNTIME DISABLED` 信息。
+- `Agent Definition/State Matrix`：覆盖 loading、empty、unavailable/retry 与分页后的精确版本目录。
+- `Component/Agent Definition Row`、`Component/Agent Definition Scope Chip` 与 `Component/Agent Definition Status`：供 Definition、Subscription 和治理页复用。
+
+批准的 2x 预览位于 `exports/agent-definition-overview/`，全画布记录位于 `exports/agent-definition-v1/overview.png`。目录没有 create、edit、activate、delete、model 或 Tool 控制；页面也不披露 owner、tenant、内部 provenance 或参数。订阅创建继续以 Core 权威 scope 重新校验。
+
+Vue 实现位于 `frontend/src/components/AgentDefinitionCatalog.vue`，路由为 `/agent/definitions`，由 `VITE_AGENT_DEFINITIONS_ENABLED=true` 显式启用。Chromium visual baseline 位于 `frontend/e2e/agent-definitions.visual.spec.ts`，受控 fixture 只固定低敏 Definition metadata；它不能替代 active Runtime、写 Capability、跨浏览器或真实共享环境验收。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。

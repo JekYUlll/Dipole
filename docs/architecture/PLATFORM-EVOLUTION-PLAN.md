@@ -599,7 +599,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 - [x] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
 - [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿和标题栏状态已完成；Contact、Group、File、Device 与 Settings 待完成。
-- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval、普通 Elicitation Form 七态和 Task Timeline desktop/mobile/state matrix 设计已完成；默认关闭的 schema-driven Vue Form 已接入 authenticated Task query/input/cancel，前端 Task parser 已严格保留 `waiting_approval` pending 状态。Task Timeline 已有 Chromium 只读页面视觉基线。MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity。Agent Definition、Subscription、Memory、Artifact、多轮、敏感授权与其余浏览器视觉回归仍由 AD-036 跟踪。
+- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval、普通 Elicitation Form 七态、Task Timeline 与 Agent Definition Catalog 的 desktop/mobile/state matrix 设计已完成；Definition 目录经 Gateway 认证后只展示精确版本和 scope，查询失败清空旧目录，Runtime/写控制保持关闭，并有 Chromium 视觉基线。默认关闭的 schema-driven Vue Form 已接入 authenticated Task query/input/cancel，前端 Task parser 已严格保留 `waiting_approval` pending 状态。MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity。Subscription、Memory、Artifact、多轮、敏感授权与其余浏览器视觉回归仍由 AD-036 跟踪。
 - [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、Vue token 映射、核心页面流程、组件测试和 Playwright IndexedDB/跨浏览器功能回归；真实 Pencil CLI 增量编辑与 Agent Timeline Chromium 截图基线已通过小批次完成，截图级全页面视觉基线和未覆盖平台场景仍待完成。
   - [x] 增加无网络 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该门禁不替代 Pencil 视觉评审。
   - [x] App 壳层、Login、Search 工作区、Agent Task Timeline 组件及其路由页面、Agent Event Subscription 和 Agent Memory 管理页已引用共享 `--dp-*` token，并由 Vitest 契约测试和 Timeline Playwright 流程校验 Pencil variables、路由和核心样式边界。
@@ -607,7 +607,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Agent Approval 页面已增加 Playwright 认证流程，校验审批绑定、fail-closed 重试和移动端单列布局；截图级视觉回归仍待完成。
   - [x] Agent Approval 与 Elicitation 已增加 Chromium canonical 截图回归，固定主要桌面布局；其余页面和真实 Pencil 增量编辑仍待完成。
   - [x] Agent Subscription 与 Memory 管理页已增加 Chromium canonical 截图回归，固定治理控制面共享 token；其余页面和真实 Pencil 增量编辑仍待完成。
-  - [x] Agent Task Timeline 已增加 Chromium canonical 截图回归，固定只读 revision、Capability、审批等待、分页入口和 event kind 展示边界；其余页面与浏览器截图基线仍待完成。
+- [x] Agent Task Timeline 与 Agent Definition Catalog 已增加 Chromium canonical 截图回归，分别固定低敏任务 metadata/provenance 和精确 Definition/version/scope 的只读边界；其余页面与浏览器截图基线仍待完成。
   - [x] Search Workspace 已清理主题硬编码并统一共享 `--dp-*` token，补充设计契约测试；截图级 Search 视觉回归仍待完成。
   - [x] Search Workspace 已通过 E2E visual harness 固定 Chromium canonical 五态截图，覆盖 Idle、Loading、Results、Empty、Error；真实 Pencil 增量编辑和跨平台截图差异仍待完成。
 

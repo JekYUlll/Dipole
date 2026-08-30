@@ -26060,6 +26060,2282 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "J0DQz",
+      "x": 17540,
+      "y": 0,
+      "name": "Component/Agent Definition Status",
+      "reusable": true,
+      "width": 190,
+      "height": 36,
+      "fill": "$warning-soft",
+      "cornerRadius": 18,
+      "gap": 8,
+      "padding": [
+        8,
+        12
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "VPjK5",
+          "name": "Agent Definition Status Dot",
+          "fill": "$warning",
+          "width": 8,
+          "height": 8
+        },
+        {
+          "type": "text",
+          "id": "i7Xni7",
+          "name": "Agent Definition Status Label",
+          "fill": "$warning",
+          "content": "RUNTIME DISABLED",
+          "fontFamily": "$font-data",
+          "fontSize": 10,
+          "fontWeight": "700",
+          "letterSpacing": 0.4
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "UzLn9",
+      "x": 17754,
+      "y": 0,
+      "name": "Component/Agent Definition Scope Chip",
+      "reusable": true,
+      "width": 210,
+      "height": 36,
+      "fill": "$accent-soft",
+      "cornerRadius": 18,
+      "gap": 8,
+      "padding": [
+        8,
+        12
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "icon",
+          "id": "qdxzv",
+          "name": "Agent Definition Scope Icon",
+          "width": 14,
+          "height": 14,
+          "icon": "key-round",
+          "library": "lucide",
+          "fill": "$accent-strong"
+        },
+        {
+          "type": "text",
+          "id": "Zl0zl",
+          "name": "Agent Definition Scope Label",
+          "fill": "$accent-strong",
+          "content": "CURRENT ACCOUNT",
+          "fontFamily": "$font-data",
+          "fontSize": 10,
+          "fontWeight": "700",
+          "letterSpacing": 0.4
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "v5heQg",
+      "x": 17988,
+      "y": 0,
+      "name": "Component/Agent Definition Row",
+      "reusable": true,
+      "width": 820,
+      "height": 172,
+      "fill": "$surface",
+      "cornerRadius": "$radius-md",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 12,
+      "padding": [
+        18,
+        20
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "dmmMU",
+          "name": "Agent Definition Row Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "n5YYv",
+              "name": "Agent Definition Row Identity",
+              "layout": "vertical",
+              "gap": 5,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "k1R3ri",
+                  "name": "Agent Definition Row Title",
+                  "fill": "$ink",
+                  "content": "Incident Briefing Assistant",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "tU2RL",
+                  "name": "Agent Definition Row Meta",
+                  "fill": "$ink-faint",
+                  "content": "DEF-A17  /  VERSION 02",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "700",
+                  "letterSpacing": 0.5
+                }
+              ]
+            },
+            {
+              "id": "x203E",
+              "type": "ref",
+              "ref": "J0DQz",
+              "name": "Agent Definition Row Status"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "TK78n",
+          "name": "Agent Definition Row Summary",
+          "fill": "$ink-soft",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Read-only catalog entry for account-scoped routing, response tone, and escalation boundaries.",
+          "lineHeight": 1.45,
+          "fontFamily": "$font-body",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "R8c9jW",
+          "name": "Agent Definition Row Footer",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "F0wiK",
+              "name": "Agent Definition Row Scope Chips",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "ZOsr4",
+                  "type": "ref",
+                  "ref": "UzLn9",
+                  "name": "Agent Definition Row Scope Chip"
+                },
+                {
+                  "type": "frame",
+                  "id": "p5E2J",
+                  "name": "Agent Definition Read Only Badge",
+                  "fill": "$surface-muted",
+                  "cornerRadius": 14,
+                  "padding": [
+                    7,
+                    10
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "J1Mc6",
+                      "name": "Agent Definition Read Only Label",
+                      "fill": "$ink-soft",
+                      "content": "READ ONLY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.4
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "QoFrl",
+              "name": "Agent Definition Row Catalog Flag",
+              "fill": "$accent-strong",
+              "content": "CATALOG ONLY",
+              "fontFamily": "$font-data",
+              "fontSize": 11,
+              "fontWeight": "800",
+              "letterSpacing": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "v2MmeR",
+      "x": 17988,
+      "y": 252,
+      "name": "Agent Definition/Desktop/Catalog",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$canvas",
+      "children": [
+        {
+          "type": "frame",
+          "id": "y5Pml",
+          "name": "Agent Definition Desktop Rail",
+          "width": 256,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 28,
+          "padding": [
+            34,
+            28
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "EQ21v",
+              "name": "Agent Definition Desktop Brand",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "T2kvJT",
+                  "name": "Agent Definition Desktop Brand Title",
+                  "fill": "$text-inverse",
+                  "content": "Dipole",
+                  "fontFamily": "$font-display",
+                  "fontSize": 22,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "S70xIg",
+                  "name": "Agent Definition Desktop Brand Subtitle",
+                  "fill": "#B8C3BE",
+                  "content": "Agent Definition",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d3179",
+              "name": "Agent Definition Desktop Navigation",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WW4z2",
+                  "name": "Agent Definition Desktop Nav Catalog",
+                  "width": "fill_container",
+                  "height": 40,
+                  "fill": "$rail-soft",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "O2AAd",
+                      "name": "Agent Definition Desktop Nav Dot Catalog",
+                      "fill": "$accent",
+                      "width": 7,
+                      "height": 7
+                    },
+                    {
+                      "type": "text",
+                      "id": "jt2VN",
+                      "name": "Agent Definition Desktop Nav Label Catalog",
+                      "fill": "$text-inverse",
+                      "content": "Catalog",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mCIUH",
+                  "name": "Agent Definition Desktop Nav Runtime disabled",
+                  "width": "fill_container",
+                  "height": 40,
+                  "fill": "#172126",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "t5mSY",
+                      "name": "Agent Definition Desktop Nav Dot Runtime disabled",
+                      "fill": "#51615B",
+                      "width": 7,
+                      "height": 7
+                    },
+                    {
+                      "type": "text",
+                      "id": "e62SyI",
+                      "name": "Agent Definition Desktop Nav Label Runtime disabled",
+                      "fill": "#B8C3BE",
+                      "content": "Runtime disabled",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "i4WYGU",
+                  "name": "Agent Definition Desktop Nav Read only",
+                  "width": "fill_container",
+                  "height": 40,
+                  "fill": "#172126",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "LPRLp",
+                      "name": "Agent Definition Desktop Nav Dot Read only",
+                      "fill": "#51615B",
+                      "width": 7,
+                      "height": 7
+                    },
+                    {
+                      "type": "text",
+                      "id": "I44Ma3",
+                      "name": "Agent Definition Desktop Nav Label Read only",
+                      "fill": "#B8C3BE",
+                      "content": "Read only",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "H7ZeH9",
+              "name": "Agent Definition Desktop Rail Note",
+              "width": "fill_container",
+              "fill": "$rail-soft",
+              "cornerRadius": "$radius-md",
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "a6POAl",
+                  "name": "Agent Definition Desktop Rail Note Label",
+                  "fill": "$accent",
+                  "content": "CATALOG ONLY",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "800",
+                  "letterSpacing": 0.4
+                },
+                {
+                  "type": "text",
+                  "id": "QrUke",
+                  "name": "Agent Definition Desktop Rail Note Copy",
+                  "fill": "#D7DEDA",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Runtime is disabled for this surface.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "JKpPN",
+          "name": "Agent Definition Desktop Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            36,
+            42
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "aJS5K",
+              "name": "Agent Definition Desktop Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WGflL",
+                  "name": "Agent Definition Desktop Header Copy",
+                  "width": 690,
+                  "layout": "vertical",
+                  "gap": 9,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SXSyT",
+                      "name": "Agent Definition Desktop Eyebrow Row",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ibd7e",
+                          "name": "Agent Definition Desktop Eyebrow",
+                          "fill": "$accent-strong",
+                          "content": "CATALOG ONLY",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "800",
+                          "letterSpacing": 0.6
+                        },
+                        {
+                          "type": "text",
+                          "id": "E9feZ",
+                          "name": "Agent Definition Desktop Disabled Eyebrow",
+                          "fill": "$warning",
+                          "content": "RUNTIME DISABLED",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "800",
+                          "letterSpacing": 0.6
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "y84w0L",
+                      "name": "Agent Definition Desktop Title",
+                      "fill": "$ink",
+                      "content": "Agent definition catalog",
+                      "fontFamily": "$font-display",
+                      "fontSize": 34,
+                      "fontWeight": "850"
+                    },
+                    {
+                      "type": "text",
+                      "id": "iAYuC",
+                      "name": "Agent Definition Desktop Description",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Read-only records are scoped to the signed-in account and list approved response boundaries for review.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "l6apya",
+                  "name": "Agent Definition Desktop Header Status",
+                  "layout": "vertical",
+                  "gap": 10,
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "id": "pZ468",
+                      "type": "ref",
+                      "ref": "J0DQz",
+                      "name": "Agent Definition Desktop Status"
+                    },
+                    {
+                      "id": "GRVwT",
+                      "type": "ref",
+                      "ref": "UzLn9",
+                      "name": "Agent Definition Desktop Scope"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iwJ3L",
+              "name": "Agent Definition Desktop Read Only Banner",
+              "width": "fill_container",
+              "height": 76,
+              "fill": "$surface",
+              "cornerRadius": "$radius-md",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 16,
+              "padding": [
+                16,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "M0ii6I",
+                  "name": "Agent Definition Desktop Banner Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "shield-check",
+                  "library": "lucide",
+                  "fill": "$accent-strong"
+                },
+                {
+                  "type": "frame",
+                  "id": "MY3Td",
+                  "name": "Agent Definition Desktop Banner Copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 5,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jRhHj",
+                      "name": "Agent Definition Desktop Banner Title",
+                      "fill": "$ink",
+                      "content": "Account-scoped catalog view",
+                      "fontFamily": "$font-display",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "U1wdOj",
+                      "name": "Agent Definition Desktop Banner Text",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "The surface exposes definition cards for inspection only. Runtime execution remains unavailable here.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lU0eC",
+              "name": "Agent Definition Desktop Catalog List",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 14,
+              "children": [
+                {
+                  "id": "ekjwE",
+                  "type": "ref",
+                  "ref": "v5heQg",
+                  "name": "Agent Definition Desktop Row Incident Briefing Assistant",
+                  "width": "fill_container",
+                  "descendants": {
+                    "k1R3ri": {
+                      "content": "Incident Briefing Assistant"
+                    },
+                    "tU2RL": {
+                      "content": "DEF-A17  /  VERSION 02"
+                    },
+                    "TK78n": {
+                      "content": "Read-only catalog entry for account-scoped routing, response tone, and escalation boundaries."
+                    }
+                  }
+                },
+                {
+                  "id": "PeznS",
+                  "type": "ref",
+                  "ref": "v5heQg",
+                  "name": "Agent Definition Desktop Row Customer Support Summarizer",
+                  "width": "fill_container",
+                  "descendants": {
+                    "k1R3ri": {
+                      "content": "Customer Support Summarizer"
+                    },
+                    "tU2RL": {
+                      "content": "DEF-B44  /  VERSION 05"
+                    },
+                    "TK78n": {
+                      "content": "Captures summary behavior, handoff boundaries, and service language for the current account."
+                    }
+                  }
+                },
+                {
+                  "id": "L199n",
+                  "type": "ref",
+                  "ref": "v5heQg",
+                  "name": "Agent Definition Desktop Row Research Intake Companion",
+                  "width": "fill_container",
+                  "descendants": {
+                    "k1R3ri": {
+                      "content": "Research Intake Companion"
+                    },
+                    "tU2RL": {
+                      "content": "DEF-C09  /  VERSION 01"
+                    },
+                    "TK78n": {
+                      "content": "Lists intake prompts and review expectations available to the signed-in account."
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rzwlT",
+              "name": "Agent Definition Desktop Catalog Footer",
+              "width": "fill_container",
+              "height": 54,
+              "fill": "$surface-muted",
+              "cornerRadius": "$radius-sm",
+              "padding": [
+                0,
+                16
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "jvate",
+                  "name": "Agent Definition Desktop Footer Count",
+                  "fill": "$ink-soft",
+                  "content": "3 visible definitions",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "cl9dt",
+                  "name": "Agent Definition Desktop Footer Mode",
+                  "fill": "$warning",
+                  "content": "RUNTIME DISABLED",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "800",
+                  "letterSpacing": 0.5
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "qBH1U",
+      "x": 19508,
+      "y": 252,
+      "name": "Agent Definition/Mobile/Catalog",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "FoNfF",
+          "name": "Agent Definition Mobile Top Bar",
+          "width": "fill_container",
+          "height": 72,
+          "fill": "$surface",
+          "stroke": "$line",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "padding": [
+            0,
+            18
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "szojN",
+              "name": "Agent Definition Mobile Title Block",
+              "layout": "vertical",
+              "gap": 3,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Cu8Bp",
+                  "name": "Agent Definition Mobile Title",
+                  "fill": "$ink",
+                  "content": "Agent definitions",
+                  "fontFamily": "$font-display",
+                  "fontSize": 18,
+                  "fontWeight": "850"
+                },
+                {
+                  "type": "text",
+                  "id": "YGtwV",
+                  "name": "Agent Definition Mobile Subtitle",
+                  "fill": "$ink-faint",
+                  "content": "Catalog only",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "800",
+                  "letterSpacing": 0.5
+                }
+              ]
+            },
+            {
+              "id": "bKuPh",
+              "type": "ref",
+              "ref": "J0DQz",
+              "name": "Agent Definition Mobile Header Status",
+              "width": 170,
+              "descendants": {
+                "i7Xni7": {
+                  "content": "RUNTIME DISABLED",
+                  "fontSize": 9
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "iMioQ",
+          "name": "Agent Definition Mobile Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            14,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "ROw8Y",
+              "name": "Agent Definition Mobile Notice",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": "$radius-md",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HmGC7",
+                  "name": "Agent Definition Mobile Notice Flags",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "G4qGi",
+                      "name": "Agent Definition Mobile Notice Catalog",
+                      "fill": "$accent-strong",
+                      "content": "CATALOG ONLY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "BZ405",
+                      "name": "Agent Definition Mobile Notice Disabled",
+                      "fill": "$warning",
+                      "content": "RUNTIME DISABLED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "B1OZGh",
+                  "name": "Agent Definition Mobile Notice Text",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Read-only definitions scoped to the signed-in account.",
+                  "lineHeight": 1.4,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iqaS0",
+              "name": "Agent Definition Mobile Catalog Cards",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "tN3Qs",
+                  "name": "Agent Definition Mobile Card Incident Briefing",
+                  "width": "fill_container",
+                  "height": 140,
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "i8Uc7",
+                      "name": "Agent Definition Mobile Card Header Incident Briefing",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "JR732",
+                          "name": "Agent Definition Mobile Card Identity Incident Briefing",
+                          "width": 142,
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "c3LIml",
+                              "name": "Agent Definition Mobile Card Title Incident Briefing",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Incident Briefing",
+                              "fontFamily": "$font-display",
+                              "fontSize": 15,
+                              "fontWeight": "850"
+                            },
+                            {
+                              "type": "text",
+                              "id": "jm4Gb",
+                              "name": "Agent Definition Mobile Card Meta Incident Briefing",
+                              "fill": "$ink-faint",
+                              "content": "DEF-A17 / V02",
+                              "fontFamily": "$font-data",
+                              "fontSize": 9,
+                              "fontWeight": "700",
+                              "letterSpacing": 0.3
+                            }
+                          ]
+                        },
+                        {
+                          "id": "vTDmq",
+                          "type": "ref",
+                          "ref": "J0DQz",
+                          "name": "Agent Definition Mobile Card Status Incident Briefing",
+                          "width": 158,
+                          "descendants": {
+                            "i7Xni7": {
+                              "content": "RUNTIME DISABLED",
+                              "fontSize": 8
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "lflbF",
+                      "name": "Agent Definition Mobile Card Summary Incident Briefing",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Routing, response tone, escalation boundaries.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FQ92H",
+                      "name": "Agent Definition Mobile Card Footer Incident Briefing",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "tAMt0",
+                          "type": "ref",
+                          "ref": "UzLn9",
+                          "name": "Agent Definition Mobile Card Scope Incident Briefing",
+                          "width": 168,
+                          "descendants": {
+                            "Zl0zl": {
+                              "content": "CURRENT ACCOUNT",
+                              "fontSize": 8
+                            }
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "id": "Obuib",
+                          "name": "Agent Definition Mobile Card Catalog Flag Incident Briefing",
+                          "fill": "$accent-strong",
+                          "content": "CATALOG ONLY",
+                          "fontFamily": "$font-data",
+                          "fontSize": 9,
+                          "fontWeight": "900",
+                          "letterSpacing": 0.4
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hh3Zd",
+                  "name": "Agent Definition Mobile Card Support Summary",
+                  "width": "fill_container",
+                  "height": 140,
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "k93xBz",
+                      "name": "Agent Definition Mobile Card Header Support Summary",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "J344ax",
+                          "name": "Agent Definition Mobile Card Identity Support Summary",
+                          "width": 142,
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "bhljo",
+                              "name": "Agent Definition Mobile Card Title Support Summary",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Support Summary",
+                              "fontFamily": "$font-display",
+                              "fontSize": 15,
+                              "fontWeight": "850"
+                            },
+                            {
+                              "type": "text",
+                              "id": "RDeJp",
+                              "name": "Agent Definition Mobile Card Meta Support Summary",
+                              "fill": "$ink-faint",
+                              "content": "DEF-B44 / V05",
+                              "fontFamily": "$font-data",
+                              "fontSize": 9,
+                              "fontWeight": "700",
+                              "letterSpacing": 0.3
+                            }
+                          ]
+                        },
+                        {
+                          "id": "XDHm2",
+                          "type": "ref",
+                          "ref": "J0DQz",
+                          "name": "Agent Definition Mobile Card Status Support Summary",
+                          "width": 158,
+                          "descendants": {
+                            "i7Xni7": {
+                              "content": "RUNTIME DISABLED",
+                              "fontSize": 8
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "SjjsT",
+                      "name": "Agent Definition Mobile Card Summary Support Summary",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Summary behavior and handoff language.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "E3r8M",
+                      "name": "Agent Definition Mobile Card Footer Support Summary",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "a0sd8k",
+                          "type": "ref",
+                          "ref": "UzLn9",
+                          "name": "Agent Definition Mobile Card Scope Support Summary",
+                          "width": 168,
+                          "descendants": {
+                            "Zl0zl": {
+                              "content": "CURRENT ACCOUNT",
+                              "fontSize": 8
+                            }
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "id": "O8kepQ",
+                          "name": "Agent Definition Mobile Card Catalog Flag Support Summary",
+                          "fill": "$accent-strong",
+                          "content": "CATALOG ONLY",
+                          "fontFamily": "$font-data",
+                          "fontSize": 9,
+                          "fontWeight": "900",
+                          "letterSpacing": 0.4
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "pQS1I",
+                  "name": "Agent Definition Mobile Card Research Intake",
+                  "width": "fill_container",
+                  "height": 140,
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": 14,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Y0gK8",
+                      "name": "Agent Definition Mobile Card Header Research Intake",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "HgDT9",
+                          "name": "Agent Definition Mobile Card Identity Research Intake",
+                          "width": 142,
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "yjf8k",
+                              "name": "Agent Definition Mobile Card Title Research Intake",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Research Intake",
+                              "fontFamily": "$font-display",
+                              "fontSize": 15,
+                              "fontWeight": "850"
+                            },
+                            {
+                              "type": "text",
+                              "id": "cNX2o",
+                              "name": "Agent Definition Mobile Card Meta Research Intake",
+                              "fill": "$ink-faint",
+                              "content": "DEF-C09 / V01",
+                              "fontFamily": "$font-data",
+                              "fontSize": 9,
+                              "fontWeight": "700",
+                              "letterSpacing": 0.3
+                            }
+                          ]
+                        },
+                        {
+                          "id": "D8lqx",
+                          "type": "ref",
+                          "ref": "J0DQz",
+                          "name": "Agent Definition Mobile Card Status Research Intake",
+                          "width": 158,
+                          "descendants": {
+                            "i7Xni7": {
+                              "content": "RUNTIME DISABLED",
+                              "fontSize": 8
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "m4z6uV",
+                      "name": "Agent Definition Mobile Card Summary Research Intake",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Intake prompts and review expectations.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fu3qR",
+                      "name": "Agent Definition Mobile Card Footer Research Intake",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "ddgo1",
+                          "type": "ref",
+                          "ref": "UzLn9",
+                          "name": "Agent Definition Mobile Card Scope Research Intake",
+                          "width": 168,
+                          "descendants": {
+                            "Zl0zl": {
+                              "content": "CURRENT ACCOUNT",
+                              "fontSize": 8
+                            }
+                          }
+                        },
+                        {
+                          "type": "text",
+                          "id": "APTPf",
+                          "name": "Agent Definition Mobile Card Catalog Flag Research Intake",
+                          "fill": "$accent-strong",
+                          "content": "CATALOG ONLY",
+                          "fontFamily": "$font-data",
+                          "fontSize": 9,
+                          "fontWeight": "900",
+                          "letterSpacing": 0.4
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "djSx9",
+              "name": "Agent Definition Mobile Footer",
+              "width": "fill_container",
+              "height": 42,
+              "fill": "$surface-muted",
+              "cornerRadius": "$radius-sm",
+              "padding": [
+                0,
+                12
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "aC6DQ",
+                  "name": "Agent Definition Mobile Footer Count",
+                  "fill": "$ink-soft",
+                  "content": "3 definitions",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "wJX0u",
+                  "name": "Agent Definition Mobile Footer State",
+                  "fill": "$warning",
+                  "content": "READ ONLY",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "900",
+                  "letterSpacing": 0.5
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "X8RpOx",
+      "x": 19978,
+      "y": 252,
+      "name": "Agent Definition/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        36,
+        42
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "SNqMD",
+          "name": "Agent Definition Matrix Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "L448Gn",
+              "name": "Agent Definition Matrix Header Copy",
+              "width": 760,
+              "layout": "vertical",
+              "gap": 9,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pzjzf",
+                  "name": "Agent Definition Matrix Flags",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "B0C7fq",
+                      "name": "Agent Definition Matrix Catalog Flag",
+                      "fill": "$accent-strong",
+                      "content": "CATALOG ONLY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.6
+                    },
+                    {
+                      "type": "text",
+                      "id": "X9SAi",
+                      "name": "Agent Definition Matrix Runtime Flag",
+                      "fill": "$warning",
+                      "content": "RUNTIME DISABLED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.6
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "EeW4R",
+                  "name": "Agent Definition Matrix Title",
+                  "fill": "$ink",
+                  "content": "Agent definition state matrix",
+                  "fontFamily": "$font-display",
+                  "fontSize": 34,
+                  "fontWeight": "850"
+                },
+                {
+                  "type": "text",
+                  "id": "uNJwp",
+                  "name": "Agent Definition Matrix Description",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Every state keeps the catalog scoped to the signed-in account and available for inspection only.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ymMRK",
+              "name": "Agent Definition Matrix Header Status Stack",
+              "layout": "vertical",
+              "gap": 10,
+              "alignItems": "end",
+              "children": [
+                {
+                  "id": "Txjub",
+                  "type": "ref",
+                  "ref": "J0DQz",
+                  "name": "Agent Definition Matrix Status"
+                },
+                {
+                  "id": "yLkfv",
+                  "type": "ref",
+                  "ref": "UzLn9",
+                  "name": "Agent Definition Matrix Scope"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "S8GM7I",
+          "name": "Agent Definition Matrix Body",
+          "width": "fill_container",
+          "height": 636,
+          "fill": "$surface",
+          "cornerRadius": "$radius-md",
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "eEOZx",
+              "name": "Agent Definition Matrix Table Header",
+              "width": "fill_container",
+              "height": 58,
+              "fill": "$surface-muted",
+              "gap": 14,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "mEgx8",
+                  "name": "Agent Definition Matrix Header State",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 250,
+                  "content": "STATE",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "900",
+                  "letterSpacing": 0.6
+                },
+                {
+                  "type": "text",
+                  "id": "hMtg5",
+                  "name": "Agent Definition Matrix Header Visible Signal",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 250,
+                  "content": "VISIBLE SIGNAL",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "900",
+                  "letterSpacing": 0.6
+                },
+                {
+                  "type": "text",
+                  "id": "t40Js",
+                  "name": "Agent Definition Matrix Header Read Surface",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 390,
+                  "content": "READ SURFACE",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "900",
+                  "letterSpacing": 0.6
+                },
+                {
+                  "type": "text",
+                  "id": "HNxOM",
+                  "name": "Agent Definition Matrix Header Runtime Result",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 280,
+                  "content": "RUNTIME RESULT",
+                  "fontFamily": "$font-data",
+                  "fontSize": 10,
+                  "fontWeight": "900",
+                  "letterSpacing": 0.6
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wBzm8",
+              "name": "Agent Definition Matrix Row Ready catalog",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$surface",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 14,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "A49sZr",
+                  "name": "Agent Definition Matrix State Cell Ready catalog",
+                  "width": 250,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "FtkV7",
+                      "name": "Agent Definition Matrix State Label Ready catalog",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Ready catalog",
+                      "fontFamily": "$font-display",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "B74yRy",
+                      "name": "Agent Definition Matrix State Note Ready catalog",
+                      "fill": "$ink-faint",
+                      "content": "Definition records only",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.3
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oXyoV",
+                  "name": "Agent Definition Matrix Signal Cell Ready catalog",
+                  "width": 250,
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "Xs0tV",
+                      "name": "Agent Definition Matrix Signal Dot Ready catalog",
+                      "fill": "$accent",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "text",
+                      "id": "iyjbZ",
+                      "name": "Agent Definition Matrix Signal Text Ready catalog",
+                      "fill": "$accent-strong",
+                      "content": "CATALOG ONLY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "teNVj",
+                  "name": "Agent Definition Matrix Read Text Ready catalog",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 390,
+                  "content": "Three account-scoped definitions are visible for review.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "Xqj3n",
+                  "name": "Agent Definition Matrix Runtime Cell Ready catalog",
+                  "width": 280,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MXi57",
+                      "name": "Agent Definition Matrix Runtime Label Ready catalog",
+                      "fill": "$warning",
+                      "content": "RUNTIME DISABLED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "Ie6o0",
+                      "name": "Agent Definition Matrix Runtime Note Ready catalog",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Inspection remains available.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D59Ole",
+              "name": "Agent Definition Matrix Row Runtime area",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "#FBFCFA",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 14,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "q0MVOL",
+                  "name": "Agent Definition Matrix State Cell Runtime area",
+                  "width": 250,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XAQOk",
+                      "name": "Agent Definition Matrix State Label Runtime area",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Runtime area",
+                      "fontFamily": "$font-display",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "LpMpV",
+                      "name": "Agent Definition Matrix State Note Runtime area",
+                      "fill": "$ink-faint",
+                      "content": "Definition records only",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.3
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YofxM",
+                  "name": "Agent Definition Matrix Signal Cell Runtime area",
+                  "width": 250,
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "O04UnQ",
+                      "name": "Agent Definition Matrix Signal Dot Runtime area",
+                      "fill": "$warning",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "text",
+                      "id": "jNvsE",
+                      "name": "Agent Definition Matrix Signal Text Runtime area",
+                      "fill": "$warning",
+                      "content": "RUNTIME DISABLED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "D6RHIN",
+                  "name": "Agent Definition Matrix Read Text Runtime area",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 390,
+                  "content": "Definition cards remain visible with disabled state chips.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "w2p4J",
+                  "name": "Agent Definition Matrix Runtime Cell Runtime area",
+                  "width": 280,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "otLJC",
+                      "name": "Agent Definition Matrix Runtime Label Runtime area",
+                      "fill": "$warning",
+                      "content": "No launch surface",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "ib9yS",
+                      "name": "Agent Definition Matrix Runtime Note Runtime area",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Inspection remains available.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qSkzM",
+              "name": "Agent Definition Matrix Row Empty catalog",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$surface",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 14,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "FuZ0n",
+                  "name": "Agent Definition Matrix State Cell Empty catalog",
+                  "width": 250,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "uw1v2",
+                      "name": "Agent Definition Matrix State Label Empty catalog",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Empty catalog",
+                      "fontFamily": "$font-display",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "J6LQV9",
+                      "name": "Agent Definition Matrix State Note Empty catalog",
+                      "fill": "$ink-faint",
+                      "content": "Definition records only",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.3
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XlGB6",
+                  "name": "Agent Definition Matrix Signal Cell Empty catalog",
+                  "width": 250,
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "asdRc",
+                      "name": "Agent Definition Matrix Signal Dot Empty catalog",
+                      "fill": "$accent",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "text",
+                      "id": "fR3KA",
+                      "name": "Agent Definition Matrix Signal Text Empty catalog",
+                      "fill": "$accent-strong",
+                      "content": "CATALOG ONLY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "h9BB9",
+                  "name": "Agent Definition Matrix Read Text Empty catalog",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 390,
+                  "content": "Empty state explains that no definitions are visible for this account.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "BJNBs",
+                  "name": "Agent Definition Matrix Runtime Cell Empty catalog",
+                  "width": 280,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ItVlw",
+                      "name": "Agent Definition Matrix Runtime Label Empty catalog",
+                      "fill": "$warning",
+                      "content": "No launch surface",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "THoDT",
+                      "name": "Agent Definition Matrix Runtime Note Empty catalog",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Inspection remains available.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OFaFd",
+              "name": "Agent Definition Matrix Row Access mismatch",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "#FBFCFA",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 14,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AWtny",
+                  "name": "Agent Definition Matrix State Cell Access mismatch",
+                  "width": 250,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "B8VCC1",
+                      "name": "Agent Definition Matrix State Label Access mismatch",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Access mismatch",
+                      "fontFamily": "$font-display",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "k9C2J",
+                      "name": "Agent Definition Matrix State Note Access mismatch",
+                      "fill": "$ink-faint",
+                      "content": "Definition records only",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.3
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "y9mxw",
+                  "name": "Agent Definition Matrix Signal Cell Access mismatch",
+                  "width": 250,
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "C7ocF",
+                      "name": "Agent Definition Matrix Signal Dot Access mismatch",
+                      "fill": "$accent",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "text",
+                      "id": "O0sYt",
+                      "name": "Agent Definition Matrix Signal Text Access mismatch",
+                      "fill": "$accent-strong",
+                      "content": "READ ONLY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "kVzIt",
+                  "name": "Agent Definition Matrix Read Text Access mismatch",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 390,
+                  "content": "The catalog shows a scoped access message with no mutation path.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "X7uZ9",
+                  "name": "Agent Definition Matrix Runtime Cell Access mismatch",
+                  "width": 280,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "K0nGo",
+                      "name": "Agent Definition Matrix Runtime Label Access mismatch",
+                      "fill": "$warning",
+                      "content": "No launch surface",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "K0KZPS",
+                      "name": "Agent Definition Matrix Runtime Note Access mismatch",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Inspection remains available.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "U25FQC",
+              "name": "Agent Definition Matrix Row Loading",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$surface",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 14,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "C0Yho",
+                  "name": "Agent Definition Matrix State Cell Loading",
+                  "width": 250,
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hfSRK",
+                      "name": "Agent Definition Matrix State Label Loading",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Loading",
+                      "fontFamily": "$font-display",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "r8Ies",
+                      "name": "Agent Definition Matrix State Note Loading",
+                      "fill": "$ink-faint",
+                      "content": "Definition records only",
+                      "fontFamily": "$font-data",
+                      "fontSize": 10,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.3
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LcPoM",
+                  "name": "Agent Definition Matrix Signal Cell Loading",
+                  "width": 250,
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "S5tpV",
+                      "name": "Agent Definition Matrix Signal Dot Loading",
+                      "fill": "$accent",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "text",
+                      "id": "WowHW",
+                      "name": "Agent Definition Matrix Signal Text Loading",
+                      "fill": "$accent-strong",
+                      "content": "CATALOG ONLY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "xNSgX",
+                  "name": "Agent Definition Matrix Read Text Loading",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": 390,
+                  "content": "Skeleton rows reserve stable space while entries resolve.",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "hqHav",
+                  "name": "Agent Definition Matrix Runtime Cell Loading",
+                  "width": 280,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Jv1qg",
+                      "name": "Agent Definition Matrix Runtime Label Loading",
+                      "fill": "$warning",
+                      "content": "RUNTIME DISABLED",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "900",
+                      "letterSpacing": 0.5
+                    },
+                    {
+                      "type": "text",
+                      "id": "lklNL",
+                      "name": "Agent Definition Matrix Runtime Note Loading",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Inspection remains available.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "z1Sc0R",
+          "name": "Agent Definition Matrix Checklist",
+          "width": "fill_container",
+          "height": 118,
+          "fill": "$surface",
+          "cornerRadius": "$radius-md",
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "gap": 12,
+          "padding": [
+            14,
+            18
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "RWL1o",
+              "name": "Agent Definition Matrix Check Layout stable",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "RWGop",
+                  "name": "Agent Definition Matrix Check Dot Layout stable",
+                  "fill": "$accent",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "text",
+                  "id": "g0ZYUr",
+                  "name": "Agent Definition Matrix Check Label Layout stable",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Layout stable",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DUmA2",
+              "name": "Agent Definition Matrix Check No clipped content",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "BJLwN",
+                  "name": "Agent Definition Matrix Check Dot No clipped content",
+                  "fill": "$accent",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "text",
+                  "id": "oNAfP",
+                  "name": "Agent Definition Matrix Check Label No clipped content",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "No clipped content",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "eaUFu",
+              "name": "Agent Definition Matrix Check Contrast passes",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "wvJYl",
+                  "name": "Agent Definition Matrix Check Dot Contrast passes",
+                  "fill": "$accent",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "text",
+                  "id": "xWQl9",
+                  "name": "Agent Definition Matrix Check Label Contrast passes",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Contrast passes",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "QkCek",
+              "name": "Agent Definition Matrix Check Aligned spacing",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "i0deA",
+                  "name": "Agent Definition Matrix Check Dot Aligned spacing",
+                  "fill": "$accent",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "text",
+                  "id": "pzB9J",
+                  "name": "Agent Definition Matrix Check Label Aligned spacing",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Aligned spacing",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Q09N9",
+              "name": "Agent Definition Matrix Check Schema intent verified",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "WrCjI",
+                  "name": "Agent Definition Matrix Check Dot Schema intent verified",
+                  "fill": "$accent",
+                  "width": 10,
+                  "height": 10
+                },
+                {
+                  "type": "text",
+                  "id": "dQoR1",
+                  "name": "Agent Definition Matrix Check Label Schema intent verified",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Schema intent verified",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "800"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
