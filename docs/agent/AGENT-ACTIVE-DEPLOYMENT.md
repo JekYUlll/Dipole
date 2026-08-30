@@ -20,6 +20,10 @@ active Runtime 当前只执行 `conversation.list/read`。Artifact、消息发�
 
 离线 fixture、隔离 Compose smoke 和静态渲染只覆盖本地契约，不能替代以上证据。
 
+### 开发期质量基线
+
+2026-08-31，Remote GPU 候选工作树在 `8e99bde7`、Node `22.12.0` 上完成 Agent Runtime 完整门禁：`134 passed / 9 skipped` 测试文件、`703 passed / 30 skipped` 测试，以及 `typecheck` 和 production `build`。验证后工作树干净，过程中未启动 Compose、Kafka、Temporal 或 active authority。该结果可用于确认候选的 TypeScript 质量基线；共享环境的 Kafka trigger、Gateway-to-Core revoke、overlay 回滚和 24 小时观察仍需按本手册完成。
+
 ## 3. 受控输入
 
 `deploy/microservices/agent-active.yml` 要求以下输入，缺少任一项时 Compose 渲染失败：

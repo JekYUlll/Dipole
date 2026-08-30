@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 候选工作树在 `8e99bde7` 上以 Node `22.12.0` 完成完整 Agent Runtime 开发期门禁：`134 passed / 9 skipped` 测试文件、`703 passed / 30 skipped` 测试，以及 `typecheck` 和 production `build` 均通过；验证结束后工作树保持干净。该命令未启动 Compose、Kafka、Temporal 或 active authority，不能替代共享环境演练。
+
 - 2026-08-31：校正 Agent Memory active promotion 的证据台账。Gateway 已具备认证 owner revoke HTTP 到 `dipole-gateway` mTLS Core RPC 的受约束传输链，并由 principal 绑定与审计回包测试覆盖；共享环境 Kafka trigger、该链路的运行记录、promotion overlay 回滚和 24 小时观测仍保持未完成。
 
 - 2026-08-31：将 embedded 聚合运行时、Kafka 组合、消息/同步兼容传输及其测试收敛到 `internal/services/core/bootstrap/embedded/`；Core 的唯一兼容桥继续保留本地回滚能力，服务布局门禁拒绝 `internal/bootstrap/embedded` 回流，独立服务运行路径不变。
