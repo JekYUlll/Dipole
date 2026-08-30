@@ -8,6 +8,18 @@ MinIO 列举过程中的任意错误都会将报告标记为 `complete=false` �
 
 清理入口未初始化 MinIO 客户端时同样 fail-closed。报告保留全部错误数量，但最多输出 32 条错误详情，并用 `errors_truncated=true` 标记截断，避免异常风暴耗尽报告内存或输出通道。
 
+## Remote Smoke Evidence
+
+在 Remote GPU 的隔离临时容器中运行以下命令完成基础生命周期验证：
+
+```bash
+DIPOLE_REMOTE_BRANCH=master \
+DIPOLE_REMOTE_GO_ROOT=/home/admin1/.local/go-1.27.0 \
+scripts/remote-dev.sh multipart-smoke
+```
+
+本轮以 `b8b27a76` 源码和 Go `1.27.0` 执行通过，覆盖多分片乱序、同编号替换、完成、对象内容校验和重复 Abort；容器退出后已自动清理。该证据不覆盖客户端断网重试、服务重启恢复、预签名默认切流或完整 MinIO/Redis 故障矩阵。
+
 ## 预览
 
 先使用生产配置执行 MinIO dry-run：
