@@ -121,6 +121,8 @@
 
 ## [Unreleased]
 
+- 2026-08-30：补充 TencentCloud_01 只读占用核验：现有 `nkdoing-app` 使用公网 `80`，`nkdoing-postgres` 使用本机 `5432`，宿主 MySQL 监听 `3306`；Dipole 轻量 smoke 仍需独立 Compose project、端口和卷，并等待业务影响确认后执行，当前未启动容器。
+
 - 2026-08-30：完成两台开发主机的只读 preflight：Remote GPU（224 vCPU、可用内存约 163510 MiB、可用磁盘约 1084340 MiB）和 TencentCloud_01（2 vCPU、可用内存约 1172 MiB、可用磁盘约 34347 MiB）均通过对应 profile；未启动容器，实际部署和负载测试仍等待维护窗口。
 
 - 2026-08-30：完成 Eino 上游复核：当前稳定依赖保持 `v0.9.17`，官方最新预发布为 `v0.10.0-alpha.26`，其 v0.10 方向增加可恢复 Session、可重放中间件状态、后台任务和 Automemory；由于仍处于 alpha 且可能存在破坏性变化，暂不升级生产回滚链路，新增隔离 spike 评估项。
