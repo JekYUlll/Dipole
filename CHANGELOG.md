@@ -456,14 +456,9 @@
 
 ## [Unreleased]
 
-<<<<<<< HEAD
 - 远程开发入口在未指定 `DIPOLE_REMOTE_GO_ROOT` 时会自动选择 `/home/admin1/.local/go-*` 中的最高版本，显式路径仍优先；继续禁止隐式 Go toolchain 下载，减少 Remote GPU 默认 PATH 漂移导致的测试阻断。
 - Web Sync 观察证据现在强制绑定对象存储归档收据：opaque URI、object version、ETag 和未来 retention 截止时间；缺少或过期收据时只能生成 `blocked`，不会误判为可晋级。
 - 远程开发策略更新：Remote GPU 存在 GPU 任务时允许启动 Dipole 的 CPU、Docker、集成测试和压力测试任务；新增 GPU 进程保护、Compose/端口/目录隔离、资源检查和自有资源清理约束，避免把 GPU 占用误判为全局启动阻断条件。
-=======
-- Dipole 文档主标升级为 `Signal Link` SVG：实心端点、空心端点与连续连接轨迹在 README、架构材料和小尺寸入口中保持可读；新增独立方形应用图标，并移除深青/橙色混搭。该变更只影响品牌呈现。
-- 移除遗留单色蓝色 PNG 主标，README 与文档入口统一使用深青色 Signal SVG 视觉系统；双极与橙色事件脉冲继续表达实时协作链路。本项只影响品牌呈现。
->>>>>>> 6b731f46 (docs: redesign Signal Link brand assets)
 
 - 新增 Remote GPU 测试入口 `scripts/remote-dev.sh test`，远端执行 Go canonical 测试、Compose、服务布局和架构文档门禁；测试阶段不启动容器，继续保留部署动作的活动用户保护。
 - Remote GPU 管理员工作目录已重新同步到正式 `master` 提交 `27138a32`；当前主机仍有活动实验，未启动构建或服务。
