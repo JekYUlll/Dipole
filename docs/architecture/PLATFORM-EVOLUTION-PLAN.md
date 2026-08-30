@@ -404,6 +404,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加预签名代理按客户端地址的文件上传限流：超限在 MinIO 代理前返回 `429`，允许请求才转发。
   - [x] 增加 fault-matrix 聚合入口，统一 Go contract、真实 MinIO/Redis reconciliation 和 Redis restart smoke。
   - [x] Remote GPU 使用官方 Prometheus `3.5.0` `promtool` 完成告警规则、firing timeline 与真实 MinIO/Redis 矩阵联合验收；Docker 镜像不可用时支持显式 `DIPOLE_PROMTOOL_BIN`，默认生产路径保持不变。
+  - [x] 开发期 observability profile 接入 loopback-only Alertmanager 与 `discard` receiver，Prometheus 已配置投递目标；生产通知 receiver、凭据和升级策略仍由受控部署层管理。
 
 **验收：** 预签名直传在授权范围内完成 Multipart；暂停/恢复、重试、校验和清理可观测；MinIO 故障和客户端中断均能安全回滚到旧路径，未完成 upload 不长期占用对象存储。
 

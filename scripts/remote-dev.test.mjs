@@ -28,6 +28,7 @@ test("web sync observability smoke preserves its remote compose project variable
   assert.match(source, /web-sync-observability-smoke\)[\s\S]*?COMPOSE_PROJECT_NAME="\\\$\{project\}"/);
   assert.match(source, /web-sync-observability-smoke\)[\s\S]*?DIPOLE_GATEWAY_PORT=18080/);
   assert.match(source, /web-sync-observability-smoke\)[\s\S]*?DIPOLE_PROMETHEUS_PORT=19090/);
+  assert.match(source, /web-sync-observability-smoke\)[\s\S]*?DIPOLE_ALERTMANAGER_PORT=19093/);
 });
 
 test("recovery entry uses candidate ports and a temporary report directory", () => {

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：开发 observability profile 新增 loopback-only Alertmanager，并由 Prometheus 配置转发告警。仓库 receiver 为 discard，用于配置与投递链路验证；生产通知凭据和目标继续通过受控部署层配置。
+
 - 2026-08-30：Web Sync 开发观察新增隔离 Prometheus smoke 与远程入口；Gateway/Prometheus 宿主端口默认限制为 loopback，验证必要服务 metrics target 后自动清理。该 smoke 不启动 24 小时观察会话，也不构成晋级证据。
 
 - 2026-08-30：移除无引用的旧蓝色 PNG 主标；项目入口统一使用深青绿与橙色 Signal SVG 视觉系统。

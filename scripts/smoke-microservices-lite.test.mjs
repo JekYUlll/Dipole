@@ -39,9 +39,11 @@ test("web sync observability smoke stays isolated and does not claim promotion",
   });
 
   for (const required of [
-    "--profile observability up -d --wait gateway prometheus",
+    "--profile observability up -d --wait gateway prometheus alertmanager",
     "http://127.0.0.1:9100/metrics",
     "DIPOLE_PROMETHEUS_PORT:-9090",
+    "DIPOLE_ALERTMANAGER_PORT:-9093",
+    "${ALERTMANAGER_URL}/-/ready",
     "dipole-core dipole-message dipole-sync dipole-gateway",
     "api/v1/targets?state=active",
     "does not start a Web Sync promotion observation window",

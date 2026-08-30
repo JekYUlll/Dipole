@@ -45,7 +45,9 @@ scripts/remote-dev.sh build
 
 `multipart-restart-smoke` 在相同隔离边界内上传首个分片，重启临时 MinIO 容器，再继续上传并完成对象，用于验证 Multipart 数据卷持久性。该动作不申请 GPU，不触碰其他容器或卷。
 
-`web-sync-observability-smoke` 使用独立 Compose project，在 `127.0.0.1:18080` 和 `127.0.0.1:19090` 启动 Gateway 与 Prometheus，验证 Core、Message、Sync、Gateway 的 metrics target 全部可抓取。默认退出后清理本项目容器和卷；它不生成 incoming-direct 对照流量，不启动 24 小时观察会话，也不构成 Web Sync 晋级证据。保留栈仅可用于已批准的后续观察准备：`KEEP_STACK=1`。
+`web-sync-observability-smoke` 使用独立 Compose project，在 `127.0.0.1:18080`、`127.0.0.1:19090` 和 `127.0.0.1:19093` 启动 Gateway、Prometheus 与 Alertmanager，验证 Core、Message、Sync、Gateway 的 metrics target 及告警组件 readiness。默认退出后清理本项目容器和卷；它不生成 incoming-direct 对照流量，不启动 24 小时观察会话，也不构成 Web Sync 晋级证据。保留栈仅可用于已批准的后续观察准备：`KEEP_STACK=1`。
+
+`observability` profile 同时启动 Alertmanager，并保持 `127.0.0.1:9093` 访问。仓库内 `alertmanager.yml` 使用 `discard` receiver，只用于验证 Prometheus 到 Alertmanager 的告警投递边界；生产 receiver、webhook URL、认证信息和通知升级策略必须通过受控部署配置提供，不能提交到仓库。执行 `scripts/check-alertmanager-config.sh` 可验证基础配置，或通过 `DIPOLE_AMTOOL_BIN` 使用受控安装的 `amtool`。
 
 管理员已将 Go 1.27.0 以用户态方式放置于 `/home/admin1/.local/go-1.27.0`。远程入口未指定 `DIPOLE_REMOTE_GO_ROOT` 时会自动发现该工具链；需要固定版本时仍可显式指定：
 

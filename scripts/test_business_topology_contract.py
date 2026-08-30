@@ -58,6 +58,17 @@ class BusinessTopologyContractTest(unittest.TestCase):
 
         self.assertIn("${DIPOLE_PROMETHEUS_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_PROMETHEUS_PORT:-9090}:9090", compose)
 
+    def test_microservices_observability_forwards_to_loopback_alertmanager(self):
+        compose = (ROOT / "deploy/compose/docker-compose.microservices.yml").read_text(encoding="utf-8")
+        prometheus = (ROOT / "deploy/observability/prometheus-services.yml").read_text(encoding="utf-8")
+        alertmanager = (ROOT / "deploy/observability/alertmanager.yml").read_text(encoding="utf-8")
+
+        self.assertIn("alertmanager:", compose)
+        self.assertIn('profiles: ["observability"]', compose)
+        self.assertIn("${DIPOLE_ALERTMANAGER_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_ALERTMANAGER_PORT:-9093}:9093", compose)
+        self.assertIn("alertmanager:9093", prometheus)
+        self.assertIn("receiver: discard", alertmanager)
+
     def test_business_cluster_routes_mysql_through_innodb_cluster(self):
         compose = (ROOT / "deploy/compose/docker-compose.business-cluster.yml").read_text(encoding="utf-8")
         checker = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")

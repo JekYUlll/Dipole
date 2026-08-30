@@ -234,6 +234,8 @@ case "${action}" in
       DIPOLE_GATEWAY_PORT=18080 \
       DIPOLE_PROMETHEUS_BIND_ADDRESS=127.0.0.1 \
       DIPOLE_PROMETHEUS_PORT=19090 \
+      DIPOLE_ALERTMANAGER_BIND_ADDRESS=127.0.0.1 \
+      DIPOLE_ALERTMANAGER_PORT=19093 \
       scripts/smoke-web-sync-observability.sh
     ;;
   sync-ownership)

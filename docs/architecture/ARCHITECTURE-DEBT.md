@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：A7 将 Prometheus 与 loopback-only Alertmanager 接入开发 observability profile；仓库 receiver 固定为 discard，只验证规则投递与配置语义。生产通知目标、凭据、升级策略和真实告警演练仍待受控环境配置，预签名上传默认路径保持 relay。
+
 - 2026-08-30：A6 增加 Remote GPU 隔离 observability smoke：独立 Compose project 使用 loopback Gateway/Prometheus 端口，检查 Core、Message、Sync、Gateway 的 metrics target。该动作默认清理环境，且不注入 incoming-direct 流量、不创建观察 Session，真实 24 小时窗口与晋级仍保持开放。
 
 - 2026-08-30：Remote GPU 已完成 Web Sync Shadow 候选 `b0e4f252` 的不可变 bundle 构建与 SHA-256 固定，候选可作为观察会话输入；Prometheus 抓取、Sync Projector lag/告警清零与 incoming-direct 真实流量尚未部署，因此 24 小时窗口未开始，不能推导 `promotion_ready`。
