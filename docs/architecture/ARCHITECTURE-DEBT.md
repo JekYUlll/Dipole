@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：新增 `scripts/smoke-minio-multipart.sh` 与真实 MinIO 集成测试，覆盖两分片乱序上传、同编号分片替换、按序完成、对象内容校验和重复 Abort；测试资源使用临时容器并自动清理。该证据仍未覆盖客户端断网重试、服务重启恢复、预签名默认切流和完整故障矩阵。
+
 - 2026-08-30：在 `epic/03-agent-runtime` 的 `services/agent-runtime` 运行标准 `npm test`、`npm run typecheck` 和 `npm run build`；Vitest `125` 个测试文件/`665` 个测试通过，`7` 个文件与 `27` 个测试按条件跳过，类型检查和生产构建通过。该结果只证明独立代码质量基线，真实 Kafka、Temporal、Capability RPC、外部 MCP 和 active authority 联调仍按 AD-009/AD-030 保持开放。
 - 2026-08-30：本机开发工具链已切换至 `planning-with-files` 上游稳定版 `v3.11.2`，并移除重复 `.agents` skill 来源；Codex 适配器对并行 PreToolUse/PostToolUse 采用同 session/项目根短窗口去重，三次真实并行 Bash 仅产生一份计划上下文。该改动只约束开发期提示频率，不改变项目运行时或 Agent authority。
 - 2026-08-30：复核官方 Eino 上游：稳定版本仍为 `v0.9.17`，最新为 `v0.10.0-alpha.26` 预发布版；v0.10 方向包含 runner-managed Session、可重放中间件状态、后台任务和 Automemory，但官方明确 alpha 期间可能发生破坏性 API/行为变化。暂不升级生产 Go/Eino 回滚链路，后续仅在隔离 spike 分支评估与 TS Runtime/Temporal/Memory 的边界映射。
