@@ -50,6 +50,14 @@ test("sync ownership smoke is available through the remote CPU workflow", () => 
   assert.doesNotMatch(source, /sync-ownership\) sync_revision; guard_start/);
 });
 
+test("web sync bundle packaging is available as a shadow-only remote action", () => {
+  assert.match(source, /web-sync-bundle\) sync_revision; run_remote web-sync-bundle/);
+  assert.match(source, /web-sync-bundle\)[\s\S]*?--mode shadow/);
+  assert.match(source, /--candidate-version "web-sync-shadow-/);
+  assert.ok(source.includes('bundle="/tmp/\\${project}-web-sync-shadow-'));
+  assert.doesNotMatch(source, /web-sync-bundle\) sync_revision; guard_start/);
+});
+
 test("direct multipart smoke scripts honor an explicit remote Go toolchain", () => {
   for (const name of ["smoke-minio-multipart.sh", "smoke-minio-multipart-restart.sh"]) {
     const smoke = fs.readFileSync(new URL(`./${name}`, import.meta.url), "utf8");

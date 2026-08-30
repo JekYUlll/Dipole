@@ -250,6 +250,7 @@
 - 2026-08-30：远程开发入口已增加用户态 Go 自动发现，未指定路径时选择 `/home/admin1/.local/go-*` 最高版本并保持 `GOTOOLCHAIN=local`；显式路径优先，系统 Go 不修改。
 - 2026-08-30：A6 Web Sync observation finalize 新增对象存储归档收据校验，Evidence 固定 URI、object version、ETag 和未来 retention；缺少收据只产生 `blocked`，真实客户端观察窗口与共享环境归档仍待执行。
 - 2026-08-30：新增 `package-web-sync-bundle.sh` 与 3 项回归测试，以干净 Git revision、显式 `shadow|primary|off` 模式和稳定 tar 元数据生成不可覆盖 `web-sync-bundle.v1`；输出固定 `0600`，源目录内输出 fail-closed。该工件为真实观察窗口提供可复核输入，客户端流量和 Prometheus 共享窗口仍待完成。
+- 2026-08-30：`remote-dev.sh web-sync-bundle` 纳入远程 CPU/容器工作流，提交同步后固定生成 shadow bundle 到 `/tmp`，Remote GPU 可在已有 GPU 任务期间执行；入口 16 项契约测试通过，不改变默认 Sync 模式。
 
 ### AD-042：正式技术架构图与已发布分层拓扑发生漂移
 
