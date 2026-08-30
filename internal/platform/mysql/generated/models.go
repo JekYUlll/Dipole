@@ -345,6 +345,26 @@ type AgentOauthAuthorizationTransaction struct {
 	UpdatedAt          time.Time
 }
 
+type AgentOauthCallbackHandoff struct {
+	ID                      uint64
+	HandoffUuid             string
+	TransactionUuid         string
+	OwnerUserUuid           string
+	Issuer                  string
+	RedirectUri             string
+	AuthorizationCodeSha256 string
+	SealedAuthorizationCode string
+	RuntimeKeyID            string
+	Status                  string
+	LeaseOwner              sql.NullString
+	LeaseExpiresAt          sql.NullTime
+	Attempts                uint32
+	ExpiresAt               time.Time
+	CompletedAt             sql.NullTime
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+}
+
 type AgentRun struct {
 	ID               uint64
 	RunUuid          string

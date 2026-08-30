@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent OAuth callback handoff 增加 SQLC durable persistence foundation：migration `000053` 保存 Runtime-key 标识、授权码 SHA-256、Runtime-only 密文、transaction/owner/issuer/redirect binding 与有限状态。领取以条件更新实现；租约不得跨越授权过期时间，完成和失败释放均绑定尚有效的 Runtime lease，重启后可从同一 handoff 恢复。该层尚未注册 browser callback、密钥封装、Runtime 领取 RPC、code exchange 或 token 写入，默认部署仍为零 OAuth callback 流量。
+
 - 2026-08-31：补充 Agent OAuth callback handoff 的发布前设计门禁与故障矩阵。明确当前 Core 单次 consume 不支持 Runtime 不可达后的可靠重试，且 callback correlation 尚未定义；因此继续不注册 callback HTTP route。后续 handoff 需要 browser binding、issuer/redirect 核对、Runtime-key ciphertext、lease 状态与 controlled provider 演练。
 
 - 2026-08-31：Gateway 增加未装配的 OAuth authorization transaction consume client foundation。它通过已有 Core mTLS 通道只提交 owner、transaction ID 与 state digest，严格复核返回的 HTTPS binding、expiry 与 base64url 密封 verifier；结果类型禁止作为 HTTP/审计/日志载荷。尚未注册 HTTP callback、Runtime handoff、解封、code exchange 或 token 写入。

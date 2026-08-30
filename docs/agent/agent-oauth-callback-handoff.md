@@ -2,7 +2,7 @@
 
 ## Status
 
-`blocked by design gate`。当前已具备 discovery、PKCE、密封 verifier、SQLC transaction、Core consume RPC 和未装配 Gateway client。它们不能单独构成可发布 callback。
+`foundation in progress; callback route blocked`。当前已具备 discovery、PKCE、密封 verifier、SQLC transaction、Core consume RPC、未装配 Gateway client，以及 `000053` durable handoff persistence。它们不能单独构成可发布 callback。
 
 ## Why The Gate Exists
 
@@ -37,7 +37,7 @@ transaction_id + owner + state_sha256 + issuer + redirect_uri + expiry
 
 ## Durable Handoff State Machine
 
-可靠 handoff 使用独立记录，不能以 Kafka 或 Gateway 内存代替：
+可靠 handoff 使用独立记录，不能以 Kafka 或 Gateway 内存代替。`000053` 已实现 `callback_recorded`、`exchange_claimed`、`exchanged` 以及受 expiry 限制的 lease claim/complete/release；Gateway callback、Runtime claimant 和密钥封装仍未接线：
 
 ```mermaid
 stateDiagram-v2
@@ -53,7 +53,7 @@ stateDiagram-v2
   exchanged --> purged: retention job removes ciphertext
 ```
 
-`callback_recorded` stores the authorization code only as a KMS/envelope-encrypted ciphertext for the Runtime key boundary, together with its SHA-256, transaction binding, expiry and idempotency key. Gateway cannot decrypt it. The code hash is unique per transaction; Runtime records token-exchange terminal state before exposing completion. A failed Runtime delivery therefore remains retryable without a second browser callback, while a duplicate callback cannot create a second exchange.
+`callback_recorded` stores the authorization code only as a KMS/envelope-encrypted ciphertext for the Runtime key boundary, together with its SHA-256, transaction binding, expiry and idempotency key. Gateway cannot decrypt it. The code hash is unique per transaction; Runtime records token-exchange terminal state before exposing completion. A failed Runtime delivery therefore remains retryable without a second browser callback, while a duplicate callback cannot create a second exchange. `000053` currently treats this ciphertext as opaque: selecting a concrete envelope/KMS scheme and implementing its writer/reader remain release prerequisites.
 
 ## Boundaries
 
