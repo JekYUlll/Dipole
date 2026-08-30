@@ -90,6 +90,7 @@ npm run build
 - [跨服务契约](contracts/README.md)
 - [前端设计](docs/README.md#前端设计)
 - [性能记录](docs/README.md#性能记录)
+- [学习、简历与面试主文档](docs/guides/PROJECT-LEARNING-AND-INTERVIEW.md)
 - [更新日志](CHANGELOG.md)
 
 ## 开发约定
