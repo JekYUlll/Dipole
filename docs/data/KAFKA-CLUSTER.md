@@ -1,6 +1,6 @@
 # Kafka Cluster 开发与故障验收
 
-本文档描述 A2 阶段的 Kafka 三节点 KRaft 基线。现有 `docker-compose.yml` 和 `deploy/compose/docker-compose.microservices.yml` 继续提供单节点开发与微服务回滚路径；`deploy/compose/docker-compose.cluster.yml` 当前用于隔离的基础设施集成和故障演练，后续逐步加入 MySQL、Redis、Cassandra 与 Elasticsearch profile。
+本文档描述 A2 阶段的 Kafka 三节点 KRaft 基线。现有 `docker-compose.yml` 和 `deploy/compose/docker-compose.microservices.yml` 继续提供单节点开发与微服务回滚路径；`deploy/compose/docker-compose.cluster.yml` 继续用于隔离的 Kafka 组件级集成和故障演练，业务依赖组合由 `deploy/compose/docker-compose.business-cluster.yml` 显式接入 MySQL Router/InnoDB Cluster、Kafka 三节点和 Redis Sentinel。Cassandra 与 Elasticsearch 仍保持独立 profile，不应把组件级演练写成业务链路已完成。
 
 ## Durability Policy
 

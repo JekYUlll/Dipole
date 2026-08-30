@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：对齐平台总计划、Kafka 集群说明和架构债务摘要，明确业务高可用依赖组合已可渲染，组件级演练与真实业务故障收敛仍分开计证。
 - 2026-08-30：修正业务 MySQL Router Compose 门禁对 healthcheck 参数位置的错误假设，改为按端口值语义检查；相关业务拓扑契约和全量 Compose 校验通过。
 - 2026-08-30：业务集群 override 接入 MySQL Router 和三节点 InnoDB Cluster，应用继续通过稳定的 `mysql:3306` writer endpoint 连接；单节点微服务 Compose 保持默认回滚路径。已加入 Compose 渲染与业务拓扑契约门禁，真实业务故障切换仍待 Remote GPU 独立演练。
 - 2026-08-30：为微服务 Gateway 增加可配置宿主端口，业务集群演练默认使用 `18080`，允许多个隔离 Compose project 并行运行；默认端口仍保持 `8080`。
