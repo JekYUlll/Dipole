@@ -1,5 +1,13 @@
 # 更新日志
 
+- 2026-08-30：C1 候选拓扑默认只启动消息基准所需的核心服务；Kafdrop/Nginx 改为通过 `C1_ENABLE_OPTIONAL_SERVICES=1` 显式启用，避免可选镜像下载阻塞核心健康检查和负载测试。
+
+- 2026-08-30：修复 C1 候选拓扑的 Compose 相对挂载路径和证书前置：移除会把 `../../configs` 解析到仓库外的 `--project-directory`，并由候选脚本按需生成短期开发自签名 Nginx 证书；失败拓扑已清理，未改变生产 Compose。
+
+- 2026-08-30：修复远程 C1 候选构建 heredoc 的变量展开问题；候选 revision、创建时间和镜像标签现在均在远端脚本中计算，避免本地未定义变量导致构建提前退出。新增契约断言并通过 Shell、脚本、架构文档和 diff 门禁。
+
+- 2026-08-30：远程构建入口新增默认关闭的 `DIPOLE_REMOTE_BUILD_CANDIDATE=1`，按当前提交额外生成带 OCI revision、创建时间和 `dirty=false` provenance 的 `dipole-server:c1-<commit>` 候选镜像；默认微服务构建路径与回滚行为保持不变，为完整 C1 三节点基线补齐可验证前置。
+
 - 2026-08-30：归档 Remote GPU 微服务入口只读基线：提交 `f227401a` 的隔离微服务栈执行 1000 次 Gateway `/health` 请求、并发 16，成功率 `100%`，P50/P95/P99 为 `0.521/0.791/1.960ms`；退出后无容器或卷残留。该证据只覆盖入口稳定性，不代表消息吞吐或 WebSocket 容量，完整 C1 k6 基线仍待候选三节点拓扑和远端工具链。
 
 - 2026-08-30：远端基础镜像经一次性流式导入后，隔离 `smoke-lite` 在提交 `f227401a` 上完整通过；MySQL、Redis、Kafka、MinIO、Core、Message、Sync、Gateway 均 healthy，Gateway readiness、认证代理和可选服务隔离检查通过。脚本退出后自动清理，无本项目容器或卷残留；现有 GPU 任务未被操作，完整基线压测仍单独排队。
