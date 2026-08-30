@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：平台计划已按当前实现证据重写汇总状态：Context Compiler 已具备 v1/v2 预算、可信度、会话 evidence、Memory、Capability descriptor 和 route tokenizer，完整检索编排与生产灰度继续开放；F2 只剩 Settings，F3 只剩 MCP 多轮/敏感授权/产品编排及未覆盖视觉回归。该项不改变默认关闭的 Runtime 或共享环境证据边界。
+
 - 2026-08-30：Remote GPU 的默认 `dipole-dev/<user>` 仅作为提交绑定、按用户隔离的候选引用。`remote-dev.sh` 以精确远端 lease 更新它，使 squash 合并后的 revision 可复用同一引用，并在并发更新时拒绝覆盖；显式共享分支继续只接受快进。该修复不启动 Compose、GPU 或测试服务。
 
 - 2026-08-30：F2 Device Security 已完成 Pencil desktop/mobile/七态矩阵、三项复用组件、认证 `/devices` 路由和低敏会话 parser。公共 `DeviceSessionResponse` 现只保留登出所需 connection ID、粗粒度 device/device ID 与时间，IP、节点和原始 User-Agent 不再跨 HTTP 边界；新增 `logout-others` 通过当前稳定 Device ID 排除自身，避免 UI 将全设备退出误写为“其他设备”。Go 定向测试、Pencil/文档门禁以及 Remote GPU Node 22 前端 `40/162`、typecheck/build 已通过；远端 Playwright browser binary 下载未完成，跨浏览器执行、Chromium 像素回归和真实 Redis Presence/跨节点踢出继续待验证。

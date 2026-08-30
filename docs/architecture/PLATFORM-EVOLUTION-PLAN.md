@@ -461,8 +461,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加 Compose profile 级隔离 smoke：校验 v50 migration、UTC 时间基准、最小权限、worker readiness、持续 replay 和 event UUID 幂等；共享环境 operator 灰度与默认生产开关仍待完成。
   - [x] smoke 增加 worker 启动前 pending intent 与启用后恢复断言，并锁定 MySQL 全局/会话 UTC；共享环境 operator 灰度、告警抓取和轮换/回滚仍待完成。
   - [x] 增加 `agent-timeline-repair-rollout` v1 只读 evidence/policy/report 与 CLI，绑定窗口、错误比例、readiness、operator、告警和回滚演练；真实共享环境采集和 operator 决策仍待完成。
-- [ ] 实现 Context Compiler，按预算组合策略、任务、会话证据、检索、Memory 和 Tool Schema。
-  - [x] G2 基线实现框架中立 Context Compiler v1：全局/section 预算、full/compact/omit、trust boundary、provenance manifest 和 v22 持久审计；会话检索、Memory 与 route-specific tokenizer 在 G3 继续扩展。
+- [ ] 完成 Context Compiler 的完整检索编排，按预算组合策略、任务、会话证据、检索、Memory 和 Tool Schema。
+  - [x] G2/G3 已实现框架中立 Context Compiler v1/v2：全局/section 预算、full/compact/omit、trust boundary、provenance manifest、v22 持久审计、route-specific tokenizer，以及会话证据、Memory 和 Capability descriptor 的确定性编译；完整检索编排与生产上下文灰度继续独立推进。
   - [x] 增加受认证 `conversation.read` Core RPC 与 TS Capability，统一 canonical `conversationId`，完成 direct/group target 解析、Task/Run 身份解析、Core 资源复核、消息映射和 Runtime exact scope 门禁；ModelShadowPlanner/Temporal read activity 已接入最多 20 条 `untrusted` 会话 evidence 的 full/compact 编译；完整检索编排、route-specific tokenizer 和生产上下文灰度仍待完成。
   - [x] 增加 TS Capability RPC 客户端跨语言契约测试，固定 direct/group target 解析、可信 principal 请求边界、非法 scope 拒绝和响应 target 冲突 fail-closed；分页/检索语义与生产上下文灰度继续按证据推进。
   - [x] Context Compiler v2 接入 route-aware 最大输入窗口，按最小候选 route window 扣除最大输出预算，超出请求在编译前 fail closed；旧 v1 构造保持兼容。
@@ -606,8 +606,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ## 10. 持续轨道：Pencil 前端设计
 
 - [x] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
-- [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿、标题栏状态、Contact 只读目录和 Group 只读目录已完成；File、Device 与 Settings 待完成。Group 目录从认证会话投影派生范围、逐项读取权威群投影，热群保持 `notify + pull`，所有群管理写操作继续关闭。
-- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval、普通 Elicitation Form 七态、Task Timeline 与 Agent Definition Catalog 的 desktop/mobile/state matrix 设计已完成；Definition 目录经 Gateway 认证后只展示精确版本和 scope，查询失败清空旧目录，Runtime/写控制保持关闭，并有 Chromium 视觉基线。默认关闭的 schema-driven Vue Form 已接入 authenticated Task query/input/cancel，前端 Task parser 已严格保留 `waiting_approval` pending 状态。MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity。Subscription、Memory、Artifact、多轮、敏感授权与其余浏览器视觉回归仍由 AD-036 跟踪。
+- [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿、标题栏状态、Contact、Group、File 与 Device 的只读或受确认流程均已完成；Settings 仍待设计与实现。Group 目录从认证会话投影派生范围、逐项读取权威群投影，热群保持 `notify + pull`，所有群管理写操作继续关闭。Device 的跨浏览器执行、像素基线与真实 Presence 踢出继续作为环境切片。
+- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval、普通 Elicitation Form、Task Timeline、Definition、Subscription、Memory 和 Artifact 的 desktop/mobile/state matrix 已完成；相应默认关闭或只读 Vue 页面已按认证与低敏边界接入，Definition/Subscription/Artifact 的受控跨浏览器读取证据已归档。MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity；多轮、敏感授权、产品入口编排与其余视觉回归仍由 AD-036 跟踪。
 - [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、Vue token 映射、核心页面流程、组件测试和 Playwright IndexedDB/跨浏览器功能回归；真实 Pencil CLI 增量编辑与 Agent Timeline Chromium 截图基线已通过小批次完成，截图级全页面视觉基线和未覆盖平台场景仍待完成。
   - [x] 增加无网络 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该门禁不替代 Pencil 视觉评审。
   - [x] App 壳层、Login、Search 工作区、Agent Task Timeline 组件及其路由页面、Agent Event Subscription 和 Agent Memory 管理页已引用共享 `--dp-*` token，并由 Vitest 契约测试和 Timeline Playwright 流程校验 Pencil variables、路由和核心样式边界。

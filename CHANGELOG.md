@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：校正平台计划与已合并实现的交付口径：Context Compiler v1/v2 已编译预算、可信度、会话证据、Memory、Capability 元数据和 route tokenizer，完整检索编排仍未完成；F2 仅保留 Settings，F3 仅保留 MCP 多轮、敏感授权、产品入口与未覆盖视觉回归。
+
 - 2026-08-30：修复 Remote GPU 临时候选引用在 squash 合并后的同步失败。默认 `dipole-dev/<user>` 现以远端 tip 的精确 lease 更新，允许复用单一候选引用并拒绝并发覆盖；显式 `master` 或其他共享分支继续只接受快进推送。
 
 - 2026-08-30：将 Dipole Signal 主标及 IM/Agent 标记从偏蓝的渐变校正为深青绿色，保留双极信号、橙色事件脉冲和既有 SVG 文件名，避免 README 与文档入口产生蓝色产品标识的观感。
