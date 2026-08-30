@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增默认不加载的 `agent-memory-promotion.yml` overlay 与 `promotion_active` Temporal Worker profile。提交 Activity 只有在 active Runtime、Temporal、Capability RPC mTLS、显式 `operator_approved` authority、Runtime 开关和 Core receipt commit 开关同时成立时才会装配；Profile 继续拒绝 Control、MCP、自动 Memory、subscription 与消息写入。共享环境重放、失效 grant 和回滚证据仍待完成。
+
 - 2026-08-30：Core bootstrap 为 receipt commit 增加 `internal_rpc.agent_memory_promotion_receipt_commit_enabled` 显式开关，默认关闭；仅在内部 RPC 已启用 mTLS 时才构造并注入 commit service。Compose 同步保持 `DIPOLE_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED=false`，Temporal Worker 仍未装配写 Activity。
 
 - 2026-08-30：为 reviewed Memory receipt 增加可注入的 Temporal commit Activity。Workflow 仅在显式 `commit=true` 的受控输入完成后提交 prepared receipt，基础 Worker 固定拒绝；Activity 只转发 receipt 与 correlation 至 active RPC client，持久化结果只保留低敏 binding。Worker 组合、Core bootstrap、Compose profile 和自动写入保持关闭。

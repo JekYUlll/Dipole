@@ -44,7 +44,31 @@ overlay 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER
 
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 
-## 4. 渲染与启动
+## 4. Reviewed Memory 提交扩展
+
+`deploy/microservices/agent-memory-promotion.yml` 是 `agent-active.yml` 之上的独立 overlay，默认不加载。它只允许为已审核的 receipt 增加 `promotion_active` Temporal Activity，同时打开 Core 的 receipt commit Adapter。该 overlay 不改变 candidate 生成、Memory 召回、消息发送、Control 或 MCP 的关闭状态。
+
+除第 3 节的全部输入外，operator 还必须显式提供：
+
+| 输入 | 用途 |
+| --- | --- |
+| `DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY=operator_approved` | 将经过维护窗口审批的 authority 绑定到 Runtime 启动；缺失或其他值均 fail closed。 |
+
+Runtime 启动会同时校验 active Runtime、`promotion_active`、Temporal、Capability RPC mTLS、operator authority 与只读 Capability surface；Core 在自身启动时仍独立要求 receipt commit 开关与 mTLS。Core application 会继续基于持久化 Task/Run、active admission 和有效 promotion grant 重新授权，运行时环境变量不提供写入授权。
+
+受控渲染命令：
+
+```bash
+docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-active.yml \
+  -f deploy/microservices/agent-memory-promotion.yml \
+  config --quiet
+```
+
+执行前归档 grant、manifest SHA-256、Core/Runtime revision 和回滚工单；完成后至少演练一次有效 receipt 的 Activity 重试与一次失效 grant 拒绝。缺少共享环境证据时，该 overlay 继续只作为受控候选，不提升为默认路径。
+
+## 5. 渲染与启动
 
 在隔离 project 目录中准备 Secret 注入后，先进行无副作用渲染：
 
@@ -59,7 +83,7 @@ docker compose \
 
 获得维护窗口批准后，使用独立 `COMPOSE_PROJECT_NAME` 启动并等待 readiness。启动后检查 `/livez`、`/readyz`、Temporal Worker 状态、Kafka consumer lag、Core RPC mTLS 和模型审计记录。每项检查都要记录 revision、candidate、manifest SHA-256、时间窗口和操作者，不记录 prompt、消息正文、API key 或 Tool 参数。
 
-## 5. 回滚
+## 6. 回滚
 
 出现 Provider、Temporal、Kafka、RPC、authority 或评测漂移时：
 
@@ -70,7 +94,7 @@ docker compose \
 
 禁止通过修改 release manifest 内容绕过阶段校验。下一次尝试应使用新的、重新评审的 manifest。
 
-## 6. 关联资料
+## 7. 关联资料
 
 - [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)
 - [Agent 前置能力清单](ai-readiness-checklist.md)

@@ -60,6 +60,7 @@
 | Agent Runtime 与权限 | **已验证** | 第 3 节 Agent 描述；第 5 节 Agent 安全与可恢复执行 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)；“模型为何不能决定权限？” |
 | Owner-reviewed Memory 类型晋级 | **已验证（本地）** | 受控 candidate/review 选择 semantic 等持久类型；Temporal 只在显式 commit 请求下调用可注入 Activity | [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)；“为何 working 不能晋级？” |
 | Receipt Commit 最小权限接线 | **默认关闭** | Core 以 mTLS 配置门禁按需注册仅含 receipt commit 的 Agent RPC；其余 Agent 能力不在独立 Core 暴露 | [active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)；“为何不用完整 Agent RPC adapter？” |
+| Receipt Commit Active Worker | **默认关闭** | 独立 `promotion_active` Worker 需同时通过 Runtime、mTLS、operator authority 与 Core/Runtime 双开关门禁 | [Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)；“为什么仍需要 Core grant？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
@@ -83,6 +84,16 @@
 - **追问：** “为何不用完整 Agent RPC adapter？” 独立 Core 当前只拥有 receipt commit 所需的持久化 resolver 与 promotion 事务。收窄 RPC surface 可以避免无关 Tool、Task、Artifact 或 owner-control 入口在该部署单元被意外暴露。
 - **限制：** 默认开关关闭；Temporal Worker 仍未完成 active authority 组合，且没有共享环境 mTLS、重放与授权演练证据，因此不能表述为自动长期 Memory 写入已启用。
 - **复核条件：** 改变 RPC caller allowlist、mTLS 配置、Temporal Worker 组合或 receipt schema 时。
+
+#### 2026-08-30 · Receipt Commit Active Worker Authority
+
+- **状态：** 默认关闭
+- **对外表述：** 为 reviewed Memory receipt 设计独立 `promotion_active` Temporal Worker profile：Worker 仅在 active Runtime、Temporal、Capability RPC mTLS、显式 operator authority 与 Core/Runtime 双开关同时满足时装配 commit Activity。
+- **演示：** 以 `agent-active.yml` 加 `agent-memory-promotion.yml` 执行受控 Compose 渲染，确认缺失 authority 或 TLS 时启动拒绝；用合法 profile 运行 fixture Workflow，确认基础 Worker 仍拒绝 commit，而 promotion profile 才尝试低敏 receipt RPC。
+- **证据：** `services/agent-runtime/src/runtime/active-memory-promotion-profile.ts`、`services/agent-runtime/src/temporal/agent-memory-promotion-commit-activity.ts`、`deploy/microservices/agent-memory-promotion.yml`、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)。
+- **追问：** “为什么 Worker 已有 operator authority 还需要 Core grant？” Worker authority 只控制是否能尝试调用，Core 仍从持久 Task/Run 恢复主体并复核 active admission、有效 grant、receipt 与 candidate/review，避免环境配置成为数据写入授权。
+- **限制：** 当前仅有本地配置与 Activity 组合测试；共享环境的有效提交、Temporal 重试、失效 grant、观测窗口和回滚演练尚未归档，默认不加载该 overlay。
+- **复核条件：** 修改 release manifest、Runtime profile、Core grant、mTLS、Temporal queue 或 receipt schema 时。
 
 #### 2026-08-30 · Artifact 与 Task Timeline 关联
 

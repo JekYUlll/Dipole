@@ -50,6 +50,13 @@ describe("Temporal runtime configuration", () => {
     })).toMatchObject({ enabled: true, activityMode: "read_active" });
   });
 
+  it("loads the explicit active Memory promotion Activity profile", () => {
+    expect(loadTemporalRuntimeConfig({
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "promotion_active"
+    })).toMatchObject({ enabled: true, activityMode: "promotion_active" });
+  });
+
   it("rejects empty required values when enabled", () => {
     expect(() => loadTemporalRuntimeConfig({
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true",

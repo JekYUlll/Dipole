@@ -12,6 +12,8 @@
 | `docker-compose.mysql-cluster.yml` | MySQL 高可用演练 |
 | `docker-compose.redis-cluster.yml` | Redis Sentinel 故障转移演练 |
 | `docker-compose.storage-lab.yml` | 隔离存储实验 |
+| `../microservices/agent-active.yml` | 默认不加载的 Agent user-gray 只读 overlay |
+| `../microservices/agent-memory-promotion.yml` | 基于 user-gray 的 reviewed Memory receipt 提交 overlay |
 
 从仓库根目录执行，例如：
 
@@ -33,3 +35,5 @@ scripts/check-dev-host.sh tencent-cloud
 门禁只检查资源、Docker daemon 和 Compose 配置，不会创建容器或修改远程主机。共享环境部署必须额外提供真实密钥、独立 Compose project、版本绑定镜像和清理/回滚证据。
 
 Compose 文件中的相对路径以仓库根目录为基准。脚本调用应优先复用 `scripts/` 下的入口，以获得项目名、清理和回滚保护。
+
+Agent Memory receipt 提交需要同时加载基础微服务、`agent-active.yml` 与 `agent-memory-promotion.yml`，并提供 `DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY=operator_approved`。该 overlay 不作为默认开发路径，详细门禁与回滚见 [Agent Active 部署手册](../../docs/agent/AGENT-ACTIVE-DEPLOYMENT.md)。
