@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Gateway 增加未装配的 OAuth callback handoff notifier。它只向 Runtime control endpoint 发送严格的 `handoff_id` JSON 和 request/trace correlation，固定 `dipole-gateway` service identity 且不写 principal header；非 `202`、非 loopback HTTP target 或非法 ID 均 fail closed。该 client 未加入 bootstrap、callback route 或开关，因此默认仍无外部 OAuth 流量。
+
 - 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff claim client。它通过现有 Runtime-to-Core mTLS metadata 固定 `dipole-agent` caller、仅提交 handoff ID 和 Runtime lease owner，并对返回的 ID、HTTPS binding、SHA-256、envelope、key ID、lease 与授权 expiry 逐项 fail closed。该库未读入 Runtime config、未注册 Gateway notifier、未开启 callback 或 token exchange。
 
 - 2026-08-31：Agent Capability 增加默认未装配的 OAuth callback handoff claim RPC。只有 `dipole-agent` mTLS caller 可领取，Core 固定 30 秒租约并从持久化记录恢复 transaction、issuer、redirect、摘要、Runtime key ID 与 Runtime-only 密文；Gateway、浏览器和用户主体均无法影响 owner binding。缺 Store 时固定返回 `Unavailable`，未注册 callback route、Runtime client、code exchange 或 token 生命周期。TypeScript proto 生成器同时改为使用锁定的 `@protobuf-ts/protoc`，避免依赖宿主 protobuf 安装。

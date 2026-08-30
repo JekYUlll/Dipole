@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Gateway 增加未装配的 OAuth callback handoff notifier。控制 HTTP 仅使用 `POST /internal/v1/agent/oauth/callback-handoffs` 与 `{handoff_id}`；它固定 Gateway service identity、保留 correlation、拒绝携带 principal，远程 target 强制 HTTPS，非 `202` 固定失败关闭。Runtime control handler、Gateway bootstrap、callback Store writer、browser binding、complete/release、code exchange 与 token 生命周期继续未接线。
+
 - 2026-08-31：Runtime 增加未装配的 OAuth callback handoff claim client。它沿用 Runtime-to-Core mTLS caller metadata，输入只含 handoff ID 和 Runtime lease owner；所有响应 binding、密文 envelope、key ID 与两个 expiry 都在解封前复核。该 client 未进入 Runtime config 或 process composition，Gateway notifier、complete/release、code exchange、token lifecycle 与故障演练仍关闭。
 
 - 2026-08-31：OAuth callback handoff 已增加默认未装配的 Core claim RPC。它仅接受 `dipole-agent` 调用方，Core 固定 30 秒租约并从 SQLC handoff Store 恢复 owner/binding；响应只在 mTLS 链中返回 Runtime-only 密文及其校验 metadata。Gateway、浏览器和 RequestContext principal 无法参与 claim，缺 Store 固定 `Unavailable`。Runtime client、Gateway handoff-ID notifier、complete/release RPC、code exchange、token 生命周期与重启/过期租约演练仍未接线。

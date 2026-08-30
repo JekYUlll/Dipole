@@ -25,6 +25,10 @@ Gateway-to-Runtime control HTTP authenticates `dipole-gateway` with the
 existing private service secret. It accepts only a strict handoff ID, request
 ID and trace ID. It must never accept or return an authorization code, state,
 PKCE verifier, ciphertext, private key, token or user-controlled principal.
+The v1 notification is `POST /internal/v1/agent/oauth/callback-handoffs` with
+the exact JSON body `{"handoff_id":"..."}` and a `202 Accepted` response.
+The Gateway client permits plaintext HTTP only for a loopback Runtime target;
+all other targets require HTTPS.
 
 Runtime-to-Core uses the existing Agent Capability RPC mTLS identity
 `dipole-agent`. Core recovers the handoff owner and immutable binding from its
