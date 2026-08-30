@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">Dipole Signal Link mark</title>
   <desc id="desc">A compact pair of signal poles connected by an event pulse.</desc>
-  <rect width="256" height="256" rx="58" fill="#0c354c"/>
-  <circle cx="128" cy="128" r="88" fill="#1c6b8a"/>
-  <circle cx="82" cy="128" r="18" fill="#f5f8fa"/>
-  <circle cx="174" cy="128" r="18" fill="#f5f8fa"/>
+  <rect width="256" height="256" rx="58" fill="#083d39"/>
+  <circle cx="128" cy="128" r="88" fill="#16796f"/>
+  <circle cx="82" cy="128" r="18" fill="#f4f8f5"/>
+  <circle cx="174" cy="128" r="18" fill="#f4f8f5"/>
   <path d="M82 128 H109 L120 96 L137 160 L148 128 H174" fill="none" stroke="#f0ad4e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
