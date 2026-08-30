@@ -48,6 +48,16 @@ test("rejects the local host when it cannot meet the full profile", () => {
   assert.match(result.output, /disk_mib=19000/);
 });
 
+test("uses the available-memory override for pressure-aware checks", () => {
+  const result = run("remote-gpu", {
+    DIPOLE_HOST_CPU: "224",
+    DIPOLE_HOST_MEMORY_MIB: "8192",
+    DIPOLE_HOST_DISK_MIB: "1100000",
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.output, /memory_mib=8192/);
+});
+
 test("rejects an unknown profile", () => {
   const result = run("unknown");
   assert.equal(result.status, 2);
