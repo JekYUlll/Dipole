@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：收紧 Go/Eino Agent 迁移边界：服务布局门禁要求 production legacy import 只能来自 embedded Kafka composition，`github.com/cloudwego/eino` 只能位于 `internal/services/agent/legacy`。独立 TypeScript Runtime、Gateway 与服务入口无法绕过 Capability、Temporal 与 promotion 门禁回接旧链路。
+
 - 2026-08-30：F2 Contact 增加受认证只读目录 `/contacts`：前端严格解析 `/api/v1/contacts` 的联系人投影，读取失败会清空旧数据并提供重试入口；Remote GPU Node 22 通过 `34` 个前端测试文件、`147` 项测试、typecheck 与 production build。备注、拉黑、删除、申请处理及跨浏览器视觉回归继续按独立权限切片推进。
 
 - 2026-08-30：F2 Contact 完成 Pencil canonical desktop/mobile 管理稿、申请与安全状态矩阵、可复用 Contact Row/Request 组件及 2x 评审导出。该切片只建立视觉基线，未新增前端路由、权限或 Contact API 行为。

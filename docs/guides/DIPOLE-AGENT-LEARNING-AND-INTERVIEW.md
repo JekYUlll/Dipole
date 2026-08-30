@@ -90,7 +90,7 @@ Dipole Agent 将模型视为不可信的推理组件。Runtime 用系统生成�
 
 ### 旧 Eino 实现如何演进到独立 Runtime？
 
-早期版本将 AI 作为特殊用户，经 `message.direct.created` 消费、最近会话上下文和 Eino tool calling 回写普通消息，`ai_call_logs.trigger_message_uuid` 用唯一键收敛重复触发。它证明了 IM 事件接入、基础 Tool 和可观测性；独立 TypeScript Runtime 将可信身份、Capability、Temporal 状态和长期 Memory 从这条单聊消费链中分离出来。旧实现是迁移基线，不能表述为当前 active Agent Runtime 的权限模型。
+早期版本将 AI 作为特殊用户，经 `message.direct.created` 消费、最近会话上下文和 Eino tool calling 回写普通消息，`ai_call_logs.trigger_message_uuid` 用唯一键收敛重复触发。它证明了 IM 事件接入、基础 Tool 和可观测性；独立 TypeScript Runtime 将可信身份、Capability、Temporal 状态和长期 Memory 从这条单聊消费链中分离出来。旧实现保留为 embedded 回滚基线，服务布局门禁限制它只能由 embedded Kafka composition 引用，独立服务入口不可接入该链路；不能表述为当前 active Agent Runtime 的权限模型。
 
 ### 为什么 receipt 不能直接等于授权？
 

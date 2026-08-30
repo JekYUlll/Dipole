@@ -631,6 +631,35 @@ if [[ ! -f "${root_dir}/internal/services/agent/legacy/service.go" ]]; then
   echo "Go/Eino compatibility baseline is outside the Agent service boundary" >&2
   exit 1
 fi
+# The Eino implementation is a rollback-only embedded baseline. Keep it out of
+# standalone service roots so a new production path cannot bypass TS Runtime gates.
+legacy_importers=$(rg -l 'internal/services/agent/legacy' "${root_dir}" --glob '*.go' --glob '!**/*_test.go' || true)
+if [[ "${legacy_importers}" != "${root_dir}/internal/bootstrap/embedded/kafka.go" ]]; then
+  echo "Go/Eino compatibility baseline must have exactly one embedded Kafka production importer" >&2
+  exit 1
+fi
+while IFS= read -r legacy_importer; do
+  relative_importer="${legacy_importer#"${root_dir}/"}"
+  if [[ "${relative_importer}" != "internal/bootstrap/embedded/kafka.go" ]]; then
+    echo "Go/Eino compatibility baseline may only be imported by embedded Kafka composition: ${relative_importer}" >&2
+    exit 1
+  fi
+done <<< "${legacy_importers}"
+if ! rg --quiet 'github.com/cloudwego/eino' "${root_dir}/internal/services/agent/legacy/eino_agent.go"; then
+  echo "Go/Eino compatibility baseline must retain the canonical Eino adapter" >&2
+  exit 1
+fi
+while IFS= read -r eino_importer; do
+  relative_importer="${eino_importer#"${root_dir}/"}"
+  case "${relative_importer}" in
+    internal/services/agent/legacy/*)
+      ;;
+    *)
+      echo "Eino dependency must remain inside the Go compatibility baseline: ${relative_importer}" >&2
+      exit 1
+      ;;
+  esac
+done < <(rg -l 'github.com/cloudwego/eino' "${root_dir}" --glob '*.go' || true)
 if [[ ! -f "${root_dir}/internal/services/agent/infrastructure/mysql/agent_policy.go" ]]; then
   echo "Agent MySQL repository implementation is outside the Agent service boundary" >&2
   exit 1

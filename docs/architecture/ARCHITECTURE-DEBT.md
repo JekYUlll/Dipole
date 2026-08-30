@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：Go/Eino legacy 兼容链已由服务布局门禁收口：production code 只允许 embedded Kafka composition 引入 legacy，Eino module import 只允许保留在 `internal/services/agent/legacy`。该约束防止独立 Gateway、Core 或 TypeScript Runtime 绕过 Capability/Temporal/promotion 边界回接旧 Agent；真实 active Runtime 授权与共享环境证据仍按 `AD-009`、`AD-037` 跟踪。
+
 - 2026-08-30：F2 Contact 已完成受认证只读目录 `/contacts`，`/api/v1/contacts` 投影经严格 shape 校验，权威读取失败时清空旧条目并提供重试；Remote GPU Node 22 前端 `34` 个测试文件、`147` 项测试、typecheck 和 production build 通过。备注、拉黑、删除、申请处理与跨浏览器视觉回归仍须作为独立权限和交互切片验证。
 
 - 2026-08-30：F2 Contact 已建立可定位的 Pencil desktop/mobile、loading/empty/request-pending/safety-blocked 状态矩阵与批准导出，避免后续 Vue 页面脱离既有认证 Contact API 语义；写操作与跨浏览器视觉回归仍待独立实现与验证。

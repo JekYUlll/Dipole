@@ -424,6 +424,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加 sender-scoped Message Command receipt：复用 sqlc sender/client key 返回 `absent|committed`，Agent 在独立有界恢复窗口内核对完整消息绑定，收敛远程超时的不确定结果。
   - [x] 增加绑定 running Tool Invocation 的认证 MCP Command RPC：Core 派生 Command ID 与身份、复算 canonical Tool 参数摘要并返回 Message action reference；生产 write Tool 继续关闭。
 - [x] 增加 `ai.runtime_mode=off|embedded|shadow|remote`，兼容旧 `ai.enabled`；shadow 保留 Go 权威写入，remote 停止注册 Embedded consumer，为 Eino 回滚和 TS 切流建立开关。
+  - [x] 服务布局门禁限制 Go/Eino legacy 仅由 embedded Kafka composition 引用，Eino module import 仅允许存在于 `internal/services/agent/legacy`；独立服务入口无法重新接入该兼容链路。
   - [x] Agent Capability RPC 的 Admission、Complete、Finish 已支持显式 `runtime_id + mode` 与 active candidate version；TS 默认 shadow，active 仍需 promotion authorizer 和后续 active Activity/写能力接线。
   - [x] 增加独占 `read_active` Temporal Activity profile：active Task 通过 Core RPC 获取权威 ExecutionContext，使用同一 runtime mode 完成 Run 终态绑定；Artifact 与写 Capability 继续保持关闭。
 
