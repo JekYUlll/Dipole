@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Agent Memory promotion receipt 新增 `v2`：将 observational candidate 与显式目标 Memory 类型共同纳入确定性哈希和 Temporal replay 绑定；历史 `v1` receipt 继续可读，但缺少类型绑定时停止 replay 并要求重新审批。External MCP Shadow 组合配置不完整时新增零进程启动回归测试，默认关闭路径保持不创建 Worker、RPC 或网络资源。
+
 - 2026-08-30：Agent Runtime 新增五类 Memory 类型策略边界，明确 working 为任务级临时记忆，其余类型需经过 review；候选生成继续限定为 observational，目标类型必须显式指定且不会凭借类型校验获得写入权限。补充 Agent 文档与跨服务契约导航，并通过 Memory 测试、TypeScript typecheck 和文档索引门禁。
 
 - 2026-08-30：新增 `scripts/check-doc-indexes.sh` 并接入架构文档门禁，校验项目、Agent 和跨服务契约索引中的本地相对链接，降低文档重排后的断链风险。

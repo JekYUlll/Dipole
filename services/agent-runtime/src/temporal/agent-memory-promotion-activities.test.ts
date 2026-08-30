@@ -11,7 +11,7 @@ describe("Temporal Agent Memory promotion receipt Activity", () => {
       createdAt: "2026-08-29T01:00:00.000Z", expiresAt: "2026-08-29T01:10:00.000Z"
     });
     expect(receipt.status).toBe("prepared");
-    expect(receipt.targetMemoryType).toBe("semantic");
+    expect(receipt).toMatchObject({ schemaVersion: "dipole.agent.memory-promotion-receipt.v2", targetMemoryType: "semantic" });
     expect(receipt.receiptId).toMatch(/^MEM-PROMOTE-[a-f0-9]{64}$/);
     expect(JSON.stringify(receipt)).not.toMatch(/summary|evidence|secret|token/i);
   });

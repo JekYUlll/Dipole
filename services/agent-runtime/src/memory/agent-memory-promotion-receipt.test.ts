@@ -1,5 +1,8 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
+import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 import {
   createAgentMemoryPromotionReceipt,
   replayAgentMemoryPromotionReceipt,
@@ -18,6 +21,18 @@ function intent(overrides: Partial<AgentMemoryPromotionIntent> = {}): AgentMemor
   };
 }
 
+function legacyReceipt() {
+  const body = {
+    schemaVersion: "dipole.agent.memory-promotion-receipt.v1" as const,
+    status: "prepared" as const,
+    tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-1", runId: "RUN-1",
+    candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1",
+    createdAt: now.toISOString(), expiresAt: new Date(now.getTime() + 10 * 60 * 1000).toISOString()
+  };
+  const receiptSha256 = digest(body);
+  return { ...body, receiptId: `MEM-PROMOTE-${digest({ ...body, receiptSha256 })}`, receiptSha256 };
+}
+
 describe("Agent Memory promotion receipt", () => {
   it("creates a deterministic low-sensitivity receipt", () => {
     const first = createAgentMemoryPromotionReceipt(intent(), now);
@@ -25,7 +40,7 @@ describe("Agent Memory promotion receipt", () => {
 
     expect(first).toEqual(second);
     expect(first).toMatchObject({
-      schemaVersion: "dipole.agent.memory-promotion-receipt.v1", status: "prepared",
+      schemaVersion: "dipole.agent.memory-promotion-receipt.v2", status: "prepared",
       tenantId: "dipole", taskId: "TASK-1", runId: "RUN-1", candidateId: "CAND-1", reviewId: "REV-1",
       candidateMemoryType: "observational", targetMemoryType: "semantic"
     });
@@ -44,6 +59,13 @@ describe("Agent Memory promotion receipt", () => {
     expect(() => replayAgentMemoryPromotionReceipt(receipt, intent(), new Date("2026-08-29T01:11:00.000Z"))).toThrow(/expired/i);
   });
 
+  it("reads historical v1 receipts but fails closed when their target type is unbound", () => {
+    const legacy = legacyReceipt();
+
+    expect(validateAgentMemoryPromotionReceipt(legacy)).toEqual(legacy);
+    expect(() => replayAgentMemoryPromotionReceipt(legacy, intent(), now)).toThrow(/does not bind Memory types/i);
+  });
+
   it("fails closed on receipt hash, time, and binding tampering", () => {
     const receipt = createAgentMemoryPromotionReceipt(intent(), now);
     expect(() => validateAgentMemoryPromotionReceipt({ ...receipt, receiptSha256: "f".repeat(64) })).toThrow(/hash/i);
@@ -51,6 +73,11 @@ describe("Agent Memory promotion receipt", () => {
     expect(() => validateAgentMemoryPromotionReceipt({ ...receipt, expiresAt: now.toISOString() })).toThrow(/hash|time|expiry/i);
     expect(() => validateAgentMemoryPromotionReceipt({ ...receipt, candidateSha256: "b".repeat(64) })).toThrow(/hash/i);
     expect(() => validateAgentMemoryPromotionReceipt({ ...receipt, targetMemoryType: "procedural" })).toThrow(/hash/i);
-    expect(() => createAgentMemoryPromotionReceipt(intent({ candidateMemoryType: "working" }), now)).toThrow(/observational/i);
+    const invalidCandidate = { ...intent(), candidateMemoryType: "working" };
+    expect(() => createAgentMemoryPromotionReceipt(invalidCandidate as AgentMemoryPromotionIntent, now)).toThrow(/observational/i);
   });
 });
+
+function digest(value: unknown): string {
+  return createHash("sha256").update(canonicalMcpJSON(value), "utf8").digest("hex");
+}

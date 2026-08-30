@@ -1277,3 +1277,5 @@
 - **本轮进展：** 新增纯 `MemoryTypePolicy` 与 candidate-to-target transition 校验，明确 working 的任务级非持久语义以及其余类型的 review 要求；类型检查不会授予写入权限，默认 Shadow/Remote 保持关闭。
 - **证据：** `services/agent-runtime/src/memory/memory-type-policy.test.ts` 覆盖五类枚举、持久性策略、显式目标类型和 observational candidate 限制；Agent Memory 测试 7 个文件/31 个测试通过，typecheck、文档索引和架构文档门禁通过。
 - **下一步：** 在 active-authority、owner scope、review receipt 和幂等写入条件齐备后，再实现独立 promotion executor；不得把当前纯校验函数直接当作写入授权。
+
+- **2026-08-30 兼容性补充：** promotion receipt v2 将 observational candidate 与显式目标类型一起绑定至 canonical hash；历史 v1 receipt 保持原语义可读，但因没有目标类型而在 replay 阶段 fail-closed。External MCP Shadow 对 partial enablement 增加零进程启动回归，默认关闭路径继续不构造 Worker、RPC 或网络资源。

@@ -5,31 +5,45 @@ import { z } from "zod";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 import {
   agentMemoryTypeSchema,
+  observationalCandidateTypeSchema,
   validateMemoryTypeTransition,
-  type AgentMemoryType
+  type AgentMemoryType,
+  type ObservationalCandidateType
 } from "./memory-type-policy.js";
 
-const schemaVersion = "dipole.agent.memory-promotion-receipt.v1" as const;
+const legacySchemaVersion = "dipole.agent.memory-promotion-receipt.v1" as const;
+const schemaVersion = "dipole.agent.memory-promotion-receipt.v2" as const;
 const maxReceiptLifetimeMs = 15 * 60 * 1000;
 const identity = z.string().trim().min(1).max(128);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const timestamp = z.string().datetime({ offset: true });
+const status = z.enum(["prepared", "committed", "cancelled", "expired"]);
 
 const intentSchema = z.object({
   tenantId: identity, principalUserId: identity, agentId: identity, taskId: identity, runId: identity,
   candidateId: identity, candidateSha256: hash, reviewId: identity, policyVersion: identity,
-  candidateMemoryType: agentMemoryTypeSchema, targetMemoryType: agentMemoryTypeSchema,
+  candidateMemoryType: observationalCandidateTypeSchema, targetMemoryType: agentMemoryTypeSchema,
   expiresAt: timestamp
 }).strict();
 
-const receiptSchema = z.object({
-  schemaVersion: z.literal(schemaVersion), receiptId: z.string().regex(/^MEM-PROMOTE-[a-f0-9]{64}$/),
-  receiptSha256: hash, status: z.enum(["prepared", "committed", "cancelled", "expired"]),
+const legacyReceiptSchema = z.object({
+  schemaVersion: z.literal(legacySchemaVersion), receiptId: z.string().regex(/^MEM-PROMOTE-[a-f0-9]{64}$/),
+  receiptSha256: hash, status,
   tenantId: identity, principalUserId: identity, agentId: identity, taskId: identity, runId: identity,
   candidateId: identity, candidateSha256: hash, reviewId: identity, policyVersion: identity,
-  candidateMemoryType: agentMemoryTypeSchema, targetMemoryType: agentMemoryTypeSchema,
   createdAt: timestamp, expiresAt: timestamp
 }).strict();
+
+const receiptV2Schema = z.object({
+  schemaVersion: z.literal(schemaVersion), receiptId: z.string().regex(/^MEM-PROMOTE-[a-f0-9]{64}$/),
+  receiptSha256: hash, status,
+  tenantId: identity, principalUserId: identity, agentId: identity, taskId: identity, runId: identity,
+  candidateId: identity, candidateSha256: hash, reviewId: identity, policyVersion: identity,
+  candidateMemoryType: observationalCandidateTypeSchema, targetMemoryType: agentMemoryTypeSchema,
+  createdAt: timestamp, expiresAt: timestamp
+}).strict();
+
+const receiptSchema = z.discriminatedUnion("schemaVersion", [legacyReceiptSchema, receiptV2Schema]);
 
 export interface AgentMemoryPromotionIntent {
   readonly tenantId: string;
@@ -41,23 +55,42 @@ export interface AgentMemoryPromotionIntent {
   readonly candidateSha256: string;
   readonly reviewId: string;
   readonly policyVersion: string;
-  readonly candidateMemoryType: AgentMemoryType;
+  readonly candidateMemoryType: ObservationalCandidateType;
   readonly targetMemoryType: AgentMemoryType;
   readonly expiresAt: string;
 }
 
-export interface AgentMemoryPromotionReceipt extends AgentMemoryPromotionIntent {
-  readonly schemaVersion: typeof schemaVersion;
+interface AgentMemoryPromotionReceiptBase {
   readonly receiptId: string;
   readonly receiptSha256: string;
   readonly status: "prepared" | "committed" | "cancelled" | "expired";
+  readonly tenantId: string;
+  readonly principalUserId: string;
+  readonly agentId: string;
+  readonly taskId: string;
+  readonly runId: string;
+  readonly candidateId: string;
+  readonly candidateSha256: string;
+  readonly reviewId: string;
+  readonly policyVersion: string;
   readonly createdAt: string;
+  readonly expiresAt: string;
 }
+
+export interface AgentMemoryPromotionReceiptV1 extends AgentMemoryPromotionReceiptBase {
+  readonly schemaVersion: typeof legacySchemaVersion;
+}
+
+export interface AgentMemoryPromotionReceiptV2 extends AgentMemoryPromotionReceiptBase, AgentMemoryPromotionIntent {
+  readonly schemaVersion: typeof schemaVersion;
+}
+
+export type AgentMemoryPromotionReceipt = AgentMemoryPromotionReceiptV1 | AgentMemoryPromotionReceiptV2;
 
 export function createAgentMemoryPromotionReceipt(
   rawIntent: AgentMemoryPromotionIntent,
   now: Date = new Date()
-): AgentMemoryPromotionReceipt {
+): AgentMemoryPromotionReceiptV2 {
   const intent = intentSchema.parse(rawIntent);
   validateMemoryTypeTransition(intent.candidateMemoryType, intent.targetMemoryType);
   const createdAt = validNow(now);
@@ -75,34 +108,15 @@ export function createAgentMemoryPromotionReceipt(
     createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(expiresAt).toISOString()
   } as const;
   const receiptSha256 = sha256(body);
-  return {
-    ...body,
-    receiptId: `MEM-PROMOTE-${sha256({ ...body, receiptSha256 })}`,
-    receiptSha256,
-    status: "prepared"
-  };
+  return { ...body, receiptId: `MEM-PROMOTE-${sha256({ ...body, receiptSha256 })}`, receiptSha256 };
 }
 
 export function validateAgentMemoryPromotionReceipt(raw: unknown): AgentMemoryPromotionReceipt {
   const receipt = receiptSchema.parse(raw);
+  if (receipt.schemaVersion === legacySchemaVersion) return validateLegacyReceipt(receipt);
   validateMemoryTypeTransition(receipt.candidateMemoryType, receipt.targetMemoryType);
-  const body = {
-    schemaVersion,
-    status: receipt.status,
-    tenantId: receipt.tenantId, principalUserId: receipt.principalUserId, agentId: receipt.agentId,
-    taskId: receipt.taskId, runId: receipt.runId, candidateId: receipt.candidateId,
-    candidateSha256: receipt.candidateSha256, reviewId: receipt.reviewId, policyVersion: receipt.policyVersion,
-    candidateMemoryType: receipt.candidateMemoryType, targetMemoryType: receipt.targetMemoryType,
-    createdAt: receipt.createdAt, expiresAt: receipt.expiresAt
-  } as const;
-  if (receipt.receiptSha256 !== sha256(body) || receipt.receiptId !== `MEM-PROMOTE-${sha256({ ...body, receiptSha256: receipt.receiptSha256 })}`) {
-    throw new Error("Agent Memory promotion receipt hash is invalid");
-  }
-  const createdAt = validTimestamp(receipt.createdAt, "creation");
-  const expiresAt = validTimestamp(receipt.expiresAt, "expiry");
-  if (expiresAt <= createdAt || expiresAt - createdAt > maxReceiptLifetimeMs) {
-    throw new Error("Agent Memory promotion receipt time window is invalid");
-  }
+  validateReceiptHash(receipt, receiptV2Body(receipt));
+  validateReceiptWindow(receipt);
   return receipt;
 }
 
@@ -110,8 +124,11 @@ export function replayAgentMemoryPromotionReceipt(
   rawReceipt: unknown,
   rawIntent: AgentMemoryPromotionIntent,
   now: Date = new Date()
-): AgentMemoryPromotionReceipt {
+): AgentMemoryPromotionReceiptV2 {
   const receipt = validateAgentMemoryPromotionReceipt(rawReceipt);
+  if (receipt.schemaVersion === legacySchemaVersion) {
+    throw new Error("Agent Memory promotion receipt does not bind Memory types");
+  }
   const intent = intentSchema.parse(rawIntent);
   if (receipt.status !== "prepared") throw new Error("Agent Memory promotion receipt is no longer replayable");
   if (validNow(now) >= Date.parse(receipt.expiresAt)) throw new Error("Agent Memory promotion receipt is expired");
@@ -123,6 +140,49 @@ export function replayAgentMemoryPromotionReceipt(
     throw new Error("Agent Memory promotion receipt intent conflict");
   }
   return receipt;
+}
+
+function validateLegacyReceipt(receipt: z.infer<typeof legacyReceiptSchema>): AgentMemoryPromotionReceiptV1 {
+  const body = {
+    schemaVersion: legacySchemaVersion,
+    status: receipt.status,
+    tenantId: receipt.tenantId, principalUserId: receipt.principalUserId, agentId: receipt.agentId,
+    taskId: receipt.taskId, runId: receipt.runId, candidateId: receipt.candidateId,
+    candidateSha256: receipt.candidateSha256, reviewId: receipt.reviewId, policyVersion: receipt.policyVersion,
+    createdAt: receipt.createdAt, expiresAt: receipt.expiresAt
+  } as const;
+  validateReceiptHash(receipt, body);
+  validateReceiptWindow(receipt);
+  return receipt;
+}
+
+function receiptV2Body(receipt: z.infer<typeof receiptV2Schema>) {
+  return {
+    schemaVersion,
+    status: receipt.status,
+    tenantId: receipt.tenantId, principalUserId: receipt.principalUserId, agentId: receipt.agentId,
+    taskId: receipt.taskId, runId: receipt.runId, candidateId: receipt.candidateId,
+    candidateSha256: receipt.candidateSha256, reviewId: receipt.reviewId, policyVersion: receipt.policyVersion,
+    candidateMemoryType: receipt.candidateMemoryType, targetMemoryType: receipt.targetMemoryType,
+    createdAt: receipt.createdAt, expiresAt: receipt.expiresAt
+  } as const;
+}
+
+function validateReceiptHash(
+  receipt: Pick<AgentMemoryPromotionReceiptBase, "receiptId" | "receiptSha256">,
+  body: Record<string, unknown>
+): void {
+  if (receipt.receiptSha256 !== sha256(body) || receipt.receiptId !== `MEM-PROMOTE-${sha256({ ...body, receiptSha256: receipt.receiptSha256 })}`) {
+    throw new Error("Agent Memory promotion receipt hash is invalid");
+  }
+}
+
+function validateReceiptWindow(receipt: Pick<AgentMemoryPromotionReceiptBase, "createdAt" | "expiresAt">): void {
+  const createdAt = validTimestamp(receipt.createdAt, "creation");
+  const expiresAt = validTimestamp(receipt.expiresAt, "expiry");
+  if (expiresAt <= createdAt || expiresAt - createdAt > maxReceiptLifetimeMs) {
+    throw new Error("Agent Memory promotion receipt time window is invalid");
+  }
 }
 
 function validNow(value: Date): number {
