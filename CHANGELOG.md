@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 `scripts/drain-local-dipole.sh`，支持迁移成功后的本机降载预览与显式执行；仅停止 `dipole*` 容器，保留卷/镜像并避开无关项目，补充脚本契约测试和恢复说明。
+
 - 2026-08-30：Remote GPU 在断开临时 module proxy 后使用本地缓存、用户态 Go 1.27.0 完成完全离线 `scripts/remote-dev.sh test`；Go test、Compose、服务布局和架构文档门禁全部通过，退出码为 `0`。为降低本机负载，Dipole 本地 Compose、隔离 smoke 和观测拓扑已停止，未删除卷或镜像。
 
 - 2026-08-30：Remote GPU 在用户态 Go 1.27.0、受控只读 module proxy 和提交 `a92b9a8c` 上完成远端 canonical 验证；Go test、Compose、服务布局与架构文档门禁全部通过，退出码为 `0`。本机 Dipole Compose 拓扑已停止，远端未启动容器。
