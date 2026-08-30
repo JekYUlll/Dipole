@@ -32,3 +32,20 @@ test("lightweight smoke targets only the gateway dependency closure", () => {
     assert.equal(closure.has(optional), false, `${optional} must stay outside the smoke closure`);
   }
 });
+
+test("web sync observability smoke stays isolated and does not claim promotion", () => {
+  const script = execFileSync("cat", [path.join(root, "scripts/smoke-web-sync-observability.sh")], {
+    encoding: "utf8",
+  });
+
+  for (const required of [
+    "--profile observability up -d --wait gateway prometheus",
+    "http://127.0.0.1:9100/metrics",
+    "DIPOLE_PROMETHEUS_PORT:-9090",
+    "dipole-core dipole-message dipole-sync dipole-gateway",
+    "api/v1/targets?state=active",
+    "does not start a Web Sync promotion observation window",
+  ]) {
+    assert.match(script, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
+});

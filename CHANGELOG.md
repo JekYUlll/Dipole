@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Web Sync 开发观察新增隔离 Prometheus smoke 与远程入口；Gateway/Prometheus 宿主端口默认限制为 loopback，验证必要服务 metrics target 后自动清理。该 smoke 不启动 24 小时观察会话，也不构成晋级证据。
+
 - 2026-08-30：移除无引用的旧蓝色 PNG 主标；项目入口统一使用深青绿与橙色 Signal SVG 视觉系统。
 
 - 2026-08-30：Remote GPU 已为 `b0e4f2523392796837af6130f6c3b27c5b5400de` 生成不可变 Web Sync Shadow bundle `web-sync-shadow-b0e4f2523392-20260830`，SHA-256 为 `7d815e968dfd489b8c6ec43f7ebe27a46cac15e28b593bb414db904a945151a5`。构建与归档准备完成，尚未连接 Prometheus 或启动 24 小时真实流量观察。

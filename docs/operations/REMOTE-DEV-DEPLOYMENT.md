@@ -24,6 +24,7 @@ scripts/remote-dev.sh preflight  # 只读检查远端
 scripts/remote-dev.sh test       # 远端 Go canonical 测试和静态门禁，要求 Go 1.26+
 scripts/remote-dev.sh node-test  # 远端 Agent/Frontend Node 测试、类型检查和构建
 scripts/remote-dev.sh multipart-smoke # 远端 MinIO Multipart 生命周期 smoke，不申请 GPU
+scripts/remote-dev.sh web-sync-observability-smoke # 隔离 Prometheus 与 Core/Sync 观测连通性 smoke
 scripts/remote-dev.sh build      # 远端构建候选镜像
 scripts/remote-dev.sh bench      # 远端运行完整基准
 scripts/remote-dev.sh down       # 仅停止本次 project
@@ -43,6 +44,8 @@ scripts/remote-dev.sh build
 `multipart-smoke` 只创建脚本自有的随机命名临时 MinIO 容器，使用 `GOTOOLCHAIN=local` 和 `DIPOLE_REMOTE_GO_ROOT` 提供的远端 Go 工具链；该动作不申请 GPU，也不经过活动 GPU 阻断，但仍要求脚本退出时完成容器清理。
 
 `multipart-restart-smoke` 在相同隔离边界内上传首个分片，重启临时 MinIO 容器，再继续上传并完成对象，用于验证 Multipart 数据卷持久性。该动作不申请 GPU，不触碰其他容器或卷。
+
+`web-sync-observability-smoke` 使用独立 Compose project，在 `127.0.0.1:18080` 和 `127.0.0.1:19090` 启动 Gateway 与 Prometheus，验证 Core、Message、Sync、Gateway 的 metrics target 全部可抓取。默认退出后清理本项目容器和卷；它不生成 incoming-direct 对照流量，不启动 24 小时观察会话，也不构成 Web Sync 晋级证据。保留栈仅可用于已批准的后续观察准备：`KEEP_STACK=1`。
 
 管理员已将 Go 1.27.0 以用户态方式放置于 `/home/admin1/.local/go-1.27.0`。远程入口未指定 `DIPOLE_REMOTE_GO_ROOT` 时会自动发现该工具链；需要固定版本时仍可显式指定：
 

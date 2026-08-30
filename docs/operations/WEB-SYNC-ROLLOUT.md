@@ -2,6 +2,8 @@
 
 本文档用于将 Web 客户端从旧 `/messages/offline` 增量链路渐进迁移到 `/sync`。所有阶段都保留可回切构建，真实流量观测结果需要单独归档，规则测试通过仅证明门禁表达式有效。
 
+开发环境可先运行 `scripts/remote-dev.sh web-sync-observability-smoke` 验证隔离 Prometheus、Core、Message、Sync 与 Gateway 的 metrics 连通性。该动作只绑定 loopback 端口并默认清理环境；它不产生真实 incoming-direct 对照样本，不能替代本手册定义的 24 小时观察会话。
+
 ## 1. 适用范围
 
 首批对照范围固定为 `incoming_direct`，只覆盖当前用户收到的私聊消息：

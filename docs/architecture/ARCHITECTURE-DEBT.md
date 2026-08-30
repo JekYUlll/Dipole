@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：A6 增加 Remote GPU 隔离 observability smoke：独立 Compose project 使用 loopback Gateway/Prometheus 端口，检查 Core、Message、Sync、Gateway 的 metrics target。该动作默认清理环境，且不注入 incoming-direct 流量、不创建观察 Session，真实 24 小时窗口与晋级仍保持开放。
+
 - 2026-08-30：Remote GPU 已完成 Web Sync Shadow 候选 `b0e4f252` 的不可变 bundle 构建与 SHA-256 固定，候选可作为观察会话输入；Prometheus 抓取、Sync Projector lag/告警清零与 incoming-direct 真实流量尚未部署，因此 24 小时窗口未开始，不能推导 `promotion_ready`。
 
 - 2026-08-30：Web Sync bundle 打包默认来源已对齐 Vite 的真实生产输出目录，消除 Shadow 候选构建完成后仍因读取已废弃 `frontend/dist` 而无法归档的发布链路漂移；真实 Prometheus 观察窗口仍待开始。

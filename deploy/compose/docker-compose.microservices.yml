@@ -565,7 +565,7 @@ services:
       DIPOLE_METRICS_ENABLED: "true"
       DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     ports:
-      - "${DIPOLE_GATEWAY_PORT:-8080}:8080"
+      - "${DIPOLE_GATEWAY_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_GATEWAY_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
       interval: 5s
@@ -580,7 +580,7 @@ services:
     volumes:
       - ../../deploy/observability:/etc/prometheus:ro
     ports:
-      - "9090:9090"
+      - "${DIPOLE_PROMETHEUS_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_PROMETHEUS_PORT:-9090}:9090"
 
   tempo:
     profiles: ["observability"]

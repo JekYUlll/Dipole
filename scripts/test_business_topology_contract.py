@@ -49,9 +49,14 @@ class BusinessTopologyContractTest(unittest.TestCase):
     def test_business_cluster_can_override_gateway_host_port(self):
         compose = (ROOT / "deploy/compose/docker-compose.microservices.yml").read_text(encoding="utf-8")
         script = (ROOT / "scripts/bench/business_cluster_topology.sh").read_text(encoding="utf-8")
-        self.assertIn("${DIPOLE_GATEWAY_PORT:-8080}:8080", compose)
+        self.assertIn("${DIPOLE_GATEWAY_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_GATEWAY_PORT:-8080}:8080", compose)
         self.assertIn("BUSINESS_CLUSTER_GATEWAY_PORT", script)
         self.assertIn("18080", script)
+
+    def test_microservices_observability_ports_default_to_loopback(self):
+        compose = (ROOT / "deploy/compose/docker-compose.microservices.yml").read_text(encoding="utf-8")
+
+        self.assertIn("${DIPOLE_PROMETHEUS_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_PROMETHEUS_PORT:-9090}:9090", compose)
 
     def test_business_cluster_routes_mysql_through_innodb_cluster(self):
         compose = (ROOT / "deploy/compose/docker-compose.business-cluster.yml").read_text(encoding="utf-8")

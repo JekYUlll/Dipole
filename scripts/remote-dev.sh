@@ -27,7 +27,7 @@ REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|sync-ownership|web-sync-bundle|multipart-smoke|multipart-restart-smoke|bench|recovery|down>
+Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|web-sync-observability-smoke|sync-ownership|web-sync-bundle|multipart-smoke|multipart-restart-smoke|bench|recovery|down>
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
@@ -226,6 +226,16 @@ case "${action}" in
     fi
     ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
+  web-sync-observability-smoke)
+    COMPOSE_PROJECT_NAME="${project}" \
+      DIPOLE_COMPOSE_FILE="${REMOTE_COMPOSE_FILE}" \
+      DIPOLE_HOST_PROFILE=remote-gpu \
+      DIPOLE_GATEWAY_BIND_ADDRESS=127.0.0.1 \
+      DIPOLE_GATEWAY_PORT=18080 \
+      DIPOLE_PROMETHEUS_BIND_ADDRESS=127.0.0.1 \
+      DIPOLE_PROMETHEUS_PORT=19090 \
+      scripts/smoke-web-sync-observability.sh
+    ;;
   sync-ownership)
     GOTOOLCHAIN=local scripts/smoke-sync-write-ownership.sh
     ;;
@@ -331,6 +341,7 @@ case "${1:-}" in
   node-test) sync_revision; run_remote node-test ;;
   build) sync_revision; guard_start; run_remote build ;;
   smoke-lite) sync_revision; guard_start; run_remote smoke-lite ;;
+  web-sync-observability-smoke) sync_revision; guard_start; run_remote web-sync-observability-smoke ;;
   sync-ownership) sync_revision; run_remote sync-ownership ;;
   web-sync-bundle) sync_revision; run_remote web-sync-bundle ;;
   multipart-smoke) sync_revision; run_remote multipart-smoke ;;
