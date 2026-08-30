@@ -68,6 +68,15 @@ docker compose \
 
 执行前归档 grant、manifest SHA-256、Core/Runtime revision 和回滚工单；完成后至少演练一次有效 receipt 的 Activity 重试与一次失效 grant 拒绝。缺少共享环境证据时，该 overlay 继续只作为受控候选，不提升为默认路径。
 
+演练结束后将脱敏结果写入独立 JSON，再执行：
+
+```bash
+cd services/agent-runtime
+npm run promotion:memory-worker-drill -- --evidence=/secure/path/worker-drill.json
+```
+
+该 CLI 只接受同一候选的 revision、manifest/configuration/promotion-evidence 摘要、grant ID、Temporal queue、首个 commit、重试结果、失效 grant 拒绝和回滚结果。仅 `eligible` 表示记录完整；它不会访问上述系统或代替原始日志、监控快照和审批工单。
+
 ## 5. 渲染与启动
 
 在隔离 project 目录中准备 Secret 注入后，先进行无副作用渲染：

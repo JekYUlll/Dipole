@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 Memory receipt `promotion:memory-worker-drill` evidence 契约与 CLI，将共享环境的候选版本、manifest/configuration/evidence 摘要、grant、首个提交、重试幂等、失效 grant 拒绝和回滚结果收敛为低敏 decision。CLI 不连接 Runtime、Temporal、Core 或数据库，也不提供写入授权；缺少任一演练结果固定为 `blocked`。
+
 - 2026-08-30：新增默认不加载的 `agent-memory-promotion.yml` overlay 与 `promotion_active` Temporal Worker profile。提交 Activity 只有在 active Runtime、Temporal、Capability RPC mTLS、显式 `operator_approved` authority、Runtime 开关和 Core receipt commit 开关同时成立时才会装配；Profile 继续拒绝 Control、MCP、自动 Memory、subscription 与消息写入。共享环境重放、失效 grant 和回滚证据仍待完成。
 
 - 2026-08-30：Core bootstrap 为 receipt commit 增加 `internal_rpc.agent_memory_promotion_receipt_commit_enabled` 显式开关，默认关闭；仅在内部 RPC 已启用 mTLS 时才构造并注入 commit service。Compose 同步保持 `DIPOLE_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED=false`，Temporal Worker 仍未装配写 Activity。

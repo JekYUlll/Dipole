@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-promotion/v2/worker-drill-evidence.schema.json",
+  "title": "Dipole Agent Memory Promotion Worker Drill Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sharedEnvironment", "runtimeRevision", "candidateVersion", "releaseManifestSha256", "configurationSha256", "promotionEvidenceReceiptSha256", "grantId", "temporalTaskQueue", "temporalActivityMode", "coreReceiptCommitEnabled", "capabilityRpcMTLS", "operatorAuthority", "firstCommit", "retry", "revokedGrant", "rollback", "observedAt"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-promotion-worker-drill-evidence.v1" },
+    "sharedEnvironment": { "type": "boolean" },
+    "runtimeRevision": { "type": "string", "pattern": "^[a-f0-9]{40}$|^[a-f0-9]{64}$" },
+    "candidateVersion": { "type": "string", "minLength": 2, "maxLength": 128 },
+    "releaseManifestSha256": { "$ref": "#/$defs/sha256" },
+    "configurationSha256": { "$ref": "#/$defs/sha256" },
+    "promotionEvidenceReceiptSha256": { "$ref": "#/$defs/sha256" },
+    "grantId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "temporalTaskQueue": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "temporalActivityMode": { "enum": ["promotion_active", "other"] },
+    "coreReceiptCommitEnabled": { "type": "boolean" },
+    "capabilityRpcMTLS": { "type": "boolean" },
+    "operatorAuthority": { "enum": ["operator_approved", "other"] },
+    "firstCommit": { "$ref": "#/$defs/commit" },
+    "retry": { "$ref": "#/$defs/commit" },
+    "revokedGrant": { "enum": ["denied", "failed", "not_run"] },
+    "rollback": { "enum": ["rolled_back", "failed", "not_run"] },
+    "observedAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receiptId", "receiptSha256", "memoryId", "outcome"],
+      "properties": {
+        "receiptId": { "type": "string", "pattern": "^MEM-PROMOTE-[a-f0-9]{64}$" },
+        "receiptSha256": { "$ref": "#/$defs/sha256" },
+        "memoryId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "outcome": { "enum": ["committed", "replayed", "failed", "not_run"] }
+      }
+    }
+  }
+}

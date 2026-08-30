@@ -29,6 +29,7 @@
     "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",
     "promotion:check": "tsx src/promotion/promotion-check-cli.ts",
     "promotion:publish": "tsx src/promotion/promotion-evidence-publish-cli.ts",
+    "promotion:memory-worker-drill": "tsx src/promotion/memory-promotion-worker-drill-cli.ts",
     "mcp:readiness:publish": "tsx src/mcp/external-mcp-readiness-publish-cli.ts",
     "mcp:credential-drill:check": "tsx src/runtime/external-mcp-credential-lifecycle-evidence-cli.ts",
     "mcp:shadow-drill:check": "tsx src/runtime/external-mcp-shadow-drill-evidence-cli.ts",

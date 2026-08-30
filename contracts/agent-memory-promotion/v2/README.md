@@ -9,3 +9,5 @@ v2 在 v1 的 tenant、owner、Agent、Task/Run、candidate/review 哈希和短�
 `receiptSha256` 对规范 body 计算，`receiptId` 对 body 与 receipt hash 计算。candidate summary、evidence、消息正文、凭据和外部工具结果不得进入 receipt。
 
 [Active Executor 设计](ACTIVE-EXECUTOR-DESIGN.md) 固定 receipt 到 Core 的后续提交边界：Runtime 只能提交低敏 receipt binding，Core 重新恢复 Task/Run 的权威身份、验证 active admission 与有效 promotion grant，并在已有 candidate/review 事务中执行幂等写入。
+
+[Worker drill evidence](worker-drill-evidence.schema.json) 记录共享环境中同一候选的 commit、重试幂等、撤销 grant 拒绝与回滚演练。对应 `promotion:memory-worker-drill` CLI 只校验输入的一致性并产生低敏 decision；它不连接 Runtime、Temporal、Core 或数据库，不能替代真实运行记录或提供写入授权。

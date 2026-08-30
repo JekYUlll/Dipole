@@ -61,6 +61,7 @@
 | Owner-reviewed Memory 类型晋级 | **已验证（本地）** | 受控 candidate/review 选择 semantic 等持久类型；Temporal 只在显式 commit 请求下调用可注入 Activity | [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)；“为何 working 不能晋级？” |
 | Receipt Commit 最小权限接线 | **默认关闭** | Core 以 mTLS 配置门禁按需注册仅含 receipt commit 的 Agent RPC；其余 Agent 能力不在独立 Core 暴露 | [active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)；“为何不用完整 Agent RPC adapter？” |
 | Receipt Commit Active Worker | **默认关闭** | 独立 `promotion_active` Worker 需同时通过 Runtime、mTLS、operator authority 与 Core/Runtime 双开关门禁 | [Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)；“为什么仍需要 Core grant？” |
+| Receipt Commit Drill Evidence | **已验证（本地）** | 将共享环境 commit、重试、grant 撤销与回滚演练压缩为低敏、可判定的 evidence record | [Worker drill 契约](../../contracts/agent-memory-promotion/v2/worker-drill-evidence.schema.json)、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)；“CLI 能否代替真实演练？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
@@ -94,6 +95,16 @@
 - **追问：** “为什么 Worker 已有 operator authority 还需要 Core grant？” Worker authority 只控制是否能尝试调用，Core 仍从持久 Task/Run 恢复主体并复核 active admission、有效 grant、receipt 与 candidate/review，避免环境配置成为数据写入授权。
 - **限制：** 当前仅有本地配置与 Activity 组合测试；共享环境的有效提交、Temporal 重试、失效 grant、观测窗口和回滚演练尚未归档，默认不加载该 overlay。
 - **复核条件：** 修改 release manifest、Runtime profile、Core grant、mTLS、Temporal queue 或 receipt schema 时。
+
+#### 2026-08-30 · Receipt Commit Drill Evidence
+
+- **状态：** 已验证（本地）
+- **对外表述：** 为 Agent Memory receipt 的受控写入演练建立独立 evidence contract，将首个 commit、重试幂等、失效 grant 拒绝与 overlay 回滚绑定到同一候选版本和摘要，缺少任一结果即保持 blocked。
+- **演示：** 使用脱敏演练 JSON 运行 `npm run promotion:memory-worker-drill -- --evidence=<path>`，确认完整记录返回 `eligible`；将 retry 的 Memory ID 改为不同值，确认返回 `blocked`。
+- **证据：** [Worker drill 契约](../../contracts/agent-memory-promotion/v2/worker-drill-evidence.schema.json)、`services/agent-runtime/src/promotion/memory-promotion-worker-drill-evidence.test.ts`、`services/agent-runtime/src/promotion/memory-promotion-worker-drill-cli.test.ts`。
+- **追问：** “CLI 能否代替真实演练？” CLI 只检查人工归档结果的绑定和完整性，不访问实际系统；原始服务日志、Temporal 记录、指标快照、审批和回滚工单仍是共享环境证据的一部分。
+- **限制：** 当前通过的是本地契约与 CLI；没有任何共享环境提交、grant 撤销或回滚运行记录，因此默认写路径继续关闭。
+- **复核条件：** 修改 receipt、grant、Worker profile、Core 入口或演练标准时。
 
 #### 2026-08-30 · Artifact 与 Task Timeline 关联
 
