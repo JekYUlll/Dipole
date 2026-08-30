@@ -77,7 +77,7 @@ func TestMultipartReconciliationWithRealMinIOAndRedis(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	matched := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, "message-files/", 100)
+	matched := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, objectKey, 100)
 	if !matched.Complete || matched.RedisKeysScanned != 1 || matched.MinIOUploadsSeen != 1 || matched.MissingRedis != 0 || matched.MissingMinIO != 0 {
 		t.Fatalf("matching stores reported drift: %+v", matched)
 	}
@@ -85,7 +85,7 @@ func TestMultipartReconciliationWithRealMinIOAndRedis(t *testing.T) {
 	if err := redisClient.Del(ctx, redisKey).Err(); err != nil {
 		t.Fatalf("delete matching session: %v", err)
 	}
-	missingRedis := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, "message-files/", 100)
+	missingRedis := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, objectKey, 100)
 	if !missingRedis.Complete || missingRedis.MissingRedis != 1 || missingRedis.MissingMinIO != 0 {
 		t.Fatalf("missing Redis metadata was not detected: %+v", missingRedis)
 	}
@@ -95,7 +95,7 @@ func TestMultipartReconciliationWithRealMinIOAndRedis(t *testing.T) {
 	if err := redisClient.Set(ctx, orphanKey, orphanPayload, 10*time.Minute).Err(); err != nil {
 		t.Fatalf("write orphan session: %v", err)
 	}
-	orphan := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, "message-files/", 100)
+	orphan := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, objectKey, 100)
 	if !orphan.Complete || orphan.MissingRedis != 1 || orphan.MissingMinIO != 1 {
 		t.Fatalf("cross-store drift was not fully detected: %+v", orphan)
 	}
