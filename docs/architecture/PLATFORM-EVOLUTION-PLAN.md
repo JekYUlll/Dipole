@@ -386,7 +386,9 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] cleanup smoke 已覆盖 MinIO listing 收敛等待与完整对象键隔离，确认服务端实际 Abort 后无残留；生产 cleanup 的 `message-files/` 前缀和默认 dry-run 语义保持不变。
   - [x] File Service 过期 session fail-closed 回归测试覆盖 status、presign、register、upload、complete 和 abort，确认过期会话不会触发 MinIO 调用；Redis/MinIO 真实 TTL 故障矩阵仍待完成。
   - [x] Redis session store 回归测试覆盖 metadata/parts 同步 TTL、分片写入续期和 completion receipt 独立 TTL；真实 Redis/MinIO 联合故障注入仍待完成。
-  - [x] 增加隔离真实 MinIO+Redis reconciliation smoke，验证匹配、missing Redis metadata 和 Redis orphan drift；服务重启、TTL 到期 race、网关限流和指标故障注入仍待完成。
+  - [x] 增加隔离真实 MinIO+Redis reconciliation smoke，验证匹配、missing Redis metadata 和 Redis orphan drift。
+  - [x] 增加可选 Redis restart 故障注入：重启后 fail-closed 识别 metadata 缺失，并继续清理 MinIO incomplete upload；默认 smoke 不启用该注入。
+  - [ ] 补充 cleanup race、网关限流和指标故障注入，并形成完整故障矩阵。
 
 **验收：** 预签名直传在授权范围内完成 Multipart；暂停/恢复、重试、校验和清理可观测；MinIO 故障和客户端中断均能安全回滚到旧路径，未完成 upload 不长期占用对象存储。
 
