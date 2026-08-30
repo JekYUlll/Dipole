@@ -121,6 +121,9 @@
 
 ## [Unreleased]
 
+- 将开发部署、代码同步、镜像构建和完整压测统一收敛到 Remote GPU 工作流，新增 `scripts/remote-dev.sh`；本机不启动完整 Compose，远端动作绑定已提交 revision、隔离 Compose project，并在活动用户或 GPU 任务存在时默认 fail-closed。
+- 新增低资源只读 HTTP 负载探针 `scripts/bench/http-read-load.sh`，固定 GET 并输出请求成功率与 P50/P95/P99，可用于 TencentCloud_01 的健康检查和认证边界回归；完整吞吐、WebSocket、Kafka lag 与故障证据仍使用既有 k6 基准。
+
 - 2026-08-30：补充 TencentCloud_01 只读占用核验：现有 `nkdoing-app` 使用公网 `80`，`nkdoing-postgres` 使用本机 `5432`，宿主 MySQL 监听 `3306`；Dipole 轻量 smoke 仍需独立 Compose project、端口和卷，并等待业务影响确认后执行，当前未启动容器。
 
 - 2026-08-30：完成两台开发主机的只读 preflight：Remote GPU（224 vCPU、可用内存约 163510 MiB、可用磁盘约 1084340 MiB）和 TencentCloud_01（2 vCPU、可用内存约 1172 MiB、可用磁盘约 34347 MiB）均通过对应 profile；未启动容器，实际部署和负载测试仍等待维护窗口。
