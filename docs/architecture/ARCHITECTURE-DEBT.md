@@ -1128,6 +1128,7 @@
 - **Smoke 完成证据：** 2026-08-30 将 `mysql:8.4` 通过一次性 SSH 流式导入远端后，在提交 `f227401a` 对隔离 Compose project 重跑 `smoke-lite`；MySQL、Redis、Kafka、MinIO、Core、Message、Sync、Gateway 全部 healthy，Gateway readiness、认证代理和可选服务隔离通过。退出清理核验无该 project 容器或卷残留，完整基线压测、故障注入和共享环境证据仍待完成。
 - **入口只读基线：** 2026-08-30 在同一提交和独立 Compose project 上执行 1000 次 Gateway `/health`、并发 16；成功 `1000`、失败 `0`，P50/P95/P99 为 `0.000521/0.000791/0.001960s`，退出后无容器或卷残留。该结果只覆盖入口健康请求稳定性，不支持消息吞吐、WebSocket 投递、Kafka lag 或成员 fan-out 结论。
 - **C1 工具边界：** 当前 `scripts/bench/run_bench.sh` 面向旧三节点单体候选拓扑，需要 revision 匹配的 `dipole-server` 镜像和远端 `k6`；当前微服务 Smoke 使用独立 Compose 拓扑。后续必须先完成候选拓扑构建/工具链前置，再采集完整 C1 基线，避免混用两种部署模型。
+- **C1 候选构建入口：** 2026-08-30 `scripts/remote-dev.sh build` 增加默认关闭的 `DIPOLE_REMOTE_BUILD_CANDIDATE=1` 开关；开启后按当前提交构建 `dipole-server:c1-<commit>` 并写入 revision、创建时间和 `dirty=false` provenance，默认微服务构建路径保持不变。远端 k6 和三节点候选 Compose 启动仍待验证。
 - **构建上下文优化：** Go 服务镜像 Dockerfile 改为从 `dist/` 上下文复制指定二进制，构建脚本不再为每个镜像发送根目录上下文；契约测试覆盖上下文和 COPY 关系。Agent/C++ 镜像上下文保持独立，远端实际构建需进一步确认上下文大小与耗时收益。
 - **变量修复证据：** 首次远端实测发现上下文切换代码引用未定义的大写变量 `ROOT_DIR`，在镜像构建前 fail-closed；已改为脚本实际定义的 `root_dir`，6 项入口契约/语法测试通过，未产生错误镜像或容器。下一次远端 build 负责确认最小上下文实测值。
 - **TencentCloud 占用证据：** 同次只读核验发现已有 `nkdoing-app` 容器占用公网 `80`、`nkdoing-postgres` 绑定本机 `5432`，宿主 MySQL 监听 `3306`；因此 TencentCloud 只能在明确端口、Compose project、卷和业务影响隔离后执行轻量 smoke，不能视为干净测试主机。
