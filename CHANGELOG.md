@@ -122,7 +122,7 @@
 ## [Unreleased]
 
 - preflight 现在区分 Docker Compose 插件缺失和 Compose 文件无效，Remote GPU 缺少 `docker compose` 时会以 `compose=plugin-missing` fail-closed；不会自动安装主机组件。
-- Remote GPU 首次代码同步验证通过：`scripts/remote-dev.sh sync` 创建 `/home/zhangzhuyu/workspaces/Dipole` 并检出 `5952afa9`；未启动容器，部署与压测继续等待维护窗口。
+- Remote GPU 代码同步已更新至 `c3739971`；资源 preflight 通过，但因主机缺少 Docker Compose v2 插件返回 `compose=plugin-missing`，未启动容器，部署与压测继续等待维护窗口。
 - 修正 Remote GPU 默认工作目录为实际账号可用的 `/home/zhangzhuyu/workspaces/Dipole`，并补充首次同步自动创建目录的说明；不改变现有主机保护和隔离 project 规则。
 - 将开发部署、代码同步、镜像构建和完整压测统一收敛到 Remote GPU 工作流，新增 `scripts/remote-dev.sh`；本机不启动完整 Compose，远端动作绑定已提交 revision、隔离 Compose project，并在活动用户或 GPU 任务存在时默认 fail-closed。
 - 新增低资源只读 HTTP 负载探针 `scripts/bench/http-read-load.sh`，固定 GET 并输出请求成功率与 P50/P95/P99，可用于 TencentCloud_01 的健康检查和认证边界回归；完整吞吐、WebSocket、Kafka lag 与故障证据仍使用既有 k6 基准。
