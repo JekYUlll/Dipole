@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Runtime 增加默认关闭的 `DIPOLE_AGENT_RETRIEVAL_ENABLED`。仅在 AI SDK 与受认证 Capability RPC 同时就绪时，Shadow/Temporal read composition 才注册并向模型公开 `conversation.search`；关闭时模型 allowlist、Registry 与执行 Context 均保持 `conversation.list/read`。Core 继续从 Task/Run 恢复身份并约束权限、scope 与有界 untrusted evidence；Elasticsearch、共享环境检索灰度和生产默认路径未改变。
+
 - 2026-08-31：恢复上一版 Signal Link 品牌资产。主字标与紧凑应用图标回到深青双极和橙色事件脉冲，IM 标识表达消息投递链路，Agent 标识表达受控任务能力；保留既有 SVG 文件名和 README 引用，运行时行为不受影响。
 
 - 2026-08-31：新增认证 `/settings` 页面，提供签名更新、低敏 Device Security 入口、当前客户端同步状态与退出登录。设备详情继续由独立隐私页面负责，设置页不显示 IP、节点或连接标识；路由与 Agent 路由测试解除总数硬编码，后续普通页面增加不会削弱 Agent 的认证/开关断言。

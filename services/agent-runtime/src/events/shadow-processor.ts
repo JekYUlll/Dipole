@@ -10,6 +10,7 @@ import { AgentTelemetry } from "../observability/agent-telemetry.js";
 const policyVersion = "dipole.agent.policy.persistence.v1";
 const runIDVersion = "dipole.agent.run.v1";
 const lineageIdentifier = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
+const defaultReadPermissions = ["conversation.list", "conversation.read"] as const;
 
 const eventLineageSchema = z.object({
   origin: z.object({
@@ -165,7 +166,8 @@ export class ShadowEventProcessor {
     private readonly trajectory?: ShadowStepTrajectory,
     private readonly stepLeaseMs = 60_000,
     private readonly dispatcher?: ShadowTaskDispatcher,
-    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
+    private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry(),
+    private readonly readPermissions: readonly string[] = defaultReadPermissions
   ) {
     if ((registry === undefined) !== (trajectory === undefined)) {
       throw new Error("Capability Registry and Step trajectory must be configured together");
@@ -218,7 +220,7 @@ export class ShadowEventProcessor {
         taskId,
         runId: admitted.runId,
         mode: "shadow",
-        permissions: ["conversation.list", "conversation.read"],
+        permissions: this.readPermissions,
         resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
         approvedCapabilities: [],
         eventId: event.eventId,
