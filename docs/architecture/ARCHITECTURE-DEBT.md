@@ -1392,6 +1392,7 @@
 - **本轮进展：** 预签名 Gateway 代理接入按客户端地址的文件上传限流，限流发生在代理调用前并返回 `429`；允许请求才进入 MinIO，原签名与 relay 回退边界不变。
 - **本轮进展：** 新增 fault-matrix 聚合脚本；Remote GPU 确定性 Go 门禁、真实 MinIO/Redis 基础 reconciliation 与 Redis restart smoke 通过，promtool 依赖镜像拉取因 registry 无进展中止，完整矩阵保持未关闭。
 - **本轮收口：** Remote GPU 使用通过临时反向隧道取得并校验的官方 Prometheus `3.5.0` `promtool` 完成告警规则、firing timeline、确定性 Go 门禁、真实 MinIO/Redis reconciliation 与 Redis restart smoke；矩阵退出码为 `0`，GPU 进程前后均为 `0`，Dipole/Multipart 容器为 `0`，远程工作树干净。
+- **本轮验证：** 在 `7601e78e` 上复跑完整矩阵：6 个确定性 Go package、7 条 Prometheus 规则、真实 MinIO/Redis reconciliation 与 Redis restart 注入均通过，脚本退出后无 `dipole-multipart-reconciliation-*` 容器残留。该证据仍是隔离开发期验证，未提供 24 小时 presigned 流量、生产 Alertmanager receiver 或默认模式切换授权。
 - **本轮进展：** 新增 `multipart-presigned-rollout/v1` evidence/policy/report 契约与只读 evaluator。候选切流必须绑定精确策略 SHA-256，在最少 24 小时窗口内同时满足直传样本、fallback/failed/expired/checksum 比率、P95、clear alert、已演练 relay 回退和独立 reviewer；输出哈希 receipt，`blocked` 返回退出码 `2`。该工具没有修改运行时策略，默认仍为 `relay`。
 - **本轮进展：** `check-multipart-policy.mjs` 现以 versioned policy 为基准，同时校验 release manifest、示例配置、Go 默认配置和 Web 离线回退值，避免候选切流前发生参数跨层漂移；环境级覆盖和默认 `presigned` 切换仍受独立 receipt 门禁约束。
 - **下一步：** 在受控共享环境生成同版本真实 evidence receipt，并完成 active/expired/abort/retry 生命周期指标、真实 Prometheus/Alertmanager 路由验收；receipt 通过后仍需经过受审策略变更才可切换预签名默认值。
