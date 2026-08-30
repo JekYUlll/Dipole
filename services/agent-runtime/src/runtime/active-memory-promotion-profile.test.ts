@@ -13,6 +13,8 @@ const profile = {
   mcpServerEnabled: false,
   externalMcpEnabled: false,
   memoryEnabled: false,
+  retrievalEnabled: false,
+  retrievalContextEnabled: false,
   subscriptionShadowEnabled: false
 };
 

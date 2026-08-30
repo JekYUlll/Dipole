@@ -72,6 +72,8 @@ const activeReadSurface = {
   mcpServerEnabled: mcpEnabled,
   externalMcpEnabled,
   memoryEnabled: shadowConfig.memoryEnabled,
+  retrievalEnabled: shadowConfig.retrievalEnabled,
+  retrievalContextEnabled: shadowConfig.retrievalContextEnabled,
   subscriptionShadowEnabled: shadowConfig.subscriptionShadowEnabled
 };
 if (memoryPromotionCommitEnabled || temporalConfig.activityMode === "promotion_active") {

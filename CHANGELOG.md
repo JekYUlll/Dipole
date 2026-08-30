@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：active Agent Runtime 将 retrieval 与 retrieval-to-Context 纳入运行时只读 surface gate。即使绕过 Compose 直接注入环境变量，active/read 或 `promotion_active` profile 也会拒绝扩张到 `conversation.search`；Shadow profile 继续可按独立门禁使用受控检索。
+
 - 2026-08-31：`promotion_active` 现强制使用 `dipole-agent-memory-promotion-` 前缀的独立 Temporal task queue。Runtime profile 和 Compose 渲染门禁会拒绝通用或 read-active 队列，避免 reviewed Memory 提交 Worker 误消费其他任务；默认部署和写入开关不变。
 
 - 2026-08-31：收敛 `promotion_active` 的永久提交失败路径。Memory receipt commit 在 Temporal 用尽重试后，Workflow 现在将错误转换为受限的 Agent Task `failed` 终态并调用既有 `finishAgentTask` 持久化 Run，避免孤立的运行中任务；默认 profile、双开关、mTLS 和共享环境写入状态不变。
