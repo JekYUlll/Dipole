@@ -32,6 +32,7 @@ class BusinessTopologyContractTest(unittest.TestCase):
         self.assertIn("BUSINESS-TOPOLOGY.md", checker)
         self.assertIn("BUSINESS-TOPOLOGY.md", checker)
         self.assertIn("docker-compose.business-cluster.yml", checker)
+        self.assertIn(".source? | (type == \"string\" and endswith", checker)
 
 
 if __name__ == "__main__":
