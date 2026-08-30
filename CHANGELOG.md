@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 的隔离 Node 22 worktree 已复核 Agent Memory promotion 基线：`promotion_active` profile 6 项、in-memory Temporal receipt preparation/retry 2 项与 TypeScript typecheck 全部通过。该验证未启动 Compose、未占用 GPU，且不连接共享 Core、Kafka 或真实 grant，因此默认写路径保持关闭。
+
 - 2026-08-30：`check-compose.sh` 新增 Agent Memory promotion overlay 门禁：叠加 active 与 promotion 配置时，验证 Core receipt commit、`promotion_active` Worker、显式 `operator_approved` authority 与只读能力边界；缺少 authority 时 Compose 渲染必须失败。该检查只验证静态输入，不构成共享环境提交、grant 撤销或回滚证据。
 
 - 2026-08-30：学习、简历与面试主文档加入可执行维护门禁。架构文档检查现验证主文档受版本控制、README/文档目录入口、核心章节和能力卡片模板字段；每个改变服务边界、默认路径、用户流程、性能结论或 Agent 权限的合并切片均须同步叙事与证据。

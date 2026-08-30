@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU 在隔离 Node 22 worktree 上通过 Agent Memory promotion profile、隔离 Temporal receipt retry 与 TypeScript typecheck；运行前后未启动 Dipole Compose 或 GPU workload。该开发期证据不覆盖跨进程 Core、Kafka、真实 grant、撤销或 rollback，`AD-009` 继续开放。
 - 2026-08-30：Agent Memory promotion Compose overlay 已加入正向渲染和缺失 operator authority 的负向门禁，明确 Core receipt commit 与 Agent `promotion_active` 需同时配置；该门禁只覆盖静态配置，真实 Core/Temporal/grant/replay/rollback 联合证据仍是 `AD-009` 的开放条件。
 - 2026-08-30：学习、简历与面试主文档已加入架构文档门禁，入口、核心章节与能力卡片模板字段可自动检查；技术事实仍需在每个合并切片以实现、测试、基准或运行证据人工复核，避免将模板通过误作能力验收。
 - 2026-08-30：架构文档门禁新增索引相对链接校验，覆盖项目、Agent 和契约入口；该检查只验证本地导航存在性，不替代 Schema、运行时和共享环境证据。

@@ -122,6 +122,18 @@
 - **下一步：** 在维护窗口内归档真实 Core/Temporal 的首个提交、幂等重试、grant 撤销和 overlay 回滚证据。
 - **复核条件：** 修改 Worker mode、Core 开关、operator authority、active overlay 或 Compose 基础环境时。
 
+#### 2026-08-30 · Receipt Commit Remote Development Baseline
+
+- **状态：** 已验证（隔离 Remote GPU）
+- **简历句：** 将 Agent Memory promotion 的开发期验证迁移到隔离 Remote GPU worktree，在不占用 GPU 或启动业务容器的前提下复核 durable Workflow 与 TypeScript Runtime 边界。
+- **对外表述：** 固定 Node 22、候选 revision 和隔离 in-memory Temporal，验证 prepared receipt、临时失败重试与严格 promotion profile 配置，避免本机资源压力影响开发门禁。
+- **演示：** 在独立 worktree 运行 `DIPOLE_AGENT_TEMPORAL_INTEGRATION=true npm test -- --run src/temporal/agent-memory-promotion-workflow.integration.test.ts src/runtime/active-memory-promotion-profile.test.ts`，再运行 `npm run typecheck`。
+- **证据：** `services/agent-runtime/src/temporal/agent-memory-promotion-workflow.integration.test.ts`、`services/agent-runtime/src/runtime/active-memory-promotion-profile.test.ts`、[开发工作流](../operations/DEVELOPMENT-WORKFLOW.md)。
+- **追问：** “为什么远端通过仍不能宣称 active Memory 写入已上线？” 该测试使用 in-memory Temporal 和 commit stub，只验证 Worker 的 durable retry 语义及配置边界；真正提交仍依赖 Core mTLS、持久 grant、candidate/review 事务、Kafka 事件与可执行 rollback。
+- **限制：** 未启动 Compose，未连接共享 Core/Kafka，未进行真实 grant 撤销、跨进程 mTLS 或回滚演练。
+- **下一步：** 在维护窗口部署隔离 Core 与 Temporal 后，以受控 candidate/review 验证首次提交、相同 receipt 重试、失效 grant 拒绝与 overlay 回滚。
+- **复核条件：** Node/Temporal SDK、receipt schema、Worker retry、Core RPC 或远程验证工作流变化时。
+
 #### 2026-08-30 · Temporal Receipt Commit Retry
 
 - **状态：** 已验证（隔离 Temporal）
