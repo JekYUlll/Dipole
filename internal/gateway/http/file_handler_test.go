@@ -341,6 +341,43 @@ func TestFileHandlerInitiateMultipartSuccess(t *testing.T) {
 	}
 }
 
+func TestFileHandlerInitiateMultipartRateLimitedBeforeServiceCall(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&stubFileService{
+		initiateMultipartFn: func(string, corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error) {
+			t.Fatalf("multipart service should not be called when rate limited")
+			return nil, nil
+		},
+	}, 50*1024*1024).WithLimiter(&stubFileLimiter{
+		allowFileUploadFn: func(userUUID string) (bool, time.Duration) {
+			if userUUID != "U100" {
+				t.Fatalf("unexpected uploader uuid: %s", userUUID)
+			}
+			return false, 7 * time.Second
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/files/uploads/initiate", bytes.NewBufferString(`{"file_name":"big.bin","file_size":12,"content_type":"application/octet-stream"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.InitiateMultipart(context)
+
+	if recorder.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status 429, got %d", recorder.Code)
+	}
+	var response map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if int(response["code"].(float64)) != code.FileUploadRateLimited {
+		t.Fatalf("expected business code %d, got %v", code.FileUploadRateLimited, response["code"])
+	}
+}
+
 func TestFileHandlerUploadPartSuccess(t *testing.T) {
 	t.Parallel()
 
