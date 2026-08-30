@@ -66,6 +66,7 @@ class BusinessTopologyContractTest(unittest.TestCase):
         self.assertIn("mysql-cluster-init:", compose)
         self.assertIn("mysql_business_cluster_1_data:", compose)
         self.assertIn(".services.mysql.image == \"container-registry.oracle.com/mysql/community-router:8.4\"", checker)
+        self.assertIn("any(.services.mysql.healthcheck.test[]?; . == \"3306\")", checker)
         self.assertIn(".services[\"mysql-cluster-init\"].depends_on[\"mysql-1\"].condition == \"service_healthy\"", checker)
 
 
