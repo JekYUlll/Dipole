@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/multipart-presigned-rollout/v1/evidence.schema.json",
+  "title": "Dipole Multipart Presigned Rollout Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "service", "deploymentRevision", "policySha256", "windowStart", "windowEnd", "operator", "reviewer", "rollbackVerified", "alertState", "outcomes", "latency"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.multipart-presigned-rollout-evidence.v1"},
+    "service": {"type": "string", "minLength": 1, "maxLength": 128},
+    "deploymentRevision": {"type": "string", "minLength": 1, "maxLength": 256},
+    "policySha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "windowStart": {"type": "string", "format": "date-time"},
+    "windowEnd": {"type": "string", "format": "date-time"},
+    "operator": {"type": "string", "minLength": 1, "maxLength": 128},
+    "reviewer": {"type": "string", "minLength": 1, "maxLength": 128},
+    "rollbackVerified": {"type": "boolean"},
+    "alertState": {"enum": ["clear", "warning", "critical"]},
+    "outcomes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["attempted", "directCompleted", "relayFallback", "failed", "expired", "aborted", "retried", "checksumMismatch"],
+      "properties": {
+        "attempted": {"type": "integer", "minimum": 0}, "directCompleted": {"type": "integer", "minimum": 0}, "relayFallback": {"type": "integer", "minimum": 0}, "failed": {"type": "integer", "minimum": 0}, "expired": {"type": "integer", "minimum": 0}, "aborted": {"type": "integer", "minimum": 0}, "retried": {"type": "integer", "minimum": 0}, "checksumMismatch": {"type": "integer", "minimum": 0}
+      }
+    },
+    "latency": {
+      "type": "object", "additionalProperties": false, "required": ["directP95Millis"],
+      "properties": {"directP95Millis": {"type": "integer", "minimum": 0}}
+    }
+  }
+}

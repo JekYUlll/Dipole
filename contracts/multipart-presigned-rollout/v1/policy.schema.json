@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/multipart-presigned-rollout/v1/policy.schema.json",
+  "title": "Dipole Multipart Presigned Rollout Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["minimumWindowMinutes", "minimumAttempts", "minimumDirectCompleted", "maximumRelayFallbackBps", "maximumFailureBps", "maximumExpiredBps", "maximumChecksumMismatchBps", "maximumDirectP95Millis", "requireRollbackVerified", "requireClearAlerts", "requireIndependentReviewer"],
+  "properties": {
+    "minimumWindowMinutes": {"type": "integer", "minimum": 1},
+    "minimumAttempts": {"type": "integer", "minimum": 1},
+    "minimumDirectCompleted": {"type": "integer", "minimum": 1},
+    "maximumRelayFallbackBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "maximumFailureBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "maximumExpiredBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "maximumChecksumMismatchBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "maximumDirectP95Millis": {"type": "integer", "minimum": 1},
+    "requireRollbackVerified": {"type": "boolean"},
+    "requireClearAlerts": {"type": "boolean"},
+    "requireIndependentReviewer": {"type": "boolean"}
+  }
+}
