@@ -7,6 +7,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -14,15 +17,18 @@ import (
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	"github.com/JekYUlll/Dipole/db/migrations"
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/config"
 	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
+	corepolicy "github.com/JekYUlll/Dipole/internal/services/core/rpcpolicy"
 	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -97,8 +103,13 @@ func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create Core receipt adapter: %v", err)
 	}
+	certs := generateReceiptContractCertificates(t)
+	rpcServer := startReceiptContractRPCServer(t, certs, server)
+	connection := dialReceiptContractRPCClient(t, ctx, certs, rpcServer.Address())
+	t.Cleanup(func() { _ = connection.Close() })
+	client := agentv1.NewAgentCapabilityServiceClient(connection)
 	request := receiptCommitRPCRequest(receipt)
-	firstResponse, err := invokeAgentReceiptCommit(ctx, server, request)
+	firstResponse, err := client.CommitMemoryPromotionReceipt(ctx, request)
 	if err != nil {
 		t.Fatalf("commit receipt through Core adapter: %v", err)
 	}
@@ -107,7 +118,7 @@ func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
 	}
 	assertReceiptPromotionStored(t, ctx, db, candidateID, firstResponse.GetMemoryId(), 1)
 
-	replayed, err := invokeAgentReceiptCommit(ctx, server, request)
+	replayed, err := client.CommitMemoryPromotionReceipt(ctx, request)
 	if err != nil {
 		t.Fatalf("replay receipt through Core adapter: %v", err)
 	}
@@ -119,7 +130,7 @@ func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
 	if revoked, revokeErr := policy.RevokeRuntimePromotionGrant(ctx, grant.GrantUUID, now); revokeErr != nil || !revoked {
 		t.Fatalf("revoke promotion grant: revoked=%v err=%v", revoked, revokeErr)
 	}
-	if _, err := invokeAgentReceiptCommit(ctx, server, request); status.Code(err) != codes.PermissionDenied {
+	if _, err := client.CommitMemoryPromotionReceipt(ctx, request); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("revoked grant receipt code=%s err=%v, want permission denied", status.Code(err), err)
 	}
 	assertReceiptPromotionStored(t, ctx, db, candidateID, firstResponse.GetMemoryId(), 1)
@@ -135,21 +146,47 @@ func receiptCommitRPCRequest(receipt application.AgentMemoryPromotionReceiptComm
 	}
 }
 
-func invokeAgentReceiptCommit(ctx context.Context, server *agentgrpc.MemoryPromotionReceiptServer, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
-	interceptor, err := grpcauth.NewUnaryServerInterceptor("receipt-mysql-contract-secret", "dipole-agent")
-	if err != nil {
-		return nil, err
+type receiptContractCertificates struct {
+	ca, coreCert, coreKey, agentCert, agentKey string
+}
+
+func generateReceiptContractCertificates(t *testing.T) receiptContractCertificates {
+	t.Helper()
+	directory := t.TempDir()
+	command := exec.Command("bash", filepath.Join("..", "..", "..", "..", "..", "scripts", "generate-internal-certs.sh"))
+	command.Env = append(os.Environ(), "INTERNAL_CERT_DIR="+directory, "INTERNAL_CERT_VALID_DAYS=1")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generate internal certificates: %v: %s", err, output)
 	}
-	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(
-		"x-dipole-caller-service", "dipole-agent", "x-dipole-service-token", "receipt-mysql-contract-secret",
-	))
-	response, err := interceptor(ctx, request, nil, func(authenticated context.Context, value any) (any, error) {
-		return server.CommitMemoryPromotionReceipt(authenticated, value.(*agentv1.CommitMemoryPromotionReceiptRequest))
-	})
-	if err != nil {
-		return nil, err
+	return receiptContractCertificates{
+		ca: filepath.Join(directory, "ca.pem"), coreCert: filepath.Join(directory, "core.pem"), coreKey: filepath.Join(directory, "core-key.pem"),
+		agentCert: filepath.Join(directory, "agent.pem"), agentKey: filepath.Join(directory, "agent-key.pem"),
 	}
-	return response.(*agentv1.CommitMemoryPromotionReceiptResponse), nil
+}
+
+func startReceiptContractRPCServer(t *testing.T, certs receiptContractCertificates, adapter *agentgrpc.MemoryPromotionReceiptServer) *platformrpc.Server {
+	t.Helper()
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "receipt-mysql-contract-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2,
+		TLSEnabled: true, TLSCertFile: certs.coreCert, TLSKeyFile: certs.coreKey, TLSCAFile: certs.ca, TLSServerName: "core"}
+	server, err := platformrpc.NewServer(cfg, cfg.CoreListenAddress, []string{"dipole-agent"}, func(server *grpc.Server) {
+		agentv1.RegisterAgentCapabilityServiceServer(server, adapter)
+	}, corepolicy.RestrictAgentServiceMethods)
+	if err != nil {
+		t.Fatalf("start receipt contract Core RPC server: %v", err)
+	}
+	t.Cleanup(func() { server.Close(context.Background()) })
+	return server
+}
+
+func dialReceiptContractRPCClient(t *testing.T, ctx context.Context, certs receiptContractCertificates, address string) *grpc.ClientConn {
+	t.Helper()
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "receipt-mysql-contract-secret", DialTimeoutSeconds: 2,
+		TLSEnabled: true, TLSCertFile: certs.agentCert, TLSKeyFile: certs.agentKey, TLSCAFile: certs.ca, TLSServerName: "core"}
+	connection, err := platformrpc.Dial(ctx, cfg, address, grpcauth.Credentials{Service: "dipole-agent", Secret: cfg.SharedSecret})
+	if err != nil {
+		t.Fatalf("dial receipt contract Core RPC server: %v", err)
+	}
+	return connection
 }
 
 func createReceiptContractPolicy(t *testing.T, ctx context.Context, policy *sqlcRepository.AgentPolicyRepository, now time.Time) (application.AgentDefinitionVersionV1, application.AgentRuntimePromotionGrantV1) {
