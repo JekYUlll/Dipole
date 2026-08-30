@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 最新 preflight 通过（224 vCPU、约 161 GiB 可用内存、约 1 TiB 可用磁盘），但构建门禁检测到 `users=23`、`gpu_processes=5` 并安全拒绝启动；未创建镜像或容器，继续等待维护窗口。
+
 - 2026-08-30：Remote GPU 已在提交 `37d5f1b3` 上完成最新 Go canonical 复核；Go 测试、服务布局和架构文档门禁全部通过，Agent/Frontend Node 验证产生的锁文件临时差异已清理，远端工作目录恢复干净。
 
 - 2026-08-30：Remote GPU 用户态 Node `22.12.0` 完成 Agent Runtime 与 Frontend 验证；Agent 通过 125 个测试文件/665 个测试，typecheck/build 通过；Frontend 通过 29 个测试文件/114 个测试，typecheck/Vite 构建通过。集成测试按环境条件跳过，未启动 Docker。
