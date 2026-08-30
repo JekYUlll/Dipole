@@ -186,6 +186,45 @@ describe("ModelShadowPlanner", () => {
     expect(prompt).toContain('\\"maxLength\\":256');
   });
 
+  it("compiles bounded Core-authorized retrieval results as untrusted evidence", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const searchConversations = vi.fn(async (_context, query: string, limit: number) => {
+      expect(query).toBe("migration risk");
+      expect(limit).toBe(8);
+      return [{
+        messageId: "M100", conversationKey: "group:G1", messageSeq: "42", revision: "1", senderId: "U200",
+        messageType: 1, content: "Migration owner is Alice.", sentAtUnixMs: "1700000000000", querySha256: "a".repeat(64)
+      }];
+    });
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.search"], undefined,
+      undefined, undefined, undefined, undefined, undefined, { searchConversations }
+    );
+
+    await planner.plan({ ...event(), payload: { content: "migration risk" } }, { ...context(), permissions: ["conversation.search"] });
+
+    expect(searchConversations).toHaveBeenCalledOnce();
+    const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]?.[0].prompt;
+    expect(prompt).toContain('"sourceType":"conversation_search_result"');
+    expect(prompt).toContain('"trust":"untrusted"');
+    expect(prompt).toContain("Migration owner is Alice.");
+    expect(prompt).toContain("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  });
+
+  it("fails before model invocation when enabled retrieval cannot be resolved", async () => {
+    const generate = vi.fn();
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.search"], undefined,
+      undefined, undefined, undefined, undefined, undefined, { searchConversations: async () => { throw new Error("search unavailable"); } }
+    );
+
+    await expect(planner.plan({ ...event(), payload: { content: "migration risk" } }, { ...context(), permissions: ["conversation.search"] })).rejects.toThrow(/search unavailable/);
+    expect(generate).not.toHaveBeenCalled();
+  });
+
   it("rejects capabilities outside the read-only shadow allowlist", async () => {
     const router = { generate: vi.fn(async () => ({
       output: { summary: "send a reply", steps: [{ capabilityId: "message.send", input: { content: "hello" } }] },

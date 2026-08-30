@@ -71,6 +71,7 @@ const shadowRuntimeConfigSchema = z.object({
   contextCompilerVersion: z.enum(["v1", "v2"]),
   memoryEnabled: z.boolean(),
   retrievalEnabled: z.boolean(),
+  retrievalContextEnabled: z.boolean(),
   modelContextProfiles: z.array(routeContextProfileSchema),
   modelBudget: z.object({
     maxCalls: z.number().int().min(1).max(10),
@@ -203,6 +204,9 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.retrievalEnabled && !config.capabilityRpc.enabled) {
     refinement.addIssue({ code: "custom", message: "Agent retrieval requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
   }
+  if (config.retrievalContextEnabled && !config.retrievalEnabled) {
+    refinement.addIssue({ code: "custom", message: "Agent retrieval Context requires retrieval to be enabled", path: ["retrievalContextEnabled"] });
+  }
   if (config.capabilityRpc.enabled && config.capabilityRpc.tls.enabled &&
       (!config.capabilityRpc.tls.caFile || !config.capabilityRpc.tls.certFile || !config.capabilityRpc.tls.keyFile || !config.capabilityRpc.tls.serverName)) {
     refinement.addIssue({ code: "custom", message: "Agent Capability RPC mTLS files and server name are required", path: ["capabilityRpc", "tls"] });
@@ -244,6 +248,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     contextCompilerVersion: env.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION?.trim().toLowerCase() || "v1",
     memoryEnabled: env.DIPOLE_AGENT_MEMORY_ENABLED?.trim().toLowerCase() === "true",
     retrievalEnabled: env.DIPOLE_AGENT_RETRIEVAL_ENABLED?.trim().toLowerCase() === "true",
+    retrievalContextEnabled: env.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED?.trim().toLowerCase() === "true",
     modelContextProfiles: parseRouteContextProfiles(env.DIPOLE_AGENT_MODEL_CONTEXT_PROFILES ?? ""),
     modelBudget: {
       maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
@@ -438,7 +443,7 @@ export function createKafkaShadowRuntime(
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
       createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), readCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
+    ), readCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors(), config.retrievalContextEnabled ? rpcTransport!.client : undefined)
     : new MetadataShadowPlanner();
   const consumer = buildKafkaShadowRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
@@ -500,7 +505,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   const readCapabilityIds = localReadCapabilityIDs(config);
   const planner = new ModelShadowPlanner(new ModelRouter(
     createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
-  ), readCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
+  ), readCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors(), config.retrievalContextEnabled ? rpc.client : undefined);
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({

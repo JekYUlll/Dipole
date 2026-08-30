@@ -175,7 +175,9 @@ Provider name 是 route 的稳定前缀，所有 route 必须使用相同前缀�
 
 Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
 
-`DIPOLE_AGENT_RETRIEVAL_ENABLED` 默认 `false`。仅在 `MODEL_MODE=ai_sdk` 且 Capability RPC 已启用时，Runtime 才向模型公开并注册 `conversation.search`；每次调用仍由 Core 从 Task/Run 恢复 principal，复核独立 permission、`conversation/*/read` scope、query/结果/正文上限，并将命中作为有界 `untrusted` evidence。关闭该开关时，模型、Registry 和 Shadow 执行 Context 都只包含 `conversation.list/read`。该配置不启用 Elasticsearch、跨会话检索、共享环境流量或生产默认路径。
+`DIPOLE_AGENT_RETRIEVAL_ENABLED` 默认 `false`。仅在 `MODEL_MODE=ai_sdk` 且 Capability RPC 已启用时，Runtime 才向模型公开并注册 `conversation.search`；每次调用仍由 Core 从 Task/Run 恢复 principal，复核独立 permission、`conversation/*/read` scope、query/结果/正文上限，并将命中作为有界 `untrusted` evidence。关闭该开关时，模型、Registry 和 Shadow 执行 Context 都只包含 `conversation.list/read`。
+
+`DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED` 也默认 `false`，且要求先开启 retrieval。启用后 Planner 仅从当前事件的 `payload.content` 提取最多 256 个 Unicode 字符作为查询，经 Core 受权检索最多 8 条结果，并在模型调用前按 Context budget 编译为带 `messageId`、conversation、sequence 和 query hash provenance 的 `untrusted` evidence。检索失败会阻断本次模型调用；缺少正文、关闭开关或预算不足时保持既有路径。该配置不启用 Elasticsearch、跨会话检索、共享环境流量或生产默认路径。
 
 `CONTEXT_COMPILER_VERSION` 默认并在 Compose 中固定为 `v1`，从而保持已有不可变 Plan 的 prompt 与 manifest 哈希。新候选可显式设置 `v2`；切换前应等待旧候选 Task 收敛或使用新的 Task cohort，回滚只需恢复 `v1`。
 

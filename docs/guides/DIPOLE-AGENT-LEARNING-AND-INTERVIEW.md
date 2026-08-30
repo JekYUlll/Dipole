@@ -67,14 +67,14 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 
 #### Mediated Conversation Search
 
-- **状态：** 已验证的契约，默认关闭的运行能力
-- **简历句：** 设计由 Core 调解的 `conversation.search` Capability：Runtime 只提交 Task/Run 和有界 query，Core 恢复权威主体后以独立 permission 与 `conversation/*/read` scope 访问检索端口，并把结果降级为 `untrusted` evidence。
+- **状态：** 已验证的契约，默认关闭的 Shadow Context 编排
+- **简历句：** 设计由 Core 调解的 `conversation.search` Capability：Runtime 只提交 Task/Run 和有界 query，Core 恢复权威主体后以独立 permission 与 `conversation/*/read` scope 访问检索端口；当前消息可在独立开关下触发有界检索，命中按预算降级为 `untrusted` evidence。
 - **对外表述：** Search Service 的直连服务身份只授予业务网关；Agent 不能伪造 principal。Core 复核 Task/Run、权限和资源范围，再限制 query、返回数量与正文长度，避免检索结果覆盖策略或身份上下文。
-- **演示：** 运行 `CGO_ENABLED=0 go test ./internal/application ./internal/services/agent/application ./internal/transport/grpc/agent` 与 `npm --prefix services/agent-runtime test -- --run src/capabilities/conversation-search.test.ts src/capabilities/agent-capability-rpc.test.ts`，展示 forged principal、窄 scope、缺少 Search port 与冲突 evidence 的拒绝行为。
+- **演示：** 运行 `CGO_ENABLED=0 go test ./internal/application ./internal/services/agent/application ./internal/transport/grpc/agent` 与 `npm --prefix services/agent-runtime test -- --run src/capabilities/conversation-search.test.ts src/capabilities/agent-capability-rpc.test.ts src/models/model-shadow-planner.test.ts`，展示 forged principal、窄 scope、缺少 Search port、检索失败的模型前拒绝与 `untrusted` Context provenance。
 - **证据：** `api/proto/dipole/agent/v1/agent.proto`、`internal/transport/grpc/agent/server.go`、`services/agent-runtime/src/capabilities/conversation-search.ts`、[架构参考](../architecture/architecture-reference.md)。
 - **追问：** “为何不让 Agent Runtime 直连 Elasticsearch？” 服务级凭据无法表达单次 Task 的 owner、授权状态与资源 scope，Runtime 直连会把这一边界交给调用方。Core 代管后能复用持久 invocation resolver，并在 RPC 入口拒绝客户端传入 principal。
-- **限制：** 默认 Core composition 未注入 Search port，Runtime registry 未注册该 capability；生产 Elasticsearch、跨会话灰度、向量检索与多轮 retrieval orchestration 仍关闭。
-- **下一步：** 先完成 Core-to-Search 的受控 service assembly、同版本 shadow 观测与 operator evidence，再以可回退开关注册 Runtime capability；随后才评估多轮检索和向量检索。
+- **限制：** 默认 Core composition 未注入 Search port，Runtime registry 与 retrieval-to-Context 编排均默认关闭；生产 Elasticsearch、跨会话灰度、向量检索与多轮 retrieval orchestration 仍关闭。
+- **下一步：** 先完成 Core-to-Search 的受控 service assembly、同版本 shadow 观测与 operator evidence，再以可回退开关审阅 Shadow Context 编排；随后才评估多轮检索和向量检索。
 - **复核条件：** 修改 Search caller allowlist、Agent permission/scope、Task/Run resolver、evidence 上限、Context Compiler 或 Runtime composition 时。
 
 ## 2. 一句话定位

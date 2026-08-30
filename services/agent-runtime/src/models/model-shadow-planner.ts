@@ -3,7 +3,7 @@ import { z } from "zod";
 import { DeterministicContextCompiler, type ContextCompiler, type ContextFragment } from "../context/context-compiler.js";
 import type { ShadowPlanner } from "../events/shadow-processor.js";
 import type { ModelRouter } from "./model-router.js";
-import type { AgentContextMemory, ConversationReadResult } from "../capabilities/agent-capability-rpc.js";
+import type { AgentContextMemory, ConversationReadResult, ConversationSearchEvidenceResult } from "../capabilities/agent-capability-rpc.js";
 import type { CapabilityDescriptor } from "../policy/policy-engine.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
@@ -27,6 +27,9 @@ const memoryContextBudget = {
 
 const maxConversationEvidenceMessages = 20;
 const maxConversationEvidenceContentCharacters = 8 * 1024;
+const maxRetrievalEvidenceResults = 8;
+const maxRetrievalQueryCharacters = 256;
+const maxRetrievalEvidenceContentCharacters = 2 * 1024;
 
 export interface ContextMemoryReader {
   listContextMemories(context: Parameters<ShadowPlanner["plan"]>[1], resourceType: string, resourceId: string, limit?: number): Promise<AgentContextMemory[]>;
@@ -42,6 +45,10 @@ export interface ConversationEvidenceReader {
   readConversation(context: Parameters<ShadowPlanner["plan"]>[1], conversationId: string, limit: number): Promise<ConversationReadResult>;
 }
 
+export interface ConversationSearchEvidenceReader {
+  searchConversations(context: Parameters<ShadowPlanner["plan"]>[1], query: string, limit: number): Promise<readonly ConversationSearchEvidenceResult[]>;
+}
+
 export class ModelShadowPlanner implements ShadowPlanner {
   readonly #allowedCapabilityIds: ReadonlySet<string>;
 
@@ -53,7 +60,8 @@ export class ModelShadowPlanner implements ShadowPlanner {
     private readonly telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry(),
     private readonly lineage?: MemoryContextLineageWriter,
     private readonly conversationReader?: ConversationEvidenceReader,
-    private readonly capabilityDescriptors?: readonly CapabilityDescriptor[]
+    private readonly capabilityDescriptors?: readonly CapabilityDescriptor[],
+    private readonly searchEvidenceReader?: ConversationSearchEvidenceReader
   ) {
     this.#allowedCapabilityIds = new Set(allowedCapabilityIds.map((id) => id.trim()).filter(Boolean));
   }
@@ -64,16 +72,20 @@ export class ModelShadowPlanner implements ShadowPlanner {
       ? [] : await this.memories.listContextMemories(context, "conversation", resourceId, 20);
     const conversation = this.conversationReader === undefined || resourceId === ""
       ? undefined : await this.conversationReader.readConversation(context, resourceId, 20);
+    const retrievalQuery = retrievalQueryForEvent(event);
+    const retrieval = this.searchEvidenceReader === undefined || retrievalQuery === undefined
+      ? [] : await this.searchEvidenceReader.searchConversations(context, retrievalQuery, maxRetrievalEvidenceResults);
     const budget = memories.length === 0 ? baseContextBudget : memoryContextBudget;
     const compiled = await this.telemetry.withSpan("agent.context.compile", {
       taskId: context.taskId, runId: context.runId,
       attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
     }, async span => {
-      const value = this.compiler.compile({ budget, fragments: contextFragments(event, context, [...this.#allowedCapabilityIds], memories, conversation, this.capabilityDescriptors) });
+      const value = this.compiler.compile({ budget, fragments: contextFragments(event, context, [...this.#allowedCapabilityIds], memories, conversation, retrieval, this.capabilityDescriptors) });
       span.setAttribute("dipole.agent.context.compiler_version", value.compilerVersion);
       span.setAttribute("dipole.agent.context.estimated_tokens", value.estimatedTokens);
       span.setAttribute("dipole.agent.context.selected_count", value.selected.length);
       span.setAttribute("dipole.agent.context.omitted_count", value.omitted.length);
+      span.setAttribute("dipole.agent.context.retrieval_result_count", retrieval.length);
       return value;
     });
     await this.lineage?.recordMemoryContext(context.taskId, compiled);
@@ -128,6 +140,7 @@ function contextFragments(
   allowedCapabilityIds: readonly string[],
   memories: readonly AgentContextMemory[],
   conversation: ConversationReadResult | undefined,
+  retrieval: readonly ConversationSearchEvidenceResult[],
   capabilityDescriptors: readonly CapabilityDescriptor[] | undefined
 ): ContextFragment[] {
   return [
@@ -152,6 +165,26 @@ function contextFragments(
         provenance: { sourceType: "conversation_message", sourceId, sequence: message.sequence.toString() }
       };
     }) : []),
+    ...retrieval.slice(0, maxRetrievalEvidenceResults).map((result, index): ContextFragment => {
+      const boundedContent = truncateCharacters(result.content, maxRetrievalEvidenceContentCharacters);
+      const contentTruncated = boundedContent.length < result.content.length;
+      const content = JSON.stringify({
+        conversationId: result.conversationKey, messageId: result.messageId, sequence: result.messageSeq,
+        revision: result.revision, senderId: result.senderId, messageType: result.messageType, content: boundedContent,
+        sentAtUnixMs: result.sentAtUnixMs, querySha256: result.querySha256,
+        ...(contentTruncated ? { contentTruncated: true } : {})
+      });
+      const compactContent = JSON.stringify({
+        conversationId: result.conversationKey, messageId: result.messageId, sequence: result.messageSeq,
+        content: truncateCharacters(boundedContent, 256), querySha256: result.querySha256,
+        ...(contentTruncated ? { contentTruncated: true } : {})
+      });
+      return {
+        id: `search:${result.messageId}:${index}`, section: "evidence", trust: "untrusted", priority: 60 - index, required: false,
+        content, compactContent,
+        provenance: { sourceType: "conversation_search_result", sourceId: result.messageId, uri: `conversation:${result.conversationKey}`, sequence: result.messageSeq }
+      };
+    }),
     ...memories.map((memory): ContextFragment => ({
       id: `memory:${memory.memoryId}`, section: "memory", trust: "untrusted", priority: memory.priority, required: false,
       content: memory.content,
@@ -189,4 +222,15 @@ function contextFragments(
       provenance: { sourceType: "capability_registry", sourceId: "shadow-v1" }
     }
   ];
+}
+
+function retrievalQueryForEvent(event: Parameters<ShadowPlanner["plan"]>[0]): string | undefined {
+  const content = event.payload.content;
+  if (typeof content !== "string") return undefined;
+  const query = truncateCharacters(content.trim(), maxRetrievalQueryCharacters);
+  return query.length === 0 ? undefined : query;
+}
+
+function truncateCharacters(value: string, limit: number): string {
+  return Array.from(value).slice(0, limit).join("");
 }
