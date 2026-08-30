@@ -7,6 +7,7 @@ COMPOSE_FILE="${C1_COMPOSE_FILE:-deploy/compose/docker-compose.dist.yml}"
 C1_PROJECT="${C1_PROJECT:-dipole-c1}"
 C1_CONTAINER_PREFIX="${C1_CONTAINER_PREFIX:-dipole-c1}"
 C1_READY_TIMEOUT_SECONDS="${C1_READY_TIMEOUT_SECONDS:-180}"
+C1_ENABLE_OPTIONAL_SERVICES="${C1_ENABLE_OPTIONAL_SERVICES:-0}"
 
 export DIPOLE_CONTAINER_PREFIX="${C1_CONTAINER_PREFIX}"
 export DIPOLE_MYSQL_PORT="${C1_MYSQL_PORT:-13306}"
@@ -27,16 +28,35 @@ usage() {
   echo "Usage: $0 up <image>|status|down"
   echo ""
   echo "up      Verify a clean same-revision image, pin its image ID, and start the isolated topology"
+  echo "        Set C1_ENABLE_OPTIONAL_SERVICES=1 to include Kafdrop and Nginx"
   echo "status  Show the isolated topology without changing it"
   echo "down    Stop the isolated topology while preserving its named volumes"
 }
 
 compose() {
   docker compose \
-    --project-directory "${ROOT_DIR}" \
     --project-name "${C1_PROJECT}" \
     -f "${ROOT_DIR}/${COMPOSE_FILE}" \
     "$@"
+}
+
+prepare_certs() {
+  local cert_dir="${ROOT_DIR}/deploy/compose/certs/local"
+  local cert_file="${cert_dir}/dipole-local.pem"
+  local key_file="${cert_dir}/dipole-local-key.pem"
+
+  mkdir -p "${cert_dir}"
+  if [[ ! -s "${cert_file}" || ! -s "${key_file}" ]]; then
+    umask 077
+    openssl req -x509 -nodes -newkey rsa:2048 \
+      -keyout "${key_file}" \
+      -out "${cert_file}" \
+      -days "${C1_CERT_VALID_DAYS:-7}" \
+      -subj "/CN=dipole-local" \
+      -addext "subjectAltName=DNS:localhost,DNS:dipole.local,IP:127.0.0.1"
+    chmod 600 "${key_file}"
+    chmod 644 "${cert_file}"
+  fi
 }
 
 require_command() {
@@ -99,11 +119,16 @@ done
 case "${1:-}" in
   up)
     require_command curl
+    require_command openssl
     verify_candidate_image "${2:-${C1_IMAGE:-}}"
+    prepare_certs
     compose up -d --wait --wait-timeout "${C1_READY_TIMEOUT_SECONDS}" mysql redis kafka minio
     compose up --no-deps minio-init
     compose run --rm --no-deps --entrypoint /app/dipole-migrate dipole-node1 -direction up
-    compose up -d kafdrop dipole-node1 dipole-node2 dipole-node3 nginx
+    compose up -d dipole-node1 dipole-node2 dipole-node3
+    if [[ "${C1_ENABLE_OPTIONAL_SERVICES}" == "1" ]]; then
+      compose up -d kafdrop nginx
+    fi
     wait_ready
     compose ps
     ;;

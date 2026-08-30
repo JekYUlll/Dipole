@@ -38,10 +38,17 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("io.dipole.source.dirty", script)
         self.assertIn('DIPOLE_IMAGE="${image_id}"', script)
         self.assertIn("DIPOLE_AI_RUNTIME_MODE=off", script)
+        self.assertIn('C1_ENABLE_OPTIONAL_SERVICES="${C1_ENABLE_OPTIONAL_SERVICES:-0}"', script)
+        self.assertIn('if [[ "${C1_ENABLE_OPTIONAL_SERVICES}" == "1" ]]', script)
+        self.assertIn("compose up -d dipole-node1 dipole-node2 dipole-node3", script)
         self.assertIn("/app/dipole-migrate", script)
         self.assertIn("--wait-timeout", script)
         self.assertLess(script.index("/app/dipole-migrate"), script.index("dipole-node1 dipole-node2"))
         self.assertIn("docker compose", script)
+        self.assertNotIn('--project-directory "${ROOT_DIR}"', script)
+        self.assertIn("prepare_certs", script)
+        self.assertIn("dipole-local-key.pem", script)
+        self.assertIn("require_command openssl", script)
         self.assertNotIn("down --volumes", script)
 
     def test_isolated_message_flow_checks_timeline_reads(self):
