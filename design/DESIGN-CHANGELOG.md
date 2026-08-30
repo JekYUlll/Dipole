@@ -8,6 +8,7 @@
 
 - 增加 Agent Task Create v1 的 desktop/mobile 创建页、五态 State Matrix 与 `exports/agent-task-create-v1/` 批准预览。
 - 增加 `Component/Agent Task Goal Field`、`Component/Agent Task Request Badge` 和 `Component/Agent Task Submit State`；页面固定只提交本地请求身份与目标文本，身份、权限、Agent、Capability、Memory 与 Runtime 控制不进入浏览器输入。
+- 增加 Agent Task Create 的 Chromium canonical screenshot，使用认证 fixture 固定初始空表单、只读会话访问边界和 Runtime/Tool/外部服务未启用提示；该基线只覆盖 Chromium 初始态。
 - 增加 Settings v1 的 desktop/mobile 账户页、四态 State Matrix 与 `exports/settings-v1/` 批准预览。
 - 增加 `Component/Settings Profile`、`Component/Settings Sync Status` 和 `Component/Settings Logout Boundary`；资料、同步和危险会话操作沿用现有绿色与风险色语义。
 - 固定 Settings 数据披露边界：只呈现签名、本机 safe cursor、同步状态和 Device Security 入口；IP、节点、连接 ID、消息正文及设备原始标识保持关闭。
