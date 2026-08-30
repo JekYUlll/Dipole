@@ -384,6 +384,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Remote GPU 真实 MinIO restart smoke 已验证首个 part 写入后服务重启、续传、Complete 和最终对象内容一致；测试使用隔离持久卷并自动清理，浏览器断网、过期会话、网关限流和跨存储矩阵仍待完成。
   - [x] Remote GPU 真实 MinIO cleanup smoke 已验证未完成 upload 的实际 listing、cutoff 选择、Abort 和清理后重新列举；测试使用隔离桶并自动清理，完整浏览器/网关/跨存储故障矩阵仍待完成。
   - [x] cleanup smoke 已覆盖 MinIO listing 收敛等待与完整对象键隔离，确认服务端实际 Abort 后无残留；生产 cleanup 的 `message-files/` 前缀和默认 dry-run 语义保持不变。
+  - [x] File Service 过期 session fail-closed 回归测试覆盖 status、presign、register、upload、complete 和 abort，确认过期会话不会触发 MinIO 调用；Redis/MinIO 真实 TTL 故障矩阵仍待完成。
 
 **验收：** 预签名直传在授权范围内完成 Multipart；暂停/恢复、重试、校验和清理可观测；MinIO 故障和客户端中断均能安全回滚到旧路径，未完成 upload 不长期占用对象存储。
 

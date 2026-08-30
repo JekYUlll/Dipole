@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：补充 Multipart 过期 session fail-closed 回归测试；status、presign、register、upload、complete 和 abort 入口均在 session 不存在时停止，避免过期会话继续调用 MinIO。
+
 - 2026-08-30：新增真实 MinIO Multipart cleanup 生命周期验证：创建带 part 的未完成 upload，按 cutoff 选择并 Abort，随后重新列举确认 upload 清除；针对 MinIO listing 收敛使用有界等待，隔离桶自动清理。
 
 - 2026-08-30：Remote GPU `remote-dev.sh sync` 与 `multipart-smoke` 在最新 `master` 上验证通过；未显式设置 Go 根目录时自动选择用户态 Go `1.27.0`。此前偶发的小写 SSH 别名问题在当前环境无法复现，暂不修改主机 SSH 配置。
