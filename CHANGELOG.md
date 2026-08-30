@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Agent Runtime 新增五类 Memory 类型策略边界，明确 working 为任务级临时记忆，其余类型需经过 review；候选生成继续限定为 observational，目标类型必须显式指定且不会凭借类型校验获得写入权限。补充 Agent 文档与跨服务契约导航，并通过 Memory 测试、TypeScript typecheck 和文档索引门禁。
+
 - 2026-08-30：新增 `scripts/check-doc-indexes.sh` 并接入架构文档门禁，校验项目、Agent 和跨服务契约索引中的本地相对链接，降低文档重排后的断链风险。
 
 - 2026-08-30：新增 `contracts/README.md` 契约总索引，并将 Agent Capability、Task、Memory、MCP、发布、修复和评估契约按领域归类；Agent 文档入口与项目 README 同步链接，明确版本兼容、证据哈希和 authority 边界。

@@ -1266,3 +1266,14 @@
 - **本轮进展：** 新增 fault-matrix 聚合脚本；Remote GPU 确定性 Go 门禁、真实 MinIO/Redis 基础 reconciliation 与 Redis restart smoke 通过，promtool 依赖镜像拉取因 registry 无进展中止，完整矩阵保持未关闭。
 - **本轮收口：** Remote GPU 使用通过临时反向隧道取得并校验的官方 Prometheus `3.5.0` `promtool` 完成告警规则、firing timeline、确定性 Go 门禁、真实 MinIO/Redis reconciliation 与 Redis restart smoke；矩阵退出码为 `0`，GPU 进程前后均为 `0`，Dipole/Multipart 容器为 `0`，远程工作树干净。
 - **下一步：** 继续完成 active/expired/abort/retry 生命周期指标、真实 Prometheus/Alertmanager 路由验收和预签名默认切流；在这些范围完成前，本条债务保持进行中。
+
+### AD-061：Agent Memory 类型晋级仍缺少持久化写入执行器
+
+- **优先级：** P1
+- **状态：** 进行中
+- **发现日期：** 2026-08-30
+- **影响范围：** Agent Memory candidate、review、promotion、五类 Memory 生命周期
+- **现状：** Runtime 已统一声明 `working`、`episodic`、`semantic`、`procedural` 和 `observational` 五类类型；candidate 仍只允许 `observational`，review/promotion receipt 记录决策与绑定信息。当前类型策略只负责校验和约束，尚未实现获得 operator authority 后的持久化写入执行器。
+- **本轮进展：** 新增纯 `MemoryTypePolicy` 与 candidate-to-target transition 校验，明确 working 的任务级非持久语义以及其余类型的 review 要求；类型检查不会授予写入权限，默认 Shadow/Remote 保持关闭。
+- **证据：** `services/agent-runtime/src/memory/memory-type-policy.test.ts` 覆盖五类枚举、持久性策略、显式目标类型和 observational candidate 限制；Agent Memory 测试 7 个文件/31 个测试通过，typecheck、文档索引和架构文档门禁通过。
+- **下一步：** 在 active-authority、owner scope、review receipt 和幂等写入条件齐备后，再实现独立 promotion executor；不得把当前纯校验函数直接当作写入授权。
