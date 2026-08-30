@@ -16,6 +16,12 @@ tests:
         values: '0 1 2 3 4 5 6 7 8 9 10 11 12'
       - series: 'dipole_multipart_operation_duration_seconds_bucket{operation="complete",le="+Inf"}'
         values: '0 1 2 3 4 5 6 7 8 9 10 11 12'
+      - series: 'dipole_multipart_reconciliation_drift'
+        values: '0 0 1 1 1 1 1 1 1 1 1 1 1 1'
+      - series: 'dipole_multipart_reconciliation_complete'
+        values: '1 1 0 0 0 0 0 0 0 0 0 0 0 0'
+      - series: 'dipole_multipart_reconciliation_last_run_timestamp_seconds'
+        values: '0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0'
     alert_rule_test:
       - eval_time: 6m
         alertname: DipoleMultipartOperationErrors
@@ -42,3 +48,24 @@ tests:
               severity: warning
             exp_annotations:
               summary: Multipart operation p95 latency is high
+      - eval_time: 7m
+        alertname: DipoleMultipartReconciliationDrift
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: Multipart reconciliation found cross-store drift
+      - eval_time: 13m
+        alertname: DipoleMultipartReconciliationIncomplete
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Multipart reconciliation did not complete
+      - eval_time: 31m
+        alertname: DipoleMultipartReconciliationStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Multipart reconciliation metrics are stale

@@ -37,6 +37,14 @@ go run ./cmd/tools/multipart-cleanup \
 指标由定时 reconciliation 任务刷新。部署时应同时监控 textfile 文件的更新时间或
 `dipole_multipart_reconciliation_last_run_timestamp_seconds`，避免任务停止后继续使用旧数据。
 
+配套规则位于 `deploy/observability/multipart-alerts.yml`，包括：
+
+- `DipoleMultipartReconciliationDrift`：发现 MinIO/Redis 跨存储漂移。
+- `DipoleMultipartReconciliationIncomplete`：扫描未完整结束。
+- `DipoleMultipartReconciliationStale`：指标超过 15 分钟未刷新。
+
+这些规则只负责产生 Prometheus 告警；修复仍需先保留 JSON 报告，再按运维确认执行清理或回滚路径。
+
 ## 执行
 
 确认维护窗口、对象前缀和报告后，才允许执行：
