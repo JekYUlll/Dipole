@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：直接 Multipart smoke 脚本现已尊重显式 `DIPOLE_REMOTE_GO_ROOT`，无效路径 fail-closed 并禁止隐式 Go toolchain 下载；Remote GPU 使用用户态 Go `1.27.0` 复跑基础与 restart smoke 均通过。完整浏览器断网、过期会话、网关限流、代理超时及跨存储故障矩阵仍待完成。
+
 - 2026-08-30：确认 `docker-compose.cluster.yml` 与 `docker-compose.redis-cluster.yml` 继续提供 Kafka/Redis 组件级演练；`docker-compose.microservices.yml` 仍绑定单 broker、单 Redis、单 MySQL，业务 override 已增加 MySQL Router/InnoDB Cluster、Kafka 三节点和 Redis Sentinel 的可渲染组合。真实业务故障切换和自动回切证据继续保持待办。
 - 2026-08-30：新增 `docker-compose.business-cluster.yml`，以 override 方式将三 broker 与 Redis Sentinel 接入 Core、Message、Sync、Gateway、Agent 和 Search Indexer；该文件只证明配置可组合，未替代业务层故障注入、消息收敛和回滚 receipt。
 - 2026-08-30：新增业务集群隔离生命周期脚本，统一 `config/up/status/down` 和 project 边界；活动用户默认阻断、GPU 任务允许并行，卷保留以支持故障复盘。Kafka broker/Redis master 故障注入及业务收敛证据仍待执行。
