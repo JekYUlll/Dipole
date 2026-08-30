@@ -30,8 +30,17 @@ func (m *MultipartMetrics) Observe(operation, outcome string, started time.Time)
 	if m == nil {
 		return
 	}
-	m.operations.WithLabelValues(operation, outcome).Inc()
+	m.ObserveOutcome(operation, outcome)
 	m.duration.WithLabelValues(operation).Observe(time.Since(started).Seconds())
+}
+
+// ObserveOutcome records an additional bounded outcome without adding a second
+// duration sample. It is used when one request has both retry and final result.
+func (m *MultipartMetrics) ObserveOutcome(operation, outcome string) {
+	if m == nil {
+		return
+	}
+	m.operations.WithLabelValues(operation, outcome).Inc()
 }
 
 func (m *MultipartMetrics) Describe(ch chan<- *prometheus.Desc) {

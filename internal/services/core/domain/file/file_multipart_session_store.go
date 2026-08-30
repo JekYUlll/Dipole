@@ -41,6 +41,12 @@ type multipartUploadSessionStore interface {
 	Delete(ctx context.Context, sessionID string) error
 }
 
+// multipartPartPresence is optional so older session-store implementations can
+// keep serving uploads while retry observation is rolled out.
+type multipartPartPresence interface {
+	HasPart(ctx context.Context, sessionID string, partNumber int) (bool, error)
+}
+
 type redisMultipartUploadSessionStore struct{}
 
 type storedMultipartPart struct {
@@ -156,6 +162,20 @@ func (s *redisMultipartUploadSessionStore) SavePart(ctx context.Context, session
 		return fmt.Errorf("save multipart part: %w", err)
 	}
 	return nil
+}
+
+func (s *redisMultipartUploadSessionStore) HasPart(ctx context.Context, sessionID string, partNumber int) (bool, error) {
+	if !platformCache.Available() {
+		return false, fmt.Errorf("redis is not initialized")
+	}
+	if strings.TrimSpace(sessionID) == "" || partNumber <= 0 {
+		return false, fmt.Errorf("multipart part identity is invalid")
+	}
+	present, err := platformCache.RDB.HExists(ctx, multipartSessionPartsKey(sessionID), strconv.Itoa(partNumber)).Result()
+	if err != nil {
+		return false, fmt.Errorf("check multipart part: %w", err)
+	}
+	return present, nil
 }
 
 func (s *redisMultipartUploadSessionStore) ListParts(ctx context.Context, sessionID string) ([]platformStorage.MultipartCompletePart, error) {
