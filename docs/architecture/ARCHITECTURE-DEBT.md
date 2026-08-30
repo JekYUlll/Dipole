@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：OAuth callback Runtime 配置契约默认关闭，启用时要求独立 secret、固定 lease owner 与非空 key mapping；`index.ts` 未读取它，因此没有新增网络 surface。后续完整装配必须复用此唯一契约并增加私钥/processor/Compose gate。
+
 - 2026-08-31：control handler 到 executor 的内存集成测试已锁定 Gateway 认证、最小 handoff body、进程内去重和固定 Runtime lease owner；它不提供 provider、Store 或默认 bootstrap 证据，外部 callback 继续关闭。
 
 - 2026-08-31：Runtime 增加未装配 control service adapter，将 Gateway 已认证的 handoff ID/correlation 映射到固定 Runtime lease owner 的 executor 请求；optional field 不显式传递 `undefined`，维持 exact optional type 约束。adapter 不接收用户主体或授权码，`index.ts` 和默认 listener 均未装配。
