@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart } from './multipartUpload'
+import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart, uploadPresignedPartWithRefresh } from './multipartUpload'
 
 describe('same-origin presigned upload URL', () => {
   it('rewrites only the origin when the Gateway proxy is enabled', () => {
@@ -38,6 +38,18 @@ describe('uploadMultipartParts', () => {
     const fetchImpl = vi.fn(async () => new Response(null, { status: 403 }))
     await expect(uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl))
       .rejects.toMatchObject({ name: 'PresignedPartUploadError', status: 403 })
+  })
+
+  it('refreshes an expired presigned URL before retrying the part', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200, headers: { ETag: '"fresh-etag"' } }))
+    const refreshURL = vi.fn(async () => 'https://minio.test/fresh-part-1')
+
+    await expect(uploadPresignedPartWithRefresh('https://minio.test/stale-part-1', new Blob(['data']), refreshURL, fetchImpl))
+      .resolves.toBe('"fresh-etag"')
+    expect(refreshURL).toHaveBeenCalledOnce()
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, 'https://minio.test/fresh-part-1', expect.objectContaining({ method: 'PUT' }))
   })
 
   it('computes a stable SHA-256 checksum when Web Crypto is available', async () => {

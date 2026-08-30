@@ -58,6 +58,20 @@ export const uploadPresignedPart = async (
   return etag
 }
 
+export const uploadPresignedPartWithRefresh = async (
+  url: string,
+  chunk: Blob,
+  refreshURL: () => Promise<string>,
+  fetchImpl: PresignedPartFetch = globalThis.fetch.bind(globalThis),
+): Promise<string> => {
+  try {
+    return await uploadPresignedPart(url, chunk, fetchImpl)
+  } catch (error) {
+    if (!(error instanceof PresignedPartUploadError) || ![401, 403].includes(error.status)) throw error
+    return uploadPresignedPart(await refreshURL(), chunk, fetchImpl)
+  }
+}
+
 export const sha256Hex = async (chunk: Blob): Promise<string | undefined> => {
   if (!globalThis.crypto?.subtle || typeof chunk.arrayBuffer !== 'function') return undefined
   const digest = await globalThis.crypto.subtle.digest('SHA-256', await chunk.arrayBuffer())

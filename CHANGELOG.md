@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：将预签名过期恢复提炼为可复用的 `uploadPresignedPartWithRefresh` 原语，并新增 403 -> 刷新签名 -> 重试测试；上传测试 `12/12`、Frontend typecheck 通过，页面层只负责签名 API 与 URL 映射。
 - 2026-08-30：Multipart 预签名分片上传新增 `401/403` 过期恢复：保留 HTTP 状态、按分片重新获取签名并交给既有指数退避重试；失败 session 继续保留，成功 Complete 仍清理本地状态。上传测试 `11/11`、Frontend typecheck/build 通过。
 - 2026-08-30：修复大文件 Multipart 上传失败后的断点续传行为：分片或 Complete 失败时保留服务端 session 与本地文件身份，后续重试通过 status 跳过已完成分片；成功 Complete 仍清理本地 session，服务端已完成记录保持幂等。Frontend `29/114`、typecheck 和生产构建通过。
 - 2026-08-30：远程开发入口新增 `multipart-smoke`，统一注入远端 Go toolchain 并固定 `GOTOOLCHAIN=local`；该 CPU/容器型动作允许与 GPU 任务并行，使用脚本自有临时 MinIO 容器和自动清理，新增入口契约测试 `7/7` 通过。
