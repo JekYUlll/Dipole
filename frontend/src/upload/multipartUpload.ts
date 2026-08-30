@@ -16,6 +16,13 @@ export type PresignedPartFetch = (
   init?: RequestInit,
 ) => Promise<Response>
 
+export class PresignedPartUploadError extends Error {
+  constructor(public readonly status: number) {
+    super(`presigned part upload failed with status ${status}`)
+    this.name = 'PresignedPartUploadError'
+  }
+}
+
 export const toSameOriginPresignedURL = (
   value: string,
   enabled: boolean,
@@ -45,7 +52,7 @@ export const uploadPresignedPart = async (
     method: 'PUT',
     body: chunk,
   })
-  if (!response.ok) throw new Error(`presigned part upload failed with status ${response.status}`)
+  if (!response.ok) throw new PresignedPartUploadError(response.status)
   const etag = response.headers.get('ETag')?.trim()
   if (!etag) throw new Error('presigned part upload did not return an ETag')
   return etag
