@@ -1107,6 +1107,8 @@
 - **离线复核与本机降载证据：** 2026-08-30 关闭临时 module proxy 后，Remote GPU 使用已同步的 Go module cache 以 `GOPROXY=off` 完成 `scripts/remote-dev.sh test`，提交 `9b83ab31` 的 Go test、Compose、服务布局和架构文档门禁全部通过，退出码 `0`。本机 Dipole 主拓扑、隔离 smoke 和观测拓扑已停止，卷/镜像保留；远端完整构建、smoke、基线压测仍待维护窗口。
 - **降载工作流固化证据：** 2026-08-30 新增 `scripts/drain-local-dipole.sh`，默认 dry-run，只有显式 `--apply` 才停止名称以 `dipole` 开头的运行中容器；脚本不删除容器、卷或镜像，并通过 Node 契约测试锁定目标范围。后续远端同步成功后可复用该入口，避免本机负载残留。
 - **最新远端 canonical 证据：** 2026-08-30 将 `master` 提交 `3dfaf53d` 同步至 `/home/admin1/workspaces/Dipole`，使用用户态 Go 1.27.0 和 `GOPROXY=off` 完成 `scripts/remote-dev.sh test`；Go test、服务布局和架构文档门禁通过，退出码 `0`，未启动容器。完整构建、smoke、基线压测仍受 Remote GPU 活动用户/GPU 保护。
+- **远端 Node 验证证据：** 2026-08-30 在 `/home/admin1/workspaces/Dipole` 使用用户态 Node `22.12.0` 完成 Agent Runtime 与 Frontend 验证；Agent `125` 个测试文件/`665` 个测试通过并完成 typecheck/build，Frontend `29` 个测试文件/`114` 个测试通过并完成 typecheck/Vite build。首次 `npm ci --ignore-scripts` 缺少 rolldown optional binding，补装 optional dependencies 后恢复；集成测试按环境条件跳过，未启动 Docker。
+- **最新基线复核证据：** 2026-08-30 在提交 `37d5f1b3` 上重新完成 Remote GPU Go canonical、服务布局和架构文档门禁，退出码 `0`；Node 验证生成的两个锁文件环境差异已反向清理，远端 detached 工作目录恢复干净，未启动容器。
 - **启动保护证据：** 2026-08-30 执行 `scripts/remote-dev.sh build`，代码同步成功后因 Remote GPU 观测到 `users=23`、`gpu_processes=5` 在构建前退出，未创建镜像或容器；保护逻辑有效。
 - **正式基线复核：** 2026-08-30 通过 `DIPOLE_REMOTE_BRANCH=master scripts/remote-dev.sh sync` 将管理员工作目录更新至 `27138a32`；只完成代码同步，活动用户/GPU 保护继续阻止构建与部署。
 - **正式基线同步证据：** 2026-08-30 已通过管理员 alias 将远端工作目录更新到 `master` 最新已同步提交；未启动容器，Docker 权限与 Compose 插件已就绪，Go 版本缺口和活动用户保护仍阻止完整测试/构建。
