@@ -10,7 +10,7 @@ REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose
 
 usage() {
   cat <<'EOF'
-Usage: scripts/remote-dev.sh <sync|preflight|build|smoke-lite|bench|down>
+Usage: scripts/remote-dev.sh <sync|preflight|test|build|smoke-lite|bench|down>
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE.
@@ -71,6 +71,7 @@ export COMPOSE_PROJECT_NAME="\$project"
 export DIPOLE_HOST_PROFILE=remote-gpu
 case "${action}" in
   preflight) scripts/check-dev-host.sh remote-gpu ;;
+  test) scripts/check-go.sh && scripts/check-compose.sh && scripts/check-service-layout.sh && scripts/check-architecture-docs.sh ;;
   build) scripts/docker-build-microservice-images.sh ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
   bench) scripts/bench/run_bench.sh ;;
@@ -85,6 +86,7 @@ require_command ssh
 case "${1:-}" in
   sync) sync_revision ;;
   preflight) run_remote preflight ;;
+  test) sync_revision; run_remote test ;;
   build) sync_revision; guard_start; run_remote build ;;
   smoke-lite) sync_revision; guard_start; run_remote smoke-lite ;;
   bench) sync_revision; guard_start; run_remote bench ;;

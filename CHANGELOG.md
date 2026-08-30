@@ -121,6 +121,7 @@
 
 ## [Unreleased]
 
+- 新增 Remote GPU 测试入口 `scripts/remote-dev.sh test`，远端执行 Go canonical 测试、Compose、服务布局和架构文档门禁；测试阶段不启动容器，继续保留部署动作的活动用户保护。
 - Remote GPU 管理员工作目录已重新同步到正式 `master` 提交 `27138a32`；当前主机仍有活动实验，未启动构建或服务。
 - Remote GPU 构建入口已完成一次安全阻断验证：同步成功后检测到 23 个登录用户和 5 个 GPU 任务，在构建前退出且无容器/镜像副作用；维护窗口开启后可直接重试。
 - Remote GPU 主机前置修复完成：`admin1` 已加入 Docker 组并安装 Compose v2，管理员工作流 preflight 通过；由于仍有活动实验，服务构建与启动继续由 fail-closed 保护阻止。
