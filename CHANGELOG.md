@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：修复 Remote GPU Dockerized k6 runner 的宿主文件写入权限，使用调用者 UID/GID 映射确保基准汇总文件可落盘；在 `master` 提交 `b9281eaa` 的隔离 C1 候选拓扑上完成有效基线：450/450 消息接受、持久化和投递，端到端 P50/P95/P99 为 88/109/181ms，Kafka 峰值与结算 lag 均为 0。群组阶段在优雅停止窗口内完成 30/50，HTTP 失败率包含该覆盖限制，后续仍需独立群组容量和故障矩阵。
 - 2026-08-30：改进 Remote GPU C1 基准工作流：`run_bench.sh` 支持显式 `K6_BIN`，远端缺少宿主机 k6 时自动使用固定 `grafana/k6:0.57.0` 容器和 host network；修复 SSH 可选空参数导致的镜像参数左移，并在 `dipole-c1` project 下自动映射 `18081/18082` 候选端口。新增远程入口、Shell 和 Python 契约测试，默认 Go authority 与候选拓扑隔离保持不变。
 - 2026-08-30：完成 Eino `v0.10.0-alpha.26` 隔离 spike：核对 ADK Session/Checkpoint/Resume、background task lease/CAS 和 notification outbox，并形成与现有 Temporal + MySQL Task/Run authority 的映射；默认 `v0.9.17` 依赖保持不变。
 - 2026-08-30：为大文件 Multipart session 增加浏览器 Web Locks 独占租约，同一文件在多个标签页中会串行执行，避免重复接管；无 Web Locks 的浏览器保持兼容回退，并新增串行/回退测试，上传测试 `15/15`、Frontend typecheck 通过。
