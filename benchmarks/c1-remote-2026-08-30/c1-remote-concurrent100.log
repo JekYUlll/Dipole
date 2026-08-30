@@ -1,0 +1,147 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: scripts/bench/bench.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 50s max duration (incl. graceful stop):
+              * concurrent: 1 iterations for each of 100 VUs (maxDuration: 20s, gracefulStop: 30s)
+
+time="2026-08-30T10:46:24+08:00" level=info msg="[setup] registering 100 users..." source=console
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+time="2026-08-30T10:46:39+08:00" level=info msg="[setup] logged in 100/100 users" source=console
+time="2026-08-30T10:46:39+08:00" level=info msg="[setup] creating friend pairs for concurrent..." source=console
+
+Run          [ 100% ] setup()
+concurrent   [   0% ]
+time="2026-08-30T10:46:40+08:00" level=info msg="[setup] done." source=console
+
+running (16.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  00.5s/20s  000/100 iters, 1 per VU
+
+running (17.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  01.5s/20s  000/100 iters, 1 per VU
+
+running (18.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  02.5s/20s  000/100 iters, 1 per VU
+
+running (19.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  03.5s/20s  000/100 iters, 1 per VU
+
+running (20.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  04.5s/20s  000/100 iters, 1 per VU
+
+running (21.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  05.5s/20s  000/100 iters, 1 per VU
+
+running (22.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  06.5s/20s  000/100 iters, 1 per VU
+
+running (23.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  07.5s/20s  000/100 iters, 1 per VU
+
+running (24.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  08.5s/20s  000/100 iters, 1 per VU
+
+running (25.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  09.5s/20s  000/100 iters, 1 per VU
+
+running (26.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  10.5s/20s  000/100 iters, 1 per VU
+
+running (27.0s), 100/100 VUs, 0 complete and 0 interrupted iterations
+concurrent   [   0% ] 100 VUs  11.5s/20s  000/100 iters, 1 per VU
+
+
+  █ THRESHOLDS 
+
+    http_req_failed{name:login}
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    CUSTOM
+    msg_accepted_total.............: 400     14.511751/s
+    msg_attempted_total............: 400     14.511751/s
+    msg_delivery_rate..............: 100.00% 400 out of 400
+    msg_e2e_latency_ms.............: avg=127.3ms min=31ms   med=149ms   max=247ms   p(50)=149ms   p(90)=171ms   p(95)=178.04ms p(99)=243.01ms
+    msg_expected_receipts_total....: 400     14.511751/s
+    msg_received_total.............: 400     14.511751/s
+    msg_sent_total.................: 400     14.511751/s
+
+    HTTP
+    http_req_duration..............: avg=30.86ms min=498µs  med=3.06ms  max=96.27ms p(50)=3.06ms  p(90)=74.57ms p(95)=75.15ms  p(99)=76.41ms 
+      { expected_response:true }...: avg=30.86ms min=498µs  med=3.06ms  max=96.27ms p(50)=3.06ms  p(90)=74.57ms p(95)=75.15ms  p(99)=76.41ms 
+    http_req_failed................: 0.00%   0 out of 500
+      { name:login }...............: 0.00%   0 out of 100
+    http_reqs......................: 500     18.139689/s
+
+    EXECUTION
+    iteration_duration.............: avg=12.01s  min=12s    med=12.01s  max=12.04s  p(50)=12.01s  p(90)=12.03s  p(95)=12.03s   p(99)=12.04s  
+    iterations.....................: 100     3.627938/s
+    vus............................: 100     min=0          max=100
+    vus_max........................: 100     min=100        max=100
+
+    NETWORK
+    data_received..................: 683 kB  25 kB/s
+    data_sent......................: 314 kB  11 kB/s
+
+    WEBSOCKET
+    ws_connecting..................: avg=15.08ms min=1.34ms med=15.49ms max=38.43ms p(50)=15.49ms p(90)=28.27ms p(95)=29.03ms  p(99)=33.55ms 
+    ws_msgs_received...............: 919     33.340748/s
+    ws_msgs_sent...................: 400     14.511751/s
+    ws_session_duration............: avg=12.01s  min=12s    med=12.01s  max=12.03s  p(50)=12.01s  p(90)=12.02s  p(95)=12.03s   p(99)=12.03s  
+    ws_sessions....................: 100     3.627938/s
+
+
+
+
+running (27.6s), 000/100 VUs, 100 complete and 0 interrupted iterations
+concurrent ✓ [ 100% ] 100 VUs  12.0s/20s  100/100 iters, 1 per VU
