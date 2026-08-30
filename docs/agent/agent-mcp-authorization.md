@@ -61,3 +61,5 @@ Core Agent Capability 已预留 `ConsumeOAuthAuthorizationTransaction` RPC。它
 Gateway 内部已提供与该 RPC 对应的未装配 client。它仅使用已有 Core mTLS 通道，并校验返回 transaction、HTTPS issuer/callback、expiry 与 base64url 密封 verifier；client result 只能用于后续 Runtime handoff，禁止进入浏览器响应、审计或日志。当前没有 Gateway Dependency、bootstrap 配置或 HTTP route 使用该 client。
 
 当前仍缺少 Gateway 到 Runtime 的短时受认证 handoff、callback HTTP、RFC 9728 Protected Resource Metadata、Runtime 解封后的 token code exchange、客户端注册、refresh 与撤销流程。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
+
+在新增 callback route 前必须遵守 [OAuth Callback Handoff](agent-oauth-callback-handoff.md) 的 correlation、durable handoff 和 fault-test gate。它补充了当前单次 consume 在 Runtime 不可达时无法安全重试的限制。

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：补充 Agent OAuth callback handoff 的发布前设计门禁与故障矩阵。明确当前 Core 单次 consume 不支持 Runtime 不可达后的可靠重试，且 callback correlation 尚未定义；因此继续不注册 callback HTTP route。后续 handoff 需要 browser binding、issuer/redirect 核对、Runtime-key ciphertext、lease 状态与 controlled provider 演练。
+
 - 2026-08-31：Gateway 增加未装配的 OAuth authorization transaction consume client foundation。它通过已有 Core mTLS 通道只提交 owner、transaction ID 与 state digest，严格复核返回的 HTTPS binding、expiry 与 base64url 密封 verifier；结果类型禁止作为 HTTP/审计/日志载荷。尚未注册 HTTP callback、Runtime handoff、解封、code exchange 或 token 写入。
 
 - 2026-08-31：Core standalone bootstrap 为 OAuth authorization transaction consume 增加显式、默认关闭的 SQLC Store 注入门禁。只有 `internal_rpc.agent_oauth_authorization_transaction_consume_enabled=true` 且内部 RPC mTLS 已开启才装配受限 adapter；它可与 Memory receipt seam 共存，未增加 HTTP callback、verifier 解封、code exchange 或 token 写入。
