@@ -65,6 +65,7 @@
 | Receipt Commit 最小权限接线 | **默认关闭** | Core 以 mTLS 配置门禁按需注册仅含 receipt commit 的 Agent RPC；其余 Agent 能力不在独立 Core 暴露 | [active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)；“为何不用完整 Agent RPC adapter？” |
 | Receipt Commit Active Worker | **默认关闭** | 独立 `promotion_active` Worker 需同时通过 Runtime、mTLS、operator authority 与 Core/Runtime 双开关门禁 | [Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)；“为什么仍需要 Core grant？” |
 | Receipt Commit Drill Evidence | **已验证（本地）** | 将共享环境 commit、重试、grant 撤销与回滚演练压缩为低敏、可判定的 evidence record | [Worker drill 契约](../../contracts/agent-memory-promotion/v2/worker-drill-evidence.schema.json)、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)；“CLI 能否代替真实演练？” |
+| Receipt Commit Promotion Compose Gate | **已验证（本地）** | 受控渲染 active + promotion overlay，确认写入前的多重静态开关与 authority | `scripts/check-compose.sh`；“Compose 通过能证明写权限安全吗？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
@@ -108,6 +109,18 @@
 - **追问：** “CLI 能否代替真实演练？” CLI 只检查人工归档结果的绑定和完整性，不访问实际系统；原始服务日志、Temporal 记录、指标快照、审批和回滚工单仍是共享环境证据的一部分。
 - **限制：** 当前通过的是本地契约与 CLI；没有任何共享环境提交、grant 撤销或回滚运行记录，因此默认写路径继续关闭。
 - **复核条件：** 修改 receipt、grant、Worker profile、Core 入口或演练标准时。
+
+#### 2026-08-30 · Receipt Commit Promotion Compose Gate
+
+- **状态：** 已验证（本地）
+- **简历句：** 为 Agent Memory 的受控写入建立多层 Compose 配置门禁，要求 Core receipt commit、Temporal promotion Worker 与显式 operator authority 同时成立。
+- **对外表述：** 将 active 与 promotion overlay 组合渲染，并断言默认关闭的 Control、MCP、外部 MCP 和自动 Memory 不会随写入能力一并开放。
+- **演示：** 运行 `bash scripts/check-compose.sh`；移除 `DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY` 后，promotion overlay 的 Compose 渲染应失败。
+- **证据：** `scripts/check-compose.sh`、`deploy/microservices/agent-active.yml`、`deploy/microservices/agent-memory-promotion.yml`。
+- **追问：** “Compose 通过能证明写权限安全吗？” 静态渲染只能阻止开关组合漂移；Core 仍需复核 mTLS caller、持久 Task/Run、grant、receipt 与 candidate/review，真实环境还需重放、撤销和回滚证据。
+- **限制：** 当前没有启动 Temporal、Core 或 Kafka，也未实际提交任何 Memory。
+- **下一步：** 在维护窗口内归档真实 Core/Temporal 的首个提交、幂等重试、grant 撤销和 overlay 回滚证据。
+- **复核条件：** 修改 Worker mode、Core 开关、operator authority、active overlay 或 Compose 基础环境时。
 
 #### 2026-08-30 · Temporal Receipt Commit Retry
 

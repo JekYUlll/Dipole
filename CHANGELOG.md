@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：`check-compose.sh` 新增 Agent Memory promotion overlay 门禁：叠加 active 与 promotion 配置时，验证 Core receipt commit、`promotion_active` Worker、显式 `operator_approved` authority 与只读能力边界；缺少 authority 时 Compose 渲染必须失败。该检查只验证静态输入，不构成共享环境提交、grant 撤销或回滚证据。
+
 - 2026-08-30：学习、简历与面试主文档加入可执行维护门禁。架构文档检查现验证主文档受版本控制、README/文档目录入口、核心章节和能力卡片模板字段；每个改变服务边界、默认路径、用户流程、性能结论或 Agent 权限的合并切片均须同步叙事与证据。
 
 - 2026-08-30：Temporal Memory promotion 集成测试新增 `commit=true` 路径：首次 receipt commit Activity 临时失败后由 Temporal 重试，重试复用相同 receipt hash 并收敛到同一低敏 Memory binding。该测试使用隔离 Temporal test server，不连接 Core、Kafka 或共享环境，默认 Worker 写路径继续关闭。

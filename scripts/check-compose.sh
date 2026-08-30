@@ -164,6 +164,58 @@ jq -e '
     and .target == "/run/dipole/release/manifest.json" and .read_only == true)
 ' <<<"${active_agent_config}" >/dev/null
 
+promotion_agent_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
+  DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
+  DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID=dipole-agent-memory-promotion-compose-check \
+  DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
+  DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
+  DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
+  DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini \
+  DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
+  DIPOLE_AGENT_TEMPORAL_ADDRESS=temporal:7233 \
+  DIPOLE_AGENT_TEMPORAL_NAMESPACE=dipole \
+  DIPOLE_AGENT_TEMPORAL_TASK_QUEUE=dipole-agent-memory-promotion-compose-check \
+  DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY=operator_approved \
+    docker compose -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/agent-active.yml \
+      -f deploy/microservices/agent-memory-promotion.yml config --format json
+})"
+jq -e '
+  .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "remote"
+  and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-memory-promotion-compose-check"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "promotion_active"
+  and .services.agent.environment.DIPOLE_AGENT_MEMORY_PROMOTION_COMMIT_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY == "operator_approved"
+  and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED == "false"
+' <<<"${promotion_agent_config}" >/dev/null
+
+if env -u DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY \
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
+  DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
+  DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID=dipole-agent-memory-promotion-compose-check \
+  DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
+  DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
+  DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
+  DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini \
+  DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
+  DIPOLE_AGENT_TEMPORAL_ADDRESS=temporal:7233 \
+  DIPOLE_AGENT_TEMPORAL_NAMESPACE=dipole \
+  DIPOLE_AGENT_TEMPORAL_TASK_QUEUE=dipole-agent-memory-promotion-compose-check \
+  docker compose -f deploy/compose/docker-compose.microservices.yml \
+    -f deploy/microservices/agent-active.yml \
+    -f deploy/microservices/agent-memory-promotion.yml config --quiet >/dev/null 2>&1; then
+  echo "Agent Memory promotion overlay must reject missing operator authority" >&2
+  exit 1
+fi
+
 if env -u DIPOLE_AGENT_RELEASE_MANIFEST_FILE -u DIPOLE_AGENT_CANDIDATE_VERSION \
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   docker compose -f deploy/compose/docker-compose.microservices.yml \
