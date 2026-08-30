@@ -129,10 +129,14 @@ python3 scripts/web_sync_observation.py finalize \
   --session /secure/evidence/web-sync-shadow-20260828.1.session.json \
   --git-commit "$(git rev-parse HEAD)" \
   --bundle /secure/releases/web-sync-shadow-20260828.1.tar \
+  --archive-uri s3://dipole-evidence/web-sync-shadow-20260828.1.json \
+  --archive-object-version <object-version-id> \
+  --archive-etag <etag> \
+  --archive-retain-until 2026-09-30T00:00:00Z \
   --output /secure/evidence/web-sync-shadow-20260828.1.evidence.json
 ```
 
-退出码 `0` 表示 `eligible`，退出码 `2` 表示已归档但门禁判定为 `blocked`，输入、网络、时间或完整性错误返回 `1`。Evidence 保存原始 Prometheus API 响应、Session/快照/完整证据 SHA-256 和具体阻塞原因；不得包含凭据、Message UUID 或正文。将 Session、Evidence 与候选发布归档一并保存到启用版本控制和保留策略的受控对象存储，并在晋级记录中固定 object version、ETag 和责任人。
+退出码 `0` 表示 `eligible`，退出码 `2` 表示已归档但门禁判定为 `blocked`，输入、网络、时间或完整性错误返回 `1`。Evidence 保存原始 Prometheus API 响应、Session/快照/完整证据 SHA-256、对象存储归档 URI、object version、ETag 和 retention 截止时间；缺少归档收据时只能判定为 `blocked`。不得包含凭据、Message UUID 或正文。将 Session、Evidence 与候选发布归档一并保存到启用版本控制和保留策略的受控对象存储，并在晋级记录中固定责任人。
 
 本地验证工具与契约：
 
