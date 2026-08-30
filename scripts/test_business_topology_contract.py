@@ -53,6 +53,21 @@ class BusinessTopologyContractTest(unittest.TestCase):
         self.assertIn("BUSINESS_CLUSTER_GATEWAY_PORT", script)
         self.assertIn("18080", script)
 
+    def test_business_cluster_routes_mysql_through_innodb_cluster(self):
+        compose = (ROOT / "deploy/compose/docker-compose.business-cluster.yml").read_text(encoding="utf-8")
+        checker = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")
+
+        self.assertIn("mysql:", compose)
+        self.assertIn("community-router:8.4", compose)
+        self.assertIn("MYSQL_ROUTER_BOOTSTRAP_EXTRA_OPTIONS: --conf-base-port=3306 --disable-rw-split", compose)
+        self.assertIn("mysql-1:", compose)
+        self.assertIn("mysql-2:", compose)
+        self.assertIn("mysql-3:", compose)
+        self.assertIn("mysql-cluster-init:", compose)
+        self.assertIn("mysql_business_cluster_1_data:", compose)
+        self.assertIn(".services.mysql.image == \"container-registry.oracle.com/mysql/community-router:8.4\"", checker)
+        self.assertIn(".services[\"mysql-cluster-init\"].depends_on[\"mysql-1\"].condition == \"service_healthy\"", checker)
+
 
 if __name__ == "__main__":
     unittest.main()

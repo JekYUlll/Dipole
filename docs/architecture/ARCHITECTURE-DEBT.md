@@ -1137,6 +1137,16 @@
 - **本轮进展：** 新增 `contracts/multipart-upload/v1` 版本化策略和 SHA-256 release manifest，统一记录直传阈值、文件上限、分片大小、并发、重试、退避和预签名 URL TTL；校验脚本强制默认 `relay` 与旧路径回切，当前只完成配置契约门禁，尚未切换生产流量。
 - **本轮进展：** Core 增加认证的 Multipart policy 查询，前端按服务端策略执行阈值、并发、重试和预签名模式，并对版本/字段异常 fail closed 后回退 `v1/relay`；源码注释和三份静态 Swagger 文档均已同步，生成器在当前 Go 1.27 标准库解析下仍需后续工具链升级，预签名默认切流仍待共享环境证据。
 
+### AD-057：业务集群 MySQL Router 已接入，真实故障收敛证据仍待补齐
+
+- **优先级：** P2
+- **状态：** 进行中
+- **发现日期：** 2026-08-30
+- **影响范围：** 业务集群 Compose、migration/readiness、MySQL writer failover、消息链路恢复
+- **现状：** 业务 override 已将应用侧 `mysql` 稳定服务名映射到 MySQL Router，并加入 `mysql-1/2/3` 与 `mysql-cluster-init`；默认微服务路径仍使用单节点 MySQL。当前只完成可渲染拓扑和 fail-closed 静态门禁，未在 Remote GPU 业务组合中执行 broker/Redis/MySQL 联合故障矩阵。
+- **解决方式：** 以独立 Compose project、固定 revision 和保留卷的回滚入口执行最小启动、MySQL Router writer failover、migration/权限重启、消息/InBox/搜索/投递收敛验证；活动登录会话继续需要明确批准，GPU 任务可按已授权规则并行。
+- **验证：** `scripts/check-compose.sh`、业务拓扑契约和 Compose config 已覆盖 Router 镜像、三节点成员、初始化顺序与 `mysql:3306` 入口；真实业务故障 receipt 仍待维护窗口。
+
 ### AD-056：开发压测环境与共享主机资源边界尚未完成部署验收
 
 - **优先级：** P2
