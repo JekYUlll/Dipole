@@ -85,6 +85,8 @@ npm run promotion:memory-worker-drill -- --evidence=/secure/path/worker-drill.js
 2. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/drill-agent-memory-promotion-rpc.sh` 验证 TypeScript generated client 到 Go fixture 的 mTLS 身份、protobuf 和低敏回包绑定。
 3. 运行现有 Temporal receipt retry integration，确认同一 prepared receipt 的 Activity 重试语义；该测试仍使用 commit stub。
 
+2026-08-30 已在 Remote GPU 的一次性 worktree 上以 Node 22 执行该步骤：内存 Temporal test server 的两个 integration case 通过，受控第一次 commit 失败后第二次提交仍复用同一 receipt SHA-256。该记录只证明 Temporal workflow 与 stub 的 durable retry 语义，不能作为 Core、MySQL grant、Kafka 或 active overlay 的联合验收。
+
 只有后续隔离 Core、Temporal 和 MySQL 同时启动，并归档首次提交、同 receipt 重试、admission 后 grant 撤销和 overlay 回滚时，才形成联合演练证据。
 
 ```bash

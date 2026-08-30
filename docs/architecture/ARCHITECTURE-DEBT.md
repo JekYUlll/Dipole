@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU 在 `76eb89c3` 一次性 worktree 上使用内存 Temporal test server 通过 Agent Memory promotion workflow integration：prepared receipt 持久返回，第一次受控 commit 失败后重试并保持同一 receipt binding。该环境未启动 Core、MySQL、Kafka 或 active Compose，因此 `AD-009` 的跨进程 grant 撤销与回滚联合证据继续开放。
+
 - 2026-08-30：Web Multipart 重试已按故障类别收敛：浏览器网络异常及预签名 `408`、`429`、`5xx` 保留指数退避，确定的预签名 `4xx` 不再重复 PUT。专项 28 项 Vitest、typecheck 与生产构建通过；该结果限于客户端调度，真实代理断网和跨网络故障矩阵继续由 `AD-055` 跟踪。
 
 - 2026-08-30：Remote GPU 使用显式 `DIPOLE_REMOTE_GO_ROOT` 复核 MinIO Multipart lifecycle 与 restart smoke，确认分片状态可跨服务重启恢复并完成内容校验；客户端断网、签名服务故障、跨标签页互斥与预签名默认切流仍待完成。
