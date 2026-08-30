@@ -1,6 +1,7 @@
 package storageops
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -52,6 +53,9 @@ func TestMultipartReconciliationWithRealMinIOAndRedis(t *testing.T) {
 	if err != nil {
 		_ = minioClient.RemoveBucket(ctx, bucket)
 		t.Fatalf("create multipart upload: %v", err)
+	}
+	if _, err := core.PutObjectPart(ctx, bucket, objectKey, uploadID, 1, bytes.NewReader([]byte("reconcile-part")), int64(len("reconcile-part")), minio.PutObjectPartOptions{}); err != nil {
+		t.Fatalf("write multipart part: %v", err)
 	}
 	sessionID := "reconcile-" + hex.EncodeToString(suffix)
 	redisKey := "file:multipart:" + sessionID + ":meta"
