@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU C1 benchmark 入口支持宿主 k6 缺失时使用固定 Dockerized k6，并自动注入 `dipole-c1` 候选端口；修复 SSH 空参数造成的镜像参数偏移和 k6 镜像 entrypoint 重复调用。工作流契约已通过，最终候选拓扑的完整 k6 基线仍需在该 revision 上采集。
 - 2026-08-30：Eino `v0.10.0-alpha.26` 已完成只读 API 评估；其 Session Timeline、Checkpoint/Resume 和 backgroundtask lease/CAS 可作为 adapter 参考，但与现有 Temporal durable execution 重叠，alpha 依赖继续禁止进入默认构建和 active authority。
 - 2026-08-30：跨标签页 Multipart 并发由浏览器 Web Locks 按文件 session 串行化；不支持该 API 的旧浏览器仍可上传，但缺少跨标签页互斥，需要后续兼容策略或最低浏览器版本门禁。
 - 2026-08-30：预签名刷新失败路径已由前端回归测试锁定：只完成一次失败 PUT，刷新服务错误向上返回，不改变可恢复 session；真实签名服务故障矩阵仍待共享环境证据。
