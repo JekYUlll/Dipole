@@ -1360,15 +1360,15 @@
 - **本轮收口：** Remote GPU 使用通过临时反向隧道取得并校验的官方 Prometheus `3.5.0` `promtool` 完成告警规则、firing timeline、确定性 Go 门禁、真实 MinIO/Redis reconciliation 与 Redis restart smoke；矩阵退出码为 `0`，GPU 进程前后均为 `0`，Dipole/Multipart 容器为 `0`，远程工作树干净。
 - **下一步：** 继续完成 active/expired/abort/retry 生命周期指标、真实 Prometheus/Alertmanager 路由验收和预签名默认切流；在这些范围完成前，本条债务保持进行中。
 
-### AD-061：Agent Memory 类型晋级仍缺少持久化写入执行器
+### AD-061：Agent Memory active promotion 仍缺少共享环境 authority 证据
 
 - **优先级：** P1
 - **状态：** 进行中
 - **发现日期：** 2026-08-30
 - **影响范围：** Agent Memory candidate、review、promotion、五类 Memory 生命周期
-- **现状：** Runtime 已统一声明 `working`、`episodic`、`semantic`、`procedural` 和 `observational` 五类类型；candidate 仍只允许 `observational`，review/promotion receipt 记录决策与绑定信息。Gateway owner 控制入口已能请求持久 `episodic`、`semantic`、`procedural` 或 `observational` Memory，Core 在 v47 事务内重读 candidate/review、拒绝 task-scoped `working`，并用既有 promotion 记录保证幂等。
-- **本轮进展：** `PromoteMemoryCandidateRequest.target_memory_type` 已贯通 Gateway、Agent gRPC、应用服务和 MySQL 写入；空值兼容既有 `observational`，显式类型与返回 Memory 不一致会 fail closed。新增应用、gRPC 与 Gateway HTTP 回归，覆盖 accepted review、semantic 写入、working 拒绝与调用重放。
-- **证据：** [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)、`internal/services/agent/application/agent_memory_candidate_promotion_test.go`、`internal/transport/grpc/agent/server_test.go`、`internal/services/gateway/server/server_test.go`、`services/agent-runtime/src/memory/memory-type-policy.test.ts`。
-- **下一步：** 将 TS receipt v2 的 target type、短时效和 active-authority 绑定接入独立 executor；当前 owner 控制 RPC 不能替代 active Runtime 自动写入授权，默认 Shadow/Remote 保持关闭。
+- **现状：** Runtime 已统一声明 `working`、`episodic`、`semantic`、`procedural` 和 `observational` 五类类型；Gateway owner 控制入口可请求持久长期类型，Core 在事务中重读 candidate/review、拒绝 task-scoped `working` 并保证幂等。独立 active executor 已由 `CommitMemoryPromotionReceipt` Core RPC、TypeScript client 和 Temporal `promotion_active` Activity 组成；它只提交低敏 receipt，Core 从持久 Task/Run 恢复主体并重查 active admission、promotion grant、candidate/review 与 target type。
+- **本轮进展：** Core bootstrap 仅在显式 receipt commit 开关与 mTLS 同时存在时注入服务；Runtime profile 还要求 active mode、Temporal、Capability RPC mTLS、`operator_approved` authority 和 Runtime/Core 双开关，基础 Worker 固定拒绝提交。隔离联合演练已覆盖首次 Activity 失败后的稳定 receipt 重试、grant 撤销后的拒绝与 owner-scoped Memory revoke；active Kafka group 也独立于 shadow group。
+- **证据：** [active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)、[Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)、`scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh`、`services/agent-runtime/src/temporal/agent-memory-promotion-mtls-mysql.integration.test.ts`、`internal/services/agent/infrastructure/mysql/agent_memory_promotion_temporal_fixture_test.go`。
+- **下一步：** 在受控共享环境完成 Kafka trigger、Gateway owner revoke 网络传输、promotion overlay 回滚和 24 小时观测证据。缺少任一项时保持 Shadow/Remote 默认关闭，不能宣称生产自动长期 Memory 写入。
 
 - **2026-08-30 兼容性补充：** promotion receipt v2 将 observational candidate 与显式目标类型一起绑定至 canonical hash；历史 v1 receipt 保持原语义可读，但因没有目标类型而在 replay 阶段 fail-closed。External MCP Shadow 对 partial enablement 增加零进程启动回归，默认关闭路径继续不构造 Worker、RPC 或网络资源。

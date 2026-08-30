@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：校正 Agent Memory promotion 债务口径：Core receipt commit RPC、TypeScript client、Temporal `promotion_active` Activity、mTLS/双开关与隔离重试、grant 撤销、owner revoke 演练已完成；共享环境 Kafka 触发、Gateway revoke 传输、overlay 回滚和观测证据仍未完成，默认写入路径保持关闭。
+
 - 2026-08-31：Remote GPU 为 `45a80b3d475f4ba0317addab9d11ee0cb93397f2` 生成不可变 Web Sync Shadow bundle `/tmp/dipole-dev-horeb-web-sync-shadow-45a80b3d.tar`，SHA-256 为 `0c458602868170dbb45933f1c48fa0f9ba22c5978d6d79cb2d007cb0344bfdd5`。过程未启动 Compose、Prometheus、客户端流量或 GPU 任务；它仅为后续 24 小时观察提供可复核输入。
 
 - 2026-08-31：更新为 Signal Link 品牌体系：实心端点、空心端点与连接轨迹取代旧的蓝色成对极形，统一用于主字标、IM、Agent 和紧凑应用图标；运行时行为不受影响。
