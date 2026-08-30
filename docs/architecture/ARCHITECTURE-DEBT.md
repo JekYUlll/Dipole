@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Runtime 增加未装配的 OAuth callback handoff control handler。它独立于用户任务控制认证，只接受 Gateway service secret、严格单字段 `{handoff_id}` 与可选 correlation，principal header 直接拒绝；成功固定 `202`。有界进程内去重在一个 Runtime 生命周期内避免重复下游派发，派发失败释放 claim；重启后的 recovery 继续依赖 Core conditional lease。`index.ts`、环境变量和默认 listener 未装配该 handler，Store writer、browser binding、complete/release、code exchange 与 token 生命周期保持关闭。
+
 - 2026-08-31：Gateway 增加未装配的 OAuth callback handoff notifier。控制 HTTP 仅使用 `POST /internal/v1/agent/oauth/callback-handoffs` 与 `{handoff_id}`；它固定 Gateway service identity、保留 correlation、拒绝携带 principal，远程 target 强制 HTTPS，非 `202` 固定失败关闭。Runtime control handler、Gateway bootstrap、callback Store writer、browser binding、complete/release、code exchange 与 token 生命周期继续未接线。
 
 - 2026-08-31：Runtime 增加未装配的 OAuth callback handoff claim client。它沿用 Runtime-to-Core mTLS caller metadata，输入只含 handoff ID 和 Runtime lease owner；所有响应 binding、密文 envelope、key ID 与两个 expiry 都在解封前复核。该 client 未进入 Runtime config 或 process composition，Gateway notifier、complete/release、code exchange、token lifecycle 与故障演练仍关闭。

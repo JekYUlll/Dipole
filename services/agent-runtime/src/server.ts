@@ -32,6 +32,46 @@ export interface AgentMcpHTTPOptions {
   handler: AgentMcpHttpHandler;
 }
 
+export interface OAuthCallbackHandoffNotification {
+  readonly handoffId: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}
+
+export interface OAuthCallbackHandoffControlAPI {
+  notifyHandoff(notification: OAuthCallbackHandoffNotification): Promise<void>;
+}
+
+export interface OAuthCallbackHandoffNotificationDeduplicator {
+  claim(handoffId: string): boolean;
+  release(handoffId: string): void;
+}
+
+export interface OAuthCallbackHandoffHTTPOptions {
+  secret: string;
+  service: OAuthCallbackHandoffControlAPI;
+  deduplicator?: OAuthCallbackHandoffNotificationDeduplicator;
+}
+
+export class BoundedOAuthCallbackHandoffNotificationDeduplicator implements OAuthCallbackHandoffNotificationDeduplicator {
+  private readonly handoffs = new Map<string, true>();
+
+  constructor(private readonly capacity = 1_024) {
+    if (!Number.isSafeInteger(capacity) || capacity < 1 || capacity > 10_000) throw new Error("OAuth callback handoff deduplicator capacity is invalid");
+  }
+
+  claim(handoffId: string): boolean {
+    if (this.handoffs.has(handoffId)) return false;
+    if (this.handoffs.size >= this.capacity) this.handoffs.delete(this.handoffs.keys().next().value!);
+    this.handoffs.set(handoffId, true);
+    return true;
+  }
+
+  release(handoffId: string): void {
+    this.handoffs.delete(handoffId);
+  }
+}
+
 export interface AgentMetrics {
   render(): string;
 }
@@ -40,7 +80,8 @@ export function buildServer(
   readiness: RuntimeReadiness,
   control?: AgentTaskControlHTTPOptions,
   mcp?: AgentMcpHTTPOptions,
-  metrics?: AgentMetrics
+  metrics?: AgentMetrics,
+  oauthCallbackHandoff?: OAuthCallbackHandoffHTTPOptions
 ): FastifyInstance {
   const server = Fastify({ logger: false });
 
@@ -192,6 +233,27 @@ export function buildServer(
     });
   }
 
+  if (oauthCallbackHandoff !== undefined) {
+    if (oauthCallbackHandoff.secret.trim().length === 0) {
+      throw new Error("OAuth callback handoff HTTP secret is required");
+    }
+    const deduplicator = oauthCallbackHandoff.deduplicator ?? new BoundedOAuthCallbackHandoffNotificationDeduplicator();
+    server.post<{ Body?: unknown }>("/internal/v1/agent/oauth/callback-handoffs", async (request, reply) => {
+      const correlation = trustedOAuthCallbackHandoffCorrelation(request.headers, oauthCallbackHandoff.secret);
+      if (correlation === undefined) return reply.code(401).send({ code: 401, message: "OAuth callback handoff authentication failed" });
+      const handoffId = oauthCallbackHandoffID(request.body);
+      if (handoffId === undefined) return reply.code(400).send({ code: 400, message: "OAuth callback handoff is invalid" });
+      if (!deduplicator.claim(handoffId)) return reply.code(202).send();
+      try {
+        await oauthCallbackHandoff.service.notifyHandoff({ handoffId, ...correlation });
+        return reply.code(202).send();
+      } catch {
+        deduplicator.release(handoffId);
+        return reply.code(503).send({ code: 503, message: "OAuth callback handoff is unavailable" });
+      }
+    });
+  }
+
   return server;
 }
 
@@ -262,6 +324,23 @@ function safeEqual(left: string, right: string): boolean {
 
 function validIdentifier(value: string): boolean {
   return value.length > 0 && value.length <= 128 && /^[A-Za-z0-9._:-]+$/.test(value);
+}
+
+function trustedOAuthCallbackHandoffCorrelation(headers: Record<string, string | string[] | undefined>, secret: string): { requestId?: string; traceId?: string } | undefined {
+  if (header(headers, "x-dipole-caller-service") !== "dipole-gateway" || !safeEqual(header(headers, "x-dipole-service-token"), secret) ||
+      header(headers, "x-dipole-principal-user-id") !== "") return undefined;
+  const requestId = header(headers, "x-request-id");
+  const traceId = header(headers, "x-trace-id");
+  if ((requestId !== "" && !validIdentifier(requestId)) || (traceId !== "" && !validIdentifier(traceId))) return undefined;
+  return { ...(requestId === "" ? {} : { requestId }), ...(traceId === "" ? {} : { traceId }) };
+}
+
+function oauthCallbackHandoffID(body: unknown): string | undefined {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) return undefined;
+  const fields = Object.keys(body);
+  if (fields.length !== 1 || fields[0] !== "handoff_id") return undefined;
+  const handoffId = (body as { handoff_id?: unknown }).handoff_id;
+  return typeof handoffId === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(handoffId) ? handoffId : undefined;
 }
 
 function sendControlError(reply: { code(statusCode: number): { send(payload: unknown): unknown } }, error: unknown): unknown {
