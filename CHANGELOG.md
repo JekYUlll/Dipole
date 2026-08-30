@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Multipart cleanup 的 Prometheus textfile 输出新增低基数生命周期状态指标，覆盖 active、expired、aborted、failed、扫描完成状态和清理耗时；`--metrics-output` 可在仅 cleanup 场景使用，reconciliation 指标保持兼容，默认 dry-run 和 relay 回滚路径不变。
+
 - 2026-08-30：Remote GPU 真实联合 reconciliation smoke 通过：隔离 MinIO+Redis 依次识别匹配 session、missing Redis metadata 和 Redis orphan drift，退出清理无残留；测试使用完整对象键等待 MinIO listing 收敛。
 
 - 2026-08-30：新增隔离 MinIO+Redis Multipart reconciliation smoke，真实验证匹配 session、Redis metadata 缺失和 Redis 孤儿三种跨存储状态；临时容器、bucket 和未完成 upload 自动清理。
