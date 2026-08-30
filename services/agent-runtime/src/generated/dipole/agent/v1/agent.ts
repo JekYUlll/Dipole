@@ -2672,6 +2672,31 @@ export interface CommitMemoryPromotionReceiptRequest {
     expiresAtUnixMs: bigint;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.CommitMemoryPromotionReceiptResponse
+ */
+export interface CommitMemoryPromotionReceiptResponse {
+    /**
+     * @generated from protobuf field: string memory_id = 1
+     */
+    memoryId: string;
+    /**
+     * @generated from protobuf field: string memory_type = 2
+     */
+    memoryType: string;
+    /**
+     * @generated from protobuf field: string status = 3
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: dipole.agent.v1.AgentMemoryProvenance provenance = 4
+     */
+    provenance?: AgentMemoryProvenance;
+    /**
+     * @generated from protobuf field: string receipt_sha256 = 5
+     */
+    receiptSha256: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.PublishMcpReadinessEvidenceRequest
  */
 export interface PublishMcpReadinessEvidenceRequest {
@@ -10768,6 +10793,84 @@ class CommitMemoryPromotionReceiptRequest$Type extends MessageType<CommitMemoryP
  */
 export const CommitMemoryPromotionReceiptRequest = new CommitMemoryPromotionReceiptRequest$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class CommitMemoryPromotionReceiptResponse$Type extends MessageType<CommitMemoryPromotionReceiptResponse> {
+    constructor() {
+        super("dipole.agent.v1.CommitMemoryPromotionReceiptResponse", [
+            { no: 1, name: "memory_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "memory_type", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "provenance", kind: "message", T: () => AgentMemoryProvenance },
+            { no: 5, name: "receipt_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CommitMemoryPromotionReceiptResponse>): CommitMemoryPromotionReceiptResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.memoryId = "";
+        message.memoryType = "";
+        message.status = "";
+        message.receiptSha256 = "";
+        if (value !== undefined)
+            reflectionMergePartial<CommitMemoryPromotionReceiptResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CommitMemoryPromotionReceiptResponse): CommitMemoryPromotionReceiptResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string memory_id */ 1:
+                    message.memoryId = reader.string();
+                    break;
+                case /* string memory_type */ 2:
+                    message.memoryType = reader.string();
+                    break;
+                case /* string status */ 3:
+                    message.status = reader.string();
+                    break;
+                case /* dipole.agent.v1.AgentMemoryProvenance provenance */ 4:
+                    message.provenance = AgentMemoryProvenance.internalBinaryRead(reader, reader.uint32(), options, message.provenance);
+                    break;
+                case /* string receipt_sha256 */ 5:
+                    message.receiptSha256 = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CommitMemoryPromotionReceiptResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string memory_id = 1; */
+        if (message.memoryId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.memoryId);
+        /* string memory_type = 2; */
+        if (message.memoryType !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.memoryType);
+        /* string status = 3; */
+        if (message.status !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.status);
+        /* dipole.agent.v1.AgentMemoryProvenance provenance = 4; */
+        if (message.provenance)
+            AgentMemoryProvenance.internalBinaryWrite(message.provenance, writer.tag(4, WireType.LengthDelimited).fork(), options).join();
+        /* string receipt_sha256 = 5; */
+        if (message.receiptSha256 !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.receiptSha256);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CommitMemoryPromotionReceiptResponse
+ */
+export const CommitMemoryPromotionReceiptResponse = new CommitMemoryPromotionReceiptResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class PublishMcpReadinessEvidenceRequest$Type extends MessageType<PublishMcpReadinessEvidenceRequest> {
     constructor() {
         super("dipole.agent.v1.PublishMcpReadinessEvidenceRequest", [
@@ -11152,7 +11255,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "RevokeOwnedMemory", options: {}, I: RevokeOwnedMemoryRequest, O: AgentOwnedMemory },
     { name: "CorrectOwnedMemory", options: {}, I: CorrectOwnedMemoryRequest, O: CorrectOwnedMemoryResponse },
     { name: "PromoteMemoryCandidate", options: {}, I: PromoteMemoryCandidateRequest, O: AgentOwnedMemory },
-    { name: "CommitMemoryPromotionReceipt", options: {}, I: CommitMemoryPromotionReceiptRequest, O: AgentOwnedMemory },
+    { name: "CommitMemoryPromotionReceipt", options: {}, I: CommitMemoryPromotionReceiptRequest, O: CommitMemoryPromotionReceiptResponse },
     { name: "AdmitRun", options: {}, I: AdmitRunRequest, O: AdmitRunResponse },
     { name: "CompleteRun", options: {}, I: CompleteRunRequest, O: CompleteRunResponse },
     { name: "FinishRun", options: {}, I: FinishRunRequest, O: FinishRunResponse },

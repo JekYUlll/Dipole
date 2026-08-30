@@ -71,6 +71,7 @@ import type { CompleteRunResponse } from "./agent.js";
 import type { CompleteRunRequest } from "./agent.js";
 import type { AdmitRunResponse } from "./agent.js";
 import type { AdmitRunRequest } from "./agent.js";
+import type { CommitMemoryPromotionReceiptResponse } from "./agent.js";
 import type { CommitMemoryPromotionReceiptRequest } from "./agent.js";
 import type { PromoteMemoryCandidateRequest } from "./agent.js";
 import type { CorrectOwnedMemoryResponse } from "./agent.js";
@@ -177,10 +178,10 @@ export interface IAgentCapabilityServiceClient {
     /**
      * @generated from protobuf rpc: CommitMemoryPromotionReceipt
      */
-    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AgentOwnedMemory) => void): grpc.ClientUnaryCall;
-    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: AgentOwnedMemory) => void): grpc.ClientUnaryCall;
-    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: AgentOwnedMemory) => void): grpc.ClientUnaryCall;
-    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, callback: (err: grpc.ServiceError | null, value?: AgentOwnedMemory) => void): grpc.ClientUnaryCall;
+    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: CommitMemoryPromotionReceiptResponse) => void): grpc.ClientUnaryCall;
+    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: CommitMemoryPromotionReceiptResponse) => void): grpc.ClientUnaryCall;
+    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: CommitMemoryPromotionReceiptResponse) => void): grpc.ClientUnaryCall;
+    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, callback: (err: grpc.ServiceError | null, value?: CommitMemoryPromotionReceiptResponse) => void): grpc.ClientUnaryCall;
     /**
      * @generated from protobuf rpc: AdmitRun
      */
@@ -523,9 +524,9 @@ export class AgentCapabilityServiceClient extends grpc.Client implements IAgentC
     /**
      * @generated from protobuf rpc: CommitMemoryPromotionReceipt
      */
-    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AgentOwnedMemory) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: AgentOwnedMemory) => void), callback?: ((err: grpc.ServiceError | null, value?: AgentOwnedMemory) => void)): grpc.ClientUnaryCall {
+    commitMemoryPromotionReceipt(input: CommitMemoryPromotionReceiptRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: CommitMemoryPromotionReceiptResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: CommitMemoryPromotionReceiptResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: CommitMemoryPromotionReceiptResponse) => void)): grpc.ClientUnaryCall {
         const method = AgentCapabilityService.methods[11];
-        return this.makeUnaryRequest<CommitMemoryPromotionReceiptRequest, AgentOwnedMemory>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: CommitMemoryPromotionReceiptRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): AgentOwnedMemory => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+        return this.makeUnaryRequest<CommitMemoryPromotionReceiptRequest, CommitMemoryPromotionReceiptResponse>(`/${AgentCapabilityService.typeName}/${method.name}`, (value: CommitMemoryPromotionReceiptRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): CommitMemoryPromotionReceiptResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: AdmitRun

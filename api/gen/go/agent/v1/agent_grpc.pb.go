@@ -84,7 +84,7 @@ type AgentCapabilityServiceClient interface {
 	RevokeOwnedMemory(ctx context.Context, in *RevokeOwnedMemoryRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
 	CorrectOwnedMemory(ctx context.Context, in *CorrectOwnedMemoryRequest, opts ...grpc.CallOption) (*CorrectOwnedMemoryResponse, error)
 	PromoteMemoryCandidate(ctx context.Context, in *PromoteMemoryCandidateRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
-	CommitMemoryPromotionReceipt(ctx context.Context, in *CommitMemoryPromotionReceiptRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error)
+	CommitMemoryPromotionReceipt(ctx context.Context, in *CommitMemoryPromotionReceiptRequest, opts ...grpc.CallOption) (*CommitMemoryPromotionReceiptResponse, error)
 	AdmitRun(ctx context.Context, in *AdmitRunRequest, opts ...grpc.CallOption) (*AdmitRunResponse, error)
 	CompleteRun(ctx context.Context, in *CompleteRunRequest, opts ...grpc.CallOption) (*CompleteRunResponse, error)
 	FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error)
@@ -241,9 +241,9 @@ func (c *agentCapabilityServiceClient) PromoteMemoryCandidate(ctx context.Contex
 	return out, nil
 }
 
-func (c *agentCapabilityServiceClient) CommitMemoryPromotionReceipt(ctx context.Context, in *CommitMemoryPromotionReceiptRequest, opts ...grpc.CallOption) (*AgentOwnedMemory, error) {
+func (c *agentCapabilityServiceClient) CommitMemoryPromotionReceipt(ctx context.Context, in *CommitMemoryPromotionReceiptRequest, opts ...grpc.CallOption) (*CommitMemoryPromotionReceiptResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AgentOwnedMemory)
+	out := new(CommitMemoryPromotionReceiptResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_CommitMemoryPromotionReceipt_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -626,7 +626,7 @@ type AgentCapabilityServiceServer interface {
 	RevokeOwnedMemory(context.Context, *RevokeOwnedMemoryRequest) (*AgentOwnedMemory, error)
 	CorrectOwnedMemory(context.Context, *CorrectOwnedMemoryRequest) (*CorrectOwnedMemoryResponse, error)
 	PromoteMemoryCandidate(context.Context, *PromoteMemoryCandidateRequest) (*AgentOwnedMemory, error)
-	CommitMemoryPromotionReceipt(context.Context, *CommitMemoryPromotionReceiptRequest) (*AgentOwnedMemory, error)
+	CommitMemoryPromotionReceipt(context.Context, *CommitMemoryPromotionReceiptRequest) (*CommitMemoryPromotionReceiptResponse, error)
 	AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error)
 	CompleteRun(context.Context, *CompleteRunRequest) (*CompleteRunResponse, error)
 	FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error)
@@ -706,7 +706,7 @@ func (UnimplementedAgentCapabilityServiceServer) CorrectOwnedMemory(context.Cont
 func (UnimplementedAgentCapabilityServiceServer) PromoteMemoryCandidate(context.Context, *PromoteMemoryCandidateRequest) (*AgentOwnedMemory, error) {
 	return nil, status.Error(codes.Unimplemented, "method PromoteMemoryCandidate not implemented")
 }
-func (UnimplementedAgentCapabilityServiceServer) CommitMemoryPromotionReceipt(context.Context, *CommitMemoryPromotionReceiptRequest) (*AgentOwnedMemory, error) {
+func (UnimplementedAgentCapabilityServiceServer) CommitMemoryPromotionReceipt(context.Context, *CommitMemoryPromotionReceiptRequest) (*CommitMemoryPromotionReceiptResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CommitMemoryPromotionReceipt not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) AdmitRun(context.Context, *AdmitRunRequest) (*AdmitRunResponse, error) {

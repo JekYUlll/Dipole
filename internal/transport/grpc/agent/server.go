@@ -265,7 +265,7 @@ func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.Pr
 	return agentOwnedMemoryResponseV1(*item), nil
 }
 
-func (s *Server) CommitMemoryPromotionReceipt(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.AgentOwnedMemory, error) {
+func (s *Server) CommitMemoryPromotionReceipt(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
 	if err := agentMemoryReceiptCommitCallerV1(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
@@ -281,7 +281,10 @@ func (s *Server) CommitMemoryPromotionReceipt(ctx context.Context, request *agen
 	if err != nil {
 		return nil, agentMemoryPromotionReceiptCommitErrorV1(err)
 	}
-	return agentOwnedMemoryResponseV1(*item), nil
+	return &agentv1.CommitMemoryPromotionReceiptResponse{
+		MemoryId: item.MemoryUUID, MemoryType: string(item.MemoryType), Status: string(item.Status), ReceiptSha256: request.GetReceiptSha256(),
+		Provenance: &agentv1.AgentMemoryProvenance{SourceType: item.Provenance.SourceType, SourceId: item.Provenance.SourceID, Sequence: item.Provenance.Sequence},
+	}, nil
 }
 
 func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {

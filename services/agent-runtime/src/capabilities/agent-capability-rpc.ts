@@ -9,6 +9,10 @@ import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 import type { ExternalMcpReadinessEvidence } from "../mcp/external-mcp-readiness-evidence.js";
+import {
+  validateAgentMemoryPromotionReceipt,
+  type AgentMemoryPromotionReceiptV2
+} from "../memory/agent-memory-promotion-receipt.js";
 
 const callerService = "dipole-agent";
 const errorCodePattern = /^[a-z][a-z0-9_]{0,63}$/;
@@ -209,6 +213,14 @@ export interface AgentContextMemory {
   readonly compactContent?: string;
   readonly priority: number;
   readonly provenance: { readonly sourceType: string; readonly sourceId: string; readonly uri?: string; readonly sequence?: string };
+}
+
+export interface AgentMemoryPromotionReceiptCommitResult {
+  readonly memoryId: string;
+  readonly memoryType: "episodic" | "semantic" | "procedural" | "observational";
+  readonly status: "active";
+  readonly receiptSha256: string;
+  readonly provenance: { readonly sourceType: "memory_candidate"; readonly sourceId: string; readonly sequence: string };
 }
 
 export interface AgentToolInvocationBegin {
@@ -1020,6 +1032,56 @@ export class AgentCapabilityRPCClient {
           runId: artifact.runId, artifactType: artifact.artifactType, version: artifact.version,
           title: artifact.title, mediaType: artifact.mediaType, contentSha256: artifact.contentSha256,
           sizeBytes, metadata: parsedMetadata as Record<string, unknown>
+        });
+      });
+    });
+  }
+
+  async commitMemoryPromotionReceipt(
+    rawReceipt: unknown,
+    context: { readonly requestId?: string; readonly traceId?: string } = {}
+  ): Promise<AgentMemoryPromotionReceiptCommitResult> {
+    if (this.mode !== "active") throw new Error("Agent Memory promotion receipt commit requires active Runtime mode");
+    const receipt = validateAgentMemoryPromotionReceipt(rawReceipt);
+    if (receipt.schemaVersion !== "dipole.agent.memory-promotion-receipt.v2" || receipt.status !== "prepared") {
+      throw new Error("Agent Memory promotion receipt is not commit-ready");
+    }
+    return this.commitPreparedMemoryPromotionReceipt(receipt, context);
+  }
+
+  private async commitPreparedMemoryPromotionReceipt(
+    receipt: AgentMemoryPromotionReceiptV2,
+    context: { readonly requestId?: string; readonly traceId?: string }
+  ): Promise<AgentMemoryPromotionReceiptCommitResult> {
+    const createdAtUnixMs = Date.parse(receipt.createdAt);
+    const expiresAtUnixMs = Date.parse(receipt.expiresAt);
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.commitMemoryPromotionReceipt({
+        context: this.requestContext(context.requestId, context.traceId), receiptId: receipt.receiptId, receiptSha256: receipt.receiptSha256,
+        schemaVersion: receipt.schemaVersion, status: receipt.status, taskId: receipt.taskId, runId: receipt.runId,
+        candidateId: receipt.candidateId, candidateSha256: receipt.candidateSha256, reviewId: receipt.reviewId,
+        policyVersion: receipt.policyVersion, targetMemoryType: receipt.targetMemoryType,
+        createdAtUnixMs: BigInt(createdAtUnixMs), expiresAtUnixMs: BigInt(expiresAtUnixMs)
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent Memory promotion receipt commit returned no response"));
+          return;
+        }
+        const memoryType = response.memoryType;
+        const provenance = response.provenance;
+        if (!/^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$/.test(response.memoryId) || response.receiptSha256 !== receipt.receiptSha256 ||
+            response.status !== "active" || memoryType !== receipt.targetMemoryType || provenance === undefined ||
+            provenance.sourceType !== "memory_candidate" || provenance.sourceId !== receipt.candidateId || provenance.sequence !== receipt.reviewId ||
+            !["episodic", "semantic", "procedural", "observational"].includes(memoryType)) {
+          reject(new Error("Agent Memory promotion receipt commit returned conflicting evidence"));
+          return;
+        }
+        resolve({
+          memoryId: response.memoryId,
+          memoryType: memoryType as AgentMemoryPromotionReceiptCommitResult["memoryType"],
+          status: "active", receiptSha256: response.receiptSha256,
+          provenance: { sourceType: "memory_candidate", sourceId: provenance.sourceId, sequence: provenance.sequence }
         });
       });
     });

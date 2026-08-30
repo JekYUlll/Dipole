@@ -837,6 +837,14 @@ message CommitMemoryPromotionReceiptRequest {
   int64 expires_at_unix_ms = 14;
 }
 
+message CommitMemoryPromotionReceiptResponse {
+  string memory_id = 1;
+  string memory_type = 2;
+  string status = 3;
+  AgentMemoryProvenance provenance = 4;
+  string receipt_sha256 = 5;
+}
+
 message PublishMcpReadinessEvidenceRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -888,7 +896,7 @@ service AgentCapabilityService {
   rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
   rpc CorrectOwnedMemory(CorrectOwnedMemoryRequest) returns (CorrectOwnedMemoryResponse);
   rpc PromoteMemoryCandidate(PromoteMemoryCandidateRequest) returns (AgentOwnedMemory);
-  rpc CommitMemoryPromotionReceipt(CommitMemoryPromotionReceiptRequest) returns (AgentOwnedMemory);
+  rpc CommitMemoryPromotionReceipt(CommitMemoryPromotionReceiptRequest) returns (CommitMemoryPromotionReceiptResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);

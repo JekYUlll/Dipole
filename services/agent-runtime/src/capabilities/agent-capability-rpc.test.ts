@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
+import { createAgentMemoryPromotionReceipt } from "../memory/agent-memory-promotion-receipt.js";
 import { AgentCapabilityRPCClient } from "./agent-capability-rpc.js";
 
 const conversationReadContext = (overrides: Partial<ExecutionContext> = {}): ExecutionContext => ({
@@ -45,6 +46,30 @@ describe("AgentCapabilityRPCClient", () => {
   it("requires a candidate version for active RPC clients", () => {
     expect(() => new AgentCapabilityRPCClient({} as IAgentCapabilityServiceClient, "secret", 2_000, "active"))
       .toThrow("candidate version");
+  });
+
+  it("commits only an exact prepared receipt through an active Runtime client", async () => {
+    const now = new Date("2026-08-30T02:00:00.000Z");
+    const receipt = createAgentMemoryPromotionReceipt({
+      tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-1", runId: "RUN-1",
+      candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1",
+      candidateMemoryType: "observational", targetMemoryType: "semantic", expiresAt: "2026-08-30T02:10:00.000Z"
+    }, now);
+    const commitMemoryPromotionReceipt = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ receiptId: receipt.receiptId, taskId: "TASK-1", runId: "RUN-1", targetMemoryType: "semantic" });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { memoryId: "MEM-CAND-1", memoryType: "semantic", status: "active", receiptSha256: receipt.receiptSha256,
+        provenance: { sourceType: "memory_candidate", sourceId: "CAND-1", sequence: "REV-1" } });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ commitMemoryPromotionReceipt } as unknown as IAgentCapabilityServiceClient, "secret", 2_000, "active", "candidate-v1");
+    await expect(client.commitMemoryPromotionReceipt(receipt, { requestId: "REQ-1", traceId: "TRACE-1" })).resolves.toEqual({
+      memoryId: "MEM-CAND-1", memoryType: "semantic", status: "active", receiptSha256: receipt.receiptSha256,
+      provenance: { sourceType: "memory_candidate", sourceId: "CAND-1", sequence: "REV-1" }
+    });
+    const shadow = new AgentCapabilityRPCClient({ commitMemoryPromotionReceipt } as unknown as IAgentCapabilityServiceClient, "secret");
+    await expect(shadow.commitMemoryPromotionReceipt(receipt)).rejects.toThrow(/active Runtime mode/i);
   });
 
   it("maps canonical group conversation ids to trusted RPC targets", async () => {

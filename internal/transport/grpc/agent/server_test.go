@@ -1081,7 +1081,7 @@ func TestCommitMemoryPromotionReceiptIsAgentBoundAndOptIn(t *testing.T) {
 	}
 	server, _ = server.WithMemoryPromotionReceiptCommits(commit)
 	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.CommitMemoryPromotionReceipt(ctx, request) })
-	if err != nil || response.(*agentv1.AgentOwnedMemory).GetMemoryId() != "MEM-CAND-1" || commit.request.TaskUUID != "TASK-1" || commit.request.TargetMemoryType != application.AgentMemoryTypeSemantic {
+	if err != nil || response.(*agentv1.CommitMemoryPromotionReceiptResponse).GetMemoryId() != "MEM-CAND-1" || response.(*agentv1.CommitMemoryPromotionReceiptResponse).GetReceiptSha256() != request.ReceiptSha256 || commit.request.TaskUUID != "TASK-1" || commit.request.TargetMemoryType != application.AgentMemoryTypeSemantic {
 		t.Fatalf("commit response=%+v request=%+v err=%v", response, commit.request, err)
 	}
 	request.Context = grpccommon.RequestContext("", "dipole-gateway")

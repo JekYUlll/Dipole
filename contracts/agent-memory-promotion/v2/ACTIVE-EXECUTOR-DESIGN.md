@@ -28,6 +28,8 @@ expires_at
 
 请求不携带 owner、tenant、agent、candidate summary、review reason、正文或凭据。`schema_version=receipt.v2`、`status=prepared`、时间窗和 policy 用于重算 canonical receipt body；Core 从持久化的 Task/Run/Invocation 恢复身份和 scope。
 
+响应只返回 `memory_id`、持久类型、`active` 状态、candidate/review provenance 与 `receipt_sha256`。它不返回 Memory content、compact content、资源 ID、owner、tenant 或任何 candidate/review 正文；Runtime 必须复核全部返回 binding 后才把结果写入 Workflow history。
+
 ## Core 提交算法
 
 1. 校验 caller 为 `dipole-agent`，请求字段格式严格且 `target_memory_type` 为持久类型；`working` 直接拒绝。
