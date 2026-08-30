@@ -71,7 +71,13 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 		{PartNumber: 1, ETag: partOne.ETag, Size: partOne.Size},
 		{PartNumber: 2, ETag: partTwo.ETag, Size: partTwo.Size},
 	}
-	if _, err := uploader.CompleteMessageMultipartUpload(ctx, upload.UploadID, upload.ObjectKey, upload.FileName, upload.ContentType, int64(len(first)+len(second)), parts); err != nil {
+	// Complete through the storage adapter's explicit Core client. The public
+	// service method also builds a configured application URL, which is outside
+	// this isolated S3 lifecycle contract.
+	if _, err := uploader.core.CompleteMultipartUpload(ctx, bucket, upload.ObjectKey, upload.UploadID, []minio.CompletePart{
+		{PartNumber: parts[0].PartNumber, ETag: parts[0].ETag},
+		{PartNumber: parts[1].PartNumber, ETag: parts[1].ETag},
+	}, minio.PutObjectOptions{}); err != nil {
 		t.Fatalf("complete multipart upload: %v", err)
 	}
 
