@@ -185,7 +185,7 @@ case "${action}" in
       cat >"\$k6_wrapper" <<'K6_WRAPPER'
 #!/usr/bin/env bash
 set -euo pipefail
-exec docker run --rm --network host -v "\$PWD:/workspace" -w /workspace "\${DIPOLE_K6_IMAGE}" "\$@"
+exec docker run --rm --network host --user "\$(id -u):\$(id -g)" -v "\$PWD:/workspace" -w /workspace "\${DIPOLE_K6_IMAGE}" "\$@"
 K6_WRAPPER
       chmod 700 "\$k6_wrapper"
       env "\${bench_env[@]}" DIPOLE_K6_IMAGE="\$k6_image" K6_BIN="\$k6_wrapper" scripts/bench/run_bench.sh
