@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 在用户态 Go 1.27.0、受控只读 module proxy 和提交 `a92b9a8c` 上完成远端 canonical 验证；Go test、Compose、服务布局与架构文档门禁全部通过，退出码为 `0`。本机 Dipole Compose 拓扑已停止，远端未启动容器。
+
 - 2026-08-30：远端测试入口增加可选 `DIPOLE_REMOTE_GOPROXY`，允许通过短期受控缓存代理补齐远端缺失 Go modules；代理地址只存在于运行环境，不写入仓库或持久配置。
 
 - 2026-08-30：为 Remote GPU 增加 `DIPOLE_REMOTE_GO_ROOT` 用户态 Go 工具链入口；已同步 Go 1.27.0 到 `/home/admin1/.local/go-1.27.0`，不修改系统 Go，后续可在远端执行完整 canonical 测试。
