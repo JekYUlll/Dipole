@@ -598,7 +598,7 @@ import { useWebSocket } from '@/composables/useWebSocket'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
-import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart } from '@/upload/multipartUpload'
+import { PresignedPartUploadError, sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart } from '@/upload/multipartUpload'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -1509,7 +1509,19 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
     await uploadMultipartParts(file, init.chunk_size, init.total_parts, async (partNumber, chunk) => {
       if (presignedParts.has(partNumber)) {
         const presignedURL = presignedParts.get(partNumber)!
-        const etag = await uploadPresignedPart(toSameOriginPresignedURL(presignedURL, presignedMultipartProxyEnabled), chunk)
+        let etag: string
+        try {
+          etag = await uploadPresignedPart(toSameOriginPresignedURL(presignedURL, presignedMultipartProxyEnabled), chunk)
+        } catch (error) {
+          if (!(error instanceof PresignedPartUploadError) || ![401, 403].includes(error.status)) throw error
+          const refreshed = await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/presign`, {
+            part_numbers: [partNumber],
+          }) as { parts: Array<{ part_number: number; url: string }> }
+          const replacement = refreshed.parts?.find(part => part.part_number === partNumber)?.url?.trim()
+          if (!replacement) throw error
+          presignedParts.set(partNumber, replacement)
+          throw error
+        }
         await api.post(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}/parts/${partNumber}/register`, {
           etag,
           size: chunk.size,

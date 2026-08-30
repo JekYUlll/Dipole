@@ -34,6 +34,12 @@ describe('uploadMultipartParts', () => {
     await expect(uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl)).rejects.toThrow('ETag')
   })
 
+  it('preserves the HTTP status when a presigned URL expires', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 403 }))
+    await expect(uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl))
+      .rejects.toMatchObject({ name: 'PresignedPartUploadError', status: 403 })
+  })
+
   it('computes a stable SHA-256 checksum when Web Crypto is available', async () => {
     const checksum = await sha256Hex(new Blob(['data']))
     if (checksum === undefined) return
