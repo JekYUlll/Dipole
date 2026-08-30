@@ -160,31 +160,32 @@ type Sync struct {
 }
 
 type InternalRPC struct {
-	Enabled                                  bool   `mapstructure:"enabled"`
-	SharedSecret                             string `mapstructure:"shared_secret"`
-	CoreListenAddress                        string `mapstructure:"core_listen_address"`
-	CoreTarget                               string `mapstructure:"core_target"`
-	MessageListenAddress                     string `mapstructure:"message_listen_address"`
-	MessageTarget                            string `mapstructure:"message_target"`
-	SearchListenAddress                      string `mapstructure:"search_listen_address"`
-	SearchTarget                             string `mapstructure:"search_target"`
-	SyncListenAddress                        string `mapstructure:"sync_listen_address"`
-	SyncTarget                               string `mapstructure:"sync_target"`
-	AgentConversationSearchEnabled           bool   `mapstructure:"agent_conversation_search_enabled"`
-	AgentMemoryPromotionReceiptCommitEnabled bool   `mapstructure:"agent_memory_promotion_receipt_commit_enabled"`
-	DeliveryObservationEnabled               bool   `mapstructure:"delivery_observation_enabled"`
-	DeliveryObservationListenAddress         string `mapstructure:"delivery_observation_listen_address"`
-	DeliveryObservationCapacity              int    `mapstructure:"delivery_observation_capacity"`
-	DeliveryObservationRetryAfterMS          int    `mapstructure:"delivery_observation_retry_after_ms"`
-	DeliveryPrimaryEnabled                   bool   `mapstructure:"delivery_primary_enabled"`
-	DeliveryPrimaryReplayCapacity            int    `mapstructure:"delivery_primary_replay_capacity"`
-	DialTimeoutSeconds                       int    `mapstructure:"dial_timeout_seconds"`
-	ShutdownTimeoutSeconds                   int    `mapstructure:"shutdown_timeout_seconds"`
-	TLSEnabled                               bool   `mapstructure:"tls_enabled"`
-	TLSCertFile                              string `mapstructure:"tls_cert_file"`
-	TLSKeyFile                               string `mapstructure:"tls_key_file"`
-	TLSCAFile                                string `mapstructure:"tls_ca_file"`
-	TLSServerName                            string `mapstructure:"tls_server_name"`
+	Enabled                                          bool   `mapstructure:"enabled"`
+	SharedSecret                                     string `mapstructure:"shared_secret"`
+	CoreListenAddress                                string `mapstructure:"core_listen_address"`
+	CoreTarget                                       string `mapstructure:"core_target"`
+	MessageListenAddress                             string `mapstructure:"message_listen_address"`
+	MessageTarget                                    string `mapstructure:"message_target"`
+	SearchListenAddress                              string `mapstructure:"search_listen_address"`
+	SearchTarget                                     string `mapstructure:"search_target"`
+	SyncListenAddress                                string `mapstructure:"sync_listen_address"`
+	SyncTarget                                       string `mapstructure:"sync_target"`
+	AgentConversationSearchEnabled                   bool   `mapstructure:"agent_conversation_search_enabled"`
+	AgentMemoryPromotionReceiptCommitEnabled         bool   `mapstructure:"agent_memory_promotion_receipt_commit_enabled"`
+	AgentOAuthAuthorizationTransactionConsumeEnabled bool   `mapstructure:"agent_oauth_authorization_transaction_consume_enabled"`
+	DeliveryObservationEnabled                       bool   `mapstructure:"delivery_observation_enabled"`
+	DeliveryObservationListenAddress                 string `mapstructure:"delivery_observation_listen_address"`
+	DeliveryObservationCapacity                      int    `mapstructure:"delivery_observation_capacity"`
+	DeliveryObservationRetryAfterMS                  int    `mapstructure:"delivery_observation_retry_after_ms"`
+	DeliveryPrimaryEnabled                           bool   `mapstructure:"delivery_primary_enabled"`
+	DeliveryPrimaryReplayCapacity                    int    `mapstructure:"delivery_primary_replay_capacity"`
+	DialTimeoutSeconds                               int    `mapstructure:"dial_timeout_seconds"`
+	ShutdownTimeoutSeconds                           int    `mapstructure:"shutdown_timeout_seconds"`
+	TLSEnabled                                       bool   `mapstructure:"tls_enabled"`
+	TLSCertFile                                      string `mapstructure:"tls_cert_file"`
+	TLSKeyFile                                       string `mapstructure:"tls_key_file"`
+	TLSCAFile                                        string `mapstructure:"tls_ca_file"`
+	TLSServerName                                    string `mapstructure:"tls_server_name"`
 }
 
 type Storage struct {
@@ -1054,6 +1055,7 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.SyncTarget = strings.TrimSpace(cfg.GetString("internal_rpc.sync_target"))
 	internalRPC.AgentConversationSearchEnabled = cfg.GetBool("internal_rpc.agent_conversation_search_enabled")
 	internalRPC.AgentMemoryPromotionReceiptCommitEnabled = cfg.GetBool("internal_rpc.agent_memory_promotion_receipt_commit_enabled")
+	internalRPC.AgentOAuthAuthorizationTransactionConsumeEnabled = cfg.GetBool("internal_rpc.agent_oauth_authorization_transaction_consume_enabled")
 	internalRPC.DeliveryObservationEnabled = cfg.GetBool("internal_rpc.delivery_observation_enabled")
 	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))
 	internalRPC.DeliveryObservationCapacity = cfg.GetInt("internal_rpc.delivery_observation_capacity")

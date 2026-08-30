@@ -21,6 +21,23 @@ func TestCoreRPCBootstrapOwnsPlatformTransport(t *testing.T) {
 	}
 }
 
+func TestCoreRuntimeKeepsOAuthCallbackConsumptionExplicitAndMTLSBound(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("runtime.go"))
+	if err != nil {
+		t.Fatalf("read Core runtime: %v", err)
+	}
+	text := string(source)
+	if !strings.Contains(text, "rpcCfg.AgentOAuthAuthorizationTransactionConsumeEnabled") {
+		t.Fatal("Core OAuth transaction store injection must require an explicit gate")
+	}
+	if !strings.Contains(text, "Agent OAuth authorization transaction consumption requires internal RPC mTLS") {
+		t.Fatal("Core OAuth transaction store injection must require mTLS")
+	}
+	if !strings.Contains(text, "NewOAuthAuthorizationTransactionServer") {
+		t.Fatal("Core must compose the restricted OAuth transaction adapter")
+	}
+}
+
 func TestCoreServiceEntrypointUsesOwnedRuntime(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("entrypoint.go"))
 	if err != nil {

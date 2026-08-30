@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Core standalone bootstrap 已增加 OAuth transaction consume Store 的显式 mTLS gate。默认配置不注入 SQLC Store，受限 adapter 可与 Memory receipt commit 共同存在；所以 RPC 合同默认仍返回 `Unavailable`。HTTP callback、Runtime 密钥注入/轮换、解封、code exchange、token 生命周期与共享环境演练仍未接线。
+
 - 2026-08-31：Core Agent Capability 已增加默认关闭的 OAuth transaction consume RPC。它限制 `dipole-gateway` 身份、由认证 context 恢复 owner、只接收 state digest，并在获取密封 verifier 前完成 SQLC 条件消费；缺 Store 返回 `Unavailable`。当前没有 HTTP callback、Core bootstrap 注入、Runtime 解封/换码、密钥轮换或 token 生命周期，默认部署继续零写入。
 
 - 2026-08-31：OAuth transaction 的 Agent-owned SQLC storage foundation 已落地：`000052` 只保存密封 verifier 和 state digest；conditional consume 同时匹配 transaction、owner、state、expiry 与 `consumed_at IS NULL`，因此重复 callback 无法获得第二次消费。Core owner-recovery RPC、callback、密钥注入/轮换与 code exchange 尚未接线，默认部署没有该表写入路径。

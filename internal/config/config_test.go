@@ -40,6 +40,9 @@ func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
 	if v.GetBool("internal_rpc.agent_memory_promotion_receipt_commit_enabled") {
 		t.Fatal("Agent Memory promotion receipt commit must remain opt-in")
 	}
+	if v.GetBool("internal_rpc.agent_oauth_authorization_transaction_consume_enabled") {
+		t.Fatal("Agent OAuth authorization transaction consumption must remain opt-in")
+	}
 	if got := v.GetString("internal_rpc.delivery_observation_listen_address"); got != "127.0.0.1:9095" {
 		t.Fatalf("delivery observation listener = %q", got)
 	}

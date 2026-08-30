@@ -197,6 +197,8 @@ internal_rpc:
   agent_conversation_search_enabled: false
   # Core receipt commit stays disabled until active authority and mTLS evidence are approved.
   agent_memory_promotion_receipt_commit_enabled: false
+  # OAuth callback transaction consumption stays disabled until mTLS, callback routing, and Runtime key handling are reviewed.
+  agent_oauth_authorization_transaction_consume_enabled: false
   # C2 shadow receiver only records validated node batches; it never delivers to WebSocket clients.
   delivery_observation_enabled: false
   delivery_observation_listen_address: 127.0.0.1:9095

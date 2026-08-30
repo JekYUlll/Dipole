@@ -212,11 +212,44 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 					cleanup()
 					return nil, fmt.Errorf("configure standalone Agent Memory receipt rpc adapter: %w", composeErr)
 				}
+			} else if restrictedAdapter, ok := agentAdapter.(*agentgrpc.RestrictedServer); ok {
+				if _, composeErr = restrictedAdapter.WithMemoryPromotionReceiptCommits(commits); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent Memory receipt rpc adapter: %w", composeErr)
+				}
 			} else {
 				agentAdapter, composeErr = agentgrpc.NewMemoryPromotionReceiptServer(commits)
 				if composeErr != nil {
 					cleanup()
 					return nil, fmt.Errorf("compose standalone Agent Memory receipt rpc adapter: %w", composeErr)
+				}
+			}
+		}
+		if rpcCfg.AgentOAuthAuthorizationTransactionConsumeEnabled {
+			if !rpcCfg.TLSEnabled {
+				cleanup()
+				return nil, fmt.Errorf("Agent OAuth authorization transaction consumption requires internal RPC mTLS")
+			}
+			agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
+			}
+			if searchAdapter, ok := agentAdapter.(*agentgrpc.Server); ok {
+				if _, composeErr = searchAdapter.WithOAuthAuthorizationTransactions(agentRepos.OAuthTransactions); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth authorization transaction rpc adapter: %w", composeErr)
+				}
+			} else if restrictedAdapter, ok := agentAdapter.(*agentgrpc.RestrictedServer); ok {
+				if _, composeErr = restrictedAdapter.WithOAuthAuthorizationTransactions(agentRepos.OAuthTransactions); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth authorization transaction rpc adapter: %w", composeErr)
+				}
+			} else {
+				agentAdapter, composeErr = agentgrpc.NewOAuthAuthorizationTransactionServer(agentRepos.OAuthTransactions)
+				if composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("compose standalone Agent OAuth authorization transaction rpc adapter: %w", composeErr)
 				}
 			}
 		}

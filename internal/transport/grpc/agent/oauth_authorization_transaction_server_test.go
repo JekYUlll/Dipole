@@ -20,6 +20,12 @@ type oauthTransactionStoreStub struct {
 	claim    []string
 }
 
+type memoryPromotionReceiptCommitStub struct{}
+
+func (memoryPromotionReceiptCommitStub) CommitMemoryPromotionReceipt(context.Context, application.AgentMemoryPromotionReceiptCommitRequestV1) (*application.AgentMemoryV1, error) {
+	return nil, nil
+}
+
 func (s *oauthTransactionStoreStub) CreateAgentOAuthAuthorizationTransaction(context.Context, application.AgentOAuthAuthorizationTransactionV1) (bool, error) {
 	return false, errors.New("unused")
 }
@@ -68,5 +74,19 @@ func TestConsumeOAuthAuthorizationTransactionFailsClosedWithoutStore(t *testing.
 	})
 	if status.Code(err) != codes.Unavailable {
 		t.Fatalf("expected unavailable, got %v", err)
+	}
+}
+
+func TestRestrictedServerComposesOAuthWithReceiptBoundary(t *testing.T) {
+	store := &oauthTransactionStoreStub{}
+	server, err := NewOAuthAuthorizationTransactionServer(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = server.WithMemoryPromotionReceiptCommits(&memoryPromotionReceiptCommitStub{}); err != nil {
+		t.Fatalf("compose receipt boundary: %v", err)
+	}
+	if server.oauthTransactions != store || server.commits == nil {
+		t.Fatal("restricted server did not retain both independently gated seams")
 	}
 }

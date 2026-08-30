@@ -1289,6 +1289,10 @@ func (s *Server) ResolveMcpContext(ctx context.Context, request *agentv1.Resolve
 }
 
 func (s *Server) ConsumeOAuthAuthorizationTransaction(ctx context.Context, request *agentv1.ConsumeOAuthAuthorizationTransactionRequest) (*agentv1.ConsumeOAuthAuthorizationTransactionResponse, error) {
+	return consumeOAuthAuthorizationTransactionV1(ctx, request, s.oauthTransactions)
+}
+
+func consumeOAuthAuthorizationTransactionV1(ctx context.Context, request *agentv1.ConsumeOAuthAuthorizationTransactionRequest, transactions application.AgentOAuthAuthorizationTransactionStoreV1) (*agentv1.ConsumeOAuthAuthorizationTransactionResponse, error) {
 	caller, err := grpccommon.Caller(ctx, request.GetContext())
 	if err != nil {
 		return nil, err
@@ -1300,21 +1304,21 @@ func (s *Server) ConsumeOAuthAuthorizationTransaction(ctx context.Context, reque
 	if caller != "dipole-gateway" {
 		return nil, status.Error(codes.PermissionDenied, "only Gateway may consume OAuth authorization transactions")
 	}
-	if s.oauthTransactions == nil {
+	if transactions == nil {
 		return nil, status.Error(codes.Unavailable, "OAuth authorization callback is unavailable")
 	}
 	transactionID, stateSHA256 := strings.TrimSpace(request.GetTransactionId()), strings.TrimSpace(request.GetStateSha256())
 	if transactionID == "" || stateSHA256 == "" {
 		return nil, status.Error(codes.InvalidArgument, "OAuth authorization callback is invalid")
 	}
-	record, err := s.oauthTransactions.GetAgentOAuthAuthorizationTransaction(grpccommon.Correlation(ctx, request.GetContext()), transactionID)
+	record, err := transactions.GetAgentOAuthAuthorizationTransaction(grpccommon.Correlation(ctx, request.GetContext()), transactionID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "OAuth authorization transaction lookup failed")
 	}
 	if record == nil || record.OwnerUserUUID != owner || record.StateSHA256 != stateSHA256 {
 		return nil, status.Error(codes.NotFound, "OAuth authorization transaction unavailable")
 	}
-	consumed, err := s.oauthTransactions.ConsumeAgentOAuthAuthorizationTransaction(grpccommon.Correlation(ctx, request.GetContext()), transactionID, owner, stateSHA256, time.Now().UTC())
+	consumed, err := transactions.ConsumeAgentOAuthAuthorizationTransaction(grpccommon.Correlation(ctx, request.GetContext()), transactionID, owner, stateSHA256, time.Now().UTC())
 	if err != nil {
 		if errors.Is(err, application.ErrAgentOAuthAuthorizationTransactionInvalid) {
 			return nil, status.Error(codes.InvalidArgument, "OAuth authorization callback is invalid")
