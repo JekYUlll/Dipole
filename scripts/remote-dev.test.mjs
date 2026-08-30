@@ -41,7 +41,7 @@ test("benchmark uses an explicit k6 binary and has a Docker fallback on remote h
   assert.match(source, /DIPOLE_K6_IMAGE\}" "\\\$@"/);
   assert.doesNotMatch(source, /DIPOLE_K6_IMAGE\}" k6 "\\\$@"/);
   assert.match(source, /K6_BIN="\\\$k6_wrapper" scripts\/bench\/run_bench\.sh/);
-  assert.match(source, /remote "\$\{REMOTE_K6_IMAGE\}" "\$\{action\}"/);
+  assert.match(source, /remote "\$\{remote_k6_image\}" "\$\{action\}"/);
   assert.match(source, /k6_image="\\\$\{3:-\}"/);
   assert.match(source, /BASE_URL=http:\/\/127\.0\.0\.1:18081/);
   assert.match(source, /NODE2_HEALTH_URL=http:\/\/127\.0\.0\.1:18082\/health/);
@@ -60,6 +60,7 @@ test("benchmark workload overrides are forwarded through an explicit allowlist",
 
 test("benchmark positional forwarding preserves empty optional values", () => {
   assert.ok(source.includes('REMOTE_EMPTY_ARG="__DIPOLE_EMPTY_ARG__"'));
+  assert.ok(source.includes('local remote_go_proxy="${REMOTE_GOPROXY:-$REMOTE_EMPTY_ARG}"'));
   assert.ok(source.includes('local bench_scenario_filter="${BENCH_SCENARIO_FILTER:-$REMOTE_EMPTY_ARG}"'));
   assert.ok(source.includes('[[ "\\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]]'));
 });
