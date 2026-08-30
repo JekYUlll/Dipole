@@ -215,6 +215,7 @@ type Querier interface {
 	ListSyncInboxBaselineEntries(ctx context.Context, jobName string) ([]ListSyncInboxBaselineEntriesRow, error)
 	ListSyncInboxLocatorsByMessageUUID(ctx context.Context, messageUuid string) ([]ListSyncInboxLocatorsByMessageUUIDRow, error)
 	ListSyncReplayEvents(ctx context.Context, arg ListSyncReplayEventsParams) ([]ListSyncReplayEventsRow, error)
+	ListUploadedFilesByUploaderBeforeID(ctx context.Context, arg ListUploadedFilesByUploaderBeforeIDParams) ([]UploadedFile, error)
 	ListUserSyncInboxAfter(ctx context.Context, arg ListUserSyncInboxAfterParams) ([]UserSyncInbox, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 	ListUsersByStatus(ctx context.Context, arg ListUsersByStatusParams) ([]User, error)

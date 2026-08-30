@@ -160,7 +160,7 @@ func NewWithDependencies(repos *Repositories, dependencies Dependencies) *Server
 		syncApplication = dependencies.Sync
 	}
 	syncHandler := httpHandler.NewSyncHandler(syncApplication).WithComparisonObserver(dependencies.SyncComparison)
-	fileHandler := httpHandler.NewFileHandler(messaging.Files).WithLimiter(requestLimiter)
+	fileHandler := httpHandler.NewFileHandler(messaging.Files).WithDirectory(messaging.Core).WithLimiter(requestLimiter)
 	wsHandler := wsTransport.NewHandler(wsAuthenticator, wsHub, wsDispatcher)
 	authRequired := middleware.Auth(tokenService, repos.Users)
 
@@ -215,6 +215,7 @@ func NewWithDependencies(repos *Repositories, dependencies Dependencies) *Server
 				protected.GET("/sync/groups/checkpoints", syncHandler.ListGroupCheckpoints)
 				protected.PATCH("/sync/groups/:group_uuid/checkpoint", syncHandler.AdvanceGroupCheckpoint)
 			}
+			protected.GET("/files", fileHandler.ListOwned)
 			protected.POST("/files", fileHandler.Upload)
 			protected.GET("/files/uploads/policy", fileHandler.MultipartPolicy)
 			protected.POST("/files/uploads/initiate", fileHandler.InitiateMultipart)

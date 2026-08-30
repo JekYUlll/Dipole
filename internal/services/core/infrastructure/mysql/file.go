@@ -7,9 +7,9 @@ import (
 	"fmt"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/mapper"
-	"github.com/JekYUlll/Dipole/internal/model"
 )
 
 var _ application.FileMetadataStore = (*FileRepository)(nil)
@@ -52,4 +52,20 @@ func (r *FileRepository) GetByUUID(uuid string) (*model.UploadedFile, error) {
 		return nil, fmt.Errorf("get uploaded file by UUID with sqlc: %w", err)
 	}
 	return mapper.UploadedFile(row), nil
+}
+
+func (r *FileRepository) ListByUploaderBeforeID(uploaderUUID string, beforeID uint, limit int) ([]*model.UploadedFile, error) {
+	rows, err := r.queries.ListUploadedFilesByUploaderBeforeID(context.Background(), generated.ListUploadedFilesByUploaderBeforeIDParams{
+		UploaderUuid: uploaderUUID,
+		ID:           uint64(beforeID),
+		Limit:        int32(limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list uploaded files by uploader with sqlc: %w", err)
+	}
+	files := make([]*model.UploadedFile, 0, len(rows))
+	for _, row := range rows {
+		files = append(files, mapper.UploadedFile(row))
+	}
+	return files, nil
 }

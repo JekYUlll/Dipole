@@ -7,6 +7,7 @@ import (
 
 	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -42,6 +43,16 @@ func (stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.Up
 		return nil, nil
 	}
 	return &model.UploadedFile{UUID: fileUUID, UploaderUUID: uploaderUUID, FileName: "design.pen", FileSize: 42, ContentType: "application/octet-stream", URL: "https://files.test/design.pen"}, nil
+}
+
+func (stubCoreCapability) ListOwnedFiles(uploaderUUID, beforeFileUUID string, limit int) (*application.OwnedFilePage, error) {
+	if uploaderUUID != "U1" || limit != 2 || beforeFileUUID != "" {
+		return &application.OwnedFilePage{}, nil
+	}
+	return &application.OwnedFilePage{Files: []*model.UploadedFile{
+		{UUID: "F2", UploaderUUID: uploaderUUID, FileName: "second.txt", FileSize: 2},
+		{UUID: "F1", UploaderUUID: uploaderUUID, FileName: "first.txt", FileSize: 1},
+	}, NextCursor: "F1", HasMore: true}, nil
 }
 
 func (stubCoreCapability) ListSearchConversationKeys(userUUID string) ([]string, error) {
@@ -82,6 +93,10 @@ func TestRemoteClientImplementsCoreCapability(t *testing.T) {
 	file, err = client.GetOwnedFile("U2", "F1")
 	if err != nil || file != nil {
 		t.Fatalf("expected hidden unowned file, got %+v err=%v", file, err)
+	}
+	page, err := client.ListOwnedFiles("U1", "", 2)
+	if err != nil || len(page.Files) != 2 || page.Files[0].UUID != "F2" || !page.HasMore || page.NextCursor != "F1" {
+		t.Fatalf("unexpected owned file page: %+v err=%v", page, err)
 	}
 	keys, err := client.ListSearchConversationKeys("U1")
 	if err != nil || len(keys) != 2 || keys[0] != "direct:U1:U2" {

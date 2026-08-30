@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 增加 File Directory v1 的 desktop/mobile 只读目录、loading/empty/unavailable 状态矩阵及 File Directory Row、File Type Badge、Empty State 三个复用组件。
+- 归档 `exports/file-directory-review.png` 评审基线；目录仅展示 owner-scoped 文件元数据，存储 URL、对象键、校验值、上传会话和删除控制均不进入页面。
 - 增加 Group Directory v1 的 desktop/mobile 目录、五态权威状态矩阵和 Group Row/Status/Member Summary 三个可复用组件。
 - 归档 `exports/group-v1/` 的 2x 评审图；设计只覆盖认证读取、解散只读和热群 `notify + pull`，不开放群管理写操作。
 - 增加 Contact v1 的 desktop/mobile 管理稿、关系状态矩阵和两个可复用组件，覆盖可信联系人、传入/传出申请、备注、拉黑和删除入口。
@@ -21,6 +23,7 @@
 
 ### 验证
 
+- File Directory v1 的 Pencil 结构门禁、低敏目录解析/状态组件测试和认证路由契约通过；Remote GPU Node 22 在 `a29d9927` 通过 38 个前端测试文件、157 项测试、typecheck 与 production build。当前未覆盖跨浏览器交互或视觉回归，以及文件写操作。
 - Group Directory v1 的 Pencil 结构门禁、目录解析/状态组件测试、认证路由契约、Remote GPU Node 22 typecheck 与 production build 通过；当前未覆盖跨浏览器截图回归或群管理写路径。
 - Agent Definition Catalog v1 使用 Pencil CLI `0.3.5` 与 `scripts/pencil-safe-edit.mjs` 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、三个复用组件和 2x 导出。Vue 目录页的 Chromium visual baseline 只覆盖受控低敏 metadata 与只读边界，active Runtime 和写 Capability 继续关闭。
 - Agent Task Timeline v1 使用 Pencil CLI `0.3.5`、`scripts/pencil-safe-edit.mjs` 和既有 brief 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、四个复用组件和 2x 导出。F2/F3 未完成页面、完整截图级视觉回归与未覆盖平台场景继续保持待处理状态。

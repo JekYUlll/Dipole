@@ -30,6 +30,9 @@ func (*agentCapabilityCoreStub) ListGroupMembers(string) ([]*model.GroupMember, 
 func (*agentCapabilityCoreStub) GetOwnedFile(string, string) (*model.UploadedFile, error) {
 	return nil, nil
 }
+func (*agentCapabilityCoreStub) ListOwnedFiles(string, string, int) (*application.OwnedFilePage, error) {
+	return &application.OwnedFilePage{}, nil
+}
 func (*agentCapabilityCoreStub) ListSearchConversationKeys(string) ([]string, error) { return nil, nil }
 
 type agentCapabilityMessagesStub struct {

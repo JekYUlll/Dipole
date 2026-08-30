@@ -233,6 +233,9 @@ func (rpcCoreStub) ListGroupMembers(groupUUID string) ([]*model.GroupMember, err
 func (rpcCoreStub) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
 	return &model.UploadedFile{UUID: fileUUID, UploaderUUID: uploaderUUID, FileName: "rpc-file"}, nil
 }
+func (rpcCoreStub) ListOwnedFiles(string, string, int) (*application.OwnedFilePage, error) {
+	return &application.OwnedFilePage{}, nil
+}
 
 func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 	cfg := config.InternalRPC{

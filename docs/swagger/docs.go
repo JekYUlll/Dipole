@@ -200,6 +200,62 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/agent-mcp/token": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "签发第一方 Agent MCP 短期访问令牌",
+                "parameters": [
+                    {
+                        "description": "MCP resource、scope 与显式授权",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.AgentMCPGrantRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.SuccessEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "consumes": [
@@ -1018,6 +1074,60 @@ const docTemplate = `{
             }
         },
         "/files": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "列出当前用户上传的文件",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "上一页最后一个文件 ID",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量，1-50",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.OwnedFileDirectoryResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1070,42 +1180,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/http.ErrorEnvelope"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/http.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/files/uploads/policy": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "File"
-                ],
-                "summary": "获取分片上传策略",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/http.SuccessEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/http.ErrorEnvelope"
                         }
@@ -1174,6 +1248,42 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/uploads/policy": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "获取分片上传策略",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.SuccessEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/http.ErrorEnvelope"
                         }
@@ -1376,46 +1486,82 @@ const docTemplate = `{
         },
         "/files/uploads/{session_id}/parts/presign": {
             "post": {
-                "security": [{"BearerAuth": []}],
-                "consumes": ["application/json"],
-                "produces": ["application/json"],
-                "tags": ["File"],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
                 "summary": "签发分片直传 URL",
                 "parameters": [
-                    {"type": "string", "description": "上传会话 ID", "name": "session_id", "in": "path", "required": true},
-                    {"description": "分片编号列表", "name": "request", "in": "body", "required": true, "schema": {"$ref": "#/definitions/httpdto.FileMultipartPresignRequest"}}
+                    {
+                        "type": "string",
+                        "description": "上传会话 ID",
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "分片编号",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.FileMultipartPresignRequest"
+                        }
+                    }
                 ],
                 "responses": {
-                    "200": {"description": "OK", "schema": {"$ref": "#/definitions/http.MultipartPresignResponseEnvelope"}},
-                    "400": {"description": "Bad Request", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "403": {"description": "Forbidden", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "404": {"description": "Not Found", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "500": {"description": "Internal Server Error", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "503": {"description": "Service Unavailable", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}}
-                }
-            }
-        },
-        "/files/uploads/{session_id}/parts/{part_number}/register": {
-            "post": {
-                "security": [{"BearerAuth": []}],
-                "consumes": ["application/json"],
-                "produces": ["application/json"],
-                "tags": ["File"],
-                "summary": "登记已直传分片",
-                "parameters": [
-                    {"type": "string", "description": "上传会话 ID", "name": "session_id", "in": "path", "required": true},
-                    {"type": "integer", "description": "分片编号", "name": "part_number", "in": "path", "required": true},
-                    {"description": "分片 ETag 和尺寸", "name": "request", "in": "body", "required": true, "schema": {"$ref": "#/definitions/httpdto.FileMultipartPartRegisterRequest"}}
-                ],
-                "responses": {
-                    "200": {"description": "OK", "schema": {"$ref": "#/definitions/http.MultipartPartResponseEnvelope"}},
-                    "400": {"description": "Bad Request", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "401": {"description": "Unauthorized", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "403": {"description": "Forbidden", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "404": {"description": "Not Found", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "500": {"description": "Internal Server Error", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}},
-                    "503": {"description": "Service Unavailable", "schema": {"$ref": "#/definitions/http.ErrorEnvelope"}}
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.MultipartPresignResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
                 }
             }
         },
@@ -1450,6 +1596,100 @@ const docTemplate = `{
                         "name": "part_number",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "分片 SHA-256（十六进制）",
+                        "name": "X-Part-SHA256",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.MultipartPartResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/files/uploads/{session_id}/parts/{part_number}/register": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "File"
+                ],
+                "summary": "登记已直传分片",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "上传会话 ID",
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "分片编号",
+                        "name": "part_number",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "分片 ETag 和尺寸",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/httpdto.FileMultipartPartRegisterRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -2559,25 +2799,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/http.SearchMessageListResponseEnvelope"
+                            "$ref": "#/definitions/gateway.SearchMessageListResponseEnvelope"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/http.ErrorEnvelope"
+                            "$ref": "#/definitions/gateway.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/http.ErrorEnvelope"
+                            "$ref": "#/definitions/gateway.ErrorEnvelope"
                         }
                     },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
-                            "$ref": "#/definitions/http.ErrorEnvelope"
+                            "$ref": "#/definitions/gateway.ErrorEnvelope"
                         }
                     }
                 }
@@ -3389,6 +3629,31 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "gateway.ErrorEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "gateway.SearchMessageListResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.SearchMessageResponse"
+                    }
+                }
+            }
+        },
         "http.AdminOverviewResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -3616,13 +3881,6 @@ const docTemplate = `{
                 }
             }
         },
-        "http.MultipartPresignResponseEnvelope": {
-            "type": "object",
-            "properties": {
-                "code": {"type": "integer"},
-                "data": {"$ref": "#/definitions/httpdto.FileMultipartPresignResponse"}
-            }
-        },
         "http.GroupMemberListResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -3770,6 +4028,28 @@ const docTemplate = `{
                 }
             }
         },
+        "http.MultipartPresignResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/httpdto.FileMultipartPresignResponse"
+                }
+            }
+        },
+        "http.OwnedFileDirectoryResponseEnvelope": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/httpdto.OwnedFileDirectoryResponse"
+                }
+            }
+        },
         "http.PrivateUserListResponseEnvelope": {
             "type": "object",
             "properties": {
@@ -3817,20 +4097,6 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/httpdto.PublicUserResponse"
-                }
-            }
-        },
-        "http.SearchMessageListResponseEnvelope": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/httpdto.SearchMessageResponse"
-                    }
                 }
             }
         },
@@ -3943,6 +4209,30 @@ const docTemplate = `{
             "properties": {
                 "sync_seq": {
                     "type": "integer"
+                }
+            }
+        },
+        "httpdto.AgentMCPGrantRequest": {
+            "type": "object",
+            "required": [
+                "consent",
+                "resource",
+                "scopes"
+            ],
+            "properties": {
+                "consent": {
+                    "type": "boolean"
+                },
+                "resource": {
+                    "type": "string"
+                },
+                "scopes": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -4209,6 +4499,9 @@ const docTemplate = `{
                 "file_name": {
                     "type": "string"
                 },
+                "file_sha256": {
+                    "type": "string"
+                },
                 "file_size": {
                     "type": "integer"
                 }
@@ -4228,6 +4521,22 @@ const docTemplate = `{
                 }
             }
         },
+        "httpdto.FileMultipartPartRegisterRequest": {
+            "type": "object",
+            "required": [
+                "etag",
+                "size"
+            ],
+            "properties": {
+                "etag": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
         "httpdto.FileMultipartPartStatus": {
             "type": "object",
             "properties": {
@@ -4239,6 +4548,46 @@ const docTemplate = `{
                 },
                 "size": {
                     "type": "integer"
+                }
+            }
+        },
+        "httpdto.FileMultipartPresignPart": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "part_number": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpdto.FileMultipartPresignRequest": {
+            "type": "object",
+            "required": [
+                "part_numbers"
+            ],
+            "properties": {
+                "part_numbers": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "httpdto.FileMultipartPresignResponse": {
+            "type": "object",
+            "properties": {
+                "parts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.FileMultipartPresignPart"
+                    }
                 }
             }
         },
@@ -4266,36 +4615,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/httpdto.FileMultipartPartStatus"
                     }
                 }
-            }
-        },
-        "httpdto.FileMultipartPresignRequest": {
-            "type": "object",
-            "properties": {
-                "part_numbers": {"type": "array", "items": {"type": "integer"}}
-            }
-        },
-        "httpdto.FileMultipartPresignPart": {
-            "type": "object",
-            "properties": {
-                "expires_at": {"type": "string"},
-                "part_number": {"type": "integer"},
-                "url": {"type": "string"}
-            }
-        },
-        "httpdto.FileMultipartPresignResponse": {
-            "type": "object",
-            "properties": {
-                "parts": {
-                    "type": "array",
-                    "items": {"$ref": "#/definitions/httpdto.FileMultipartPresignPart"}
-                }
-            }
-        },
-        "httpdto.FileMultipartPartRegisterRequest": {
-            "type": "object",
-            "properties": {
-                "etag": {"type": "string"},
-                "size": {"type": "integer"}
             }
         },
         "httpdto.GroupMemberResponse": {
@@ -4454,6 +4773,46 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "target_uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpdto.OwnedFileDirectoryItem": {
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "download_path": {
+                    "type": "string"
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "httpdto.OwnedFileDirectoryResponse": {
+            "type": "object",
+            "properties": {
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/httpdto.OwnedFileDirectoryItem"
+                    }
+                },
+                "has_more": {
+                    "type": "boolean"
+                },
+                "next_cursor": {
                     "type": "string"
                 }
             }

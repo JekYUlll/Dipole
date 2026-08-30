@@ -18,7 +18,7 @@ describe('Agent route security contract', () => {
       expect(source).toContain(`name: '${routeName}'`)
     }
 
-    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(10)
+    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(11)
     expect(source).toContain("import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'")
@@ -37,6 +37,11 @@ describe('Agent route security contract', () => {
   it('keeps the Group directory authenticated without a write feature flag', () => {
     expect(source).toContain("name: 'groups'")
     expect(source).toContain("path: '/groups'")
+  })
+
+  it('keeps the owner file directory authenticated without exposing upload controls', () => {
+    expect(source).toContain("name: 'files'")
+    expect(source).toContain("path: '/files'")
   })
 
   it('keeps unauthenticated access redirected to Login', () => {

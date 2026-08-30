@@ -36,6 +36,7 @@ message FileSnapshot {
   int64 file_size = 4;
   string content_type = 5;
   string url = 6;
+	int64 created_at_unix_milli = 7;
 }
 
 message GetUserRequest {
@@ -95,6 +96,19 @@ message GetOwnedFileResponse {
   FileSnapshot file = 1;
 }
 
+message ListOwnedFilesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string uploader_user_id = 2;
+  string before_file_id = 3;
+  int32 limit = 4;
+}
+
+message ListOwnedFilesResponse {
+  repeated FileSnapshot files = 1;
+  string next_before_file_id = 2;
+  bool has_more = 3;
+}
+
 message ListSearchConversationKeysRequest {
   dipole.common.v1.RequestContext context = 1;
 }
@@ -110,5 +124,6 @@ service CoreCapabilityService {
   rpc GetGroupMember(GetGroupMemberRequest) returns (GetGroupMemberResponse);
   rpc ListGroupMembers(ListGroupMembersRequest) returns (ListGroupMembersResponse);
   rpc GetOwnedFile(GetOwnedFileRequest) returns (GetOwnedFileResponse);
+	 rpc ListOwnedFiles(ListOwnedFilesRequest) returns (ListOwnedFilesResponse);
   rpc ListSearchConversationKeys(ListSearchConversationKeysRequest) returns (ListSearchConversationKeysResponse);
 }

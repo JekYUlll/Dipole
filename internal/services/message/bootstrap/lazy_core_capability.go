@@ -159,6 +159,14 @@ func (c *lazyCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model
 	return client.GetOwnedFile(uploaderUUID, fileUUID)
 }
 
+func (c *lazyCoreCapability) ListOwnedFiles(uploaderUUID, beforeFileUUID string, limit int) (*application.OwnedFilePage, error) {
+	client, _, err := c.resolve(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return client.ListOwnedFiles(uploaderUUID, beforeFileUUID, limit)
+}
+
 func (c *lazyCoreCapability) ListSearchConversationKeys(userUUID string) ([]string, error) {
 	client, _, err := c.resolve(context.Background())
 	if err != nil {
