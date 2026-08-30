@@ -1,0 +1,183 @@
+{
+  "schema_version": "dipole.performance.baseline.v4",
+  "source_schema_version": "dipole.performance.operations.v4",
+  "run_id": "c1-remote-concurrent100",
+  "scenario": "concurrent",
+  "captured_at": "20260830T024622Z",
+  "environment": {
+    "git_commit": "160d2cc620ac62de33b099a1690a2d84e6a8bb18",
+    "cpu": "Intel(R) Xeon(R) Platinum 8481C",
+    "topology": "deploy/compose/docker-compose.dist.yml",
+    "api_base_url": "http://127.0.0.1:18081",
+    "node1_ws": "ws://127.0.0.1:18081",
+    "node2_ws": "ws://127.0.0.1:18082"
+  },
+  "parameters": {
+    "bench_script": "scripts/bench/bench.js",
+    "user_count": 100,
+    "group_size": 20,
+    "phone_prefix": "138",
+    "sender_count": 100,
+    "messages_per_sender": 4,
+    "message_type": 0,
+    "receiver_conn_ms": 15000,
+    "sender_conn_ms": 15000,
+    "hot_group_warmup_messages": 0,
+    "hot_group_member_count_threshold": null,
+    "hot_group_message_threshold": null
+  },
+  "workload": {
+    "attempted": 400,
+    "accepted": 400,
+    "rejected": 0,
+    "persisted": 400,
+    "received": 400,
+    "expected_receipts": 400,
+    "message_type": 0,
+    "acceptance_rate": 1.0,
+    "persistence_rate": 1.0,
+    "throughput_per_second": 14.511751
+  },
+  "delivery": {
+    "rate": 1.0,
+    "http_failure_rate": 0
+  },
+  "latency_ms": {
+    "average": 127.3075,
+    "p50": 149,
+    "p95": 178.05,
+    "p99": 243.01,
+    "maximum": 247
+  },
+  "storage": {
+    "direct": {
+      "messages": 400,
+      "inbox_rows": 800,
+      "inbox_write_amplification": 2.0
+    },
+    "group": {
+      "messages": 0,
+      "inbox_rows": 0,
+      "inbox_write_amplification": null
+    },
+    "conversation_state": {
+      "available": true,
+      "rows_touched": 200,
+      "messages_observed": 400,
+      "write_operations": 1200,
+      "writes_per_observed_message": 3.0,
+      "projection_writes": {
+        "direct_message": 1200,
+        "group_init": 0,
+        "group_message": 0
+      },
+      "counter_source": "dipole_conversation_projection_writes_total",
+      "timing_available": true,
+      "duration_source": "dipole_conversation_projection_write_duration_seconds",
+      "timing": {
+        "direct_message": {
+          "success_count": 1200,
+          "error_count": 0,
+          "success_sum_seconds": 0.884443071,
+          "average_success_ms": 0.737036,
+          "p95_success_upper_bound_ms": 2.5
+        },
+        "group_init": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        },
+        "group_message": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        }
+      }
+    }
+  },
+  "kafka": {
+    "samples": [
+      0,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      0
+    ],
+    "peak_lag": 43,
+    "settled_lag": 0
+  },
+  "process_resources": {
+    "available": true,
+    "sample_count": 10,
+    "duration_seconds": 33.097735,
+    "services": {
+      "dipole-node1": {
+        "pid": 1156233,
+        "cpu_core_percent": 61.031367,
+        "rss_start_bytes": 57810944,
+        "rss_end_bytes": 78643200,
+        "rss_peak_bytes": 79015936,
+        "thread_peak": 9,
+        "voluntary_context_switches": 230482,
+        "involuntary_context_switches": 109
+      },
+      "dipole-node2": {
+        "pid": 1156248,
+        "cpu_core_percent": 20.122223,
+        "rss_start_bytes": 57389056,
+        "rss_end_bytes": 76435456,
+        "rss_peak_bytes": 76435456,
+        "thread_peak": 9,
+        "voluntary_context_switches": 334530,
+        "involuntary_context_switches": 50
+      },
+      "dipole-node3": {
+        "pid": 1156236,
+        "cpu_core_percent": 19.457525,
+        "rss_start_bytes": 57180160,
+        "rss_end_bytes": 71151616,
+        "rss_peak_bytes": 71151616,
+        "thread_peak": 9,
+        "voluntary_context_switches": 326412,
+        "involuntary_context_switches": 45
+      }
+    },
+    "counter_source": "/proc/<pid>/stat,status,task/*/status"
+  },
+  "runtime_provenance": {
+    "available": true,
+    "expected_revision": "160d2cc620ac62de33b099a1690a2d84e6a8bb18",
+    "source_aligned": true,
+    "services": {
+      "dipole-node1": {
+        "container_id": "2cf4914bb9885c3773e369356207a021257a416cbf8e0cc6824476806d0a536b",
+        "image_id": "sha256:9154bba351e35c6197b260100354a62e9d5cfa1f7a5fa404c6fabba2d8def87d",
+        "revision": "160d2cc620ac62de33b099a1690a2d84e6a8bb18",
+        "created": "2026-08-30T02:38:04Z",
+        "source_dirty": false
+      },
+      "dipole-node2": {
+        "container_id": "e806139bf1af98528138e868d59d8917c5678d72aab27651245d0e77d8f542d7",
+        "image_id": "sha256:9154bba351e35c6197b260100354a62e9d5cfa1f7a5fa404c6fabba2d8def87d",
+        "revision": "160d2cc620ac62de33b099a1690a2d84e6a8bb18",
+        "created": "2026-08-30T02:38:04Z",
+        "source_dirty": false
+      },
+      "dipole-node3": {
+        "container_id": "bbcab6d6d3c2e988937e59f2c2ed92b3efbceb7e8c5bf6c3a296ad6fafe65cf6",
+        "image_id": "sha256:9154bba351e35c6197b260100354a62e9d5cfa1f7a5fa404c6fabba2d8def87d",
+        "revision": "160d2cc620ac62de33b099a1690a2d84e6a8bb18",
+        "created": "2026-08-30T02:38:04Z",
+        "source_dirty": false
+      }
+    }
+  }
+}
