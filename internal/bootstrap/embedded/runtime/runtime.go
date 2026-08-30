@@ -184,7 +184,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Invocation resolver: %w", composeErr)
 		}
-		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy)
+		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy, authorizer)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Run admission: %w", composeErr)
 		}
