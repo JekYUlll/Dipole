@@ -2,6 +2,7 @@
 set -euo pipefail
 
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+go_bin="${DIPOLE_GO_BIN:-go}"
 fixture_dir="$(mktemp -d)"
 fixture_pid=""
 fixture_ready="$fixture_dir/ready.json"
@@ -19,11 +20,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
+command -v "$go_bin" >/dev/null 2>&1 || {
+  echo "Go binary is unavailable: $go_bin" >&2
+  exit 1
+}
+
 INTERNAL_CERT_DIR="$fixture_dir/certs" INTERNAL_CERT_VALID_DAYS=1 \
   "$root_dir/scripts/generate-internal-certs.sh" >/dev/null
 
 LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-  go test "$root_dir/internal/bootstrap" -run '^TestAgentMCPRPCDrillFixtureAuthentication$' -count=1
+  "$go_bin" test "$root_dir/internal/bootstrap" -run '^TestAgentMCPRPCDrillFixtureAuthentication$' -count=1
 
 DIPOLE_AGENT_RPC_DRILL_FIXTURE=true \
 DIPOLE_AGENT_RPC_DRILL_READY="$fixture_ready" \
@@ -35,7 +41,7 @@ DIPOLE_AGENT_RPC_DRILL_SERVER_CERT="$fixture_dir/certs/core.pem" \
 DIPOLE_AGENT_RPC_DRILL_SERVER_KEY="$fixture_dir/certs/core-key.pem" \
 DIPOLE_AGENT_RPC_DRILL_CA="$fixture_dir/certs/ca.pem" \
 LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-  go test "$root_dir/internal/bootstrap" -run '^TestAgentMCPRPCDrillFixtureProcess$' -count=1 -v >"$fixture_log" 2>&1 &
+  "$go_bin" test "$root_dir/internal/bootstrap" -run '^TestAgentMCPRPCDrillFixtureProcess$' -count=1 -v >"$fixture_log" 2>&1 &
 fixture_pid=$!
 
 for _ in $(seq 1 300); do
