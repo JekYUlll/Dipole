@@ -162,8 +162,20 @@ case "${action}" in
     GOTOOLCHAIN=local scripts/smoke-minio-multipart-restart.sh
     ;;
   bench)
+    bench_env=()
+    if [[ "\$project" == dipole-c1* ]]; then
+      bench_env=(
+        BASE_URL=http://127.0.0.1:18081
+        NODE1_WS=ws://127.0.0.1:18081
+        NODE2_WS=ws://127.0.0.1:18082
+        NODE1_HEALTH_URL=http://127.0.0.1:18081/health
+        NODE2_HEALTH_URL=http://127.0.0.1:18082/health
+        CONVERSATION_METRICS_SERVICES="dipole-node1 dipole-node2 dipole-node3"
+        PROCESS_METRICS_SERVICES="dipole-node1 dipole-node2 dipole-node3"
+      )
+    fi
     if command -v k6 >/dev/null 2>&1; then
-      scripts/bench/run_bench.sh
+      env "\${bench_env[@]}" scripts/bench/run_bench.sh
     else
       [[ -n "\$k6_image" ]] || { echo "remote bench refused: k6 is unavailable and DIPOLE_REMOTE_K6_IMAGE is empty" >&2; exit 4; }
       docker image inspect "\$k6_image" >/dev/null 2>&1 || docker pull "\$k6_image"
@@ -176,7 +188,7 @@ set -euo pipefail
 exec docker run --rm --network host -v "\$PWD:/workspace" -w /workspace "\${DIPOLE_K6_IMAGE}" k6 "\$@"
 K6_WRAPPER
       chmod 700 "\$k6_wrapper"
-      DIPOLE_K6_IMAGE="\$k6_image" K6_BIN="\$k6_wrapper" scripts/bench/run_bench.sh
+      env "\${bench_env[@]}" DIPOLE_K6_IMAGE="\$k6_image" K6_BIN="\$k6_wrapper" scripts/bench/run_bench.sh
     fi
     ;;
   down) docker compose -p "\$project" -f "${REMOTE_COMPOSE_FILE}" down --remove-orphans ;;

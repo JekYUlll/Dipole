@@ -41,6 +41,9 @@ test("benchmark uses an explicit k6 binary and has a Docker fallback on remote h
   assert.match(source, /K6_BIN="\\\$k6_wrapper" scripts\/bench\/run_bench\.sh/);
   assert.match(source, /remote "\$\{REMOTE_K6_IMAGE\}" "\$\{action\}"/);
   assert.match(source, /k6_image="\\\$\{3:-\}"/);
+  assert.match(source, /BASE_URL=http:\/\/127\.0\.0\.1:18081/);
+  assert.match(source, /NODE2_HEALTH_URL=http:\/\/127\.0\.0\.1:18082\/health/);
+  assert.match(source, /if \[\[ "\\\$project" == dipole-c1\* \]\]/);
 });
 
 test("candidate image builds are explicit and carry source provenance", () => {
