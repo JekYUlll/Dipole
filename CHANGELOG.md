@@ -2,6 +2,8 @@
 
 - 2026-08-30：统一 README SVG 品牌资产与既有蓝色 Dipole 主标：主标、IM 与 Agent 图形共享双极信号母版，并新增资产用途说明。此次调整只影响开源项目介绍与文档呈现，不改变服务、协议或 Agent 权限状态。
 
+- 2026-08-30：修复 Agent active overlay 的 Kafka consumer group 启动边界：配置层与消费器层均要求 active 使用独立 `dipole-agent-active-*` group，shadow 继续限定 `dipole-agent-shadow-*`。专项测试验证 active 直投消息进入 Temporal dispatcher；Remote GPU 隔离 Node 22 worktree 在独立 `npm ci` 后通过 `132` 个测试文件、`693` 项测试、typecheck 与 build。该证据不包含真实 broker、Core mTLS、Temporal Worker 或 Memory promotion 提交。
+
 - 2026-08-30：主 README 收敛为成熟开源项目入口：新增可维护 SVG 主标、IM/Agent 标记、产品概览、可验证的本地启动与检查入口、文档导航和贡献规范；架构细节、更新日志与面试材料继续归档到对应文档。
 
 - 2026-08-30：Temporal/Core/MySQL receipt 联合演练补齐 owner-scoped Memory rollback：首个 receipt 经 durable retry 收敛为同一条 Memory，撤销 active grant 后预 admission receipt 被拒绝且零写入，owner application control 随后撤销已写入 Memory。Gateway owner revoke 的网络传输、Kafka trigger、共享 overlay rollback 仍待验证。

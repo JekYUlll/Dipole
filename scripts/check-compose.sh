@@ -144,6 +144,7 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_CANDIDATE_VERSION == "agent-runtime@compose-check"
   and .services.agent.environment.DIPOLE_AGENT_RELEASE_MANIFEST == "/run/dipole/release/manifest.json"
   and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-active-compose-check"
+  and (.services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID | startswith("dipole-agent-active-"))
   and .services.agent.environment.DIPOLE_AGENT_TRIGGER_MODE == "direct_target"
   and .services.agent.environment.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_MODEL_MODE == "ai_sdk"
@@ -186,6 +187,7 @@ jq -e '
   .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "remote"
   and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-memory-promotion-compose-check"
+  and (.services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID | startswith("dipole-agent-active-"))
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "promotion_active"
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_PROMOTION_COMMIT_ENABLED == "true"

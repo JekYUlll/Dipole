@@ -12,6 +12,8 @@
 
 - 2026-08-30：README 品牌资产已统一为蓝色双极信号视觉，并为 IM、Agent 材料限定各自的图形用途；品牌 SVG 为静态文档资产，不将 Agent 标记或绿色识别点解释为 active authority 已启用，避免对外材料误导运行状态。
 
+- 2026-08-30：Agent active overlay 的 Kafka group 启动边界现由 Runtime config、Kafka consumer 与 Compose 静态门禁共同限制：active 仅接受 `dipole-agent-active-*`，shadow 仅接受 `dipole-agent-shadow-*`。单元测试已覆盖 active 消息至 Temporal dispatcher 的确定性 Task binding；Remote GPU 隔离 Node 22 worktree 的独立全量 Runtime 测试、typecheck 与 build 均通过。真实 Kafka broker、Core mTLS、Temporal Worker、grant 和 Memory 提交仍未纳入同一演练，`AD-009` 继续开放。
+
 - 2026-08-30：Remote GPU 隔离 Temporal/Core/MySQL mTLS fixture 已补齐 owner-scoped Memory rollback：首个 receipt durable retry 后得到同一条 Memory，grant 撤销后预 admission receipt 被拒绝且候选零写入，最后 owner application control 持久撤销该 Memory。Kafka trigger、Gateway owner revoke 网络传输、共享 authority 与 overlay rollback 未纳入此演练，`AD-009` 继续开放。
 
 - 2026-08-30：学习与面试材料改为双项目叙事：`Dipole IM` 单独维护消息、同步、存储、微服务和文件数据面；`Dipole Agent` 单独维护可信上下文、Capability、Temporal、Memory、MCP 与 active 边界。总入口、README、文档目录、架构清单和自动门禁同时校验两份材料，降低将默认关闭 Agent 能力或 IM 存储实现写入错误项目口径的风险。

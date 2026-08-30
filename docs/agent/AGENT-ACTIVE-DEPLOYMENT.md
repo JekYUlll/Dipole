@@ -28,7 +28,7 @@ active Runtime 当前只执行 `conversation.list/read`。Artifact、消息发�
 | --- | --- |
 | `DIPOLE_AGENT_RELEASE_MANIFEST_FILE` | 只读挂载的 `user_gray` manifest 文件 |
 | `DIPOLE_AGENT_CANDIDATE_VERSION` | 与 manifest 和镜像一致的候选版本 |
-| `DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID` | 独立的 active consumer group |
+| `DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID` | 独立的 active consumer group，必须以 `dipole-agent-active-` 开头 |
 | `DIPOLE_AGENT_MODEL_PROVIDER_NAME` | OpenAI-compatible Provider 的 route 前缀 |
 | `DIPOLE_AGENT_MODEL_BASE_URL` | HTTPS Provider endpoint；loopback HTTP 仅限开发 |
 | `DIPOLE_AGENT_MODEL_API_KEY` | 从部署 Secret 注入，禁止写入 `.env`、命令历史或证据正文 |

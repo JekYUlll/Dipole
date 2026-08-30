@@ -17,6 +17,23 @@ describe("shadow runtime composition", () => {
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "actve" })).toThrow(/must be shadow or remote/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote" })).toThrow(/Kafka/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote", DIPOLE_AGENT_CANDIDATE_VERSION: "candidate-v1" })).toThrow(/release manifest/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_RUNTIME_MODE: "remote",
+      DIPOLE_AGENT_KAFKA_ENABLED: "true",
+      DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+      DIPOLE_AGENT_KAFKA_GROUP_ID: "dipole-agent-shadow-v1",
+      DIPOLE_AGENT_CANDIDATE_VERSION: "candidate-v1",
+      DIPOLE_AGENT_RELEASE_MANIFEST: "/run/dipole/release/manifest.json",
+      DIPOLE_AGENT_LEDGER_MODE: "mysql",
+      DIPOLE_AGENT_MYSQL_HOST: "mysql", DIPOLE_AGENT_MYSQL_USER: "agent", DIPOLE_AGENT_MYSQL_PASSWORD: "secret", DIPOLE_AGENT_MYSQL_DATABASE: "dipole",
+      DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "openai/gpt-5-mini",
+      DIPOLE_AGENT_MODEL_PROVIDER: "openai_compatible", DIPOLE_AGENT_MODEL_PROVIDER_NAME: "openai",
+      DIPOLE_AGENT_MODEL_BASE_URL: "https://gateway.example.test/v1", DIPOLE_AGENT_MODEL_API_KEY: "test-model-key",
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]',
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
+      DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
+    })).toThrow(/active.*dipole-agent-active/i);
     expect(loadShadowRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true",
       DIPOLE_AGENT_KAFKA_BROKERS: "kafka-1:9092, kafka-2:9092"
@@ -136,6 +153,28 @@ describe("shadow runtime composition", () => {
       principalUuid: "U100", agentUuid: "UAI", mode: "shadow", requestId: "R1", traceId: "T1", eventId: "E1"
     });
     expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({ eventId: "E1", eventType: "message.direct.created" }));
+  });
+
+  it("dispatches a direct Kafka event from an isolated active group without using the shadow consumer", async () => {
+    let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
+    const consumer: KafkaConsumerPort = {
+      connect: async () => undefined,
+      subscribe: async () => undefined,
+      run: async (config) => { eachMessage = config.eachMessage; },
+      disconnect: async () => undefined
+    };
+    const dispatcher = { dispatch: vi.fn(async () => undefined) };
+    const config = loadShadowRuntimeConfig(activeRuntimeEnvironment());
+    const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, dispatcher);
+
+    await runtime.start();
+    await eachMessage!(payload(messageEnvelope("UAI", "E-ACTIVE")));
+
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ eventId: "E-ACTIVE", eventType: "message.direct.created" }),
+      expect.objectContaining({ principalUuid: "U100", agentUuid: "UAI" }),
+      agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100" })
+    );
   });
 
   it("ignores direct messages addressed to another Agent", async () => {
@@ -297,6 +336,34 @@ function subscriptionConfig() {
     DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
     DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
   });
+}
+
+function activeRuntimeEnvironment(): NodeJS.ProcessEnv {
+  return {
+    DIPOLE_AGENT_RUNTIME_MODE: "remote",
+    DIPOLE_AGENT_KAFKA_ENABLED: "true",
+    DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+    DIPOLE_AGENT_KAFKA_GROUP_ID: "dipole-agent-active-user-gray-v1",
+    DIPOLE_AGENT_CANDIDATE_VERSION: "candidate-v1",
+    DIPOLE_AGENT_RELEASE_MANIFEST: "/run/dipole/release/manifest.json",
+    DIPOLE_AGENT_UUID: "UAI",
+    DIPOLE_AGENT_LEDGER_MODE: "mysql",
+    DIPOLE_AGENT_MYSQL_HOST: "mysql",
+    DIPOLE_AGENT_MYSQL_USER: "agent",
+    DIPOLE_AGENT_MYSQL_PASSWORD: "secret",
+    DIPOLE_AGENT_MYSQL_DATABASE: "dipole",
+    DIPOLE_AGENT_MODEL_MODE: "ai_sdk",
+    DIPOLE_AGENT_MODEL_ROUTES: "openai/gpt-5-mini",
+    DIPOLE_AGENT_MODEL_PROVIDER: "openai_compatible",
+    DIPOLE_AGENT_MODEL_PROVIDER_NAME: "openai",
+    DIPOLE_AGENT_MODEL_BASE_URL: "https://gateway.example.test/v1",
+    DIPOLE_AGENT_MODEL_API_KEY: "test-model-key",
+    DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
+    DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]',
+    DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
+    DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
+    DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
+  };
 }
 
 function runtimeFixture() {

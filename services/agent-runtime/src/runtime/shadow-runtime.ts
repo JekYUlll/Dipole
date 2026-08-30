@@ -111,6 +111,13 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.runtimeMode === "active" && config.releaseManifestPath.length === 0) {
     refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires a release manifest", path: ["releaseManifestPath"] });
   }
+  if (config.enabled && !config.groupId.startsWith(`dipole-agent-${config.runtimeMode}-`)) {
+    refinement.addIssue({
+      code: "custom",
+      message: `Kafka ${config.runtimeMode} runtime requires an isolated dipole-agent-${config.runtimeMode}-* group`,
+      path: ["groupId"]
+    });
+  }
   if (config.enabled && config.brokers.length === 0) {
     refinement.addIssue({ code: "custom", message: "Kafka brokers are required when shadow runtime is enabled", path: ["brokers"] });
   }
@@ -310,7 +317,11 @@ export function buildKafkaShadowRuntime(
   subscriptionRuntimeGate?: SubscriptionRuntimeGate
 ): KafkaShadowConsumer {
   const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher);
-  return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
+  return new KafkaShadowConsumer(factory, {
+    groupId: config.groupId,
+    topic: physicalTopic(config),
+    runtimeMode: config.runtimeMode
+  }, async (raw) => {
     let decoded;
     try {
       decoded = decodeMessageCreatedEvent(raw);

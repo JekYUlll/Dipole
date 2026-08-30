@@ -39,7 +39,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 - **证据：** [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、[MCP 授权](../agent/agent-mcp-authorization.md)、[Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)。
 - **追问：** “为什么 Agent 选 TypeScript？” Zod/JSON Schema、MCP、Node I/O、流式协议与 Temporal SDK 的组合适合 Runtime 集成，Go 继续承担 IM 领域一致性。
 - **限制：** active profile 与外部 MCP 仍默认关闭，不能描述为生产自动写入能力。
-- **下一步：** 以同一 candidate 的评测、release manifest、operator grant 与共享环境证据完成受控灰度。
+- **下一步：** active Kafka consumer 现要求独立 `dipole-agent-active-*` group，并已验证消息可进入 Temporal dispatcher 合约；继续以同一 candidate 的评测、release manifest、operator grant 与共享环境证据完成受控灰度。
 - **复核条件：** 修改 Capability schema、provider、模型 route、Temporal queue、MCP transport 或权限策略时。
 
 ## 2. 一句话定位
