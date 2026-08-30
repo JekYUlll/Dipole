@@ -4,6 +4,19 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$ROOT_DIR"
 
+# Keep component-level cluster smoke separate from the single-node business
+# Compose until a real business cluster overlay is available.
+business_topology_doc="docs/architecture/BUSINESS-TOPOLOGY.md"
+[[ -f "$business_topology_doc" ]] || {
+  echo "business topology contract is missing: ${business_topology_doc}" >&2
+  exit 1
+}
+grep -F "当前仓库已具备 Kafka 三节点和 Redis Sentinel 的组件能力，微服务默认路径仍是单节点。" \
+  "$business_topology_doc" >/dev/null || {
+  echo "business topology contract must remain fail-closed" >&2
+  exit 1
+}
+
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=static-compose-validation-only}"
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 

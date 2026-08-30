@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增业务依赖拓扑契约，明确单节点微服务 Compose、Kafka/Redis 组件级集群演练和未来业务集群的证据边界；`check-compose.sh` 在缺少契约或出现业务集群误宣称时 fail closed，默认部署路径保持不变。
+
 - 2026-08-30：新增 `remote-dev.sh recovery` 远程节点恢复入口，自动绑定 `dipole-c1` 候选端口、`/tmp` 报告目录和 Dockerized k6 fallback，减少手工 SSH 参数漂移；入口继续经过活动用户门禁和候选镜像 provenance 校验。
 
 - 2026-08-30：远程 Dockerized k6 wrapper 额外挂载 `/tmp`，允许 benchmark/recovery 报告使用宿主临时目录并被容器正常写回；仓库挂载、UID/GID 映射和隔离网络保持不变。
