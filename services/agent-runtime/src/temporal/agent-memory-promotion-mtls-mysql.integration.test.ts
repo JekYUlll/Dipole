@@ -18,7 +18,7 @@ type Fixture = {
   CandidateID: string; CandidateSHA256: string; ReviewID: string; PolicyVersion: string;
   RejectedTaskID: string; RejectedRunID: string;
   RejectedCandidateID: string; RejectedCandidateSHA256: string; RejectedReviewID: string;
-  RevokePath: string; RevokedPath: string;
+  RevokePath: string; RevokedPath: string; RollbackPath: string; RolledBackPath: string;
 };
 
 describe.skipIf(!enabled)("Temporal Agent Memory promotion through Core mTLS and MySQL", () => {
@@ -87,6 +87,10 @@ describe.skipIf(!enabled)("Temporal Agent Memory promotion through Core mTLS and
         expiresAt: new Date(Date.now() + 10 * 60 * 1_000).toISOString()
       });
       await expect(client.commitMemoryPromotionReceipt(revokedReceipt)).rejects.toThrow(/PERMISSION_DENIED/);
+      const memoryID = result.output?.promotionCommit?.memoryId;
+      if (memoryID === undefined) throw new Error("successful receipt commit did not return a Memory ID");
+      await writeFile(fixture.RollbackPath, `${memoryID}\n`, { mode: 0o600 });
+      await waitForFile(fixture.RolledBackPath);
     } finally {
       transport.close();
       await temporal.teardown();

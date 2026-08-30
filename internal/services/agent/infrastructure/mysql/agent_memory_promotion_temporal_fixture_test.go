@@ -26,7 +26,7 @@ type temporalReceiptFixtureState struct {
 	CandidateID, CandidateSHA256, ReviewID, PolicyVersion          string
 	RejectedTaskID, RejectedRunID                                  string
 	RejectedCandidateID, RejectedCandidateSHA256, RejectedReviewID string
-	RevokePath, RevokedPath                                        string
+	RevokePath, RevokedPath, RollbackPath, RolledBackPath          string
 }
 
 func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
@@ -35,7 +35,9 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	}
 	readyPath := requiredTemporalFixtureEnv(t, "DIPOLE_AGENT_TEMPORAL_MYSQL_MTLS_READY")
 	stopPath := requiredTemporalFixtureEnv(t, "DIPOLE_AGENT_TEMPORAL_MYSQL_MTLS_STOP")
-	revokePath, revokedPath := filepath.Join(filepath.Dir(readyPath), "revoke-grant"), filepath.Join(filepath.Dir(readyPath), "grant-revoked")
+	fixtureDir := filepath.Dir(readyPath)
+	revokePath, revokedPath := filepath.Join(fixtureDir, "revoke-grant"), filepath.Join(fixtureDir, "grant-revoked")
+	rollbackPath, rolledBackPath := filepath.Join(fixtureDir, "rollback-memory"), filepath.Join(fixtureDir, "memory-rolled-back")
 	ctx := context.Background()
 	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
@@ -56,6 +58,10 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	memories, err := sqlcRepository.NewAgentMemoryRepositoryWithTransactions(store)
 	if err != nil {
 		t.Fatalf("create Memory repository: %v", err)
+	}
+	owners, err := agentapplication.NewPersistentAgentMemoryOwnerControlV1(memories, time.Now)
+	if err != nil {
+		t.Fatalf("create Memory owner control: %v", err)
 	}
 	now := time.Now().UTC().Truncate(time.Millisecond)
 	definition, grant := createReceiptContractPolicy(t, ctx, policy, now)
@@ -117,11 +123,12 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 		CandidateID: candidateID, CandidateSHA256: candidateSHA256, ReviewID: reviewID, PolicyVersion: "memory-v1",
 		RejectedTaskID: rejected.TaskUUID, RejectedRunID: rejected.RunUUID,
 		RejectedCandidateID: rejectedCandidateID, RejectedCandidateSHA256: rejectedCandidateSHA256, RejectedReviewID: rejectedReviewID,
-		RevokePath: revokePath, RevokedPath: revokedPath,
+		RevokePath: revokePath, RevokedPath: revokedPath, RollbackPath: rollbackPath, RolledBackPath: rolledBackPath,
 	}
 	writeTemporalFixtureState(t, readyPath, state)
 	deadline := time.Now().Add(3 * time.Minute)
 	grantRevoked := false
+	memoryRolledBack := false
 	for {
 		if _, err := os.Stat(stopPath); err == nil {
 			break
@@ -142,6 +149,26 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+		if !memoryRolledBack {
+			if rollbackID, err := os.ReadFile(rollbackPath); err == nil {
+				var promoted sql.NullString
+				if err := db.QueryRowContext(ctx, `SELECT promoted_memory_uuid FROM agent_memory_candidates WHERE candidate_uuid = ?`, candidateID).Scan(&promoted); err != nil || !promoted.Valid || strings.TrimSpace(string(rollbackID)) != promoted.String {
+					t.Fatalf("validate fixture Memory rollback ID=%q promoted=%q valid=%v err=%v", strings.TrimSpace(string(rollbackID)), promoted.String, promoted.Valid, err)
+				}
+				rolledBack, rollbackErr := owners.RevokeOwnedMemory(ctx, application.AgentMemoryOwnerRevokeRequestV1{
+					TenantID: definition.TenantID, PrincipalUUID: definition.OwnerUUID, MemoryUUID: promoted.String, Reason: "isolated drill rollback",
+				})
+				if rollbackErr != nil || rolledBack == nil || rolledBack.Status != application.AgentMemoryStatusRevoked || rolledBack.RevokedAt == nil {
+					t.Fatalf("rollback fixture promoted Memory=%+v err=%v", rolledBack, rollbackErr)
+				}
+				if err := os.WriteFile(rolledBackPath, []byte("rolled_back\n"), 0o600); err != nil {
+					t.Fatalf("write fixture Memory rollback acknowledgement: %v", err)
+				}
+				memoryRolledBack = true
+			} else if !errors.Is(err, os.ErrNotExist) {
+				t.Fatal(err)
+			}
+		}
 		if time.Now().After(deadline) {
 			t.Fatal("Temporal/MySQL mTLS fixture timed out")
 		}
@@ -151,9 +178,10 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	if err := db.QueryRowContext(ctx, `SELECT promoted_memory_uuid FROM agent_memory_candidates WHERE candidate_uuid = ?`, candidateID).Scan(&memoryID); err != nil || !memoryID.Valid {
 		t.Fatalf("fixture promoted Memory ID=%q valid=%v err=%v", memoryID.String, memoryID.Valid, err)
 	}
-	var memoryRows int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_memories WHERE memory_uuid = ?`, memoryID.String).Scan(&memoryRows); err != nil || memoryRows != 1 {
-		t.Fatalf("fixture committed Memory ID=%q rows=%d err=%v, want 1", memoryID.String, memoryRows, err)
+	var memoryStatus string
+	var revokedAt sql.NullTime
+	if err := db.QueryRowContext(ctx, `SELECT status, revoked_at FROM agent_memories WHERE memory_uuid = ?`, memoryID.String).Scan(&memoryStatus, &revokedAt); err != nil || memoryStatus != string(application.AgentMemoryStatusRevoked) || !revokedAt.Valid {
+		t.Fatalf("fixture rolled back Memory ID=%q status=%q revoked=%v err=%v", memoryID.String, memoryStatus, revokedAt.Valid, err)
 	}
 	var rejectedMemory sql.NullString
 	if err := db.QueryRowContext(ctx, `SELECT promoted_memory_uuid FROM agent_memory_candidates WHERE candidate_uuid = ?`, rejectedCandidateID).Scan(&rejectedMemory); err != nil || rejectedMemory.Valid {
