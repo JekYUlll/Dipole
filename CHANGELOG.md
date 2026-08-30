@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：校正阶段计划状态：C3 authority、自动回切、Redis/Kafka 故障注入和 C++ primary 隔离证据已完成；C1/C2/C3 主阶段继续保持进行中，剩余门禁为可复现的 C++ 性能收益和按节点/用户灰度发布。避免将已完成故障演练重复排队，也避免提前宣称 C++ 已替换 Go。
+
 - 2026-08-30：补充 Remote GPU C1 组件故障证据：独立三 broker Kafka consumer rebalance 在 member 退出后接管全部 6 个 partition 且 lag 恢复为 `0`；独立 Redis Sentinel 在 master 停止后约 4 秒完成切换，客户端读写、Pub/Sub、Presence、热群和限流状态恢复，旧 master 重新加入为 replica。Redis 探针镜像支持 `DIPOLE_REDIS_FAILOVER_PROBE_IMAGE`，避免远端固定镜像未缓存造成阻塞；候选业务拓扑的 Kafka/Redis 自动回切仍待验证。
 
 - 2026-08-30：完成 Remote GPU C1 单节点恢复演练：`dipole-node2` stop/start 后约 `505ms` 观察到不可用、约 `16.0s` 恢复健康，consumer group 稳定恢复为 `72` 个成员；恢复后 40/40 消息接受/持久化/投递，Kafka lag 为 `0`，PID 更换且 revision 未漂移。完整 evidence/report 已归档。
