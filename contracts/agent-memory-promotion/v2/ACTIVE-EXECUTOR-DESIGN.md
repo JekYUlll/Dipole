@@ -13,15 +13,20 @@
 ```text
 receipt_id
 receipt_sha256
+schema_version
+status
 task_id
 run_id
 candidate_id
 candidate_sha256
 review_id
+policy_version
 target_memory_type
+created_at
+expires_at
 ```
 
-请求不携带 owner、tenant、agent、candidate summary、review reason、正文或凭据。Core 从持久化的 Task/Run/Invocation 恢复这些身份和 scope。
+请求不携带 owner、tenant、agent、candidate summary、review reason、正文或凭据。`schema_version=receipt.v2`、`status=prepared`、时间窗和 policy 用于重算 canonical receipt body；Core 从持久化的 Task/Run/Invocation 恢复身份和 scope。
 
 ## Core 提交算法
 
