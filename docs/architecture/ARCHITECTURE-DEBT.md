@@ -1237,3 +1237,13 @@
 - 2026-08-30：真实 MinIO Multipart 集成契约新增客户端上传流中断后同 part 重试覆盖；中断尝试返回受控错误，重试可复用 upload session，且失败尝试未进入完成结果。完整浏览器断网、过期会话、网关限流和跨存储故障矩阵仍待 Remote GPU 验证。
 - 2026-08-30：真实 MinIO Multipart 集成契约进一步覆盖中断流同 part 重试后的 Complete 与对象内容校验；失败尝试未进入最终对象，客户端断网、过期会话、网关限流和跨存储故障矩阵仍待 Remote GPU 验证。
 - 2026-08-30：Web Multipart 调度器新增可选 `AbortSignal`，取消会传播到 presigned/relay 请求并在退避前停止重试；页面卸载保留服务端 session 以支持后续恢复。浏览器真实断网、预签名服务异常和网关限流矩阵仍待 Remote GPU 验证。
+
+### AD-060：Multipart Redis TTL 与 MinIO upload 生命周期缺少联合故障证据
+
+- **优先级：** P1
+- **状态：** 进行中
+- **发现日期：** 2026-08-30
+- **影响范围：** 大文件续传、Redis 会话过期、MinIO 未完成 upload 清理和跨存储对账
+- **现状：** Redis session store 为 metadata、parts 和 completion receipt 设置 TTL；服务层已对缺失 session fail-closed，但 Redis 到期、MinIO 未完成 upload 残留和 cleanup reconciliation 尚未在同一真实故障矩阵中验证。
+- **本轮进展：** `TestRedisMultipartSessionTTLExpiresMetadataAndPartsTogether` 验证 metadata/parts 同步过期与分片续期，`TestRedisMultipartSessionCompletionUsesIndependentTTL` 验证完成收据到期；测试使用确定性 Redis 时钟推进，不改变默认上传或清理路径。
+- **下一步：** 在 Remote GPU 维护窗口用隔离 Redis/MinIO 实例注入 TTL 到期、服务重启、cleanup race 和 reconciliation drift，记录 active/expired/abort/retry 指标后再评估关闭本条债务。
