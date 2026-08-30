@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修复 Go 微服务镜像最小上下文切换中的变量引用错误，并以脚本契约测试锁定 `root_dir/dist`；首次远端实测的 fail-closed 结果已记录，未启动容器。
+
 - 2026-08-30：将 Go 微服务镜像构建上下文收窄为生成的 `dist/` 目录，Dockerfile 仅复制指定服务二进制；新增脚本契约测试，减少 Remote GPU 构建时重复发送根目录数据。
 
 - 2026-08-30：修复 Remote GPU 构建入口，`scripts/remote-dev.sh build` 会先编译提交绑定的 Go 服务二进制再构建逐服务镜像；同步修正文档中的 `planning-with-files` 模式，并记录隔离 Smoke 因 registry mirror 对缺失自定义镜像返回 `403` 的可回滚证据。
