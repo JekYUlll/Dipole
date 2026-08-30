@@ -1437,3 +1437,9 @@
 
 - 列出尚未解决且可能影响使用、开发或发布的问题。
 ```
+
+# 2026-08-30 Remote C1 200-member group fan-out baseline
+
+- 修复 `remote-dev.sh bench` 通过 SSH 传递可选参数时的空值左移；所有可选工具链、代理和 workload 参数使用显式哨兵并在远端解码，入口契约测试 `10/10` 通过。
+- Remote GPU provenance 门禁拦截旧候选镜像后，重建并绑定 `master` `959ac70d` 的 `dipole-server:c1-959ac70d`；正式入口完成 200 成员 `group_blast`，200/200 VU、10/10 消息 accepted/persisted、群 Inbox `2000` 行、1990/1990 回执、投递率 `100%`、HTTP failure `0%`。
+- 端到端平均/P50/P95/P99/最大值为 `126.84/121/167/169/169 ms`，Kafka 峰值 lag `1`、结算 lag `0`，Node1/2/3 CPU 峰值 `72.14%/20.99%/19.85%`；候选拓扑清理后无 `dipole-c1` 残留。热群 notify/pull、背压阈值和 broker/Redis 故障回切仍待独立验收。

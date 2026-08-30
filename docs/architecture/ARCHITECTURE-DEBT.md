@@ -1174,3 +1174,5 @@
 - **构建上下文优化：** Go 服务镜像 Dockerfile 改为从 `dist/` 上下文复制指定二进制，构建脚本不再为每个镜像发送根目录上下文；契约测试覆盖上下文和 COPY 关系。Agent/C++ 镜像上下文保持独立，远端实际构建需进一步确认上下文大小与耗时收益。
 - **变量修复证据：** 首次远端实测发现上下文切换代码引用未定义的大写变量 `ROOT_DIR`，在镜像构建前 fail-closed；已改为脚本实际定义的 `root_dir`，6 项入口契约/语法测试通过，未产生错误镜像或容器。下一次远端 build 负责确认最小上下文实测值。
 - **TencentCloud 占用证据：** 同次只读核验发现已有 `nkdoing-app` 容器占用公网 `80`、`nkdoing-postgres` 绑定本机 `5432`，宿主 MySQL 监听 `3306`；因此 TencentCloud 只能在明确端口、Compose project、卷和业务影响隔离后执行轻量 smoke，不能视为干净测试主机。
+- **C1 参数入口修复证据：** 2026-08-30 发现 SSH `bash -s --` 会丢弃空位置参数，导致 `DIPOLE_BENCH_GROUP_MAX_DURATION=35s` 被误识别为 `SCENARIO_FILTER`；现已为所有可选参数增加显式哨兵和远端解码，入口契约 `10/10` 通过。旧候选 revision 被 provenance 门禁拒绝后已重建同版本镜像，避免混用证据。
+- **C1 200 成员规模证据：** 2026-08-30 使用本地正式入口在 Remote GPU 完成 `group_blast` 200/200 VU；10/10 群消息 accepted/persisted，Inbox `2000` 行，1990/1990 预期回执，投递率 `100%`，HTTP failure `0%`，P50/P95/P99 `121/167/169ms`，Kafka lag `1 -> 0`。Node1/2/3 CPU 峰值 `72.14%/20.99%/19.85%`，峰值 RSS `77.14/74.22/67.79 MiB`；热群读扩散、背压和业务拓扑故障回切仍未完成。
