@@ -36,6 +36,7 @@ import {
 } from "./runtime/external-mcp-production-shadow.js";
 import type { ExternalMcpShadowProcess } from "./runtime/external-mcp-shadow-process.js";
 import { SubscriptionShadowMetrics } from "./observability/subscription-shadow-metrics.js";
+import { assertActiveReadProfileSurface } from "./runtime/active-read-profile.js";
 import { readFileSync } from "node:fs";
 import { assertActivePromotionBinding } from "./promotion/agent-release-manifest.js";
 
@@ -56,6 +57,18 @@ if (shadowConfig.runtimeMode === "active") {
 if (shadowConfig.runtimeMode === "active" && temporalConfig.activityMode !== "read_active") {
   throw new Error("Active Agent Runtime requires read_active Temporal Activities");
 }
+const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
+const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
+const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";
+const mcpSecret = process.env.DIPOLE_AGENT_MCP_SERVER_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
+const externalMcpEnabled = process.env.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED?.trim().toLowerCase() === "true";
+assertActiveReadProfileSurface(shadowConfig.runtimeMode, {
+  controlEnabled,
+  mcpServerEnabled: mcpEnabled,
+  externalMcpEnabled,
+  memoryEnabled: shadowConfig.memoryEnabled,
+  subscriptionShadowEnabled: shadowConfig.subscriptionShadowEnabled
+});
 if (shadowConfig.runtimeMode === "active" && !temporalConfig.enabled) {
   throw new Error("Active Agent Runtime requires Temporal");
 }
@@ -67,10 +80,6 @@ const externalMcpShadowEnabled = validateExternalMcpProductionShadowMode(
   shadowConfig,
   temporalConfig
 );
-const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
-const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
-const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";
-const mcpSecret = process.env.DIPOLE_AGENT_MCP_SERVER_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
 const mcpResource = process.env.DIPOLE_AGENT_MCP_RESOURCE?.trim() || "https://dipole.local/api/v1/agent/mcp";
 const mcpToolTimeoutMs = Number.parseInt(process.env.DIPOLE_AGENT_MCP_TOOL_TIMEOUT_MS ?? "5000", 10);
 if (controlEnabled && (!temporalConfig.enabled || !shadowConfig.capabilityRpc.enabled || controlSecret.trim().length === 0)) {

@@ -42,6 +42,8 @@ overlay 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER
 
 同一 overlay 固定 `direct_target`、Memory、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 
+Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
+
 ## 4. 渲染与启动
 
 在隔离 project 目录中准备 Secret 注入后，先进行无副作用渲染：
