@@ -182,6 +182,18 @@
 - **下一步：** 以隔离全栈 fixture 归档首次提交、重试、grant 撤销与回滚证据。
 - **复核条件：** 修改 Core composition、Runtime grant schema、receipt RPC 或 Worker profile 时。
 
+#### 2026-08-30 · Embedded Active Run Admission
+
+- **状态：** 已验证（本地）
+- **简历句：** 统一 embedded Agent 的 active admission 与 receipt commit 授权边界，避免 Task/Run 创建和后续提交使用不同 grant 判断。
+- **对外表述：** 同一持久 promotion grant 同时约束 active Run admission 与 Core receipt commit，保证可执行任务与写入授权语义一致。
+- **演示：** 运行 Agent execution policy 定向测试，核验有效 grant 允许 admission，撤销后拒绝。
+- **证据：** `internal/bootstrap/embedded/runtime/runtime.go`、`internal/services/agent/application/agent_execution_policy_test.go`。
+- **追问：** “为什么 admission 与 commit 都要复核 grant？” 两个阶段相隔时间较长；双重复核可阻止已撤销 grant 的既有任务继续写入。
+- **限制：** 当前为本地组合与领域测试，尚无跨进程 Core/Temporal/MySQL 联合回放证据。
+- **下一步：** 构建隔离联合演练并验证撤销发生在 admission 之后的提交拒绝。
+- **复核条件：** 改动 embedded runtime、Run lifecycle、grant 有效期或 receipt 提交路径时。
+
 #### 2026-08-30 · Temporal Receipt Commit Retry
 
 - **状态：** 已验证（隔离 Temporal）

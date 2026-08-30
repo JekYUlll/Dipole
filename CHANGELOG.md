@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：补齐 embedded Agent active Run admission 的 promotion grant authorizer 注入，使 admission 与 receipt invocation resolver 使用同一持久授权边界；默认 active Worker 仍关闭。
+
 - 2026-08-30：Core 与 embedded receipt commit composition 现注入持久 active Runtime promotion authorizer，使已开启且已授权的 receipt 可通过 Invocation Resolver 复核；缺失或失效 grant 继续 fail-closed，默认 active 路径未改变。
 
 - 2026-08-30：新增隔离 MySQL receipt promotion contract。它经完整 migration 验证持久 Task/Run、active grant、accepted candidate/review、首个晋级、同 receipt 幂等重放和撤销 grant 后拒绝；同时修复 candidate promotion 未 canonicalize Memory lineage 而触发 MySQL 约束回滚的问题。默认 active Worker 路径继续关闭。

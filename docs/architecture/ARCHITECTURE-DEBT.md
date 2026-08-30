@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：embedded runtime 的 active Run admission 已复用持久 promotion authorizer，消除 Core receipt resolver 与 Task/Run admission 授权边界不一致的问题；联合环境证据仍由 `AD-009` 跟踪。
+
 - 2026-08-30：修复 Core/embedded receipt composition 未注入 active promotion authorizer 的接线缺口；真实 active receipt 因此可复用已验证的 grant 复核，缺 grant 仍拒绝。跨进程 Core/Temporal/MySQL 联合演练继续由 `AD-009` 跟踪。
 
 - 2026-08-30：隔离 Remote GPU MySQL 8.4 contract 已验证 receipt commit 的持久 Task/Run、grant、candidate/review 和幂等晋级事务，并发现后修复 promotion Memory lineage 未 canonicalize 导致的数据库约束回滚。该证据不覆盖 Core mTLS、Temporal、Kafka 或共享环境 rollback，`AD-009` 继续开放。
