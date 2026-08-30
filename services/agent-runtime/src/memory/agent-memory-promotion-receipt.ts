@@ -3,6 +3,11 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
+import {
+  agentMemoryTypeSchema,
+  validateMemoryTypeTransition,
+  type AgentMemoryType
+} from "./memory-type-policy.js";
 
 const schemaVersion = "dipole.agent.memory-promotion-receipt.v1" as const;
 const maxReceiptLifetimeMs = 15 * 60 * 1000;
@@ -13,6 +18,7 @@ const timestamp = z.string().datetime({ offset: true });
 const intentSchema = z.object({
   tenantId: identity, principalUserId: identity, agentId: identity, taskId: identity, runId: identity,
   candidateId: identity, candidateSha256: hash, reviewId: identity, policyVersion: identity,
+  candidateMemoryType: agentMemoryTypeSchema, targetMemoryType: agentMemoryTypeSchema,
   expiresAt: timestamp
 }).strict();
 
@@ -21,6 +27,7 @@ const receiptSchema = z.object({
   receiptSha256: hash, status: z.enum(["prepared", "committed", "cancelled", "expired"]),
   tenantId: identity, principalUserId: identity, agentId: identity, taskId: identity, runId: identity,
   candidateId: identity, candidateSha256: hash, reviewId: identity, policyVersion: identity,
+  candidateMemoryType: agentMemoryTypeSchema, targetMemoryType: agentMemoryTypeSchema,
   createdAt: timestamp, expiresAt: timestamp
 }).strict();
 
@@ -34,6 +41,8 @@ export interface AgentMemoryPromotionIntent {
   readonly candidateSha256: string;
   readonly reviewId: string;
   readonly policyVersion: string;
+  readonly candidateMemoryType: AgentMemoryType;
+  readonly targetMemoryType: AgentMemoryType;
   readonly expiresAt: string;
 }
 
@@ -50,6 +59,7 @@ export function createAgentMemoryPromotionReceipt(
   now: Date = new Date()
 ): AgentMemoryPromotionReceipt {
   const intent = intentSchema.parse(rawIntent);
+  validateMemoryTypeTransition(intent.candidateMemoryType, intent.targetMemoryType);
   const createdAt = validNow(now);
   const expiresAt = validTimestamp(intent.expiresAt, "expiry");
   if (expiresAt <= createdAt || expiresAt - createdAt > maxReceiptLifetimeMs) {
@@ -61,6 +71,7 @@ export function createAgentMemoryPromotionReceipt(
     tenantId: intent.tenantId, principalUserId: intent.principalUserId, agentId: intent.agentId,
     taskId: intent.taskId, runId: intent.runId, candidateId: intent.candidateId,
     candidateSha256: intent.candidateSha256, reviewId: intent.reviewId, policyVersion: intent.policyVersion,
+    candidateMemoryType: intent.candidateMemoryType, targetMemoryType: intent.targetMemoryType,
     createdAt: new Date(createdAt).toISOString(), expiresAt: new Date(expiresAt).toISOString()
   } as const;
   const receiptSha256 = sha256(body);
@@ -74,12 +85,14 @@ export function createAgentMemoryPromotionReceipt(
 
 export function validateAgentMemoryPromotionReceipt(raw: unknown): AgentMemoryPromotionReceipt {
   const receipt = receiptSchema.parse(raw);
+  validateMemoryTypeTransition(receipt.candidateMemoryType, receipt.targetMemoryType);
   const body = {
     schemaVersion,
     status: receipt.status,
     tenantId: receipt.tenantId, principalUserId: receipt.principalUserId, agentId: receipt.agentId,
     taskId: receipt.taskId, runId: receipt.runId, candidateId: receipt.candidateId,
     candidateSha256: receipt.candidateSha256, reviewId: receipt.reviewId, policyVersion: receipt.policyVersion,
+    candidateMemoryType: receipt.candidateMemoryType, targetMemoryType: receipt.targetMemoryType,
     createdAt: receipt.createdAt, expiresAt: receipt.expiresAt
   } as const;
   if (receipt.receiptSha256 !== sha256(body) || receipt.receiptId !== `MEM-PROMOTE-${sha256({ ...body, receiptSha256: receipt.receiptSha256 })}`) {
@@ -105,6 +118,7 @@ export function replayAgentMemoryPromotionReceipt(
   if (receipt.tenantId !== intent.tenantId || receipt.principalUserId !== intent.principalUserId || receipt.agentId !== intent.agentId ||
       receipt.taskId !== intent.taskId || receipt.runId !== intent.runId || receipt.candidateId !== intent.candidateId ||
       receipt.candidateSha256 !== intent.candidateSha256 || receipt.reviewId !== intent.reviewId || receipt.policyVersion !== intent.policyVersion ||
+      receipt.candidateMemoryType !== intent.candidateMemoryType || receipt.targetMemoryType !== intent.targetMemoryType ||
       receipt.expiresAt !== new Date(validTimestamp(intent.expiresAt, "expiry")).toISOString()) {
     throw new Error("Agent Memory promotion receipt intent conflict");
   }

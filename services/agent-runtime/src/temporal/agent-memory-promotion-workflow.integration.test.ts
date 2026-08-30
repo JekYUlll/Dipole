@@ -43,7 +43,8 @@ describe.skipIf(!enabled)("Temporal Agent Memory promotion intent", () => {
         taskId: "TASK-MEM-PROMOTE", goal: "prepare reviewed memory promotion",
         memoryPromotion: {
           tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-MEM-PROMOTE", runId: "RUN-1",
-          candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1", expiresAt
+          candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1",
+          candidateMemoryType: "observational", targetMemoryType: "semantic", expiresAt
         },
         admission: {
           tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
@@ -54,7 +55,7 @@ describe.skipIf(!enabled)("Temporal Agent Memory promotion intent", () => {
     expect(result.status).toBe("completed");
     expect(result.output).toMatchObject({
       result: { outcome: "prepared" },
-      promotionReceipt: { status: "prepared", candidateId: "CAND-1", reviewId: "REV-1" }
+      promotionReceipt: { status: "prepared", candidateId: "CAND-1", reviewId: "REV-1", targetMemoryType: "semantic" }
     });
   }, 120_000);
 });

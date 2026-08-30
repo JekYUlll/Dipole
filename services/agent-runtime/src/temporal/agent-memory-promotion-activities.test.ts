@@ -7,9 +7,11 @@ describe("Temporal Agent Memory promotion receipt Activity", () => {
     const receipt = await foundationAgentTaskActivities.prepareAgentMemoryPromotion({
       tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-1", runId: "RUN-1",
       candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1",
+      candidateMemoryType: "observational", targetMemoryType: "semantic",
       createdAt: "2026-08-29T01:00:00.000Z", expiresAt: "2026-08-29T01:10:00.000Z"
     });
     expect(receipt.status).toBe("prepared");
+    expect(receipt.targetMemoryType).toBe("semantic");
     expect(receipt.receiptId).toMatch(/^MEM-PROMOTE-[a-f0-9]{64}$/);
     expect(JSON.stringify(receipt)).not.toMatch(/summary|evidence|secret|token/i);
   });
@@ -18,6 +20,7 @@ describe("Temporal Agent Memory promotion receipt Activity", () => {
     await expect(foundationAgentTaskActivities.prepareAgentMemoryPromotion({
       tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-1", runId: "RUN-1",
       candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1",
+      candidateMemoryType: "observational", targetMemoryType: "semantic",
       createdAt: "2026-08-29T01:00:00.000Z", expiresAt: "2026-08-29T02:00:00.000Z"
     })).rejects.toThrow(/expiry/i);
   });

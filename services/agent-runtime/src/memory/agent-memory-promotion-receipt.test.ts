@@ -13,6 +13,7 @@ function intent(overrides: Partial<AgentMemoryPromotionIntent> = {}): AgentMemor
   return {
     tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-1", runId: "RUN-1",
     candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1",
+    candidateMemoryType: "observational", targetMemoryType: "semantic",
     expiresAt: new Date(now.getTime() + 10 * 60 * 1000).toISOString(), ...overrides
   };
 }
@@ -25,7 +26,8 @@ describe("Agent Memory promotion receipt", () => {
     expect(first).toEqual(second);
     expect(first).toMatchObject({
       schemaVersion: "dipole.agent.memory-promotion-receipt.v1", status: "prepared",
-      tenantId: "dipole", taskId: "TASK-1", runId: "RUN-1", candidateId: "CAND-1", reviewId: "REV-1"
+      tenantId: "dipole", taskId: "TASK-1", runId: "RUN-1", candidateId: "CAND-1", reviewId: "REV-1",
+      candidateMemoryType: "observational", targetMemoryType: "semantic"
     });
     expect(first.receiptId).toMatch(/^MEM-PROMOTE-[a-f0-9]{64}$/);
     expect(first.receiptSha256).toMatch(/^[a-f0-9]{64}$/);
@@ -38,6 +40,7 @@ describe("Agent Memory promotion receipt", () => {
 
     expect(replayAgentMemoryPromotionReceipt(receipt, intent(), new Date("2026-08-29T01:05:00.000Z"))).toEqual(receipt);
     expect(() => replayAgentMemoryPromotionReceipt(receipt, intent({ reviewId: "REV-2" }), now)).toThrow(/conflict/i);
+    expect(() => replayAgentMemoryPromotionReceipt(receipt, intent({ targetMemoryType: "procedural" }), now)).toThrow(/conflict/i);
     expect(() => replayAgentMemoryPromotionReceipt(receipt, intent(), new Date("2026-08-29T01:11:00.000Z"))).toThrow(/expired/i);
   });
 
@@ -47,5 +50,7 @@ describe("Agent Memory promotion receipt", () => {
     expect(() => validateAgentMemoryPromotionReceipt({ ...receipt, status: "committed" })).toThrow(/hash/i);
     expect(() => validateAgentMemoryPromotionReceipt({ ...receipt, expiresAt: now.toISOString() })).toThrow(/hash|time|expiry/i);
     expect(() => validateAgentMemoryPromotionReceipt({ ...receipt, candidateSha256: "b".repeat(64) })).toThrow(/hash/i);
+    expect(() => validateAgentMemoryPromotionReceipt({ ...receipt, targetMemoryType: "procedural" })).toThrow(/hash/i);
+    expect(() => createAgentMemoryPromotionReceipt(intent({ candidateMemoryType: "working" }), now)).toThrow(/observational/i);
   });
 });
