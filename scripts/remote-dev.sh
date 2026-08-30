@@ -10,6 +10,7 @@ REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose
 REMOTE_GO_ROOT="${DIPOLE_REMOTE_GO_ROOT:-}"
 REMOTE_GOPROXY="${DIPOLE_REMOTE_GOPROXY:-}"
 REMOTE_NODE_ROOT="${DIPOLE_REMOTE_NODE_ROOT:-/home/admin1/.local/node-22.12.0}"
+REMOTE_K6_IMAGE="${DIPOLE_REMOTE_K6_IMAGE:-grafana/k6:0.57.0}"
 REMOTE_BUILD_CANDIDATE="${DIPOLE_REMOTE_BUILD_CANDIDATE:-0}"
 
 usage() {
@@ -68,12 +69,13 @@ REMOTE_GUARD
 
 run_remote() {
   local action="$1"
-  remote "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" <<REMOTE_RUN
+  remote "${action}" "${REMOTE_NODE_ROOT}" "${REMOTE_GO_ROOT}" "${REMOTE_GOPROXY}" "${REMOTE_K6_IMAGE}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
 node_root="\${4:-}"
 go_root="\${5:-}"
 go_proxy="\${6:-}"
+k6_image="\${7:-}"
 if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
   export PATH="\$go_root/bin:\$PATH"
 fi
@@ -159,7 +161,24 @@ case "${action}" in
   multipart-restart-smoke)
     GOTOOLCHAIN=local scripts/smoke-minio-multipart-restart.sh
     ;;
-  bench) scripts/bench/run_bench.sh ;;
+  bench)
+    if command -v k6 >/dev/null 2>&1; then
+      scripts/bench/run_bench.sh
+    else
+      [[ -n "\$k6_image" ]] || { echo "remote bench refused: k6 is unavailable and DIPOLE_REMOTE_K6_IMAGE is empty" >&2; exit 4; }
+      docker image inspect "\$k6_image" >/dev/null 2>&1 || docker pull "\$k6_image"
+      k6_wrapper="\$(mktemp)"
+      cleanup_k6_wrapper() { rm -f "\$k6_wrapper"; }
+      trap cleanup_k6_wrapper EXIT
+      cat >"\$k6_wrapper" <<'K6_WRAPPER'
+#!/usr/bin/env bash
+set -euo pipefail
+exec docker run --rm --network host -v "\$PWD:/workspace" -w /workspace "\${DIPOLE_K6_IMAGE}" k6 "\$@"
+K6_WRAPPER
+      chmod 700 "\$k6_wrapper"
+      DIPOLE_K6_IMAGE="\$k6_image" K6_BIN="\$k6_wrapper" scripts/bench/run_bench.sh
+    fi
+    ;;
   down) docker compose -p "\$project" -f "${REMOTE_COMPOSE_FILE}" down --remove-orphans ;;
   *) echo "unsupported remote action: ${action}" >&2; exit 2 ;;
 esac
