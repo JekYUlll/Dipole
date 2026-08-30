@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -27,6 +28,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/services/core/server"
 	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 // CoreRuntime owns only Core repositories, Core projections and the Core
@@ -37,6 +39,7 @@ type CoreRuntime struct {
 	coreRPC       *InternalRPCServer
 	metrics       *platformObservability.MetricsServer
 	messageSender *lazyCoreMessageSender
+	searchConn    *grpc.ClientConn
 }
 
 func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
@@ -121,7 +124,59 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 
 	rpcCfg := config.InternalRPCConfig()
 	if rpcCfg.Enabled {
-		var agentAdapter *agentgrpc.MemoryPromotionReceiptServer
+		var agentAdapter agentv1.AgentCapabilityServiceServer
+		if rpcCfg.AgentConversationSearchEnabled {
+			if !rpcCfg.TLSEnabled {
+				cleanup()
+				return nil, fmt.Errorf("Agent conversation search requires internal RPC mTLS")
+			}
+			search, searchConnection, composeErr := dialCoreSearchApplication(ctx, rpcCfg)
+			if composeErr != nil {
+				cleanup()
+				return nil, composeErr
+			}
+			runtime.searchConn = searchConnection
+			agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
+			}
+			permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
+			if composeErr = agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, agentRepos.Policy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("ensure standalone Agent Definition: %w", composeErr)
+			}
+			commands, composeErr := agentapplication.NewLocalAgentCommandV1(messaging.Messages)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Command: %w", composeErr)
+			}
+			capability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, messaging.Messages, messaging.Conversations, commands, search)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Search capability: %w", composeErr)
+			}
+			authorizer, composeErr := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(agentRepos.Promotions)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent active promotion authorizer: %w", composeErr)
+			}
+			resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy, authorizer)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Invocation resolver: %w", composeErr)
+			}
+			admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy, authorizer)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Run admission: %w", composeErr)
+			}
+			agentAdapter, composeErr = agentgrpc.NewServer(capability, resolver, admission)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Search rpc adapter: %w", composeErr)
+			}
+		}
 		if rpcCfg.AgentMemoryPromotionReceiptCommitEnabled {
 			if !rpcCfg.TLSEnabled {
 				cleanup()
@@ -152,17 +207,20 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 				cleanup()
 				return nil, fmt.Errorf("compose standalone Agent Memory receipt commit service: %w", composeErr)
 			}
-			agentAdapter, composeErr = agentgrpc.NewMemoryPromotionReceiptServer(commits)
-			if composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("compose standalone Agent Memory receipt rpc adapter: %w", composeErr)
+			if searchAdapter, ok := agentAdapter.(*agentgrpc.Server); ok {
+				if _, composeErr = searchAdapter.WithMemoryPromotionReceiptCommits(commits); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent Memory receipt rpc adapter: %w", composeErr)
+				}
+			} else {
+				agentAdapter, composeErr = agentgrpc.NewMemoryPromotionReceiptServer(commits)
+				if composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("compose standalone Agent Memory receipt rpc adapter: %w", composeErr)
+				}
 			}
 		}
-		if agentAdapter == nil {
-			runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core)
-		} else {
-			runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core, agentAdapter)
-		}
+		runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core, agentAdapter)
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Core capability RPC: %w", err)
@@ -215,6 +273,12 @@ func (r *CoreRuntime) Close() {
 			logger.Warn("Core Message sender close failed", zap.Error(err))
 		}
 		r.messageSender = nil
+	}
+	if r.searchConn != nil {
+		if err := r.searchConn.Close(); err != nil {
+			logger.Warn("Core Search connection close failed", zap.Error(err))
+		}
+		r.searchConn = nil
 	}
 	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("Core metrics close failed", zap.Error(err))

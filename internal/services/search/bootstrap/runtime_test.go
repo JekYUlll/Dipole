@@ -8,7 +8,11 @@ import (
 	"testing"
 	"time"
 
+	searchv1 "github.com/JekYUlll/Dipole/api/gen/go/search/v1"
 	"github.com/JekYUlll/Dipole/internal/config"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
+	searchgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/search"
 )
 
 func TestSearchRuntimeComposesCoreScopeAndReadOnlyElasticsearch(t *testing.T) {
@@ -63,6 +67,19 @@ func TestSearchRuntimeComposesCoreScopeAndReadOnlyElasticsearch(t *testing.T) {
 	}
 	if mutationRequests.Load() != 0 {
 		t.Fatalf("Search runtime issued %d Elasticsearch mutation requests", mutationRequests.Load())
+	}
+	coreConnection, err := platformrpc.Dial(t.Context(), rpcCfg, rpcCfg.SearchTarget, grpcauth.Credentials{Service: "dipole-core", Secret: rpcCfg.SharedSecret})
+	if err != nil {
+		t.Fatalf("dial Search runtime as Core: %v", err)
+	}
+	t.Cleanup(func() { _ = coreConnection.Close() })
+	coreSearch, err := searchgrpc.NewClientForService(searchv1.NewSearchServiceClient(coreConnection), "dipole-core")
+	if err != nil {
+		t.Fatalf("create Core Search client: %v", err)
+	}
+	coreDocuments, err := coreSearch.Search("U1", "migration", 10)
+	if err != nil || len(coreDocuments) != 1 || coreDocuments[0].ConversationKey != "direct:U1:U2" {
+		t.Fatalf("Core scoped Search: documents=%+v err=%v", coreDocuments, err)
 	}
 }
 
