@@ -75,7 +75,7 @@ REMOTE_SYNC
 guard_start() {
   remote "guard" "${DIPOLE_REMOTE_ALLOW_ACTIVE:-0}" <<'REMOTE_GUARD'
 set -euo pipefail
-approved="${3:-0}"
+approved="${4:-0}"
 users="$(who | wc -l | tr -d ' ')"
 gpu="$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
 if [[ "$users" != "0" && "$approved" != "1" ]]; then
