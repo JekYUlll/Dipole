@@ -45,6 +45,17 @@ Dipole Agent Runtime | TypeScript, Node.js, Temporal, Kafka, MCP, OpenTelemetry
 
 简历中可使用“已设计并实现”“已通过本地/隔离环境验证”等准确表述。不要把 Cassandra 主读、Elasticsearch 默认搜索、Agent active authority、外部 MCP 写入或 C++ 数据面性能收益写成已上线成果，详见 [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)。
 
+### 面试证据速查
+
+| 叙事主题 | 当前状态 | 面试前应复核的证据 |
+| --- | --- | --- |
+| 服务边界与回滚 | **已验证** | [服务边界](../architecture/SERVICE-BOUNDARIES.md)、[微服务部署](../architecture/MICROSERVICES-DEPLOYMENT.md) 与对应 Smoke 记录 |
+| SQLC 数据访问 | **已验证** | [数据访问迁移说明](../data/DATA-ACCESS-MIGRATION.md) 与版本化 migration/sqlc 查询 |
+| Temporal 审批恢复 | **已验证** | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、[MCP 授权](../agent/agent-mcp-authorization.md) 与 Workflow 回归测试 |
+| Active Agent | **默认关闭** | [Active 部署运行手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)、release manifest、五类 Eval 与共享环境记录 |
+| Cassandra/Elasticsearch 切流 | **默认关闭** | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md) 中的回填、对账、Shadow 和回滚门禁 |
+| C++ 实时数据面 | **规划中** | [平台演进计划](../architecture/PLATFORM-EVOLUTION-PLAN.md) 与基准报告；在可复现收益前不作性能承诺 |
+
 ## 4. 现场介绍
 
 ### 60 秒版本
@@ -91,6 +102,22 @@ Agent 主要是模型、工具、工作流与协议集成，TypeScript 对 Zod�
 ### Agent active 为什么仍然默认关闭？
 
 模型调用、工具权限和长期任务会引入成本、数据访问和副作用风险。当前 active profile 只允许只读 Temporal Activity，并要求 user-gray manifest、五类 Eval、Operator grant、共享 Kafka/Temporal/RPC/Provider 证据与维护窗口。缺少任一证据时保持 Shadow。
+
+### Temporal 等待审批时，如何避免错误用户批准了错误任务？
+
+Workflow 先通过 Core 创建持久 Approval，再进入 `waiting_approval`。Signal 必须同时匹配当前 request 和 approval ID；Activity 会把 Task、Run、Runtime、审批 ID、决策和经 Gateway 认证的 actor 交给 Core。Core 重读持久 Task/Run，要求 actor 等于 Task principal，并用条件更新收敛首个 approved/denied 决策。重放只接受完全相同的已决结果，参数漂移、过期、撤销或跨 Task 引用都会拒绝。写 Tool 仍需后续的 grant 解析与原子 consume，因此“收到 Signal”本身不授予副作用权限。
+
+### 为什么从 GORM 迁移到 SQLC？
+
+消息、同步和投影的关键路径需要明确 SQL、索引、锁语义和跨服务可复用的数据契约。SQLC 让查询、参数和结果类型在编译期绑定，便于审查 MySQL 事务边界、迁移版本和最小权限授权；Go 服务继续把领域规则放在 application 层。这个选择也让后续多语言服务能够共享 protobuf、SQL schema 与数据库所有权约束，而不依赖某个语言的 ORM 行为。
+
+### 远程部署和压力测试怎样避免“本地能跑”的伪证据？
+
+开发环境区分 Remote GPU 的完整拓扑和 TencentCloud 的低资源 Smoke。每次运行应绑定 Git revision、镜像或源码摘要、配置摘要和资源快照，先通过 migration、readiness、mTLS、Kafka lag 与健康检查，再记录 P50/P95/P99、错误率和资源水位。活动会话受到保护时只进行只读审计或本地契约测试，不能用静态渲染、单元测试或未获批准的共享环境操作替代运行时证据。
+
+### C++ 实时数据面为什么留到后期？
+
+当前 Go Delivery 仍是权威路径。C++ 候选聚焦连接、批量投递、背压和节点级 fanout 等数据面工作；它需要在稳定协议之上用相同流量、同一指标和自动回切策略证明收益。这样语言边界有明确性能动机，也避免为了技术栈展示而把 CRUD 领域拆到 C++。
 
 更多网络、存储、性能、SQLC、MCP、C++ 与故障恢复问题见 [详细面试问答](INTERVIEW-QA.md)。
 

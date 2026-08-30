@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：项目学习与面试主文档增加服务边界、SQLC、Temporal Durable Approval、远程验证和 C++ 数据面证据速查与高频追问，明确区分已验证、默认关闭和规划能力。
+
 - 2026-08-30：Agent Runtime 在 active 启动链执行只读 profile 校验，Control、MCP Server、External MCP、Memory 或 subscription Shadow 任一开启都会在构造运行资源前停止；Shadow 运维路径保持可配置。
 
 - 2026-08-30：新增项目学习与面试主文档，集中维护简历描述、60 秒/3 分钟介绍、工程故事、高频问答、学习路线与面试前检查；详细题库保留为扩展阅读，状态标签要求区分已验证、默认关闭和规划能力。
