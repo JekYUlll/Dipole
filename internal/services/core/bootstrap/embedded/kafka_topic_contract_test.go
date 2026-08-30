@@ -41,7 +41,7 @@ func contractEventTypes(t *testing.T, relativePath string) []string {
 	if !ok {
 		t.Fatal("locate Kafka contract test source")
 	}
-	root := filepath.Join(filepath.Dir(currentFile), "..", "..", "..")
+	root := filepath.Join(filepath.Dir(currentFile), "..", "..", "..", "..", "..")
 	raw, err := os.ReadFile(filepath.Join(root, relativePath))
 	if err != nil {
 		t.Fatalf("read event contract %s: %v", relativePath, err)

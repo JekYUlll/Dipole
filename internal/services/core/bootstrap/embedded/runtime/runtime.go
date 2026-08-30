@@ -7,7 +7,6 @@ import (
 
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
@@ -22,6 +21,7 @@ import (
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	appComposition "github.com/JekYUlll/Dipole/internal/services/core/bootstrap/embedded"
 	corerpc "github.com/JekYUlll/Dipole/internal/services/core/rpc"
 	"github.com/JekYUlll/Dipole/internal/services/core/server"
 	messagekafka "github.com/JekYUlll/Dipole/internal/services/message/infrastructure/kafka"

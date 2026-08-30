@@ -379,6 +379,7 @@
 - **下一步：** 以 application port 和 contract test 为边界，按 Core、Message、Sync、Search、Agent 顺序拆分 Composition Root、业务实现和数据访问包；每次迁移保持旧入口可回切，并同步更新服务边界清单。
 - **验证门槛：** 新增服务必须有独立入口、构建制品、数据 ownership、依赖清单、contract test 和回滚说明；结构门禁、Go 全量测试、镜像隔离检查和对应服务 smoke 必须通过。
 - **本轮进展：** embedded runtime 已直接调用 `internal/platform/runtime` 的 metrics API，删除无生产调用者的 `internal/bootstrap` metrics facade，并将行为 contract test 归档到平台 runtime；指标启停和服务 readiness 语义保持兼容。
+- **本轮进展：** embedded 聚合实现、测试与生命周期已从共享 `internal/bootstrap/embedded/` 收敛到 `internal/services/core/bootstrap/embedded/`，由 Core 的唯一 `embedded_compat.go` 作为本地回滚桥接；服务布局门禁拒绝旧共享目录回流，独立服务仍不得依赖该聚合路径。
 - **本轮进展：** Delivery Observation RPC 的实现与测试调用已统一归属 `internal/services/gateway/bootstrap`，删除共享 `internal/bootstrap` facade；Realtime caller identity、mTLS transport 和队列 backpressure contract 已由 Gateway-owned 测试覆盖。
 - **本轮进展：** Core RPC 的测试 helper 已切换到 `internal/services/core/bootstrap`，共享 `internal/bootstrap.NewCoreRPCServer` facade 已删除；Core capability 的认证、mTLS 和协议 contract 继续由 Core-owned 实现覆盖。
 - **本轮进展：** 已新增服务入口索引、服务边界清单和结构门禁检查；本条债务保留，代表代码物理边界尚未全部收敛。

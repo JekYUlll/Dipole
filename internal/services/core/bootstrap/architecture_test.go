@@ -42,7 +42,7 @@ func TestEmbeddedRollbackBridgeOwnsAggregateDependency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read Core embedded compatibility bridge: %v", err)
 	}
-	if !strings.Contains(string(source), "internal/bootstrap/embedded/runtime") {
+	if !strings.Contains(string(source), "internal/services/core/bootstrap/embedded/runtime") {
 		t.Fatalf("Core embedded compatibility bridge must point to the aggregate runtime")
 	}
 

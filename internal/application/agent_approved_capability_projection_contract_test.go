@@ -10,7 +10,7 @@ import (
 func TestAgentApprovedCapabilityProjectionRemainsProductionDefaultOff(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("..", "..")
-	bootstrap, err := os.ReadFile(filepath.Join(root, "internal", "bootstrap", "embedded", "runtime", "runtime.go"))
+	bootstrap, err := os.ReadFile(filepath.Join(root, "internal", "services", "core", "bootstrap", "embedded", "runtime", "runtime.go"))
 	if err != nil {
 		t.Fatal(err)
 	}

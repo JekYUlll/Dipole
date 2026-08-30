@@ -1,6 +1,6 @@
 # Dipole 服务入口
 
-本目录只存放长期运行的服务入口。服务的业务实现、Composition Root 和部署配置分别位于 `internal/`、`internal/services/<service>/bootstrap/` 与 `deploy/`；embedded 回滚组合位于 `internal/bootstrap/embedded/`，入口目录不直接持有数据库访问代码。
+本目录只存放长期运行的服务入口。服务的业务实现、Composition Root 和部署配置分别位于 `internal/`、`internal/services/<service>/bootstrap/` 与 `deploy/`；embedded 回滚组合位于 `internal/services/core/bootstrap/embedded/`，入口目录不直接持有数据库访问代码。
 
 服务边界、数据所有权和当前过渡例外以 [服务边界清单](../../docs/architecture/SERVICE-BOUNDARIES.md) 为准。
 

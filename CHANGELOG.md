@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：将 embedded 聚合运行时、Kafka 组合、消息/同步兼容传输及其测试收敛到 `internal/services/core/bootstrap/embedded/`；Core 的唯一兼容桥继续保留本地回滚能力，服务布局门禁拒绝 `internal/bootstrap/embedded` 回流，独立服务运行路径不变。
+
 - 2026-08-31：Agent Context hydration 现并行读取已授权的会话、Memory 与受 Core 调解的检索证据，并记录低敏数量指标；任一读取失败仍在模型调用前 fail closed，默认检索与共享环境开关保持关闭。
 
 - 2026-08-31：Multipart 策略门禁现以 `contracts/multipart-upload/v1` 为唯一默认值基准，自动比对 release manifest、`config.dist.yaml`、Go 默认配置和 Web 离线回退值。策略更新若遗漏任一层会阻断校验；运行时默认仍为 `relay` 并保留即时回退。

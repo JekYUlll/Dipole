@@ -34,8 +34,8 @@
 
 ### 需要收敛
 
-- 旧 `internal/store` MySQL/Redis 入口已在全仓调用审计后退役；旧 `internal/service` 和共享 `internal/handler` 实现已清空，跨版本事件契约测试统一收纳到 `internal/platform/events/contract/`；embedded 聚合装配已迁入 `internal/bootstrap/embedded/`，聚合 `internal/app` 已完成退休，生产服务入口不得直接依赖兼容目录。
-- embedded 聚合专属的 Kafka 注册、Conversation projection、群初始化、旧 Eino 触发和实时投递组合位于 `internal/bootstrap/embedded/`；独立 Gateway/Core/Message 服务仍由各自 service-owned Kafka infrastructure 持有。
+- 旧 `internal/store` MySQL/Redis 入口已在全仓调用审计后退役；旧 `internal/service` 和共享 `internal/handler` 实现已清空，跨版本事件契约测试统一收纳到 `internal/platform/events/contract/`；embedded 聚合装配已归属 `internal/services/core/bootstrap/embedded/`，聚合 `internal/app` 已完成退休，生产服务入口不得直接依赖兼容目录。
+- embedded 聚合专属的 Kafka 注册、Conversation projection、群初始化、旧 Eino 触发和实时投递组合位于 `internal/services/core/bootstrap/embedded/`，仅作为 Core 本地回滚路径；独立 Gateway/Core/Message 服务仍由各自 service-owned Kafka infrastructure 持有。
 - `internal/operations/` 收纳回填、对账、归档和受控切换等一次性操作；Search 运维装配已从 `internal/bootstrap/` 移至 `internal/operations/search/`，长期服务启动包不得重新承载这些操作。
 - Sync baseline/replay/reconcile 与 Cassandra backfill/archive/reconcile 已分别收纳到 `internal/operations/sync/` 和 `internal/operations/cassandra/`；Sync 长期 runtime 位于自身 bootstrap，Cassandra Projector runtime 归属 Message bootstrap。
 - Agent Memory lineage backfill 已收纳到 `internal/operations/agent/`；manifest、审批和执行回执仍由 Agent 运维工具管理，Agent Runtime 长期实现保持在 Agent service 边界内。
@@ -55,14 +55,14 @@
 - Sync domain 实现已迁入 `internal/services/sync/domain/`；Sync Timeline、设备 Cursor 和群组 checkpoint contract 由服务自有 domain 持有，跨版本 domain-event decoder 回归测试位于 `internal/platform/events/contract/`。
 - Sync MySQL repository、hydrator、projection 和 process composition 已迁入 `internal/services/sync/infrastructure/mysql/`；Sync 独立 runtime 与 embedded 兼容入口均通过服务专属 composition，旧共享 repository 仅保留兼容入口。
 - Sync Kafka Projector 已迁入 `internal/services/sync/infrastructure/kafka/`，直接复用 Message domain 的事件 contract；旧 `internal/projector/sync/` 路径由结构门禁阻止回流，Inbox 写责任仍遵循 atomic/projector 可回滚开关。
-- Sync 独立 runtime 已直接装配 Sync infrastructure composition，embedded 聚合兼容入口位于 `internal/bootstrap/embedded/`；Inbox 查询、checkpoint 和 hydration contract 保持兼容。
-- embedded 聚合的 composition 位于 `internal/bootstrap/embedded/`，runtime 与生命周期位于其 `runtime/` 子包；共享 `internal/bootstrap` 根目录不再持有生产实现，仅保留迁移期 contract fixture。该聚合仅允许通过 `internal/services/core/bootstrap/embedded_compat.go` 作为本地兼容和回滚桥接，独立服务入口与其他 service-owned 代码不得直接依赖它。
+- Sync 独立 runtime 已直接装配 Sync infrastructure composition，embedded 聚合兼容入口位于 `internal/services/core/bootstrap/embedded/`；Inbox 查询、checkpoint 和 hydration contract 保持兼容。
+- embedded 聚合的 composition 位于 `internal/services/core/bootstrap/embedded/`，runtime 与生命周期位于其 `runtime/` 子包；共享 `internal/bootstrap` 根目录不再持有生产实现，仅保留迁移期 contract fixture。该聚合仅允许通过 `internal/services/core/bootstrap/embedded_compat.go` 作为本地兼容和回滚桥接，独立服务入口与其他 service-owned 代码不得直接依赖它。
 - Inbox ownership 配置要求：Message `projector` 模式必须与启用的 Sync projector 和 Kafka 一起发布；`atomic` 模式保留为立即回滚路径，配置校验在连接副作用前 fail closed。
 - Message application 已迁入 `internal/services/message/application/`；该目录只依赖共享 MessageStore、Core Capability、事件发布 port 和 Message application port，embedded 与独立 Message runtime 共用该装配。
 - Message event contract 与 Sync projection 已迁入 `internal/services/message/domain/`；`send_requested` 持久化 Kafka handler 已迁入 `internal/services/message/infrastructure/kafka/`，事件版本、Mutation、Search 和 Inbox locator contract 由 Message domain 持有。
 - Message MySQL repository 已迁入 `internal/services/message/infrastructure/mysql/`；`internal/services/message/infrastructure/kafka` 负责 Outbox relay，`internal/platform/mysql/generated` 与事务 Store 仍作为基础设施共享，`messages`、Metadata、Outbox 和可选 Inbox 原子写入由 Message process 组合。
-- Message Cassandra Projector 的 projection 与 runtime 已分别归属 `internal/services/message/infrastructure/cassandra/` 和 `internal/services/message/bootstrap/`；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。Message RPC server/client 由 Message、Gateway 和 embedded 自有 bootstrap 持有，embedded-only Message transport/shadow 位于 `internal/bootstrap/embedded/`。
-- Message 独立 runtime 已直接使用 Message infrastructure composition、Message application factory 和自有惰性 Core Capability adapter；embedded 聚合兼容入口位于 `internal/bootstrap/embedded/`，独立 Message 启动不再依赖聚合 repository composition。
+- Message Cassandra Projector 的 projection 与 runtime 已分别归属 `internal/services/message/infrastructure/cassandra/` 和 `internal/services/message/bootstrap/`；`cmd/tools/cassandra-projector` 继续作为可选独立入口，Cassandra shadow/primary 开关和 MySQL 回退语义保持兼容。Message RPC server/client 由 Message、Gateway 和 embedded 自有 bootstrap 持有，embedded-only Message transport/shadow 位于 `internal/services/core/bootstrap/embedded/`。
+- Message 独立 runtime 已直接使用 Message infrastructure composition、Message application factory 和自有惰性 Core Capability adapter；embedded 聚合兼容入口位于 `internal/services/core/bootstrap/embedded/`，独立 Message 启动不再依赖聚合 repository composition。
 - embedded Message runtime 直接调用 Message-owned SQLC repository constructor；`NewRepositories` 仅负责 embedded 回滚组合，Message repository wrapper 已退休。
 - Gateway HTTP handlers 已迁入 `internal/gateway/http/`，只负责认证上下文、参数校验和各 application port 的响应映射；嵌入式兼容 Server 复用同一组边缘适配器。
 - Gateway Kafka consumer 使用 `internal/application` 中的版本化群组、会话、联系人和已读事件 contract；Gateway 不直接依赖 Core domain decoder，Core 负责事件生产与自身 projection，结构门禁阻止跨服务 domain 实现回流。

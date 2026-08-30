@@ -7,6 +7,14 @@ if find "${root_dir}/internal/bootstrap" -maxdepth 1 -type f -name '*.go' ! -nam
 	echo "shared bootstrap root must not contain production Go files; use an embedded or service-owned boundary" >&2
 	exit 1
 fi
+if [[ -d "${root_dir}/internal/bootstrap/embedded" ]]; then
+  echo "embedded rollback composition must be Core-owned under internal/services/core/bootstrap/embedded" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/core/bootstrap/embedded/runtime/runtime.go" ]]; then
+  echo "Core-owned embedded rollback runtime is missing" >&2
+  exit 1
+fi
 
 expected_services=(core gateway message sync search search-indexer)
 if [[ ! -f "${root_dir}/cmd/services/README.md" ]]; then
@@ -311,7 +319,7 @@ for legacy_message_transport in message_transport.go message_shadow.go message_t
     exit 1
   fi
 done
-if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/bootstrap/embedded/runtime/runtime.go"; then
+if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/services/core/bootstrap/embedded/runtime/runtime.go"; then
   echo "embedded runtime must use the embedded-owned Message transport" >&2
   exit 1
 fi
@@ -319,7 +327,7 @@ if rg --quiet 'newMessageApplicationTransport|messageApplicationTransport' "${ro
   echo "legacy Message transport symbols remain in shared bootstrap" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/bootstrap/embedded/message_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/message_shadow.go" ]]; then
+if [[ ! -f "${root_dir}/internal/services/core/bootstrap/embedded/message_transport.go" || ! -f "${root_dir}/internal/services/core/bootstrap/embedded/message_shadow.go" ]]; then
   echo "embedded Message transport implementation is missing from embedded composition" >&2
   exit 1
 fi
@@ -329,7 +337,7 @@ for legacy_sync_transport in sync_transport.go sync_shadow.go sync_transport_tes
     exit 1
   fi
 done
-if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/bootstrap/embedded/runtime/runtime.go"; then
+if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/services/core/bootstrap/embedded/runtime/runtime.go"; then
   echo "embedded runtime must use the embedded-owned Sync transport" >&2
   exit 1
 fi
@@ -337,7 +345,7 @@ if rg --quiet 'newSyncApplicationTransport|syncApplicationTransport' "${root_dir
   echo "legacy Sync transport symbols remain in shared bootstrap" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/bootstrap/embedded/sync_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/sync_shadow.go" ]]; then
+if [[ ! -f "${root_dir}/internal/services/core/bootstrap/embedded/sync_transport.go" || ! -f "${root_dir}/internal/services/core/bootstrap/embedded/sync_shadow.go" ]]; then
   echo "embedded Sync transport implementation is missing from embedded composition" >&2
   exit 1
 fi
@@ -381,7 +389,7 @@ if [[ -e "${root_dir}/internal/data/mysql/repository/search_index.go" ]]; then
   echo "legacy Search index repository remains in shared repository package" >&2
   exit 1
 fi
-if rg --quiet 'services/search/infrastructure/mysql|SearchIndexRepository|generated\.New' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
+if rg --quiet 'services/search/infrastructure/mysql|SearchIndexRepository|generated\.New' "${root_dir}/internal/services/core/bootstrap/embedded/repositories.go"; then
   echo "embedded composition must not construct Search-owned index repositories" >&2
   exit 1
 fi
@@ -527,7 +535,7 @@ for legacy_core_repository in admin.go contact.go conversation.go file.go group.
     exit 1
   fi
 done
-if ! rg --quiet 'services/core/infrastructure/mysql' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
+if ! rg --quiet 'services/core/infrastructure/mysql' "${root_dir}/internal/services/core/bootstrap/embedded/repositories.go"; then
   echo "Core process composition must use Core-owned MySQL repositories" >&2
   exit 1
 fi
@@ -626,13 +634,13 @@ fi
 # The Eino implementation is a rollback-only embedded baseline. Keep it out of
 # standalone service roots so a new production path cannot bypass TS Runtime gates.
 legacy_importers=$(rg -l 'internal/services/agent/legacy' "${root_dir}" --glob '*.go' --glob '!**/*_test.go' || true)
-if [[ "${legacy_importers}" != "${root_dir}/internal/bootstrap/embedded/kafka.go" ]]; then
+if [[ "${legacy_importers}" != "${root_dir}/internal/services/core/bootstrap/embedded/kafka.go" ]]; then
   echo "Go/Eino compatibility baseline must have exactly one embedded Kafka production importer" >&2
   exit 1
 fi
 while IFS= read -r legacy_importer; do
   relative_importer="${legacy_importer#"${root_dir}/"}"
-  if [[ "${relative_importer}" != "internal/bootstrap/embedded/kafka.go" ]]; then
+  if [[ "${relative_importer}" != "internal/services/core/bootstrap/embedded/kafka.go" ]]; then
     echo "Go/Eino compatibility baseline may only be imported by embedded Kafka composition: ${relative_importer}" >&2
     exit 1
   fi
@@ -689,7 +697,7 @@ for legacy_agent_repository in agent_policy.go agent_memory.go agent_artifact.go
     exit 1
   fi
 done
-if ! rg --quiet 'services/agent/infrastructure/mysql' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
+if ! rg --quiet 'services/agent/infrastructure/mysql' "${root_dir}/internal/services/core/bootstrap/embedded/repositories.go"; then
   echo "Agent process composition must use Agent-owned MySQL repositories" >&2
   exit 1
 fi
