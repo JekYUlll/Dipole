@@ -56,4 +56,6 @@ Content-Type: application/json
 
 `oauth-authorization-transaction.ts` 已定义后续持久化的短时事务记录：state 仅保留 SHA-256，verifier 使用 AES-256-GCM 密封，AAD 绑定 transaction、owner、issuer、redirect URI、state digest 与绝对 expiry。Store 必须按 transaction、owner、state digest、未过期和未消费条件原子 consume，再允许解封 verifier；禁止内存 fallback。不得将 state、verifier、authorization code 或 token 写入 Profile、Temporal history、Context、Tool 参数、审计或日志。
 
-当前仍缺少受保护的 SQLC Store、callback、RFC 9728 Protected Resource Metadata、token code exchange、客户端注册、refresh 与撤销流程。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
+Core Agent Capability 已预留 `ConsumeOAuthAuthorizationTransaction` RPC。它仅接受 `dipole-gateway` 服务身份，owner 只从认证 `RequestContext` 恢复；Gateway 只能传递 transaction ID 与 state SHA-256。Core 在返回固定 issuer、callback、expiry 和 sealed verifier 前完成条件消费。RPC 未注入 transaction store 时拒绝为 `Unavailable`，因此现有部署不会意外启用 OAuth callback。Gateway 仍不得解封 verifier，也不得将返回载荷写入日志。
+
+当前仍缺少 Core bootstrap 的受保护 Store 注入、callback HTTP、RFC 9728 Protected Resource Metadata、Runtime 解封后的 token code exchange、客户端注册、refresh 与撤销流程。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。

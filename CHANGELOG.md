@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Capability RPC 新增默认关闭的 OAuth authorization transaction consume seam。仅 `dipole-gateway` 可使用认证 `RequestContext` 派生 owner 并提交 transaction ID/state digest；Core 先核对 owner/state，再以 SQLC 条件更新单次消费，成功时只返回密封 verifier 和固定 issuer/callback binding。默认 composition 未注入 store，调用固定返回 `Unavailable`，未新增 callback HTTP、换码或 token 写入。
+
 - 2026-08-31：Agent OAuth authorization transaction 已增加 SQLC persistence foundation：migration `000052` 保存密封 verifier、state 摘要、owner、issuer、callback、expiry 与单次 `consumed_at`，消费查询同时要求 transaction/owner/state digest/未过期/未消费。该层未注册 callback 或 Runtime writer，默认部署无 OAuth 事务写入。
 
 - 2026-08-31：Agent OAuth 增加短时授权事务记录契约。记录只保存 state SHA-256 和 AES-256-GCM 密封的 PKCE verifier，并用 transaction、owner、issuer、redirect URI、state digest 与 expiry 作为 AAD；回调必须由后续 Core/SQLC Store 原子按 owner/state/expiry consume 后才能解封。当前没有内存 fallback、callback 路由、换码、令牌保存或 Runtime 默认接线。

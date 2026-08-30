@@ -48,6 +48,15 @@ type Server struct {
 	toolRounds             application.AgentMCPToolRoundServiceV1
 	toolTerminals          application.AgentMCPToolInvocationTerminalServiceV1
 	messageCommands        application.AgentMessageCommandExecutionV1
+	oauthTransactions      application.AgentOAuthAuthorizationTransactionStoreV1
+}
+
+func (s *Server) WithOAuthAuthorizationTransactions(store application.AgentOAuthAuthorizationTransactionStoreV1) (*Server, error) {
+	if s == nil || store == nil {
+		return nil, errors.New("Agent OAuth authorization transaction store is required")
+	}
+	s.oauthTransactions = store
+	return s, nil
 }
 
 func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMCPReadinessEvidencePublisherV1) (*Server, error) {
@@ -1277,6 +1286,48 @@ func (s *Server) ResolveMcpContext(ctx context.Context, request *agentv1.Resolve
 		})
 	}
 	return response, nil
+}
+
+func (s *Server) ConsumeOAuthAuthorizationTransaction(ctx context.Context, request *agentv1.ConsumeOAuthAuthorizationTransactionRequest) (*agentv1.ConsumeOAuthAuthorizationTransactionResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	owner, err := grpccommon.Principal(request.GetContext())
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "OAuth callback principal is required")
+	}
+	if caller != "dipole-gateway" {
+		return nil, status.Error(codes.PermissionDenied, "only Gateway may consume OAuth authorization transactions")
+	}
+	if s.oauthTransactions == nil {
+		return nil, status.Error(codes.Unavailable, "OAuth authorization callback is unavailable")
+	}
+	transactionID, stateSHA256 := strings.TrimSpace(request.GetTransactionId()), strings.TrimSpace(request.GetStateSha256())
+	if transactionID == "" || stateSHA256 == "" {
+		return nil, status.Error(codes.InvalidArgument, "OAuth authorization callback is invalid")
+	}
+	record, err := s.oauthTransactions.GetAgentOAuthAuthorizationTransaction(grpccommon.Correlation(ctx, request.GetContext()), transactionID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "OAuth authorization transaction lookup failed")
+	}
+	if record == nil || record.OwnerUserUUID != owner || record.StateSHA256 != stateSHA256 {
+		return nil, status.Error(codes.NotFound, "OAuth authorization transaction unavailable")
+	}
+	consumed, err := s.oauthTransactions.ConsumeAgentOAuthAuthorizationTransaction(grpccommon.Correlation(ctx, request.GetContext()), transactionID, owner, stateSHA256, time.Now().UTC())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthAuthorizationTransactionInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth authorization callback is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth authorization transaction consume failed")
+	}
+	if !consumed {
+		return nil, status.Error(codes.NotFound, "OAuth authorization transaction unavailable")
+	}
+	return &agentv1.ConsumeOAuthAuthorizationTransactionResponse{
+		TransactionId: record.TransactionUUID, Issuer: record.Issuer, RedirectUri: record.RedirectURI,
+		SealedCodeVerifier: record.SealedCodeVerifier, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(),
+	}, nil
 }
 
 func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.BeginMcpToolInvocationRequest) (*agentv1.BeginMcpToolInvocationResponse, error) {

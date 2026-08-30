@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Core Agent Capability 已增加默认关闭的 OAuth transaction consume RPC。它限制 `dipole-gateway` 身份、由认证 context 恢复 owner、只接收 state digest，并在获取密封 verifier 前完成 SQLC 条件消费；缺 Store 返回 `Unavailable`。当前没有 HTTP callback、Core bootstrap 注入、Runtime 解封/换码、密钥轮换或 token 生命周期，默认部署继续零写入。
+
 - 2026-08-31：OAuth transaction 的 Agent-owned SQLC storage foundation 已落地：`000052` 只保存密封 verifier 和 state digest；conditional consume 同时匹配 transaction、owner、state、expiry 与 `consumed_at IS NULL`，因此重复 callback 无法获得第二次消费。Core owner-recovery RPC、callback、密钥注入/轮换与 code exchange 尚未接线，默认部署没有该表写入路径。
 
 - 2026-08-31：OAuth 授权事务已定义持久记录安全契约：仅 state SHA-256 与 AES-256-GCM 密封 verifier 可落库，AAD 固定 transaction/owner/issuer/callback/state digest/expiry。SQLC Store 必须以 owner、state digest、expiry 和未消费状态进行原子消费；当前没有内存 fallback、callback 或 token exchange。受保护 Store、密钥轮换、RFC 9728、客户端注册、refresh/revoke 与共享环境演练继续待办。

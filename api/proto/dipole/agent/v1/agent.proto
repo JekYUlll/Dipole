@@ -267,6 +267,24 @@ message ResolveMcpContextResponse {
   string mode = 9;
 }
 
+// The Gateway supplies only a SHA-256 of callback state. Core derives the
+// owner from its authenticated request context and atomically consumes once.
+message ConsumeOAuthAuthorizationTransactionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string transaction_id = 2;
+  string state_sha256 = 3;
+}
+
+// The verifier remains sealed. Only the separately configured Agent Runtime
+// key boundary may decrypt it for the subsequent token exchange.
+message ConsumeOAuthAuthorizationTransactionResponse {
+  string transaction_id = 1;
+  string issuer = 2;
+  string redirect_uri = 3;
+  string sealed_code_verifier = 4;
+  int64 expires_at_unix_ms = 5;
+}
+
 message BeginMcpToolInvocationRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -935,6 +953,7 @@ service AgentCapabilityService {
   rpc ListAgentTaskTimeline(ListAgentTaskTimelineRequest) returns (ListAgentTaskTimelineResponse);
   rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
+  rpc ConsumeOAuthAuthorizationTransaction(ConsumeOAuthAuthorizationTransactionRequest) returns (ConsumeOAuthAuthorizationTransactionResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
   rpc ClaimMcpToolRound(ClaimMcpToolRoundRequest) returns (ClaimMcpToolRoundResponse);

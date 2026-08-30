@@ -838,6 +838,54 @@ export interface ResolveMcpContextResponse {
     mode: string;
 }
 /**
+ * The Gateway supplies only a SHA-256 of callback state. Core derives the
+ * owner from its authenticated request context and atomically consumes once.
+ *
+ * @generated from protobuf message dipole.agent.v1.ConsumeOAuthAuthorizationTransactionRequest
+ */
+export interface ConsumeOAuthAuthorizationTransactionRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string transaction_id = 2
+     */
+    transactionId: string;
+    /**
+     * @generated from protobuf field: string state_sha256 = 3
+     */
+    stateSha256: string;
+}
+/**
+ * The verifier remains sealed. Only the separately configured Agent Runtime
+ * key boundary may decrypt it for the subsequent token exchange.
+ *
+ * @generated from protobuf message dipole.agent.v1.ConsumeOAuthAuthorizationTransactionResponse
+ */
+export interface ConsumeOAuthAuthorizationTransactionResponse {
+    /**
+     * @generated from protobuf field: string transaction_id = 1
+     */
+    transactionId: string;
+    /**
+     * @generated from protobuf field: string issuer = 2
+     */
+    issuer: string;
+    /**
+     * @generated from protobuf field: string redirect_uri = 3
+     */
+    redirectUri: string;
+    /**
+     * @generated from protobuf field: string sealed_code_verifier = 4
+     */
+    sealedCodeVerifier: string;
+    /**
+     * @generated from protobuf field: int64 expires_at_unix_ms = 5
+     */
+    expiresAtUnixMs: bigint;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.BeginMcpToolInvocationRequest
  */
 export interface BeginMcpToolInvocationRequest {
@@ -5427,6 +5475,147 @@ class ResolveMcpContextResponse$Type extends MessageType<ResolveMcpContextRespon
  * @generated MessageType for protobuf message dipole.agent.v1.ResolveMcpContextResponse
  */
 export const ResolveMcpContextResponse = new ResolveMcpContextResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ConsumeOAuthAuthorizationTransactionRequest$Type extends MessageType<ConsumeOAuthAuthorizationTransactionRequest> {
+    constructor() {
+        super("dipole.agent.v1.ConsumeOAuthAuthorizationTransactionRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "transaction_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "state_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ConsumeOAuthAuthorizationTransactionRequest>): ConsumeOAuthAuthorizationTransactionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.transactionId = "";
+        message.stateSha256 = "";
+        if (value !== undefined)
+            reflectionMergePartial<ConsumeOAuthAuthorizationTransactionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ConsumeOAuthAuthorizationTransactionRequest): ConsumeOAuthAuthorizationTransactionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string transaction_id */ 2:
+                    message.transactionId = reader.string();
+                    break;
+                case /* string state_sha256 */ 3:
+                    message.stateSha256 = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ConsumeOAuthAuthorizationTransactionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string transaction_id = 2; */
+        if (message.transactionId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.transactionId);
+        /* string state_sha256 = 3; */
+        if (message.stateSha256 !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.stateSha256);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ConsumeOAuthAuthorizationTransactionRequest
+ */
+export const ConsumeOAuthAuthorizationTransactionRequest = new ConsumeOAuthAuthorizationTransactionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ConsumeOAuthAuthorizationTransactionResponse$Type extends MessageType<ConsumeOAuthAuthorizationTransactionResponse> {
+    constructor() {
+        super("dipole.agent.v1.ConsumeOAuthAuthorizationTransactionResponse", [
+            { no: 1, name: "transaction_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "issuer", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "redirect_uri", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "sealed_code_verifier", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ConsumeOAuthAuthorizationTransactionResponse>): ConsumeOAuthAuthorizationTransactionResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.transactionId = "";
+        message.issuer = "";
+        message.redirectUri = "";
+        message.sealedCodeVerifier = "";
+        message.expiresAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<ConsumeOAuthAuthorizationTransactionResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ConsumeOAuthAuthorizationTransactionResponse): ConsumeOAuthAuthorizationTransactionResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string transaction_id */ 1:
+                    message.transactionId = reader.string();
+                    break;
+                case /* string issuer */ 2:
+                    message.issuer = reader.string();
+                    break;
+                case /* string redirect_uri */ 3:
+                    message.redirectUri = reader.string();
+                    break;
+                case /* string sealed_code_verifier */ 4:
+                    message.sealedCodeVerifier = reader.string();
+                    break;
+                case /* int64 expires_at_unix_ms */ 5:
+                    message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ConsumeOAuthAuthorizationTransactionResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string transaction_id = 1; */
+        if (message.transactionId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.transactionId);
+        /* string issuer = 2; */
+        if (message.issuer !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.issuer);
+        /* string redirect_uri = 3; */
+        if (message.redirectUri !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.redirectUri);
+        /* string sealed_code_verifier = 4; */
+        if (message.sealedCodeVerifier !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.sealedCodeVerifier);
+        /* int64 expires_at_unix_ms = 5; */
+        if (message.expiresAtUnixMs !== 0n)
+            writer.tag(5, WireType.Varint).int64(message.expiresAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ConsumeOAuthAuthorizationTransactionResponse
+ */
+export const ConsumeOAuthAuthorizationTransactionResponse = new ConsumeOAuthAuthorizationTransactionResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocationRequest> {
     constructor() {
@@ -11581,6 +11770,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ListAgentTaskTimeline", options: {}, I: ListAgentTaskTimelineRequest, O: ListAgentTaskTimelineResponse },
     { name: "AppendAgentTaskTimelineEvent", options: {}, I: AppendAgentTaskTimelineEventRequest, O: AppendAgentTaskTimelineEventResponse },
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },
+    { name: "ConsumeOAuthAuthorizationTransaction", options: {}, I: ConsumeOAuthAuthorizationTransactionRequest, O: ConsumeOAuthAuthorizationTransactionResponse },
     { name: "BeginMcpToolInvocation", options: {}, I: BeginMcpToolInvocationRequest, O: BeginMcpToolInvocationResponse },
     { name: "ResolveMcpToolCommand", options: {}, I: ResolveMcpToolCommandRequest, O: ResolveMcpToolCommandResponse },
     { name: "ClaimMcpToolRound", options: {}, I: ClaimMcpToolRoundRequest, O: ClaimMcpToolRoundResponse },

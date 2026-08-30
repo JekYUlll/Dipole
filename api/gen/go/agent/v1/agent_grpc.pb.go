@@ -45,6 +45,7 @@ const (
 	AgentCapabilityService_ListAgentTaskTimeline_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ListAgentTaskTimeline"
 	AgentCapabilityService_AppendAgentTaskTimelineEvent_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/AppendAgentTaskTimelineEvent"
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
+	AgentCapabilityService_ConsumeOAuthAuthorizationTransaction_FullMethodName  = "/dipole.agent.v1.AgentCapabilityService/ConsumeOAuthAuthorizationTransaction"
 	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
 	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
 	AgentCapabilityService_ClaimMcpToolRound_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ClaimMcpToolRound"
@@ -100,6 +101,7 @@ type AgentCapabilityServiceClient interface {
 	ListAgentTaskTimeline(ctx context.Context, in *ListAgentTaskTimelineRequest, opts ...grpc.CallOption) (*ListAgentTaskTimelineResponse, error)
 	AppendAgentTaskTimelineEvent(ctx context.Context, in *AppendAgentTaskTimelineEventRequest, opts ...grpc.CallOption) (*AppendAgentTaskTimelineEventResponse, error)
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
+	ConsumeOAuthAuthorizationTransaction(ctx context.Context, in *ConsumeOAuthAuthorizationTransactionRequest, opts ...grpc.CallOption) (*ConsumeOAuthAuthorizationTransactionResponse, error)
 	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(ctx context.Context, in *ResolveMcpToolCommandRequest, opts ...grpc.CallOption) (*ResolveMcpToolCommandResponse, error)
 	ClaimMcpToolRound(ctx context.Context, in *ClaimMcpToolRoundRequest, opts ...grpc.CallOption) (*ClaimMcpToolRoundResponse, error)
@@ -393,6 +395,16 @@ func (c *agentCapabilityServiceClient) ResolveMcpContext(ctx context.Context, in
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ConsumeOAuthAuthorizationTransaction(ctx context.Context, in *ConsumeOAuthAuthorizationTransactionRequest, opts ...grpc.CallOption) (*ConsumeOAuthAuthorizationTransactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConsumeOAuthAuthorizationTransactionResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ConsumeOAuthAuthorizationTransaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BeginMcpToolInvocationResponse)
@@ -653,6 +665,7 @@ type AgentCapabilityServiceServer interface {
 	ListAgentTaskTimeline(context.Context, *ListAgentTaskTimelineRequest) (*ListAgentTaskTimelineResponse, error)
 	AppendAgentTaskTimelineEvent(context.Context, *AppendAgentTaskTimelineEventRequest) (*AppendAgentTaskTimelineEventResponse, error)
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
+	ConsumeOAuthAuthorizationTransaction(context.Context, *ConsumeOAuthAuthorizationTransactionRequest) (*ConsumeOAuthAuthorizationTransactionResponse, error)
 	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error)
 	ClaimMcpToolRound(context.Context, *ClaimMcpToolRoundRequest) (*ClaimMcpToolRoundResponse, error)
@@ -763,6 +776,9 @@ func (UnimplementedAgentCapabilityServiceServer) AppendAgentTaskTimelineEvent(co
 }
 func (UnimplementedAgentCapabilityServiceServer) ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMcpContext not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ConsumeOAuthAuthorizationTransaction(context.Context, *ConsumeOAuthAuthorizationTransactionRequest) (*ConsumeOAuthAuthorizationTransactionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ConsumeOAuthAuthorizationTransaction not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BeginMcpToolInvocation not implemented")
@@ -1323,6 +1339,24 @@ func _AgentCapabilityService_ResolveMcpContext_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ConsumeOAuthAuthorizationTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConsumeOAuthAuthorizationTransactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ConsumeOAuthAuthorizationTransaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ConsumeOAuthAuthorizationTransaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ConsumeOAuthAuthorizationTransaction(ctx, req.(*ConsumeOAuthAuthorizationTransactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_BeginMcpToolInvocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BeginMcpToolInvocationRequest)
 	if err := dec(in); err != nil {
@@ -1847,6 +1881,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveMcpContext",
 			Handler:    _AgentCapabilityService_ResolveMcpContext_Handler,
+		},
+		{
+			MethodName: "ConsumeOAuthAuthorizationTransaction",
+			Handler:    _AgentCapabilityService_ConsumeOAuthAuthorizationTransaction_Handler,
 		},
 		{
 			MethodName: "BeginMcpToolInvocation",
