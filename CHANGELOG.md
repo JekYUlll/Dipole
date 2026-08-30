@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 Redis Multipart session TTL 回归测试，验证 metadata 与 parts hash 同步过期、分片续传刷新 TTL，以及完成收据按独立 TTL 到期；覆盖 Redis 状态过期后安全停止续传的持久化边界。
+
 - 2026-08-30：补充 Multipart 过期 session fail-closed 回归测试；status、presign、register、upload、complete 和 abort 入口均在 session 不存在时停止，避免过期会话继续调用 MinIO。
 
 - 2026-08-30：新增真实 MinIO Multipart cleanup 生命周期验证：创建带 part 的未完成 upload，按 cutoff 选择并 Abort，随后重新列举确认 upload 清除；针对 MinIO listing 收敛使用有界等待，隔离桶自动清理。
