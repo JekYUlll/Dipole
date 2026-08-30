@@ -1,7 +1,13 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <h1 class="brand">Dipole</h1>
+      <header class="brand-lockup">
+        <img class="brand-mark" :src="dipoleMark" alt="" aria-hidden="true" />
+        <div>
+          <h1 class="brand">Dipole</h1>
+          <p class="brand-tagline">Realtime collaboration</p>
+        </div>
+      </header>
       <div class="tabs">
         <button :class="['tab', { active: mode === 'login' }]" @click="mode = 'login'">登录</button>
         <button :class="['tab', { active: mode === 'register' }]" @click="mode = 'register'">注册</button>
@@ -30,6 +36,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import dipoleMark from '../../../docs/images/dipole-mark.svg'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -88,13 +95,33 @@ const handleRegister = async () => {
   color: var(--dp-ink);
   font-family: var(--dp-font-body);
 }
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 24px;
+  text-align: left;
+}
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+}
 .brand {
-  text-align: center;
   font-size: 28px;
+  line-height: 1;
   font-weight: 700;
   color: var(--dp-accent-strong);
   font-family: var(--dp-font-display);
-  margin: 0 0 24px;
+  margin: 0;
+}
+.brand-tagline {
+  margin: 5px 0 0;
+  color: var(--dp-ink-faint);
+  font: 700 9px/1.2 var(--dp-font-data);
+  letter-spacing: .12em;
+  text-transform: uppercase;
 }
 .tabs {
   display: flex;
