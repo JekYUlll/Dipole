@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 已在提交 `37d5f1b3` 上完成最新 Go canonical 复核；Go 测试、服务布局和架构文档门禁全部通过，Agent/Frontend Node 验证产生的锁文件临时差异已清理，远端工作目录恢复干净。
+
+- 2026-08-30：Remote GPU 用户态 Node `22.12.0` 完成 Agent Runtime 与 Frontend 验证；Agent 通过 125 个测试文件/665 个测试，typecheck/build 通过；Frontend 通过 29 个测试文件/114 个测试，typecheck/Vite 构建通过。集成测试按环境条件跳过，未启动 Docker。
+
 - 2026-08-30：为 Codex `planning-with-files` 的 `PostToolUse` 增加同会话/工作目录短窗口去重；并行 Bash 完成事件只保留一条提醒，超过窗口仍恢复提示，避免开发工作流噪声累积。
 
 - 2026-08-30：Remote GPU 已同步 `master` 提交 `3dfaf53d`，使用用户态 Go 1.27.0 与 `GOPROXY=off` 完成最新离线 canonical 测试；Go test、服务布局和架构文档门禁全部通过，未启动容器。
