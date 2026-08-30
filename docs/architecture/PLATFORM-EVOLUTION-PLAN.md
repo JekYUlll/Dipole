@@ -37,6 +37,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 - [x] 增加 `scripts/smoke-microservices-lite.sh` 与依赖闭包契约测试：TencentCloud 只验证 Gateway/Core/Message/Sync 及必要依赖，Agent、Search、Cassandra、可观测性和 C++ 保持关闭；实际远程运行证据仍待维护窗口。
 - [x] 增加 `scripts/remote-dev.sh`：提交绑定同步、Remote GPU 远端构建/Smoke/Benchmark 和 project 级停止统一入口；部署动作默认拒绝活动用户/GPU 任务，避免误占用共享实验主机。
 - [x] 将 Go canonical 测试和架构静态门禁接入 `scripts/remote-dev.sh test`，允许在 Remote GPU 验证提交而不启动 Compose，降低本机测试负载。
+- [x] 将 Agent Runtime 与 Frontend 的 Node 验证接入 `scripts/remote-dev.sh node-test`；Remote GPU 已通过 Agent `125` 个测试文件/`665` 个测试、Frontend `29` 个测试文件/`114` 个测试、typecheck 与生产构建，且构建产物退出清理已验证。
 - [x] 增加 `scripts/bench/http-read-load.sh` 低资源只读 HTTP 探针：固定 GET、并发/超时/预期状态码和 P50/P95/P99 输出；该探针只用于 TencentCloud 兼容性回归，不替代 Remote GPU 的完整 k6 基线。
 - [ ] 使用提交绑定的不可变镜像或源码版本，记录 revision、镜像摘要、配置摘要和主机资源快照。
 - [ ] 先执行 readiness、migration、服务布局、mTLS、Kafka lag 和健康检查，再开始负载测试。
