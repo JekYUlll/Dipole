@@ -2,6 +2,8 @@
 
 本文仅用于开发环境，不承诺生产容量，也不替代共享环境发布审批。
 
+Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
+
 ## 环境选择
 
 - `remote-gpu`：用于完整微服务 Compose、存储实验、Agent Runtime 和负载/故障测试。
