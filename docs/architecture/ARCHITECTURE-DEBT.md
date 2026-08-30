@@ -13,6 +13,7 @@
 - 2026-08-30：确认 `docker-compose.cluster.yml` 与 `docker-compose.redis-cluster.yml` 目前只提供 Kafka/Redis 组件级演练；`docker-compose.microservices.yml` 仍绑定单 broker、单 Redis。新增 `BUSINESS-TOPOLOGY.md` 和 Compose 契约门禁，业务集群组合拓扑、真实业务故障切换和自动回切证据继续保持待办。
 - 2026-08-30：新增 `docker-compose.business-cluster.yml`，以 override 方式将三 broker 与 Redis Sentinel 接入 Core、Message、Sync、Gateway、Agent 和 Search Indexer；该文件只证明配置可组合，未替代业务层故障注入、消息收敛和回滚 receipt。
 - 2026-08-30：新增业务集群隔离生命周期脚本，统一 `config/up/status/down` 和 project 边界；活动用户默认阻断、GPU 任务允许并行，卷保留以支持故障复盘。Kafka broker/Redis master 故障注入及业务收敛证据仍待执行。
+- 2026-08-30：微服务 Gateway 宿主端口改为可配置，业务集群入口默认使用 `18080`，降低隔离演练与其他开发栈的端口冲突风险；容器内端口和默认 `8080` 兼容性保持不变。
 
 - 2026-08-30：将 C1 stop/start recovery drill 接入 Remote GPU 统一入口，补齐 `/tmp` 报告挂载和 k6 fallback；真实报告仍要求候选 revision、恢复后 post-load、Kafka lag 和自动清理全部通过，未改变生产默认路径。
 

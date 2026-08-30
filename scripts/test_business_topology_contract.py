@@ -46,6 +46,13 @@ class BusinessTopologyContractTest(unittest.TestCase):
         self.assertIn("down --remove-orphans", script)
         self.assertNotIn("down --volumes", script)
 
+    def test_business_cluster_can_override_gateway_host_port(self):
+        compose = (ROOT / "deploy/compose/docker-compose.microservices.yml").read_text(encoding="utf-8")
+        script = (ROOT / "scripts/bench/business_cluster_topology.sh").read_text(encoding="utf-8")
+        self.assertIn("${DIPOLE_GATEWAY_PORT:-8080}:8080", compose)
+        self.assertIn("BUSINESS_CLUSTER_GATEWAY_PORT", script)
+        self.assertIn("18080", script)
+
 
 if __name__ == "__main__":
     unittest.main()

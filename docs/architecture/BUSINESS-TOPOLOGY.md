@@ -61,6 +61,7 @@ scripts/bench/business_cluster_topology.sh down
 ```
 
 `up` 默认保护活动登录会话；已有 GPU 任务只记录资源快照并允许并行。`down` 只移除该 Compose project 的容器和网络，不删除卷。
+入口默认使用宿主机端口 `18080`，可通过 `BUSINESS_CLUSTER_GATEWAY_PORT` 调整，避免与其他开发栈的 Gateway 冲突。
 
 ## 当前结论
 

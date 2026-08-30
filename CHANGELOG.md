@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：为微服务 Gateway 增加可配置宿主端口，业务集群演练默认使用 `18080`，允许多个隔离 Compose project 并行运行；默认端口仍保持 `8080`。
 - 2026-08-30：新增隔离业务集群生命周期入口 `scripts/bench/business_cluster_topology.sh`，提供 `config/up/status/down`、活动会话保护、GPU 并行资源提示和无卷删除回滚；真实业务故障演练继续要求显式批准与独立 project。
 
 - 2026-08-30：新增业务集群 Compose override，将 Kafka 三节点和 Redis Sentinel 接入微服务业务服务的客户端配置；默认单节点 Compose 继续作为回滚路径，完整业务故障切换仍需 Remote GPU 验收。
