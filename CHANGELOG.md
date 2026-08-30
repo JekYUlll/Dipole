@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 为 `253cf3d29ec79a0f58bcc06c58f5fbad20974b45` 生成不可变 Web Sync Shadow bundle `/tmp/dipole-dev-horeb-web-sync-shadow-253cf3d2.tar`，SHA-256 为 `f4a3a90c5ed5d7d04575a9b939ca738b7e6bd92f53fe3ef818a7249941725f9d`。该动作未启动 Compose、Prometheus 或客户端流量，只提供后续 Observation Session 的候选输入。
+
 - 2026-08-30：收紧 Go/Eino Agent 迁移边界：服务布局门禁要求 production legacy import 只能来自 embedded Kafka composition，`github.com/cloudwego/eino` 只能位于 `internal/services/agent/legacy`。独立 TypeScript Runtime、Gateway 与服务入口无法绕过 Capability、Temporal 与 promotion 门禁回接旧链路。
 
 - 2026-08-30：F2 Contact 增加受认证只读目录 `/contacts`：前端严格解析 `/api/v1/contacts` 的联系人投影，读取失败会清空旧数据并提供重试入口；Remote GPU Node 22 通过 `34` 个前端测试文件、`147` 项测试、typecheck 与 production build。备注、拉黑、删除、申请处理及跨浏览器视觉回归继续按独立权限切片推进。
