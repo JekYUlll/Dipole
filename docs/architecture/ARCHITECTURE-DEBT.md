@@ -773,6 +773,7 @@
 - **建议方向：** 使用现有 evidence/report 契约按 route 归档真实 tokenizer 或 provider usage synthetic 校准集；比较估算/实测误差分布后再缩小 fallback 余量。对缺少可复现 tokenizer 的 provider 保持保守 profile，不根据单次 usage 自动学习或静默改变预算。CLI 的 `eligible` 只代表输入 corpus 零低估且无 fallback，生产启用仍需独立候选评审。
 - **处理门槛：** 在 Context 接近任一生产模型窗口的 70%，或引入多模型动态上下文窗口前归档真实 route 校准证据；当前固定 4096 Token 编译预算与启动窗口门禁允许继续 Shadow 观察。
 - **本轮进展：** Context Compiler 增加 provider-neutral `RouteTokenizerAdapter` 注入边界；未配置真实 tokenizer 时继续使用校准 UTF-8 fallback，跨 route 取保守最大估算，候选模型校准证据仍是生产接入前置条件。
+- **本轮进展：** Model planner 对相互独立的已授权会话、Memory 和检索 evidence 读取采用并行 hydration，并以低敏数量 span 记录结果；任一读取异常仍在模型路由前失败，未扩张 retrieval、Memory 或跨会话访问边界。
 
 ### AD-030：TypeScript Agent 尚缺受认证的远程 Capability 传输
 

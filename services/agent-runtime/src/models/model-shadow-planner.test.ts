@@ -100,6 +100,53 @@ describe("ModelShadowPlanner", () => {
     expect(prompt).toContain('"sourceId":"M100"');
   });
 
+  it("hydrates independent evidence sources concurrently before model routing", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const started: string[] = [];
+    let resolveMemories: ((value: []) => void) | undefined;
+    let resolveConversation: ((value: ConversationReadResult) => void) | undefined;
+    let resolveRetrieval: ((value: []) => void) | undefined;
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.search"], new DeterministicContextCompiler(),
+      {
+        listContextMemories: async () => new Promise(resolve => {
+          started.push("memory");
+          resolveMemories = resolve;
+        })
+      },
+      undefined,
+      undefined,
+      {
+        readConversation: async () => new Promise(resolve => {
+          started.push("conversation");
+          resolveConversation = resolve;
+        })
+      },
+      undefined,
+      {
+        searchConversations: async () => new Promise(resolve => {
+          started.push("retrieval");
+          resolveRetrieval = resolve;
+        })
+      }
+    );
+
+    const planning = planner.plan({ ...event(), payload: { conversation_key: "group:G1", content: "migration" } }, context());
+    await Promise.resolve();
+    expect(started).toEqual(["memory", "conversation", "retrieval"]);
+    expect(generate).not.toHaveBeenCalled();
+
+    resolveMemories?.([]);
+    resolveConversation?.({ found: false, reason: "not_found", targetId: "", targetType: 0, messages: [] });
+    resolveRetrieval?.([]);
+    await planning;
+
+    expect(generate).toHaveBeenCalledOnce();
+  });
+
   it("does not call the model when pre-model lineage persistence fails", async () => {
     const generate = vi.fn();
     const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, [], new DeterministicContextCompiler(), {
@@ -250,7 +297,7 @@ describe("ModelShadowPlanner", () => {
     });
   });
 
-  it("records ContextCompile and ModelCall spans without prompt content", async () => {
+  it("records Context hydration, compile, and ModelCall spans without prompt content", async () => {
     const names: string[] = [];
     const attributes: Array<Record<string, unknown>> = [];
     const tracer = tracerFixture(names, attributes);
@@ -264,8 +311,10 @@ describe("ModelShadowPlanner", () => {
 
     await planner.plan(event(), context());
 
-    expect(names).toEqual(["agent.context.compile", "agent.model.route"]);
+    expect(names).toEqual(["agent.context.hydrate", "agent.context.compile", "agent.model.route"]);
     expect(attributes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ "dipole.agent.context.memory_count": 0 }),
+      expect.objectContaining({ "dipole.agent.context.retrieval_result_count": 0 }),
       expect.objectContaining({ "dipole.agent.context.compiler_version": "v1" }),
       expect.objectContaining({ "dipole.agent.model.route": "gateway/primary" }),
       expect.objectContaining({ "dipole.agent.model.input_tokens": 10 })

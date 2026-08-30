@@ -467,6 +467,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加 `agent-timeline-repair-rollout` v1 只读 evidence/policy/report 与 CLI，绑定窗口、错误比例、readiness、operator、告警和回滚演练；真实共享环境采集和 operator 决策仍待完成。
 - [ ] 完成 Context Compiler 的完整检索编排，按预算组合策略、任务、会话证据、检索、Memory 和 Tool Schema。
   - [x] G2/G3 已实现框架中立 Context Compiler v1/v2：全局/section 预算、full/compact/omit、trust boundary、provenance manifest、v22 持久审计、route-specific tokenizer，以及会话证据、Memory 和 Capability descriptor 的确定性编译；完整检索编排与生产上下文灰度继续独立推进。
+  - [x] Context hydration 对独立授权的会话、Memory 和检索读取并行调度，记录低敏数量指标；任一读取错误在模型路由前 fail closed，未改变 retrieval 默认关闭或跨会话证据边界。
   - [x] 固定并实现 Agent 检索的 Core-mediated security boundary：Runtime 不直连 Search，Core 从权威 Task/Run 恢复 principal 与 scope；`conversation.search` 使用独立 permission、`conversation/*/read` scope 与 query/结果/正文上限，结果仅作为有界 `untrusted` evidence。默认关闭的 Runtime composition 只在 `DIPOLE_AGENT_RETRIEVAL_ENABLED=true` 时注入 Search Capability；生产 Elasticsearch、跨会话检索与完整检索编排继续关闭。
   - [x] 增加默认关闭的 `DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED`：仅在 retrieval 已启用时，从当前事件正文派生最多 256 字符查询，经 Core 受权读取最多 8 条命中并按 Context budget 作为 `untrusted` evidence 编译；检索错误在模型调用前 fail closed，关闭、无正文或预算不足保持可回退路径。
   - [x] 基础 Compose、active read 与 External MCP Shadow overlay 均显式固定 retrieval 和 retrieval-to-Context 为 `false`，`check-compose.sh` 对渲染结果断言该值，避免宿主环境变量扩张默认只读 Capability surface。

@@ -70,6 +70,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 - **状态：** 已验证的契约，默认关闭的 Shadow Context 编排
 - **简历句：** 设计由 Core 调解的 `conversation.search` Capability：Runtime 只提交 Task/Run 和有界 query，Core 恢复权威主体后以独立 permission 与 `conversation/*/read` scope 访问检索端口；当前消息可在独立开关下触发有界检索，命中按预算降级为 `untrusted` evidence。
 - **对外表述：** Search Service 的直连服务身份只授予业务网关；Agent 不能伪造 principal。Core 复核 Task/Run、权限和资源范围，再限制 query、返回数量与正文长度，避免检索结果覆盖策略或身份上下文。
+- **工程取舍：** 会话、Memory 与检索均为独立的只读授权请求，Context hydration 并行发起以降低单轮等待；任何一个来源失败都会在模型调用前终止，不能以局部 evidence 降级继续推理。
 - **演示：** 运行 `CGO_ENABLED=0 go test ./internal/application ./internal/services/agent/application ./internal/transport/grpc/agent` 与 `npm --prefix services/agent-runtime test -- --run src/capabilities/conversation-search.test.ts src/capabilities/agent-capability-rpc.test.ts src/models/model-shadow-planner.test.ts`，展示 forged principal、窄 scope、缺少 Search port、检索失败的模型前拒绝与 `untrusted` Context provenance。
 - **证据：** `api/proto/dipole/agent/v1/agent.proto`、`internal/transport/grpc/agent/server.go`、`services/agent-runtime/src/capabilities/conversation-search.ts`、[架构参考](../architecture/architecture-reference.md)。
 - **追问：** “为何不让 Agent Runtime 直连 Elasticsearch？” 服务级凭据无法表达单次 Task 的 owner、授权状态与资源 scope，Runtime 直连会把这一边界交给调用方。Core 代管后能复用持久 invocation resolver，并在 RPC 入口拒绝客户端传入 principal。

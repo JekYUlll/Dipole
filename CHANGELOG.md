@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Context hydration 现并行读取已授权的会话、Memory 与受 Core 调解的检索证据，并记录低敏数量指标；任一读取失败仍在模型调用前 fail closed，默认检索与共享环境开关保持关闭。
+
 - 2026-08-31：Multipart 策略门禁现以 `contracts/multipart-upload/v1` 为唯一默认值基准，自动比对 release manifest、`config.dist.yaml`、Go 默认配置和 Web 离线回退值。策略更新若遗漏任一层会阻断校验；运行时默认仍为 `relay` 并保留即时回退。
 
 - 2026-08-31：登录入口现复用 canonical Signal Link 紧凑标识，与 README 的深青绿双极、橙色事件脉冲保持一致；新增源代码设计契约，阻止入口页退回无标识的文字品牌。

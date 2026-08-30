@@ -68,13 +68,29 @@ export class ModelShadowPlanner implements ShadowPlanner {
 
   async plan(event: Parameters<ShadowPlanner["plan"]>[0], context: Parameters<ShadowPlanner["plan"]>[1]): ReturnType<ShadowPlanner["plan"]> {
     const resourceId = typeof event.payload.conversation_key === "string" ? event.payload.conversation_key.trim() : "";
-    const memories = this.memories === undefined || resourceId === ""
-      ? [] : await this.memories.listContextMemories(context, "conversation", resourceId, 20);
-    const conversation = this.conversationReader === undefined || resourceId === ""
-      ? undefined : await this.conversationReader.readConversation(context, resourceId, 20);
     const retrievalQuery = retrievalQueryForEvent(event);
-    const retrieval = this.searchEvidenceReader === undefined || retrievalQuery === undefined
-      ? [] : await this.searchEvidenceReader.searchConversations(context, retrievalQuery, maxRetrievalEvidenceResults);
+    // These are independently authorized reads. Start them together so context
+    // hydration is bounded by the slowest source while preserving fail-closed errors.
+    const [memories, conversation, retrieval] = await this.telemetry.withSpan("agent.context.hydrate", {
+      taskId: context.taskId, runId: context.runId,
+      attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
+    }, async span => {
+      const values = await Promise.all([
+        this.memories === undefined || resourceId === ""
+          ? Promise.resolve([])
+          : this.memories.listContextMemories(context, "conversation", resourceId, 20),
+        this.conversationReader === undefined || resourceId === ""
+          ? Promise.resolve(undefined)
+          : this.conversationReader.readConversation(context, resourceId, 20),
+        this.searchEvidenceReader === undefined || retrievalQuery === undefined
+          ? Promise.resolve([])
+          : this.searchEvidenceReader.searchConversations(context, retrievalQuery, maxRetrievalEvidenceResults)
+      ]);
+      span.setAttribute("dipole.agent.context.memory_count", values[0].length);
+      span.setAttribute("dipole.agent.context.conversation_found", values[1]?.found === true);
+      span.setAttribute("dipole.agent.context.retrieval_result_count", values[2].length);
+      return values;
+    });
     const budget = memories.length === 0 ? baseContextBudget : memoryContextBudget;
     const compiled = await this.telemetry.withSpan("agent.context.compile", {
       taskId: context.taskId, runId: context.runId,
