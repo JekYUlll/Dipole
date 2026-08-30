@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增隔离 MinIO Multipart 生命周期 smoke，真实验证乱序分片、同编号分片替换、按序 Complete、对象内容校验和重复 Abort；脚本使用临时容器并自动清理，不改变默认 relay 路径。
+
 - 2026-08-30：复核 Agent Runtime 独立门禁：Vitest `125` 个测试文件通过、`665` 个测试通过，TypeScript typecheck 与生产 build 均通过；误用 Jest 的 `--runInBand` 仅记录为命令兼容性提示，项目标准入口保持 `npm test`。
 
 - 2026-08-30：修复 `smoke-sync-write-ownership.sh` 在服务目录重排后仍指向 `internal/bootstrap` 的三个测试选择器，改为 Sync/Message 服务实际拥有的测试包，并保留“selector 无匹配即失败”保护。
