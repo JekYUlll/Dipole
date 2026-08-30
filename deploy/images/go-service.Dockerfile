@@ -14,7 +14,7 @@ WORKDIR /app
 
 RUN apk add --no-cache ca-certificates tzdata
 
-COPY dist/${DIPOLE_BINARY} /app/service
+COPY ${DIPOLE_BINARY} /app/service
 
 EXPOSE 8080
 

@@ -18,6 +18,7 @@
 4. 更新 `CHANGELOG.md`、`ARCHITECTURE-DEBT.md` 和相关操作手册，记录实际证据及未完成外部门禁。
 5. 推送 feature 分支，合并到 `master`，再一次性同步五条 Epic 分支。
 6. 需要远程或共享环境时，只运行提交绑定的候选 revision；活动用户、GPU 任务或资源不足时默认 fail closed。经明确授权可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`，但仍使用独立 Compose project、目录、凭据和清理流程，不触碰其他用户进程。
+7. Go 服务镜像构建使用 `dist/` 作为最小上下文；Agent 与 C++ 镜像保留各自 Dockerfile 所需的专用上下文，避免把测试产物、依赖缓存和历史数据重复发送到 Docker daemon。
 
 ## planning-with-files 规则
 
