@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：改进 Remote GPU benchmark 入口，新增受控的 `DIPOLE_BENCH_SCENARIO_FILTER`、`DIPOLE_BENCH_GROUP_MAX_DURATION`、`DIPOLE_BENCH_USER_COUNT`、`DIPOLE_BENCH_GROUP_SIZE` 和 `DIPOLE_BENCH_RUN_ID` 转发；后续可从本地统一触发 group-only、规模和可比性 workload，避免手工远端脚本参数漂移。
 - 2026-08-30：修复 benchmark 报告场景标识：设置 `SCENARIO_FILTER` 时，operations 与最终报告现在使用实际过滤场景，避免 group-only workload 被错误标记为 `mixed`；新增契约测试，默认 mixed/direct/concurrent 行为保持兼容。
 - 2026-08-30：完成 C1 100 成员群组 fan-out 观察：使用 `SCENARIO_FILTER=group_blast` 在 `master` 提交 `9595b0ef` 的隔离候选拓扑上完成 100/100 VU；10/10 群消息持久化、1,000 条群 Inbox 行、990/990 预期回执和 100% 投递，P50/P95/P99 为 121/222/226ms，Kafka lag 为 0。Node1 CPU 峰值约 46.42%，该结果用于规模趋势观察，热群故障回切和 C++ 灰度仍待完成。
 - 2026-08-30：补齐 C1 群组基准覆盖：`group_blast` 运行窗口改为可配置，默认 `35s`，并在 Remote GPU 以提交 `67a4aa1a` 完成 50/50 VU；10/10 群消息持久化、500 条群 Inbox 行、490/490 预期回执和 100% 投递，P50/P95/P99 为 106/118/132ms，Kafka lag 从 1 收敛到 0。该结果只代表 50 成员群组基线，不代表热群容量或故障回切已完成。
