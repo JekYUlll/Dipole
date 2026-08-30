@@ -15,6 +15,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | 能力 | 状态 | 证据 |
 | --- | --- | --- |
 | ExecutionContext、Capability Policy、Temporal Task | 已验证 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md) |
+| 交互式 Agent Task 创建 | 已验证的默认关闭 API seam | Gateway JWT principal、确定性 Task ID、Remote GPU 定向回归 |
 | reviewed Memory receipt、mTLS、MySQL retry | 已验证（隔离 Remote GPU） | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh` |
 | External MCP Shadow 完整链路 | 已验证（隔离 Remote GPU） | `scripts/drill-agent-external-mcp-shadow.sh` |
 | `conversation.search` 受控检索契约 | 已验证（Core/Proto/TS 与隔离 Remote GPU） | `internal/services/agent/application/agent_capability.go` |

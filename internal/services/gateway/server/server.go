@@ -123,6 +123,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		engine.GET("/api/v1/messages/search", middleware.Auth(dependencies.TokenResolver, userFinder), searchHandler.Search)
 	}
 	if dependencies.AgentTasks != nil {
+		engine.POST("/api/v1/agent/tasks", auth, agentTaskStartHandler(dependencies.AgentTasks))
 		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
 		engine.GET("/api/v1/agent/tasks/:task_id/timeline", auth, agentTaskTimelineHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
@@ -535,6 +536,42 @@ func agentMCPHandler(proxy AgentMCPApplication, limiter AgentMCPRateLimiter) gin
 		}
 		proxy.ServeMCP(c.Writer, c.Request, user.UUID, c.Param("task_id"), c.Param("run_id"))
 	}
+}
+
+func agentTaskStartHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		ClientRequestID string `json:"client_request_id"`
+		Goal            string `json:"goal"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 8*1024)
+		var body requestBody
+		if c.ShouldBindJSON(&body) != nil || !validAgentTaskStartInput(body.ClientRequestID, body.Goal) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid interactive Agent Task request"})
+			return
+		}
+		result, err := tasks.StartTask(c.Request.Context(), user.UUID, strings.TrimSpace(body.ClientRequestID), strings.TrimSpace(body.Goal))
+		writeAgentTaskControlResult(c, result, err)
+	}
+}
+
+func validAgentTaskStartInput(clientRequestID, goal string) bool {
+	clientRequestID = strings.TrimSpace(clientRequestID)
+	goal = strings.TrimSpace(goal)
+	if len(clientRequestID) == 0 || len(clientRequestID) > 64 || len(goal) == 0 || utf8.RuneCountInString(goal) > 4000 {
+		return false
+	}
+	for _, character := range clientRequestID {
+		if !(character >= 'a' && character <= 'z' || character >= 'A' && character <= 'Z' || character >= '0' && character <= '9' || character == '.' || character == '_' || character == ':' || character == '-') {
+			return false
+		}
+	}
+	return true
 }
 
 func agentTaskGetHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {

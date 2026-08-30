@@ -56,6 +56,25 @@ describe("agent runtime Task control API", () => {
     await server.close();
   });
 
+  it("creates an interactive Task only through the trusted Gateway identity", async () => {
+    const startTask = vi.fn(async () => ({ taskId: "TASK-INTERACTIVE", status: "accepted" as const }));
+    const server = buildServer({ isReady: () => true }, {
+      secret: "control-secret", service: { startTask, getTask: vi.fn(), cancelTask: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() }
+    });
+    expect((await server.inject({ method: "POST", url: "/internal/v1/agent/tasks", payload: {} })).statusCode).toBe(401);
+    const response = await server.inject({
+      method: "POST", url: "/internal/v1/agent/tasks", headers,
+      payload: { clientRequestId: "client-1", goal: "Summarize my unread work.", principalUserId: "U999" }
+    });
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({ taskId: "TASK-INTERACTIVE", status: "accepted" });
+    expect(startTask).toHaveBeenCalledWith({
+      principalUserId: "U100", requestId: "R1", traceId: "T1",
+      body: { clientRequestId: "client-1", goal: "Summarize my unread work.", principalUserId: "U999" }
+    });
+    await server.close();
+  });
+
   it("binds cancellation, input, and approval to the authenticated principal", async () => {
     const cancelTask = vi.fn(async () => undefined);
     const resolveApproval = vi.fn(async () => undefined);

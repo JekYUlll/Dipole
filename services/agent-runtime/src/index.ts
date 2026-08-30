@@ -1,5 +1,6 @@
 import { buildServer } from "./server.js";
 import { AgentTaskControlService } from "./control/agent-task-control.js";
+import { InteractiveTaskStartService } from "./task/interactive-task-request.js";
 import { z } from "zod";
 import { ConversationListCapability } from "./capabilities/conversation-list.js";
 import { ConversationReadCapability } from "./capabilities/conversation-read.js";
@@ -140,8 +141,13 @@ let temporalReadResourcesOpen = temporalReadResources !== undefined;
 let temporalDispatcherStarted = false;
 let stopPromise: Promise<void> | undefined;
 
+const interactiveTaskStarter = controlEnabled
+  ? new InteractiveTaskStartService({ tenantId: shadowConfig.tenantId, agentId: shadowConfig.agentUuid }, temporalDispatcher!)
+  : undefined;
 const controlService = controlEnabled
-  ? new AgentTaskControlService(controlRPC!.client, temporalDispatcher!)
+  ? Object.assign(new AgentTaskControlService(controlRPC!.client, temporalDispatcher!), {
+    startTask: (input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }) => interactiveTaskStarter!.start(input)
+  })
   : undefined;
 const mcpRegistry = mcpEnabled ? new CapabilityRegistry() : undefined;
 if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationListCapability(mcpRPC!.client));

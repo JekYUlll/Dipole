@@ -9,6 +9,7 @@ export interface RuntimeReadiness {
 }
 
 export interface AgentTaskControlAPI {
+  startTask?(input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }): Promise<{ taskId: string; status: "accepted" }>;
   getTask(input: AgentTaskControlIdentity): Promise<unknown>;
   getTimeline?(input: AgentTaskControlIdentity & { afterSeq: bigint; limit: number }): Promise<unknown>;
   cancelTask(input: AgentTaskControlIdentity & { reason?: string }): Promise<void>;
@@ -57,6 +58,19 @@ export function buildServer(
   if (control !== undefined) {
     if (control.secret.trim().length === 0) {
       throw new Error("Agent Task control HTTP secret is required");
+    }
+    const startTask = control.service.startTask;
+    if (startTask !== undefined) {
+      server.post<{ Body?: unknown }>("/internal/v1/agent/tasks", async (request, reply) => {
+        const identity = trustedControlRequestIdentity(request.headers, control.secret);
+        if (identity === undefined) return reply.code(401).send({ code: 401, message: "Agent Task control authentication failed" });
+        try {
+          const result = await startTask({ ...identity, body: request.body });
+          return reply.code(202).send({ taskId: result.taskId, status: result.status });
+        } catch (error) {
+          return sendControlError(reply, error);
+        }
+      });
     }
     server.get<{ Params: { taskId: string } }>("/internal/v1/agent/tasks/:taskId", async (request, reply) => {
       const identity = trustedControlIdentity(request.headers, request.params.taskId, control.secret);
@@ -213,17 +227,22 @@ function privateForwardHeader(name: string): boolean {
 }
 
 function trustedControlIdentity(headers: Record<string, string | string[] | undefined>, taskId: string, secret: string): AgentTaskControlIdentity | undefined {
+  const requestIdentity = trustedControlRequestIdentity(headers, secret);
+  const normalizedTaskId = taskId.trim();
+  if (requestIdentity === undefined || !validIdentifier(normalizedTaskId)) return undefined;
+  return { taskId: normalizedTaskId, ...requestIdentity };
+}
+
+function trustedControlRequestIdentity(headers: Record<string, string | string[] | undefined>, secret: string): Omit<AgentTaskControlIdentity, "taskId"> | undefined {
   const caller = header(headers, "x-dipole-caller-service");
   const providedSecret = header(headers, "x-dipole-service-token");
   const principalUserId = header(headers, "x-dipole-principal-user-id");
-  const normalizedTaskId = taskId.trim();
-  if (caller !== "dipole-gateway" || !safeEqual(providedSecret, secret) || !validIdentifier(normalizedTaskId) || !validIdentifier(principalUserId)) {
+  if (caller !== "dipole-gateway" || !safeEqual(providedSecret, secret) || !validIdentifier(principalUserId)) {
     return undefined;
   }
   const requestId = header(headers, "x-request-id");
   const traceId = header(headers, "x-trace-id");
   return {
-    taskId: normalizedTaskId,
     principalUserId,
     ...(requestId === "" ? {} : { requestId: requestId.slice(0, 128) }),
     ...(traceId === "" ? {} : { traceId: traceId.slice(0, 128) })

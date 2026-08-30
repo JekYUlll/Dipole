@@ -94,13 +94,15 @@ type gatewaySearchStub struct {
 }
 
 type gatewayAgentTaskStub struct {
-	principal  string
-	taskID     string
-	approvalID string
-	decision   string
-	reason     string
-	requestID  string
-	input      any
+	principal       string
+	taskID          string
+	clientRequestID string
+	goal            string
+	approvalID      string
+	decision        string
+	reason          string
+	requestID       string
+	input           any
 }
 
 type gatewayAgentMCPStub struct {
@@ -231,6 +233,11 @@ func (s *gatewayAgentMCPLimiterStub) AllowAgentMCP(principalUUID string) (bool, 
 func (s *gatewayAgentTaskStub) GetTask(_ context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {
 	s.principal, s.taskID = principalUUID, taskUUID
 	return agentControlJSON(http.StatusOK, map[string]any{"taskId": taskUUID, "status": "running"}), nil
+}
+
+func (s *gatewayAgentTaskStub) StartTask(_ context.Context, principalUUID, clientRequestID, goal string) (*AgentTaskControlResult, error) {
+	s.principal, s.clientRequestID, s.goal = principalUUID, clientRequestID, goal
+	return agentControlJSON(http.StatusAccepted, map[string]any{"taskId": "TASK-INTERACTIVE", "status": "accepted"}), nil
 }
 
 func (s *gatewayAgentTaskStub) GetTimeline(_ context.Context, principalUUID, taskUUID, after string, limit int) (*AgentTaskControlResult, error) {
@@ -711,6 +718,14 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 	gateway.Engine().ServeHTTP(inputResponse, inputRequest)
 	if inputResponse.Code != http.StatusAccepted || tasks.principal != "U100" || tasks.requestID != "INPUT-1" {
 		t.Fatalf("Agent input: code=%d tasks=%+v body=%s", inputResponse.Code, tasks, inputResponse.Body.String())
+	}
+	startRequest := httptest.NewRequest(http.MethodPost, "/api/v1/agent/tasks", strings.NewReader(`{"client_request_id":"client-1","goal":"Summarize unread work","principal_user_id":"U999"}`))
+	startRequest.Header.Set("Authorization", "Bearer "+token)
+	startRequest.Header.Set("Content-Type", "application/json")
+	startResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(startResponse, startRequest)
+	if startResponse.Code != http.StatusAccepted || tasks.principal != "U100" || tasks.clientRequestID != "client-1" || tasks.goal != "Summarize unread work" {
+		t.Fatalf("interactive Agent Task: code=%d tasks=%+v body=%s", startResponse.Code, tasks, startResponse.Body.String())
 	}
 }
 

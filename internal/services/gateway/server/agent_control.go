@@ -24,6 +24,7 @@ type AgentTaskControlResult struct {
 }
 
 type AgentTaskControlApplication interface {
+	StartTask(ctx context.Context, principalUUID, clientRequestID, goal string) (*AgentTaskControlResult, error)
 	GetTask(ctx context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error)
 	GetTimeline(ctx context.Context, principalUUID, taskUUID, after string, limit int) (*AgentTaskControlResult, error)
 	CancelTask(ctx context.Context, principalUUID, taskUUID, reason string) (*AgentTaskControlResult, error)
@@ -49,6 +50,13 @@ func NewAgentTaskControlClient(target, secret string, timeout time.Duration) (*A
 		timeout = 3 * time.Second
 	}
 	return &AgentTaskControlClient{baseURL: parsed, secret: secret, client: &http.Client{Timeout: timeout}}, nil
+}
+
+func (c *AgentTaskControlClient) StartTask(ctx context.Context, principalUUID, clientRequestID, goal string) (*AgentTaskControlResult, error) {
+	return c.request(ctx, http.MethodPost, principalUUID, "/internal/v1/agent/tasks", map[string]string{
+		"clientRequestId": clientRequestID,
+		"goal":            goal,
+	})
 }
 
 func (c *AgentTaskControlClient) GetTask(ctx context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {

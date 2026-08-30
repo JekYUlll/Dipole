@@ -40,6 +40,25 @@ func TestAgentTaskControlClientUsesTrustedServiceHeaders(t *testing.T) {
 	}
 }
 
+func TestAgentTaskControlClientStartsInteractiveTaskWithoutPrincipalField(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/internal/v1/agent/tasks" || request.Header.Get("X-Dipole-Principal-User-ID") != "U100" {
+			t.Fatalf("unexpected start request: path=%s headers=%v", request.URL.Path, request.Header)
+		}
+		var body map[string]string
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil || body["clientRequestId"] != "client-1" || body["goal"] != "Summarize unread work" || body["principalUserId"] != "" {
+			t.Fatalf("unexpected start body: body=%v err=%v", body, err)
+		}
+		writer.WriteHeader(http.StatusAccepted)
+	}))
+	defer server.Close()
+	client, _ := NewAgentTaskControlClient(server.URL, "secret", time.Second)
+	result, err := client.StartTask(context.Background(), "U100", "client-1", "Summarize unread work")
+	if err != nil || result.StatusCode != http.StatusAccepted {
+		t.Fatalf("start task: result=%+v err=%v", result, err)
+	}
+}
+
 func TestAgentTaskControlClientForwardsStructuredInputWithoutPrincipalField(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/internal/v1/agent/tasks/TASK-1/inputs/INPUT-1" || request.Header.Get("X-Dipole-Principal-User-ID") != "U100" {
