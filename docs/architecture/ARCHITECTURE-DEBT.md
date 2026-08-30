@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU 全量 Go 门禁发现 active receipt authorizer 接线与旧 default-off 结构断言冲突，已改为检查显式开关与 mTLS 条件；该修复不提升默认 active 权限，联合环境证据仍待完成。
+
 - 2026-08-30：embedded runtime 的 active Run admission 已复用持久 promotion authorizer，消除 Core receipt resolver 与 Task/Run admission 授权边界不一致的问题；联合环境证据仍由 `AD-009` 跟踪。
 
 - 2026-08-30：修复 Core/embedded receipt composition 未注入 active promotion authorizer 的接线缺口；真实 active receipt 因此可复用已验证的 grant 复核，缺 grant 仍拒绝。跨进程 Core/Temporal/MySQL 联合演练继续由 `AD-009` 跟踪。

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修正 active receipt authority 的默认关闭结构门禁，要求 production Bootstrap 同时保留显式 receipt 开关和 mTLS 前置条件；默认 Agent Runtime 写 Capability 继续禁止注册。
+
 - 2026-08-30：Active Agent 部署手册补充隔离 MySQL、mTLS RPC 与 Temporal retry 三层验证顺序，并明确三者不能替代 Core/Temporal/MySQL 联合演练。
 
 - 2026-08-30：补齐 embedded Agent active Run admission 的 promotion grant authorizer 注入，使 admission 与 receipt invocation resolver 使用同一持久授权边界；默认 active Worker 仍关闭。
