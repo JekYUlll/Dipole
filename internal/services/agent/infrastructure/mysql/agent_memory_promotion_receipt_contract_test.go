@@ -57,12 +57,13 @@ func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
 	}
 
 	now := time.Now().UTC().Truncate(time.Millisecond)
+	clock := now
 	definition, grant := createReceiptContractPolicy(t, ctx, policy, now)
 	authorizer, err := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(policy)
 	if err != nil {
 		t.Fatalf("create promotion authorizer: %v", err)
 	}
-	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(policy, func() time.Time { return now }, authorizer)
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(policy, func() time.Time { return clock }, authorizer)
 	if err != nil {
 		t.Fatalf("create Run admission: %v", err)
 	}
@@ -81,15 +82,15 @@ func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
 	candidateSHA256 := strings.Repeat("c", 64)
 	insertAcceptedMemoryCandidate(t, ctx, db, candidateID, reviewID, candidateSHA256, now)
 
-	resolver, err := agentapplication.NewPersistentAgentInvocationResolverV1WithClock(policy, func() time.Time { return now }, authorizer)
+	resolver, err := agentapplication.NewPersistentAgentInvocationResolverV1WithClock(policy, func() time.Time { return clock }, authorizer)
 	if err != nil {
 		t.Fatalf("create Invocation resolver: %v", err)
 	}
-	promotions, err := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(memories, func() time.Time { return now })
+	promotions, err := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(memories, func() time.Time { return clock })
 	if err != nil {
 		t.Fatalf("create Memory promotion service: %v", err)
 	}
-	commits, err := agentapplication.NewPersistentAgentMemoryPromotionReceiptCommitServiceV1(resolver, promotions, func() time.Time { return now })
+	commits, err := agentapplication.NewPersistentAgentMemoryPromotionReceiptCommitServiceV1(resolver, promotions, func() time.Time { return clock })
 	if err != nil {
 		t.Fatalf("create receipt commit service: %v", err)
 	}
@@ -118,6 +119,7 @@ func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
 	}
 	assertReceiptPromotionStored(t, ctx, db, candidateID, firstResponse.GetMemoryId(), 1)
 
+	clock = clock.Add(time.Second)
 	replayed, err := client.CommitMemoryPromotionReceipt(ctx, request)
 	if err != nil {
 		t.Fatalf("replay receipt through Core adapter: %v", err)
