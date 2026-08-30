@@ -18,11 +18,14 @@ import (
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
+	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
 	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	"github.com/JekYUlll/Dipole/internal/services/core/server"
+	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	"go.uber.org/zap"
 )
 
@@ -118,7 +121,43 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 
 	rpcCfg := config.InternalRPCConfig()
 	if rpcCfg.Enabled {
-		runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core)
+		var agentAdapter *agentgrpc.MemoryPromotionReceiptServer
+		if rpcCfg.AgentMemoryPromotionReceiptCommitEnabled {
+			if !rpcCfg.TLSEnabled {
+				cleanup()
+				return nil, fmt.Errorf("Agent Memory promotion receipt commit requires internal RPC mTLS")
+			}
+			agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
+			}
+			resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Invocation resolver: %w", composeErr)
+			}
+			promotions, composeErr := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(agentRepos.MemoryPromotions, time.Now)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Memory promotion service: %w", composeErr)
+			}
+			commits, composeErr := agentapplication.NewPersistentAgentMemoryPromotionReceiptCommitServiceV1(resolver, promotions, time.Now)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Memory receipt commit service: %w", composeErr)
+			}
+			agentAdapter, composeErr = agentgrpc.NewMemoryPromotionReceiptServer(commits)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Memory receipt rpc adapter: %w", composeErr)
+			}
+		}
+		if agentAdapter == nil {
+			runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core)
+		} else {
+			runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core, agentAdapter)
+		}
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Core capability RPC: %w", err)

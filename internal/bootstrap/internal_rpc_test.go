@@ -78,9 +78,19 @@ type rpcAgentWorkflowProjectionStub struct{}
 type rpcAgentWorkflowRepairStub struct{ operator string }
 type rpcAgentSubscriptionStub struct{}
 type rpcAgentMemoryStub struct{}
+type rpcAgentMemoryPromotionCommitStub struct{ called bool }
 type rpcAgentArtifactStub struct {
 	artifact *application.AgentArtifactV1
 	body     []byte
+}
+
+func (s *rpcAgentMemoryPromotionCommitStub) CommitMemoryPromotionReceipt(_ context.Context, request application.AgentMemoryPromotionReceiptCommitRequestV1) (*application.AgentMemoryV1, error) {
+	s.called = true
+	return &application.AgentMemoryV1{
+		MemoryUUID: "MEM-COMMIT-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: request.CandidateUUID, Sequence: request.ReviewUUID},
+	}, nil
 }
 
 func (rpcAgentSubscriptionStub) MatchEventSubscriptions(_ context.Context, request application.AgentEventSubscriptionMatchRequestV1) ([]application.AgentEventSubscriptionV1, error) {
@@ -527,7 +537,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	artifacts := &rpcAgentArtifactStub{}
-	server, err := corerpc.NewWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, nil, nil, artifacts, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, rpcAgentMemoryStub{})
+	server, err := corerpc.NewWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, nil, nil, artifacts, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, rpcAgentMemoryStub{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -577,6 +587,41 @@ func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	}
 	if _, err := gatewayClient.GetArtifact(context.Background(), &agentv1.GetArtifactRequest{Context: &commonv1.RequestContext{CallerService: gatewayServiceName, PrincipalUserId: "U999"}, ArtifactId: created.GetArtifact().GetArtifactId()}); status.Code(err) != codes.NotFound {
 		t.Fatalf("cross-principal Artifact read code=%s", status.Code(err))
+	}
+}
+
+func TestCoreAgentMemoryPromotionReceiptCommitRequiresExplicitComposition(t *testing.T) {
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
+	commit := &rpcAgentMemoryPromotionCommitStub{}
+	agentAdapter, err := agentgrpc.NewMemoryPromotionReceiptServer(commit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, agentAdapter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { server.Close(context.Background()) })
+
+	interceptor, _ := grpcauth.NewUnaryClientInterceptor(grpcauth.Credentials{Service: agentServiceName, Secret: cfg.SharedSecret})
+	connection, err := grpc.NewClient(server.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(interceptor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	client := agentv1.NewAgentCapabilityServiceClient(connection)
+	response, err := client.CommitMemoryPromotionReceipt(context.Background(), &agentv1.CommitMemoryPromotionReceiptRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, ReceiptId: "MEM-PROMOTE-" + strings.Repeat("a", 64), ReceiptSha256: strings.Repeat("a", 64),
+		SchemaVersion: application.AgentMemoryPromotionReceiptSchemaV2, Status: application.AgentMemoryPromotionReceiptPrepared,
+		TaskId: "TASK-1", RunId: "RUN-1", CandidateId: "CAND-1", CandidateSha256: strings.Repeat("b", 64), ReviewId: "REV-1", PolicyVersion: "memory-v1", TargetMemoryType: "semantic",
+		CreatedAtUnixMs: now.UnixMilli(), ExpiresAtUnixMs: now.Add(time.Minute).UnixMilli(),
+	})
+	if err != nil || !commit.called || response.GetMemoryId() != "MEM-COMMIT-1" || response.GetReceiptSha256() != strings.Repeat("a", 64) {
+		t.Fatalf("Agent receipt commit response=%+v called=%v err=%v", response, commit.called, err)
+	}
+	if _, err := client.ListConversations(context.Background(), &agentv1.ListConversationsRequest{Context: &commonv1.RequestContext{CallerService: agentServiceName}, TaskId: "TASK-1", RunId: "RUN-1"}); status.Code(err) != codes.Unimplemented {
+		t.Fatalf("standalone receipt adapter must not expose general Agent capability, code=%s", status.Code(err))
 	}
 }
 

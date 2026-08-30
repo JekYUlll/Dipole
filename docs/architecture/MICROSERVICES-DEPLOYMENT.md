@@ -51,6 +51,8 @@ docker compose -f deploy/compose/docker-compose.microservices.yml up -d --wait
 
 每个 Go 应用进程使用只包含自身 `/app/service` 的镜像；migration 作为一次性服务先执行，Core 与 Message 就绪后 Gateway 才开始接收流量。内部 gRPC 强制使用 TLS 1.3 mTLS，证书 CN 分别为 `dipole-core`、`dipole-message` 和 `dipole-gateway`。每个容器只挂载自己的证书、私钥与公共 CA 证书，CA 私钥保留在宿主机。
 
+Agent reviewed Memory receipt 的 Core commit service 额外受 `DIPOLE_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED` 控制，Compose 默认 `false`。仅在 Core 的内部 RPC mTLS 已启用时，该开关才会构造服务；它本身不启动 Temporal Worker、不允许 Gateway 调用，也不代表自动长期 Memory 写入已开启。
+
 启用 `--profile search` 时，Search Indexer 先验收并初始化索引，随后 Search Service 以 `dipole-search` mTLS 身份连接 Core，并只读验收当前 Alias owner。内部链路就绪后以 `DIPOLE_SEARCH_ENABLED=true` 重建 Gateway，才会注册认证搜索路由；默认 false 保持原有反代行为。
 
 ## 自动验收

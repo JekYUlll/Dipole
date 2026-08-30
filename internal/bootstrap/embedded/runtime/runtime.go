@@ -240,6 +240,16 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory candidate promotion service: %w", composeErr)
 		}
+		var memoryPromotionCommits applicationPort.AgentMemoryPromotionReceiptCommitServiceV1
+		if rpcCfg.AgentMemoryPromotionReceiptCommitEnabled {
+			if !rpcCfg.TLSEnabled {
+				return nil, fmt.Errorf("Agent Memory promotion receipt commit requires internal RPC mTLS")
+			}
+			memoryPromotionCommits, composeErr = agentapplication.NewPersistentAgentMemoryPromotionReceiptCommitServiceV1(resolver, memoryPromotions, time.Now)
+			if composeErr != nil {
+				return nil, fmt.Errorf("compose Agent Memory promotion receipt commit service: %w", composeErr)
+			}
+		}
 		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, localMessaging.Messages)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Tool invocation audit: %w", composeErr)
@@ -280,7 +290,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = corerpc.NewWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryPromotions, agentRepos.TaskTimeline, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryPromotions, agentRepos.TaskTimeline, memoryPromotionCommits, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

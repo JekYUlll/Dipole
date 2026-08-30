@@ -266,13 +266,17 @@ func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.Pr
 }
 
 func (s *Server) CommitMemoryPromotionReceipt(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
+	return commitMemoryPromotionReceiptV1(ctx, request, s.memoryPromotionCommits)
+}
+
+func commitMemoryPromotionReceiptV1(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest, commits application.AgentMemoryPromotionReceiptCommitServiceV1) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
 	if err := agentMemoryReceiptCommitCallerV1(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
-	if s.memoryPromotionCommits == nil {
+	if commits == nil {
 		return nil, status.Error(codes.Unavailable, "Agent Memory promotion receipt commit is unavailable")
 	}
-	item, err := s.memoryPromotionCommits.CommitMemoryPromotionReceipt(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryPromotionReceiptCommitRequestV1{
+	item, err := commits.CommitMemoryPromotionReceipt(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryPromotionReceiptCommitRequestV1{
 		ReceiptID: request.GetReceiptId(), ReceiptSHA256: request.GetReceiptSha256(), SchemaVersion: request.GetSchemaVersion(), Status: request.GetStatus(),
 		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), CandidateUUID: request.GetCandidateId(), CandidateSHA256: request.GetCandidateSha256(),
 		ReviewUUID: request.GetReviewId(), PolicyVersion: request.GetPolicyVersion(), TargetMemoryType: application.AgentMemoryTypeV1(request.GetTargetMemoryType()),

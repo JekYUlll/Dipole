@@ -8,7 +8,7 @@
 
 ## 拟新增内部 RPC
 
-`CommitReviewedMemoryPromotion` 只接受 mTLS 和 service metadata 已认证的 `dipole-agent` 调用方，且只在显式 active Runtime 配置中注册。请求字段保持低敏：
+`CommitMemoryPromotionReceipt` 只接受 mTLS 和 service metadata 已认证的 `dipole-agent` 调用方。Core 仅在 `internal_rpc.agent_memory_promotion_receipt_commit_enabled=true` 且内部 RPC mTLS 已启用时注册 commit service；Runtime Worker 仍需独立的 active authority 组合才会调用它。请求字段保持低敏：
 
 ```text
 receipt_id

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Core bootstrap 为 receipt commit 增加 `internal_rpc.agent_memory_promotion_receipt_commit_enabled` 显式开关，默认关闭；仅在内部 RPC 已启用 mTLS 时才构造并注入 commit service。Compose 同步保持 `DIPOLE_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED=false`，Temporal Worker 仍未装配写 Activity。
+
 - 2026-08-30：为 reviewed Memory receipt 增加可注入的 Temporal commit Activity。Workflow 仅在显式 `commit=true` 的受控输入完成后提交 prepared receipt，基础 Worker 固定拒绝；Activity 只转发 receipt 与 correlation 至 active RPC client，持久化结果只保留低敏 binding。Worker 组合、Core bootstrap、Compose profile 和自动写入保持关闭。
 
 - 2026-08-30：收紧 `CommitMemoryPromotionReceipt` 的返回契约为低敏 receipt response，移除 `AgentOwnedMemory` 中的正文、资源与 owner 字段；TS active client 会先校验 receipt v2，再复核 Memory ID、类型、状态、provenance 和 receipt hash。默认 Worker、Temporal Activity、Core bootstrap 和自动写入继续关闭。

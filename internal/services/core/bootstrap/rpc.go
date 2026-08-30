@@ -2,8 +2,10 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
@@ -23,8 +25,15 @@ type InternalRPCServer = platformrpc.Server
 // NewCoreRPCServer owns the standalone Core RPC adapter and its platform
 // transport. The legacy bootstrap keeps a compatibility constructor for the
 // embedded runtime and existing migration tests.
-func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability) (*platformrpc.Server, error) {
-	return corerpc.NewServer(cfg, capability, nil)
+func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability, adapters ...agentv1.AgentCapabilityServiceServer) (*platformrpc.Server, error) {
+	if len(adapters) > 1 {
+		return nil, errors.New("at most one Agent Capability RPC adapter may be configured")
+	}
+	var adapter agentv1.AgentCapabilityServiceServer
+	if len(adapters) == 1 {
+		adapter = adapters[0]
+	}
+	return corerpc.NewServer(cfg, capability, adapter)
 }
 
 func dialCoreMessageApplication(ctx context.Context, cfg config.InternalRPC) (*messagegrpc.Client, *grpc.ClientConn, error) {

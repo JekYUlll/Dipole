@@ -28,7 +28,7 @@ const (
 type Server = platformrpc.Server
 
 // NewServer creates the Core RPC surface with an optional Agent adapter.
-func NewServer(cfg config.InternalRPC, capability application.CoreCapability, agentAdapter *agentgrpc.Server) (*Server, error) {
+func NewServer(cfg config.InternalRPC, capability application.CoreCapability, agentAdapter agentv1.AgentCapabilityServiceServer) (*Server, error) {
 	adapter, err := coregrpc.NewServer(capability)
 	if err != nil {
 		return nil, fmt.Errorf("create core rpc adapter: %w", err)
@@ -56,7 +56,7 @@ func NewWithAgentControlAndProjection(cfg config.InternalRPC, capability applica
 }
 
 // NewWithAgentArtifacts creates the complete optional Agent RPC surface.
-func NewWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, subscriptions application.AgentEventSubscriptionResolverV1, subscriptionControls application.AgentEventSubscriptionControlServiceV1, definitionCatalog application.AgentDefinitionCatalogServiceV1, artifacts application.AgentArtifactServiceV1, toolAudits application.AgentToolInvocationAuditServiceV1, toolRounds application.AgentMCPToolRoundServiceV1, toolTerminals application.AgentMCPToolInvocationTerminalServiceV1, messageCommands application.AgentMessageCommandExecutionV1, approvalGrants application.AgentApprovalGrantResolverV1, promotionControls application.AgentRuntimePromotionControlServiceV1, promotionEvidence application.AgentRuntimePromotionEvidenceReviewServiceV1, readinessPublisher application.AgentMCPReadinessEvidencePublisherV1, readinessResolver application.AgentMCPReadinessEvidenceResolverV1, memoryControls application.AgentMemoryOwnerControlServiceV1, memoryPromotions application.AgentMemoryCandidatePromotionServiceV1, timeline application.AgentTaskTimelineStoreV1, memories ...application.AgentMemoryContextResolverV1) (*Server, error) {
+func NewWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCapability, agentCapability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1, projections application.AgentTaskWorkflowProjectionServiceV1, repairs application.AgentWorkflowRepairAuditServiceV1, subscriptions application.AgentEventSubscriptionResolverV1, subscriptionControls application.AgentEventSubscriptionControlServiceV1, definitionCatalog application.AgentDefinitionCatalogServiceV1, artifacts application.AgentArtifactServiceV1, toolAudits application.AgentToolInvocationAuditServiceV1, toolRounds application.AgentMCPToolRoundServiceV1, toolTerminals application.AgentMCPToolInvocationTerminalServiceV1, messageCommands application.AgentMessageCommandExecutionV1, approvalGrants application.AgentApprovalGrantResolverV1, promotionControls application.AgentRuntimePromotionControlServiceV1, promotionEvidence application.AgentRuntimePromotionEvidenceReviewServiceV1, readinessPublisher application.AgentMCPReadinessEvidencePublisherV1, readinessResolver application.AgentMCPReadinessEvidenceResolverV1, memoryControls application.AgentMemoryOwnerControlServiceV1, memoryPromotions application.AgentMemoryCandidatePromotionServiceV1, timeline application.AgentTaskTimelineStoreV1, memoryPromotionCommits application.AgentMemoryPromotionReceiptCommitServiceV1, memories ...application.AgentMemoryContextResolverV1) (*Server, error) {
 	agentAdapter, err := agentgrpc.NewServerWithControlAndProjection(agentCapability, resolver, admission, approvals, controls, projections, repairs)
 	if err != nil {
 		return nil, fmt.Errorf("create Agent Capability rpc adapter: %w", err)
@@ -147,6 +147,11 @@ func NewWithAgentArtifacts(cfg config.InternalRPC, capability application.CoreCa
 	if memoryPromotions != nil {
 		if _, err := agentAdapter.WithMemoryCandidatePromotions(memoryPromotions); err != nil {
 			return nil, fmt.Errorf("configure Agent Memory candidate promotion rpc adapter: %w", err)
+		}
+	}
+	if memoryPromotionCommits != nil {
+		if _, err := agentAdapter.WithMemoryPromotionReceiptCommits(memoryPromotionCommits); err != nil {
+			return nil, fmt.Errorf("configure Agent Memory promotion receipt commit rpc adapter: %w", err)
 		}
 	}
 	return NewServer(cfg, capability, agentAdapter)

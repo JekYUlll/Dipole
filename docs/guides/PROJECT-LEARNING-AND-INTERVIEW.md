@@ -59,6 +59,7 @@
 | 渐进式微服务与 SQLC | **已验证** | 第 3 节后端描述；第 5 节渐进微服务故事 | [服务边界](../architecture/SERVICE-BOUNDARIES.md)；“为什么不一次性拆分？” |
 | Agent Runtime 与权限 | **已验证** | 第 3 节 Agent 描述；第 5 节 Agent 安全与可恢复执行 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)；“模型为何不能决定权限？” |
 | Owner-reviewed Memory 类型晋级 | **已验证（本地）** | 受控 candidate/review 选择 semantic 等持久类型；Temporal 只在显式 commit 请求下调用可注入 Activity | [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)；“为何 working 不能晋级？” |
+| Receipt Commit 最小权限接线 | **默认关闭** | Core 以 mTLS 配置门禁按需注册仅含 receipt commit 的 Agent RPC；其余 Agent 能力不在独立 Core 暴露 | [active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)；“为何不用完整 Agent RPC adapter？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
@@ -70,8 +71,18 @@
 - **演示：** 使用受控 candidate/review 调用 promotion RPC，指定 `semantic` 后读取返回 Memory 类型；再提交 `working`，确认 Gateway 返回 400 且未触发写入。
 - **证据：** [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)、`internal/services/agent/application/agent_memory_candidate_promotion_test.go`、`internal/transport/grpc/agent/server_test.go`、`services/agent-runtime/src/temporal/agent-memory-promotion-commit-activity.test.ts`。
 - **追问：** “为什么 working 不能晋级？” working 只服务当前 Task 的短期推理状态，持久化会扩大生命周期和检索范围；长期 Memory 必须经过 owner review，并在事务内绑定 candidate 与 review。
-- **限制：** 当前路径使用 owner 控制 RPC；TS receipt v2、Core commit service、Agent-only internal RPC、低敏回包校验和可注入 Temporal Activity 已固定，但 Core bootstrap、受控 Worker 组合、授权演练和共享环境证据尚未接入，不能宣称 active Agent 已自动写入长期 Memory。
+- **限制：** 当前路径使用 owner 控制 RPC；TS receipt v2、Agent-only internal RPC、低敏回包校验、默认关闭的 Core mTLS bootstrap 以及可注入 Temporal Activity 已固定，但受控 Worker 组合、授权演练和共享环境证据尚未接入，不能宣称 active Agent 已自动写入长期 Memory。
 - **复核条件：** 接入 receipt、Temporal Activity、active authority 或增加新的 Memory 类型时。
+
+#### 2026-08-30 · Receipt Commit 最小权限接线
+
+- **状态：** 默认关闭
+- **对外表述：** 为 Agent Memory receipt 增加独立 Core 接线：开关开启时要求内部 RPC mTLS，并注册仅实现 `CommitMemoryPromotionReceipt` 的专用 Adapter；独立 Core 不会为单个提交接口装配完整 Agent Runtime 面。
+- **演示：** 以 `dipole-agent` 服务身份连接受控 Core gRPC，提交低敏 receipt binding 并确认返回已晋级 Memory 的低敏标识；使用 Gateway 身份或关闭开关时确认接口不可用或被拒绝。
+- **证据：** `internal/services/core/bootstrap/runtime.go`、`internal/transport/grpc/agent/memory_promotion_receipt_server.go`、`internal/bootstrap/internal_rpc_test.go`、[active executor 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)。
+- **追问：** “为何不用完整 Agent RPC adapter？” 独立 Core 当前只拥有 receipt commit 所需的持久化 resolver 与 promotion 事务。收窄 RPC surface 可以避免无关 Tool、Task、Artifact 或 owner-control 入口在该部署单元被意外暴露。
+- **限制：** 默认开关关闭；Temporal Worker 仍未完成 active authority 组合，且没有共享环境 mTLS、重放与授权演练证据，因此不能表述为自动长期 Memory 写入已启用。
+- **复核条件：** 改变 RPC caller allowlist、mTLS 配置、Temporal Worker 组合或 receipt schema 时。
 
 #### 2026-08-30 · Artifact 与 Task Timeline 关联
 
