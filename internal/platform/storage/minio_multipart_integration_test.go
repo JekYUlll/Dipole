@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -152,6 +153,9 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 		bytes.NewReader([]byte("cleanup-part")), int64(len("cleanup-part"))); err != nil {
 		t.Fatalf("upload cleanup part: %v", err)
 	}
+	if err := waitForIncompleteUpload(ctx, client, bucket, "message-files/", staleUpload.UploadID); err != nil {
+		t.Fatal(err)
+	}
 
 	cleanupReport := storageops.RunMultipartCleanup(ctx, minioCleanupClient{client: client, core: minio.Core{Client: client}},
 		bucket, "message-files/", time.Now().UTC().Add(time.Hour), true)
@@ -164,6 +168,28 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 		}
 		if upload.UploadID == staleUpload.UploadID {
 			t.Fatalf("cleanup left incomplete upload %s", upload.UploadID)
+		}
+	}
+}
+
+func waitForIncompleteUpload(ctx context.Context, client *minio.Client, bucket, prefix, uploadID string) error {
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		for upload := range client.ListIncompleteUploads(ctx, bucket, prefix, true) {
+			if upload.Err != nil {
+				return fmt.Errorf("list uploads while waiting for %s: %w", uploadID, upload.Err)
+			}
+			if upload.UploadID == uploadID {
+				return nil
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for incomplete upload %s: %w", uploadID, ctx.Err())
+		case <-deadline.C:
+			return fmt.Errorf("incomplete upload %s did not appear in listing", uploadID)
+		case <-time.After(100 * time.Millisecond):
 		}
 	}
 }
