@@ -31,6 +31,18 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | `conversation.search` 受控检索契约 | 已验证（Core/Proto/TS 与隔离 Remote GPU） | `internal/services/agent/application/agent_capability.go` |
 | `promotion_active` 与 External MCP Shadow mode | 默认关闭 | [External MCP 运行手册](../agent/agent-external-mcp.md) |
 | Project Guardian 预筛评测基线 | 已验证（合成离线） | `contracts/agent-evals/v1/project-guardian-synthetic-corpus.json` |
+| OAuth callback durable handoff | 已验证的默认关闭组件链 | `contracts/agent-oauth-callback-handoff/v1/TRANSPORT.md` |
+
+#### OAuth Callback Durable Handoff
+
+- **状态：** 已验证的默认关闭组件链
+- **简历句：** 为 Agent 外部授权回调设计 durable handoff：Gateway control HTTP 只通知 handoff ID，Runtime 经 mTLS claim 领取 Runtime-only 密文，以 owner-bound AAD 解封后按 lease 完成或释放，避免授权材料进入事件、日志或浏览器响应。
+- **对外表述：** 当前完成了 SQLC handoff 状态机、mTLS claim/terminal RPC、Runtime envelope/key source、默认关闭 executor 与重复通知控制链；真实 provider exchange、token lifecycle、browser correlation 和默认 Runtime 装配仍未启用。
+- **演示：** 运行 `npm --prefix services/agent-runtime test -- --run src/oauth-callback-handoff-control.integration.test.ts src/mcp/oauth-callback-handoff-executor.test.ts`，展示 Gateway service identity、最小 body、重复通知去重、AAD owner binding 与 unknown processor outcome 保留 lease。
+- **证据：** [handoff transport contract](../../contracts/agent-oauth-callback-handoff/v1/TRANSPORT.md)、`services/agent-runtime/src/mcp/oauth-callback-handoff-executor.ts`、`internal/transport/grpc/agent/server.go`。
+- **追问：** “为什么 processor 异常时不直接 release lease？” provider 可能已收到请求而本地未获得结果；释放会允许另一 worker 重复换码。只有解封前失败或明确 retryable 结果才释放。
+- **限制：** 没有外部 OAuth provider、真实凭据、token 存储、browser callback 或共享环境 authority 证据；不能描述为已上线 OAuth 登录能力。
+- **复核条件：** 修改 envelope AAD、lease transition、Runtime key source、claim/terminal RPC、provider processor 或 Runtime bootstrap 时。
 
 #### Project Guardian Evaluation Baseline
 
