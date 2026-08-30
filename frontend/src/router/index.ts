@@ -16,6 +16,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/contacts',
+      name: 'contacts',
+      component: () => import('@/views/ContactDirectoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/agent/tasks/:taskId/input',
       name: 'agent-task-input',
       component: () => import('@/views/AgentElicitationView.vue'),

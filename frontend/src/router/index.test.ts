@@ -18,7 +18,7 @@ describe('Agent route security contract', () => {
       expect(source).toContain(`name: '${routeName}'`)
     }
 
-    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(8)
+    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(9)
     expect(source).toContain("import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'")
@@ -27,6 +27,11 @@ describe('Agent route security contract', () => {
     expect(source).toContain("import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_MEMORIES_ENABLED === 'true'")
     expect(source).toContain("return { name: 'chat' }")
+  })
+
+  it('keeps the Contact directory authenticated without an Agent feature flag', () => {
+    expect(source).toContain("name: 'contacts'")
+    expect(source).toContain("path: '/contacts'")
   })
 
   it('keeps unauthenticated access redirected to Login', () => {
