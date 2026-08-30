@@ -43,6 +43,12 @@ docker compose -f deploy/compose/docker-compose.microservices.yml up -d --wait
 
 公开入口为 `http://127.0.0.1:8080`。Core、Message、Sync、MySQL、Redis、Kafka 和 MinIO 只在 Compose 网络内可达。远程模式下 Gateway 直接注册消息历史和 Sync HTTP 路由，Core HTTP 仅承接 Core domain 路由。
 
+## 远程开发资源策略
+
+开发阶段允许在 Remote GPU 主机存在 GPU 任务时启动 Dipole 的 CPU、Docker、集成测试和压力测试工作负载。GPU 任务属于受保护资源，Dipole 工作流不得停止、重启、迁移或修改其进程、容器、GPU 绑定和数据目录。
+
+远程任务启动前仍需检查主机可用 CPU、内存、磁盘、端口和活动用户会话；Dipole 使用独立的 Compose project、临时数据卷、端口范围和工作目录。资源不足或会影响活动用户时暂停启动并记录原因。任务结束后自动清理自身创建的容器、卷和临时文件，不执行全局 Docker prune。
+
 每个 Go 应用进程使用只包含自身 `/app/service` 的镜像；migration 作为一次性服务先执行，Core 与 Message 就绪后 Gateway 才开始接收流量。内部 gRPC 强制使用 TLS 1.3 mTLS，证书 CN 分别为 `dipole-core`、`dipole-message` 和 `dipole-gateway`。每个容器只挂载自己的证书、私钥与公共 CA 证书，CA 私钥保留在宿主机。
 
 启用 `--profile search` 时，Search Indexer 先验收并初始化索引，随后 Search Service 以 `dipole-search` mTLS 身份连接 Core，并只读验收当前 Alias owner。内部链路就绪后以 `DIPOLE_SEARCH_ENABLED=true` 重建 Gateway，才会注册认证搜索路由；默认 false 保持原有反代行为。

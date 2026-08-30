@@ -60,6 +60,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 - **控制服务数量：** 没有压测或团队协作需求时，不单独拆 User、Group、Contact、File 和 Conversation。
 - **SQL 是数据契约：** schema 与 query 进入版本控制，sqlc 负责 Go 侧生成；跨语言服务通过 API 和事件协作，不跨边界共享业务表。
 - **设计先行：** 用户可见功能先更新 Pencil 设计稿和状态矩阵，再实现 Vue 与视觉回归。
+- **远程资源隔离：** Remote GPU 存在 GPU 任务时，仍可启动 Dipole 的 CPU、Docker、集成测试和压力测试任务；任务必须使用隔离的 Compose project、端口、目录和资源配额，禁止停止、重置或抢占已有 GPU 进程。
 
 ## 3. 当前基线
 
