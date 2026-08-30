@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Eino `v0.10.0-alpha.26` 已完成只读 API 评估；其 Session Timeline、Checkpoint/Resume 和 backgroundtask lease/CAS 可作为 adapter 参考，但与现有 Temporal durable execution 重叠，alpha 依赖继续禁止进入默认构建和 active authority。
 - 2026-08-30：跨标签页 Multipart 并发由浏览器 Web Locks 按文件 session 串行化；不支持该 API 的旧浏览器仍可上传，但缺少跨标签页互斥，需要后续兼容策略或最低浏览器版本门禁。
 - 2026-08-30：预签名刷新失败路径已由前端回归测试锁定：只完成一次失败 PUT，刷新服务错误向上返回，不改变可恢复 session；真实签名服务故障矩阵仍待共享环境证据。
 - 2026-08-30：新增 `multipart-restart-smoke`，用独立 MinIO 数据卷验证服务重启后继续上传、Complete 和对象内容一致性；Remote GPU 已在提交 `3fe5d00f` 上通过真实验证，客户端断网、签名服务不可用和跨标签页并发仍需矩阵覆盖。
