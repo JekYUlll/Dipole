@@ -1246,4 +1246,5 @@
 - **影响范围：** 大文件续传、Redis 会话过期、MinIO 未完成 upload 清理和跨存储对账
 - **现状：** Redis session store 为 metadata、parts 和 completion receipt 设置 TTL；服务层已对缺失 session fail-closed，但 Redis 到期、MinIO 未完成 upload 残留和 cleanup reconciliation 尚未在同一真实故障矩阵中验证。
 - **本轮进展：** `TestRedisMultipartSessionTTLExpiresMetadataAndPartsTogether` 验证 metadata/parts 同步过期与分片续期，`TestRedisMultipartSessionCompletionUsesIndependentTTL` 验证完成收据到期；测试使用确定性 Redis 时钟推进，不改变默认上传或清理路径。
+- **本轮进展：** 新增 `smoke-multipart-reconciliation.sh` 与真实 MinIO/Redis 集成测试，覆盖匹配状态、Redis metadata 缺失和 Redis orphan drift；脚本使用隔离端口和自动清理，未触碰业务 Compose。
 - **下一步：** 在 Remote GPU 维护窗口用隔离 Redis/MinIO 实例注入 TTL 到期、服务重启、cleanup race 和 reconciliation drift，记录 active/expired/abort/retry 指标后再评估关闭本条债务。
