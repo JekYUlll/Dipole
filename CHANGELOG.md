@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：补充 Agent Memory promotion active executor v1 契约，固定 `dipole-agent` 的专用内部提交边界、Core 侧 Task/Run 身份恢复、active admission/promotion grant 验证、receipt 重算与幂等重放要求。当前仅完成设计与测试矩阵，默认配置继续为 receipt-only，未启用 Runtime 自动写入。
+
 - 2026-08-30：Agent Artifact metadata 的受认证只读流程已在 Chromium、Firefox、WebKit 三浏览器完成本地功能复核，继续固定为 metadata-only 且无下载面。视觉快照仍仅以 Chromium 受控 fixture 为基线；共享环境、正文和下载授权保持关闭。
 
 - 2026-08-30：新增默认关闭的 Agent Artifact metadata 页面：Pencil canonical 已补齐 desktop/mobile/state matrix 与批准导出，Vue 仅按经认证的精确 64 位内容寻址 ID 读取类型、版本、标题、媒体类型、大小、Task/Run、创建时间和 SHA-256。Timeline 仅对 `artifact` event 提供条件跳转；失败清空旧 metadata，正文、对象键、metadata JSON、下载和写控制继续关闭，Chromium visual fixture 仅覆盖低敏本地基线。
