@@ -22,6 +22,10 @@ test("remote destructive actions remain behind the active-host guard", () => {
   assert.match(source, /bench\) sync_revision; guard_start; run_remote bench/);
 });
 
+test("remote image builds compile committed backend binaries first", () => {
+  assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh backend && scripts\/docker-build-microservice-images\.sh/);
+});
+
 test("remote node toolchain is explicit and version-gated", () => {
   assert.match(source, /REMOTE_NODE_ROOT="\$\{DIPOLE_REMOTE_NODE_ROOT:-/);
   assert.match(source, /required_node="v22\.0\.0"/);
