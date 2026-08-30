@@ -489,6 +489,58 @@ func TestFileServiceMultipartUploadFlow(t *testing.T) {
 	}
 }
 
+func TestFileServiceExpiredMultipartSessionFailsClosed(t *testing.T) {
+	t.Parallel()
+
+	storageCalls := 0
+	uploader := &stubUploader{
+		presignPartFn: func(context.Context, string, string, int, time.Duration) (string, error) {
+			storageCalls++
+			return "", errors.New("unexpected presign call")
+		},
+		inspectPartFn: func(context.Context, string, string, int) (*platformStorage.UploadedPart, error) {
+			storageCalls++
+			return nil, errors.New("unexpected inspect call")
+		},
+		uploadPartFn: func(context.Context, string, string, int, io.Reader, int64) (*platformStorage.UploadedPart, error) {
+			storageCalls++
+			return nil, errors.New("unexpected upload call")
+		},
+		completeMultipartFn: func(context.Context, string, string, string, string, int64, []platformStorage.MultipartCompletePart) (*platformStorage.UploadedObject, error) {
+			storageCalls++
+			return nil, errors.New("unexpected complete call")
+		},
+		abortMultipartFn: func(context.Context, string, string) error {
+			storageCalls++
+			return errors.New("unexpected abort call")
+		},
+	}
+	service := newFileService(&stubFileRepository{}, nil, uploader, 50*1024*1024, 5, time.Hour, time.Minute)
+	service.sessionStore = &stubMultipartSessionStore{}
+
+	if _, err := service.GetMultipartUploadStatus("U100", "expired"); !errors.Is(err, ErrMultipartSessionNotFound) {
+		t.Fatalf("status error=%v, want expired session rejection", err)
+	}
+	if _, err := service.PresignMultipartParts("U100", "expired", []int{1}); !errors.Is(err, ErrMultipartSessionNotFound) {
+		t.Fatalf("presign error=%v, want expired session rejection", err)
+	}
+	if err := service.RegisterMultipartPart("U100", "expired", 1, RegisterMultipartPartInput{ETag: "etag", Size: 1}); !errors.Is(err, ErrMultipartSessionNotFound) {
+		t.Fatalf("register error=%v, want expired session rejection", err)
+	}
+	if err := service.UploadMultipartPart("U100", "expired", 1, 1, "", bytes.NewReader([]byte("x"))); !errors.Is(err, ErrMultipartSessionNotFound) {
+		t.Fatalf("upload error=%v, want expired session rejection", err)
+	}
+	if _, err := service.CompleteMultipartUpload("U100", "expired"); !errors.Is(err, ErrMultipartSessionNotFound) {
+		t.Fatalf("complete error=%v, want expired session rejection", err)
+	}
+	if err := service.AbortMultipartUpload("U100", "expired"); err != nil {
+		t.Fatalf("abort expired session: %v", err)
+	}
+	if storageCalls != 0 {
+		t.Fatalf("expired session reached object storage %d times", storageCalls)
+	}
+}
+
 func TestFileServiceMultipartAbortIsIdempotentAndRejectsCompletedUpload(t *testing.T) {
 	t.Parallel()
 
