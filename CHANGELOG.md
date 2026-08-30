@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 `contracts/README.md` 契约总索引，并将 Agent Capability、Task、Memory、MCP、发布、修复和评估契约按领域归类；Agent 文档入口与项目 README 同步链接，明确版本兼容、证据哈希和 authority 边界。
+
 - 2026-08-30：新增 `docs/agent/README.md` 作为 Agent Runtime 专属文档入口，统一阅读顺序、运行时职责、默认开关和真实环境证据边界；总文档目录与架构文档清单同步收录，便于后续滚动维护。
 
 - 2026-08-30：为 Multipart `upload_part` retry counter 增加 Prometheus 连续重试告警与 promtool firing 时序测试；告警仅聚合 operation，保持低基数和业务路径不变。

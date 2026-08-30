@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：新增 `contracts/README.md` 顶层契约索引并从 README/Agent 文档入口链接，降低跨服务协议发现和版本漂移风险；契约索引只改善治理与导航，不改变各 Agent 能力默认关闭及共享环境证据门槛。
 - 2026-08-30：Agent 文档已增加独立入口 `docs/agent/README.md`，统一 Runtime 边界、默认开关、验收顺序和真实环境证据边界；该整理降低文档入口漂移风险，但不改变共享环境证据、active authority 或外部 MCP 的未完成状态。
 - 2026-08-30：直接 Multipart smoke 脚本现已尊重显式 `DIPOLE_REMOTE_GO_ROOT`，无效路径 fail-closed 并禁止隐式 Go toolchain 下载；Remote GPU 使用用户态 Go `1.27.0` 复跑基础与 restart smoke 均通过。完整浏览器断网、过期会话、网关限流、代理超时及跨存储故障矩阵仍待完成。
 - 2026-08-30：在 `master` `a26b3fb3` 上显式使用 `LAB113-OPS` 验证远程同步和 Multipart smoke；SSH 别名与自动 Go 发现均正常，未复现此前的小写别名解析错误，因此保留为观察项，不修改主机配置。
