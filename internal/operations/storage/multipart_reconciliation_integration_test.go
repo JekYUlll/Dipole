@@ -82,12 +82,23 @@ func TestMultipartReconciliationWithRealMinIOAndRedis(t *testing.T) {
 		t.Fatalf("matching stores reported drift: %+v", matched)
 	}
 
-	if err := redisClient.Del(ctx, redisKey).Err(); err != nil {
-		t.Fatalf("delete matching session: %v", err)
+	if err := redisClient.Expire(ctx, redisKey, time.Second).Err(); err != nil {
+		t.Fatalf("expire matching session: %v", err)
 	}
-	missingRedis := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, objectKey, 100)
-	if !missingRedis.Complete || missingRedis.MissingRedis != 1 || missingRedis.MissingMinIO != 0 {
-		t.Fatalf("missing Redis metadata was not detected: %+v", missingRedis)
+	if err := waitForRedisKeyAbsence(ctx, redisClient, redisKey); err != nil {
+		t.Fatal(err)
+	}
+	expired := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, objectKey, 100)
+	if !expired.Complete || expired.MissingRedis != 1 || expired.MissingMinIO != 0 {
+		t.Fatalf("expired Redis metadata was not detected: %+v", expired)
+	}
+
+	cleanupReport := RunMultipartCleanup(ctx, reconciliationClient, bucket, objectKey, time.Now().UTC().Add(time.Hour), true)
+	if !cleanupReport.Complete || cleanupReport.Selected != 1 || cleanupReport.Aborted != 1 || cleanupReport.Failed != 0 {
+		t.Fatalf("expired session cleanup failed: %+v", cleanupReport)
+	}
+	if err := waitForMultipartListingAbsence(ctx, minioClient, bucket, objectKey, uploadID); err != nil {
+		t.Fatal(err)
 	}
 
 	orphanKey := "file:multipart:orphan:meta"
@@ -96,7 +107,7 @@ func TestMultipartReconciliationWithRealMinIOAndRedis(t *testing.T) {
 		t.Fatalf("write orphan session: %v", err)
 	}
 	orphan := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, objectKey, 100)
-	if !orphan.Complete || orphan.MissingRedis != 1 || orphan.MissingMinIO != 1 {
+	if !orphan.Complete || orphan.MissingRedis != 0 || orphan.MissingMinIO != 1 {
 		t.Fatalf("cross-store drift was not fully detected: %+v", orphan)
 	}
 }
@@ -131,6 +142,53 @@ func waitForMultipartListing(ctx context.Context, client *minio.Client, bucket, 
 			return fmt.Errorf("wait for multipart upload %s: %w", uploadID, ctx.Err())
 		case <-deadline.C:
 			return fmt.Errorf("multipart upload %s did not appear in listing", uploadID)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+func waitForMultipartListingAbsence(ctx context.Context, client *minio.Client, bucket, prefix, uploadID string) error {
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		found := false
+		for upload := range client.ListIncompleteUploads(ctx, bucket, prefix, true) {
+			if upload.Err != nil {
+				return fmt.Errorf("list multipart uploads while waiting for cleanup of %s: %w", uploadID, upload.Err)
+			}
+			if upload.UploadID == uploadID {
+				found = true
+			}
+		}
+		if !found {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for multipart upload cleanup %s: %w", uploadID, ctx.Err())
+		case <-deadline.C:
+			return fmt.Errorf("multipart upload %s remained in listing after cleanup", uploadID)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+func waitForRedisKeyAbsence(ctx context.Context, client *redis.Client, key string) error {
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		present, err := client.Exists(ctx, key).Result()
+		if err != nil {
+			return fmt.Errorf("check Redis key %s: %w", key, err)
+		}
+		if present == 0 {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for Redis key %s expiry: %w", key, ctx.Err())
+		case <-deadline.C:
+			return fmt.Errorf("Redis key %s remained after TTL", key)
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
