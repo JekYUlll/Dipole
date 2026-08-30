@@ -79,6 +79,14 @@ npm run promotion:memory-worker-drill -- --evidence=/secure/path/worker-drill.js
 
 提交共享环境前，可先运行隔离的跨语言 mTLS RPC drill：
 
+隔离验证按以下顺序执行，三个步骤分别覆盖不同边界，均不代表 active 默认路径已启用：
+
+1. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/test-agent-memory-promotion-mysql-contract.sh` 验证 migration、持久 Task/Run、grant、candidate/review、幂等晋级和撤销拒绝；脚本创建并清理独立 MySQL 容器。
+2. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/drill-agent-memory-promotion-rpc.sh` 验证 TypeScript generated client 到 Go fixture 的 mTLS 身份、protobuf 和低敏回包绑定。
+3. 运行现有 Temporal receipt retry integration，确认同一 prepared receipt 的 Activity 重试语义；该测试仍使用 commit stub。
+
+只有后续隔离 Core、Temporal 和 MySQL 同时启动，并归档首次提交、同 receipt 重试、admission 后 grant 撤销和 overlay 回滚时，才形成联合演练证据。
+
 ```bash
 DIPOLE_GO_BIN=/path/to/go-1.26-or-newer/bin/go \
   scripts/drill-agent-memory-promotion-rpc.sh

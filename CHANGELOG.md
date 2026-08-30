@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Active Agent 部署手册补充隔离 MySQL、mTLS RPC 与 Temporal retry 三层验证顺序，并明确三者不能替代 Core/Temporal/MySQL 联合演练。
+
 - 2026-08-30：补齐 embedded Agent active Run admission 的 promotion grant authorizer 注入，使 admission 与 receipt invocation resolver 使用同一持久授权边界；默认 active Worker 仍关闭。
 
 - 2026-08-30：Core 与 embedded receipt commit composition 现注入持久 active Runtime promotion authorizer，使已开启且已授权的 receipt 可通过 Invocation Resolver 复核；缺失或失效 grant 继续 fail-closed，默认 active 路径未改变。
