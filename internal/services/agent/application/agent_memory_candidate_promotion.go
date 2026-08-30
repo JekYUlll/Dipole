@@ -64,6 +64,7 @@ func (s *PersistentAgentMemoryCandidatePromotionServiceV1) Promote(ctx context.C
 		ResourceType: candidate.ResourceType, ResourceID: candidate.ResourceID, Content: candidate.Summary, CompactContent: candidate.Summary,
 		Priority: 60, Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: candidate.CandidateUUID, Sequence: review.ReviewUUID}, ValidFrom: now,
 	}
+	memory = application.CanonicalAgentMemoryLineageV1(memory)
 	if memory.Validate() != nil {
 		return nil, application.ErrAgentMemoryCandidateInvalid
 	}
