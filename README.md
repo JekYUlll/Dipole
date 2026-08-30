@@ -1,6 +1,12 @@
-# Dipole
+<p align="center">
+  <img src="docs/images/dipole-wordmark.svg" width="560" alt="Dipole: an event-driven collaboration platform" />
+</p>
 
-Dipole 是一个面向实时协作与 Agent 能力演进的现代 IM 平台。项目以 Go 承担 IM 领域服务，Kafka 连接异步事件与投影，MySQL 提供元数据和事务一致性，并逐步引入 Cassandra Timeline、Elasticsearch Search、Redis Realtime State 与独立的 TypeScript Agent Runtime。
+<p align="center">
+  Dipole 是一个面向实时协作与 Agent 能力演进的现代 IM 平台。
+</p>
+
+项目以 Go 承担 IM 领域服务，Kafka 连接异步事件与投影，MySQL 提供元数据和事务一致性，并逐步引入 Cassandra Timeline、Elasticsearch Search、Redis Realtime State 与独立的 TypeScript Agent Runtime。
 
 ## 项目定位
 
