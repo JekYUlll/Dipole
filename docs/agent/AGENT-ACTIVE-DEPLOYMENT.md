@@ -81,7 +81,7 @@ npm run promotion:memory-worker-drill -- --evidence=/secure/path/worker-drill.js
 
 隔离验证按以下顺序执行，三个步骤分别覆盖不同边界，均不代表 active 默认路径已启用：
 
-1. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/test-agent-memory-promotion-mysql-contract.sh` 验证 migration、持久 Task/Run、grant、candidate/review、幂等晋级和撤销拒绝；脚本创建并清理独立 MySQL 容器。
+1. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/test-agent-memory-promotion-mysql-contract.sh` 验证 migration、持久 Task/Run、grant、candidate/review、幂等晋级、撤销拒绝，以及临时 CA 下的 Core receipt adapter loopback TCP+mTLS；脚本创建并清理独立 MySQL 容器。
 2. `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/drill-agent-memory-promotion-rpc.sh` 验证 TypeScript generated client 到 Go fixture 的 mTLS 身份、protobuf 和低敏回包绑定。
 3. 运行现有 Temporal receipt retry integration，确认同一 prepared receipt 的 Activity 重试语义；该测试仍使用 commit stub。
 
