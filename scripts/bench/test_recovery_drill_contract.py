@@ -21,6 +21,7 @@ class RecoveryDrillContractTest(unittest.TestCase):
         self.assertIn("ready_observed_at", script)
         self.assertIn("scripts/bench/run_bench.sh", script)
         self.assertIn("scripts/bench/recovery_report.py", script)
+        self.assertNotIn('--project-directory "${ROOT_DIR}"', script)
         self.assertLess(script.index('compose start "${TARGET_SERVICE}"'), script.index("scripts/bench/run_bench.sh"))
         self.assertLess(script.index("pre_fault_member_count="), script.index('compose stop "${TARGET_SERVICE}"'))
         self.assertLess(script.rindex("wait_consumer_group_ready"), script.index("ready_observed_at="))
