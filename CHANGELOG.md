@@ -484,6 +484,8 @@
 
 ## [Unreleased]
 
+- 恢复 Emerald Signal Link 品牌调色：README、IM、Agent 与紧凑入口标记统一采用深青信号场、浅色画布和橙色事件脉冲，替换分支中遗留的偏蓝青渐变；本项只影响品牌呈现。
+
 ### Added
 
 - Added a Chromium visual baseline for the owner-scoped File Directory. The fixture locks the metadata-only disclosure boundary and per-file authorization entrypoint without contacting object storage.
