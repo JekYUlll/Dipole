@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 `docs/agent/README.md` 作为 Agent Runtime 专属文档入口，统一阅读顺序、运行时职责、默认开关和真实环境证据边界；总文档目录与架构文档清单同步收录，便于后续滚动维护。
+
 - 2026-08-30：为 Multipart `upload_part` retry counter 增加 Prometheus 连续重试告警与 promtool firing 时序测试；告警仅聚合 operation，保持低基数和业务路径不变。
 
 - 2026-08-30：Multipart Core 为同一 session 重复上传同一 `partNumber` 增加低基数 `upload_part{outcome="retry"}` 计数；retry 与最终结果分开记录，耗时只采样一次，旧 session store 可通过可选接口兼容，上传默认路径和回滚语义保持不变。
