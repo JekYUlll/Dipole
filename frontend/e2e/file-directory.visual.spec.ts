@@ -19,7 +19,6 @@ const page = {
       download_path: '/api/v1/files/F-ARCHIVE-02/download',
     },
   ],
-  next_cursor: '',
   has_more: false,
 }
 
