@@ -1,7 +1,11 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	storageops "github.com/JekYUlll/Dipole/internal/operations/storage"
 )
@@ -18,5 +22,43 @@ func TestReconciliationHasDrift(t *testing.T) {
 	}
 	if !reconciliationHasDrift(&storageops.MultipartReconciliationReport{MissingMinIO: 1}) {
 		t.Fatal("missing MinIO upload was not reported as drift")
+	}
+}
+
+func TestWriteMultipartReconciliationMetricsPublishesAtomicLowCardinalityGauges(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "multipart.prom")
+	report := &storageops.MultipartReconciliationReport{
+		RedisKeysScanned: 4, MinIOUploadsSeen: 3, MissingRedis: 1, MissingMinIO: 2, Complete: true,
+	}
+	if err := writeMultipartReconciliationMetrics(path, report, time.Unix(123, 0).UTC()); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	for _, want := range []string{
+		"dipole_multipart_reconciliation_complete 1",
+		"dipole_multipart_reconciliation_drift 1",
+		"dipole_multipart_reconciliation_redis_keys_scanned 4",
+		"dipole_multipart_reconciliation_minio_uploads_seen 3",
+		"dipole_multipart_reconciliation_missing_redis 1",
+		"dipole_multipart_reconciliation_missing_minio 2",
+		"dipole_multipart_reconciliation_last_run_timestamp_seconds 123",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("metrics output missing %q: %s", want, text)
+		}
+	}
+	if strings.Contains(text, "session_id") || strings.Contains(text, "object_key") {
+		t.Fatalf("metrics output contains high-cardinality fields: %s", text)
+	}
+}
+
+func TestWriteMultipartReconciliationMetricsRequiresReport(t *testing.T) {
+	if err := writeMultipartReconciliationMetrics(filepath.Join(t.TempDir(), "multipart.prom"), nil, time.Time{}); err == nil {
+		t.Fatal("nil report was accepted")
 	}
 }
