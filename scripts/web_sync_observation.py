@@ -105,7 +105,7 @@ def build_session(candidate_version, git_commit, bundle_path, prometheus_url, st
     }
 
 
-def build_final_evidence(session, ended_at, client, now=None):
+def build_final_evidence(session, ended_at, client, now=None, archive=None):
     _validate_session(session)
     started_at = _parse_time(session["started_at"])
     ended_at = _utc(ended_at)
@@ -127,6 +127,9 @@ def build_final_evidence(session, ended_at, client, now=None):
         issues.append("promotion recording rule is not ready")
     if (values["firing_alerts"] or 0) != 0:
         issues.append("Sync observation alerts are firing")
+    archive = _normalize_archive(archive, now=now)
+    if archive is None:
+        issues.append("evidence archive receipt is required")
     snapshot_hash = _sha256_json(snapshot)
     evidence = {
         "schema_version": EVIDENCE_SCHEMA,
@@ -141,6 +144,7 @@ def build_final_evidence(session, ended_at, client, now=None):
         "issues": issues,
         "final_snapshot": snapshot,
         "snapshot_sha256": snapshot_hash,
+        "archive": archive,
     }
     evidence["evidence_sha256"] = _sha256_json(evidence)
     return evidence
@@ -261,6 +265,36 @@ def _prometheus_url(value):
     return value.rstrip("/")
 
 
+def _normalize_archive(archive, now=None):
+    if archive is None:
+        return None
+    if not isinstance(archive, dict):
+        raise ValueError("evidence archive receipt must be an object")
+    required = ("uri", "object_version", "etag", "retention_until")
+    if any(not isinstance(archive.get(key), str) or not archive[key].strip() for key in required):
+        raise ValueError("evidence archive receipt is incomplete")
+    uri = archive["uri"].strip()
+    parsed = urllib.parse.urlparse(uri)
+    if parsed.scheme not in ("s3", "minio") or not parsed.netloc or parsed.query or parsed.fragment or parsed.username or parsed.password:
+        raise ValueError("evidence archive URI must be an opaque s3 or minio URI")
+    etag = archive["etag"].strip().strip('"')
+    if not re.fullmatch(r"[a-fA-F0-9]{32,64}", etag):
+        raise ValueError("evidence archive ETag must be a hexadecimal value")
+    try:
+        retention_until = _parse_time(archive["retention_until"].strip())
+    except (TypeError, ValueError) as error:
+        raise ValueError("evidence archive retention_until must include a timezone") from error
+    current = datetime.now(timezone.utc) if now is None else _utc(now)
+    if retention_until <= current:
+        raise ValueError("evidence archive retention_until must be in the future")
+    return {
+        "uri": uri,
+        "object_version": archive["object_version"].strip(),
+        "etag": etag.lower(),
+        "retention_until": _iso(retention_until),
+    }
+
+
 def _load_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
@@ -287,6 +321,10 @@ def main(argv=None):
     finalize.add_argument("--git-commit", required=True)
     finalize.add_argument("--bundle", type=Path, required=True)
     finalize.add_argument("--output", type=Path, required=True)
+    finalize.add_argument("--archive-uri", required=True)
+    finalize.add_argument("--archive-object-version", required=True)
+    finalize.add_argument("--archive-etag", required=True)
+    finalize.add_argument("--archive-retain-until", required=True)
     finalize.add_argument("--at")
     args = parser.parse_args(argv)
     try:
@@ -301,7 +339,17 @@ def main(argv=None):
                 result = build_status(session, _at(args.at), client)
             else:
                 verify_candidate(session, args.git_commit, args.bundle)
-                result = build_final_evidence(session, _at(args.at), client)
+                result = build_final_evidence(
+                    session,
+                    _at(args.at),
+                    client,
+                    archive={
+                        "uri": args.archive_uri,
+                        "object_version": args.archive_object_version,
+                        "etag": args.archive_etag,
+                        "retention_until": args.archive_retain_until,
+                    },
+                )
                 write_immutable_json(args.output, result)
         print(json.dumps(result, ensure_ascii=True, sort_keys=True, indent=2))
         return 2 if result.get("decision") == "blocked" else 0
