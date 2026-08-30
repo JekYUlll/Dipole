@@ -38,7 +38,7 @@ DIPOLE_REMOTE_GO_ROOT=/home/admin1/.local/go-1.27.0 \
 scripts/remote-dev.sh build
 ```
 
-脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。`build`、`smoke-lite`、`bench` 会拒绝存在登录用户或 GPU 进程的主机；只有取得明确维护窗口后，才可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`，并仍需人工确认不会影响现有实验。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
+脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。`build`、`smoke-lite`、`bench` 会记录 GPU 进程快照并允许 CPU/容器型开发动作继续执行；活跃登录用户仍会默认阻断，只有取得明确维护窗口后才可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
 
 `multipart-smoke` 只创建脚本自有的随机命名临时 MinIO 容器，使用 `GOTOOLCHAIN=local` 和 `DIPOLE_REMOTE_GO_ROOT` 提供的远端 Go 工具链；该动作不申请 GPU，也不经过活动 GPU 阻断，但仍要求脚本退出时完成容器清理。
 
@@ -136,4 +136,4 @@ docker compose -p "${DIPOLE_PROJECT}" \
 
 压测记录必须包含提交和镜像摘要、配置摘要、主机资源快照、服务 readiness、P50/P95/P99、错误率、Kafka lag、磁盘和内存水位。发生 readiness 失败、数据不一致、错误率升高或资源越界时立即停止加压，回到上一提交或关闭本次 project；不要清理其他用户的容器、卷和进程。
 
-当前 Remote GPU 已观察到多个活动登录会话和 GPU 任务，实际部署需要先取得明确维护窗口。TencentCloud 凭据不得写入仓库、脚本或压测报告。
+当前 Remote GPU 若存在 GPU 任务，CPU/容器型开发部署可在隔离 project 下继续；若存在活动登录会话，仍需先取得明确维护窗口或显式批准。确需 GPU 的任务必须单独声明设备、显存预算和冲突检查。TencentCloud 凭据不得写入仓库、脚本或压测报告。
