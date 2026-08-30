@@ -25,6 +25,10 @@ type oauthCallbackHandoffStoreStub struct {
 	claimed        bool
 	claim          []string
 	leaseExpiresAt time.Time
+	complete       bool
+	release        bool
+	completed      []string
+	released       []string
 }
 
 func (s *oauthCallbackHandoffStoreStub) CreateAgentOAuthCallbackHandoff(context.Context, application.AgentOAuthCallbackHandoffV1) (bool, error) {
@@ -40,11 +44,13 @@ func (s *oauthCallbackHandoffStoreStub) ClaimAgentOAuthCallbackHandoff(_ context
 	}
 	return s.claimed, nil
 }
-func (*oauthCallbackHandoffStoreStub) CompleteAgentOAuthCallbackHandoff(context.Context, string, string, time.Time) (bool, error) {
-	return false, errors.New("unused")
+func (s *oauthCallbackHandoffStoreStub) CompleteAgentOAuthCallbackHandoff(_ context.Context, handoffID, leaseOwner string, _ time.Time) (bool, error) {
+	s.completed = []string{handoffID, leaseOwner}
+	return s.complete, nil
 }
-func (*oauthCallbackHandoffStoreStub) ReleaseAgentOAuthCallbackHandoff(context.Context, string, string, time.Time) (bool, error) {
-	return false, errors.New("unused")
+func (s *oauthCallbackHandoffStoreStub) ReleaseAgentOAuthCallbackHandoff(_ context.Context, handoffID, leaseOwner string, _ time.Time) (bool, error) {
+	s.released = []string{handoffID, leaseOwner}
+	return s.release, nil
 }
 
 type memoryPromotionReceiptCommitStub struct{}
@@ -134,6 +140,45 @@ func TestClaimOAuthCallbackHandoffFailsClosedWithoutStore(t *testing.T) {
 	_, err := server.ClaimOAuthCallbackHandoff(context.Background(), &agentv1.ClaimOAuthCallbackHandoffRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), HandoffId: strings.Repeat("a", 22), LeaseOwner: "runtime-1",
 	})
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("expected unavailable, got %v", err)
+	}
+}
+
+func TestOAuthCallbackHandoffTerminalRPCsRequireAgentRuntimeLease(t *testing.T) {
+	store := &oauthCallbackHandoffStoreStub{complete: true, release: true}
+	server, err := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = server.WithOAuthCallbackHandoffs(store); err != nil {
+		t.Fatal(err)
+	}
+	handoffID := strings.Repeat("a", 22)
+	requestContext := grpccommon.RequestContext("U-untrusted", "dipole-agent")
+	completed, err := server.CompleteOAuthCallbackHandoff(context.Background(), &agentv1.CompleteOAuthCallbackHandoffRequest{Context: requestContext, HandoffId: handoffID, LeaseOwner: "runtime-1"})
+	if err != nil || completed.GetHandoffId() != handoffID || strings.Join(store.completed, ":") != handoffID+":runtime-1" {
+		t.Fatalf("complete=%v err=%v record=%v", completed, err, store.completed)
+	}
+	released, err := server.ReleaseOAuthCallbackHandoff(context.Background(), &agentv1.ReleaseOAuthCallbackHandoffRequest{Context: requestContext, HandoffId: handoffID, LeaseOwner: "runtime-1"})
+	if err != nil || released.GetHandoffId() != handoffID || strings.Join(store.released, ":") != handoffID+":runtime-1" {
+		t.Fatalf("release=%v err=%v record=%v", released, err, store.released)
+	}
+	requestContext.CallerService = "dipole-gateway"
+	if _, err = server.CompleteOAuthCallbackHandoff(context.Background(), &agentv1.CompleteOAuthCallbackHandoffRequest{Context: requestContext, HandoffId: handoffID, LeaseOwner: "runtime-1"}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected denied, got %v", err)
+	}
+}
+
+func TestOAuthCallbackHandoffTerminalRPCsFailClosedWithoutStore(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	requestContext := grpccommon.RequestContext("", "dipole-agent")
+	handoffID := strings.Repeat("a", 22)
+	_, err := server.CompleteOAuthCallbackHandoff(context.Background(), &agentv1.CompleteOAuthCallbackHandoffRequest{Context: requestContext, HandoffId: handoffID, LeaseOwner: "runtime-1"})
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("expected unavailable, got %v", err)
+	}
+	_, err = server.ReleaseOAuthCallbackHandoff(context.Background(), &agentv1.ReleaseOAuthCallbackHandoffRequest{Context: requestContext, HandoffId: handoffID, LeaseOwner: "runtime-1"})
 	if status.Code(err) != codes.Unavailable {
 		t.Fatalf("expected unavailable, got %v", err)
 	}

@@ -47,6 +47,8 @@ const (
 	AgentCapabilityService_ResolveMcpContext_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpContext"
 	AgentCapabilityService_ConsumeOAuthAuthorizationTransaction_FullMethodName  = "/dipole.agent.v1.AgentCapabilityService/ConsumeOAuthAuthorizationTransaction"
 	AgentCapabilityService_ClaimOAuthCallbackHandoff_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/ClaimOAuthCallbackHandoff"
+	AgentCapabilityService_CompleteOAuthCallbackHandoff_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/CompleteOAuthCallbackHandoff"
+	AgentCapabilityService_ReleaseOAuthCallbackHandoff_FullMethodName           = "/dipole.agent.v1.AgentCapabilityService/ReleaseOAuthCallbackHandoff"
 	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
 	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
 	AgentCapabilityService_ClaimMcpToolRound_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ClaimMcpToolRound"
@@ -104,6 +106,8 @@ type AgentCapabilityServiceClient interface {
 	ResolveMcpContext(ctx context.Context, in *ResolveMcpContextRequest, opts ...grpc.CallOption) (*ResolveMcpContextResponse, error)
 	ConsumeOAuthAuthorizationTransaction(ctx context.Context, in *ConsumeOAuthAuthorizationTransactionRequest, opts ...grpc.CallOption) (*ConsumeOAuthAuthorizationTransactionResponse, error)
 	ClaimOAuthCallbackHandoff(ctx context.Context, in *ClaimOAuthCallbackHandoffRequest, opts ...grpc.CallOption) (*ClaimOAuthCallbackHandoffResponse, error)
+	CompleteOAuthCallbackHandoff(ctx context.Context, in *CompleteOAuthCallbackHandoffRequest, opts ...grpc.CallOption) (*CompleteOAuthCallbackHandoffResponse, error)
+	ReleaseOAuthCallbackHandoff(ctx context.Context, in *ReleaseOAuthCallbackHandoffRequest, opts ...grpc.CallOption) (*ReleaseOAuthCallbackHandoffResponse, error)
 	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(ctx context.Context, in *ResolveMcpToolCommandRequest, opts ...grpc.CallOption) (*ResolveMcpToolCommandResponse, error)
 	ClaimMcpToolRound(ctx context.Context, in *ClaimMcpToolRoundRequest, opts ...grpc.CallOption) (*ClaimMcpToolRoundResponse, error)
@@ -417,6 +421,26 @@ func (c *agentCapabilityServiceClient) ClaimOAuthCallbackHandoff(ctx context.Con
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) CompleteOAuthCallbackHandoff(ctx context.Context, in *CompleteOAuthCallbackHandoffRequest, opts ...grpc.CallOption) (*CompleteOAuthCallbackHandoffResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteOAuthCallbackHandoffResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_CompleteOAuthCallbackHandoff_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ReleaseOAuthCallbackHandoff(ctx context.Context, in *ReleaseOAuthCallbackHandoffRequest, opts ...grpc.CallOption) (*ReleaseOAuthCallbackHandoffResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReleaseOAuthCallbackHandoffResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ReleaseOAuthCallbackHandoff_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BeginMcpToolInvocationResponse)
@@ -679,6 +703,8 @@ type AgentCapabilityServiceServer interface {
 	ResolveMcpContext(context.Context, *ResolveMcpContextRequest) (*ResolveMcpContextResponse, error)
 	ConsumeOAuthAuthorizationTransaction(context.Context, *ConsumeOAuthAuthorizationTransactionRequest) (*ConsumeOAuthAuthorizationTransactionResponse, error)
 	ClaimOAuthCallbackHandoff(context.Context, *ClaimOAuthCallbackHandoffRequest) (*ClaimOAuthCallbackHandoffResponse, error)
+	CompleteOAuthCallbackHandoff(context.Context, *CompleteOAuthCallbackHandoffRequest) (*CompleteOAuthCallbackHandoffResponse, error)
+	ReleaseOAuthCallbackHandoff(context.Context, *ReleaseOAuthCallbackHandoffRequest) (*ReleaseOAuthCallbackHandoffResponse, error)
 	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error)
 	ClaimMcpToolRound(context.Context, *ClaimMcpToolRoundRequest) (*ClaimMcpToolRoundResponse, error)
@@ -795,6 +821,12 @@ func (UnimplementedAgentCapabilityServiceServer) ConsumeOAuthAuthorizationTransa
 }
 func (UnimplementedAgentCapabilityServiceServer) ClaimOAuthCallbackHandoff(context.Context, *ClaimOAuthCallbackHandoffRequest) (*ClaimOAuthCallbackHandoffResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ClaimOAuthCallbackHandoff not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) CompleteOAuthCallbackHandoff(context.Context, *CompleteOAuthCallbackHandoffRequest) (*CompleteOAuthCallbackHandoffResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CompleteOAuthCallbackHandoff not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ReleaseOAuthCallbackHandoff(context.Context, *ReleaseOAuthCallbackHandoffRequest) (*ReleaseOAuthCallbackHandoffResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReleaseOAuthCallbackHandoff not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BeginMcpToolInvocation not implemented")
@@ -1391,6 +1423,42 @@ func _AgentCapabilityService_ClaimOAuthCallbackHandoff_Handler(srv interface{}, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_CompleteOAuthCallbackHandoff_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteOAuthCallbackHandoffRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).CompleteOAuthCallbackHandoff(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_CompleteOAuthCallbackHandoff_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).CompleteOAuthCallbackHandoff(ctx, req.(*CompleteOAuthCallbackHandoffRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ReleaseOAuthCallbackHandoff_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReleaseOAuthCallbackHandoffRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ReleaseOAuthCallbackHandoff(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ReleaseOAuthCallbackHandoff_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ReleaseOAuthCallbackHandoff(ctx, req.(*ReleaseOAuthCallbackHandoffRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_BeginMcpToolInvocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BeginMcpToolInvocationRequest)
 	if err := dec(in); err != nil {
@@ -1923,6 +1991,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClaimOAuthCallbackHandoff",
 			Handler:    _AgentCapabilityService_ClaimOAuthCallbackHandoff_Handler,
+		},
+		{
+			MethodName: "CompleteOAuthCallbackHandoff",
+			Handler:    _AgentCapabilityService_CompleteOAuthCallbackHandoff_Handler,
+		},
+		{
+			MethodName: "ReleaseOAuthCallbackHandoff",
+			Handler:    _AgentCapabilityService_ReleaseOAuthCallbackHandoff_Handler,
 		},
 		{
 			MethodName: "BeginMcpToolInvocation",

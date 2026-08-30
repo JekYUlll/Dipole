@@ -1391,6 +1391,69 @@ func claimOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.ClaimOAut
 	}, nil
 }
 
+func (s *Server) CompleteOAuthCallbackHandoff(ctx context.Context, request *agentv1.CompleteOAuthCallbackHandoffRequest) (*agentv1.CompleteOAuthCallbackHandoffResponse, error) {
+	return completeOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func completeOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.CompleteOAuthCallbackHandoffRequest, handoffs application.AgentOAuthCallbackHandoffStoreV1) (*agentv1.CompleteOAuthCallbackHandoffResponse, error) {
+	handoffID, err := authorizeOAuthCallbackHandoffTerminalV1(ctx, request.GetContext(), request.GetHandoffId(), request.GetLeaseOwner(), handoffs)
+	if err != nil {
+		return nil, err
+	}
+	completed, err := handoffs.CompleteAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), handoffID, request.GetLeaseOwner(), time.Now().UTC().Truncate(time.Millisecond))
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthCallbackHandoffInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth callback handoff completion failed")
+	}
+	if !completed {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	return &agentv1.CompleteOAuthCallbackHandoffResponse{HandoffId: handoffID}, nil
+}
+
+func (s *Server) ReleaseOAuthCallbackHandoff(ctx context.Context, request *agentv1.ReleaseOAuthCallbackHandoffRequest) (*agentv1.ReleaseOAuthCallbackHandoffResponse, error) {
+	return releaseOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func releaseOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.ReleaseOAuthCallbackHandoffRequest, handoffs application.AgentOAuthCallbackHandoffStoreV1) (*agentv1.ReleaseOAuthCallbackHandoffResponse, error) {
+	handoffID, err := authorizeOAuthCallbackHandoffTerminalV1(ctx, request.GetContext(), request.GetHandoffId(), request.GetLeaseOwner(), handoffs)
+	if err != nil {
+		return nil, err
+	}
+	released, err := handoffs.ReleaseAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), handoffID, request.GetLeaseOwner(), time.Now().UTC().Truncate(time.Millisecond))
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthCallbackHandoffInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth callback handoff release failed")
+	}
+	if !released {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	return &agentv1.ReleaseOAuthCallbackHandoffResponse{HandoffId: handoffID}, nil
+}
+
+func authorizeOAuthCallbackHandoffTerminalV1(ctx context.Context, requestContext *commonv1.RequestContext, handoffID, leaseOwner string, handoffs application.AgentOAuthCallbackHandoffStoreV1) (string, error) {
+	caller, err := grpccommon.Caller(ctx, requestContext)
+	if err != nil {
+		return "", err
+	}
+	if caller != "dipole-agent" {
+		return "", status.Error(codes.PermissionDenied, "only Agent Runtime may transition OAuth callback handoffs")
+	}
+	if handoffs == nil {
+		return "", status.Error(codes.Unavailable, "OAuth callback handoff is unavailable")
+	}
+	normalizedHandoffID, normalizedLeaseOwner := strings.TrimSpace(handoffID), strings.TrimSpace(leaseOwner)
+	if normalizedHandoffID == "" || normalizedHandoffID != handoffID || len(normalizedHandoffID) > 128 ||
+		normalizedLeaseOwner == "" || normalizedLeaseOwner != leaseOwner || len(normalizedLeaseOwner) > 128 {
+		return "", status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+	}
+	return normalizedHandoffID, nil
+}
+
 func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.BeginMcpToolInvocationRequest) (*agentv1.BeginMcpToolInvocationResponse, error) {
 	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
 		return nil, err

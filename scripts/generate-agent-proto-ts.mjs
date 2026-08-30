@@ -7,9 +7,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = process.env.DIPOLE_AGENT_PROTO_TS_OUTPUT === undefined
   ? resolve(root, "services/agent-runtime/src/generated")
   : resolve(process.env.DIPOLE_AGENT_PROTO_TS_OUTPUT);
-const protoc = resolve(root, "services/agent-runtime/node_modules/.bin/protoc");
-// The pinned wrapper downloads a matching compiler and standard include set on
-// first use, so generation does not depend on a host-level protobuf package.
+const protoc = await resolveProtoc();
+// Prefer the compiler already installed by the pinned wrapper. This keeps
+// regeneration usable on isolated development hosts after the first install.
 execFileSync(protoc, ["--version"], { cwd: root, stdio: "inherit" });
 const protobufInclude = await resolveProtobufInclude();
 execFileSync(protoc, [
@@ -39,6 +39,22 @@ async function sourceFiles(directory) {
     else if (entry.name.endsWith(".ts")) result.push(path);
   }
   return result;
+}
+
+async function resolveProtoc() {
+  const installed = resolve(root, "services/agent-runtime/node_modules/@protobuf-ts/protoc/installed");
+  try {
+    const entries = await readdir(installed, { withFileTypes: true });
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+      if (!entry.isDirectory() || !entry.name.startsWith("protoc-")) continue;
+      const candidate = resolve(installed, entry.name, "bin/protoc");
+      try {
+        await access(candidate);
+        return candidate;
+      } catch { /* continue searching pinned protoc installations */ }
+    }
+  } catch { /* the wrapper downloads the compiler on its first invocation */ }
+  return resolve(root, "services/agent-runtime/node_modules/.bin/protoc");
 }
 
 async function resolveProtobufInclude() {

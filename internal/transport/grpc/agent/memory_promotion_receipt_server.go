@@ -80,3 +80,17 @@ func (s *RestrictedServer) ClaimOAuthCallbackHandoff(ctx context.Context, reques
 	}
 	return claimOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
 }
+
+func (s *RestrictedServer) CompleteOAuthCallbackHandoff(ctx context.Context, request *agentv1.CompleteOAuthCallbackHandoffRequest) (*agentv1.CompleteOAuthCallbackHandoffResponse, error) {
+	if s == nil {
+		return nil, errors.New("Agent OAuth callback handoff server is unavailable")
+	}
+	return completeOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func (s *RestrictedServer) ReleaseOAuthCallbackHandoff(ctx context.Context, request *agentv1.ReleaseOAuthCallbackHandoffRequest) (*agentv1.ReleaseOAuthCallbackHandoffResponse, error) {
+	if s == nil {
+		return nil, errors.New("Agent OAuth callback handoff server is unavailable")
+	}
+	return releaseOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}

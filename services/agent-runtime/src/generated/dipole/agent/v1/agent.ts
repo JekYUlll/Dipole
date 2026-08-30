@@ -12,8 +12,8 @@ import { UnknownFieldHandler } from "@protobuf-ts/runtime";
 import type { PartialMessage } from "@protobuf-ts/runtime";
 import { reflectionMergePartial } from "@protobuf-ts/runtime";
 import { MessageType } from "@protobuf-ts/runtime";
-import { Message } from "../../message/v1/message.js";
-import { RequestContext } from "../../common/v1/context.js";
+import { Message } from "../../message/v1/message";
+import { RequestContext } from "../../common/v1/context";
 /**
  * @generated from protobuf message dipole.agent.v1.AdmitRunRequest
  */
@@ -945,6 +945,62 @@ export interface ClaimOAuthCallbackHandoffResponse {
      * @generated from protobuf field: int64 lease_expires_at_unix_ms = 9
      */
     leaseExpiresAtUnixMs: bigint;
+}
+/**
+ * Completes a claimed handoff after a successful provider exchange.
+ *
+ * @generated from protobuf message dipole.agent.v1.CompleteOAuthCallbackHandoffRequest
+ */
+export interface CompleteOAuthCallbackHandoffRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string handoff_id = 2
+     */
+    handoffId: string;
+    /**
+     * @generated from protobuf field: string lease_owner = 3
+     */
+    leaseOwner: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.CompleteOAuthCallbackHandoffResponse
+ */
+export interface CompleteOAuthCallbackHandoffResponse {
+    /**
+     * @generated from protobuf field: string handoff_id = 1
+     */
+    handoffId: string;
+}
+/**
+ * Releases a claimed handoff after a retryable exchange failure.
+ *
+ * @generated from protobuf message dipole.agent.v1.ReleaseOAuthCallbackHandoffRequest
+ */
+export interface ReleaseOAuthCallbackHandoffRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string handoff_id = 2
+     */
+    handoffId: string;
+    /**
+     * @generated from protobuf field: string lease_owner = 3
+     */
+    leaseOwner: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ReleaseOAuthCallbackHandoffResponse
+ */
+export interface ReleaseOAuthCallbackHandoffResponse {
+    /**
+     * @generated from protobuf field: string handoff_id = 1
+     */
+    handoffId: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.BeginMcpToolInvocationRequest
@@ -5850,6 +5906,224 @@ class ClaimOAuthCallbackHandoffResponse$Type extends MessageType<ClaimOAuthCallb
  * @generated MessageType for protobuf message dipole.agent.v1.ClaimOAuthCallbackHandoffResponse
  */
 export const ClaimOAuthCallbackHandoffResponse = new ClaimOAuthCallbackHandoffResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CompleteOAuthCallbackHandoffRequest$Type extends MessageType<CompleteOAuthCallbackHandoffRequest> {
+    constructor() {
+        super("dipole.agent.v1.CompleteOAuthCallbackHandoffRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "handoff_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "lease_owner", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CompleteOAuthCallbackHandoffRequest>): CompleteOAuthCallbackHandoffRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.handoffId = "";
+        message.leaseOwner = "";
+        if (value !== undefined)
+            reflectionMergePartial<CompleteOAuthCallbackHandoffRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CompleteOAuthCallbackHandoffRequest): CompleteOAuthCallbackHandoffRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string handoff_id */ 2:
+                    message.handoffId = reader.string();
+                    break;
+                case /* string lease_owner */ 3:
+                    message.leaseOwner = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CompleteOAuthCallbackHandoffRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string handoff_id = 2; */
+        if (message.handoffId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.handoffId);
+        /* string lease_owner = 3; */
+        if (message.leaseOwner !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.leaseOwner);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CompleteOAuthCallbackHandoffRequest
+ */
+export const CompleteOAuthCallbackHandoffRequest = new CompleteOAuthCallbackHandoffRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class CompleteOAuthCallbackHandoffResponse$Type extends MessageType<CompleteOAuthCallbackHandoffResponse> {
+    constructor() {
+        super("dipole.agent.v1.CompleteOAuthCallbackHandoffResponse", [
+            { no: 1, name: "handoff_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CompleteOAuthCallbackHandoffResponse>): CompleteOAuthCallbackHandoffResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.handoffId = "";
+        if (value !== undefined)
+            reflectionMergePartial<CompleteOAuthCallbackHandoffResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CompleteOAuthCallbackHandoffResponse): CompleteOAuthCallbackHandoffResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string handoff_id */ 1:
+                    message.handoffId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CompleteOAuthCallbackHandoffResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string handoff_id = 1; */
+        if (message.handoffId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.handoffId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CompleteOAuthCallbackHandoffResponse
+ */
+export const CompleteOAuthCallbackHandoffResponse = new CompleteOAuthCallbackHandoffResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ReleaseOAuthCallbackHandoffRequest$Type extends MessageType<ReleaseOAuthCallbackHandoffRequest> {
+    constructor() {
+        super("dipole.agent.v1.ReleaseOAuthCallbackHandoffRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "handoff_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "lease_owner", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ReleaseOAuthCallbackHandoffRequest>): ReleaseOAuthCallbackHandoffRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.handoffId = "";
+        message.leaseOwner = "";
+        if (value !== undefined)
+            reflectionMergePartial<ReleaseOAuthCallbackHandoffRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ReleaseOAuthCallbackHandoffRequest): ReleaseOAuthCallbackHandoffRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string handoff_id */ 2:
+                    message.handoffId = reader.string();
+                    break;
+                case /* string lease_owner */ 3:
+                    message.leaseOwner = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ReleaseOAuthCallbackHandoffRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string handoff_id = 2; */
+        if (message.handoffId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.handoffId);
+        /* string lease_owner = 3; */
+        if (message.leaseOwner !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.leaseOwner);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ReleaseOAuthCallbackHandoffRequest
+ */
+export const ReleaseOAuthCallbackHandoffRequest = new ReleaseOAuthCallbackHandoffRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ReleaseOAuthCallbackHandoffResponse$Type extends MessageType<ReleaseOAuthCallbackHandoffResponse> {
+    constructor() {
+        super("dipole.agent.v1.ReleaseOAuthCallbackHandoffResponse", [
+            { no: 1, name: "handoff_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ReleaseOAuthCallbackHandoffResponse>): ReleaseOAuthCallbackHandoffResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.handoffId = "";
+        if (value !== undefined)
+            reflectionMergePartial<ReleaseOAuthCallbackHandoffResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ReleaseOAuthCallbackHandoffResponse): ReleaseOAuthCallbackHandoffResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string handoff_id */ 1:
+                    message.handoffId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ReleaseOAuthCallbackHandoffResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string handoff_id = 1; */
+        if (message.handoffId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.handoffId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ReleaseOAuthCallbackHandoffResponse
+ */
+export const ReleaseOAuthCallbackHandoffResponse = new ReleaseOAuthCallbackHandoffResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocationRequest> {
     constructor() {
@@ -12006,6 +12280,8 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },
     { name: "ConsumeOAuthAuthorizationTransaction", options: {}, I: ConsumeOAuthAuthorizationTransactionRequest, O: ConsumeOAuthAuthorizationTransactionResponse },
     { name: "ClaimOAuthCallbackHandoff", options: {}, I: ClaimOAuthCallbackHandoffRequest, O: ClaimOAuthCallbackHandoffResponse },
+    { name: "CompleteOAuthCallbackHandoff", options: {}, I: CompleteOAuthCallbackHandoffRequest, O: CompleteOAuthCallbackHandoffResponse },
+    { name: "ReleaseOAuthCallbackHandoff", options: {}, I: ReleaseOAuthCallbackHandoffRequest, O: ReleaseOAuthCallbackHandoffResponse },
     { name: "BeginMcpToolInvocation", options: {}, I: BeginMcpToolInvocationRequest, O: BeginMcpToolInvocationResponse },
     { name: "ResolveMcpToolCommand", options: {}, I: ResolveMcpToolCommandRequest, O: ResolveMcpToolCommandResponse },
     { name: "ClaimMcpToolRound", options: {}, I: ClaimMcpToolRoundRequest, O: ClaimMcpToolRoundResponse },

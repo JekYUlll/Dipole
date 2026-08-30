@@ -2,7 +2,7 @@
 
 ## Status
 
-`foundation in progress; callback route blocked`。当前已具备 discovery、PKCE、密封 verifier、SQLC transaction、Core consume RPC、未装配 Gateway client、`000053` durable handoff persistence，以及 Runtime public-key envelope v1。它们不能单独构成可发布 callback。
+`foundation in progress; callback route blocked`。当前已具备 discovery、PKCE、密封 verifier、SQLC transaction、Core consume RPC、未装配 Gateway client、`000053` durable handoff persistence、Runtime public-key envelope v1，以及受 `dipole-agent` mTLS caller 限制的 claim/complete/release RPC。它们不能单独构成可发布 callback。
 
 ## Why The Gate Exists
 
@@ -37,7 +37,7 @@ transaction_id + owner + state_sha256 + issuer + redirect_uri + expiry
 
 ## Durable Handoff State Machine
 
-可靠 handoff 使用独立记录，不能以 Kafka 或 Gateway 内存代替。`000053` 已实现 `callback_recorded`、`exchange_claimed`、`exchanged` 以及受 expiry 限制的 lease claim/complete/release；Gateway callback、Runtime claimant 和密钥封装仍未接线：
+可靠 handoff 使用独立记录，不能以 Kafka 或 Gateway 内存代替。`000053` 已实现 `callback_recorded`、`exchange_claimed`、`exchanged` 以及受 expiry 限制的 lease claim/complete/release；Core 将三项 transition 仅暴露给 `dipole-agent` mTLS caller，缺 Store 时返回 `Unavailable`。Gateway callback、Runtime 终态 client 和密钥封装仍未接线：
 
 ```mermaid
 stateDiagram-v2
@@ -78,4 +78,4 @@ The exact dual-channel transport and failure contract is maintained in
 
 ## Current Safe Surface
 
-The deployment surface remains unchanged: no OAuth HTTP callback route, no Runtime handoff receiver, no token exchange, no token persistence and no active configuration flag. `ConsumeOAuthAuthorizationTransaction` stays internal and unavailable unless its existing Core mTLS gate is explicitly enabled.
+The deployment surface remains unchanged: no OAuth HTTP callback route, no Runtime handoff receiver, no token exchange, no token persistence and no active configuration flag. `ConsumeOAuthAuthorizationTransaction` and callback handoff RPCs remain internal; the latter additionally require an explicitly injected Store and `dipole-agent` mTLS caller.

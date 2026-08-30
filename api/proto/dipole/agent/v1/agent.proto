@@ -305,6 +305,28 @@ message ClaimOAuthCallbackHandoffResponse {
   int64 lease_expires_at_unix_ms = 9;
 }
 
+// Completes a claimed handoff after a successful provider exchange.
+message CompleteOAuthCallbackHandoffRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string handoff_id = 2;
+  string lease_owner = 3;
+}
+
+message CompleteOAuthCallbackHandoffResponse {
+  string handoff_id = 1;
+}
+
+// Releases a claimed handoff after a retryable exchange failure.
+message ReleaseOAuthCallbackHandoffRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string handoff_id = 2;
+  string lease_owner = 3;
+}
+
+message ReleaseOAuthCallbackHandoffResponse {
+  string handoff_id = 1;
+}
+
 message BeginMcpToolInvocationRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -975,6 +997,8 @@ service AgentCapabilityService {
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc ConsumeOAuthAuthorizationTransaction(ConsumeOAuthAuthorizationTransactionRequest) returns (ConsumeOAuthAuthorizationTransactionResponse);
   rpc ClaimOAuthCallbackHandoff(ClaimOAuthCallbackHandoffRequest) returns (ClaimOAuthCallbackHandoffResponse);
+  rpc CompleteOAuthCallbackHandoff(CompleteOAuthCallbackHandoffRequest) returns (CompleteOAuthCallbackHandoffResponse);
+  rpc ReleaseOAuthCallbackHandoff(ReleaseOAuthCallbackHandoffRequest) returns (ReleaseOAuthCallbackHandoffResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
   rpc ClaimMcpToolRound(ClaimMcpToolRoundRequest) returns (ClaimMcpToolRoundResponse);
