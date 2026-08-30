@@ -837,6 +837,7 @@
 - **验证入口：** 已增加 `scripts/check-cpp-realtime-container.sh`，统一复用上述 Dockerfile 并绑定 revision、created、dirty provenance；容器门禁通过不会改变默认 Go authority 或放宽 C3 灰度条件。
 - **兼容说明：** tracked deployment 继续默认 Go；关闭该债务只表示 C3 切流协议与回切证据门槛完成，启用 C++ authority 仍需要独立的灰度发布决策和显式配置。
 - **状态边界复核：** 2026-08-30 计划审计确认 C3 故障注入、自动回切和 authority 证据已完成；性能收益门禁与按节点/用户灰度仍保持未完成，主计划应标记为进行中。
+- **灰度前置：** 2026-08-30 增加纯策略 `RolloutPolicy`，以 `node/user` 作用域、稳定盐值和百分比生成确定性 authority 选择；默认回到 Go，异常输入 fail closed。策略尚未接入 Gateway，等待性能收益与完整灰度观察证据。
 
 ### AD-039：Gateway Kafka assignment 未纳入 readiness
 

@@ -143,6 +143,10 @@ Gateway 继续拥有连接认证、心跳、WebSocket envelope、连接级有界
 
 `realtime.delivery=go|shadow|cpp` 已进入配置，默认和 tracked Compose 行为保持 `go`。`shadow` 保留 Go 客户端写入并允许 C++ 观察；`cpp` 让 Go message-created group 只前移兼容回滚 checkpoint，并要求 Gateway primary RPC 与 C++ primary 本地配置一致。该开关尚未形成集群共享 fencing，不能单独作为灰度控制面。后续切换必须记录双 group 高水位、稳定窗口和可执行回切 receipt；任何 ACK 漂移、队列溢出、顺序差异或恢复退化都停止候选并恢复 Go 权威链路。
 
+## 灰度选择前置
+
+`internal/realtime/delivery.RolloutPolicy` 提供按 `node` 或 `user` 作用域的确定性选择契约。策略使用固定盐值和稳定 subject 计算 bucket，默认百分比 `0` 始终返回 Go，异常 scope、target、salt 或空 subject 直接 fail closed；它当前只提供纯策略与测试，不接入 Gateway 投递副作用。只有性能收益、双 group checkpoint、authority fence、回切 receipt 和灰度观察证据齐备后，才允许将该策略接入实际路由。
+
 ## Compose profile
 
 `deploy/compose/docker-compose.microservices.yml` 默认继续使用 Go authority，`realtime-cpp` profile 默认不创建 C++ 服务。启用 profile 只提供独立的 C++ primary 进程；操作员仍需同时向 Gateway 和 profile 提供 `DIPOLE_REALTIME_DELIVERY=cpp`、`DIPOLE_DELIVERY_PRIMARY_ENABLED=true`、fencing epoch 以及维护窗口决策。profile 使用 Kafka primary group、Redis authority fencing 和 Gateway mTLS node transport，缺少一致切换配置时保持 fail closed。回滚时移除 profile，恢复 `DIPOLE_REALTIME_DELIVERY=go` 与 primary RPC disabled；共享环境切换仍以 C3 checkpoint 和回切 receipt 为准。
