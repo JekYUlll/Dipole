@@ -351,6 +351,7 @@
 - **验证门槛：** `scripts/check-compose.sh`、`scripts/check-service-layout.sh`、Go backend 构建、逐服务镜像内容隔离检查和 `scripts/smoke-microservice-isolated-images.sh` 的独立核心栈 health/readiness 演练必须通过；Search profile 的独立运行时 smoke 也必须通过；legacy Compose 共享镜像和 authority 行为保持可回滚。
 - **本轮进展：** 2026-08-29 通过 `SMOKE_SEARCH_PROFILE=1` 完成独立 Search 运行时 smoke，Elasticsearch、Search Indexer、Search 及核心依赖链均通过 health/readiness；消息写入、Kafka ownership 和生产回滚切换仍未完成。
 - **本轮进展：** 2026-08-29 `smoke-sync-write-ownership.sh` 与 `smoke-sync-projector.sh` 已通过，补齐真实 MySQL atomic/projector ownership、三节点 Kafka backlog/实时事件、retry/DLQ 和 projector 收敛证据；候选镜像经 Gateway 的端到端消息发送及生产回滚仍待完成。
+- **本轮进展：** 2026-08-30 `smoke-sync-write-ownership.sh` 新增 `SMOKE_REPORT_FILE` receipt，绑定 revision/dirty、projector 写入与 atomic 回滚模式、退出状态及隔离容器清理结果；Remote GPU 在 GPU 任务启动期间完成真实 MySQL 最小权限验证，GPU 任务未被触碰，receipt 为 `0600`。该证据仍限于开发候选，生产 Kafka ownership 切换与共享环境回滚 receipt 继续待完成。
 - **本轮进展：** 2026-08-29 使用 `SMOKE_MESSAGE_FLOW=1` 完成候选镜像端到端消息 smoke：注册/登录、好友关系、WebSocket 发送，以及 Message/Outbox/目标用户 Inbox 持久化均通过；重复请求、Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 扩展候选消息 smoke，按 `before_seq=0` 和 `after_seq=0` 通过 Gateway 读取同一消息，并校验返回持久化 `message_seq`；历史读取证据已覆盖，Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 在已提交 revision `fe84b7b` 上重建七个候选镜像，逐项核对同一 revision、`io.dipole.source.dirty=false` 和服务二进制标签；独立消息流程再次通过，候选供应链与 Timeline 读取证据已闭合，Kafka authority 和生产回滚仍待完成。

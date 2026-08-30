@@ -1503,6 +1503,7 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-08-30：Sync/Message Inbox ownership smoke 新增可选 `SMOKE_REPORT_FILE` 机器可读 receipt，绑定源码 revision、dirty 状态、projector/atomic 模式、非破坏性回滚动作、退出状态和临时容器清理结果；报告以 `0600` 权限原子写入，默认路径与 GPU 并行策略保持不变。
 - 2026-08-30：完成 Multipart fault-matrix 联合验收：Remote GPU 使用官方 Prometheus `3.5.0` `promtool` 通过告警规则与 firing timeline、确定性 Go contract、真实 MinIO/Redis reconciliation 和 Redis restart smoke；GPU 任务前后未变化，临时资源已清理。A7 默认预签名切流、生命周期指标和 Alertmanager 联调继续保留为后续工作。
 - 2026-08-30：新增 Multipart fault-matrix 聚合入口，统一执行 Go contract、promtool、真实 MinIO/Redis reconciliation 和 Redis restart smoke；Remote GPU 已通过确定性与两组真实存储矩阵，promtool 首次镜像拉取因 registry 无进展中止，未伪造完整矩阵结论。
 - 2026-08-30：预签名 Multipart Gateway 代理接入按客户端地址的文件上传限流；超限请求在进入 MinIO 代理前返回 `429` 与 `Retry-After`，允许请求保持签名校验和既有超时边界。
