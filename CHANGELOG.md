@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 为 `45a80b3d475f4ba0317addab9d11ee0cb93397f2` 生成不可变 Web Sync Shadow bundle `/tmp/dipole-dev-horeb-web-sync-shadow-45a80b3d.tar`，SHA-256 为 `0c458602868170dbb45933f1c48fa0f9ba22c5978d6d79cb2d007cb0344bfdd5`。过程未启动 Compose、Prometheus、客户端流量或 GPU 任务；它仅为后续 24 小时观察提供可复核输入。
+
 - 2026-08-31：更新为 Signal Link 品牌体系：实心端点、空心端点与连接轨迹取代旧的蓝色成对极形，统一用于主字标、IM、Agent 和紧凑应用图标；运行时行为不受影响。
 
 - 2026-08-31：新增默认关闭的 Agent `conversation.search` 契约。Core Agent Capability 从 Task/Run 恢复身份后，经可注入 Search port 查询，要求独立 permission 与 `conversation/*/read` scope；RPC/TS 双端拒绝客户端 principal、超限输入和冲突 evidence，并限制 query、结果数及正文。默认 composition 未注入 Search port，生产 Elasticsearch 与 Runtime 注册继续关闭。
