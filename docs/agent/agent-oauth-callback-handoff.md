@@ -64,6 +64,9 @@ stateDiagram-v2
 | Agent Runtime | KMS decrypt, token exchange, refresh/revoke lifecycle | browser callback authentication, plaintext persistence |
 | Kafka / Temporal | low-sensitivity progress reference only | code, verifier, token or ciphertext payload |
 
+The exact dual-channel transport and failure contract is maintained in
+[`contracts/agent-oauth-callback-handoff/v1/TRANSPORT.md`](../../contracts/agent-oauth-callback-handoff/v1/TRANSPORT.md). It is a release prerequisite, not evidence that a callback route exists.
+
 ## Release Prerequisites
 
 1. Add a versioned callback-correlation contract with browser-binding expiry and mix-up issuer verification.

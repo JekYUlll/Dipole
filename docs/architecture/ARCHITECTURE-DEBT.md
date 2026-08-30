@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：OAuth callback handoff 的 transport release gate 已拆分 Gateway control HTTP 与 Runtime-to-Core mTLS 两条信任链。前者仅承载 handoff ID 与 correlation，后者由 Core 恢复 owner/binding 并执行条件 lease transition；敏感授权材料禁止进入两条链以外的事件、日志和持久元数据。代码接线、provider retry owner review 与故障演练仍未完成。
+
 - 2026-08-31：Runtime private-key source 已以未装配 Node 文件适配器落地：必须明确映射 key ID、绝对路径、owner 和私有权限，私钥仅在单个 callback 内以 Buffer 传递并在 finally 清零，RSA PKCS#8 modulus 小于 2048 位直接拒绝。它尚未读入 Runtime config、Compose、Gateway 或任何 OAuth HTTP/RPC 路径，默认 surface 不变。
 
 - 2026-08-31：OAuth callback handoff envelope v1 已提供 Gateway public-key seal 与 Runtime private-key open 原语。每个 handoff 使用独立 AES-256-GCM data key，Runtime public key 只用于 RSA-OAEP-SHA256 包装；AAD 同时绑定 handoff、transaction、owner、issuer、redirect、code digest、key ID 和 RFC3339 毫秒 expiry。代码仍未读取/装配 Runtime key、未写 handoff Store、未注册 RPC/HTTP 或换码，默认 OAuth surface 不变。

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：固定 Agent OAuth callback handoff 的双通道 transport contract：Gateway 到 Runtime 的私有 control HTTP 仅通知 handoff ID；Runtime 到 Core 使用 `dipole-agent` mTLS 领取、完成或释放 lease。契约明确禁止 code/state/verifier/ciphertext/key/token 进入 HTTP、Kafka、Temporal、日志或审计，并列出重复通知、重启、Core outage 和过期 lease 的验收矩阵。该项未注册任何 route 或 RPC。
+
 - 2026-08-31：Agent Runtime 增加未装配的 OAuth callback private-key source。它仅接受显式 key ID 到绝对路径映射，每次使用检查目录/文件 owner、权限、链接和大小，确认 PKCS#8 RSA modulus 至少 2048 位后才在 callback 内短时提供 Buffer，并在结束时清零。Runtime 默认启动、Gateway、callback route 与 token exchange 均未读取该 source。
 
 - 2026-08-31：增加 Agent OAuth callback Runtime envelope v1。Gateway 仅用 Runtime RSA public key 通过 OAEP-SHA256 封装每次 handoff 的 AES-256-GCM data key；授权码密文以完整 handoff binding 作为 AAD，Runtime 只用私钥解封并重算 code SHA-256。Go/TypeScript 各自对版本、base64url、长度、RSA/OAEP、AAD、摘要和毫秒时间 fail closed。该原语未接入 callback route、Store writer、Runtime claim、code exchange 或 token 持久化。
