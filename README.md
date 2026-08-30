@@ -87,6 +87,7 @@ npm run build
 - [数据与存储](docs/README.md#数据与存储)
 - [部署与运行](docs/README.md#部署与运行)
 - [Agent Runtime](docs/README.md#agent-runtime)
+- [跨服务契约](contracts/README.md)
 - [前端设计](docs/README.md#前端设计)
 - [性能记录](docs/README.md#性能记录)
 - [更新日志](CHANGELOG.md)
