@@ -152,6 +152,7 @@ Vue 实现位于 `frontend/src/components/AgentTaskTimeline.vue`，路由为 `/a
 - `Agent Task Create/State Matrix`：覆盖 idle、validation error、submitting、accepted/redirecting 与 unavailable；只有严格 accepted 回包才允许跳转 Timeline。
 - `Component/Agent Task Goal Field`、`Component/Agent Task Request Badge` 与 `Component/Agent Task Submit State`：创建页及后续受控入口复用的低敏组件。
 - `frontend/e2e/agent-task-create.visual.spec.ts`：以 Chromium 认证 fixture 固定初始空表单的 canonical 截图；Playwright 启动进程才显式开启创建页开关，常规构建继续关闭入口。
+- 聊天主界面仅在创建页和 Timeline 双开关同时启用时显示创建入口；入口只导航到已批准的创建页，不传递身份、配置或任务参数。
 
 批准的 2x 预览位于 `exports/agent-task-create-v1/`。Vue 实现位于 `frontend/src/components/AgentTaskCreate.vue`，路由为 `/agent/tasks/new`；只有 `VITE_AGENT_TASK_CREATE_ENABLED=true` 且 Timeline 开关同时开启时才可访问。页面只提交本地 `client_request_id` 与目标文本，principal、tenant、Agent、Tool、Memory 和 Runtime 控制均由服务端恢复或固定；设计与页面均不表达 active authority、Compose、Kafka 或 Temporal 已启用。
 

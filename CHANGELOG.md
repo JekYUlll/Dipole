@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：默认关闭的 Agent Task 创建页现提供 IM 主界面导航入口。入口同时要求创建页和 Timeline feature flag，点击只跳转受现有路由守卫保护的 `/agent/tasks/new`；不携带身份、配置或任务参数，也不启用 Runtime/Tool/外部服务。
+
 - 2026-08-31：Agent Runtime 增加 `test:temporal:integration` 门禁，固定在内存 Temporal Test Server 复核幂等启动、Worker 恢复、审批、Elicitation、取消、步数预算、后效重放和 reviewed Memory receipt 重试。该门禁不连接 Compose、Kafka、Core、MySQL 或 active authority。
 
 - 2026-08-31：收敛 Agent Task Timeline 单元测试的 RouterLink 依赖。统一挂载 helper 为全部时间线状态注入路由桩，消除认证页面测试的组件解析警告；不改变 Timeline 路由、Artifact 链接、Capability 或默认关闭状态。

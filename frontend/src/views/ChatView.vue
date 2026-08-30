@@ -19,6 +19,17 @@
         <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">
           <IconGroups :size="22" />
         </button>
+        <button
+          v-if="agentTaskCreateEnabled"
+          class="icon-btn"
+          type="button"
+          title="创建 Agent 任务"
+          aria-label="创建 Agent 任务"
+          data-agent-task-create-entry
+          @click="router.push({ name: 'agent-task-create' })"
+        >
+          <IconPlus :size="22" />
+        </button>
         <button class="icon-btn" type="button" title="设置" aria-label="打开设置" @click="router.push({ name: 'settings' })">
           <IconSettings :size="22" />
         </button>
@@ -591,7 +602,7 @@ import {
   IconChat, IconContacts, IconGroups, IconLogout,
   IconInfo, IconBack, IconPaperclip, IconSend,
   IconDownload, IconClose, IconAlertCircle,
-  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch, IconSettings,
+  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch, IconSettings, IconPlus,
 } from '@/components/icons'
 import SearchWorkspace from '@/components/SearchWorkspace.vue'
 import { useRouter } from 'vue-router'
@@ -608,6 +619,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const chat = useChatStore()
 const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
+const agentTaskCreateEnabled = import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED === 'true' && import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
 const presignedMultipartEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_ENABLED === 'true'
 const presignedMultipartProxyEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_PROXY_ENABLED === 'true'
 

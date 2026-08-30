@@ -17,3 +17,11 @@ test('keeps the default-off task creation surface aligned with the Pencil baseli
     animations: 'disabled',
   })
 })
+
+test('exposes the creation route through the authenticated IM navigation only when its flags are enabled', async ({ page }) => {
+  await page.goto('/app/')
+
+  await page.getByRole('button', { name: '创建 Agent 任务' }).click()
+  await expect(page).toHaveURL(/\/app\/agent\/tasks\/new$/)
+  await expect(page.getByRole('heading', { name: '创建 Agent 任务' })).toBeVisible()
+})
