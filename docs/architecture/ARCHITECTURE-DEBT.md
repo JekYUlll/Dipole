@@ -572,6 +572,7 @@
 
 - **优先级：** P1
 - **状态：** 处理中
+- **2026-08-30 进展：** `project-guardian-synthetic-corpus` 已把四类 Project Guardian 关注事件与四类干扰事件收口为版本化、双 reviewer agreement 的低敏基线。它使用固定 fixture 标识，回归测试同时验证 corpus/review hash 绑定与规则候选的 precision/recall/cost 门槛；Remote GPU Node 22 已通过 Agent Runtime `133` 个测试文件、`695` 项、typecheck 与 build。真实 Task/Run、人工受控语料、retrieval relevance、模型成本分位与共享观察窗口仍未具备，状态保持处理中。
 - **2026-08-30 验证：** Context calibration fixture 已通过 5 类合成样本并生成 hash-bound report；该结果不构成真实 Task、模型和人工语料证据，不能开启 Agent active authority 或生产上下文灰度。
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Eval、Shadow 晋级、Memory/Retrieval、模型与 Prompt 发布

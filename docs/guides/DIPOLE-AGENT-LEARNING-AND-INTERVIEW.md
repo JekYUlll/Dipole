@@ -18,6 +18,17 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | reviewed Memory receipt、mTLS、MySQL retry | 已验证（隔离 Remote GPU） | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh` |
 | External MCP Shadow 完整链路 | 已验证（隔离 Remote GPU） | `scripts/drill-agent-external-mcp-shadow.sh` |
 | `promotion_active` 与外部 MCP | 默认关闭 | [Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md) |
+| Project Guardian 预筛评测基线 | 已验证（合成离线） | `contracts/agent-evals/v1/project-guardian-synthetic-corpus.json` |
+
+#### Project Guardian Evaluation Baseline
+
+- **状态：** 已验证（合成离线）
+- **简历句：** 为 IM-native Project Guardian 建立版本化事件预筛语料，覆盖承诺、决策、风险和缺失负责人等关注状态，并以双 reviewer agreement 与 deterministic precision/recall/cost evaluator 固定回归基线。
+- **演示：** 运行 `npm run eval:prefilter-review -- --corpus=../../contracts/agent-evals/v1/project-guardian-synthetic-corpus.json --review=../../contracts/agent-evals/v1/project-guardian-synthetic-review.json`；展示 hash-bound 的 agreement 报告和规则候选评测。
+- **证据：** `services/agent-runtime/src/evals/project-guardian-synthetic-corpus.test.ts`、[Agent Evaluation Contract](../../contracts/agent-evals/v1/README.md)。
+- **追问：** “为什么仍然不启用 subscription Runtime？” 当前是低敏 synthetic baseline，只说明评测协议、回归数据与门禁可重复；真实用户语料、候选模型效果、成本阈值和共享 shadow 观察需单独取证。
+- **限制：** 不含真实消息、身份、任务执行、模型输出或在线流量，不能作为 production accuracy、成本或 active authority 的表述依据。
+- **下一步：** 通过受控 owner approval 归档真实 Project Guardian corpus 和 retrieval relevance，再依次完成离线候选、shadow 观察及灰度回滚证据。
 
 #### Durable Memory Promotion
 
