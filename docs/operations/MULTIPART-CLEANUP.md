@@ -22,6 +22,21 @@ go run ./cmd/tools/multipart-cleanup --older-than=24h --redis-orphans --redis-ma
 
 `redis.complete=false` 表示本次扫描达到上限或发生依赖错误，必须调整 `--redis-max-keys` 或修复依赖后重新预览；禁止在不完整报告上执行清理。
 
+## Prometheus 文本指标
+
+可以在 reconciliation 任务中选择性写出 Prometheus textfile collector 指标：
+
+```bash
+go run ./cmd/tools/multipart-cleanup \
+  --reconcile \
+  --metrics-output=/var/lib/node_exporter/textfile_collector/dipole_multipart_reconciliation.prom
+```
+
+该文件使用同目录临时文件写入并原子替换，避免采集到半份报告。指标只包含固定名称和低基数数值，不写入 `session_id`、对象键或其他上传标识。`--metrics-output` 只能与 `--reconcile` 一起使用，默认不会创建指标文件；JSON 报告和 `--reconcile-fail-on-drift` 的退出语义保持不变。
+
+指标由定时 reconciliation 任务刷新。部署时应同时监控 textfile 文件的更新时间或
+`dipole_multipart_reconciliation_last_run_timestamp_seconds`，避免任务停止后继续使用旧数据。
+
 ## 执行
 
 确认维护窗口、对象前缀和报告后，才允许执行：
