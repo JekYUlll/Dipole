@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Runtime 增加未装配 control service adapter，将 Gateway 已认证的 handoff ID/correlation 映射到固定 Runtime lease owner 的 executor 请求；optional field 不显式传递 `undefined`，维持 exact optional type 约束。adapter 不接收用户主体或授权码，`index.ts` 和默认 listener 均未装配。
+
 - 2026-08-31：Runtime 增加默认未装配的 OAuth callback handoff executor 组合 seam，覆盖 claim、key open、AAD binding、processor 和 complete/release。只有解封前失败或显式 retryable 结果会释放 lease；未知 processor 结果保持 lease，防止重复外部副作用。它不含 provider 实现，`index.ts`、配置和 HTTP route 均未接线。
 
 - 2026-08-31：Core claim 响应新增仅 Runtime mTLS 可见的 `owner_user_id`，补足 envelope AAD 的 owner binding；Runtime client 在解封前强制校验该字段。该兼容字段不进入 Gateway control HTTP、浏览器、Kafka、Temporal、日志或审计。executor、key open、code exchange、token lifecycle、browser binding 与 callback route 仍未装配。

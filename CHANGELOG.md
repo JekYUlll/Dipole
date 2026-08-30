@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback control service adapter。它将 Gateway 已认证的 handoff ID 与 correlation 交给 executor，并使用进程固定且校验过的 Runtime lease owner；不接受 principal、authorization code 或配置自定义身份。`index.ts` 不构造该 adapter，默认网络行为不变。
+
 - 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff executor。它串联 claim、Runtime key source、AAD 解封与 complete/release：仅解封前失败或 processor 明确返回 retryable 时释放 lease；processor 异常和完成后 terminal 失败保留 lease，避免副作用不确定时重复换码。该 seam 不执行 provider exchange，`index.ts` 未构造它。
 
 - 2026-08-31：OAuth callback handoff claim 响应增加 Runtime-only `owner_user_id` binding。该字段只在 `dipole-agent` mTLS 领取链返回，用于重建 AES-GCM envelope AAD；Gateway control HTTP、浏览器、Kafka、Temporal、日志和审计均不接触它。Runtime client 对字段缺失或格式异常失败关闭，默认 callback 配置保持关闭。
