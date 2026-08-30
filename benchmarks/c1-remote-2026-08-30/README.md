@@ -17,6 +17,8 @@
 
 容量观察场景：100 个在线用户、每用户 4 条消息，`400/400` 消息接受、持久化和投递，投递率 `100%`；消息端到端延迟 P50/P95/P99 为 `149/178.04/243.01ms`，Kafka lag 采样为 `0`。相比 20 用户并发，延迟上升，后续需要继续测试更高并发和故障场景。
 
+节点恢复场景：对 `dipole-node2` 执行 stop/start；约 `505ms` 观察到不可用，约 `16.0s` 恢复健康，consumer group 恢复并稳定为 `72` 个成员。恢复后 40/40 消息接受、持久化和投递，Kafka lag 为 `0`，PID 已更换且镜像 revision 保持一致。
+
 ## Limits
 
 该结果用于确认候选拓扑和消息链路在低负载下可运行，不代表最大吞吐、长连接容量、热群 fan-out 或故障恢复能力。后续 C1 基线应在相同提交绑定、资源隔离和指标采样条件下扩大矩阵。
@@ -35,3 +37,8 @@
 - `c1-remote-concurrent100.baseline.md`：100 用户容量观察报告
 - `c1-remote-concurrent100.baseline.json`：100 用户原始汇总数据
 - `c1-remote-concurrent100.log`：100 用户运行日志
+- `c1-node2-recovery-dd46e35b.recovery-evidence.json`：节点故障原始证据
+- `c1-node2-recovery-dd46e35b.recovery-report.json`：节点恢复校验报告
+- `c1-node2-recovery-dd46e35b-post.baseline.json`：恢复后消息基线
+- `c1-node2-recovery-dd46e35b-post.baseline.md`：恢复后可读基线
+- `c1-node2-recovery-dd46e35b-post.log`：恢复后运行日志
