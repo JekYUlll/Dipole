@@ -1220,3 +1220,4 @@
 - **状态：** 改进已合入；真实 MinIO/Redis 故障矩阵仍待 Remote GPU 维护窗口。
 - **约束：** MinIO listing error 必须使 cleanup report `complete=false` 并 fail closed；dry-run 默认保持只读，执行模式仍要求显式确认。
 - **证据：** `internal/operations/storage/multipart_cleanup_test.go` 覆盖列举错误、部分候选和失败返回语义。
+- 2026-08-30：Eino alpha spike 的总计划状态已与 `EINO-V010-ALPHA-SPIKE.md` 对齐；Session/Checkpoint/Background Task/Notification/Tool execution 仅作为 adapter 参考，Temporal、Dipole Capability、owner scope 和审计仍保持权威边界。
