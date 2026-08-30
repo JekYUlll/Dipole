@@ -539,7 +539,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 与 Go Delivery 并行消费 shadow 流量，按同一 workload 比较投影、节点观察与最终 lag，不重复投递客户端。
 - [x] 提供 `scripts/check-cpp-realtime-container.sh` 容器门禁，复用 Ubuntu 24.04 Dockerfile 并绑定 revision/created/dirty provenance，覆盖宿主机 gRPC C++ 依赖缺失场景。
 - [x] 在仓库自带 Ubuntu 24.04 构建镜像中复核 C++ 依赖、编译和 14 项 CTest；宿主机 gRPC C++ 缺失时保留容器构建作为可复现验证路径。
-- [ ] 通过压测与故障注入证明收益；C3 故障注入已通过，但 2026-08-29 projection microbenchmark 的 C++/Go ops ratio 为 `0.10`，低于 `1.0` 晋级门槛，因此保留 Go projection 并停止当前 C++ projection 替换；只有新的可复现 workload 证明收益后才重新评估。
+- [ ] 通过压测证明 C++ 数据面收益；2026-08-29 projection microbenchmark 的 C++/Go ops ratio 为 `0.10`，低于 `1.0` 晋级门槛，因此保留 Go projection 并停止当前 C++ projection 替换；只有新的可复现 workload 证明收益后才重新评估。
 
 ### C3：灰度切换与 Gateway 评估
 
@@ -563,7 +563,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
     - [x] 用隔离真实 Kafka/Redis 与 race harness 完成 controller crash、Kafka member loss/rejoin、Redis outage/recovery 的 forward cutover 演练并归档证据。
     - [x] 完成真实 expired-freeze 自动回切，强制 source-node frozen proof 后恢复 Go active epoch 2。
     - [x] 增加持续续期调度，并完成 C++ primary authority 演练。
-- [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group。
+- [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group；C3 的 authority、自动回切和故障注入证据已完成，灰度发布仍待独立性能收益门禁。
 - [x] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练；C3 真实隔离演练覆盖 Controller/C++ 进程替换、Redis outage、Kafka member loss/rejoin、过期 freeze 自动回切和 primary 停止恢复，证据归档于 `/tmp/dipole-c3-cutover-fault-report.json` 与 `/tmp/dipole-c3-cutover-fault-report-controller.json`，报告绑定当前 revision 和依赖/二进制哈希。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。
 
