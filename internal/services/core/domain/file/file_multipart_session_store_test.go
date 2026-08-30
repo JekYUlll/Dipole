@@ -75,6 +75,28 @@ func TestRedisMultipartSessionTTLExpiresMetadataAndPartsTogether(t *testing.T) {
 	}
 }
 
+func TestRedisMultipartSessionHasPartReportsExistingPart(t *testing.T) {
+	server := miniredis.RunT(t)
+	previousRedis := platformCache.RDB
+	platformCache.RDB = redis.NewClient(&redis.Options{Addr: server.Addr()})
+	t.Cleanup(func() {
+		_ = platformCache.RDB.Close()
+		platformCache.RDB = previousRedis
+	})
+
+	ctx := context.Background()
+	store := &redisMultipartUploadSessionStore{}
+	if err := store.SavePart(ctx, "session-presence", &platformStorage.UploadedPart{PartNumber: 2, ETag: "etag", Size: 5}, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if present, err := store.HasPart(ctx, "session-presence", 2); err != nil || !present {
+		t.Fatalf("existing part was not detected: present=%t err=%v", present, err)
+	}
+	if present, err := store.HasPart(ctx, "session-presence", 1); err != nil || present {
+		t.Fatalf("missing part was detected: present=%t err=%v", present, err)
+	}
+}
+
 func TestRedisMultipartSessionCompletionUsesIndependentTTL(t *testing.T) {
 	server := miniredis.RunT(t)
 	previousRedis := platformCache.RDB

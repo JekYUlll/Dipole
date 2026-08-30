@@ -514,6 +514,12 @@ func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNu
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	if presence, ok := s.sessionStore.(multipartPartPresence); ok {
+		if retry, presenceErr := presence.HasPart(ctx, session.SessionID, partNumber); presenceErr == nil && retry {
+			// A repeated part number is the server-visible signal for a client retry.
+			s.multipartMetrics.ObserveOutcome("upload_part", "retry")
+		}
+	}
 
 	hash := sha256.New()
 	hashedBody := &countingHashReader{
