@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent OAuth 增加短时授权事务记录契约。记录只保存 state SHA-256 和 AES-256-GCM 密封的 PKCE verifier，并用 transaction、owner、issuer、redirect URI、state digest 与 expiry 作为 AAD；回调必须由后续 Core/SQLC Store 原子按 owner/state/expiry consume 后才能解封。当前没有内存 fallback、callback 路由、换码、令牌保存或 Runtime 默认接线。
+
 - 2026-08-31：Agent Runtime 的 OAuth foundation 新增默认关闭、注入式的 RFC 8414 metadata discovery client。请求只访问由 canonical issuer 派生的 HTTPS URL，固定 `redirect: manual`、10 秒上限、64 KiB 响应上限和 JSON Content-Type；重定向、状态错误、网络失败、超限或无效元数据均 fail closed。该库未接入 Runtime 默认路径，未保存 state/verifier，未执行 code exchange 或 refresh token 操作。
 
 - 2026-08-31：Agent Runtime 增加默认关闭的 OAuth discovery/PKCE foundation：严格派生 RFC 8414 authorization-server metadata URI，要求 exact issuer、HTTPS 端点和 `S256`，并生成不落 URL 的 code verifier、challenge 与 state。该切片不执行 discovery 网络请求、不保存授权材料、不交换 code、不注册客户端，也不改变 MCP Runtime 默认关闭状态。

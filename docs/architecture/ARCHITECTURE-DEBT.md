@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：OAuth 授权事务已定义持久记录安全契约：仅 state SHA-256 与 AES-256-GCM 密封 verifier 可落库，AAD 固定 transaction/owner/issuer/callback/state digest/expiry。SQLC Store 必须以 owner、state digest、expiry 和未消费状态进行原子消费；当前没有内存 fallback、callback 或 token exchange。受保护 Store、密钥轮换、RFC 9728、客户端注册、refresh/revoke 与共享环境演练继续待办。
+
 - 2026-08-31：OAuth authorization-server metadata discovery 已具备注入式、默认关闭的 RFC 8414 HTTP client：精确 issuer-derived URL、`redirect: manual`、HTTPS、JSON、10 秒和 64 KiB 响应限制，错误统一 fail closed。该函数未接入 Runtime composition；RFC 9728 resource metadata、owner-scoped state/verifier、callback、code exchange、客户端注册、refresh/revoke 与共享环境演练仍未完成。
 
 - 2026-08-31：交互式 Agent Task 创建已从认证 IM 主界面获得默认关闭的导航入口。入口要求创建与 Timeline 双 feature flag，且只导航到既有 guarded route；principal、tenant、Agent、Capability、Memory 与 Runtime 仍由后端恢复或固定。共享环境切流与 active authority 继续由 AD-009 管理。

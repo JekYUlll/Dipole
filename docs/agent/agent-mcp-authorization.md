@@ -54,4 +54,6 @@ Content-Type: application/json
 
 面向通用 MCP Host 前仍需实现 RFC 9728 Protected Resource Metadata、OAuth 2.1 Authorization Code + PKCE 和客户端注册策略。`oauth-discovery-pkce.ts` 已提供默认关闭的基础：按 RFC 8414 派生 authorization-server metadata URI，要求 issuer 精确匹配、HTTPS 与 `S256`，并只生成 Authorization Code + PKCE 的 verifier/challenge/state 材料。`discoverAuthorizationServerMetadata` 仅通过调用方显式注入的 fetch 访问该精确 URL，固定禁止重定向，限制超时、64 KiB JSON 响应和错误状态；它没有接入 Runtime 默认 composition。
 
-后续接线必须将 state 与 verifier 置于短时、owner-scoped 的受保护存储，并在 callback 前复核 issuer、redirect URI、state、PKCE 与 resource binding；不得将它们写入 Profile、Temporal history、Context、Tool 参数、审计或日志。当前仍缺少 Protected Resource Metadata、callback、token code exchange、客户端注册、refresh 与撤销流程。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
+`oauth-authorization-transaction.ts` 已定义后续持久化的短时事务记录：state 仅保留 SHA-256，verifier 使用 AES-256-GCM 密封，AAD 绑定 transaction、owner、issuer、redirect URI、state digest 与绝对 expiry。Store 必须按 transaction、owner、state digest、未过期和未消费条件原子 consume，再允许解封 verifier；禁止内存 fallback。不得将 state、verifier、authorization code 或 token 写入 Profile、Temporal history、Context、Tool 参数、审计或日志。
+
+当前仍缺少受保护的 SQLC Store、callback、RFC 9728 Protected Resource Metadata、token code exchange、客户端注册、refresh 与撤销流程。外部 MCP Server 的 Profile/凭据边界见 `docs/agent/agent-external-mcp.md`；生产 Secret Provider、write/destructive Capability、Elicitation URL mode 继续由 `AD-037` 管理。
