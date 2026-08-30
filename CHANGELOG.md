@@ -16,6 +16,8 @@
 
 - 2026-08-30：修复直接调用的 MinIO Multipart smoke 脚本忽略 `DIPOLE_REMOTE_GO_ROOT` 的问题；显式用户态 Go 现在会经过可执行性校验并优先加入 `PATH`，默认固定 `GOTOOLCHAIN=local`，避免远端测试意外下载工具链。14 项远程入口契约测试、Remote GPU 两项真实 MinIO smoke 均通过。
 
+- 2026-08-30：确认 Remote GPU 并行启动策略：开发阶段允许在已有 GPU 任务运行时启动隔离的 CPU/容器型 Dipole 构建、Smoke、集成测试和压力测试；活动登录会话仍默认保护，确需 GPU 的任务必须单独声明设备、显存预算和冲突检查。该授权不允许停止、重启、迁移或修改其他 GPU 任务。
+
 - 2026-08-30：Web Multipart 上传增加 `AbortSignal` 传播，覆盖 presigned PUT、relay API、part 重试和页面卸载；取消后停止新请求并保留可恢复 session，避免页面销毁后的无效重试。默认 relay/presigned 策略保持不变。
 
 - 2026-08-30：强化 Multipart 中断恢复集成验证：中断流使用同一 part 编号重试后完成上传并校验最终对象内容，确认失败尝试不会污染 Complete 结果；完整浏览器断网、过期会话和网关限流矩阵仍待完成。
