@@ -1138,6 +1138,7 @@
 - **C1 100 用户容量观察：** 2026-08-30 在同一候选镜像上完成 100 个在线用户、400 条消息验证；接受、持久化和投递均为 `400/400`，消息端到端 P50/P95/P99 为 `149/178.04/243.01ms`，Kafka lag 采样为 `0`。相较 20 用户并发延迟上升，仍需更高并发、资源拐点、节点故障、Kafka 延迟和自动回切证据。
 - **C1 recovery drill 路径修复：** 2026-08-30 发现 recovery drill 仍使用旧的 `--project-directory`，会使候选 Compose 相对挂载路径与启动脚本不一致；已移除该参数并加入契约测试，节点 stop/start 故障演练仍需在新提交绑定候选镜像上重新采集。
 - **C1 单节点恢复证据：** 2026-08-30 在提交 `dd46e35b` 候选镜像上停止并恢复 `dipole-node2`；约 `505ms` 观察到健康端点不可用，约 `16.0s` 恢复，consumer group 稳定成员数为 `72`，恢复后 40/40 消息完成接受、持久化和投递且 Kafka lag 为 `0`。PID 已变化、镜像和 revision 未漂移；该证据覆盖单节点 stop/start，Kafka broker、Redis、热群和自动回切仍待单独演练。
+- **C1 Kafka/Redis 组件故障证据：** 2026-08-30 在 Remote GPU 隔离环境完成三 broker Kafka consumer rebalance 和三节点 Redis Sentinel failover；Kafka member 退出后 6 个 partition 接管且 lag 为 `0`，Redis master 停止后约 4 秒完成切换，客户端读写、Pub/Sub、Presence、热群和限流状态恢复，旧 master 重新加入为 replica。该证据属于组件级验证，候选业务拓扑的 broker/Redis 自动回切、背压和端到端恢复仍待完成。Redis 探针镜像已改为可配置，默认使用远端已有的 `alpine:3.22`，详见 `benchmarks/c1-remote-2026-08-30/c1-component-fault-evidence.md`。
 - **构建上下文优化：** Go 服务镜像 Dockerfile 改为从 `dist/` 上下文复制指定二进制，构建脚本不再为每个镜像发送根目录上下文；契约测试覆盖上下文和 COPY 关系。Agent/C++ 镜像上下文保持独立，远端实际构建需进一步确认上下文大小与耗时收益。
 - **变量修复证据：** 首次远端实测发现上下文切换代码引用未定义的大写变量 `ROOT_DIR`，在镜像构建前 fail-closed；已改为脚本实际定义的 `root_dir`，6 项入口契约/语法测试通过，未产生错误镜像或容器。下一次远端 build 负责确认最小上下文实测值。
 - **TencentCloud 占用证据：** 同次只读核验发现已有 `nkdoing-app` 容器占用公网 `80`、`nkdoing-postgres` 绑定本机 `5432`，宿主 MySQL 监听 `3306`；因此 TencentCloud 只能在明确端口、Compose project、卷和业务影响隔离后执行轻量 smoke，不能视为干净测试主机。
