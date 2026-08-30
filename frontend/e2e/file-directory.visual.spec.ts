@@ -32,7 +32,7 @@ test.beforeEach(async ({ page: browserPage, browserName }) => {
 })
 
 test('keeps the owner-scoped File Directory aligned with the Pencil disclosure boundary', async ({ page: browserPage }) => {
-  await browserPage.route('**/api/v1/files?*', route => ok(route, page))
+  await browserPage.route(/\/api\/v1\/files(?:\?.*)?$/, route => ok(route, page))
 
   await browserPage.goto('/app/files')
   await expect(browserPage.locator('[data-file-state="ready"]')).toBeVisible()
