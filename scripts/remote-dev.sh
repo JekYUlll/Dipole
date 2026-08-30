@@ -7,13 +7,14 @@ REMOTE_ROOT="${DIPOLE_REMOTE_ROOT:-/home/admin1/workspaces/Dipole}"
 REMOTE_BRANCH="${DIPOLE_REMOTE_BRANCH:-dipole-dev/${USER:-developer}}"
 REMOTE_PROJECT="${DIPOLE_REMOTE_PROJECT:-dipole-dev-${USER:-developer}}"
 REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose.microservices.yml}"
+REMOTE_GO_ROOT="${DIPOLE_REMOTE_GO_ROOT:-}"
 
 usage() {
   cat <<'EOF'
 Usage: scripts/remote-dev.sh <sync|preflight|test|build|smoke-lite|bench|down>
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
-  DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE.
+  DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT.
   Set DIPOLE_REMOTE_ALLOW_ACTIVE=1 only during an explicitly approved window.
 EOF
 }
@@ -63,9 +64,13 @@ REMOTE_GUARD
 
 run_remote() {
   local action="$1"
-  remote "${action}" <<REMOTE_RUN
+  remote "${action}" "${REMOTE_GO_ROOT}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
+go_root="\${4:-}"
+if [[ -n "\$go_root" && -x "\$go_root/bin/go" ]]; then
+  export PATH="\$go_root/bin:\$PATH"
+fi
 cd "\$root"
 export COMPOSE_PROJECT_NAME="\$project"
 export DIPOLE_HOST_PROFILE=remote-gpu
