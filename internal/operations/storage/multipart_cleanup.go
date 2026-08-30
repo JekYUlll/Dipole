@@ -2,6 +2,7 @@ package storageops
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -22,10 +23,12 @@ type MultipartCleanupReport struct {
 	Prefix     string                     `json:"prefix"`
 	Cutoff     time.Time                  `json:"cutoff"`
 	Execute    bool                       `json:"execute"`
+	Complete   bool                       `json:"complete"`
 	Scanned    int                        `json:"scanned"`
 	Selected   int                        `json:"selected"`
 	Aborted    int                        `json:"aborted"`
 	Failed     int                        `json:"failed"`
+	Errors     []string                   `json:"errors,omitempty"`
 	Candidates []MultipartUploadCandidate `json:"candidates"`
 }
 
@@ -36,12 +39,18 @@ type MultipartClient interface {
 
 func RunMultipartCleanup(ctx context.Context, client MultipartClient, bucket, prefix string, cutoff time.Time, execute bool) MultipartCleanupReport {
 	report := MultipartCleanupReport{
-		Bucket: bucket, Prefix: prefix, Cutoff: cutoff.UTC(), Execute: execute,
+		Bucket: bucket, Prefix: prefix, Cutoff: cutoff.UTC(), Execute: execute, Complete: true,
 		Candidates: make([]MultipartUploadCandidate, 0),
 	}
 	for upload := range client.ListIncompleteUploads(ctx, bucket, prefix, true) {
 		report.Scanned++
-		if upload.Err != nil || upload.Initiated.IsZero() || !upload.Initiated.Before(cutoff) {
+		if upload.Err != nil {
+			report.Complete = false
+			report.Failed++
+			report.Errors = append(report.Errors, fmt.Sprintf("list MinIO upload: %v", upload.Err))
+			continue
+		}
+		if upload.Initiated.IsZero() || !upload.Initiated.Before(cutoff) {
 			continue
 		}
 		report.Selected++
