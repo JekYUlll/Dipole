@@ -390,7 +390,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加可选 Redis restart 故障注入：重启后 fail-closed 识别 metadata 缺失，并继续清理 MinIO incomplete upload；默认 smoke 不启用该注入。
   - [x] cleanup 将 MinIO `NoSuchUpload` 竞态记录为 `already_gone` 并视为已收敛；未知 Abort 错误仍 fail-closed。
   - [x] 增加指标 textfile 原子发布失败测试：目标冲突时保留原目标并清理临时文件。
-  - [ ] 补充网关限流和指标故障注入，并形成完整故障矩阵。
+  - [x] 补充 HTTP Gateway Multipart `initiate` 限流测试：限流在 Core/MinIO 调用前 fail-fast 并返回 `429`。
+  - [ ] 补充预签名代理限流/超时和完整故障矩阵。
 
 **验收：** 预签名直传在授权范围内完成 Multipart；暂停/恢复、重试、校验和清理可观测；MinIO 故障和客户端中断均能安全回滚到旧路径，未完成 upload 不长期占用对象存储。
 
