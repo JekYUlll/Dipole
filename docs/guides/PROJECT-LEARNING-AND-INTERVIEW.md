@@ -77,7 +77,7 @@
 | Receipt Commit Drill Evidence | **已验证（本地）** | 将共享环境 commit、重试、grant 撤销与回滚演练压缩为低敏、可判定的 evidence record | [Worker drill 契约](../../contracts/agent-memory-promotion/v2/worker-drill-evidence.schema.json)、[Agent Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)；“CLI 能否代替真实演练？” |
 | Receipt Commit Promotion Compose Gate | **已验证（本地）** | 受控渲染 active + promotion overlay，确认写入前的多重静态开关与 authority | `scripts/check-compose.sh`；“Compose 通过能证明写权限安全吗？” |
 | Receipt Commit mTLS RPC Drill | **已验证（隔离 Remote GPU）** | 用 Go fixture 与 TS generated client 验证跨语言 prepared receipt 的 mTLS 提交 | `scripts/drill-agent-memory-promotion-rpc.sh`；“fixture 能证明真实写入吗？” |
-| Receipt Commit MySQL Contract | **已验证（隔离 Remote GPU）** | 使用临时 MySQL 验证 receipt 到持久 candidate/review 和 Memory 事务的完整约束 | `scripts/test-agent-memory-promotion-mysql-contract.sh`；“为何还需要 mTLS/Temporal 演练？” |
+| Receipt Commit MySQL Adapter Contract | **已验证（隔离 Remote GPU）** | 经实际 Core receipt adapter 和 Agent 身份拦截器验证 receipt 到持久 candidate/review 和 Memory 事务的完整约束 | `scripts/test-agent-memory-promotion-mysql-contract.sh`；“为何还需要 mTLS/Temporal 演练？” |
 | MinIO Multipart 与可恢复上传 | **已验证（隔离 Remote GPU）** | 上传超过阈值的文件，展示分片、暂停、恢复与完成；预签名直传维持候选状态 | [大文件上传计划](../architecture/PLATFORM-EVOLUTION-PLAN.md)；“为什么还不默认切到预签名直传？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
@@ -159,15 +159,15 @@
 - **下一步：** 在维护窗口将相同 receipt 场景接入隔离 Core、Temporal 和持久 candidate/review，再归档撤销与回滚证据。
 - **复核条件：** 修改 protobuf、mTLS caller policy、receipt schema、TS client 或远端 Go toolchain 时。
 
-#### 2026-08-30 · Receipt Commit MySQL Contract
+#### 2026-08-30 · Receipt Commit MySQL Adapter Contract
 
 - **状态：** 已验证（隔离 Remote GPU）
-- **简历句：** 为 Agent Memory receipt 建立真实 MySQL 契约测试，验证持久授权、candidate/review 复核和幂等晋级事务。
-- **对外表述：** 临时 MySQL 8.4 完整执行 migration 后，receipt 只能在 active grant、持久 Task/Run 与 owner-reviewed candidate 同时有效时创建 Memory；重复 receipt 返回同一条 Memory，撤销 grant 后拒绝。
+- **简历句：** 为 Agent Memory receipt 建立真实 MySQL 与 Core adapter 联合契约，验证服务身份、持久授权、candidate/review 复核和幂等晋级事务。
+- **对外表述：** 临时 MySQL 8.4 完整执行 migration 后，实际 Core receipt adapter 仅接受 Agent service 身份；receipt 只能在 active grant、持久 Task/Run 与 owner-reviewed candidate 同时有效时创建 Memory，重复提交返回同一条 Memory，撤销 grant 后拒绝。
 - **演示：** 在独立 worktree 运行 `DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go GOTOOLCHAIN=local scripts/test-agent-memory-promotion-mysql-contract.sh`。
 - **证据：** `internal/services/agent/infrastructure/mysql/agent_memory_promotion_receipt_contract_test.go`、`scripts/test-agent-memory-promotion-mysql-contract.sh`、`deploy/agent/memory-promotion-mysql-contract.compose.yml`。
-- **追问：** “为何 MySQL 通过后还需要 mTLS 与 Temporal 演练？” 该测试验证持久领域事务；跨进程身份、RPC 回包绑定、durable retry 与 rollback 分别由其他隔离演练覆盖，仍需最终组合证据。
-- **限制：** 不启动 Core RPC、Temporal 或 Kafka，且没有共享环境 authority、撤销或 rollback 运行记录。
+- **追问：** “为何 MySQL adapter 通过后还需要 mTLS 与 Temporal 演练？” 该测试验证持久事务、adapter 映射和服务身份拦截；跨进程 mTLS、RPC 回包绑定、durable retry 与 rollback 分别由其他隔离演练覆盖，仍需最终组合证据。
+- **限制：** 测试经进程内身份拦截器调用 Core adapter，不建立 mTLS 网络连接，也不启动 Temporal 或 Kafka；共享环境 authority、撤销和 rollback 运行记录仍缺失。
 - **下一步：** 将同一低敏 receipt 场景接入隔离 Core、Temporal 与 MySQL，归档跨进程撤销和回滚证据。
 - **复核条件：** 修改 Memory lineage、candidate/review schema、receipt binding、grant 解析或 MySQL migration 时。
 
