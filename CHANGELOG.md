@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：收敛 Agent Task Timeline 单元测试的 RouterLink 依赖。统一挂载 helper 为全部时间线状态注入路由桩，消除认证页面测试的组件解析警告；不改变 Timeline 路由、Artifact 链接、Capability 或默认关闭状态。
+
 - 2026-08-31：补齐默认关闭的 Agent Task 创建前端入口。认证 `/agent/tasks/new` 仅在 `VITE_AGENT_TASK_CREATE_ENABLED=true` 且 Timeline 开关同时开启时可访问；浏览器生成本地幂等 `client_request_id`，客户端严格校验 `{taskId,status:"accepted"}` 后才跳转只读 Timeline。页面不收集 principal、tenant、Agent、Tool、Memory 或 Runtime 配置。Remote GPU Node 22 定向 `15` 项 Vitest、typecheck 与 production build 通过；Pencil CLI 已完成 canonical desktop/mobile/五态创建画板与 2x 导出，并新增 Chromium 初始表单截图回归。active authority、Compose、Kafka 与 Temporal 均保持关闭。
 
 - 2026-08-31：Agent Runtime 增加默认关闭的交互式 Task 创建链路。Gateway 仅从 JWT 注入 principal，向 Runtime 私有控制面转发 `client_request_id` 与目标；Runtime 固定 tenant/Agent 身份，以客户端幂等键派生确定性 Task/Event ID 并交由 Temporal dispatcher 启动。请求体中的身份字段不参与授权。Remote GPU Node 22 定向 Vitest `10` 项、typecheck、build 与 Gateway Go 测试均通过；未启动 Compose、Kafka、Temporal 或 active authority，用户界面与共享环境切流继续待办。
