@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：完成 Remote GPU C1 单节点恢复演练：`dipole-node2` stop/start 后约 `505ms` 观察到不可用、约 `16.0s` 恢复健康，consumer group 稳定恢复为 `72` 个成员；恢复后 40/40 消息接受/持久化/投递，Kafka lag 为 `0`，PID 更换且 revision 未漂移。完整 evidence/report 已归档。
+
 - 2026-08-30：修复 C1 节点 recovery drill 的 Compose 相对路径解析，移除旧的 `--project-directory`，使 stop/start 故障证据与候选拓扑使用同一配置挂载语义；新增契约断言，生产 Compose 不受影响。
 
 - 2026-08-30：补充 Remote GPU C1 100 用户并发容量观察：400/400 消息接受、持久化和投递，投递率 `100%`，HTTP 失败率 `0%`，消息端到端 P50/P95/P99 为 `149/178.04/243.01ms`，Kafka lag 采样为 `0`。相比 20 用户并发延迟上升；该结果仍不代表容量上限或故障恢复能力。
