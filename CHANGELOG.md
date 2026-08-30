@@ -1503,5 +1503,6 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-08-30：Multipart cleanup 将 MinIO `NoSuchUpload` 竞态视为已收敛的幂等结果并记录为 `already_gone`；列举与 Abort 之间 upload 已被其他 worker 清理时不再误报失败，其他 Abort 错误仍保持 fail-closed。
 - 2026-08-30：Multipart 真实对账 smoke 增加可选 Redis 重启故障注入：在匹配状态建立后重启隔离 Redis，验证 metadata 丢失被识别、MinIO 未完成 upload 仍可清理、孤儿 Redis drift 仍可报告；默认 smoke 路径不变，GPU 任务可并行运行且测试资源自动清理。
 - **A7 Multipart cleanup fail-closed**：MinIO 未完成上传扫描错误现在会进入结构化报告并阻止清理命令成功返回，避免部分扫描被误判为完整生命周期证据。
