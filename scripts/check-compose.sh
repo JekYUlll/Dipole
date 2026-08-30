@@ -59,7 +59,9 @@ jq -e '
   and .services.message.environment.DIPOLE_KAFKA_REQUIRED_ACKS == "all"
   and .services.gateway.environment.DIPOLE_REDIS_MODE == "sentinel"
   and .services.gateway.environment.DIPOLE_REDIS_SENTINEL_MASTER_NAME == "dipole-master"
-  and (.services["sentinel-3"].volumes[0].source | endswith("/deploy/redis/business-sentinel.conf"))
+  and any(.services["sentinel-3"].volumes[]?;
+    (.source? | (type == "string" and endswith("/deploy/redis/business-sentinel.conf")))
+  )
 ' <<<"${business_cluster_config}" >/dev/null
 
 cluster_config="$(docker compose --profile observability -f deploy/compose/docker-compose.cluster.yml config --format json)"
