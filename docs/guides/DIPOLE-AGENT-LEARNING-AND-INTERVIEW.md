@@ -39,8 +39,8 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 - **演示：** 使用显式 Node 22 与 Go 1.27 运行 `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh`，观察受控 Activity 故障重试、grant 撤销拒绝和 owner-scoped Memory revoke。
 - **证据：** `services/agent-runtime/src/temporal/agent-memory-promotion-mtls-mysql.integration.test.ts`、`internal/services/agent/infrastructure/mysql/agent_memory_promotion_temporal_fixture_test.go`、[Memory promotion 契约](../../contracts/agent-memory-promotion/v2/ACTIVE-EXECUTOR-DESIGN.md)。
 - **追问：** “为什么 grant 在 admission 和 commit 都要复核？” 两个阶段可能跨越较长时间，撤销后旧 Run 仍须停止写入。
-- **限制：** Temporal 使用内存 test server，MySQL/证书/监听器为临时资源；Kafka trigger、Gateway owner revoke 的网络传输与共享环境 overlay 回滚仍待联合验证。
-- **下一步：** 在受控共享环境补齐 Kafka trigger、Gateway owner revoke 传输、overlay 回滚与观测窗口证据。
+- **限制：** Temporal 使用内存 test server，MySQL/证书/监听器为临时资源；Gateway 到 Core 的 owner revoke HTTP/gRPC/mTLS 契约已覆盖，但 Kafka trigger、共享环境运行记录与 overlay 回滚仍待联合验证。
+- **下一步：** 在受控共享环境补齐 Kafka trigger、Gateway-to-Core revoke 运行记录、overlay 回滚与观测窗口证据。
 - **复核条件：** 修改 receipt canonicalization、grant、Temporal retry、Core caller policy、Memory schema 或 mTLS 时。
 
 #### External MCP Shadow Drill

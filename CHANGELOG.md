@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：校正 Agent Memory active promotion 的证据台账。Gateway 已具备认证 owner revoke HTTP 到 `dipole-gateway` mTLS Core RPC 的受约束传输链，并由 principal 绑定与审计回包测试覆盖；共享环境 Kafka trigger、该链路的运行记录、promotion overlay 回滚和 24 小时观测仍保持未完成。
+
 - 2026-08-31：将 embedded 聚合运行时、Kafka 组合、消息/同步兼容传输及其测试收敛到 `internal/services/core/bootstrap/embedded/`；Core 的唯一兼容桥继续保留本地回滚能力，服务布局门禁拒绝 `internal/bootstrap/embedded` 回流，独立服务运行路径不变。
 
 - 2026-08-31：Agent Context hydration 现并行读取已授权的会话、Memory 与受 Core 调解的检索证据，并记录低敏数量指标；任一读取失败仍在模型调用前 fail closed，默认检索与共享环境开关保持关闭。

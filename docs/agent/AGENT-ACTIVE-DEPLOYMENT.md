@@ -88,7 +88,7 @@ npm run promotion:memory-worker-drill -- --evidence=/secure/path/worker-drill.js
 
 2026-08-30 已在 Remote GPU 的一次性 worktree 上以 Node 22 执行该步骤：内存 Temporal test server 的两个 integration case 通过，受控第一次 commit 失败后第二次提交仍复用同一 receipt SHA-256。该记录只证明 Temporal workflow 与 stub 的 durable retry 语义，不能作为 Core、MySQL grant、Kafka 或 active overlay 的联合验收。
 
-2026-08-30 已在 Remote GPU 一次性 worktree 上通过第 4 步，证明同 receipt 的跨进程 durable retry、MySQL 幂等、admission 后 grant 撤销拒绝，以及 owner application control 的持久 Memory revoke。该测试使用临时 CA、临时数据库与内存 Temporal，不连接 Kafka，且未覆盖 Gateway owner revoke 的网络传输或 overlay 回滚；这些仍是共享环境接管的必要证据。
+2026-08-30 已在 Remote GPU 一次性 worktree 上通过第 4 步，证明同 receipt 的跨进程 durable retry、MySQL 幂等、admission 后 grant 撤销拒绝，以及 owner application control 的持久 Memory revoke。Gateway 的认证 HTTP 到 mTLS Core RPC revoke 链路已由单元/contract 测试覆盖；该演练使用临时 CA、临时数据库与内存 Temporal，不连接 Kafka，也未形成共享 Gateway-to-Core 运行记录或 overlay 回滚证据；这些仍是共享环境接管的必要条件。
 
 ```bash
 DIPOLE_GO_BIN=/path/to/go-1.26-or-newer/bin/go \
