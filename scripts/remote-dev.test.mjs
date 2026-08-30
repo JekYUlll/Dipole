@@ -16,10 +16,17 @@ test("node verification preserves package locks and cleans generated webapp outp
   assert.match(source, /trap cleanup_webapp EXIT/);
 });
 
-test("remote destructive actions remain behind the active-host guard", () => {
+test("remote destructive actions remain behind the active-user guard", () => {
   assert.match(source, /build\) sync_revision; guard_start; run_remote build/);
   assert.match(source, /smoke-lite\) sync_revision; guard_start; run_remote smoke-lite/);
   assert.match(source, /bench\) sync_revision; guard_start; run_remote bench/);
+});
+
+test("existing GPU tasks are observed without blocking development actions", () => {
+  assert.match(source, /active_users=.*gpu_processes=.*\\n/);
+  assert.match(source, /active_users.*DIPOLE_REMOTE_ALLOW_ACTIVE/);
+  assert.doesNotMatch(source, /if \[\[ "\$users" != "0" \|\| "\$gpu" != "0"/);
+  assert.match(source, /proceeding with existing GPU tasks/);
 });
 
 test("multipart smoke is isolated and does not require a GPU-free host", () => {
