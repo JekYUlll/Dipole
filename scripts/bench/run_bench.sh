@@ -3,6 +3,7 @@ set -euo pipefail
 
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/docker-compose.dist.yml}"
 BENCH_SCRIPT="${BENCH_SCRIPT:-scripts/bench/bench.js}"
+K6_BIN="${K6_BIN:-k6}"
 RESULTS_DIR="${RESULTS_DIR:-scripts/bench/results}"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_ID="${RUN_ID:-g0-${TIMESTAMP}}"
@@ -57,9 +58,10 @@ require_command() {
   }
 }
 
-for command in docker curl git k6 jq python3; do
+for command in docker curl git jq python3; do
   require_command "${command}"
 done
+require_command "${K6_BIN}"
 
 git_commit="$(git rev-parse HEAD)"
 if [[ -n "$(git status --porcelain)" ]]; then
@@ -167,7 +169,7 @@ capture_process_metrics
 
 echo "==> Running ${BENCH_SCRIPT} with run_id=${RUN_ID}"
 set +e
-k6 run \
+"${K6_BIN}" run \
   --summary-export "${SUMMARY_JSON}" \
   --summary-trend-stats "avg,min,med,max,p(50),p(90),p(95),p(99)" \
   -e RUN_ID="${RUN_ID}" \

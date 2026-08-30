@@ -31,6 +31,16 @@ test("remote image builds compile committed backend binaries first", () => {
   assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh backend[\s\S]*?scripts\/docker-build-microservice-images\.sh/);
 });
 
+test("benchmark uses an explicit k6 binary and has a Docker fallback on remote hosts", () => {
+  const bench = fs.readFileSync(new URL("./bench/run_bench.sh", import.meta.url), "utf8");
+  assert.match(bench, /K6_BIN="\$\{K6_BIN:-k6\}"/);
+  assert.match(bench, /require_command "\$\{K6_BIN\}"/);
+  assert.match(bench, /"\$\{K6_BIN\}" run/);
+  assert.match(source, /REMOTE_K6_IMAGE="\$\{DIPOLE_REMOTE_K6_IMAGE:-grafana\/k6:0\.57\.0\}"/);
+  assert.match(source, /docker run --rm --network host/);
+  assert.match(source, /K6_BIN="\\\$k6_wrapper" scripts\/bench\/run_bench\.sh/);
+});
+
 test("candidate image builds are explicit and carry source provenance", () => {
   assert.match(source, /REMOTE_BUILD_CANDIDATE="\$\{DIPOLE_REMOTE_BUILD_CANDIDATE:-0\}"/);
   assert.match(source, /candidate_tag="dipole-server:c1-\\\$\(git rev-parse --short HEAD\)"/);
