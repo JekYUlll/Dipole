@@ -21,6 +21,21 @@ test('persists bounded per-user state across a real browser reopen and clears on
   expect(result.otherUserSyncSeq).toBe(7)
 })
 
+test('resumes Sync Timeline from the committed cursor after a real browser reopen', async ({ page }, testInfo) => {
+  const result = await page.evaluate(async databaseName => {
+    return window.dipoleIndexedDBAcceptance.syncRecovery(databaseName)
+  }, `dipole-sync-recovery-${testInfo.project.name}`)
+
+  expect(result.firstRequests).toEqual([0])
+  expect(result.firstAcks).toEqual([2])
+  expect(result.secondRequests).toEqual([2])
+  expect(result.secondAcks).toEqual([2, 4])
+  expect(result.delivered).toEqual(['M-1', 'M-2', 'M-3', 'M-4'])
+  expect(result.result).toEqual({ restored: 2, synchronized: 2, syncSeq: 4 })
+  expect(result.snapshot.syncSeq).toBe(4)
+  expect(result.snapshot.messages.map(message => message.message_id)).toEqual(['M-1', 'M-2', 'M-3', 'M-4'])
+})
+
 test('revokes credentials before delayed IndexedDB cleanup and redirects after completion', async ({ page }, testInfo) => {
   const result = await page.evaluate(async databaseName => {
     return window.dipoleIndexedDBAcceptance.sessionTermination(databaseName)
