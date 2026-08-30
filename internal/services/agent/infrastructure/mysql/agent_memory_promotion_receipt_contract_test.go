@@ -1,0 +1,202 @@
+package agentmysql_test
+
+import (
+	"context"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/JekYUlll/Dipole/db/migrations"
+	"github.com/JekYUlll/Dipole/internal/application"
+	mysqlData "github.com/JekYUlll/Dipole/internal/platform/mysql"
+	"github.com/JekYUlll/Dipole/internal/platform/mysql/migration"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
+	sqlcRepository "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
+)
+
+func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
+	ctx := context.Background()
+	db, _ := openContractDatabase(t)
+	runner, err := migration.NewRunner(db, migrations.Files)
+	if err != nil {
+		t.Fatalf("create migration runner: %v", err)
+	}
+	if err := runner.Up(ctx); err != nil {
+		t.Fatalf("migrate contract database: %v", err)
+	}
+
+	store, err := mysqlData.NewStore(db)
+	if err != nil {
+		t.Fatalf("create transaction store: %v", err)
+	}
+	policy, err := sqlcRepository.NewAgentPolicyRepositoryWithTransactions(store)
+	if err != nil {
+		t.Fatalf("create policy repository: %v", err)
+	}
+	memories, err := sqlcRepository.NewAgentMemoryRepositoryWithTransactions(store)
+	if err != nil {
+		t.Fatalf("create Memory repository: %v", err)
+	}
+
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	definition, grant := createReceiptContractPolicy(t, ctx, policy, now)
+	authorizer, err := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(policy)
+	if err != nil {
+		t.Fatalf("create promotion authorizer: %v", err)
+	}
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(policy, func() time.Time { return now }, authorizer)
+	if err != nil {
+		t.Fatalf("create Run admission: %v", err)
+	}
+	admitted, err := admission.Admit(ctx, application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
+			TenantID: definition.TenantID, PrincipalUUID: definition.OwnerUUID, AgentUUID: definition.AgentUUID,
+			DelegatedByUUID: definition.OwnerUUID, TriggerType: "manual", TriggerRef: "receipt-mysql-contract",
+		},
+		RuntimeID: grant.RuntimeID, Mode: "active", CandidateVersion: grant.CandidateVersion,
+	})
+	if err != nil {
+		t.Fatalf("admit active Run: %v", err)
+	}
+
+	candidateID, reviewID := "CAND-RECEIPT-MYSQL", "REVIEW-RECEIPT-MYSQL"
+	candidateSHA256 := strings.Repeat("c", 64)
+	insertAcceptedMemoryCandidate(t, ctx, db, candidateID, reviewID, candidateSHA256, now)
+
+	resolver, err := agentapplication.NewPersistentAgentInvocationResolverV1WithClock(policy, func() time.Time { return now }, authorizer)
+	if err != nil {
+		t.Fatalf("create Invocation resolver: %v", err)
+	}
+	promotions, err := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(memories, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("create Memory promotion service: %v", err)
+	}
+	commits, err := agentapplication.NewPersistentAgentMemoryPromotionReceiptCommitServiceV1(resolver, promotions, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("create receipt commit service: %v", err)
+	}
+
+	invocation, err := resolver.Resolve(ctx, admitted.TaskUUID, admitted.RunUUID)
+	if err != nil {
+		t.Fatalf("resolve persisted invocation: %v", err)
+	}
+	receipt := receiptCommitRequest(t, invocation, admitted.TaskUUID, admitted.RunUUID, candidateID, candidateSHA256, reviewID, now)
+	first, err := commits.CommitMemoryPromotionReceipt(ctx, receipt)
+	if err != nil {
+		t.Fatalf("commit receipt: %v", err)
+	}
+	if first == nil || first.MemoryType != application.AgentMemoryTypeSemantic || first.Status != application.AgentMemoryStatusActive {
+		t.Fatalf("committed Memory=%+v", first)
+	}
+	assertReceiptPromotionStored(t, ctx, db, candidateID, first.MemoryUUID, 1)
+
+	replayed, err := commits.CommitMemoryPromotionReceipt(ctx, receipt)
+	if err != nil {
+		t.Fatalf("replay receipt: %v", err)
+	}
+	if replayed == nil || replayed.MemoryUUID != first.MemoryUUID {
+		t.Fatalf("replayed Memory=%+v, want %q", replayed, first.MemoryUUID)
+	}
+	assertReceiptPromotionStored(t, ctx, db, candidateID, first.MemoryUUID, 1)
+
+	if revoked, revokeErr := policy.RevokeRuntimePromotionGrant(ctx, grant.GrantUUID, now); revokeErr != nil || !revoked {
+		t.Fatalf("revoke promotion grant: revoked=%v err=%v", revoked, revokeErr)
+	}
+	if _, err := commits.CommitMemoryPromotionReceipt(ctx, receipt); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("revoked grant receipt error=%v, want policy denied", err)
+	}
+	assertReceiptPromotionStored(t, ctx, db, candidateID, first.MemoryUUID, 1)
+}
+
+func createReceiptContractPolicy(t *testing.T, ctx context.Context, policy *sqlcRepository.AgentPolicyRepository, now time.Time) (application.AgentDefinitionVersionV1, application.AgentRuntimePromotionGrantV1) {
+	t.Helper()
+	definition := application.AgentDefinitionVersionV1{
+		DefinitionUUID: "DEF-RECEIPT-MYSQL", Version: 1, TenantID: "dipole", OwnerUUID: "U100", AgentUUID: "UAI",
+		Status: application.AgentDefinitionStatusActive, Permissions: []string{application.AgentPermissionMessageWrite},
+		Scopes:    []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"write"}}},
+		ValidFrom: now.Add(-time.Hour),
+	}
+	if err := policy.CreateDefinitionVersion(ctx, definition); err != nil {
+		t.Fatalf("create Definition: %v", err)
+	}
+	grant := application.AgentRuntimePromotionGrantV1{
+		GrantUUID: "PROMOTION-RECEIPT-MYSQL", TenantID: definition.TenantID, RuntimeID: "dipole-agent", CandidateVersion: "receipt-mysql-v1",
+		DefinitionUUID: definition.DefinitionUUID, DefinitionVersion: definition.Version, PolicyVersion: application.AgentRuntimePromotionPolicyVersionV2,
+		EvidenceSHA256: strings.Repeat("a", 64), EvalSuiteSHA256: strings.Repeat("b", 64), GrantedByUUID: "OPERATOR-1", ReviewedByUUID: "OPERATOR-2",
+		ValidFrom: now.Add(-time.Minute), ExpiresAt: now.Add(time.Hour),
+	}
+	created, err := policy.CreateRuntimePromotionGrant(ctx, grant)
+	if err != nil || !created {
+		t.Fatalf("create promotion grant: created=%v err=%v", created, err)
+	}
+	return definition, grant
+}
+
+func insertAcceptedMemoryCandidate(t *testing.T, ctx context.Context, db *sql.DB, candidateID, reviewID, candidateSHA256 string, now time.Time) {
+	t.Helper()
+	if _, err := db.ExecContext(ctx, `INSERT INTO agent_memory_candidates
+        (candidate_uuid, tenant_id, principal_uuid, agent_uuid, resource_type, resource_id, candidate_type, source_id, evidence_ids_json, summary, policy_version, candidate_sha256, status, observed_at)
+        VALUES (?, 'dipole', 'U100', 'UAI', 'conversation', 'group:G1', 'message', 'MESSAGE-RECEIPT-MYSQL', ?, 'reviewed project decision', 'memory-v1', ?, 'accepted', ?)`,
+		candidateID, `["MESSAGE-RECEIPT-MYSQL"]`, candidateSHA256, now.Add(-time.Minute)); err != nil {
+		t.Fatalf("insert accepted candidate: %v", err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO agent_memory_candidate_reviews
+        (review_uuid, candidate_uuid, candidate_sha256, reviewer_uuid, decision, reason, review_sha256, reviewed_at)
+        VALUES (?, ?, ?, 'U100', 'accepted', 'owner reviewed', ?, ?)`,
+		reviewID, candidateID, candidateSHA256, strings.Repeat("d", 64), now); err != nil {
+		t.Fatalf("insert accepted review: %v", err)
+	}
+}
+
+func receiptCommitRequest(t *testing.T, invocation application.AgentInvocationV1, taskID, runID, candidateID, candidateSHA256, reviewID string, now time.Time) application.AgentMemoryPromotionReceiptCommitRequestV1 {
+	t.Helper()
+	request := application.AgentMemoryPromotionReceiptCommitRequestV1{
+		SchemaVersion: application.AgentMemoryPromotionReceiptSchemaV2, Status: application.AgentMemoryPromotionReceiptPrepared,
+		TaskUUID: taskID, RunUUID: runID, CandidateUUID: candidateID, CandidateSHA256: candidateSHA256, ReviewUUID: reviewID,
+		PolicyVersion: "memory-v1", TargetMemoryType: application.AgentMemoryTypeSemantic,
+		CreatedAt: now.Add(-time.Minute), ExpiresAt: now.Add(10 * time.Minute),
+	}
+	body := map[string]string{
+		"schemaVersion": request.SchemaVersion, "status": request.Status, "tenantId": invocation.TenantID,
+		"principalUserId": invocation.PrincipalUUID, "agentId": invocation.AgentUUID, "taskId": request.TaskUUID, "runId": request.RunUUID,
+		"candidateId": request.CandidateUUID, "candidateSha256": request.CandidateSHA256, "reviewId": request.ReviewUUID,
+		"policyVersion": request.PolicyVersion, "candidateMemoryType": string(application.AgentMemoryTypeObservational),
+		"targetMemoryType": string(request.TargetMemoryType), "createdAt": receiptContractTimestamp(request.CreatedAt), "expiresAt": receiptContractTimestamp(request.ExpiresAt),
+	}
+	canonical, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("marshal receipt body: %v", err)
+	}
+	digest := sha256.Sum256(canonical)
+	request.ReceiptSHA256 = hex.EncodeToString(digest[:])
+	body["receiptSha256"] = request.ReceiptSHA256
+	canonical, err = json.Marshal(body)
+	if err != nil {
+		t.Fatalf("marshal receipt ID body: %v", err)
+	}
+	digest = sha256.Sum256(canonical)
+	request.ReceiptID = fmt.Sprintf("MEM-PROMOTE-%x", digest)
+	return request
+}
+
+func receiptContractTimestamp(value time.Time) string {
+	return value.UTC().Format("2006-01-02T15:04:05.000Z07:00")
+}
+
+func assertReceiptPromotionStored(t *testing.T, ctx context.Context, db *sql.DB, candidateID, memoryID string, wantMemoryRows int) {
+	t.Helper()
+	var memoryRows int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_memories WHERE memory_uuid = ?`, memoryID).Scan(&memoryRows); err != nil || memoryRows != wantMemoryRows {
+		t.Fatalf("stored Memory rows=%d err=%v, want %d", memoryRows, err, wantMemoryRows)
+	}
+	var promoted sql.NullString
+	if err := db.QueryRowContext(ctx, `SELECT promoted_memory_uuid FROM agent_memory_candidates WHERE candidate_uuid = ?`, candidateID).Scan(&promoted); err != nil || !promoted.Valid || promoted.String != memoryID {
+		t.Fatalf("promoted candidate Memory=%q valid=%v err=%v, want %q", promoted.String, promoted.Valid, err, memoryID)
+	}
+}
