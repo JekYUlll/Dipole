@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增 [开发工作流与提速规则](docs/operations/DEVELOPMENT-WORKFLOW.md)，将活动计划、历史记录、快速门禁、共享环境演练、Epic 同步和 worktree 生命周期分层；确认当前瓶颈来自计划上下文膨胀与验证串行化，后续按 30 分钟切片和一次性 Epic 同步执行。
+
 - 2026-08-30：A6 Web Sync Observation 工具新增 5 分钟未来时间偏差门禁，`start/status/finalize` 均拒绝未来时间查询，并补充可注入时钟测试和操作手册说明；该改动只强化证据完整性，未改变客户端默认同步路径或任何切流开关。
 
 - 2026-08-30：本机 `planning-with-files` 更新至上游稳定版 `v3.11.2`；移出重复的 `.agents` skill 安装，仅保留 `.codex` canonical 来源，并在 Codex 适配器层加入同 session/项目根短窗口去重。真实并行 Bash 验证确认三次触发只注入一份计划上下文，旧版本与 hook 配置已保留在日期备份目录。
