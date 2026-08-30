@@ -50,6 +50,18 @@ DIPOLE_INTERNAL_RPC_SHARED_SECRET=change-me \
 
 真正启动前仍需要完成镜像 provenance、Topic 创建和独立 project 参数绑定。故障演练必须通过专用脚本执行，不能直接对共享开发栈执行 `down`。
 
+隔离生命周期入口：
+
+```bash
+DIPOLE_INTERNAL_RPC_SHARED_SECRET=change-me \
+  BUSINESS_CLUSTER_ALLOW_ACTIVE=1 \
+  scripts/bench/business_cluster_topology.sh up
+scripts/bench/business_cluster_topology.sh status
+scripts/bench/business_cluster_topology.sh down
+```
+
+`up` 默认保护活动登录会话；已有 GPU 任务只记录资源快照并允许并行。`down` 只移除该 Compose project 的容器和网络，不删除卷。
+
 ## 当前结论
 
 当前仓库已具备可渲染的 Kafka 三节点、Redis Sentinel 业务组合拓扑，微服务默认路径仍是单节点。业务消息链路的自动故障切换、恢复收敛和可执行回滚 receipt 仍属于后续 A6/C1 门禁，暂不宣称完成。

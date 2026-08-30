@@ -34,6 +34,18 @@ class BusinessTopologyContractTest(unittest.TestCase):
         self.assertIn("docker-compose.business-cluster.yml", checker)
         self.assertIn(".source? | (type == \"string\" and endswith", checker)
 
+    def test_business_topology_lifecycle_is_isolated_and_non_destructive(self):
+        script = (ROOT / "scripts/bench/business_cluster_topology.sh").read_text(encoding="utf-8")
+        self.assertIn("--project-name", script)
+        self.assertIn("BUSINESS_CLUSTER_ALLOW_ACTIVE", script)
+        self.assertIn("nvidia-smi", script)
+        self.assertIn("config)", script)
+        self.assertIn("up)", script)
+        self.assertIn("status)", script)
+        self.assertIn("down)", script)
+        self.assertIn("down --remove-orphans", script)
+        self.assertNotIn("down --volumes", script)
+
 
 if __name__ == "__main__":
     unittest.main()
