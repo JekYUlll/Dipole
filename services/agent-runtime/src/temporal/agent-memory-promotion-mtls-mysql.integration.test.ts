@@ -1,11 +1,12 @@
 import * as grpc from "@grpc/grpc-js";
-import { readFile } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { Worker } from "@temporalio/worker";
 
 import { AgentCapabilityServiceClient, type IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
+import { createAgentMemoryPromotionReceipt } from "../memory/agent-memory-promotion-receipt.js";
 import { createAgentMemoryPromotionCommitActivities } from "./agent-memory-promotion-commit-activity.js";
 import { foundationAgentTaskActivities, type AgentMemoryPromotionActivities, type AgentTaskWorkerActivities } from "./agent-task-activities.js";
 
@@ -15,6 +16,9 @@ type Fixture = {
   Target: string; Secret: string; CAFile: string; CertFile: string; KeyFile: string; ServerName: string;
   TenantID: string; PrincipalUserID: string; AgentID: string; TaskID: string; RunID: string;
   CandidateID: string; CandidateSHA256: string; ReviewID: string; PolicyVersion: string;
+  RejectedTaskID: string; RejectedRunID: string;
+  RejectedCandidateID: string; RejectedCandidateSHA256: string; RejectedReviewID: string;
+  RevokePath: string; RevokedPath: string;
 };
 
 describe.skipIf(!enabled)("Temporal Agent Memory promotion through Core mTLS and MySQL", () => {
@@ -72,6 +76,17 @@ describe.skipIf(!enabled)("Temporal Agent Memory promotion through Core mTLS and
       expect(calls).toBe(2);
       expect(result.output?.promotionCommit?.receiptSha256).toBe(result.output?.promotionReceipt?.receiptSha256);
       expect(result.output?.promotionCommit?.memoryId).toMatch(/^MEM-/);
+
+      await writeFile(fixture.RevokePath, "revoke\n", { mode: 0o600 });
+      await waitForFile(fixture.RevokedPath);
+      const revokedReceipt = createAgentMemoryPromotionReceipt({
+        tenantId: fixture.TenantID, principalUserId: fixture.PrincipalUserID, agentId: fixture.AgentID,
+        taskId: fixture.RejectedTaskID, runId: fixture.RejectedRunID, candidateId: fixture.RejectedCandidateID,
+        candidateSha256: fixture.RejectedCandidateSHA256, reviewId: fixture.RejectedReviewID,
+        policyVersion: fixture.PolicyVersion, candidateMemoryType: "observational", targetMemoryType: "semantic",
+        expiresAt: new Date(Date.now() + 10 * 60 * 1_000).toISOString()
+      });
+      await expect(client.commitMemoryPromotionReceipt(revokedReceipt)).rejects.toThrow(/PERMISSION_DENIED/);
     } finally {
       transport.close();
       await temporal.teardown();
@@ -83,4 +98,18 @@ function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required for Temporal/MySQL mTLS integration`);
   return value;
+}
+
+async function waitForFile(path: string): Promise<void> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    try {
+      await stat(path);
+      return;
+    } catch (error: unknown) {
+      if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(`fixture did not acknowledge grant revocation: ${path}`);
 }

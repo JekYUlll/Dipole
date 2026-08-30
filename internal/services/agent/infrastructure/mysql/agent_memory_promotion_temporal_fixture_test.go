@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,9 +21,12 @@ import (
 )
 
 type temporalReceiptFixtureState struct {
-	Target, Secret, CAFile, CertFile, KeyFile, ServerName string
-	TenantID, PrincipalUserID, AgentID, TaskID, RunID     string
-	CandidateID, CandidateSHA256, ReviewID, PolicyVersion string
+	Target, Secret, CAFile, CertFile, KeyFile, ServerName          string
+	TenantID, PrincipalUserID, AgentID, TaskID, RunID              string
+	CandidateID, CandidateSHA256, ReviewID, PolicyVersion          string
+	RejectedTaskID, RejectedRunID                                  string
+	RejectedCandidateID, RejectedCandidateSHA256, RejectedReviewID string
+	RevokePath, RevokedPath                                        string
 }
 
 func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
@@ -31,6 +35,7 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	}
 	readyPath := requiredTemporalFixtureEnv(t, "DIPOLE_AGENT_TEMPORAL_MYSQL_MTLS_READY")
 	stopPath := requiredTemporalFixtureEnv(t, "DIPOLE_AGENT_TEMPORAL_MYSQL_MTLS_STOP")
+	revokePath, revokedPath := filepath.Join(filepath.Dir(readyPath), "revoke-grant"), filepath.Join(filepath.Dir(readyPath), "grant-revoked")
 	ctx := context.Background()
 	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
@@ -72,9 +77,22 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("admit fixture Run: %v", err)
 	}
+	rejected, err := admission.Admit(ctx, application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
+			TenantID: definition.TenantID, PrincipalUUID: definition.OwnerUUID, AgentUUID: definition.AgentUUID,
+			DelegatedByUUID: definition.OwnerUUID, TriggerType: "manual", TriggerRef: "temporal-mysql-mtls-revoked-fixture",
+		},
+		RuntimeID: grant.RuntimeID, Mode: "active", CandidateVersion: grant.CandidateVersion,
+	})
+	if err != nil {
+		t.Fatalf("admit revocation fixture Run: %v", err)
+	}
 	candidateID, reviewID := "CAND-TEMPORAL-MYSQL", "REVIEW-TEMPORAL-MYSQL"
 	candidateSHA256 := strings.Repeat("e", 64)
 	insertAcceptedMemoryCandidate(t, ctx, db, candidateID, reviewID, candidateSHA256, now)
+	rejectedCandidateID, rejectedReviewID := "CAND-TEMPORAL-REVOKED", "REVIEW-TEMPORAL-REVOKED"
+	rejectedCandidateSHA256 := strings.Repeat("f", 64)
+	insertAcceptedMemoryCandidate(t, ctx, db, rejectedCandidateID, rejectedReviewID, rejectedCandidateSHA256, now)
 	resolver, err := agentapplication.NewPersistentAgentInvocationResolverV1(policy, authorizer)
 	if err != nil {
 		t.Fatalf("create Invocation resolver: %v", err)
@@ -97,14 +115,32 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 		Target: server.Address(), Secret: "receipt-mysql-contract-secret", CAFile: certs.ca, CertFile: certs.agentCert, KeyFile: certs.agentKey, ServerName: "core",
 		TenantID: definition.TenantID, PrincipalUserID: definition.OwnerUUID, AgentID: definition.AgentUUID, TaskID: admitted.TaskUUID, RunID: admitted.RunUUID,
 		CandidateID: candidateID, CandidateSHA256: candidateSHA256, ReviewID: reviewID, PolicyVersion: "memory-v1",
+		RejectedTaskID: rejected.TaskUUID, RejectedRunID: rejected.RunUUID,
+		RejectedCandidateID: rejectedCandidateID, RejectedCandidateSHA256: rejectedCandidateSHA256, RejectedReviewID: rejectedReviewID,
+		RevokePath: revokePath, RevokedPath: revokedPath,
 	}
 	writeTemporalFixtureState(t, readyPath, state)
 	deadline := time.Now().Add(3 * time.Minute)
+	grantRevoked := false
 	for {
 		if _, err := os.Stat(stopPath); err == nil {
 			break
 		} else if !errors.Is(err, os.ErrNotExist) {
 			t.Fatal(err)
+		}
+		if !grantRevoked {
+			if _, err := os.Stat(revokePath); err == nil {
+				revoked, revokeErr := policy.RevokeRuntimePromotionGrant(ctx, grant.GrantUUID, time.Now().UTC())
+				if revokeErr != nil || !revoked {
+					t.Fatalf("revoke fixture promotion grant: revoked=%v err=%v", revoked, revokeErr)
+				}
+				if err := os.WriteFile(revokedPath, []byte("revoked\n"), 0o600); err != nil {
+					t.Fatalf("write fixture grant revocation acknowledgement: %v", err)
+				}
+				grantRevoked = true
+			} else if !errors.Is(err, os.ErrNotExist) {
+				t.Fatal(err)
+			}
 		}
 		if time.Now().After(deadline) {
 			t.Fatal("Temporal/MySQL mTLS fixture timed out")
@@ -118,6 +154,10 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	var memoryRows int
 	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM agent_memories WHERE memory_uuid = ?`, memoryID.String).Scan(&memoryRows); err != nil || memoryRows != 1 {
 		t.Fatalf("fixture committed Memory ID=%q rows=%d err=%v, want 1", memoryID.String, memoryRows, err)
+	}
+	var rejectedMemory sql.NullString
+	if err := db.QueryRowContext(ctx, `SELECT promoted_memory_uuid FROM agent_memory_candidates WHERE candidate_uuid = ?`, rejectedCandidateID).Scan(&rejectedMemory); err != nil || rejectedMemory.Valid {
+		t.Fatalf("fixture revoked grant candidate Memory=%q valid=%v err=%v, want none", rejectedMemory.String, rejectedMemory.Valid, err)
 	}
 }
 
