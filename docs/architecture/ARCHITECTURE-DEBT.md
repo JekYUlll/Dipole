@@ -10,7 +10,9 @@
 
 ### 本轮进展
 
-- 2026-08-30：F2 Contact 已建立可定位的 Pencil desktop/mobile、loading/empty/request-pending/safety-blocked 状态矩阵与批准导出，避免后续 Vue 页面脱离既有认证 Contact API 语义；前端路由、交互和跨浏览器视觉回归仍待独立实现与验证。
+- 2026-08-30：F2 Contact 已完成受认证只读目录 `/contacts`，`/api/v1/contacts` 投影经严格 shape 校验，权威读取失败时清空旧条目并提供重试；Remote GPU Node 22 前端 `34` 个测试文件、`147` 项测试、typecheck 和 production build 通过。备注、拉黑、删除、申请处理与跨浏览器视觉回归仍须作为独立权限和交互切片验证。
+
+- 2026-08-30：F2 Contact 已建立可定位的 Pencil desktop/mobile、loading/empty/request-pending/safety-blocked 状态矩阵与批准导出，避免后续 Vue 页面脱离既有认证 Contact API 语义；写操作与跨浏览器视觉回归仍待独立实现与验证。
 
 - 2026-08-30：IM 深度面试问答已对齐当前两条 Timeline：`messages` 为会话 Message Store，`user_sync_inbox` 与设备 Cursor 为用户 Sync Store。文档同时移除“Redis 将作为权威同步库”的遗留建议，保留 Cassandra 主读、A6 真实观察与旧 Offline 兼容窗口的未完成边界，避免对外材料夸大或低估当前能力。
 

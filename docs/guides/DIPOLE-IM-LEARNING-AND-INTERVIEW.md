@@ -17,6 +17,7 @@
 | Message / Conversation / Sync Timeline | 已验证 | [消息存储与同步模型](../architecture/MESSAGE-STORAGE-AND-SYNC.md) |
 | SQLC 与渐进式微服务 | 已验证 | [服务边界](../architecture/SERVICE-BOUNDARIES.md) |
 | MinIO Multipart 与恢复上传 | 已验证（隔离 Remote GPU） | [平台演进计划](../architecture/PLATFORM-EVOLUTION-PLAN.md) |
+| Contact 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/ContactDirectory.vue` |
 | Cassandra、Elasticsearch、C++ 数据面切流 | 默认关闭 / 规划中 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md) |
 
 #### Sync Timeline 与可靠消息
@@ -42,6 +43,18 @@
 - **限制：** 默认权威路径仍为 relay；预签名直传未作为生产默认。
 - **下一步：** 完成跨网络故障矩阵与回切演练。
 - **复核条件：** 修改分片大小、URL TTL、重试策略、对象存储或上传默认策略时。
+
+#### Contact 目录读取
+
+- **状态：** 已验证（隔离 Remote GPU 前端门禁）
+- **简历句：** 为 IM 联系人目录建立受认证的只读投影页，对服务端响应执行严格 shape 校验，并在权威读取失败时清空旧数据，避免把陈旧关系状态显示为当前结果。
+- **对外表述：** 目录读取与关系修改分开交付；先保证身份边界、响应解析和失败语义，再单独引入备注、拉黑、删除与申请处理的授权、审计和确认流。
+- **演示：** 访问 `/contacts`，展示联系人别名与状态；断开目录请求后页面显示不可用状态和重试入口，且不保留上一次的联系人条目。
+- **证据：** `frontend/src/api/contacts.ts`、`frontend/src/components/ContactDirectory.vue`、`frontend/src/components/ContactDirectory.test.ts`、`frontend/src/router/index.test.ts`；Remote GPU Node 22 前端门禁通过 `34` 个测试文件、`147` 项测试、typecheck 与 production build。
+- **追问：** “为什么先做只读？” 联系人备注、拉黑和删除会改变用户关系，需要将权限、确认、审计和回退作为一个独立写路径切片验证。
+- **限制：** 当前没有 Contact 写操作，也没有跨浏览器交互或视觉回归证据。
+- **下一步：** 为每一类写操作定义 owner 授权、确认与失败恢复契约，再接入设计稿中的申请和安全状态。
+- **复核条件：** 修改 `/api/v1/contacts` 投影、路由认证、联系人状态语义或新增任何写入口时。
 
 ## 2. 一句话定位
 
