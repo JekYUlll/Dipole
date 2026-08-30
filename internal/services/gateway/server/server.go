@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -30,21 +31,22 @@ import (
 )
 
 type Dependencies struct {
-	Messages              application.MessageApplication
-	Sync                  application.SyncApplication
-	Core                  application.CoreCapability
-	Search                application.SearchApplication
-	AgentTasks            AgentTaskControlApplication
-	AgentSubscriptions    AgentSubscriptionControlApplication
-	AgentDefinitions      AgentDefinitionCatalogApplication
-	AgentMemories         AgentMemoryControlApplication
-	AgentMCP              AgentMCPApplication
-	TokenResolver         application.TokenResolver
-	Presence              wsTransport.PresenceTracker
-	Limiter               MessageRateLimiter
-	AgentMCPLimiter       AgentMCPRateLimiter
-	PresignedUploadProxy  http.Handler
-	PresignedUploadBucket string
+	Messages               application.MessageApplication
+	Sync                   application.SyncApplication
+	Core                   application.CoreCapability
+	Search                 application.SearchApplication
+	AgentTasks             AgentTaskControlApplication
+	AgentSubscriptions     AgentSubscriptionControlApplication
+	AgentDefinitions       AgentDefinitionCatalogApplication
+	AgentMemories          AgentMemoryControlApplication
+	AgentMCP               AgentMCPApplication
+	TokenResolver          application.TokenResolver
+	Presence               wsTransport.PresenceTracker
+	Limiter                MessageRateLimiter
+	AgentMCPLimiter        AgentMCPRateLimiter
+	PresignedUploadProxy   http.Handler
+	PresignedUploadBucket  string
+	PresignedUploadLimiter PresignedUploadRateLimiter
 }
 
 type MessageRateLimiter interface {
@@ -53,6 +55,10 @@ type MessageRateLimiter interface {
 
 type AgentMCPRateLimiter interface {
 	AllowAgentMCP(principalUUID string) (bool, time.Duration)
+}
+
+type PresignedUploadRateLimiter interface {
+	AllowFileUpload(identifier string) (bool, time.Duration)
 }
 
 type Server struct {
@@ -150,7 +156,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 	}
 	if dependencies.PresignedUploadProxy != nil && strings.TrimSpace(dependencies.PresignedUploadBucket) != "" {
 		bucket := strings.Trim(strings.TrimSpace(dependencies.PresignedUploadBucket), "/")
-		engine.PUT("/"+bucket+"/*object", gin.WrapH(dependencies.PresignedUploadProxy))
+		engine.PUT("/"+bucket+"/*object", gin.WrapH(presignedUploadHandler(dependencies.PresignedUploadProxy, dependencies.PresignedUploadLimiter)))
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(writer http.ResponseWriter, _ *http.Request, proxyErr error) {
@@ -162,6 +168,32 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 	engine.NoRoute(gin.WrapH(proxy))
 
 	return &Server{engine: engine, wsHub: hub}, nil
+}
+
+func presignedUploadHandler(proxy http.Handler, limiter PresignedUploadRateLimiter) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if limiter != nil {
+			allowed, retryAfter := limiter.AllowFileUpload(remoteAddress(request))
+			if !allowed {
+				seconds := int((retryAfter + time.Second - 1) / time.Second)
+				if seconds < 1 {
+					seconds = 1
+				}
+				writer.Header().Set("Retry-After", fmt.Sprintf("%d", seconds))
+				writer.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+		}
+		proxy.ServeHTTP(writer, request)
+	})
+}
+
+func remoteAddress(request *http.Request) string {
+	host, _, err := net.SplitHostPort(strings.TrimSpace(request.RemoteAddr))
+	if err == nil && host != "" {
+		return host
+	}
+	return strings.TrimSpace(request.RemoteAddr)
 }
 
 func agentMemoryListHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
