@@ -13,6 +13,7 @@ type multipartClientStub struct {
 	uploads []minio.ObjectMultipartInfo
 	aborted []struct{ key, uploadID string }
 	failKey string
+	goneKey string
 }
 
 func (s *multipartClientStub) ListIncompleteUploads(context.Context, string, string, bool) <-chan minio.ObjectMultipartInfo {
@@ -25,11 +26,29 @@ func (s *multipartClientStub) ListIncompleteUploads(context.Context, string, str
 }
 
 func (s *multipartClientStub) AbortMultipartUpload(_ context.Context, _ string, key, uploadID string) error {
+	if key == s.goneKey {
+		return minio.ErrorResponse{Code: "NoSuchUpload", Message: "upload already removed"}
+	}
 	if key == s.failKey {
 		return errors.New("abort failed")
 	}
 	s.aborted = append(s.aborted, struct{ key, uploadID string }{key: key, uploadID: uploadID})
 	return nil
+}
+
+func TestRunMultipartCleanupTreatsAlreadyGoneUploadAsConverged(t *testing.T) {
+	now := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC)
+	client := &multipartClientStub{goneKey: "message-files/raced.bin", uploads: []minio.ObjectMultipartInfo{
+		{Key: "message-files/raced.bin", UploadID: "raced", Initiated: now.Add(-2 * time.Hour)},
+	}}
+
+	report := RunMultipartCleanup(context.Background(), client, "files", "message-files/", now.Add(-time.Hour), true)
+	if !report.Complete || report.Selected != 1 || report.Aborted != 1 || report.Failed != 0 {
+		t.Fatalf("already-gone upload should converge successfully: %+v", report)
+	}
+	if len(report.Candidates) != 1 || report.Candidates[0].Status != "already_gone" {
+		t.Fatalf("unexpected race candidate: %+v", report.Candidates)
+	}
 }
 
 func TestRunMultipartCleanupDryRunSelectsOnlyExpiredUploads(t *testing.T) {

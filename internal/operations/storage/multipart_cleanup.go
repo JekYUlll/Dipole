@@ -75,9 +75,14 @@ func RunMultipartCleanup(ctx context.Context, client MultipartClient, bucket, pr
 		}
 		if execute {
 			if err := client.AbortMultipartUpload(ctx, bucket, upload.Key, upload.UploadID); err != nil {
-				report.Failed++
-				candidate.Status = "failed"
-				candidate.Error = err.Error()
+				if isMultipartUploadGone(err) {
+					report.Aborted++
+					candidate.Status = "already_gone"
+				} else {
+					report.Failed++
+					candidate.Status = "failed"
+					candidate.Error = err.Error()
+				}
 			} else {
 				report.Aborted++
 				candidate.Status = "aborted"
@@ -89,6 +94,10 @@ func RunMultipartCleanup(ctx context.Context, client MultipartClient, bucket, pr
 		return report.Candidates[i].Initiated.Before(report.Candidates[j].Initiated)
 	})
 	return report
+}
+
+func isMultipartUploadGone(err error) bool {
+	return minio.ToErrorResponse(err).Code == "NoSuchUpload"
 }
 
 func NormalizePrefix(prefix string) string {
