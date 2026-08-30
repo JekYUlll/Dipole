@@ -1224,3 +1224,4 @@
 - 2026-08-30：Multipart cleanup 输入边界已加固：未初始化客户端和 MinIO listing error 均 fail-closed，错误详情有界且保留总数；真实 MinIO/Redis 故障矩阵仍待共享维护窗口。
 - 2026-08-30：Remote GPU 隔离 MinIO Multipart smoke 已在 `b8b27a76`、Go `1.27.0` 下通过，基础生命周期证据已归档到运行手册；客户端中断、服务重启、预签名默认切流和跨存储故障矩阵仍为未完成项。
 - 2026-08-30：Remote GPU Multipart restart smoke 已在 `10cccdd3`、Go `1.27.0` 下通过，确认持久卷可跨 MinIO 重启恢复分片并完成对象；客户端中断、预签名默认切流和跨存储故障矩阵仍未关闭。
+- 2026-08-30：Remote GPU 对 `master` 提交 `bd7283d1` 完成远程 canonical 验证：Go 全量测试、服务布局与架构文档门禁通过；Agent Runtime `125` 个测试文件/`665` 个测试通过并完成 typecheck/build，Frontend `29` 个测试文件/`114` 个测试通过并完成 typecheck/Vite build。该证据覆盖 CPU/Node 验证和远程降载路径，未启动业务 Compose；Node `22.12.0` 与部分依赖声明的 `22.22.2+` engine 警告仍应在后续工具链升级中收敛。
