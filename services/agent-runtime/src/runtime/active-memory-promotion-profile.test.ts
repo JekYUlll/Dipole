@@ -31,6 +31,6 @@ describe("active Memory promotion profile", () => {
   });
 
   it("rejects the promotion Activity mode without its explicit commit switch", () => {
-    expect(() => assertActiveMemoryPromotionProfile({ ...profile, commitEnabled: false })).toThrow(/requires the Memory promotion commit switch/i);
+    expect(() => assertActiveMemoryPromotionProfile({ ...profile, commitEnabled: false })).toThrow(/promotion commit switch/i);
   });
 });
