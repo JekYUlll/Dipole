@@ -44,6 +44,12 @@ test("multipart smoke is isolated and does not require a GPU-free host", () => {
   assert.match(source, /multipart-smoke\)[\s\S]*?GOTOOLCHAIN=local scripts\/smoke-minio-multipart\.sh/);
 });
 
+test("sync ownership smoke is available through the remote CPU workflow", () => {
+  assert.match(source, /sync-ownership\) sync_revision; run_remote sync-ownership/);
+  assert.match(source, /sync-ownership\)[\s\S]*?GOTOOLCHAIN=local scripts\/smoke-sync-write-ownership\.sh/);
+  assert.doesNotMatch(source, /sync-ownership\) sync_revision; guard_start/);
+});
+
 test("direct multipart smoke scripts honor an explicit remote Go toolchain", () => {
   for (const name of ["smoke-minio-multipart.sh", "smoke-minio-multipart-restart.sh"]) {
     const smoke = fs.readFileSync(new URL(`./${name}`, import.meta.url), "utf8");
