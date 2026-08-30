@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU `remote-dev.sh sync` 与 `multipart-smoke` 在最新 `master` 上验证通过；未显式设置 Go 根目录时自动选择用户态 Go `1.27.0`。此前偶发的小写 SSH 别名问题在当前环境无法复现，暂不修改主机 SSH 配置。
+
 - 2026-08-30：修复直接调用的 MinIO Multipart smoke 脚本忽略 `DIPOLE_REMOTE_GO_ROOT` 的问题；显式用户态 Go 现在会经过可执行性校验并优先加入 `PATH`，默认固定 `GOTOOLCHAIN=local`，避免远端测试意外下载工具链。14 项远程入口契约测试、Remote GPU 两项真实 MinIO smoke 均通过。
 
 - 2026-08-30：Web Multipart 上传增加 `AbortSignal` 传播，覆盖 presigned PUT、relay API、part 重试和页面卸载；取消后停止新请求并保留可恢复 session，避免页面销毁后的无效重试。默认 relay/presigned 策略保持不变。
