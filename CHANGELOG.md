@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Multipart 策略门禁现以 `contracts/multipart-upload/v1` 为唯一默认值基准，自动比对 release manifest、`config.dist.yaml`、Go 默认配置和 Web 离线回退值。策略更新若遗漏任一层会阻断校验；运行时默认仍为 `relay` 并保留即时回退。
+
 - 2026-08-31：登录入口现复用 canonical Signal Link 紧凑标识，与 README 的深青绿双极、橙色事件脉冲保持一致；新增源代码设计契约，阻止入口页退回无标识的文字品牌。
 
 - 2026-08-31：Remote GPU 在 `6f15f887` 完成不启动 Compose 的完整 Node 门禁：Agent Runtime 通过 `134` 个测试文件、`702` 项测试（另有 `9/30` 项预期跳过），前端通过 `41` 个测试文件、`165` 项测试；两侧 typecheck 与 production build 均通过，生成 Web 产物退出后恢复，候选工作树保持干净。

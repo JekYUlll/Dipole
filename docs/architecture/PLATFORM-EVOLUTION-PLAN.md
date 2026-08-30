@@ -390,6 +390,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 为 retry outcome 增加按 operation 聚合的连续重试告警和 promtool firing 测试；未引入用户、文件或 session 标签。
 - [ ] 将大文件上限、分片大小、并发数、URL TTL 和失败重试次数纳入版本化配置与发布清单，保留旧单请求路径作为可即时回切的兼容实现。
   - [x] 建立 `contracts/multipart-upload/v1` 策略契约、默认策略和 SHA-256 绑定的 release manifest；当前默认 `relay`，`presigned` 仅作为候选模式，契约校验保留旧路径回切要求。
+  - [x] `check-multipart-policy.mjs` 以该契约比对示例配置、Go 默认配置和 Web 离线回退策略，防止大小、分片、并发、重试、TTL 或默认模式跨层漂移；受控环境覆盖仍须走独立切流审批。
 - [ ] 用真实 MinIO 集成测试覆盖大文件、多 part、重复 part、乱序 part、断网重试、过期会话、Abort、Complete 幂等、权限越界和服务重启恢复；补齐网关限流与代理超时验证。
   - [x] 可选真实 MinIO 代理 smoke 已覆盖一分片 UploadPart、S3 Host 签名、ETag、Complete 和对象内容核验，并自动清理测试对象；完整故障矩阵仍待完成。
   - [x] 真实 MinIO 集成契约增加上传流中断后复用同一 part 编号重试、Complete 和对象内容校验；该测试验证中断错误不污染最终对象，完整浏览器断网、过期会话和网关限流矩阵仍待完成。

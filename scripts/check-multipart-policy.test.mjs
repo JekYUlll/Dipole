@@ -7,5 +7,5 @@ const run = promisify(execFile)
 
 test('Multipart policy release manifest is self-consistent', async () => {
   const result = await run(process.execPath, ['scripts/check-multipart-policy.mjs'])
-  assert.match(result.stdout, /multipart policy v1 valid sha256=[a-f0-9]{64} mode=relay fallback=relay/)
+  assert.match(result.stdout, /multipart policy v1 valid sha256=[a-f0-9]{64} mode=relay fallback=relay runtime-defaults=aligned/)
 })
