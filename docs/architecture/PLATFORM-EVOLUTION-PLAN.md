@@ -419,7 +419,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] Agent Runtime 独立服务完成 Vitest、TypeScript typecheck、生产构建和 Go Core 全量回归；该证据只确认当前 shadow/协议边界稳定，不改变默认关闭的生产切流门禁。
 - [x] 增加 `scripts/check-agent-runtime-container.sh` 容器门禁，绑定 revision/created/dirty provenance，验证生产镜像裁剪、非 root `node` 用户和 foundation `/readyz`；active Runtime 仍需独立切流证据。
 - [x] 增加 `services/agent-runtime/go.mod` 作为 Go/TypeScript 服务目录边界，修复 `go test ./...` 扫描 TS 依赖内嵌 Go 源码的问题；Go 全仓与 Agent Runtime 独立测试入口均通过。
-- [ ] 在隔离 spike 分支评估 Eino `v0.10.0-alpha.x` 的 Session、后台任务和 Memory API，输出与现有 TS Runtime/Temporal/Memory 的映射与兼容性报告；预发布 API 不进入默认 Go/Eino 回滚依赖。
+- [x] 在隔离 spike 分支评估 Eino `v0.10.0-alpha.x` 的 Session、后台任务和 Memory API，输出与现有 TS Runtime/Temporal/Memory 的映射与兼容性报告；报告见 `docs/architecture/EINO-V010-ALPHA-SPIKE.md`，预发布 API 不进入默认 Go/Eino 回滚依赖。
 
 ### G3：Durable Task、Context 与 Memory
 
