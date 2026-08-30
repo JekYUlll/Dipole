@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU 在 `master` revision `67235080` 复跑 MinIO Multipart 真实生命周期 smoke，乱序上传、同编号替换、Complete、内容校验和重复 Abort 通过；网络型 Go toolchain 阻断已通过固定远端 Go 1.27 与 `GOTOOLCHAIN=local` 排除。该证据仍未覆盖客户端断网重试、服务重启恢复、预签名默认切流和完整故障矩阵。
 - 2026-08-30：A6 在真实 Chromium 中验证 Sync Timeline 的浏览器重开恢复：第一轮提交并 ACK 到 `2`，重开后先幂等 ACK 已提交 cursor，再从 `after_seq=2` 拉取并提交 `3..4`，最终安全 cursor 为 `4` 且消息无重复；该证据仍为隔离客户端验收，真实部署观察窗口、共享环境切流和旧 Offline 正文退役条件继续开放。
 - 2026-08-30：C3 性能基准增加显式容器 builder 路径，当前 revision、编译器来源和 runner 会进入报告；宿主机缺少 `clang-tidy` 时可独立取得基准，远端缺少 Docker builder 依赖或当前 C++/Go 性能比未达门槛时继续 fail closed。
 - 2026-08-30：记录远端 Go 1.22 PATH 与已安装 Go 1.27 toolchain 的差异，并为 benchmark 增加显式 `DIPOLE_GO_BIN`；网络不可用时仍必须使用已验证本地 toolchain，禁止以自动下载成功推断性能证据有效。
