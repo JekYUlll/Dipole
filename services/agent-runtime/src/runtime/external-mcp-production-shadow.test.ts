@@ -20,6 +20,17 @@ describe("external MCP production Shadow startup", () => {
     expect(startProcess).not.toHaveBeenCalled();
   });
 
+  it("does not inspect residual profiles while the external MCP switch is off", () => {
+    const env = { DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false" } as NodeJS.ProcessEnv;
+    const profileGetter = vi.fn(() => {
+      throw new Error("disabled startup inspected residual external MCP profiles");
+    });
+    Object.defineProperty(env, "DIPOLE_AGENT_EXTERNAL_MCP_PROFILES", { get: profileGetter });
+
+    expect(validateExternalMcpProductionShadowMode(env, shadow(false), temporal(false, false))).toBe(false);
+    expect(profileGetter).not.toHaveBeenCalled();
+  });
+
   it("rejects every partial configuration before process construction", async () => {
     const cases = [
       [enabledEnv(), shadow(false), temporal(true)],

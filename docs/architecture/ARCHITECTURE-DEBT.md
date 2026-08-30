@@ -525,6 +525,7 @@
 - **本轮进展：** Active 部署运行手册已记录 input、静态渲染、共享环境证据、低敏记录和回滚步骤；Compose 成功只作为配置检查，不能替代 user-gray authority 验收。
 - **本轮进展：** active overlay 强制关闭 subscription shadow、Memory、Control、MCP Server 与 External MCP，即使 host 环境设置基础开关也不会扩张 `read_active` 的 Capability 边界。
 - **本轮进展：** TypeScript Runtime 启动链增加同一 active read profile 纯门禁，直接环境变量部署也会在创建 MCP/Control/external 运行资源前拒绝越界开关。
+- **本轮进展：** 增加 `agent-external-mcp-shadow.yml` 受控 Compose overlay，显式绑定 Profile、I/O/route manifests、只读 secrets、Kafka broker/独立 consumer group 和 Temporal 运行参数；默认 Compose 不变，缺 Profile 渲染失败，关闭开关时 Runtime 不读取残留 Profile getter。该证据仍不覆盖共享 Core/Kafka、真实公网 DNS/TLS、凭据 owner 或外部 Server。
 - **本轮进展：** 学习与面试主文档增加 Active Agent、Temporal Approval、SQLC、远程验证和 C++ 数据面证据速查；口径继续要求将共享环境 authority、默认关闭能力和规划项明确标注，不能以本地门禁替代运行时验收。
 - **本轮进展：** 微服务 Compose 已显式固定 Agent 默认 `shadow`、candidate 和 manifest 路径；默认不挂载 manifest，active override 必须以只读方式提供 `user_gray` 清单，防止部署层绕过启动绑定。生产 active 仍待真实五类评测、共享环境观察窗口和用户灰度。
 

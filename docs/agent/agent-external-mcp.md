@@ -1,6 +1,6 @@
 # Agent 外部 MCP 连接边界
 
-本文记录 Agent G4 外部 MCP Client 的配置、凭据和网络边界。当前已交付默认关闭的 Profile、Credential Catalog、Transport Factory 与可注入网络策略，生产 Runtime 仍不会创建外部连接。
+本文记录 Agent G4 外部 MCP Client 的配置、凭据和网络边界。当前已交付默认关闭的 Profile、Credential Catalog、Transport Factory、受控 Shadow Worker 装配与可注入网络策略；基础 Compose 不会创建外部连接，独立 Shadow overlay 仍需显式完整输入和共享环境证据。
 
 ## 信任边界
 
@@ -36,13 +36,26 @@ Compose 固定：
 DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false
 ```
 
-关闭时忽略残留 Profile 和 I/O manifest 配置，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误；production I/O manifest loader 与 composition 已实现，但尚未注册到 `index.ts`。这一行为用于避免配置人员把独立构件误认为已具备灰度上线条件。
+关闭时忽略残留 Profile 和 I/O manifest 配置，不解析凭据引用，也不创建连接。`external_mcp_shadow` 已作为独占 Temporal activity mode 接入 Runtime 入口：只有 external Profile、Temporal、Kafka subscription trigger 和 Capability RPC 全部对齐时才会构造统一 process，任何部分启用或 mode 漂移都会在资源创建前拒绝。基础 Compose 继续固定关闭，避免配置人员把独立构件误认为已具备灰度上线条件。
+
+## 受控 Shadow 部署
+
+`deploy/microservices/agent-external-mcp-shadow.yml` 是唯一的 Compose 启用 overlay。它要求显式提供 Profile JSON、I/O manifest、route manifest、只读 secrets 目录、Kafka broker/独立 consumer group 与 Temporal address/namespace/task queue；渲染时会把 manifests 固定挂载到 `/run/dipole/external-mcp/`，并强制 `runtime_mode=shadow`、`trigger_mode=subscription`、`external_mcp_shadow`、metadata model、Memory/Control/first-party MCP server 关闭。
+
+```bash
+docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-external-mcp-shadow.yml \
+  config --quiet
+```
+
+`scripts/check-compose.sh` 会验证完整 overlay 的渲染语义，并确认缺少 Profile 时直接拒绝。该检查只证明部署契约，不能替代 Manifest owner/mode、fresh readiness、Core mTLS、Kafka/Temporal、真实公网 DNS/TLS、凭据 owner 或外部 Server 的联合演练。回滚仅需移除 overlay；基础 Compose 会恢复 `foundation` 与 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`。
 
 ## 轮换与吊销
 
 Catalog 以 `(tenant_id, credential_ref, version)` 作为唯一 binding。轮换顺序为：Secret Provider 创建新 secret version，Catalog 发布新的 active binding，Profile 切换到新 version，验证新建连，关闭旧轮次，最后把旧 binding 标记 revoked。每次建连重新解析 Catalog，因此后续旧版本调用会在 Transport 构造前被阻断。Activity 每个 Tool round 都使用 fresh Client/Transport，并在完成、取消或失败后关闭；Catalog 吊销不具备中断已发出远端请求的 authority，在途窗口由 100 ms 至 60 秒 request timeout、取消传播和下游 Server 端吊销共同约束。
 
-Catalog 提供受约束 file source，但尚未装配到 Runtime 启动链。路径必须为规范绝对路径，父目录不得经过 symlink，且由 root 或 Runtime UID 拥有、group/other 不可写；目标文件需要相同 owner/mode 边界，并且是 single-link regular file。默认上限 256 KiB，可在 32 B 至 1 MiB 间收紧。每次 resolve 都重新 `O_NOFOLLOW` 打开并有界读取，因此同目录原子 rename 后立即生效，读取或解析失败时不会回退旧内容。
+Catalog 提供受约束 file source，并由 `external_mcp_shadow` 的 deployment plan 在启用时装配到 Runtime 启动链。路径必须为规范绝对路径，父目录不得经过 symlink，且由 root 或 Runtime UID 拥有、group/other 不可写；目标文件需要相同 owner/mode 边界，并且是 single-link regular file。默认上限 256 KiB，可在 32 B 至 1 MiB 间收紧。每次 resolve 都重新 `O_NOFOLLOW` 打开并有界读取，因此同目录原子 rename 后立即生效，读取或解析失败时不会回退旧内容。
 
 默认 Kubernetes ConfigMap/Secret projected volume 依赖 symlink，会被该 source 拒绝。可以使用输出 regular file 的 CSI provider，或由受信 init/sidecar 把 lifecycle metadata 写入私有 tmpfs，并以同目录原子 rename 更新。Catalog 只含 opaque reference，仍需要部署层完整性、rollback revision 和可用性告警；不要降低 symlink、owner 或 mode 校验来适配挂载。
 
@@ -62,7 +75,7 @@ envelope 固定为 `DPMCP01 | 12-byte nonce | 1..8192-byte ciphertext | 16-byte 
 
 key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止 group/other 任意权限和执行位；密文文件允许 group/other 只读，但禁止写入和执行。两者父目录都必须 canonical、owner 正确且不可被 group/world 写，并通过 `O_NOFOLLOW` 打开。推荐把 key 放在独立 tmpfs/受控 CSI/KMS 解封目录，密文放在另一只读挂载；把 key 与密文放在同一持久卷只能抵御密文单独泄露，无法抵御完整主机或卷快照泄露。
 
-凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接且旧轮次关闭后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或在途连接主动吊销，encrypted-file Provider 也尚未装配到启动链。
+凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接且旧轮次关闭后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或在途连接主动吊销；encrypted-file Provider 只会在受控 `external_mcp_shadow` deployment plan 启用后构造。
 
 ## Production I/O 组合
 
@@ -78,11 +91,11 @@ loader 输出的 typed `io/options` 可直接传给 composition，并把同一 e
 
 `createExternalMcpReadCapabilityDefinitions` 提供代码拥有的外部只读 authority。当前唯一 definition 为 `repository.issue.read`：输入只接受 `owner`、`repo`、`issue_number`，仓库坐标规范化为小写，resource scope 固定为 `repository_issue/{owner}/{repo}#{issue_number}:read`，权限同 Capability ID，风险固定为 read。代码 egress ceiling 为 1 KiB 且只允许上述三个参数；route manifest 只能缩小字段集合或字节上限，无法改写 descriptor、schema 与 resource resolver。
 
-factory 每次返回独立 Registry，并在注册后 seal；descriptor、ceiling 及参数名 snapshot 同时冻结。调用方不能在 deployment load 前后追加 write/destructive 或其他外部 definition。factory 本身没有环境、manifest、RPC、凭据或网络依赖；生产 startup 尚未调用它，真实 Shadow route 仍需显式受控 manifest 与 Profile。
+factory 每次返回独立 Registry，并在注册后 seal；descriptor、ceiling 及参数名 snapshot 同时冻结。调用方不能在 deployment load 前后追加 write/destructive 或其他外部 definition。factory 本身没有环境、manifest、RPC、凭据或网络依赖；`external_mcp_shadow` 启用时由 production Worker bootstrap 调用，真实 Shadow route 仍需显式受控 manifest 与 Profile。
 
 `loadExternalMcpDeploymentPlan` 在启动接线之前提供唯一的 default-off 部署组合边界。它先解析一次 Profile，再以同一 owner UID 和 AbortSignal 顺序加载 production I/O 与 deployment route manifest；两者全部通过后才构造 production I/O runtime。返回值只包含 exact config、route Registry/routes、production runtime、Worker external-MCP 依赖和低敏 Runtime binding。readiness collector 与 gated Worker 因而共享同一 I/O snapshot、raw Registry 和有效上限，装配调用方无需重复拼接 binding options。
 
-deployment plan 构造不会打开 Catalog/key/envelope/CA，不执行 preflight、DNS、TLS、MCP discovery 或 RPC，也不创建 Temporal Worker；任一 manifest、Profile join、owner 或取消失败都会返回固定低敏错误且不暴露部分计划。external Profile disabled 时连 Profile JSON、I/O/route manifest 路径都不读取。该 plan 当前未注册到 `index.ts`、Compose 或任何自动启动路径。
+deployment plan 构造不会打开 Catalog/key/envelope/CA，不执行 preflight、DNS、TLS、MCP discovery 或 RPC，也不创建 Temporal Worker；任一 manifest、Profile join、owner 或取消失败都会返回固定低敏错误且不暴露部分计划。external Profile disabled 时连 Profile JSON、I/O/route manifest 路径都不读取。该 plan 由 `external_mcp_shadow` Runtime mode 的 Worker bootstrap 调用，基础 Compose 仍不选择该 mode。
 
 `runtime.preflight(signal?)` 在一次固定逻辑时间内解析所有 enabled Profile 的 Catalog binding，精确核对 tenant/ref/version，再按完整 binding 与 CA ref 去重。它通过正式 AuthProvider 验证 fresh encrypted Secret、Bearer 编码和源 buffer 擦除，并通过正式 CA Provider 验证文件证据及 PEM/X509 内容。成功收据只包含 schema version、enabled、checked-at 和 Profile/Credential/CA 聚合计数；路径、tenant、Profile、opaque ref、证书和 token 都不会进入收据。任何 revoke、binding 漂移、key/AAD/envelope/CA 损坏统一返回固定低敏错误，取消在依赖边界传播。
 
@@ -90,7 +103,7 @@ preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatch
 
 `runtime.shadowConnectivityDrill({ profileId, tenantId }, signal?)` 是独立的只读在线证据边界。它重新通过 Registry 解析 exact Profile/Catalog，创建正式 guarded Transport 和 modern allowlisted Client，只执行协议 discovery/list；Server identity 必须匹配，全部 configured Tool 必须被发现。演练器不暴露 Client 的 Tool 调用方法，成功或失败都会收敛关闭连接。成功收据只保存 schema、checked-at 与 Tool 数量；Profile、tenant、Server、Tool、地址和证书信息留在受控运维输入/网络审计中。
 
-本地组合测试覆盖 exact binding、Tool 缺失、连接/握手/时钟失败、取消和清理；官方 HTTP handler 协议测试确认 modern discovery 完成且 `tools/call` 次数为零。public-only Guard 会拒绝 loopback/private 地址，所以真实 DNS/TLS 成功证据必须来自隔离 Shadow 环境，不能用本地私网绕过策略模拟。当前 loader、composition、preflight 与 drill 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需 provider owner 授权、只读 Shadow tenant allowlist、真实公网故障演练和回滚证据。
+本地组合测试覆盖 exact binding、Tool 缺失、连接/握手/时钟失败、取消和清理；官方 HTTP handler 协议测试确认 modern discovery 完成且 `tools/call` 次数为零。public-only Guard 会拒绝 loopback/private 地址，所以真实 DNS/TLS 成功证据必须来自隔离 Shadow 环境，不能用本地私网绕过策略模拟。loader、composition、preflight 与 drill 已通过 `external_mcp_shadow` Runtime mode 接入 Worker；上线前仍需 provider owner 授权、只读 Shadow tenant allowlist、真实公网故障演练和回滚证据。
 
 `runtime.readinessEvidence({ profileId, tenantId }, signal?)` 串行执行 preflight 和 drill，默认要求 5 分钟内完成，并校验 preflight 覆盖当前全部 Profile、Credential/CA 计数有界、在线 Tool 数等于目标 Profile allowlist、四个时间单调且均落在 collection window。任何收据重放、旧时间、计数漂移、取消或 cleanup 失败都不会生成 bundle；使用测试注入 `transportBuilder` 的 runtime 也固定拒绝出证。
 

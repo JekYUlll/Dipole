@@ -495,6 +495,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ### G4：MCP、评估、观测与安全门禁
 
 - [ ] Runtime 作为 MCP Client 接入外部工具，并以 MCP Server 暴露受控 Dipole Capability。
+  - [x] 增加默认关闭的 `agent-external-mcp-shadow.yml` Compose overlay，要求显式 Profile、I/O/route manifests、只读 secrets、独立 Kafka group 和 Temporal 输入；基础 Compose 保持 `foundation`，移除 overlay 即可回滚。Compose 门禁固定完整渲染和缺 Profile 拒绝，真实共享环境联调继续独立验收。
   - [x] 使用官方 MCP TS SDK v2 建立 Client/Server foundation：只读 Capability 投影复用 Registry/Policy，宿主注入 trusted Context；Client 校验 Server identity 与双 allowlist，InMemory/Streamable HTTP 契约通过。
   - [x] 增加默认关闭的 Runtime/Gateway Streamable HTTP 挂载：Gateway JWT 固定 principal，Core 按 Task/Run 解析可信 ExecutionContext，当前只开放显式只读 Capability。
   - [x] migration v30、sqlc Store 与 additive Core RPC 建立 MCP ToolCall 持久审计；TS 执行器在 durable begin 后执行，并创建不含正文的原生 OTel span，失败与超限结果 fail closed。

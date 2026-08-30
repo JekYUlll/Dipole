@@ -67,6 +67,7 @@ Dipole Agent Runtime | TypeScript, Node.js, Temporal, Kafka, MCP, OpenTelemetry
 | SQLC 数据访问 | **已验证** | [数据访问迁移说明](../data/DATA-ACCESS-MIGRATION.md) 与版本化 migration/sqlc 查询 |
 | Temporal 审批恢复 | **已验证** | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、[MCP 授权](../agent/agent-mcp-authorization.md) 与 Workflow 回归测试 |
 | Active Agent | **默认关闭** | [Active 部署运行手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md)、release manifest、五类 Eval 与共享环境记录 |
+| 外部 MCP Shadow | **默认关闭** | [外部 MCP 连接边界](../agent/agent-external-mcp.md)、`agent-external-mcp-shadow.yml`、Compose 门禁与隔离全栈演练；真实公网/凭据/共享环境证据仍需复核 |
 | Cassandra/Elasticsearch 切流 | **默认关闭** | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md) 中的回填、对账、Shadow 和回滚门禁 |
 | C++ 实时数据面 | **规划中** | [平台演进计划](../architecture/PLATFORM-EVOLUTION-PLAN.md) 与基准报告；在可复现收益前不作性能承诺 |
 

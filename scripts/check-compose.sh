@@ -172,6 +172,64 @@ if env -u DIPOLE_AGENT_RELEASE_MANIFEST_FILE -u DIPOLE_AGENT_CANDIDATE_VERSION \
   exit 1
 fi
 
+external_mcp_shadow_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_EXTERNAL_MCP_IO_MANIFEST_FILE=/tmp/dipole-agent-external-mcp-io-check.json \
+  DIPOLE_AGENT_EXTERNAL_MCP_ROUTE_MANIFEST_FILE=/tmp/dipole-agent-external-mcp-routes-check.json \
+  DIPOLE_AGENT_EXTERNAL_MCP_SECRET_DIR=/tmp/dipole-agent-external-mcp-secrets-check \
+  DIPOLE_AGENT_EXTERNAL_MCP_KAFKA_BROKERS=kafka:9092 \
+  DIPOLE_AGENT_EXTERNAL_MCP_KAFKA_GROUP_ID=dipole-agent-external-mcp-compose-check \
+  DIPOLE_AGENT_EXTERNAL_MCP_PROFILES='[{"schema_version":"dipole.agent.external-mcp-profile.v1","profile_id":"repository-prod","tenant_id":"dipole","server_id":"repository.example","endpoint":"https://repository.example/mcp","credential":{"ref":"CRED-0123456789ABCDEF","version":1},"network_policy":{"allowed_hosts":["repository.example"],"allowed_ports":[443],"dns_resolution":"public_only","tls_server_name":"repository.example","ca_bundle_ref":"CA-0123456789ABCDEF"},"allowed_tools":["get_issue"]}]' \
+  DIPOLE_AGENT_TEMPORAL_ADDRESS=temporal:7233 \
+  DIPOLE_AGENT_TEMPORAL_NAMESPACE=dipole \
+  DIPOLE_AGENT_TEMPORAL_TASK_QUEUE=dipole-agent-external-mcp-compose-check \
+    docker compose -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/agent-external-mcp-shadow.yml config --format json
+})"
+jq -e '
+  .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
+  and .services.agent.environment.DIPOLE_AGENT_KAFKA_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_KAFKA_BROKERS == "kafka:9092"
+  and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-external-mcp-compose-check"
+  and .services.agent.environment.DIPOLE_AGENT_TRIGGER_MODE == "subscription"
+  and .services.agent.environment.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_MODE == "metadata"
+  and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_CAPABILITY_RPC_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ADDRESS == "temporal:7233"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_NAMESPACE == "dipole"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE == "dipole-agent-external-mcp-compose-check"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "external_mcp_shadow"
+  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_IO_MANIFEST == "/run/dipole/external-mcp/io-manifest.json"
+  and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ROUTE_MANIFEST == "/run/dipole/external-mcp/routes.json"
+  and any(.services.agent.volumes[]; (.source | endswith("/tmp/dipole-agent-external-mcp-io-check.json"))
+    and .target == "/run/dipole/external-mcp/io-manifest.json" and .read_only == true)
+  and any(.services.agent.volumes[]; (.source | endswith("/tmp/dipole-agent-external-mcp-routes-check.json"))
+    and .target == "/run/dipole/external-mcp/routes.json" and .read_only == true)
+  and any(.services.agent.volumes[]; (.source | endswith("/tmp/dipole-agent-external-mcp-secrets-check"))
+    and .target == "/run/dipole/external-mcp/secrets" and .read_only == true)
+' <<<"${external_mcp_shadow_config}" >/dev/null
+
+if env -u DIPOLE_AGENT_EXTERNAL_MCP_PROFILES \
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_EXTERNAL_MCP_IO_MANIFEST_FILE=/tmp/dipole-agent-external-mcp-io-check.json \
+  DIPOLE_AGENT_EXTERNAL_MCP_ROUTE_MANIFEST_FILE=/tmp/dipole-agent-external-mcp-routes-check.json \
+  DIPOLE_AGENT_EXTERNAL_MCP_SECRET_DIR=/tmp/dipole-agent-external-mcp-secrets-check \
+  DIPOLE_AGENT_EXTERNAL_MCP_KAFKA_BROKERS=kafka:9092 \
+  DIPOLE_AGENT_EXTERNAL_MCP_KAFKA_GROUP_ID=dipole-agent-external-mcp-compose-check \
+  DIPOLE_AGENT_TEMPORAL_ADDRESS=temporal:7233 \
+  DIPOLE_AGENT_TEMPORAL_NAMESPACE=dipole \
+  DIPOLE_AGENT_TEMPORAL_TASK_QUEUE=dipole-agent-external-mcp-compose-check \
+  docker compose -f deploy/compose/docker-compose.microservices.yml \
+    -f deploy/microservices/agent-external-mcp-shadow.yml config --quiet >/dev/null 2>&1; then
+  echo "external MCP Shadow overlay must reject a missing profile input" >&2
+  exit 1
+fi
+
 if DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
   DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
