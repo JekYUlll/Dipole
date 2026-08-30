@@ -7,7 +7,7 @@
 - Vue 3 + TypeScript + Pinia + Vue Router + Vite。
 - 当前路由包含 Login、Chat，以及由 feature flag 保护的 Agent Elicitation、Approval、Task Timeline、Artifact、Subscription、Definition 和 Memory 页面；Search/Sync 作为 Chat 工作区能力接入，复杂交互仍主要集中在 `ChatView.vue`。
 - 已建立 canonical `design/dipole-ui.pen`、设计日志和批准预览目录。
-- Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Agent Workflow Repair 已完成 evidence review、六态矩阵和双人审批设计，普通 Elicitation 已完成来源披露、desktop/mobile Form、七态设计及默认关闭的 Vue 实现，Event Subscription 已完成 owner 管理、六态和 mobile 撤销设计；Login、完整 Chat 和其他现代 IM 页面仍待补齐。
+- Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Contact 已完成联系人管理 desktop/mobile、申请/拉黑状态矩阵和可复用组件，Vue 页面待后续切片实现；Agent Workflow Repair 已完成 evidence review、六态矩阵和双人审批设计，普通 Elicitation 已完成来源披露、desktop/mobile Form、七态设计及默认关闭的 Vue 实现，Event Subscription 已完成 owner 管理、六态和 mobile 撤销设计；Login、完整 Chat、Group、File、Device、Settings 等现代 IM 页面仍待补齐。
 - 已建立 Vitest + Vue Test Utils + jsdom 基线，以及 Chromium/Firefox/WebKit Playwright IndexedDB 验收；页面流程与视觉回归持续补齐。Agent Task Timeline v1 已通过真实 Pencil CLI 小批次补齐 canonical desktop/mobile/state matrix 和批准导出，并新增 Chromium 受控 fixture 截图基线；完整页面与未覆盖浏览器视觉回归仍待建立。
 - Pencil CLI 已认证；2026-08-27 本地版本为 `0.3.5`，设计时使用 CLI 内置 skill 读取最新编辑约束。
 
@@ -68,7 +68,7 @@ design/
 
 ### F2：现代 IM 完整流程
 
-- Search desktop/mobile 四态和 Vue 工作区已完成；Sync 本地恢复与状态反馈已完成首个切片；继续设计并实现 Contact、Group、File、Device 和 Settings 流程。
+- Search desktop/mobile 四态和 Vue 工作区已完成；Sync 本地恢复与状态反馈已完成首个切片；Contact 已完成 Pencil desktop/mobile/状态矩阵，继续实现其受认证 Vue 页面并设计 Group、File、Device 和 Settings 流程。
 - 将大型 ChatView 渐进拆成可测试组件。
 - 建立 Playwright 路由、交互和视觉回归。
 - IndexedDB 的三浏览器持久化、账号清理与页面中断事务契约已进入 Playwright；继续补齐完整页面路由和截图基线。

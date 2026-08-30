@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：F2 Contact 已建立可定位的 Pencil desktop/mobile、loading/empty/request-pending/safety-blocked 状态矩阵与批准导出，避免后续 Vue 页面脱离既有认证 Contact API 语义；前端路由、交互和跨浏览器视觉回归仍待独立实现与验证。
+
 - 2026-08-30：IM 深度面试问答已对齐当前两条 Timeline：`messages` 为会话 Message Store，`user_sync_inbox` 与设备 Cursor 为用户 Sync Store。文档同时移除“Redis 将作为权威同步库”的遗留建议，保留 Cassandra 主读、A6 真实观察与旧 Offline 兼容窗口的未完成边界，避免对外材料夸大或低估当前能力。
 
 - 2026-08-30：Remote GPU 在 `37d02383` 上使用 `amtool check-config` 验证 Alertmanager 配置，确认 route 与唯一 discard receiver 可解析；验证只运行一次性容器，未启动常驻 Compose 服务、未发送外部通知。生产 receiver 投递与故障演练继续开放。

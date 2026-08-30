@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：F2 Contact 完成 Pencil canonical desktop/mobile 管理稿、申请与安全状态矩阵、可复用 Contact Row/Request 组件及 2x 评审导出。该切片只建立视觉基线，未新增前端路由、权限或 Contact API 行为。
+
 - 2026-08-30：修正 IM 深度面试问答的历史叙事：当前 `messages`/`user_sync_inbox`/设备 Cursor 已分别承担 Message Store、Sync Store 与多端位点；Redis 保持实时状态与可丢弃加速职责。Cassandra 迁移、A6 真实 Web Sync 观察和旧 Offline 兼容窗口仍按既有门禁推进。
 
 - 2026-08-30：Remote GPU 在提交 `37d02383` 上拉取 `quay.io/prometheus/alertmanager:v0.28.1` 并通过 `amtool check-config`；配置包含全局配置、路由和一个 discard receiver。该证据只验证 Alertmanager 配置，未启动常驻 Compose 服务或外部通知。

@@ -54,6 +54,15 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 显式退出、HTTP 401、WS kick 和账号切换统一复用现有登录跳转与 Sync 状态，不新增视觉分支；终止过程先撤销会话，再在后台完成账号级本地数据清理。
 
+### Contact v1
+
+- `Contact/Desktop/Manage`：在深色导航轨与暖白工作区中展示可信联系人目录、关系筛选、备注、拉黑/删除入口和待审申请。
+- `Contact/Mobile/Manage`：在 390px 宽度内保留联系人、申请和拉黑筛选，申请处理与关系操作均维持可见安全边界。
+- `Contact/State Matrix`：覆盖 loading、empty、request pending 和 safety blocked；状态只表达既有认证联系人 API 的加载、申请审核与拉黑关系语义。
+- `Component/Contact Row` 与 `Component/Contact Request`：供后续 Contact 页面、会话侧栏和审批入口复用。
+
+批准的 2x 预览位于 `exports/contact-v1/`。当前切片仅建立 Pencil 视觉与状态基线，尚未新增 Contact Vue 路由或更改 Gateway API。后续实现必须从认证会话派生 principal，接受、忽略、拉黑、删除或修改备注后重新读取权威联系人状态；页面不得暗示自动审批或跨用户关系操作。
+
 ### Agent Workflow Repair v1
 
 - `Agent Repair/Desktop/Proposed`：对照 MySQL Task projection 与 Temporal Workflow 历史，展示 canonical evidence SHA-256、提案依据和双人审批链。

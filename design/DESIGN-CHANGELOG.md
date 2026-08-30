@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### 新增
+
+- 增加 Contact v1 的 desktop/mobile 管理稿、关系状态矩阵和两个可复用组件，覆盖可信联系人、传入/传出申请、备注、拉黑和删除入口。
+- 归档 `exports/contact-v1/` 的 2x 评审图；当前仅为设计基线，Vue 路由与交互实现继续待 F2 后续切片接入。
+
 - 增加本地 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该检查不修改设计文件，也不替代 Pencil 视觉评审。
 - 增加 `design/export-manifest.json` 评审导出清单；设计门禁现在同时校验批准的单文件和导出目录存在且包含非空 PNG，避免设计稿与评审资产发生静默漂移。
 

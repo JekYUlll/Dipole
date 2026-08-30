@@ -29624,6 +29624,2049 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "YNvDO",
+      "x": 23714,
+      "y": 0,
+      "name": "Component/Contact Row",
+      "reusable": true,
+      "width": 820,
+      "fill": "$surface",
+      "cornerRadius": "$radius-sm",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "gap": 16,
+      "padding": [
+        18,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "v93Xw",
+          "name": "Contact Row Avatar",
+          "width": 46,
+          "height": 46,
+          "fill": "$accent-soft",
+          "cornerRadius": 23,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "y9ZyIP",
+              "name": "Contact Row Avatar Initial",
+              "fill": "$accent-strong",
+              "content": "L",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-body",
+              "fontSize": 18,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "T8RjhT",
+          "name": "Contact Row Body",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "frame",
+              "id": "mFra6",
+              "name": "Contact Row Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "D9RKft",
+                  "name": "Contact Row Name",
+                  "fill": "$ink",
+                  "content": "林知远",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "klVI6",
+                  "name": "Contact Row Verified Status",
+                  "fill": "$accent-soft",
+                  "cornerRadius": 999,
+                  "gap": 6,
+                  "padding": [
+                    6,
+                    10
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "UeWya",
+                      "name": "Contact Row Verified Status Dot",
+                      "fill": "$accent-strong",
+                      "width": 7,
+                      "height": 7
+                    },
+                    {
+                      "type": "text",
+                      "id": "PIFoC",
+                      "name": "Contact Row Verified Status Label",
+                      "fill": "$accent-strong",
+                      "content": "已验证",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "vKcH7",
+              "name": "Contact Row Remark",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "备注：联合课题联系人，允许查看基本资料",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "kCko2",
+              "name": "Contact Row Footer",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pAB6F",
+                  "name": "Contact Row Metadata",
+                  "fill": "$ink-faint",
+                  "content": "同事 · 最近确认 08-29",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "xvT7F",
+                  "name": "Contact Row Actions",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "LDoPt",
+                      "name": "Contact Row Edit Remark",
+                      "fill": "$surface",
+                      "cornerRadius": "$radius-sm",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Gwkkv",
+                          "name": "Contact Row Edit Remark Label",
+                          "fill": "$ink",
+                          "content": "编辑备注",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "P1wmdo",
+                      "name": "Contact Row Block",
+                      "fill": "$danger-soft",
+                      "cornerRadius": "$radius-sm",
+                      "stroke": "$danger",
+                      "strokeWidth": 1,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "iopVp",
+                          "name": "Contact Row Block Label",
+                          "fill": "$danger",
+                          "content": "拉黑",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zgUzh",
+                      "name": "Contact Row Delete",
+                      "fill": "$surface",
+                      "cornerRadius": "$radius-sm",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "t5qcY",
+                          "name": "Contact Row Delete Label",
+                          "fill": "$ink",
+                          "content": "删除",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ewnQG",
+      "x": 23714,
+      "y": 156,
+      "name": "Component/Contact Request",
+      "reusable": true,
+      "width": 420,
+      "fill": "$surface",
+      "cornerRadius": "$radius-sm",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 14,
+      "padding": 20,
+      "children": [
+        {
+          "type": "frame",
+          "id": "HkeA2",
+          "name": "Contact Request Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "zrsZ6",
+              "name": "Contact Request Title",
+              "fill": "$ink",
+              "content": "待审核联系请求",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-body",
+              "fontSize": 16,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "n0L6Xr",
+              "name": "Contact Request Direction",
+              "fill": "$warning-soft",
+              "cornerRadius": 999,
+              "gap": 6,
+              "padding": [
+                6,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "EvLQ4",
+                  "name": "Contact Request Direction Dot",
+                  "fill": "$warning",
+                  "width": 7,
+                  "height": 7
+                },
+                {
+                  "type": "text",
+                  "id": "fdcMt",
+                  "name": "Contact Request Direction Label",
+                  "fill": "$warning",
+                  "content": "incoming",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "lH7lg",
+          "name": "Contact Request Person",
+          "width": "fill_container",
+          "gap": 12,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "OA2TC",
+              "name": "Contact Request Avatar",
+              "width": 42,
+              "height": 42,
+              "fill": "$warning-soft",
+              "cornerRadius": 21,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cIFp9",
+                  "name": "Contact Request Avatar Initial",
+                  "fill": "$warning",
+                  "content": "周",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Yl0Oj",
+              "name": "Contact Request Copy",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "y4p1dH",
+                  "name": "Contact Request Name",
+                  "fill": "$ink",
+                  "content": "周闻舟",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "tk1ax",
+                  "name": "Contact Request Note",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "请求添加为项目联系人，备注将由你审核后保存。",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "VW5cO",
+          "name": "Contact Request Safe Actions",
+          "width": "fill_container",
+          "gap": 10,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "YqPmx",
+              "name": "Contact Request Accept",
+              "fill": "$accent",
+              "cornerRadius": "$radius-sm",
+              "gap": 8,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "HeibC",
+                  "name": "Contact Request Accept Label",
+                  "fill": "$text-inverse",
+                  "content": "接受",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UMVIl",
+              "name": "Contact Request Defer",
+              "fill": "$surface",
+              "cornerRadius": "$radius-sm",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 8,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "i67XK",
+                  "name": "Contact Request Defer Label",
+                  "fill": "$ink",
+                  "content": "暂不处理",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iiYwW",
+              "name": "Contact Request Block",
+              "fill": "$danger-soft",
+              "cornerRadius": "$radius-sm",
+              "stroke": "$danger",
+              "strokeWidth": 1,
+              "gap": 8,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "B6YFWA",
+                  "name": "Contact Request Block Label",
+                  "fill": "$danger",
+                  "content": "拉黑",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "lAnAe",
+      "x": 23714,
+      "y": 520,
+      "name": "Contact/Desktop/Manage",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$canvas",
+      "children": [
+        {
+          "type": "frame",
+          "id": "b9Qpf1",
+          "name": "Contact Desktop Rail",
+          "width": 256,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 24,
+          "padding": [
+            28,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "KFtiu",
+              "name": "Contact Rail Brand",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 5,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "BtxJW",
+                  "name": "Contact Rail Product",
+                  "fill": "$text-inverse",
+                  "content": "Dipole",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 22,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "bQbL2",
+                  "name": "Contact Rail Section",
+                  "fill": "$ink-faint",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Contact management",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wDruD",
+              "name": "Contact Rail Navigation",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "MvmVc",
+                  "name": "Contact Rail Nav 会话",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "wz3tn",
+                      "name": "Contact Rail Nav 会话 Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "circle",
+                      "library": "lucide",
+                      "fill": "$ink-faint"
+                    },
+                    {
+                      "type": "text",
+                      "id": "tDcnn",
+                      "name": "Contact Rail Nav 会话 Label",
+                      "fill": "$ink-faint",
+                      "content": "会话",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "J5OVQ9",
+                  "name": "Contact Rail Nav 搜索",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "aT5oj",
+                      "name": "Contact Rail Nav 搜索 Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "circle",
+                      "library": "lucide",
+                      "fill": "$ink-faint"
+                    },
+                    {
+                      "type": "text",
+                      "id": "O775W",
+                      "name": "Contact Rail Nav 搜索 Label",
+                      "fill": "$ink-faint",
+                      "content": "搜索",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wNXr6",
+                  "name": "Contact Rail Nav 联系人",
+                  "width": "fill_container",
+                  "fill": "$rail-soft",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "xtuQy",
+                      "name": "Contact Rail Nav 联系人 Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "users",
+                      "library": "lucide",
+                      "fill": "$accent"
+                    },
+                    {
+                      "type": "text",
+                      "id": "VDxpw",
+                      "name": "Contact Rail Nav 联系人 Label",
+                      "fill": "$text-inverse",
+                      "content": "联系人",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BfjD2",
+                  "name": "Contact Rail Nav 订阅",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "vvwfw",
+                      "name": "Contact Rail Nav 订阅 Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "circle",
+                      "library": "lucide",
+                      "fill": "$ink-faint"
+                    },
+                    {
+                      "type": "text",
+                      "id": "OQGs7",
+                      "name": "Contact Rail Nav 订阅 Label",
+                      "fill": "$ink-faint",
+                      "content": "订阅",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "T3nDrq",
+                  "name": "Contact Rail Nav 记忆",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 10,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "OWzaY",
+                      "name": "Contact Rail Nav 记忆 Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "circle",
+                      "library": "lucide",
+                      "fill": "$ink-faint"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Z5nP8E",
+                      "name": "Contact Rail Nav 记忆 Label",
+                      "fill": "$ink-faint",
+                      "content": "记忆",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "tmkKH",
+          "name": "Contact Desktop Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": [
+            34,
+            40
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "N6vzyI",
+              "name": "Contact Desktop Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "L1wMPG",
+                  "name": "Contact Desktop Header Copy",
+                  "width": 760,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KqzMM",
+                      "name": "Contact Desktop Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "F2 Contact",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "cyClB",
+                      "name": "Contact Desktop Title",
+                      "fill": "$ink",
+                      "content": "联系人管理",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 34,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "m57S1",
+                      "name": "Contact Desktop Description",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "查看认证后的联系人，审核传入与传出请求，并维护备注、拉黑和删除操作。",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Aq5Jo",
+                  "name": "Contact Desktop Add Request",
+                  "fill": "$accent",
+                  "cornerRadius": "$radius-sm",
+                  "gap": 8,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "DD9nN",
+                      "name": "Contact Desktop Add Request Label",
+                      "fill": "$text-inverse",
+                      "content": "发起联系人请求",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "V47il",
+              "name": "Contact Desktop Relationship Tabs",
+              "fill": "$surface",
+              "cornerRadius": "$radius-sm",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 8,
+              "padding": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "j78EFs",
+                  "name": "Contact Tab 全部",
+                  "fill": "$accent-soft",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    9,
+                    16
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MJ2ej",
+                      "name": "Contact Tab 全部 Label",
+                      "fill": "$accent-strong",
+                      "content": "全部",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "reIcP",
+                  "name": "Contact Tab 同事",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    9,
+                    16
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "aCNjg",
+                      "name": "Contact Tab 同事 Label",
+                      "fill": "$ink-soft",
+                      "content": "同事",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wx4cX",
+                  "name": "Contact Tab 家人",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    9,
+                    16
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hbdWk",
+                      "name": "Contact Tab 家人 Label",
+                      "fill": "$ink-soft",
+                      "content": "家人",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ICB4R",
+                  "name": "Contact Tab 外部联系人",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    9,
+                    16
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "canh7",
+                      "name": "Contact Tab 外部联系人 Label",
+                      "fill": "$ink-soft",
+                      "content": "外部联系人",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BGVl8",
+                  "name": "Contact Tab 已拉黑",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    9,
+                    16
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "rUCTI",
+                      "name": "Contact Tab 已拉黑 Label",
+                      "fill": "$ink-soft",
+                      "content": "已拉黑",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Afxa5",
+              "name": "Contact Desktop Management Content",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "S1RCWn",
+                  "name": "Contact Trusted Directory Panel",
+                  "width": 760,
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "D9tdP",
+                      "name": "Contact Trusted Directory Header",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "uE59V",
+                          "name": "Contact Trusted Directory Title",
+                          "fill": "$ink",
+                          "content": "可信联系人目录",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 18,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "iwRkw",
+                          "name": "Contact Authenticated List Status",
+                          "fill": "$accent-soft",
+                          "cornerRadius": 999,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "ellipse",
+                              "id": "TDEUF",
+                              "name": "Contact Authenticated List Status Dot",
+                              "fill": "$accent-strong",
+                              "width": 7,
+                              "height": 7
+                            },
+                            {
+                              "type": "text",
+                              "id": "ESSlv",
+                              "name": "Contact Authenticated List Status Label",
+                              "fill": "$accent-strong",
+                              "content": "authenticated list",
+                              "lineHeight": 1.35,
+                              "fontFamily": "$font-body",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "id": "f0L9nY",
+                      "type": "ref",
+                      "ref": "YNvDO",
+                      "name": "Contact Directory Row 林知远",
+                      "width": "fill_container",
+                      "descendants": {
+                        "y9ZyIP": {
+                          "content": "L"
+                        },
+                        "D9RKft": {
+                          "content": "林知远"
+                        },
+                        "klVI6": {
+                          "fill": "$accent-soft"
+                        },
+                        "vKcH7": {
+                          "content": "备注：联合课题联系人，允许查看基本资料"
+                        },
+                        "pAB6F": {
+                          "content": "同事 · 最近确认 08-29"
+                        }
+                      }
+                    },
+                    {
+                      "id": "SOAEP",
+                      "type": "ref",
+                      "ref": "YNvDO",
+                      "name": "Contact Directory Row 孟予白",
+                      "width": "fill_container",
+                      "descendants": {
+                        "y9ZyIP": {
+                          "content": "M"
+                        },
+                        "D9RKft": {
+                          "content": "孟予白"
+                        },
+                        "klVI6": {
+                          "fill": "$warning-soft"
+                        },
+                        "vKcH7": {
+                          "content": "备注：尚未设置，可编辑后保存到联系人资料"
+                        },
+                        "pAB6F": {
+                          "content": "外部联系人 · outgoing request accepted"
+                        }
+                      }
+                    },
+                    {
+                      "id": "aT7VF",
+                      "type": "ref",
+                      "ref": "YNvDO",
+                      "name": "Contact Directory Row 何以宁",
+                      "width": "fill_container",
+                      "descendants": {
+                        "y9ZyIP": {
+                          "content": "H"
+                        },
+                        "D9RKft": {
+                          "content": "何以宁"
+                        },
+                        "klVI6": {
+                          "fill": "$danger-soft"
+                        },
+                        "vKcH7": {
+                          "content": "安全状态：已阻止该关系，列表仅保留管理入口"
+                        },
+                        "pAB6F": {
+                          "content": "已拉黑 · 可删除记录"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "OToWR",
+                  "name": "Contact Request And Safety Panel",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "children": [
+                    {
+                      "id": "nsaA5",
+                      "type": "ref",
+                      "ref": "ewnQG",
+                      "name": "Contact Pending Incoming Request",
+                      "width": "fill_container",
+                      "descendants": {
+                        "y4p1dH": {
+                          "content": "周闻舟"
+                        },
+                        "tk1ax": {
+                          "content": "incoming request：对方请求成为项目联系人，需要你接受、暂不处理或拉黑。"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "wBLsw",
+                      "name": "Contact Outgoing Request Review",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": "$radius-sm",
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": 18,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "qWOuy",
+                          "name": "Contact Outgoing Request Title",
+                          "fill": "$ink",
+                          "content": "传出请求审核",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 16,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "text",
+                          "id": "H6VKv",
+                          "name": "Contact Outgoing Request Copy",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "你向叶清发出的联系人请求仍在等待对方处理。当前仅展示撤回前的审核状态。",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "wOuDn",
+                          "name": "Contact Outgoing Request Status",
+                          "fill": "$warning-soft",
+                          "cornerRadius": 999,
+                          "gap": 6,
+                          "padding": [
+                            6,
+                            10
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "ellipse",
+                              "id": "X6j13y",
+                              "name": "Contact Outgoing Request Status Dot",
+                              "fill": "$warning",
+                              "width": 7,
+                              "height": 7
+                            },
+                            {
+                              "type": "text",
+                              "id": "FtrEK",
+                              "name": "Contact Outgoing Request Status Label",
+                              "fill": "$warning",
+                              "content": "request pending",
+                              "lineHeight": 1.35,
+                              "fontFamily": "$font-body",
+                              "fontSize": 12,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "owWMI",
+                      "name": "Contact Blocked Relationship Safety State",
+                      "width": "fill_container",
+                      "fill": "$danger-soft",
+                      "cornerRadius": "$radius-sm",
+                      "stroke": "$danger",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": 18,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "WH9hg",
+                          "name": "Contact Blocked Safety Title",
+                          "fill": "$danger",
+                          "content": "已阻止的关系",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 16,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "text",
+                          "id": "sTuiV",
+                          "name": "Contact Blocked Safety Copy",
+                          "fill": "$danger",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "被拉黑的联系人不会进入可信目录操作流。当前只保留解除前的查看、删除记录和安全提示。",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "WMZTJ",
+                          "name": "Contact Blocked Safety Actions",
+                          "gap": 10,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "yAeal",
+                              "name": "Contact Blocked Safety Delete",
+                              "fill": "$danger-soft",
+                              "cornerRadius": "$radius-sm",
+                              "stroke": "$danger",
+                              "strokeWidth": 1,
+                              "gap": 8,
+                              "padding": [
+                                8,
+                                14
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "OSZCR",
+                                  "name": "Contact Blocked Safety Delete Label",
+                                  "fill": "$danger",
+                                  "content": "删除记录",
+                                  "lineHeight": 1.35,
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 13,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "j9m5b9",
+                              "name": "Contact Blocked Safety Defer",
+                              "fill": "$surface",
+                              "cornerRadius": "$radius-sm",
+                              "stroke": "$line",
+                              "strokeWidth": 1,
+                              "gap": 8,
+                              "padding": [
+                                8,
+                                14
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "IfrF6",
+                                  "name": "Contact Blocked Safety Defer Label",
+                                  "fill": "$ink",
+                                  "content": "保持阻止",
+                                  "lineHeight": 1.35,
+                                  "fontFamily": "$font-body",
+                                  "fontSize": 13,
+                                  "fontWeight": "600"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "XUCzM",
+      "x": 25202,
+      "y": 520,
+      "name": "Contact/Mobile/Manage",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "m1zQw",
+          "name": "Contact Mobile Top Bar",
+          "width": "fill_container",
+          "height": 68,
+          "fill": "$rail",
+          "padding": 18,
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "fVgNJ",
+              "name": "Contact Mobile Title",
+              "fill": "$text-inverse",
+              "content": "联系人",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-body",
+              "fontSize": 20,
+              "fontWeight": "800"
+            },
+            {
+              "type": "icon",
+              "id": "nOsCp",
+              "name": "Contact Mobile More Icon",
+              "width": 22,
+              "height": 22,
+              "icon": "ellipsis",
+              "library": "lucide",
+              "fill": "$text-inverse"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "IC04i",
+          "name": "Contact Mobile Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 14,
+          "padding": [
+            18,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "s8UHaQ",
+              "name": "Contact Mobile Relationship Tabs",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": "$radius-sm",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 6,
+              "padding": 5,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VkgNB",
+                  "name": "Contact Mobile Tab 全部",
+                  "width": "fill_container",
+                  "fill": "$accent-soft",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    8,
+                    4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "swgoq",
+                      "name": "Contact Mobile Tab 全部 Label",
+                      "fill": "$accent-strong",
+                      "content": "全部",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "s9b0cz",
+                  "name": "Contact Mobile Tab 同事",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    8,
+                    4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "xIcuI",
+                      "name": "Contact Mobile Tab 同事 Label",
+                      "fill": "$ink-soft",
+                      "content": "同事",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qJeJ5",
+                  "name": "Contact Mobile Tab 外部",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    8,
+                    4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "qaepx",
+                      "name": "Contact Mobile Tab 外部 Label",
+                      "fill": "$ink-soft",
+                      "content": "外部",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vyQEt",
+                  "name": "Contact Mobile Tab 拉黑",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-sm",
+                  "padding": [
+                    8,
+                    4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "U6xQFD",
+                      "name": "Contact Mobile Tab 拉黑 Label",
+                      "fill": "$ink-soft",
+                      "content": "拉黑",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "WhQTD",
+              "type": "ref",
+              "ref": "ewnQG",
+              "name": "Contact Mobile Request Review",
+              "width": "fill_container",
+              "descendants": {
+                "zrsZ6": {
+                  "content": "请求审核"
+                },
+                "tk1ax": {
+                  "content": "周闻舟请求添加为联系人。你可以接受、暂不处理或拉黑。"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "CxyBI",
+              "name": "Contact Mobile Contact List",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "id": "S4h1v",
+                  "type": "ref",
+                  "ref": "YNvDO",
+                  "name": "Contact Mobile Row 林知远",
+                  "width": "fill_container",
+                  "descendants": {
+                    "y9ZyIP": {
+                      "content": "L"
+                    },
+                    "D9RKft": {
+                      "content": "林知远"
+                    },
+                    "vKcH7": {
+                      "content": "备注：联合课题联系人"
+                    },
+                    "pAB6F": {
+                      "content": "已验证"
+                    }
+                  }
+                },
+                {
+                  "id": "EeQos",
+                  "type": "ref",
+                  "ref": "YNvDO",
+                  "name": "Contact Mobile Row 孟予白",
+                  "width": "fill_container",
+                  "descendants": {
+                    "y9ZyIP": {
+                      "content": "M"
+                    },
+                    "D9RKft": {
+                      "content": "孟予白"
+                    },
+                    "vKcH7": {
+                      "content": "备注可编辑"
+                    },
+                    "pAB6F": {
+                      "content": "待备注"
+                    }
+                  }
+                },
+                {
+                  "id": "vWAXH",
+                  "type": "ref",
+                  "ref": "YNvDO",
+                  "name": "Contact Mobile Row 何以宁",
+                  "width": "fill_container",
+                  "descendants": {
+                    "y9ZyIP": {
+                      "content": "H"
+                    },
+                    "D9RKft": {
+                      "content": "何以宁"
+                    },
+                    "vKcH7": {
+                      "content": "已阻止，保留删除入口"
+                    },
+                    "pAB6F": {
+                      "content": "已拉黑"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "cQN0u",
+      "x": 23714,
+      "y": 1600,
+      "name": "Contact/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        36,
+        42
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "z5Q87Y",
+          "name": "Contact State Matrix Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "text",
+              "id": "J9BWBH",
+              "name": "Contact State Matrix Eyebrow",
+              "fill": "$accent-strong",
+              "content": "F2 Contact state coverage",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "XRlcp",
+              "name": "Contact State Matrix Title",
+              "fill": "$ink",
+              "content": "联系人管理状态矩阵",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-body",
+              "fontSize": 30,
+              "fontWeight": "800"
+            },
+            {
+              "type": "text",
+              "id": "O7cSs",
+              "name": "Contact State Matrix Description",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "覆盖 loading、empty、request pending 与 safety blocked 四类现有服务状态。",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "TGl7r",
+          "name": "Contact State Matrix Grid",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "W0CHd",
+              "name": "Contact State Matrix Row",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cXh6h",
+                  "name": "Contact State Loading",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n83tY",
+                      "name": "Contact State Loading Title",
+                      "fill": "$ink",
+                      "content": "Loading",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 18,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "duylk",
+                      "name": "Contact State Loading Copy",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "正在加载认证联系人列表",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "f5ZKtl",
+                      "name": "Contact State Loading Semantics",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "显示骨架行，不展示虚构联系人。",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "o4hrB",
+                      "name": "Contact State Loading Preview",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-sm",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 6,
+                          "id": "bohTQ",
+                          "name": "Contact Loading Skeleton 240",
+                          "fill": "$line",
+                          "width": 240,
+                          "height": 18
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 6,
+                          "id": "eJ7v0",
+                          "name": "Contact Loading Skeleton 320",
+                          "fill": "$line",
+                          "width": 320,
+                          "height": 18
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 6,
+                          "id": "b3xRlI",
+                          "name": "Contact Loading Skeleton 280",
+                          "fill": "$line",
+                          "width": 280,
+                          "height": 18
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PwDza",
+                  "name": "Contact State Empty",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "v0q5iL",
+                      "name": "Contact State Empty Title",
+                      "fill": "$ink",
+                      "content": "Empty",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 18,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "eXVEF",
+                      "name": "Contact State Empty Copy",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "暂无联系人",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "A6BX1",
+                      "name": "Contact State Empty Semantics",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "认证成功但列表为空，可等待请求或发起请求。",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jvXeL",
+                      "name": "Contact State Empty Preview",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-sm",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "DurNE",
+                          "name": "Contact Empty Icon",
+                          "width": 32,
+                          "height": 32,
+                          "icon": "users",
+                          "library": "lucide",
+                          "fill": "$ink-faint"
+                        },
+                        {
+                          "type": "text",
+                          "id": "U3siq",
+                          "name": "Contact Empty Message",
+                          "fill": "$ink",
+                          "content": "暂无可信联系人",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 15,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CqCZM",
+              "name": "Contact State Matrix Row",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WLXRM",
+                  "name": "Contact State Request pending",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yfEkJ",
+                      "name": "Contact State Request pending Title",
+                      "fill": "$ink",
+                      "content": "Request pending",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 18,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Vjl92",
+                      "name": "Contact State Request pending Copy",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "请求待处理",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "jktmX",
+                      "name": "Contact State Request pending Semantics",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "传入请求提供接受、暂不处理、拉黑；传出请求仅展示等待。",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ubQXf",
+                      "name": "Contact State Request pending Preview",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-sm",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "id": "yHgHG",
+                          "type": "ref",
+                          "ref": "ewnQG",
+                          "name": "Contact Matrix Pending Request",
+                          "width": "fill_container"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v12DhS",
+                  "name": "Contact State Safety blocked",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$danger",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 14,
+                  "padding": 20,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "otrCf",
+                      "name": "Contact State Safety blocked Title",
+                      "fill": "$danger",
+                      "content": "Safety blocked",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 18,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Y8OQh",
+                      "name": "Contact State Safety blocked Copy",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "关系已阻止",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nFkJG",
+                      "name": "Contact State Safety blocked Semantics",
+                      "fill": "$ink-faint",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "拉黑后退出可信联系人流程，仅保留安全说明和删除。",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LjhPX",
+                      "name": "Contact State Safety blocked Preview",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$danger-soft",
+                      "cornerRadius": "$radius-sm",
+                      "layout": "vertical",
+                      "gap": 10,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "O3hOX1",
+                          "name": "Contact Safety Blocked Message",
+                          "fill": "$danger",
+                          "content": "该关系已被阻止",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 16,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Dzirw",
+                          "name": "Contact Safety Blocked Detail",
+                          "fill": "$danger",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "可保持阻止或删除记录；不会自动恢复联系人关系。",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
