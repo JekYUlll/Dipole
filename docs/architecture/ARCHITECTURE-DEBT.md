@@ -1255,4 +1255,5 @@
 - **本轮进展：** 预签名 Gateway 代理增加显式上游响应超时配置与 `502` 超时回归，避免对象存储挂起长期占用 Gateway；默认 `30s`，仅启用代理时生效。
 - **本轮进展：** 预签名 Gateway 代理接入按客户端地址的文件上传限流，限流发生在代理调用前并返回 `429`；允许请求才进入 MinIO，原签名与 relay 回退边界不变。
 - **本轮进展：** 新增 fault-matrix 聚合脚本；Remote GPU 确定性 Go 门禁、真实 MinIO/Redis 基础 reconciliation 与 Redis restart smoke 通过，promtool 依赖镜像拉取因 registry 无进展中止，完整矩阵保持未关闭。
-- **下一步：** 在可用 promtool 镜像环境完成告警规则与真实矩阵联合验收，随后记录 active/expired/abort/retry 指标并评估关闭本条债务。
+- **本轮收口：** Remote GPU 使用通过临时反向隧道取得并校验的官方 Prometheus `3.5.0` `promtool` 完成告警规则、firing timeline、确定性 Go 门禁、真实 MinIO/Redis reconciliation 与 Redis restart smoke；矩阵退出码为 `0`，GPU 进程前后均为 `0`，Dipole/Multipart 容器为 `0`，远程工作树干净。
+- **下一步：** 继续完成 active/expired/abort/retry 生命周期指标、真实 Prometheus/Alertmanager 路由验收和预签名默认切流；在这些范围完成前，本条债务保持进行中。

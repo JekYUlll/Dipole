@@ -9,6 +9,13 @@ DIPOLE_REMOTE_GO_ROOT=/home/admin1/.local/go-1.27.0 \
   scripts/smoke-multipart-fault-matrix.sh
 ```
 
+如果远端 Docker registry 不可用，可以下载并校验官方 release 后使用：
+
+```bash
+DIPOLE_PROMTOOL_BIN=/path/to/promtool \
+  scripts/smoke-multipart-fault-matrix.sh
+```
+
 Remote GPU 执行时允许与既有 GPU 任务并行。脚本只启动临时 MinIO/Redis 容器，退出时自动清理；失败时保留命令输出用于诊断，不执行业务数据删除。
 
 ## 覆盖项
