@@ -18,7 +18,7 @@
 | SQLC 与渐进式微服务 | 已验证 | [服务边界](../architecture/SERVICE-BOUNDARIES.md) |
 | MinIO Multipart 与恢复上传 | 已验证（隔离 Remote GPU） | [平台演进计划](../architecture/PLATFORM-EVOLUTION-PLAN.md) |
 | Contact 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/ContactDirectory.vue` |
-| Group 目录读取 | 本地契约已验证，Remote GPU 门禁待执行 | `frontend/src/components/GroupDirectory.vue` |
+| Group 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/GroupDirectory.vue` |
 | Cassandra、Elasticsearch、C++ 数据面切流 | 默认关闭 / 规划中 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md) |
 
 #### Sync Timeline 与可靠消息
@@ -59,10 +59,10 @@
 
 #### Group 目录读取
 
-- **状态：** 本地契约已验证，Remote GPU 前端门禁待执行
+- **状态：** 已验证（隔离 Remote GPU 前端门禁）
 - **对外表述：** 群目录复用认证会话投影确定可见范围，再逐项读取群权威详情；页面不承载成员、资料或解散等写操作，热群仅表达 `notify + pull` 同步语义。
 - **演示：** 访问 `/groups`，展示普通群、热群和已解散群的只读状态；断开任一权威读取后页面进入不可用状态且不会保留旧群条目。
-- **证据：** `frontend/src/api/groups.ts`、`frontend/src/components/GroupDirectory.vue`、对应 Vitest 与 `design/exports/group-v1/`。
+- **证据：** `frontend/src/api/groups.ts`、`frontend/src/components/GroupDirectory.vue`、对应 Vitest 与 `design/exports/group-v1/`；Remote GPU Node 22 通过 36 个前端测试文件、152 项测试、typecheck 和 production build。
 - **追问：** “为什么不直接在目录中做群管理？” 群管理会改变成员资格与历史边界，应将精确授权、确认、审计和失败回退作为独立写路径验证。
 - **限制：** 当前按会话列表上限 50 派生群范围，未提供群管理写操作、分页聚合或跨浏览器视觉回归。
 - **下一步：** 为可分页群范围定义专用只读 API，再独立设计和实现受授权的管理写路径。

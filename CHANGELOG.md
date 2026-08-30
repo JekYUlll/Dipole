@@ -1,6 +1,6 @@
 # 更新日志
 
-- 2026-08-30：F2 Group Directory 完成 Pencil canonical desktop/mobile 目录、loading/empty/unavailable/dismissed/hot-group 状态矩阵、三个复用组件和批准导出。该基线严格限于当前认证用户可见的群投影；热群继续采用 `notify + pull`，群成员与管理写操作未在目录中开放。
+- 2026-08-30：F2 Group Directory 完成 Pencil canonical desktop/mobile 目录、loading/empty/unavailable/dismissed/hot-group 状态矩阵、三个复用组件和批准导出，并交付认证只读 `/groups` 路由。目录从会话投影派生范围后读取权威群详情，异常时清空旧状态；Remote GPU Node 22 通过 36 个前端测试文件、152 项测试、typecheck 与 production build。热群继续采用 `notify + pull`，群成员与管理写操作未在目录中开放。
 
 - 2026-08-30：收紧 SQLC-only 数据访问门禁：`check-sqlc.sh` 现作为唯一权威入口，拒绝 GORM module、任意 Go import/selector 和运行时 `AutoMigrate`，并以临时 Git fixture 覆盖 SQLC-only 基线及三类回流场景，防止后续微服务与多语言演进重新引入第二套 ORM 模型。
 

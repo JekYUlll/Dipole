@@ -21,6 +21,7 @@
 
 ### 验证
 
+- Group Directory v1 的 Pencil 结构门禁、目录解析/状态组件测试、认证路由契约、Remote GPU Node 22 typecheck 与 production build 通过；当前未覆盖跨浏览器截图回归或群管理写路径。
 - Agent Definition Catalog v1 使用 Pencil CLI `0.3.5` 与 `scripts/pencil-safe-edit.mjs` 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、三个复用组件和 2x 导出。Vue 目录页的 Chromium visual baseline 只覆盖受控低敏 metadata 与只读边界，active Runtime 和写 Capability 继续关闭。
 - Agent Task Timeline v1 使用 Pencil CLI `0.3.5`、`scripts/pencil-safe-edit.mjs` 和既有 brief 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、四个复用组件和 2x 导出。F2/F3 未完成页面、完整截图级视觉回归与未覆盖平台场景继续保持待处理状态。
 - Agent Task Timeline Vue 页面新增 Chromium canonical screenshot，使用受控低敏 fixture 固定只读 metadata、Capability、等待审批和分页入口；该验证不涵盖其余浏览器或完整页面基线。
