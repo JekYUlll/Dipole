@@ -1,11 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="420" height="160" viewBox="0 0 420 160" role="img" aria-labelledby="title desc">
   <title id="title">Dipole IM</title>
-  <desc id="desc">Connected message nodes for the Dipole IM project.</desc>
-  <rect width="420" height="160" rx="26" fill="#eaf5f0"/>
-  <path d="M70 89 H184 M236 89 H350" stroke="#16796f" stroke-width="8" stroke-linecap="round"/>
-  <path d="M184 89 L207 66 L236 89 L207 112 Z" fill="#e47a36"/>
-  <circle cx="54" cy="89" r="28" fill="#083d39"/>
-  <circle cx="366" cy="89" r="28" fill="#083d39"/>
-  <text x="128" y="47" fill="#103a35" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="26" font-weight="700">DIPOLE IM</text>
-  <text x="128" y="138" fill="#58716b" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="17" font-weight="600">MESSAGE / SYNC / DELIVERY</text>
+  <desc id="desc">Dipole IM mark for the realtime messaging platform.</desc>
+  <defs>
+    <linearGradient id="im-blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2768f5"/>
+      <stop offset="1" stop-color="#0b3ed0"/>
+    </linearGradient>
+  </defs>
+  <rect width="420" height="160" rx="26" fill="#f2f6ff"/>
+  <path d="M50 43C28 56 15 78 15 102c0 21 12 39 31 49 12 6 23-1 23-14v-29c0-9 7-16 16-16V43c-11-6-23-6-35 0Z" fill="url(#im-blue)"/>
+  <path d="M120 43c22 13 35 35 35 59 0 21-12 39-31 49-12 6-23-1-23-14v-29c0-9-7-16-16-16V43c11-6 23-6 35 0Z" fill="url(#im-blue)"/>
+  <path d="M85 92c5 0 10 2 14 6-4 4-9 6-14 6s-10-2-14-6c4-4 9-6 14-6Z" fill="#f2f6ff"/>
+  <text x="186" y="69" fill="#112653" font-family="DejaVu Sans, sans-serif" font-size="29" font-weight="700">DIPOLE IM</text>
+  <text x="186" y="101" fill="#53617b" font-family="DejaVu Sans, sans-serif" font-size="15" font-weight="700" letter-spacing="1.1">MESSAGE / SYNC / DELIVERY</text>
 </svg>

@@ -1,21 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="250" viewBox="0 0 1120 250" role="img" aria-labelledby="title desc">
   <title id="title">Dipole</title>
-  <desc id="desc">Dipole wordmark with two linked poles and an event pulse.</desc>
+  <desc id="desc">Dipole wordmark with a paired blue signal mark.</desc>
   <defs>
-    <linearGradient id="signal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#16796f"/>
-      <stop offset="1" stop-color="#083d39"/>
-    </linearGradient>
-    <linearGradient id="pulse" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#e47a36"/>
-      <stop offset="1" stop-color="#f0ad4e"/>
+    <linearGradient id="dipole-blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2768f5"/>
+      <stop offset="1" stop-color="#0b3ed0"/>
     </linearGradient>
   </defs>
-  <rect width="1120" height="250" rx="42" fill="#f4f8f5"/>
-  <circle cx="128" cy="125" r="78" fill="url(#signal)"/>
-  <circle cx="92" cy="125" r="18" fill="#f4f8f5"/>
-  <circle cx="164" cy="125" r="18" fill="#f4f8f5"/>
-  <path d="M92 125 H119 L128 95 L140 155 L150 125 H164" fill="none" stroke="url(#pulse)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="245" y="143" fill="#103a35" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="104" font-weight="700" letter-spacing="-4">Dipole</text>
-  <text x="251" y="190" fill="#58716b" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="24" font-weight="600" letter-spacing="4">REALTIME COLLABORATION PLATFORM</text>
+  <rect width="1120" height="250" rx="42" fill="#f6f8ff"/>
+  <path d="M119 48C77 71 45 107 45 146c0 37 20 69 54 86 20 10 39-1 39-23v-54c0-17 13-30 30-30V48c-16-9-32-9-49 0Z" fill="url(#dipole-blue)"/>
+  <path d="M217 48c42 23 74 59 74 98 0 37-20 69-54 86-20 10-39-1-39-23v-54c0-17-13-30-30-30V48c16-9 32-9 49 0Z" fill="url(#dipole-blue)"/>
+  <path d="M168 125c9 0 17 4 23 10-6 6-14 10-23 10s-17-4-23-10c6-6 14-10 23-10Z" fill="#f6f8ff"/>
+  <text x="344" y="141" fill="#112653" font-family="DejaVu Sans, sans-serif" font-size="104" font-weight="700" letter-spacing="-4">Dipole</text>
+  <text x="351" y="190" fill="#51607c" font-family="DejaVu Sans, sans-serif" font-size="24" font-weight="700" letter-spacing="4">REALTIME COLLABORATION PLATFORM</text>
 </svg>
