@@ -1109,6 +1109,7 @@
 - **前置修复证据：** 2026-08-30 按授权将 `admin1` 加入 `docker` 组，并安装 Ubuntu 24.04 `docker-compose-v2` 2.40.3；新登录会话 Docker daemon 可访问，`scripts/remote-dev.sh preflight` 已通过。活动用户/GPU 保护仍阻止构建与启动。
 - **远端测试阻塞证据：** 2026-08-30 `scripts/remote-dev.sh test` 已完成提交同步，但远端系统 Go 为 1.22.2，项目要求 Go 1.26.0；首次执行尝试联网下载工具链并因网络超时退出，复核使用 `GOTOOLCHAIN=local` 后确认版本不足。脚本现改为禁止隐式下载并快速报告版本缺口；升级 Go 1.26+ 前，远端 Go canonical 测试仍待执行。
 - **用户态工具链证据：** 2026-08-30 已将本机 Go 1.27.0 工具链同步至 Remote GPU `/home/admin1/.local/go-1.27.0`，验证 `go version` 为 `go1.27.0`；系统 Go 1.22.2 未修改。待用 `DIPOLE_REMOTE_GO_ROOT` 重新执行完整远端 canonical 测试。
+- **最新远端验证：** 2026-08-30 在 Remote GPU 的 `/home/admin1/workspaces/Dipole` 对提交 `9c0f2702` 使用用户态 Go 1.27.0、`GOTOOLCHAIN=local` 完成 `scripts/remote-dev.sh test`；Go 白名单测试、服务布局和架构文档门禁全部通过，未启动 Compose、未创建容器，远端源码保持提交绑定的干净状态。构建、Smoke、Benchmark 和真实故障矩阵仍需单独维护窗口与活动用户保护证据。
 - **远端 canonical 测试证据：** 2026-08-30 在提交 `a92b9a8c` 使用用户态 Go 1.27.0 和临时只读 module proxy 执行 `scripts/remote-dev.sh test`，Go test、Compose、服务布局和架构文档门禁全部通过，退出码 `0`；测试未启动容器。本机 Dipole Compose 拓扑已停止，远端完整构建、smoke、基线压测仍待维护窗口。
 - **离线复核与本机降载证据：** 2026-08-30 关闭临时 module proxy 后，Remote GPU 使用已同步的 Go module cache 以 `GOPROXY=off` 完成 `scripts/remote-dev.sh test`，提交 `9b83ab31` 的 Go test、Compose、服务布局和架构文档门禁全部通过，退出码 `0`。本机 Dipole 主拓扑、隔离 smoke 和观测拓扑已停止，卷/镜像保留；远端完整构建、smoke、基线压测仍待维护窗口。
 - **降载工作流固化证据：** 2026-08-30 新增 `scripts/drain-local-dipole.sh`，默认 dry-run，只有显式 `--apply` 才停止名称以 `dipole` 开头的运行中容器；脚本不删除容器、卷或镜像，并通过 Node 契约测试锁定目标范围。后续远端同步成功后可复用该入口，避免本机负载残留。
