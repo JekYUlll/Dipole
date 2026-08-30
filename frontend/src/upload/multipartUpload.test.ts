@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart, uploadPresignedPartWithRefresh } from './multipartUpload'
+import { withMultipartUploadLease, type MultipartLockManager } from './multipartLease'
 
 describe('same-origin presigned upload URL', () => {
   it('rewrites only the origin when the Gateway proxy is enabled', () => {
@@ -167,5 +168,45 @@ describe('uploadMultipartParts', () => {
     }, { concurrency: 1, maxRetries: 0 })).rejects.toThrow('permanent failure')
 
     expect(attempted).toEqual([1])
+  })
+})
+
+describe('multipart upload lease', () => {
+  it('serializes same-session work across browser tabs', async () => {
+    let releaseFirst!: () => void
+    const firstFinished = new Promise<void>(resolve => { releaseFirst = resolve })
+    let active = 0
+    let maximumActive = 0
+    let tail: Promise<void> = Promise.resolve()
+    const locks: MultipartLockManager = {
+      request: async (_name, _options, callback) => {
+        const previous = tail
+        let release!: () => void
+        tail = new Promise<void>(resolve => { release = resolve })
+        await previous
+        try {
+          active += 1
+          maximumActive = Math.max(maximumActive, active)
+          return await callback({})
+        } finally {
+          active -= 1
+          release()
+        }
+      },
+    }
+
+    const first = withMultipartUploadLease('dipole:multipart:file', async () => {
+      await firstFinished
+    }, locks)
+    const second = withMultipartUploadLease('dipole:multipart:file', async () => undefined, locks)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(maximumActive).toBe(1)
+    releaseFirst()
+    await Promise.all([first, second])
+  })
+
+  it('falls back to direct execution when Web Locks are unavailable', async () => {
+    const result = await withMultipartUploadLease('dipole:multipart:file', async () => 'uploaded', undefined)
+    expect(result).toBe('uploaded')
   })
 })

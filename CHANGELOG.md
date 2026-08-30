@@ -1,5 +1,6 @@
 # 更新日志
 
+- 2026-08-30：为大文件 Multipart session 增加浏览器 Web Locks 独占租约，同一文件在多个标签页中会串行执行，避免重复接管；无 Web Locks 的浏览器保持兼容回退，并新增串行/回退测试，上传测试 `15/15`、Frontend typecheck 通过。
 - 2026-08-30：补充预签名服务不可用回归测试：刷新签名失败时保留原错误、只发起一次失败分片 PUT，不误报上传成功；Multipart 上传测试 `13/13`、Frontend typecheck 通过。
 - 2026-08-30：新增 `multipart-restart-smoke` 远程故障验证：首个分片上传后重启隔离 MinIO 容器，再继续上传并完成对象，使用独立持久卷并在退出时清理；新增 Go smoke tool、远程入口和操作说明，不申请 GPU。
 - 2026-08-30：将预签名过期恢复提炼为可复用的 `uploadPresignedPartWithRefresh` 原语，并新增 403 -> 刷新签名 -> 重试测试；上传测试 `12/12`、Frontend typecheck 通过，页面层只负责签名 API 与 URL 映射。
