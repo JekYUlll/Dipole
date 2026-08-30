@@ -65,6 +65,15 @@ scripts/smoke-microservices.sh
 
 实时数据面候选压测沿用 `scripts/bench/candidate_topology.sh`；Agent 默认保持 shadow 或 off，避免外部模型成本和延迟污染 IM 基线。完整 `k6` 基准和 Docker 构建固定在 Remote GPU 执行；本机仅保留脚本静态检查。
 
+迁移任务确认已在远端可执行后，可先预览再停止本机 Dipole 负载：
+
+```bash
+scripts/drain-local-dipole.sh --dry-run
+scripts/drain-local-dipole.sh --apply
+```
+
+该脚本只处理名称以 `dipole` 开头的运行中容器，保留容器定义、卷和镜像，不触碰其他 Compose project；需要恢复时使用原 Compose 配置重新启动对应 project。
+
 ## TencentCloud 流程
 
 该主机只运行轻量 smoke。必须使用独立 project 和非默认宿主端口，并限制并发、消息体和测试时长：
