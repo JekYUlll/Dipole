@@ -33,8 +33,9 @@ source_real=$(realpath "$source_dir")
 output_real=$(realpath -m "$output")
 [[ "$output_real" != "$source_real"/* ]] || { echo 'bundle output must be outside the source directory' >&2; exit 3; }
 
-git -C "$root_dir" diff --quiet || { echo 'bundle requires a clean worktree' >&2; exit 3; }
-git -C "$root_dir" diff --cached --quiet || { echo 'bundle requires an unstaged worktree' >&2; exit 3; }
+source_relative="${source_real#"$root_dir"/}"
+git -C "$root_dir" diff --quiet -- . ":(exclude)$source_relative" || { echo 'bundle requires a clean worktree outside generated source' >&2; exit 3; }
+git -C "$root_dir" diff --cached -- . ":(exclude)$source_relative" || { echo 'bundle requires an unstaged worktree outside generated source' >&2; exit 3; }
 command -v tar >/dev/null || { echo 'tar is required' >&2; exit 2; }
 command -v sha256sum >/dev/null || { echo 'sha256sum is required' >&2; exit 2; }
 

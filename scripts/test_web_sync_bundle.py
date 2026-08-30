@@ -15,9 +15,7 @@ SCRIPT = ROOT / "scripts" / "package-web-sync-bundle.sh"
 class WebSyncBundleTest(unittest.TestCase):
     def test_bundle_is_reproducible_and_contains_versioned_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
-            source = Path(directory) / "dist"
-            source.mkdir()
-            (source / "index.html").write_text("shadow", encoding="utf-8")
+            source = ROOT / "internal/services/core/server/webapp"
             first = Path(directory) / "first.tar"
             second = Path(directory) / "second.tar"
             for output in (first, second):
@@ -49,16 +47,14 @@ class WebSyncBundleTest(unittest.TestCase):
 
     def test_existing_output_and_dirty_worktree_fail_closed(self):
         source = SCRIPT.read_text(encoding="utf-8")
-        for required in ("diff --quiet", "diff --cached --quiet", "refusing to overwrite bundle", "output must be outside the source directory", "chmod 0600", "--sort=name"):
+        for required in ("diff --quiet", "diff --cached -- .", "generated source", "refusing to overwrite bundle", "output must be outside the source directory", "chmod 0600", "--sort=name"):
             self.assertIn(required, source)
         self.assertTrue(SCRIPT.stat().st_mode & stat.S_IXUSR)
         subprocess.run(["bash", "-n", str(SCRIPT)], check=True)
 
     def test_output_inside_source_directory_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
-            source = Path(directory) / "dist"
-            source.mkdir()
-            (source / "index.html").write_text("shadow", encoding="utf-8")
+            source = ROOT / "internal/services/core/server/webapp"
             result = subprocess.run(
                 [str(SCRIPT), "--candidate-version", "web-sync-test", "--source-dir", str(source), "--output", str(source / "bundle.tar")],
                 cwd=ROOT,
