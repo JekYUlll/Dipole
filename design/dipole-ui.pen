@@ -31667,6 +31667,806 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "i3bQa0",
+      "x": 25688,
+      "y": 0,
+      "name": "Component/Group Row",
+      "reusable": true,
+      "width": 480,
+      "height": 104,
+      "fill": "#FFFCF6",
+      "cornerRadius": 16,
+      "stroke": "#D6DED9",
+      "gap": 16,
+      "padding": 16,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "nUPrj",
+          "name": "Group Avatar",
+          "fill": "#DDEFEA",
+          "width": 48,
+          "height": 48
+        },
+        {
+          "type": "frame",
+          "id": "wXbSd",
+          "name": "Group Identity",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 5,
+          "children": [
+            {
+              "type": "text",
+              "id": "jl2kT",
+              "name": "Group Name",
+              "fill": "#102F40",
+              "content": "Atlas Product Guild",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "FFk4A",
+              "name": "Group Metadata",
+              "fill": "#5F7773",
+              "content": "24 MEMBERS / OWNER: LIN",
+              "fontFamily": "Inter",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "Nn1Zi",
+          "name": "Group Signal",
+          "fill": "#E47A36",
+          "content": "SYNCED",
+          "fontFamily": "Inter",
+          "fontSize": 10,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "khcJx",
+      "x": 25688,
+      "y": 140,
+      "name": "Component/Group Status",
+      "reusable": true,
+      "width": 250,
+      "height": 48,
+      "fill": "#EAF5F0",
+      "cornerRadius": 24,
+      "gap": 8,
+      "padding": 12,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "hqn6O",
+          "name": "Status Dot",
+          "fill": "#E47A36",
+          "width": 9,
+          "height": 9
+        },
+        {
+          "type": "text",
+          "id": "OrZm0",
+          "name": "Status Text",
+          "fill": "#1A675D",
+          "content": "NOTIFY / PULL",
+          "fontFamily": "Inter",
+          "fontSize": 10,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "KKriT",
+      "x": 25688,
+      "y": 210,
+      "name": "Component/Group Member Summary",
+      "reusable": true,
+      "width": 300,
+      "height": 72,
+      "fill": "#F4F0E7",
+      "cornerRadius": 14,
+      "layout": "vertical",
+      "gap": 6,
+      "padding": 14,
+      "children": [
+        {
+          "type": "text",
+          "id": "BiKVc",
+          "name": "Member Summary Label",
+          "fill": "#5F7773",
+          "content": "MEMBERS",
+          "fontFamily": "Inter",
+          "fontSize": 10,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "l0spC",
+          "name": "Member Summary Value",
+          "fill": "#102F40",
+          "content": "24 trusted collaborators",
+          "fontFamily": "Inter",
+          "fontSize": 16,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "O0baA",
+      "x": 27088,
+      "y": 0,
+      "name": "Group/Desktop/Directory",
+      "clip": true,
+      "width": 1440,
+      "height": 940,
+      "fill": "#F7F4EC",
+      "children": [
+        {
+          "type": "frame",
+          "id": "F33jm",
+          "name": "Group Navigation Rail",
+          "width": 256,
+          "height": "fill_container",
+          "fill": "#0C354C",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 32,
+          "children": [
+            {
+              "type": "text",
+              "id": "j0sA4e",
+              "name": "Rail Brand",
+              "fill": "#F7F4EC",
+              "content": "DIPOLE",
+              "fontFamily": "Inter",
+              "fontSize": 22,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "w1og5",
+              "name": "Rail Label",
+              "fill": "#A5C5BC",
+              "content": "GROUPS / SIGNAL",
+              "fontFamily": "Inter",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "VhqLG",
+              "name": "Rail Conversations",
+              "fill": "#93B8B0",
+              "content": "CONVERSATIONS",
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "HCltI",
+              "name": "Rail Groups Active",
+              "fill": "#F7F4EC",
+              "content": "GROUP DIRECTORY",
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "C2oUPn",
+              "name": "Rail Boundary",
+              "fill": "#A5C5BC",
+              "content": "READ ONLY / AUTHENTICATED SCOPE",
+              "fontFamily": "Inter",
+              "fontSize": 10,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "eLcXr",
+          "name": "Group Workspace",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 22,
+          "padding": 54,
+          "children": [
+            {
+              "type": "frame",
+              "id": "pYngt",
+              "name": "Group Header",
+              "width": "fill_container",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "g3BrO",
+                  "name": "Group Heading",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fp56e",
+                      "name": "Group Eyebrow",
+                      "fill": "#D66E2E",
+                      "content": "GROUP DIRECTORY",
+                      "fontFamily": "Inter",
+                      "fontSize": 11,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ZaM2I",
+                      "name": "Group Title",
+                      "fill": "#102F40",
+                      "content": "协作群组",
+                      "fontFamily": "Inter",
+                      "fontSize": 42,
+                      "fontWeight": "bold"
+                    },
+                    {
+                      "type": "text",
+                      "id": "i4CnWB",
+                      "name": "Group Subtitle",
+                      "fill": "#5F7773",
+                      "content": "当前认证账户可见的群组与实时同步边界。",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "nOHS1",
+                  "name": "Group Read Only Mode",
+                  "fill": "#1A675D",
+                  "content": "READ ONLY / SERVER OWNED",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nyleH",
+              "name": "Group Boundary Notice",
+              "width": "fill_container",
+              "fill": "#EAF5F0",
+              "cornerRadius": 14,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "xOKTH",
+                  "name": "Boundary Notice Label",
+                  "fill": "#1A675D",
+                  "content": "MEMBERSHIP BOUNDARY",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "ae5lB",
+                  "name": "Boundary Notice Text",
+                  "fill": "#315B58",
+                  "content": "目录只读取服务端权威投影；成员邀请、群资料修改与解散操作保持关闭。",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "AlXMt",
+              "name": "Group List Label",
+              "fill": "#5F7773",
+              "content": "VISIBLE GROUPS  /  HOT GROUPS USE NOTIFY + PULL",
+              "fontFamily": "Inter",
+              "fontSize": 11,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "frame",
+              "id": "YItpi",
+              "name": "Group Directory List",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "id": "G58K9",
+                  "type": "ref",
+                  "ref": "i3bQa0",
+                  "name": "Group Row Atlas Product Guild",
+                  "width": "fill_container",
+                  "descendants": {
+                    "jl2kT": {
+                      "content": "Atlas Product Guild"
+                    },
+                    "FFk4A": {
+                      "content": "24 MEMBERS / OWNER: LIN"
+                    },
+                    "Nn1Zi": {
+                      "content": "SYNCED"
+                    }
+                  }
+                },
+                {
+                  "id": "YtbJV",
+                  "type": "ref",
+                  "ref": "i3bQa0",
+                  "name": "Group Row Migration Room",
+                  "width": "fill_container",
+                  "descendants": {
+                    "jl2kT": {
+                      "content": "Migration Room"
+                    },
+                    "FFk4A": {
+                      "content": "08 MEMBERS / OWNER: YU"
+                    },
+                    "Nn1Zi": {
+                      "content": "HOT / PULL"
+                    }
+                  }
+                },
+                {
+                  "id": "dPwWE",
+                  "type": "ref",
+                  "ref": "i3bQa0",
+                  "name": "Group Row Design Signal",
+                  "width": "fill_container",
+                  "descendants": {
+                    "jl2kT": {
+                      "content": "Design Signal"
+                    },
+                    "FFk4A": {
+                      "content": "16 MEMBERS / OWNER: CHEN"
+                    },
+                    "Nn1Zi": {
+                      "content": "DISMISSED"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "XiEsz",
+      "x": 28624,
+      "y": 0,
+      "name": "Group/Mobile/Directory",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "#F7F4EC",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 20,
+      "children": [
+        {
+          "type": "text",
+          "id": "lh7L1",
+          "name": "Mobile Brand",
+          "fill": "#1A675D",
+          "content": "DIPOLE / GROUPS",
+          "fontFamily": "Inter",
+          "fontSize": 11,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "FTRF4",
+          "name": "Mobile Title",
+          "fill": "#102F40",
+          "content": "协作群组",
+          "fontFamily": "Inter",
+          "fontSize": 31,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "frame",
+          "id": "w8VLxk",
+          "name": "Mobile Boundary Notice",
+          "width": "fill_container",
+          "fill": "#EAF5F0",
+          "cornerRadius": 14,
+          "layout": "vertical",
+          "gap": 5,
+          "padding": 14,
+          "children": [
+            {
+              "type": "text",
+              "id": "X8P8QC",
+              "name": "Mobile Boundary Label",
+              "fill": "#1A675D",
+              "content": "AUTHENTICATED / READ ONLY",
+              "fontFamily": "Inter",
+              "fontSize": 10,
+              "fontWeight": "bold"
+            },
+            {
+              "type": "text",
+              "id": "SdP6F",
+              "name": "Mobile Boundary Text",
+              "fill": "#315B58",
+              "content": "群成员与管理写入保持关闭。",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "hy6D3",
+          "name": "Mobile Group List",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "id": "wbdN0",
+              "type": "ref",
+              "ref": "i3bQa0",
+              "name": "Mobile Group Row Atlas Product Guild",
+              "width": "fill_container",
+              "descendants": {
+                "jl2kT": {
+                  "content": "Atlas Product Guild"
+                },
+                "FFk4A": {
+                  "content": "24 MEMBERS / LIN"
+                },
+                "Nn1Zi": {
+                  "content": "SYNCED"
+                }
+              }
+            },
+            {
+              "id": "ofqg7",
+              "type": "ref",
+              "ref": "i3bQa0",
+              "name": "Mobile Group Row Migration Room",
+              "width": "fill_container",
+              "descendants": {
+                "jl2kT": {
+                  "content": "Migration Room"
+                },
+                "FFk4A": {
+                  "content": "08 MEMBERS / YU"
+                },
+                "Nn1Zi": {
+                  "content": "HOT / PULL"
+                }
+              }
+            },
+            {
+              "id": "wc4Dd",
+              "type": "ref",
+              "ref": "i3bQa0",
+              "name": "Mobile Group Row Design Signal",
+              "width": "fill_container",
+              "descendants": {
+                "jl2kT": {
+                  "content": "Design Signal"
+                },
+                "FFk4A": {
+                  "content": "16 MEMBERS / CHEN"
+                },
+                "Nn1Zi": {
+                  "content": "DISMISSED"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "TWGpF",
+          "name": "Mobile Footer",
+          "fill": "#5F7773",
+          "content": "SERVER OWNED GROUP PROJECTION",
+          "fontFamily": "Inter",
+          "fontSize": 10,
+          "fontWeight": "bold"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "euBag",
+      "x": 27088,
+      "y": 1036,
+      "name": "Group/State Matrix",
+      "clip": true,
+      "width": 1280,
+      "height": 620,
+      "fill": "#F7F4EC",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 36,
+      "children": [
+        {
+          "type": "text",
+          "id": "QD6mN",
+          "name": "State Matrix Label",
+          "fill": "#D66E2E",
+          "content": "GROUP DIRECTORY / STATE MATRIX",
+          "fontFamily": "Inter",
+          "fontSize": 11,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "text",
+          "id": "b441e",
+          "name": "State Matrix Title",
+          "fill": "#102F40",
+          "content": "权威群组状态",
+          "fontFamily": "Inter",
+          "fontSize": 30,
+          "fontWeight": "bold"
+        },
+        {
+          "type": "frame",
+          "id": "opldw",
+          "name": "State Matrix Cards",
+          "width": "fill_container",
+          "gap": 14,
+          "children": [
+            {
+              "type": "frame",
+              "id": "VHHmb",
+              "name": "Group State LOADING",
+              "width": 220,
+              "height": 230,
+              "fill": "#EAF5F0",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 18,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Pg1th",
+                  "name": "State Label LOADING",
+                  "fill": "#1A675D",
+                  "content": "LOADING",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "Y4xqnx",
+                  "name": "State Title LOADING",
+                  "fill": "#102F40",
+                  "content": "正在确认群组",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "I3I12O",
+                  "name": "State Body LOADING",
+                  "fill": "#315B58",
+                  "content": "只读取认证范围内的服务端投影。",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BdgsO",
+              "name": "Group State EMPTY",
+              "width": 220,
+              "height": 230,
+              "fill": "#FFF6E8",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 18,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "k2YPr",
+                  "name": "State Label EMPTY",
+                  "fill": "#1A675D",
+                  "content": "EMPTY",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "tBStf",
+                  "name": "State Title EMPTY",
+                  "fill": "#102F40",
+                  "content": "暂无可见群组",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "QexF1",
+                  "name": "State Body EMPTY",
+                  "fill": "#315B58",
+                  "content": "创建与邀请操作在独立写入切片中处理。",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "gBN28",
+              "name": "Group State UNAVAILABLE",
+              "width": 220,
+              "height": 230,
+              "fill": "#FCEDEA",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 18,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "WdzT1",
+                  "name": "State Label UNAVAILABLE",
+                  "fill": "#1A675D",
+                  "content": "UNAVAILABLE",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "XXUz0",
+                  "name": "State Title UNAVAILABLE",
+                  "fill": "#102F40",
+                  "content": "目录暂时不可用",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "kA9wb",
+                  "name": "State Body UNAVAILABLE",
+                  "fill": "#315B58",
+                  "content": "已清空旧数据；重新确认后再展示状态。",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CUZsM",
+              "name": "Group State DISMISSED",
+              "width": 220,
+              "height": 230,
+              "fill": "#F4F0E7",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 18,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "f3rLG9",
+                  "name": "State Label DISMISSED",
+                  "fill": "#1A675D",
+                  "content": "DISMISSED",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "amrVU",
+                  "name": "State Title DISMISSED",
+                  "fill": "#102F40",
+                  "content": "群聊已解散",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "A2Gi5W",
+                  "name": "State Body DISMISSED",
+                  "fill": "#315B58",
+                  "content": "成员仅可查看历史消息，群组保持只读。",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "s10eg",
+              "name": "Group State HOT GROUP",
+              "width": 220,
+              "height": 230,
+              "fill": "#EAF5F0",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 18,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kUpnm",
+                  "name": "State Label HOT GROUP",
+                  "fill": "#1A675D",
+                  "content": "HOT GROUP",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "si5fA",
+                  "name": "State Title HOT GROUP",
+                  "fill": "#102F40",
+                  "content": "Notify + Pull",
+                  "fontFamily": "Inter",
+                  "fontSize": 17,
+                  "fontWeight": "bold"
+                },
+                {
+                  "type": "text",
+                  "id": "A8Hf0",
+                  "name": "State Body HOT GROUP",
+                  "fill": "#315B58",
+                  "content": "高频群组只同步位点，按需拉取完整消息。",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

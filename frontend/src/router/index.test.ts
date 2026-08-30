@@ -18,7 +18,7 @@ describe('Agent route security contract', () => {
       expect(source).toContain(`name: '${routeName}'`)
     }
 
-    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(9)
+    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(10)
     expect(source).toContain("import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'")
@@ -32,6 +32,11 @@ describe('Agent route security contract', () => {
   it('keeps the Contact directory authenticated without an Agent feature flag', () => {
     expect(source).toContain("name: 'contacts'")
     expect(source).toContain("path: '/contacts'")
+  })
+
+  it('keeps the Group directory authenticated without a write feature flag', () => {
+    expect(source).toContain("name: 'groups'")
+    expect(source).toContain("path: '/groups'")
   })
 
   it('keeps unauthenticated access redirected to Login', () => {

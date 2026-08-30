@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 增加 Group Directory v1 的 desktop/mobile 目录、五态权威状态矩阵和 Group Row/Status/Member Summary 三个可复用组件。
+- 归档 `exports/group-v1/` 的 2x 评审图；设计只覆盖认证读取、解散只读和热群 `notify + pull`，不开放群管理写操作。
 - 增加 Contact v1 的 desktop/mobile 管理稿、关系状态矩阵和两个可复用组件，覆盖可信联系人、传入/传出申请、备注、拉黑和删除入口。
 - 归档 `exports/contact-v1/` 的 2x 评审图；当前仅为设计基线，Vue 路由与交互实现继续待 F2 后续切片接入。
 

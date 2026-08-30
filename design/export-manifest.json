@@ -11,6 +11,7 @@
     { "path": "exports/search-v1", "purpose": "search-v1" },
     { "path": "exports/sync-v1", "purpose": "sync-v1" },
     { "path": "exports/contact-v1", "purpose": "contact-v1" },
+    { "path": "exports/group-v1", "purpose": "group-v1" },
     { "path": "exports/agent-repair-v1", "purpose": "agent-repair-v1" },
     { "path": "exports/agent-elicitation-v1", "purpose": "agent-elicitation-v1" },
     { "path": "exports/agent-subscription-v1", "purpose": "agent-subscription-v1" },

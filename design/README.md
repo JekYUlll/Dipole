@@ -15,6 +15,7 @@
 | Chat Mobile | `exports/chat-mobile.png` |
 | Design Review Checklist | `exports/review-checklist.png` |
 | 完整画布总览 | `exports/dipole-ui-overview.png` |
+| Group Directory desktop/mobile/state matrix | `exports/group-v1/` |
 
 ## 当前 Frame
 
@@ -62,6 +63,15 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 - `Component/Contact Row` 与 `Component/Contact Request`：供后续 Contact 页面、会话侧栏和审批入口复用。
 
 批准的 2x 预览位于 `exports/contact-v1/`。当前切片仅建立 Pencil 视觉与状态基线，尚未新增 Contact Vue 路由或更改 Gateway API。后续实现必须从认证会话派生 principal，接受、忽略、拉黑、删除或修改备注后重新读取权威联系人状态；页面不得暗示自动审批或跨用户关系操作。
+
+### Group Directory v1
+
+- `Group/Desktop/Directory`：深色导航轨与暖白工作区中的认证群目录，只展示服务端权威投影。
+- `Group/Mobile/Directory`：390px 单列布局，保留群状态、成员摘要和只读边界。
+- `Group/State Matrix`：覆盖 loading、empty、unavailable、dismissed 和 hot group；热群明确使用 `notify + pull`。
+- `Component/Group Row`、`Component/Group Status`、`Component/Group Member Summary`：供目录、会话侧栏和群摘要复用。
+
+批准的 2x 预览位于 `exports/group-v1/`。当前切片只允许认证读取当前用户会话中的群投影；成员邀请、群资料修改、移除成员、解散和退出群继续使用既有聊天内管理入口，不在目录中新增写入能力。读取失败必须清空旧投影，避免旧群状态被误认为权威状态。
 
 ### Agent Workflow Repair v1
 

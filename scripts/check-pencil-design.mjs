@@ -28,6 +28,7 @@ const requiredFrames = [
   '00 Foundations', 'Login Desktop', 'Login Mobile', 'Chat Desktop', 'Chat Mobile',
   'Search/Desktop/Results', 'Search/Mobile/Results', 'Sync/Desktop/Restoring', 'Sync/Mobile/Restoring',
   'Contact/Desktop/Manage', 'Contact/Mobile/Manage', 'Contact/State Matrix',
+  'Group/Desktop/Directory', 'Group/Mobile/Directory', 'Group/State Matrix',
   'Agent Repair/Desktop/Proposed', 'Agent Repair/Mobile/Approval',
   'Agent Elicitation/Desktop/Form', 'Agent Elicitation/Mobile/Form',
   'Agent Subscription/Desktop/Manage', 'Agent Subscription/Mobile/Revoke',
