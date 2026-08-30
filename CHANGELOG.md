@@ -121,6 +121,8 @@
 
 ## [Unreleased]
 
+- 2026-08-30：改进开发主机 preflight 的内存判定，默认读取 `MemAvailable` 而非物理总内存，避免已有实验造成内存压力时误放行；保留显式覆盖值和原有 fail-closed profile 门禁。
+
 - 2026-08-30：新增远程开发部署与压测 runbook，明确 Remote GPU 完整拓扑、TencentCloud 轻量 smoke、本机资源限制、独立 Compose project、提交绑定镜像、证据采集、停止条件和回滚要求；记录 Remote GPU 当前存在活动会话与 GPU 任务，实际部署需等待维护窗口。
 
 - 2026-08-30：新增开发主机 preflight `scripts/check-dev-host.sh` 与 Node 测试：Remote GPU profile 用于完整微服务和负载测试，TencentCloud profile 仅用于轻量 smoke，本机资源不足时 fail closed；检查支持资源覆盖、Docker daemon 和 Compose 配置校验，当前仅完成门禁实现，尚未执行远程部署。
