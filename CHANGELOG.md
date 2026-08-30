@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：为 Codex `planning-with-files` 的 `PostToolUse` 增加同会话/工作目录短窗口去重；并行 Bash 完成事件只保留一条提醒，超过窗口仍恢复提示，避免开发工作流噪声累积。
+
 - 2026-08-30：Remote GPU 已同步 `master` 提交 `3dfaf53d`，使用用户态 Go 1.27.0 与 `GOPROXY=off` 完成最新离线 canonical 测试；Go test、服务布局和架构文档门禁全部通过，未启动容器。
 
 - 2026-08-30：新增 `scripts/drain-local-dipole.sh`，支持迁移成功后的本机降载预览与显式执行；仅停止 `dipole*` 容器，保留卷/镜像并避开无关项目，补充脚本契约测试和恢复说明。
