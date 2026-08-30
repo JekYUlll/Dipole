@@ -63,6 +63,12 @@ docker compose -p dipole-tencent-dev \
 ```
 
 不要使用不带服务名的 `up -d`，避免在 2 GiB 主机上同时启动 Agent 或后续新增的可选服务。
+验证最小集合使用：
+
+```bash
+COMPOSE_PROJECT_NAME=dipole-tencent-dev \
+scripts/smoke-microservices-lite.sh
+```
 
 ## 停止、证据与回滚
 
