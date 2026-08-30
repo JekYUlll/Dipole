@@ -57,6 +57,14 @@ DIPOLE_REALTIME_BENCH_CONTAINER=1 \
 
 该模式只运行当前 revision 的 builder benchmark，报告会记录 `cpp_runner=container`；默认本机构建路径、Go authority 和生产镜像保持不变。容器构建应使用隔离资源，Remote GPU 上存在其他 GPU 任务时可以并行，前提是该基准不申请 GPU。
 
+远端 Go toolchain 不在默认 `PATH` 时，可使用 `DIPOLE_GO_BIN=/path/to/go` 注入已安装的本地 Go，不触发网络下载：
+
+```bash
+DIPOLE_GO_BIN=/home/admin1/.local/go-1.27.0/bin/go \
+  DIPOLE_REALTIME_BENCH_CONTAINER=1 \
+  scripts/bench/realtime_projection_benchmark.sh
+```
+
 The independent image builds and runs all CTests on Ubuntu 24.04 before copying only the binary, runtime libraries and Delivery golden contracts:
 
 ```bash

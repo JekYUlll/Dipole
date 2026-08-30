@@ -9,6 +9,7 @@ cpp_binary="${cpp_build_dir}/dipole-realtime-projection-benchmark"
 output_file="${DIPOLE_REALTIME_BENCH_OUTPUT:-${root_dir}/benchmarks/c2-cpp-projection-benchmark-$(date +%Y-%m-%d)/report.json}"
 cpp_runner="host"
 compiler_label="${CXX:-/usr/bin/g++}"
+go_bin="${DIPOLE_GO_BIN:-go}"
 
 if [[ "${DIPOLE_REALTIME_BENCH_CONTAINER:-0}" == "1" ]]; then
   docker_bin="${DOCKER_BIN:-docker}"
@@ -42,7 +43,7 @@ elif [[ ! -x "${cpp_binary}" ]]; then
 else
   cpp_json="$(LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu "${cpp_binary}" "${iterations}")"
 fi
-go_json="$(cd "${root_dir}" && LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}} go run ./scripts/bench/realtime_projection_benchmark.go "${iterations}")"
+go_json="$(cd "${root_dir}" && LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}} "${go_bin}" run ./scripts/bench/realtime_projection_benchmark.go "${iterations}")"
 
 mkdir -p "$(dirname "${output_file}")"
 revision="$(git -C "${root_dir}" rev-parse HEAD)"
