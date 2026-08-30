@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU 使用显式 `DIPOLE_REMOTE_GO_ROOT` 复核 MinIO Multipart lifecycle 与 restart smoke，确认分片状态可跨服务重启恢复并完成内容校验；客户端断网、签名服务故障、跨标签页互斥与预签名默认切流仍待完成。
+
 - 2026-08-30：Remote GPU 全量 Go 门禁发现 active receipt authorizer 接线与旧 default-off 结构断言冲突，已改为检查显式开关与 mTLS 条件；该修复不提升默认 active 权限，联合环境证据仍待完成。
 
 - 2026-08-30：embedded runtime 的 active Run admission 已复用持久 promotion authorizer，消除 Core receipt resolver 与 Task/Run admission 授权边界不一致的问题；联合环境证据仍由 `AD-009` 跟踪。

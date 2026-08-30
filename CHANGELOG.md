@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Remote GPU 隔离验证 MinIO Multipart lifecycle 与 restart smoke：乱序/替换分片、完成、内容校验、重复 Abort，以及服务重启后的继续上传均通过；预签名默认切流和浏览器网络故障矩阵继续关闭。
+
 - 2026-08-30：修正 active receipt authority 的默认关闭结构门禁，要求 production Bootstrap 同时保留显式 receipt 开关和 mTLS 前置条件；默认 Agent Runtime 写 Capability 继续禁止注册。
 
 - 2026-08-30：Active Agent 部署手册补充隔离 MySQL、mTLS RPC 与 Temporal retry 三层验证顺序，并明确三者不能替代 Core/Temporal/MySQL 联合演练。
