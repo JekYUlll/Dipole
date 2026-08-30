@@ -88,7 +88,7 @@ Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复�
 
 显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow` 后，Worker 使用既有 Agent Capability RPC 执行 Task/Run admission，并在 Workflow 终止前精确提交 completed、failed 或 cancelled Run。`wait_approval` 会先持久化 capability/scope/arguments/nonce 绑定；只有 request/approval ID 匹配且 Core 确认 actor 为 Task principal 的 Signal 才能完成 approved/revoked 并恢复 Workflow。该模式要求 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true` 及对应 target、共享密钥或 mTLS 配置。Workflow starter 和未来 Signal bridge 必须来自可信认证入口，模型无权设置 principal。当前 Kafka consumer 不启动 Workflow，模型、Capability Step 和权威 Task 状态继续由既有路径持有。
 
-显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
+显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list/read` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
 
 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow` 是外部 MCP 的独占常驻模式。它要求 external Profile、Temporal、Kafka、subscription trigger 与 Capability RPC 全部显式启用，并加载受约束 I/O/deployment route manifests；入口会跳过旧 Kafka runtime 和旧 Temporal Worker，使用统一 process 按 Worker/Client/Kafka 启动、Kafka/Client/Worker/Core 停止。Compose 默认不启用该模式。回滚先关闭 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`，并将 activity mode 恢复 `foundation`；任何真实外部连接前仍要求 fresh readiness evidence。
 
@@ -174,6 +174,8 @@ npm start
 Provider name 是 route 的稳定前缀，所有 route 必须使用相同前缀，例如 `openai/<model-id>`；Runtime 拒绝跨 Provider route、空密钥、无效 Provider name 和包含凭据/query/fragment 的 base URL，HTTP 仅允许 loopback 开发端点。密钥只从进程环境或部署 Secret 注入，不写入 Compose、Artifact、审计或日志。
 
 Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
+
+`DIPOLE_AGENT_RETRIEVAL_ENABLED` 默认 `false`。仅在 `MODEL_MODE=ai_sdk` 且 Capability RPC 已启用时，Runtime 才向模型公开并注册 `conversation.search`；每次调用仍由 Core 从 Task/Run 恢复 principal，复核独立 permission、`conversation/*/read` scope、query/结果/正文上限，并将命中作为有界 `untrusted` evidence。关闭该开关时，模型、Registry 和 Shadow 执行 Context 都只包含 `conversation.list/read`。该配置不启用 Elasticsearch、跨会话检索、共享环境流量或生产默认路径。
 
 `CONTEXT_COMPILER_VERSION` 默认并在 Compose 中固定为 `v1`，从而保持已有不可变 Plan 的 prompt 与 manifest 哈希。新候选可显式设置 `v2`；切换前应等待旧候选 Task 收敛或使用新的 Task cohort，回滚只需恢复 `v1`。
 

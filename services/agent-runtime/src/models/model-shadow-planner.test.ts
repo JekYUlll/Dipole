@@ -164,6 +164,28 @@ describe("ModelShadowPlanner", () => {
     expect(request?.prompt).not.toContain('\\"id\\":\\"message.send\\"');
   });
 
+  it("accepts a bounded retrieval Step only when search is in the model allowlist", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "find migration evidence", steps: [{ capabilityId: "conversation.search", input: { query: "migration", limit: 5 } }] },
+      route: "gateway/primary", attempts: 1, usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.list", "conversation.read", "conversation.search"], undefined,
+      undefined, undefined, undefined, undefined,
+      [{ id: "conversation.search", risk: "read", requiredPermission: "conversation.search", inputSchema: {
+        type: "object", properties: { query: { type: "string", minLength: 1, maxLength: 256 }, limit: { type: "integer", minimum: 1, maximum: 20 } },
+        required: ["query"], additionalProperties: false
+      } }]
+    );
+
+    await expect(planner.plan(event(), { ...context(), permissions: ["conversation.list", "conversation.read", "conversation.search"] })).resolves.toMatchObject({
+      steps: [{ capabilityId: "conversation.search", input: { query: "migration", limit: 5 } }]
+    });
+    const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]?.[0].prompt;
+    expect(prompt).toContain('\\"id\\":\\"conversation.search\\"');
+    expect(prompt).toContain('\\"maxLength\\":256');
+  });
+
   it("rejects capabilities outside the read-only shadow allowlist", async () => {
     const router = { generate: vi.fn(async () => ({
       output: { summary: "send a reply", steps: [{ capabilityId: "message.send", input: { content: "hello" } }] },

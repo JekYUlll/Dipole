@@ -21,7 +21,12 @@ interface AgentContextResolver {
 }
 
 export function createTemporalReadStepActivities(
-  dependencies: ShadowPlanExecutionDependencies & { readonly artifacts?: AgentArtifactWriter; readonly runtimeMode?: AgentRuntimeMode; readonly contextResolver?: AgentContextResolver }
+  dependencies: ShadowPlanExecutionDependencies & {
+    readonly artifacts?: AgentArtifactWriter;
+    readonly runtimeMode?: AgentRuntimeMode;
+    readonly contextResolver?: AgentContextResolver;
+    readonly readPermissions?: readonly string[];
+  }
 ): AgentTaskActivities {
   return {
     async executeAgentTaskStep(input) {
@@ -53,7 +58,7 @@ export function createTemporalReadStepActivities(
           taskId: input.taskId,
           runId: input.runId,
           mode: runtimeMode,
-          permissions: ["conversation.list", "conversation.read"],
+          permissions: dependencies.readPermissions ?? ["conversation.list", "conversation.read"],
           resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
           approvedCapabilities: [],
           eventId: event.eventId,

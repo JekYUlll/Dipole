@@ -6,6 +6,7 @@ import { createPool, type Pool } from "mysql2/promise";
 import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
+import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
@@ -69,6 +70,7 @@ const shadowRuntimeConfigSchema = z.object({
   modelRoutes: z.array(z.string().trim().min(1)),
   contextCompilerVersion: z.enum(["v1", "v2"]),
   memoryEnabled: z.boolean(),
+  retrievalEnabled: z.boolean(),
   modelContextProfiles: z.array(routeContextProfileSchema),
   modelBudget: z.object({
     maxCalls: z.number().int().min(1).max(10),
@@ -195,6 +197,12 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.memoryEnabled && config.modelMode !== "ai_sdk") {
     refinement.addIssue({ code: "custom", message: "Agent Memory requires AI SDK model mode", path: ["memoryEnabled"] });
   }
+  if (config.retrievalEnabled && config.modelMode !== "ai_sdk") {
+    refinement.addIssue({ code: "custom", message: "Agent retrieval requires AI SDK model mode", path: ["retrievalEnabled"] });
+  }
+  if (config.retrievalEnabled && !config.capabilityRpc.enabled) {
+    refinement.addIssue({ code: "custom", message: "Agent retrieval requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
+  }
   if (config.capabilityRpc.enabled && config.capabilityRpc.tls.enabled &&
       (!config.capabilityRpc.tls.caFile || !config.capabilityRpc.tls.certFile || !config.capabilityRpc.tls.keyFile || !config.capabilityRpc.tls.serverName)) {
     refinement.addIssue({ code: "custom", message: "Agent Capability RPC mTLS files and server name are required", path: ["capabilityRpc", "tls"] });
@@ -235,6 +243,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     modelRoutes: (env.DIPOLE_AGENT_MODEL_ROUTES ?? "").split(",").map((route) => route.trim()).filter(Boolean),
     contextCompilerVersion: env.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION?.trim().toLowerCase() || "v1",
     memoryEnabled: env.DIPOLE_AGENT_MEMORY_ENABLED?.trim().toLowerCase() === "true",
+    retrievalEnabled: env.DIPOLE_AGENT_RETRIEVAL_ENABLED?.trim().toLowerCase() === "true",
     modelContextProfiles: parseRouteContextProfiles(env.DIPOLE_AGENT_MODEL_CONTEXT_PROFILES ?? ""),
     modelBudget: {
       maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
@@ -314,9 +323,12 @@ export function buildKafkaShadowRuntime(
   dispatcher?: ShadowTaskDispatcher,
   subscriptionMatcher?: ShadowSubscriptionMatcher,
   subscriptionShadowObserver?: SubscriptionShadowObserver,
-  subscriptionRuntimeGate?: SubscriptionRuntimeGate
+  subscriptionRuntimeGate?: SubscriptionRuntimeGate,
+  readPermissions?: readonly string[]
 ): KafkaShadowConsumer {
-  const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher);
+  const processor = new ShadowEventProcessor(
+    planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher, undefined, readPermissions
+  );
   return new KafkaShadowConsumer(factory, {
     groupId: config.groupId,
     topic: physicalTopic(config),
@@ -419,16 +431,19 @@ export function createKafkaShadowRuntime(
     registry = new CapabilityRegistry();
     registry.register(new ConversationListCapability(rpcTransport!.client));
     registry.register(new ConversationReadCapability(rpcTransport!.client));
+    if (config.retrievalEnabled) registry.register(new ConversationSearchCapability(rpcTransport!.client));
     trajectory = persistentAudit!;
   }
+  const readCapabilityIds = localReadCapabilityIDs(config);
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
       createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
+    ), readCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
     : new MetadataShadowPlanner();
   const consumer = buildKafkaShadowRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
-    dispatcher, subscriptionMatcher ?? (config.subscriptionShadowEnabled ? rpcTransport?.client : undefined), subscriptionShadowObserver
+    dispatcher, subscriptionMatcher ?? (config.subscriptionShadowEnabled ? rpcTransport?.client : undefined), subscriptionShadowObserver,
+    undefined, readCapabilityPermissions(config)
   );
   const mainTopic = physicalTopic(config);
   return {
@@ -481,9 +496,11 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   const registry = new CapabilityRegistry();
   registry.register(new ConversationListCapability(rpc.client));
   registry.register(new ConversationReadCapability(rpc.client));
+  if (config.retrievalEnabled) registry.register(new ConversationSearchCapability(rpc.client));
+  const readCapabilityIds = localReadCapabilityIDs(config);
   const planner = new ModelShadowPlanner(new ModelRouter(
     createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
-  ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
+  ), readCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({
@@ -491,7 +508,8 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
       runtimeMode: config.runtimeMode,
       busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 },
       ...(config.runtimeMode === "shadow" ? { artifacts: rpc.client } : {}),
-      ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {})
+      ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {}),
+      readPermissions: readCapabilityPermissions(config)
     }),
     client: rpc.client,
     start: async () => {
@@ -535,6 +553,18 @@ function isLoopbackTarget(target: string): boolean {
     ? endpoint.slice(1, endpoint.indexOf("]"))
     : endpoint.slice(0, endpoint.lastIndexOf(":"));
   return host === "127.0.0.1" || host === "localhost" || host === "::1";
+}
+
+function localReadCapabilityIDs(config: ShadowRuntimeConfig): readonly string[] {
+  return config.retrievalEnabled
+    ? ["conversation.list", "conversation.read", "conversation.search"]
+    : ["conversation.list", "conversation.read"];
+}
+
+function readCapabilityPermissions(config: ShadowRuntimeConfig): readonly string[] {
+  return config.retrievalEnabled
+    ? ["conversation.list", "conversation.read", "conversation.search"]
+    : ["conversation.list", "conversation.read"];
 }
 
 function physicalTopic(config: ShadowRuntimeConfig): string {
