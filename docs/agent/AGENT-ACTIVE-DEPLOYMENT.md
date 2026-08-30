@@ -40,7 +40,7 @@ active Runtime 当前只执行 `conversation.list/read`。Artifact、消息发�
 
 overlay 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2`、`DIPOLE_AGENT_TEMPORAL_ENABLED=true` 和 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_active`。
 
-同一 overlay 固定 `direct_target`、Memory、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
+同一 overlay 固定 `direct_target`、Memory、retrieval、retrieval-to-Context、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 

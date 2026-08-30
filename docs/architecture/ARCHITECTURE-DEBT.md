@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：基础 Compose、active read 与 External MCP Shadow overlay 现显式固定 `DIPOLE_AGENT_RETRIEVAL_ENABLED=false` 和 `DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED=false`，静态 Compose 门禁同时复核渲染值。宿主环境无法借由未声明变量扩张默认 Capability surface；受控 Search assembly、共享 Shadow 观察和生产切流仍未完成。
+
 - 2026-08-31：`conversation.search` 已完成 Core/Proto/TS 契约，严格从 Task/Run 恢复 principal，独立检查 permission 与 wildcard read scope，并将 query、结果和正文限制为有界 `untrusted` evidence。Runtime 现以默认关闭的 `DIPOLE_AGENT_RETRIEVAL_ENABLED` 将该 Capability 装配到 AI SDK Shadow/Temporal read 路径；关闭时 Registry、模型 allowlist 与执行 Context 均不包含 search。生产 Elasticsearch、跨会话灰度与完整 Context Compiler retrieval orchestration 继续关闭。
 
 - 2026-08-31：Planner 新增默认关闭的 retrieval-to-Context 编排。独立开关只接受当前消息正文的有界查询，经 Core Capability 返回最多 8 条命中并以 query hash、message ID、会话与 sequence provenance 作为 `untrusted` evidence；解析/检索异常会在模型调用前 fail closed。真实 Search assembly、共享 shadow 观察、跨会话/向量检索和生产切流仍未完成。

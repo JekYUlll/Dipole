@@ -106,6 +106,8 @@ jq -e '
   and (.services.agent.build.context | endswith("/services/agent-runtime"))
   and .services.agent.environment.DIPOLE_AGENT_KAFKA_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
   and ((.services.core.depends_on // {}) | has("message") | not)
   and ((.services.message.depends_on // {}) | has("core") | not)
   and .services.gateway.depends_on.sync.condition == "service_healthy"
@@ -153,6 +155,8 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_MODEL_ROUTES == "openai/gpt-5-mini"
   and .services.agent.environment.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION == "v2"
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ADDRESS == "temporal:7233"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_NAMESPACE == "dipole"
@@ -169,7 +173,7 @@ promotion_agent_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
   DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
-  DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID=dipole-agent-memory-promotion-compose-check \
+  DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID=dipole-agent-active-memory-promotion-compose-check \
   DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
   DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
   DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
@@ -186,13 +190,15 @@ promotion_agent_config="$({
 jq -e '
   .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "remote"
-  and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-memory-promotion-compose-check"
+  and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-active-memory-promotion-compose-check"
   and (.services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID | startswith("dipole-agent-active-"))
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "promotion_active"
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_PROMOTION_COMMIT_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY == "operator_approved"
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED == "false"
@@ -202,7 +208,7 @@ if env -u DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY \
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
   DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
-  DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID=dipole-agent-memory-promotion-compose-check \
+  DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID=dipole-agent-active-memory-promotion-compose-check \
   DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
   DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
   DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
@@ -249,6 +255,8 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_MODEL_MODE == "metadata"
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_CAPABILITY_RPC_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ADDRESS == "temporal:7233"

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Compose 部署层显式固定 Agent retrieval 与 retrieval-to-Context 为关闭：基础 Shadow、active read 和 External MCP Shadow overlay 均写入 `false`，`check-compose.sh` 复核渲染结果，防止宿主环境变量意外扩张默认只读能力面。
+
 - 2026-08-31：将默认 Signal Link 品牌从偏蓝变体恢复为深青绿与橙色事件脉冲方案，统一主字标、IM 标识与 Agent 标识。保留 SVG 文件名和现有 README 引用，运行时行为不受影响。
 
 - 2026-08-31：Agent Runtime 新增默认关闭的 `DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED`。在已启用受权 retrieval 的 Shadow/Temporal read composition 中，Planner 仅从当前事件正文派生有界 query，经 Core 返回最多 8 条命中并按 Context budget 写入带 provenance 的 `untrusted` evidence；检索失败在模型调用前 fail closed。生产 Search、共享流量和默认路径未改变。
