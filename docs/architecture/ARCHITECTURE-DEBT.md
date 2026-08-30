@@ -1252,4 +1252,5 @@
 - **本轮进展：** cleanup 对 `NoSuchUpload` 做幂等收敛分类 `already_gone`，降低 list/Abort 并发竞态的误报；未知或实际 Abort 错误仍增加 `Failed` 并保持 fail-closed。
 - **本轮进展：** 指标 textfile 原子发布增加故障测试，目标发布失败时保留原目标并清理临时文件；现有低基数指标和告警语义保持不变。
 - **本轮进展：** HTTP Gateway Multipart 初始化入口增加限流 fail-fast 回归，确认限流请求不会触发 Core/MinIO；文件上传窗口仍复用 Redis-backed `AllowFileUpload`，默认配置保持兼容。
-- **下一步：** 在 Remote GPU 维护窗口补充网关限流故障证据，记录 active/expired/abort/retry 指标并形成完整矩阵后再评估关闭本条债务。
+- **本轮进展：** 预签名 Gateway 代理增加显式上游响应超时配置与 `502` 超时回归，避免对象存储挂起长期占用 Gateway；默认 `30s`，仅启用代理时生效。
+- **下一步：** 在 Remote GPU 维护窗口补充预签名代理限流故障证据，记录 active/expired/abort/retry 指标并形成完整矩阵后再评估关闭本条债务。

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPresignedUploadProxyForwardsSignedPutAndPreservesSignedHost(t *testing.T) {
@@ -59,5 +60,29 @@ func TestPresignedUploadProxyRejectsUnsignedOrOversizedRequest(t *testing.T) {
 				t.Fatalf("unexpected status: got=%d want=%d", recorder.Code, expected)
 			}
 		})
+	}
+}
+
+func TestPresignedUploadProxyReturnsBadGatewayWhenUpstreamTimesOut(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		time.Sleep(50 * time.Millisecond)
+	}))
+	defer upstream.Close()
+
+	proxy, err := NewPresignedUploadProxyWithTimeout(upstream.URL, "storage.example.test", 5, 5*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPut, "/dipole-files/message-files/a?partNumber=1&uploadId=up-1&X-Amz-Credential=key&X-Amz-Signature=sig", strings.NewReader("hello"))
+	proxy.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusBadGateway {
+		t.Fatalf("expected status 502 after upstream timeout, got %d", recorder.Code)
+	}
+}
+
+func TestPresignedUploadProxyRejectsNonPositiveTimeout(t *testing.T) {
+	if _, err := NewPresignedUploadProxyWithTimeout("http://127.0.0.1:9000", "storage.example.test", 5, 0); err == nil {
+		t.Fatal("non-positive upstream timeout was accepted")
 	}
 }

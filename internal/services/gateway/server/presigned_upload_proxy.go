@@ -7,12 +7,22 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
+
+const defaultPresignedUploadProxyTimeout = 30 * time.Second
 
 // NewPresignedUploadProxy creates a same-origin data-plane proxy for S3
 // UploadPart requests. The S3 signature remains the authorization mechanism;
 // the Gateway only forwards a bounded PUT and never calls a business service.
 func NewPresignedUploadProxy(target, signedHost string, maxBodyBytes int64) (http.Handler, error) {
+	return NewPresignedUploadProxyWithTimeout(target, signedHost, maxBodyBytes, defaultPresignedUploadProxyTimeout)
+}
+
+// NewPresignedUploadProxyWithTimeout creates a bounded same-origin S3 part
+// proxy. The timeout limits waiting for the upstream response and prevents a
+// stalled object store from pinning a Gateway request indefinitely.
+func NewPresignedUploadProxyWithTimeout(target, signedHost string, maxBodyBytes int64, upstreamTimeout time.Duration) (http.Handler, error) {
 	parsed, err := url.Parse(strings.TrimSpace(target))
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return nil, errors.New("presigned upload proxy target is invalid")
@@ -24,8 +34,17 @@ func NewPresignedUploadProxy(target, signedHost string, maxBodyBytes int64) (htt
 	if maxBodyBytes <= 0 {
 		return nil, errors.New("presigned upload proxy body limit must be positive")
 	}
+	if upstreamTimeout <= 0 {
+		return nil, errors.New("presigned upload proxy upstream timeout must be positive")
+	}
 
 	proxy := httputil.NewSingleHostReverseProxy(parsed)
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return nil, errors.New("presigned upload proxy default transport is not cloneable")
+	}
+	proxy.Transport = transport.Clone()
+	proxy.Transport.(*http.Transport).ResponseHeaderTimeout = upstreamTimeout
 	director := proxy.Director
 	proxy.Director = func(request *http.Request) {
 		director(request)
