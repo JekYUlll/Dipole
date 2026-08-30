@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Remote development entrypoint. It never copies an uncommitted worktree.
-REMOTE_HOST="${DIPOLE_REMOTE_HOST:-remote-gpu}"
-REMOTE_ROOT="${DIPOLE_REMOTE_ROOT:-/home/zhangzhuyu/workspaces/Dipole}"
+REMOTE_HOST="${DIPOLE_REMOTE_HOST:-LAB113-OPS}"
+REMOTE_ROOT="${DIPOLE_REMOTE_ROOT:-/home/admin1/workspaces/Dipole}"
 REMOTE_BRANCH="${DIPOLE_REMOTE_BRANCH:-dipole-dev/${USER:-developer}}"
 REMOTE_PROJECT="${DIPOLE_REMOTE_PROJECT:-dipole-dev-${USER:-developer}}"
 REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose.microservices.yml}"
