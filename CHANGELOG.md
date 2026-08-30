@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：在 Remote GPU 对 `master` 提交 `bd7283d1` 完成远程 canonical 验证：Go 全量测试、服务布局与架构文档门禁通过；Agent Runtime `125` 个测试文件/`665` 个测试通过并完成 typecheck/build，Frontend `29` 个测试文件/`114` 个测试通过并完成 typecheck/Vite build。验证仅使用 CPU/用户态工具链，未启动业务 Compose 或触碰 GPU 任务；Node `22.12.0` 对部分依赖要求 `22.22.2+` 仅产生非阻断警告。
+
 - 2026-08-30：在 Remote GPU 完成 MinIO Multipart 服务重启恢复 smoke；分片跨重启保留并成功完成对象，临时容器和数据卷已清理，客户端断网与预签名切流仍待验证。
 
 - 2026-08-30：在 Remote GPU 使用现有 Go `1.27.0` 完成隔离 MinIO Multipart smoke，验证乱序/替换/完成/内容校验/重复 Abort；临时容器已清理，完整故障矩阵继续待完成。
