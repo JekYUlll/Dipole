@@ -17,11 +17,11 @@
 3. 运行快速门禁并检查 `git diff --check`；失败时修复当前切片，不扩展范围。
 4. 更新 `CHANGELOG.md`、`ARCHITECTURE-DEBT.md` 和相关操作手册，记录实际证据及未完成外部门禁。
 5. 推送 feature 分支，合并到 `master`，再一次性同步五条 Epic 分支。
-6. 需要远程或共享环境时，只运行提交绑定的候选 revision；活动用户、GPU 任务或资源不足时 fail closed。
+6. 需要远程或共享环境时，只运行提交绑定的候选 revision；活动用户、GPU 任务或资源不足时默认 fail closed。经明确授权可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`，但仍使用独立 Compose project、目录、凭据和清理流程，不触碰其他用户进程。
 
 ## planning-with-files 规则
 
-当前活动计划使用 `autonomous` 和 `inject-smart` 模式，并通过 attestation 绑定计划内容。逐工具调用不重复注入完整计划；每轮只注入当前阶段摘要，压缩或新 session 时再从文件恢复。
+当前活动计划使用 `autonomous` 模式，并通过 attestation 绑定计划内容。逐工具调用不重复注入完整计划；每轮只注入当前阶段摘要，压缩或新 session 时再从文件恢复。`inject-smart` 已停用，避免与适配器及当前计划摘要重复加载。
 
 执行计划结构变更后，先重新生成 attestation；发现计划哈希不一致时停止自动执行，核对变更来源后再继续。一次性 CI 或只读脚本可使用 `PLANNING_DISABLED=1`，不得用它绕过代码或发布门禁。
 

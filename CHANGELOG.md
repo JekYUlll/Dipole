@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修复 Remote GPU 构建入口，`scripts/remote-dev.sh build` 会先编译提交绑定的 Go 服务二进制再构建逐服务镜像；同步修正文档中的 `planning-with-files` 模式，并记录隔离 Smoke 因 registry mirror 对缺失自定义镜像返回 `403` 的可回滚证据。
+
 - 2026-08-30：Multipart Prometheus 规则新增 reconciliation 漂移、扫描不完整和指标过期告警，并补充 `promtool` 触发时序测试；修复动作仍保持人工确认和原有删除保护。
 
 - 2026-08-30：Remote GPU 在用户态 Go 1.27.0 下对 `master` 提交 `9c0f2702` 完成远端 canonical 门禁；Go 白名单测试、服务布局和架构文档检查全部通过，未启动 Compose 或创建容器，构建/Smoke/Benchmark 继续遵守活动用户保护。

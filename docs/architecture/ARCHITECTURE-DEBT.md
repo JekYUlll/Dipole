@@ -1121,4 +1121,6 @@
 - **启动保护证据：** 2026-08-30 执行 `scripts/remote-dev.sh build`，代码同步成功后因 Remote GPU 观测到 `users=23`、`gpu_processes=5` 在构建前退出，未创建镜像或容器；保护逻辑有效。
 - **正式基线复核：** 2026-08-30 通过 `DIPOLE_REMOTE_BRANCH=master scripts/remote-dev.sh sync` 将管理员工作目录更新至 `27138a32`；只完成代码同步，活动用户/GPU 保护继续阻止构建与部署。
 - **正式基线同步证据：** 2026-08-30 已通过管理员 alias 将远端工作目录更新到 `master` 最新已同步提交；未启动容器，Docker 权限与 Compose 插件已就绪，Go 版本缺口和活动用户保护仍阻止完整测试/构建。
+- **远端 Smoke 证据：** 2026-08-30 在明确授权允许 GPU 任务并行的情况下运行隔离 `smoke-lite`；preflight、证书生成和项目隔离通过，随后因 Docker registry mirror 对缺失的 `dipole-core:latest` 返回 `403 Forbidden` 退出，trap 已清理隔离容器/卷，未触碰其他项目或 GPU 进程。该失败暴露远端需要先构建提交绑定服务镜像的流程缺口。
+- **远端构建修复：** `scripts/remote-dev.sh build` 现先执行 `scripts/docker-build.sh backend` 生成提交绑定 Go 二进制，再执行逐服务镜像构建；入口契约测试 `5/5`、shell 语法和 diff 检查通过。下一次 Smoke 仍需验证基础镜像缓存/registry 可用性，真实负载和故障矩阵保持未完成。
 - **TencentCloud 占用证据：** 同次只读核验发现已有 `nkdoing-app` 容器占用公网 `80`、`nkdoing-postgres` 绑定本机 `5432`，宿主 MySQL 监听 `3306`；因此 TencentCloud 只能在明确端口、Compose project、卷和业务影响隔离后执行轻量 smoke，不能视为干净测试主机。
