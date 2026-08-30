@@ -100,7 +100,7 @@ sum by (outcome) (increase(dipole_web_sync_client_errors_total[24h]))
 
 ### 7.1 可恢复观察会话与证据归档
 
-发布 shadow 候选前，将实际部署的 `frontend/dist` 制作为不可变发布归档。观察会话必须使用完整 40 位 Git commit 和该归档文件，不能用源码目录或任意占位文件代替：
+发布 shadow 候选前，将实际部署的 `internal/services/core/server/webapp` 制作为不可变发布归档。观察会话必须使用完整 40 位 Git commit 和该归档文件，不能用源码目录或任意占位文件代替：
 
 ```bash
 python3 scripts/web_sync_observation.py start \

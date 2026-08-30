@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-source_dir="$root_dir/frontend/dist"
+source_dir="$root_dir/internal/services/core/server/webapp"
 candidate_version=""
 mode="shadow"
 output=""

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修正 Web Sync 候选 bundle 默认来源至 Vite 实际生产输出 `internal/services/core/server/webapp`，避免发布归档错误读取已废弃的 `frontend/dist` 并在远端构建后失败。
+
 - 2026-08-30：修复前端 Agent 路由安全契约遗漏 Artifact 页面的问题：测试现覆盖 `agent-artifact` 的认证与独立 feature flag，并按当前 8 个受认证页面校验，恢复 Shadow Web 候选构建门禁。
 
 - 2026-08-30：按项目视觉方向恢复 README 的深青/橙色 Signal 品牌：双极主标表达事件脉冲，IM 与 Agent 分别表达消息投递和受控能力。蓝色 SVG 版本不再作为项目入口视觉，运行时行为不受影响。

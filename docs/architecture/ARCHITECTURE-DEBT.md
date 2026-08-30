@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：Web Sync bundle 打包默认来源已对齐 Vite 的真实生产输出目录，消除 Shadow 候选构建完成后仍因读取已废弃 `frontend/dist` 而无法归档的发布链路漂移；真实 Prometheus 观察窗口仍待开始。
+
 - 2026-08-30：前端 Agent 路由安全契约已补齐新增 Artifact 路由的认证与 feature flag 断言，避免后续路由扩展使静态安全覆盖与实际页面集合漂移；Artifact 继续仅提供默认关闭、owner-scoped metadata 读取。
 
 - 2026-08-30：Remote GPU 隔离 External MCP Shadow drill 已通过 MySQL EventLedger、Kafka consumer、Temporal、Go Core mTLS fixture 与本地 MCP 的完整链路，并验证重启重复事件不产生第二次 Tool 调用、过期 readiness 拒绝且 `production_authority=false`。共享 Core/Kafka/Temporal、真实外部 DNS/TLS、凭据轮换或吊销、Provider owner 与 Shadow tenant 观测仍未覆盖，外部 MCP 和 active authority 继续默认关闭。
