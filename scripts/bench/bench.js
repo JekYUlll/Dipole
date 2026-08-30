@@ -25,6 +25,7 @@ const IDLE_SECONDS = parseInt(__ENV.IDLE_SECONDS || "120");
 const RUN_ID = __ENV.RUN_ID || String(Date.now());
 const PHONE_PREFIX = __ENV.PHONE_PREFIX || "138";
 const SCENARIO_FILTER = __ENV.SCENARIO_FILTER || "";
+const GROUP_MAX_DURATION = __ENV.GROUP_MAX_DURATION || "35s";
 const DIRECT_SEND_COUNT = parseInt(__ENV.DIRECT_SEND_COUNT || "5");
 const CONCURRENT_SEND_COUNT = parseInt(__ENV.CONCURRENT_SEND_COUNT || "8");
 
@@ -63,7 +64,7 @@ const allScenarios = {
       executor: "per-vu-iterations",
       vus: GROUP_SIZE,
       iterations: 1,
-      maxDuration: "20s",
+      maxDuration: GROUP_MAX_DURATION,
       startTime: "50s",
       env: { SCENARIO: "group_blast" },
       tags: { scenario: "group_blast" },
