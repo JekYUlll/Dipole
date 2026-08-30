@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：确认 `docker-compose.cluster.yml` 与 `docker-compose.redis-cluster.yml` 目前只提供 Kafka/Redis 组件级演练；`docker-compose.microservices.yml` 仍绑定单 broker、单 Redis。新增 `BUSINESS-TOPOLOGY.md` 和 Compose 契约门禁，业务集群组合拓扑、真实业务故障切换和自动回切证据继续保持待办。
+
 - 2026-08-30：将 C1 stop/start recovery drill 接入 Remote GPU 统一入口，补齐 `/tmp` 报告挂载和 k6 fallback；真实报告仍要求候选 revision、恢复后 post-load、Kafka lag 和自动清理全部通过，未改变生产默认路径。
 
 - 2026-08-30：C1 recovery 复盘发现 Dockerized k6 只挂载仓库目录时无法写入 `/tmp` 报告目录；已通过显式只读边界之外的 `/tmp` 挂载修复容器输出路径，后续远程演练可复用统一 wrapper。
