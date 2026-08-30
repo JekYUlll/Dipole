@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：Multipart 前端失败路径已保留 Redis/MinIO session 和本地文件身份，恢复重试可依据服务端已上传 part 跳过重复传输；Frontend `29/114`、typecheck/build 通过。服务端重启恢复、预签名过期后重新签名和完整断网故障矩阵仍需真实环境证据。
 - 2026-08-30：远程开发入口新增 `multipart-smoke` 并统一固定远端本地 Go toolchain，避免 Multipart 验证因隐式下载超时；入口契约 `7/7` 通过。该流程仍未覆盖客户端断网重试、服务重启恢复、预签名默认切流和完整故障矩阵。
 - 2026-08-30：Remote GPU 在 `master` revision `67235080` 复跑 MinIO Multipart 真实生命周期 smoke，乱序上传、同编号替换、Complete、内容校验和重复 Abort 通过；网络型 Go toolchain 阻断已通过固定远端 Go 1.27 与 `GOTOOLCHAIN=local` 排除。该证据仍未覆盖客户端断网重试、服务重启恢复、预签名默认切流和完整故障矩阵。
 - 2026-08-30：A6 在真实 Chromium 中验证 Sync Timeline 的浏览器重开恢复：第一轮提交并 ACK 到 `2`，重开后先幂等 ACK 已提交 cursor，再从 `after_seq=2` 拉取并提交 `3..4`，最终安全 cursor 为 `4` 且消息无重复；该证据仍为隔离客户端验收，真实部署观察窗口、共享环境切流和旧 Offline 正文退役条件继续开放。

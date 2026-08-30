@@ -1265,7 +1265,7 @@ const uploadFile = async (e: Event) => {
       },
     })
   } catch (err: any) {
-    toast.error(err?.message || '文件上传失败')
+    toast.error(err?.message || '文件上传失败，大文件进度已保留，可重新选择文件继续')
   } finally {
     finishMultipartUploadControls()
     uploadingFileLabel.value = ''
@@ -1539,12 +1539,8 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
     clearStoredMultipartUpload(file)
     return result
   } catch (err) {
-    try {
-      await api.delete(`/api/v1/files/uploads/${encodeURIComponent(init.session_id)}`)
-    } catch {
-      // 上传失败时尽力清理服务端会话，避免 Redis 和 MinIO 留下无主分片。
-    }
-    clearStoredMultipartUpload(file)
+    // Keep the server session and local identity so a later attempt can query
+    // status and skip parts that already reached object storage.
     throw err
   }
 }
