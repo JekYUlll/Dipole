@@ -1097,3 +1097,4 @@
 - **解决方式：** 使用 `scripts/check-dev-host.sh` 做启动前 fail-closed 检查，采用独立工作目录、Compose project、端口、网络、非生产凭据和提交绑定镜像；先在维护窗口完成 Remote GPU smoke/基线，再做 TencentCloud 低资源回归。
 - **验证：** 主机资源和 Docker/Compose 配置门禁已有测试，轻量 smoke 已通过 Gateway 依赖闭包契约测试；实际远程部署、运行证据、故障演练和清理回滚仍待明确窗口后完成。
 - **只读主机证据：** 2026-08-30 通过 SSH 内存脚本复核 Remote GPU（224 vCPU、可用内存约 163510 MiB、可用磁盘约 1084340 MiB）和 TencentCloud_01（2 vCPU、可用内存约 1172 MiB、可用磁盘约 34347 MiB）的 `check-dev-host.sh` profile；两者均通过资源门禁，未启动容器，仍不构成部署或负载测试证据。
+- **TencentCloud 占用证据：** 同次只读核验发现已有 `nkdoing-app` 容器占用公网 `80`、`nkdoing-postgres` 绑定本机 `5432`，宿主 MySQL 监听 `3306`；因此 TencentCloud 只能在明确端口、Compose project、卷和业务影响隔离后执行轻量 smoke，不能视为干净测试主机。
