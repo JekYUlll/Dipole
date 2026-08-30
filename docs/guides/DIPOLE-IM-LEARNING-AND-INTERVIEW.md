@@ -42,9 +42,9 @@
 - **对外表述：** Core 管理会话、授权和完成事务；对象存储承载大文件数据面。浏览器只对网络异常及 `408`、`429`、`5xx` 有界重试，确定性 `4xx` 立即失败。
 - **演示：** 运行 `scripts/smoke-minio-multipart.sh` 与 `scripts/smoke-minio-multipart-restart.sh`，展示乱序分片、替换、重启续传、完成校验和重复 Abort。
 - **证据：** `frontend/src/upload/multipartUpload.ts`、`scripts/smoke-minio-multipart.sh`、[架构债务 AD-055](../architecture/ARCHITECTURE-DEBT.md)。
-- **追问：** “为什么预签名直传仍默认关闭？” 还需浏览器级断网、代理故障、告警路由和切流回退的同版本证据。
+- **追问：** “为什么预签名直传仍默认关闭？” 直传默认切流须先通过版本化 evidence receipt：24 小时同版本窗口、直传样本、错误与延迟阈值、clear alert、relay 回切演练和独立 reviewer；当前尚未取得共享环境 receipt。
 - **限制：** 默认权威路径仍为 relay；预签名直传未作为生产默认。
-- **下一步：** 完成跨网络故障矩阵与回切演练。
+- **下一步：** 完成跨网络故障矩阵、Prometheus/Alertmanager 路由验收与共享环境 receipt，再审阅默认策略变更。
 - **复核条件：** 修改分片大小、URL TTL、重试策略、对象存储或上传默认策略时。
 
 #### File 目录读取
