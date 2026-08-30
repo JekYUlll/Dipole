@@ -6,6 +6,9 @@
 
 ### 新增
 
+- 增加 Device Security v1 的 desktop/mobile 会话页与七态 State Matrix，归档三张 `exports/device-security-*-review.png` 2x 评审基线。
+- 增加 `Device Session Row`、`Device Trust Status` 和 `Session Sign-out Confirmation` 三个复用组件；移动端使用堆叠会话卡片与明确批准区，避免桌面行布局在窄屏拥挤。
+- 固定 Device Security 隐私披露边界：仅显示设备标签、粗粒度设备或浏览器说明、相对活动时间和状态；IP、节点、连接 ID、用户 ID、Token、精确位置和原始 User-Agent 均不进入设计稿。
 - 增加 File Directory v1 的 desktop/mobile 只读目录、loading/empty/unavailable 状态矩阵及 File Directory Row、File Type Badge、Empty State 三个复用组件。
 - 归档 `exports/file-directory-review.png` 评审基线；目录仅展示 owner-scoped 文件元数据，存储 URL、对象键、校验值、上传会话和删除控制均不进入页面。
 - 增加 Group Directory v1 的 desktop/mobile 目录、五态权威状态矩阵和 Group Row/Status/Member Summary 三个可复用组件。

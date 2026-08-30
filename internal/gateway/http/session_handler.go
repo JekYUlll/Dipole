@@ -16,6 +16,7 @@ type sessionService interface {
 	ListUserDevices(userUUID string) ([]*coresession.DeviceSessionView, error)
 	ForceLogoutConnection(userUUID, connectionID string) error
 	ForceLogoutAll(userUUID, currentToken string) error
+	ForceLogoutOther(userUUID, currentDeviceID string) error
 }
 
 type SessionHandler struct {
@@ -113,4 +114,32 @@ func (h *SessionHandler) ForceLogoutAll(c *gin.Context) {
 	Success(c, gin.H{
 		"message": "all device sessions logged out",
 	})
+}
+
+// ForceLogoutOther godoc
+// @Summary 下线当前用户的其他设备
+// @Tags Session
+// @Security BearerAuth
+// @Produce json
+// @Param X-Device-ID header string true "当前稳定设备 ID"
+// @Success 200 {object} DeviceLogoutResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /users/me/devices/logout-others [post]
+func (h *SessionHandler) ForceLogoutOther(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	if err := h.service.ForceLogoutOther(currentUser.UUID, c.GetHeader("X-Device-ID")); err != nil {
+		if errors.Is(err, coresession.ErrSessionDeviceRequired) {
+			ErrorWithCode(c, http.StatusBadRequest, code.SessionConnectionRequired, "X-Device-ID is required")
+			return
+		}
+		ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
+		return
+	}
+	Success(c, gin.H{"message": "other device sessions logged out"})
 }

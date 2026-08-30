@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：F2 Device Security 已完成 Pencil desktop/mobile/七态矩阵、三项复用组件、认证 `/devices` 路由和低敏会话 parser。公共 `DeviceSessionResponse` 现只保留登出所需 connection ID、粗粒度 device/device ID 与时间，IP、节点和原始 User-Agent 不再跨 HTTP 边界；新增 `logout-others` 通过当前稳定 Device ID 排除自身，避免 UI 将全设备退出误写为“其他设备”。Go 定向测试、Pencil/文档门禁以及 Remote GPU Node 22 前端 `40/162`、typecheck/build 已通过；远端 Playwright browser binary 下载未完成，跨浏览器执行、Chromium 像素回归和真实 Redis Presence/跨节点踢出继续待验证。
+
 - 2026-08-30：校正 External MCP Shadow 文档口径：`external_mcp_shadow` 已作为独占、默认关闭的 Runtime mode 接入 `index.ts`，完整配置才会启动受控 Kafka/Temporal/Capability RPC process；基础 Compose 仍不选择该 mode。隔离全栈证据不覆盖共享 Shadow tenant、真实外部 DNS/TLS、凭据、Provider owner 或生产 authority，相关债务继续开放。
 
 - 2026-08-30：修复 Remote GPU Node 验证的 Vite 清理流程：`remote-dev.sh` 仅恢复受控 `internal/services/core/server/webapp` 固定 `HEAD`，再删除未跟踪构建产物，避免反向 patch 误删已有 hashed assets。`3f1f3936` 复跑后远端候选工作树干净；该修复不启动 Compose 或 GPU 任务。

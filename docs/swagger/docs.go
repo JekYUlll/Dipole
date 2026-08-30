@@ -3321,6 +3321,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/devices/logout-others": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Session"
+                ],
+                "summary": "下线当前用户的其他设备",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "当前稳定设备 ID",
+                        "name": "X-Device-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.DeviceLogoutResponseEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me/devices/{connection_id}/logout": {
             "post": {
                 "security": [
@@ -4443,15 +4494,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "last_seen_at": {
-                    "type": "string"
-                },
-                "node_id": {
-                    "type": "string"
-                },
-                "remote_addr": {
-                    "type": "string"
-                },
-                "user_agent": {
                     "type": "string"
                 }
             }

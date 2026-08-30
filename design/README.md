@@ -16,6 +16,7 @@
 | Design Review Checklist | `exports/review-checklist.png` |
 | 完整画布总览 | `exports/dipole-ui-overview.png` |
 | Group Directory desktop/mobile/state matrix | `exports/group-v1/` |
+| Device Security desktop/mobile/state matrix | `exports/device-security-*-review.png` |
 
 ## 当前 Frame
 
@@ -72,6 +73,15 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 - `Component/Group Row`、`Component/Group Status`、`Component/Group Member Summary`：供目录、会话侧栏和群摘要复用。
 
 批准的 2x 预览位于 `exports/group-v1/`。当前切片只允许认证读取当前用户会话中的群投影；成员邀请、群资料修改、移除成员、解散和退出群继续使用既有聊天内管理入口，不在目录中新增写入能力。读取失败必须清空旧投影，避免旧群状态被误认为权威状态。
+
+### Device Security v1
+
+- `Device/Desktop/Sessions`：认证设备会话页，展示当前会话、其他会话与登出其他设备确认。
+- `Device/Mobile/Sessions`：390px 堆叠会话卡片和清晰的批准确认区，避免窄屏横向表格。
+- `Device/State Matrix`：覆盖 loading、无其他会话、读取失败重试、单设备确认、全部其他设备确认、成功反馈和动作失败。
+- `Device Session Row`、`Device Trust Status`、`Session Sign-out Confirmation`：页面与状态矩阵共用的组件。
+
+批准的 2x 预览位于 `exports/device-security-*-review.png`。设计只展示设备标签、粗粒度浏览器或设备说明、相对活动时间和当前/信任状态；IP、节点、连接 ID、用户 ID、Token、精确位置与原始 User-Agent 不进入 UI。后续 Vue 页面从认证会话调用既有设备列表与登出 API，单设备和全部其他设备动作均需要明确确认并以权威响应收敛。
 
 ### Agent Workflow Repair v1
 

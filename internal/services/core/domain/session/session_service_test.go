@@ -155,3 +155,33 @@ func TestSessionServiceForceLogoutAll(t *testing.T) {
 		t.Fatalf("expected all connections kicked for U100, got %s", kicker.kickedAllUserUUID)
 	}
 }
+
+func TestSessionServiceForceLogoutOtherKeepsCurrentDevice(t *testing.T) {
+	t.Parallel()
+
+	tokens := &stubSessionTokens{}
+	kicker := &stubSessionKicker{}
+	service := NewSessionService(&stubSessionPresence{states: []platformPresence.ConnectionState{
+		{ConnectionID: "C-current", UserUUID: "U100", DeviceID: "web-current", TokenID: "T-current", TokenExpiresAt: time.Now().UTC().Add(time.Hour)},
+		{ConnectionID: "C-other", UserUUID: "U100", DeviceID: "web-other", TokenID: "T-other", TokenExpiresAt: time.Now().UTC().Add(time.Hour)},
+	}}, tokens, kicker)
+
+	if err := service.ForceLogoutOther("U100", "web-current"); err != nil {
+		t.Fatalf("force logout other: %v", err)
+	}
+	if len(tokens.revokedTokenIDs) != 1 || tokens.revokedTokenIDs[0] != "T-other" {
+		t.Fatalf("expected only other token revoked, got %v", tokens.revokedTokenIDs)
+	}
+	if kicker.kickedUserUUID != "U100" || len(kicker.kickedIDs) != 1 || kicker.kickedIDs[0] != "C-other" {
+		t.Fatalf("expected only other connection kicked, got user=%s ids=%v", kicker.kickedUserUUID, kicker.kickedIDs)
+	}
+}
+
+func TestSessionServiceForceLogoutOtherRequiresStableDeviceID(t *testing.T) {
+	t.Parallel()
+
+	err := NewSessionService(&stubSessionPresence{}, nil, nil).ForceLogoutOther("U100", "")
+	if !errors.Is(err, ErrSessionDeviceRequired) {
+		t.Fatalf("expected ErrSessionDeviceRequired, got %v", err)
+	}
+}

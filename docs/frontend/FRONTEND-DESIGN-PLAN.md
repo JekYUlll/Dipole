@@ -7,7 +7,7 @@
 - Vue 3 + TypeScript + Pinia + Vue Router + Vite。
 - 当前路由包含 Login、Chat，以及由 feature flag 保护的 Agent Elicitation、Approval、Task Timeline、Artifact、Subscription、Definition 和 Memory 页面；Search/Sync 作为 Chat 工作区能力接入，复杂交互仍主要集中在 `ChatView.vue`。
 - 已建立 canonical `design/dipole-ui.pen`、设计日志和批准预览目录。
-- Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Contact 已完成联系人管理 desktop/mobile、申请/拉黑状态矩阵、可复用组件与受认证只读 Vue 目录；Group 已完成目录 desktop/mobile、五态矩阵、复用组件和受认证只读 Vue 目录，范围由当前用户会话投影派生，详情读取失败即清空旧状态，热群仅表达 `notify + pull`；File 已完成 owner-scoped 只读目录及逐项授权下载，存储位置、校验值、上传会话和删除控制继续关闭。两类写操作和跨浏览器视觉回归保留为独立切片。Agent Workflow Repair 已完成 evidence review、六态矩阵和双人审批设计，普通 Elicitation 已完成来源披露、desktop/mobile Form、七态设计及默认关闭的 Vue 实现，Event Subscription 已完成 owner 管理、六态和 mobile 撤销设计；Login、完整 Chat、Device、Settings 等现代 IM 页面仍待补齐。
+- Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Contact 已完成联系人管理 desktop/mobile、申请/拉黑状态矩阵、可复用组件与受认证只读 Vue 目录；Group 已完成目录 desktop/mobile、五态矩阵、复用组件和受认证只读 Vue 目录，范围由当前用户会话投影派生，详情读取失败即清空旧状态，热群仅表达 `notify + pull`；File 已完成 owner-scoped 只读目录及逐项授权下载，存储位置、校验值、上传会话和删除控制继续关闭；Device Security 已完成低敏 session projection、desktop/mobile/七态设计与认证 `/devices` 页面。两类写操作、真实 Presence 踢出与跨浏览器视觉回归保留为独立切片。Agent Workflow Repair 已完成 evidence review、六态矩阵和双人审批设计，普通 Elicitation 已完成来源披露、desktop/mobile Form、七态设计及默认关闭的 Vue 实现，Event Subscription 已完成 owner 管理、六态和 mobile 撤销设计；Login、完整 Chat 和 Settings 等现代 IM 页面仍待补齐。
 - 已建立 Vitest + Vue Test Utils + jsdom 基线，以及 Chromium/Firefox/WebKit Playwright IndexedDB 验收；页面流程与视觉回归持续补齐。Agent Task Timeline v1 已通过真实 Pencil CLI 小批次补齐 canonical desktop/mobile/state matrix 和批准导出，并新增 Chromium 受控 fixture 截图基线；完整页面与未覆盖浏览器视觉回归仍待建立。
 - Pencil CLI 已认证；2026-08-27 本地版本为 `0.3.5`，设计时使用 CLI 内置 skill 读取最新编辑约束。
 
@@ -68,7 +68,7 @@ design/
 
 ### F2：现代 IM 完整流程
 
-- Search desktop/mobile 四态和 Vue 工作区已完成；Sync 本地恢复与状态反馈已完成首个切片；Contact 已完成 Pencil desktop/mobile/状态矩阵及受认证只读 Vue 目录，继续按独立权限切片实现备注、拉黑、删除与申请处理；Group 已完成 Pencil desktop/mobile/五态矩阵及 `/groups` 认证只读目录，成员与群管理写操作继续关闭；File 已完成 Pencil desktop/mobile/状态矩阵及 `/files` 认证只读目录，上传仍留在会话编辑器，目录只允许逐项重新授权下载。继续设计 Device 和 Settings 流程。
+- Search desktop/mobile 四态和 Vue 工作区已完成；Sync 本地恢复与状态反馈已完成首个切片；Contact 已完成 Pencil desktop/mobile/状态矩阵及受认证只读 Vue 目录，继续按独立权限切片实现备注、拉黑、删除与申请处理；Group 已完成 Pencil desktop/mobile/五态矩阵及 `/groups` 认证只读目录，成员与群管理写操作继续关闭；File 已完成 Pencil desktop/mobile/状态矩阵及 `/files` 认证只读目录，上传仍留在会话编辑器，目录只允许逐项重新授权下载；Device Security 已完成 Pencil desktop/mobile/七态矩阵及 `/devices` 认证会话控制，Remote GPU Node 22 已通过 `40` 个测试文件、`162` 项测试、typecheck 和 production build。Playwright browser binary、真实 Redis Presence/跨节点踢出与 Chromium 像素回归仍待环境准备。下一项继续设计和实现 Settings 流程。
 - 将大型 ChatView 渐进拆成可测试组件。
 - 建立 Playwright 路由、交互和视觉回归。
 - IndexedDB 的三浏览器持久化、账号清理与页面中断事务契约已进入 Playwright；继续补齐完整页面路由和截图基线。

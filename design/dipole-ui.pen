@@ -34323,6 +34323,2832 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "PsMWZ",
+      "x": 29094,
+      "y": 1176,
+      "name": "Device Trust Status",
+      "reusable": true,
+      "fill": "#EAF6EF",
+      "cornerRadius": 999,
+      "stroke": "#B8E3CB",
+      "strokeWidth": 1,
+      "gap": 8,
+      "padding": [
+        8,
+        12
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "P4Cfk",
+          "name": "Trust Dot",
+          "fill": "$accent-strong",
+          "width": 8,
+          "height": 8
+        },
+        {
+          "type": "text",
+          "id": "z6MDth",
+          "name": "Trust Label",
+          "fill": "$accent-strong",
+          "content": "Trusted",
+          "fontFamily": "$font-body",
+          "fontSize": 13,
+          "fontWeight": "600"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "b3nYXW",
+      "x": 29094,
+      "y": 1246,
+      "name": "Device Session Row",
+      "reusable": true,
+      "width": 820,
+      "fill": "$surface",
+      "cornerRadius": 12,
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "gap": 18,
+      "padding": [
+        18,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "S5Iik1",
+          "name": "Device Icon Surface",
+          "width": 48,
+          "height": 48,
+          "fill": "#EEF3F1",
+          "cornerRadius": 12,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "eywzR",
+              "name": "Device Icon",
+              "width": 22,
+              "height": 22,
+              "icon": "laptop",
+              "library": "lucide",
+              "fill": "$rail"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "SHINP",
+          "name": "Device Session Info",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 5,
+          "children": [
+            {
+              "type": "text",
+              "id": "UQ1n3",
+              "name": "Device Label",
+              "fill": "$ink",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Work laptop",
+              "fontFamily": "$font-heading",
+              "fontSize": 17,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "K1rIgE",
+              "name": "Device Meta",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Desktop browser · Active now",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "id": "JGJoC",
+          "type": "ref",
+          "ref": "PsMWZ",
+          "name": "Device Trust Status Instance",
+          "descendants": {
+            "P4Cfk": {
+              "fill": "$accent"
+            },
+            "z6MDth": {
+              "content": "Current"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "WZEx3",
+          "name": "Row Sign Out Action",
+          "fill": "#FFF7EA",
+          "cornerRadius": 8,
+          "stroke": "#F2D7A7",
+          "strokeWidth": 1,
+          "gap": 8,
+          "padding": [
+            9,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "KQ77p",
+              "name": "Sign Out Icon",
+              "width": 15,
+              "height": 15,
+              "icon": "log-out",
+              "library": "lucide",
+              "fill": "$warning"
+            },
+            {
+              "type": "text",
+              "id": "bviGq",
+              "name": "Sign Out Label",
+              "fill": "$warning",
+              "content": "Sign out",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "600"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "MJRuk",
+      "x": 29094,
+      "y": 1354,
+      "name": "Session Sign-out Confirmation",
+      "reusable": true,
+      "width": 820,
+      "fill": "#FFF7EA",
+      "cornerRadius": 12,
+      "stroke": "#F0C879",
+      "strokeWidth": 1,
+      "gap": 18,
+      "padding": [
+        18,
+        20
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "WevA5",
+          "name": "Confirmation Icon Surface",
+          "width": 42,
+          "height": 42,
+          "fill": "$warning-soft",
+          "cornerRadius": 10,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "t2IDH",
+              "name": "Shield Alert Icon",
+              "width": 21,
+              "height": 21,
+              "icon": "shield-alert",
+              "library": "lucide",
+              "fill": "$warning"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Lazbh",
+          "name": "Confirmation Copy",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 4,
+          "children": [
+            {
+              "type": "text",
+              "id": "fdQW1",
+              "name": "Confirmation Title",
+              "fill": "$ink",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Sign out all other devices?",
+              "fontFamily": "$font-heading",
+              "fontSize": 16,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "kyPBd",
+              "name": "Confirmation Body",
+              "fill": "$ink-soft",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "This keeps your current session active and ends access on the two listed devices.",
+              "lineHeight": 1.35,
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "K7LVf",
+          "name": "Confirmation Actions",
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "FUwan",
+              "name": "Cancel Confirmation Button",
+              "fill": "$surface",
+              "cornerRadius": 8,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "padding": [
+                9,
+                12
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "FEvCT",
+                  "name": "Cancel Label",
+                  "fill": "$ink-soft",
+                  "content": "Cancel",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "f51y4y",
+              "name": "Confirm Sign Out Button",
+              "fill": "$rail",
+              "cornerRadius": 8,
+              "gap": 8,
+              "padding": [
+                9,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ni8wk",
+                  "name": "Confirm Icon",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "check",
+                  "library": "lucide",
+                  "fill": "$text-inverse"
+                },
+                {
+                  "type": "text",
+                  "id": "bmb5G",
+                  "name": "Confirm Label",
+                  "fill": "$text-inverse",
+                  "content": "Sign out",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "aDiWq",
+      "x": 33544,
+      "y": 0,
+      "name": "Device/Desktop/Sessions",
+      "clip": true,
+      "width": 1440,
+      "height": 980,
+      "fill": "$canvas",
+      "children": [
+        {
+          "type": "frame",
+          "id": "FcQ8A",
+          "name": "Security Rail",
+          "width": 260,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 26,
+          "padding": [
+            34,
+            28
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "pRcZE",
+              "name": "Rail Brand",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eWImI",
+                  "name": "Brand Mark",
+                  "width": 38,
+                  "height": 38,
+                  "fill": "$accent",
+                  "cornerRadius": 9,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "bc3g7",
+                      "name": "Brand Shield Icon",
+                      "width": 21,
+                      "height": 21,
+                      "icon": "shield",
+                      "library": "lucide",
+                      "fill": "$text-inverse"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "dh4O1",
+                  "name": "Brand Text",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Kzvxz",
+                      "name": "Product Name",
+                      "fill": "$text-inverse",
+                      "content": "Dipole",
+                      "fontFamily": "$font-display",
+                      "fontSize": 18,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "lz7Nx",
+                      "name": "Section Name",
+                      "fill": "#AAB7B1",
+                      "content": "Device Security",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kydTy",
+              "name": "Security Navigation",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "YxuFc",
+                  "name": "Nav Sessions",
+                  "width": "fill_container",
+                  "fill": "$rail-soft",
+                  "cornerRadius": 8,
+                  "gap": 10,
+                  "padding": [
+                    11,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "fVuCk",
+                      "name": "Sessions Icon",
+                      "width": 17,
+                      "height": 17,
+                      "icon": "monitor",
+                      "library": "lucide",
+                      "fill": "$text-inverse"
+                    },
+                    {
+                      "type": "text",
+                      "id": "NFu11",
+                      "name": "Sessions Label",
+                      "fill": "$text-inverse",
+                      "content": "Sessions",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Sl98N",
+                  "name": "Nav Credentials",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 8,
+                  "gap": 10,
+                  "padding": [
+                    11,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "DyRgN",
+                      "name": "Credentials Icon",
+                      "width": 17,
+                      "height": 17,
+                      "icon": "key-round",
+                      "library": "lucide",
+                      "fill": "#AAB7B1"
+                    },
+                    {
+                      "type": "text",
+                      "id": "s2E9fR",
+                      "name": "Credentials Label",
+                      "fill": "#AAB7B1",
+                      "content": "Credentials",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qWxOQ",
+                  "name": "Nav Alerts",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 8,
+                  "gap": 10,
+                  "padding": [
+                    11,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "yYjsZ",
+                      "name": "Alerts Icon",
+                      "width": 17,
+                      "height": 17,
+                      "icon": "bell",
+                      "library": "lucide",
+                      "fill": "#AAB7B1"
+                    },
+                    {
+                      "type": "text",
+                      "id": "vPVal",
+                      "name": "Alerts Label",
+                      "fill": "#AAB7B1",
+                      "content": "Alerts",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "UwKh1",
+                  "name": "Nav Policy",
+                  "width": "fill_container",
+                  "fill": "#00000000",
+                  "cornerRadius": 8,
+                  "gap": 10,
+                  "padding": [
+                    11,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "LXH0y",
+                      "name": "Policy Icon",
+                      "width": 17,
+                      "height": 17,
+                      "icon": "settings-2",
+                      "library": "lucide",
+                      "fill": "#AAB7B1"
+                    },
+                    {
+                      "type": "text",
+                      "id": "w8E9zA",
+                      "name": "Policy Label",
+                      "fill": "#AAB7B1",
+                      "content": "Policy",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "500"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ZgSZl",
+          "name": "Sessions Content",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 24,
+          "padding": [
+            42,
+            48
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "bckqK",
+              "name": "Sessions Header",
+              "width": "fill_container",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "KCYPH",
+                  "name": "Header Copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "lApAH",
+                      "name": "Page Title",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Device sessions",
+                      "fontFamily": "$font-display",
+                      "fontSize": 34,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "d4QcPw",
+                      "name": "Page Description",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Review signed-in devices with privacy-preserving session details.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-body",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ag5lq",
+                  "name": "Sign Out All Other Devices Button",
+                  "fill": "$warning",
+                  "cornerRadius": 8,
+                  "gap": 9,
+                  "padding": [
+                    12,
+                    16
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "yyJP8",
+                      "name": "Sign Out All Icon",
+                      "width": 16,
+                      "height": 16,
+                      "icon": "log-out",
+                      "library": "lucide",
+                      "fill": "$text-inverse"
+                    },
+                    {
+                      "type": "text",
+                      "id": "VmJP7",
+                      "name": "Sign Out All Label",
+                      "fill": "$text-inverse",
+                      "content": "Sign out all other devices",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "E4m3CB",
+              "name": "Session Summary",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "njxoe",
+                  "name": "Summary Current session",
+                  "width": "fill_container",
+                  "fill": "#EAF6EF",
+                  "cornerRadius": 12,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    18,
+                    20
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pbFQE",
+                      "name": "Current session Value",
+                      "fill": "$ink",
+                      "content": "1",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 28,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "UCdAv",
+                      "name": "Current session Label",
+                      "fill": "$ink-soft",
+                      "content": "Current session",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "AZ9Rn",
+                  "name": "Summary Other devices",
+                  "width": "fill_container",
+                  "fill": "#FFF7EA",
+                  "cornerRadius": 12,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    18,
+                    20
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p5AffV",
+                      "name": "Other devices Value",
+                      "fill": "$ink",
+                      "content": "2",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 28,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "SsvD1",
+                      "name": "Other devices Label",
+                      "fill": "$ink-soft",
+                      "content": "Other devices",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "w7SFlk",
+                  "name": "Summary Privacy level",
+                  "width": "fill_container",
+                  "fill": "#EEF3F1",
+                  "cornerRadius": 12,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    18,
+                    20
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "TXwd2",
+                      "name": "Privacy level Value",
+                      "fill": "$ink",
+                      "content": "Coarse only",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 28,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ceOqE",
+                      "name": "Privacy level Label",
+                      "fill": "$ink-soft",
+                      "content": "Privacy level",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PgVz3",
+              "name": "Device List Section",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "HNUQD",
+                  "name": "Device List Title",
+                  "fill": "$ink",
+                  "content": "Signed-in devices",
+                  "fontFamily": "$font-heading",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                },
+                {
+                  "id": "AXU5g",
+                  "type": "ref",
+                  "ref": "b3nYXW",
+                  "name": "Current device Session Row",
+                  "width": "fill_container",
+                  "descendants": {
+                    "eywzR": {
+                      "icon": "monitor"
+                    },
+                    "UQ1n3": {
+                      "content": "Current device"
+                    },
+                    "K1rIgE": {
+                      "content": "Mac laptop · Safari · Active now"
+                    },
+                    "WZEx3": {
+                      "enabled": false
+                    }
+                  }
+                },
+                {
+                  "id": "GFoNF",
+                  "type": "ref",
+                  "ref": "b3nYXW",
+                  "name": "Studio workstation Session Row",
+                  "width": "fill_container",
+                  "descendants": {
+                    "eywzR": {
+                      "icon": "monitor"
+                    },
+                    "UQ1n3": {
+                      "content": "Studio workstation"
+                    },
+                    "K1rIgE": {
+                      "content": "Desktop browser · Active recently"
+                    },
+                    "JGJoC/P4Cfk": {
+                      "fill": "$accent-strong"
+                    },
+                    "JGJoC/z6MDth": {
+                      "content": "Trusted",
+                      "fill": "$accent-strong"
+                    },
+                    "WZEx3": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "UpH3B",
+                  "type": "ref",
+                  "ref": "b3nYXW",
+                  "name": "Tablet Session Row",
+                  "width": "fill_container",
+                  "descendants": {
+                    "eywzR": {
+                      "icon": "tablet"
+                    },
+                    "UQ1n3": {
+                      "content": "Tablet"
+                    },
+                    "K1rIgE": {
+                      "content": "Mobile browser · Active yesterday"
+                    },
+                    "JGJoC/P4Cfk": {
+                      "fill": "$warning"
+                    },
+                    "JGJoC/z6MDth": {
+                      "content": "Review",
+                      "fill": "$warning"
+                    },
+                    "WZEx3": {
+                      "enabled": true
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "X78kr",
+              "type": "ref",
+              "ref": "MJRuk",
+              "name": "Inline Sign-out Confirmation",
+              "width": "fill_container",
+              "descendants": {
+                "fdQW1": {
+                  "content": "Sign out the two other devices?"
+                },
+                "kyPBd": {
+                  "content": "Only the listed other devices will be signed out. Your current session remains active."
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "E7fcS",
+      "x": 35064,
+      "y": 0,
+      "name": "Device/Mobile/Sessions",
+      "clip": true,
+      "width": 390,
+      "height": 1040,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 14,
+      "padding": [
+        18,
+        16
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Jvww5",
+          "name": "Mobile Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "frame",
+              "id": "T0R1R3",
+              "name": "Header Top Row",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "z36TY1",
+                  "name": "Brand Mark",
+                  "width": 34,
+                  "height": 34,
+                  "fill": "$rail",
+                  "cornerRadius": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "jz30M",
+                      "name": "Shield Icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "shield-check",
+                      "library": "lucide",
+                      "fill": "$accent"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Hi632",
+                  "name": "Header Copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 2,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p3DiME",
+                      "name": "Page Title",
+                      "fill": "$ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Device Security",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 22,
+                      "fontWeight": "800"
+                    },
+                    {
+                      "type": "text",
+                      "id": "U6fjV",
+                      "name": "Page Subtitle",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Review active sessions",
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V28Wy",
+                  "name": "Header Menu Button",
+                  "width": 34,
+                  "height": 34,
+                  "fill": "$surface",
+                  "cornerRadius": 8,
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "jJDDW",
+                      "name": "Menu Icon",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "ellipsis",
+                      "library": "lucide",
+                      "fill": "$rail"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bpAkO",
+              "name": "Mobile Trust Summary",
+              "width": "fill_container",
+              "fill": "$rail",
+              "cornerRadius": 12,
+              "gap": 12,
+              "padding": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Ub58P",
+                  "name": "Summary Shield",
+                  "width": 22,
+                  "height": 22,
+                  "icon": "lock-keyhole",
+                  "library": "lucide",
+                  "fill": "$accent"
+                },
+                {
+                  "type": "frame",
+                  "id": "aXJ2r",
+                  "name": "Summary Text",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "aIktC",
+                      "name": "Summary Title",
+                      "fill": "$text-inverse",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Current session is trusted",
+                      "fontFamily": "$font-heading",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "XP2wN",
+                      "name": "Summary Detail",
+                      "fill": "#C6D2CE",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2 other sessions can be reviewed below",
+                      "fontFamily": "$font-body",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xZ2pa",
+          "name": "Current Session Section",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "text",
+              "id": "z7U0w0",
+              "name": "Current Section Label",
+              "fill": "$ink-soft",
+              "content": "Current session",
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "V6T0Jf",
+              "name": "Current Mobile Session Card",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "T9ENr3",
+                  "name": "Current Mobile Session Card Top",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "N56Bv4",
+                      "name": "Current Mobile Session Card Icon Surface",
+                      "width": 42,
+                      "height": 42,
+                      "fill": "#EEF3F1",
+                      "cornerRadius": 10,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "MHyI5",
+                          "name": "Current Mobile Session Card Icon",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "smartphone",
+                          "library": "lucide",
+                          "fill": "$rail"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "z9WFi2",
+                      "name": "Current Mobile Session Card Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "hUqqU",
+                          "name": "Current Mobile Session Card Label",
+                          "fill": "$ink",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "This phone",
+                          "fontFamily": "$font-heading",
+                          "fontSize": 16,
+                          "fontWeight": "750"
+                        },
+                        {
+                          "type": "text",
+                          "id": "KMVEa",
+                          "name": "Current Mobile Session Card Meta",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Mobile app · Active now",
+                          "lineHeight": 1.25,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MuTk5",
+                  "name": "Current Mobile Session Card State Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "iZ22B",
+                      "type": "ref",
+                      "ref": "PsMWZ",
+                      "name": "Current Mobile Session Card Trust Status",
+                      "descendants": {
+                        "P4Cfk": {
+                          "fill": "$accent"
+                        },
+                        "z6MDth": {
+                          "content": "Current"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "dwvK3",
+          "name": "Other Sessions Section",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "frame",
+              "id": "eUBf3",
+              "name": "Other Sessions Header",
+              "width": "fill_container",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "OEKSG",
+                  "name": "Other Sessions Label",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Other sessions",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "GNmrk",
+                  "name": "Other Sessions Count",
+                  "fill": "$warning",
+                  "content": "2",
+                  "fontFamily": "$font-data",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tTCWZ",
+              "name": "Work Laptop Mobile Session Card",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JXXSc",
+                  "name": "Work Laptop Mobile Session Card Top",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "O0rrBc",
+                      "name": "Work Laptop Mobile Session Card Icon Surface",
+                      "width": 42,
+                      "height": 42,
+                      "fill": "#EEF3F1",
+                      "cornerRadius": 10,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "Oyoi0",
+                          "name": "Work Laptop Mobile Session Card Icon",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "laptop",
+                          "library": "lucide",
+                          "fill": "$rail"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "J7GhCi",
+                      "name": "Work Laptop Mobile Session Card Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "iCQLC",
+                          "name": "Work Laptop Mobile Session Card Label",
+                          "fill": "$ink",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Work laptop",
+                          "fontFamily": "$font-heading",
+                          "fontSize": 16,
+                          "fontWeight": "750"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Gcgyp",
+                          "name": "Work Laptop Mobile Session Card Meta",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Desktop browser · 12 min ago",
+                          "lineHeight": 1.25,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kp8Vz",
+                  "name": "Work Laptop Mobile Session Card State Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "nGhmG",
+                      "type": "ref",
+                      "ref": "PsMWZ",
+                      "name": "Work Laptop Mobile Session Card Trust Status",
+                      "descendants": {
+                        "P4Cfk": {
+                          "fill": "$accent"
+                        },
+                        "z6MDth": {
+                          "content": "Trusted"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ciEoS",
+                      "name": "Work Laptop Mobile Session Card Sign Out Action",
+                      "fill": "#FFF7EA",
+                      "cornerRadius": 8,
+                      "stroke": "#F2D7A7",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "A4jl1X",
+                          "name": "Work Laptop Mobile Session Card Sign Out Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "log-out",
+                          "library": "lucide",
+                          "fill": "$warning"
+                        },
+                        {
+                          "type": "text",
+                          "id": "oct4R",
+                          "name": "Work Laptop Mobile Session Card Sign Out Label",
+                          "fill": "$warning",
+                          "content": "Sign out",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "QlnjL",
+              "name": "Home Tablet Mobile Session Card",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ZjmZO",
+                  "name": "Home Tablet Mobile Session Card Top",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "BqYAS",
+                      "name": "Home Tablet Mobile Session Card Icon Surface",
+                      "width": 42,
+                      "height": 42,
+                      "fill": "#EEF3F1",
+                      "cornerRadius": 10,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "M1P4Ga",
+                          "name": "Home Tablet Mobile Session Card Icon",
+                          "width": 20,
+                          "height": 20,
+                          "icon": "tablet",
+                          "library": "lucide",
+                          "fill": "$rail"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hWW2M",
+                      "name": "Home Tablet Mobile Session Card Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SKVSj",
+                          "name": "Home Tablet Mobile Session Card Label",
+                          "fill": "$ink",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Home tablet",
+                          "fontFamily": "$font-heading",
+                          "fontSize": 16,
+                          "fontWeight": "750"
+                        },
+                        {
+                          "type": "text",
+                          "id": "kBBdG",
+                          "name": "Home Tablet Mobile Session Card Meta",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Tablet browser · Yesterday",
+                          "lineHeight": 1.25,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "auZnr",
+                  "name": "Home Tablet Mobile Session Card State Row",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "l8olOG",
+                      "type": "ref",
+                      "ref": "PsMWZ",
+                      "name": "Home Tablet Mobile Session Card Trust Status",
+                      "descendants": {
+                        "P4Cfk": {
+                          "fill": "$warning"
+                        },
+                        "z6MDth": {
+                          "content": "Review"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Pq8L8",
+                      "name": "Home Tablet Mobile Session Card Sign Out Action",
+                      "fill": "#FFF7EA",
+                      "cornerRadius": 8,
+                      "stroke": "#F2D7A7",
+                      "strokeWidth": 1,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "QpFLW",
+                          "name": "Home Tablet Mobile Session Card Sign Out Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "log-out",
+                          "library": "lucide",
+                          "fill": "$warning"
+                        },
+                        {
+                          "type": "text",
+                          "id": "y1ioP2",
+                          "name": "Home Tablet Mobile Session Card Sign Out Label",
+                          "fill": "$warning",
+                          "content": "Sign out",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "fBmjG",
+          "name": "Approval Safe Confirmation Area",
+          "width": "fill_container",
+          "fill": "#FFFDF7",
+          "cornerRadius": 12,
+          "stroke": "#F0C879",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 8,
+          "padding": 10,
+          "children": [
+            {
+              "type": "text",
+              "id": "S72GEa",
+              "name": "Confirmation Area Label",
+              "fill": "$warning",
+              "content": "Approval required",
+              "fontFamily": "$font-body",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "eq3T5",
+              "name": "Mobile Sign-out All Confirmation",
+              "width": "fill_container",
+              "fill": "#FFF7EA",
+              "cornerRadius": 10,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "o8UJi",
+                  "name": "Confirmation Mobile Top",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HrY94",
+                      "name": "Confirmation Mobile Icon Surface",
+                      "width": 36,
+                      "height": 36,
+                      "fill": "$warning-soft",
+                      "cornerRadius": 9,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "mC7zY",
+                          "name": "Confirmation Mobile Icon",
+                          "width": 19,
+                          "height": 19,
+                          "icon": "shield-alert",
+                          "library": "lucide",
+                          "fill": "$warning"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "N7Gw6",
+                      "name": "Confirmation Mobile Copy",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Y3EV64",
+                          "name": "Confirmation Mobile Title",
+                          "fill": "$ink",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Sign out all other sessions?",
+                          "fontFamily": "$font-heading",
+                          "fontSize": 15,
+                          "fontWeight": "800"
+                        },
+                        {
+                          "type": "text",
+                          "id": "UrTff",
+                          "name": "Confirmation Mobile Body",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Keeps this phone active and signs out only the two sessions shown above.",
+                          "lineHeight": 1.35,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "uWeJG",
+                  "name": "Confirmation Mobile Actions",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "wAPkr",
+                      "name": "Cancel Mobile Button",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 8,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Facdb",
+                          "name": "Cancel Mobile Label",
+                          "fill": "$ink-soft",
+                          "content": "Cancel",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "DyXam",
+                      "name": "Approve Mobile Button",
+                      "width": "fill_container",
+                      "fill": "$rail",
+                      "cornerRadius": 8,
+                      "gap": 6,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "S6CJNc",
+                          "name": "Approve Mobile Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$text-inverse"
+                        },
+                        {
+                          "type": "text",
+                          "id": "O3TSi",
+                          "name": "Approve Mobile Label",
+                          "fill": "$text-inverse",
+                          "content": "Approve",
+                          "fontFamily": "$font-body",
+                          "fontSize": 13,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "BITqT",
+      "x": 35550,
+      "y": 0,
+      "name": "Device/State Matrix",
+      "clip": true,
+      "width": 1560,
+      "height": 1180,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 22,
+      "padding": 32,
+      "children": [
+        {
+          "type": "frame",
+          "id": "HV770",
+          "name": "Matrix Header",
+          "width": "fill_container",
+          "gap": 24,
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "lrFGY",
+              "name": "Title Block",
+              "width": 860,
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "YcIhI",
+                  "name": "Matrix Title",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Device/State Matrix",
+                  "lineHeight": 1.05,
+                  "fontFamily": "$font-display",
+                  "fontSize": 32,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "lk4p3",
+                  "name": "Matrix Scope",
+                  "fill": "$ink-soft",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Device Security session states with privacy-safe metadata only",
+                  "lineHeight": 1.35,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VDMDv",
+              "name": "Privacy Legend",
+              "fill": "$surface",
+              "cornerRadius": "$radius-sm",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                8,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "vXUsr",
+                  "name": "Privacy Shield Icon",
+                  "width": 16,
+                  "height": 16,
+                  "icon": "shield-check",
+                  "library": "lucide",
+                  "fill": "$accent-strong"
+                },
+                {
+                  "type": "text",
+                  "id": "iPBw7",
+                  "name": "Privacy Legend Text",
+                  "fill": "$ink-soft",
+                  "content": "No IPs, IDs, exact locations, tokens, or raw user agents",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "eMgsn",
+          "name": "State Matrix Grid",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "iXX9x",
+              "name": "State Row A",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "l0PAf",
+                  "name": "Loading Sessions State",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "PZKij",
+                      "name": "Loading Sessions State Header",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "PAVqu",
+                          "name": "Loading Sessions State Title Block",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ttSV2",
+                              "name": "Loading Sessions State Kicker",
+                              "fill": "$accent-strong",
+                              "content": "LOADING",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "yiDLP",
+                              "name": "Loading Sessions State Title",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Loading sessions",
+                              "lineHeight": 1.15,
+                              "fontFamily": "$font-display",
+                              "fontSize": 18,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 3,
+                          "id": "I7HZ3",
+                          "name": "Loading Sessions State Accent Bar",
+                          "fill": "$accent-strong",
+                          "width": 6,
+                          "height": 42
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "VPtO2",
+                      "name": "Loading Skeleton Row 1",
+                      "width": "fill_container",
+                      "height": 50,
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-sm",
+                      "gap": 12,
+                      "padding": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 6,
+                          "id": "Twkkc",
+                          "name": "Loading Icon Block 1",
+                          "fill": "$line",
+                          "width": 30,
+                          "height": 30
+                        },
+                        {
+                          "type": "frame",
+                          "id": "lEwyD",
+                          "name": "Loading Text Lines 1",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "xv2rw",
+                              "name": "Loading Primary Line 1",
+                              "fill": "#C9D6D0",
+                              "width": "fill_container",
+                              "height": 9
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "PC63n",
+                              "name": "Loading Secondary Line 1",
+                              "fill": "$line",
+                              "width": 210,
+                              "height": 7
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ha2KE",
+                      "name": "Loading Skeleton Row 2",
+                      "width": "fill_container",
+                      "height": 50,
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-sm",
+                      "gap": 12,
+                      "padding": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 6,
+                          "id": "m6Erx",
+                          "name": "Loading Icon Block 2",
+                          "fill": "$line",
+                          "width": 30,
+                          "height": 30
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Y0sWMp",
+                          "name": "Loading Text Lines 2",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "HyvDA",
+                              "name": "Loading Primary Line 2",
+                              "fill": "#C9D6D0",
+                              "width": "fill_container",
+                              "height": 9
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "wxWJC",
+                              "name": "Loading Secondary Line 2",
+                              "fill": "$line",
+                              "width": 210,
+                              "height": 7
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Tx57y",
+                      "name": "Loading Skeleton Row 3",
+                      "width": "fill_container",
+                      "height": 50,
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-sm",
+                      "gap": 12,
+                      "padding": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 6,
+                          "id": "Kh3GX",
+                          "name": "Loading Icon Block 3",
+                          "fill": "$line",
+                          "width": 30,
+                          "height": 30
+                        },
+                        {
+                          "type": "frame",
+                          "id": "YVD3A",
+                          "name": "Loading Text Lines 3",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "Y0aq9i",
+                              "name": "Loading Primary Line 3",
+                              "fill": "#C9D6D0",
+                              "width": "fill_container",
+                              "height": 9
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 4,
+                              "id": "EcNWQ",
+                              "name": "Loading Secondary Line 3",
+                              "fill": "$line",
+                              "width": 210,
+                              "height": 7
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EItvf",
+                      "name": "Loading Privacy Note",
+                      "width": "fill_container",
+                      "fill": "$accent-soft",
+                      "cornerRadius": "$radius-sm",
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "rMvzz",
+                          "name": "Loading Privacy Note Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "info",
+                          "library": "lucide",
+                          "fill": "$ink-soft"
+                        },
+                        {
+                          "type": "text",
+                          "id": "p0pak",
+                          "name": "Loading Privacy Note Text",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Show count-free loading; no session metadata appears before fetch completes.",
+                          "lineHeight": 1.25,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FaCUt",
+                  "name": "No Other Sessions State",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "nqjB0",
+                      "name": "No Other Sessions State Header",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "tBade",
+                          "name": "No Other Sessions State Title Block",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "EAol2",
+                              "name": "No Other Sessions State Kicker",
+                              "fill": "$accent-strong",
+                              "content": "EMPTY",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "mJDdh",
+                              "name": "No Other Sessions State Title",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "No other sessions",
+                              "lineHeight": 1.15,
+                              "fontFamily": "$font-display",
+                              "fontSize": 18,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 3,
+                          "id": "tUPqq",
+                          "name": "No Other Sessions State Accent Bar",
+                          "fill": "$accent-strong",
+                          "width": 6,
+                          "height": 42
+                        }
+                      ]
+                    },
+                    {
+                      "type": "icon",
+                      "id": "Z0vgP9",
+                      "name": "Empty Device Icon",
+                      "width": 42,
+                      "height": 42,
+                      "icon": "monitor-check",
+                      "library": "lucide",
+                      "fill": "$accent-strong"
+                    },
+                    {
+                      "type": "text",
+                      "id": "q4rsu",
+                      "name": "Empty Body",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "This account only has the current device signed in.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Q1mz9k",
+                      "name": "Done Button",
+                      "fill": "$accent-soft",
+                      "cornerRadius": "$radius-sm",
+                      "stroke": "$accent-strong",
+                      "strokeWidth": 1,
+                      "gap": 7,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "LvfVQ",
+                          "name": "Done Button Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "check",
+                          "library": "lucide",
+                          "fill": "$accent-strong"
+                        },
+                        {
+                          "type": "text",
+                          "id": "M6bJx",
+                          "name": "Done Button Label",
+                          "fill": "$accent-strong",
+                          "content": "Done",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HRfHd",
+                  "name": "Load Failure Retry State",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "WbgVr",
+                      "name": "Load Failure Retry State Header",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "WMExN",
+                          "name": "Load Failure Retry State Title Block",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "IiXt3",
+                              "name": "Load Failure Retry State Kicker",
+                              "fill": "$warning",
+                              "content": "ERROR",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "l85BV",
+                              "name": "Load Failure Retry State Title",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Could not load sessions",
+                              "lineHeight": 1.15,
+                              "fontFamily": "$font-display",
+                              "fontSize": 18,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 3,
+                          "id": "HWTHK",
+                          "name": "Load Failure Retry State Accent Bar",
+                          "fill": "$warning",
+                          "width": 6,
+                          "height": 42
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "euDSj",
+                      "name": "Load Failure Body",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "The session list is unavailable. Keep the current page visible and let the user retry.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "oXbgV",
+                      "name": "Retry Loading Button",
+                      "fill": "$warning-soft",
+                      "cornerRadius": "$radius-sm",
+                      "stroke": "$warning",
+                      "strokeWidth": 1,
+                      "gap": 7,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "cO9q4",
+                          "name": "Retry Loading Button Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "refresh-cw",
+                          "library": "lucide",
+                          "fill": "$warning"
+                        },
+                        {
+                          "type": "text",
+                          "id": "F1U0g",
+                          "name": "Retry Loading Button Label",
+                          "fill": "$warning",
+                          "content": "Retry",
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GHlyd",
+              "name": "State Row B",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "SNNXY",
+                  "name": "Per-session Sign-out Confirmation State",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "OHszS",
+                      "name": "Per-session Sign-out Confirmation State Header",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "oT2Lq",
+                          "name": "Per-session Sign-out Confirmation State Title Block",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "T1EhBX",
+                              "name": "Per-session Sign-out Confirmation State Kicker",
+                              "fill": "$warning",
+                              "content": "CONFIRM",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "FF1Vp",
+                              "name": "Per-session Sign-out Confirmation State Title",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Confirm one device sign-out",
+                              "lineHeight": 1.15,
+                              "fontFamily": "$font-display",
+                              "fontSize": 18,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 3,
+                          "id": "PGYYE",
+                          "name": "Per-session Sign-out Confirmation State Accent Bar",
+                          "fill": "$warning",
+                          "width": 6,
+                          "height": 42
+                        }
+                      ]
+                    },
+                    {
+                      "id": "jSbPg",
+                      "type": "ref",
+                      "ref": "MJRuk",
+                      "name": "Per-session Confirmation",
+                      "width": "fill_container",
+                      "descendants": {
+                        "fdQW1": {
+                          "content": "Sign out this device?"
+                        },
+                        "kyPBd": {
+                          "content": "This removes access for the selected recent session only."
+                        },
+                        "bmb5G": {
+                          "content": "Sign out"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "a8k2X",
+                  "name": "All-other-sessions Approval State",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "jiuvW",
+                      "name": "All-other-sessions Approval State Header",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "v0aADK",
+                          "name": "All-other-sessions Approval State Title Block",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "EPMtr",
+                              "name": "All-other-sessions Approval State Kicker",
+                              "fill": "$danger",
+                              "content": "APPROVAL",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Sw82c",
+                              "name": "All-other-sessions Approval State Title",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Approve sign-out everywhere else",
+                              "lineHeight": 1.15,
+                              "fontFamily": "$font-display",
+                              "fontSize": 18,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 3,
+                          "id": "V8ZTb",
+                          "name": "All-other-sessions Approval State Accent Bar",
+                          "fill": "$danger",
+                          "width": 6,
+                          "height": 42
+                        }
+                      ]
+                    },
+                    {
+                      "id": "IEql0",
+                      "type": "ref",
+                      "ref": "MJRuk",
+                      "name": "All Other Sessions Confirmation",
+                      "width": "fill_container",
+                      "descendants": {
+                        "fdQW1": {
+                          "content": "Sign out all other devices?"
+                        },
+                        "kyPBd": {
+                          "content": "Current device stays active. Other approved sessions will need to authenticate again."
+                        },
+                        "bmb5G": {
+                          "content": "Approve"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pnYFr",
+              "name": "State Row C",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "iOXc0",
+                  "name": "Successful Sign-out Feedback State",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "C55fXj",
+                      "name": "Successful Sign-out Feedback State Header",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Ey9BV",
+                          "name": "Successful Sign-out Feedback State Title Block",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "cw3GS",
+                              "name": "Successful Sign-out Feedback State Kicker",
+                              "fill": "$accent-strong",
+                              "content": "SUCCESS",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "sm640",
+                              "name": "Successful Sign-out Feedback State Title",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Device signed out",
+                              "lineHeight": 1.15,
+                              "fontFamily": "$font-display",
+                              "fontSize": 18,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 3,
+                          "id": "xmFxS",
+                          "name": "Successful Sign-out Feedback State Accent Bar",
+                          "fill": "$accent-strong",
+                          "width": 6,
+                          "height": 42
+                        }
+                      ]
+                    },
+                    {
+                      "id": "e9V0j",
+                      "type": "ref",
+                      "ref": "b3nYXW",
+                      "name": "Signed Out Session Row",
+                      "width": "fill_container",
+                      "descendants": {
+                        "eywzR": {
+                          "icon": "monitor"
+                        },
+                        "UQ1n3": {
+                          "content": "Desktop browser"
+                        },
+                        "K1rIgE": {
+                          "content": "Recent activity • approximate region hidden"
+                        },
+                        "bviGq": {
+                          "content": "Done"
+                        }
+                      }
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ZX4Z5",
+                      "name": "Success Privacy Note",
+                      "width": "fill_container",
+                      "fill": "$accent-soft",
+                      "cornerRadius": "$radius-sm",
+                      "gap": 8,
+                      "padding": [
+                        8,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "kqB0o",
+                          "name": "Success Privacy Note Icon",
+                          "width": 14,
+                          "height": 14,
+                          "icon": "info",
+                          "library": "lucide",
+                          "fill": "$ink-soft"
+                        },
+                        {
+                          "type": "text",
+                          "id": "S8CwD",
+                          "name": "Success Privacy Note Text",
+                          "fill": "$ink-soft",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Feedback confirms the action without exposing identifiers or network details.",
+                          "lineHeight": 1.25,
+                          "fontFamily": "$font-body",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZZ1bG",
+                  "name": "Destructive-action Failure State",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-sm",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "YXwuK",
+                      "name": "Destructive-action Failure State Header",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "a9CwH",
+                          "name": "Destructive-action Failure State Title Block",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 4,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "eGHIG",
+                              "name": "Destructive-action Failure State Kicker",
+                              "fill": "$danger",
+                              "content": "FAILURE",
+                              "fontFamily": "$font-data",
+                              "fontSize": 11,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "DJfi7",
+                              "name": "Destructive-action Failure State Title",
+                              "fill": "$ink",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Sign-out failed",
+                              "lineHeight": 1.15,
+                              "fontFamily": "$font-display",
+                              "fontSize": 18,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 3,
+                          "id": "dUMOB",
+                          "name": "Destructive-action Failure State Accent Bar",
+                          "fill": "$danger",
+                          "width": 6,
+                          "height": 42
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "oW2PD",
+                      "name": "Destructive Failure Body",
+                      "fill": "$ink-soft",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "The request did not complete. The device remains active until confirmation succeeds.",
+                      "lineHeight": 1.35,
+                      "fontFamily": "$font-body",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "O7hc2",
+                      "name": "Failure Actions",
+                      "width": "fill_container",
+                      "gap": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "r6azih",
+                          "name": "Retry Sign Out Button",
+                          "fill": "$danger-soft",
+                          "cornerRadius": "$radius-sm",
+                          "stroke": "$danger",
+                          "strokeWidth": 1,
+                          "gap": 7,
+                          "padding": [
+                            8,
+                            12
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "G80RcW",
+                              "name": "Retry Sign Out Button Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "refresh-cw",
+                              "library": "lucide",
+                              "fill": "$danger"
+                            },
+                            {
+                              "type": "text",
+                              "id": "pRslt",
+                              "name": "Retry Sign Out Button Label",
+                              "fill": "$danger",
+                              "content": "Retry",
+                              "fontFamily": "$font-body",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Ca44r",
+                          "name": "Keep Session Button",
+                          "fill": "$surface",
+                          "cornerRadius": "$radius-sm",
+                          "stroke": "$ink-soft",
+                          "strokeWidth": 1,
+                          "gap": 7,
+                          "padding": [
+                            8,
+                            12
+                          ],
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon",
+                              "id": "JwJ4j",
+                              "name": "Keep Session Button Icon",
+                              "width": 14,
+                              "height": 14,
+                              "icon": "x",
+                              "library": "lucide",
+                              "fill": "$ink-soft"
+                            },
+                            {
+                              "type": "text",
+                              "id": "NFC4u",
+                              "name": "Keep Session Button Label",
+                              "fill": "$ink-soft",
+                              "content": "Keep session",
+                              "fontFamily": "$font-body",
+                              "fontSize": 12,
+                              "fontWeight": "700"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

@@ -40,6 +40,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 - [x] 将 Go canonical 测试和架构静态门禁接入 `scripts/remote-dev.sh test`，允许在 Remote GPU 验证提交而不启动 Compose，降低本机测试负载；远程入口自动发现用户态 Go，显式工具链路径优先。
 - [x] 将 Agent Runtime 与 Frontend 的 Node 验证接入 `scripts/remote-dev.sh node-test`；Remote GPU 已通过 Agent `125` 个测试文件/`665` 个测试、Frontend `29` 个测试文件/`114` 个测试、typecheck 与生产构建，且构建产物退出清理已验证。
 - [x] F2 File Directory：Pencil canonical desktop/mobile/state matrix、批准导出和 `/files` 认证只读目录已建立。Core 通过 SQLC owner-scoped cursor 查询和版本化 gRPC 暴露低敏 projection；存储 URL、对象键、校验值和上传会话不跨 HTTP 边界，下载逐项重新授权。Remote GPU Node 22 在 `a29d9927` 通过 38 个前端测试文件、157 项测试、typecheck 与 production build。
+- [ ] F2 Device Security：已完成 Pencil desktop/mobile/七态矩阵、认证 `/devices` 页面、严格低敏会话 projection 和按稳定 Device ID 排除自身的 `logout-others` 语义；Remote GPU Node 22 已通过前端 `40/162`、typecheck/build，并发现 Chromium/Firefox/WebKit binary 缺失。跨浏览器执行、视觉基线与真实 Presence 踢出仍待环境准备，不能将实现写为生产多设备安全控制。
 - [x] 增加 `scripts/bench/http-read-load.sh` 低资源只读 HTTP 探针：固定 GET、并发/超时/预期状态码和 P50/P95/P99 输出；该探针只用于 TencentCloud 兼容性回归，不替代 Remote GPU 的完整 k6 基线。
 - [ ] 使用提交绑定的不可变镜像或源码版本，记录 revision、镜像摘要、配置摘要和主机资源快照。
 - [ ] 先执行 readiness、migration、服务布局、mTLS、Kafka lag 和健康检查，再开始负载测试。

@@ -230,6 +230,7 @@ func NewWithDependencies(repos *Repositories, dependencies Dependencies) *Server
 			protected.GET("/users/me/devices", sessionHandler.ListDevices)
 			protected.POST("/users/me/devices/:connection_id/logout", sessionHandler.ForceLogoutDevice)
 			protected.POST("/users/me/devices/logout-all", sessionHandler.ForceLogoutAll)
+			protected.POST("/users/me/devices/logout-others", sessionHandler.ForceLogoutOther)
 			protected.GET("/users", userHandler.Search)
 			protected.GET("/users/me", userHandler.GetCurrent)
 			protected.GET("/users/:uuid", userHandler.GetByUUID)

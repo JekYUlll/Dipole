@@ -106,9 +106,9 @@ export interface Conversation {
 export interface Device {
   connection_id: string
   device: string
-  device_id: string
-  ip: string
+  device_id?: string
   connected_at: string
+  last_seen_at: string
 }
 
 // WS packet

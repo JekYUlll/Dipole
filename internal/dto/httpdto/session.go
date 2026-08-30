@@ -10,9 +10,6 @@ type DeviceSessionResponse struct {
 	ConnectionID string `json:"connection_id"`
 	Device       string `json:"device"`
 	DeviceID     string `json:"device_id,omitempty"`
-	UserAgent    string `json:"user_agent,omitempty"`
-	RemoteAddr   string `json:"remote_addr,omitempty"`
-	NodeID       string `json:"node_id"`
 	ConnectedAt  string `json:"connected_at"`
 	LastSeenAt   string `json:"last_seen_at"`
 }
@@ -27,9 +24,6 @@ func ToDeviceSessionResponses(devices []*coresession.DeviceSessionView) []*Devic
 			ConnectionID: device.ConnectionID,
 			Device:       device.Device,
 			DeviceID:     device.DeviceID,
-			UserAgent:    device.UserAgent,
-			RemoteAddr:   device.RemoteAddr,
-			NodeID:       device.NodeID,
 			ConnectedAt:  device.ConnectedAt.Format(time.RFC3339),
 			LastSeenAt:   device.LastSeenAt.Format(time.RFC3339),
 		})

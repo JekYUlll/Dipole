@@ -2,6 +2,8 @@
 
 - 2026-08-30：将 Dipole Signal 主标及 IM/Agent 标记从偏蓝的渐变校正为深青绿色，保留双极信号、橙色事件脉冲和既有 SVG 文件名，避免 README 与文档入口产生蓝色产品标识的观感。
 
+- 2026-08-30：F2 Device Security 完成 Pencil desktop/mobile/七态设计、认证 `/devices` 路由与严格低敏会话解析。公共设备投影移除 IP、节点和原始 User-Agent；新增 `logout-others` 精确动作，以认证请求的稳定设备 ID 排除当前设备，单设备与批量登出均要求前端明确确认并在结果后重读权威列表。Remote GPU Node 22 已在候选切片通过前端 `40` 个测试文件、`162` 项测试、typecheck 和 production build；Playwright 的 Chromium/Firefox/WebKit binaries 当前不可用，交互执行与 Chromium 像素快照保留为独立环境准备切片。
+
 - 2026-08-30：校正 External MCP Shadow 的运行口径：`external_mcp_shadow` 已作为独占、默认关闭的 TypeScript Runtime mode 接入受控 Kafka/Temporal/Capability RPC 生命周期；基础 Compose 仍为 `foundation`，未配置完整 Shadow 依赖时零外部连接或消费。文档、架构债务和 Agent 面试材料现明确区分该本地/隔离能力与尚未完成的共享环境、DNS/TLS、凭据和生产授权证据。
 
 - 2026-08-30：F2 File Directory 完成 Pencil desktop/mobile/状态矩阵、批准导出和认证只读 `/files` 路由。Core 经 SQLC owner-scoped 文件 UUID cursor 和版本化 gRPC 返回低敏目录投影；HTTP、Swagger 与 Vue 严格排除对象键、存储 URL、校验值和上传会话，下载逐项重新授权，读取失败清空旧状态。Remote GPU Node 22 在提交 `a29d9927` 通过 38 个前端测试文件、157 项测试、typecheck 和 production build。上传仍由会话编辑器和既有 MinIO Multipart 数据面处理；删除、分享、跨浏览器视觉回归和预签名直传默认切流继续作为独立切片。

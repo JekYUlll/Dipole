@@ -20,6 +20,7 @@
 | Contact 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/ContactDirectory.vue` |
 | Group 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/GroupDirectory.vue` |
 | File 目录读取 | 已验证（隔离 Remote GPU 前端门禁） | `frontend/src/components/FileDirectory.vue` |
+| Device Security 会话控制 | 已验证（Remote GPU Node 22）；浏览器执行待补 | `frontend/src/components/DeviceSecurity.vue` |
 | Cassandra、Elasticsearch、C++ 数据面切流 | 默认关闭 / 规划中 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md) |
 
 #### Sync Timeline 与可靠消息
@@ -57,6 +58,18 @@
 - **限制：** 当前目录不提供上传、删除、分享、跨浏览器视觉回归或预签名上传默认切流；上传继续从会话编辑器进入既有 Multipart 路径。
 - **下一步：** 独立设计删除、分享或文件关联写路径的授权、审计和回退契约。
 - **复核条件：** 修改 `/api/v1/files` projection、Core File RPC、文件 cursor、下载授权或任何文件写入口时。
+
+#### Device Security 会话控制
+
+- **状态：** 已验证（Remote GPU Node 22）；浏览器执行待补
+- **简历句：** 为设备会话控制建立低敏 projection 和显式确认动作：公共 HTTP 仅返回登出所需连接标识、粗粒度设备信息与时间，并通过稳定 Device ID 将“登出其他设备”与全设备退出区分。
+- **对外表述：** 会话管理页不能把 Redis Presence 的节点、IP 和原始 UA 直接暴露给客户端。动作从认证上下文派生当前稳定设备，批量撤销只处理其他连接，页面确认后重新读取权威列表。
+- **演示：** 访问 `/devices`，展示当前设备与其他设备；选择单设备或全部其他设备后先进入确认态，再展示列表刷新。读取失败时旧列表清空。
+- **证据：** `internal/dto/httpdto/session.go`、`internal/services/core/domain/session/session_service.go`、`frontend/src/api/devices.ts`、`frontend/src/components/DeviceSecurity.test.ts`、`frontend/e2e/device-security.spec.ts`、`design/exports/device-security-desktop-review.png`；Remote GPU Node 22 在候选切片通过前端 `40` 个测试文件、`162` 项测试、typecheck 和 production build。
+- **追问：** “为什么不用 `logout-all`？” 该旧动作会撤销当前 Token 和所有连接，无法满足“保留当前设备”的产品语义；专用动作依据当前 `X-Device-ID` 排除同设备会话。
+- **限制：** 当前只覆盖在线 Presence，会话历史、设备命名、跨浏览器视觉与真实跨节点踢出仍待验证；Remote GPU Playwright browser binary 下载未完成，因此三浏览器用例只完成发现，尚未执行。
+- **下一步：** 在隔离 Remote GPU 环境执行 Node 22、Chromium/Firefox/WebKit 和 Redis Presence 交互验证，再决定是否开放设备命名或会话历史能力。
+- **复核条件：** 修改设备投影字段、Device ID 语义、登出 API、Presence 存储或任一设备动作时。
 
 #### Contact 目录读取
 
