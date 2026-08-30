@@ -38,17 +38,20 @@ export function parseConversationGroupIDs(raw: unknown): string[] {
 }
 
 export function parseGroupDirectoryItem(raw: unknown): Group {
+  if (!isRecord(raw)) throw new Error('group directory item is invalid')
+  const status = raw.status
+  const owner = raw.owner
   if (!isRecord(raw) || !exactKeys(raw, groupKeys) || typeof raw.uuid !== 'string' || !identifier.test(raw.uuid) ||
     typeof raw.name !== 'string' || typeof raw.notice !== 'string' || typeof raw.avatar !== 'string' ||
-    (raw.status !== 0 && raw.status !== 1) || !nonNegativeInteger(raw.member_count) || typeof raw.is_hot !== 'boolean' ||
+    (status !== 0 && status !== 1) || !nonNegativeInteger(raw.member_count) || typeof raw.is_hot !== 'boolean' ||
     !nonNegativeInteger(raw.recent_message_count) || !Number.isSafeInteger(raw.me_role) || typeof raw.created_at !== 'string' ||
-    (raw.owner !== undefined && !validUser(raw.owner)) || raw.members !== undefined) {
+    (owner !== undefined && !validUser(owner)) || raw.members !== undefined) {
     throw new Error('group directory item is invalid')
   }
   return {
-    uuid: raw.uuid, name: raw.name, notice: raw.notice, avatar: raw.avatar, status: raw.status,
+    uuid: raw.uuid, name: raw.name, notice: raw.notice, avatar: raw.avatar, status,
     member_count: raw.member_count, is_hot: raw.is_hot, recent_message_count: raw.recent_message_count,
-    owner: raw.owner === undefined ? undefined : toUser(raw.owner), me_role: raw.me_role,
+    owner: owner === undefined ? undefined : toUser(owner), me_role: raw.me_role,
   }
 }
 
@@ -58,7 +61,7 @@ function validLastMessage(value: unknown): boolean {
     typeof value.sent_at === 'string' && typeof value.sender_uuid === 'string'
 }
 
-function validUser(value: unknown): boolean {
+function validUser(value: unknown): value is Record<string, unknown> {
   return isRecord(value) && exactKeys(value, userKeys) && typeof value.uuid === 'string' && identifier.test(value.uuid) &&
     typeof value.nickname === 'string' && typeof value.avatar === 'string' && typeof value.signature === 'string' &&
     Number.isSafeInteger(value.user_type) && Number.isSafeInteger(value.status)
