@@ -176,7 +176,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
 		}
-		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy)
+		authorizer, composeErr := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(agentRepos.Promotions)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose embedded Agent active promotion authorizer: %w", composeErr)
+		}
+		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy, authorizer)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Invocation resolver: %w", composeErr)
 		}

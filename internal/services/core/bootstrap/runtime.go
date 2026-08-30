@@ -132,7 +132,12 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 				cleanup()
 				return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
 			}
-			resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy)
+			authorizer, composeErr := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(agentRepos.Promotions)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent active promotion authorizer: %w", composeErr)
+			}
+			resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy, authorizer)
 			if composeErr != nil {
 				cleanup()
 				return nil, fmt.Errorf("compose standalone Agent Invocation resolver: %w", composeErr)

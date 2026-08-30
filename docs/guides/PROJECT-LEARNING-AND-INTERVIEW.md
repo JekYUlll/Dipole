@@ -170,6 +170,18 @@
 - **下一步：** 将同一低敏 receipt 场景接入隔离 Core、Temporal 与 MySQL，归档跨进程撤销和回滚证据。
 - **复核条件：** 修改 Memory lineage、candidate/review schema、receipt binding、grant 解析或 MySQL migration 时。
 
+#### 2026-08-30 · Receipt Commit Active Grant Composition
+
+- **状态：** 已验证（本地）
+- **简历句：** 收敛 Core 与 embedded Agent receipt commit 的授权组合，使持久 active grant 成为真实写入前的必经复核条件。
+- **对外表述：** Receipt 不信任 Runtime 自报身份；Core 从 Task/Run 恢复 invocation，并以持久 promotion grant authorizer 复核 active 权限。
+- **演示：** 运行 receipt/Core bootstrap 定向测试，确认缺失或失效 grant 返回 policy denied。
+- **证据：** `internal/services/core/bootstrap/runtime.go`、`internal/bootstrap/embedded/runtime/runtime.go`、`internal/services/agent/application/agent_execution_policy.go`。
+- **追问：** “为什么只在 Worker 做开关检查还不够？” Worker 配置无法替代 Core 对持久 Task/Run 与有效 grant 的权威复核。
+- **限制：** 当前未完成 Core、Temporal 和 MySQL 的单次跨进程联合演练，默认 active Worker 继续关闭。
+- **下一步：** 以隔离全栈 fixture 归档首次提交、重试、grant 撤销与回滚证据。
+- **复核条件：** 修改 Core composition、Runtime grant schema、receipt RPC 或 Worker profile 时。
+
 #### 2026-08-30 · Temporal Receipt Commit Retry
 
 - **状态：** 已验证（隔离 Temporal）
