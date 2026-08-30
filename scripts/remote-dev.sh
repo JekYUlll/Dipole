@@ -227,7 +227,7 @@ case "${action}" in
     ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
   web-sync-observability-smoke)
-    COMPOSE_PROJECT_NAME="${project}" \
+    COMPOSE_PROJECT_NAME="\${project}" \
       DIPOLE_COMPOSE_FILE="${REMOTE_COMPOSE_FILE}" \
       DIPOLE_HOST_PROFILE=remote-gpu \
       DIPOLE_GATEWAY_BIND_ADDRESS=127.0.0.1 \

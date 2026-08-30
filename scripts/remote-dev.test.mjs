@@ -21,6 +21,13 @@ test("remote destructive actions remain behind the active-user guard", () => {
   assert.match(source, /smoke-lite\) sync_revision; guard_start; run_remote smoke-lite/);
   assert.match(source, /bench\) sync_revision; guard_start; run_remote bench/);
   assert.match(source, /recovery\) sync_revision; guard_start; run_remote recovery/);
+  assert.match(source, /web-sync-observability-smoke\) sync_revision; guard_start; run_remote web-sync-observability-smoke/);
+});
+
+test("web sync observability smoke preserves its remote compose project variable", () => {
+  assert.match(source, /web-sync-observability-smoke\)[\s\S]*?COMPOSE_PROJECT_NAME="\\\$\{project\}"/);
+  assert.match(source, /web-sync-observability-smoke\)[\s\S]*?DIPOLE_GATEWAY_PORT=18080/);
+  assert.match(source, /web-sync-observability-smoke\)[\s\S]*?DIPOLE_PROMETHEUS_PORT=19090/);
 });
 
 test("recovery entry uses candidate ports and a temporary report directory", () => {
