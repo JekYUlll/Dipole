@@ -44,6 +44,16 @@ test("multipart smoke is isolated and does not require a GPU-free host", () => {
   assert.match(source, /multipart-smoke\)[\s\S]*?GOTOOLCHAIN=local scripts\/smoke-minio-multipart\.sh/);
 });
 
+test("direct multipart smoke scripts honor an explicit remote Go toolchain", () => {
+  for (const name of ["smoke-minio-multipart.sh", "smoke-minio-multipart-restart.sh"]) {
+    const smoke = fs.readFileSync(new URL(`./${name}`, import.meta.url), "utf8");
+    assert.match(smoke, /DIPOLE_REMOTE_GO_ROOT/);
+    assert.match(smoke, /does not contain an executable Go binary/);
+    assert.match(smoke, /export PATH=.*DIPOLE_REMOTE_GO_ROOT/);
+    assert.match(smoke, /export GOTOOLCHAIN=.*local/);
+  }
+});
+
 test("remote image builds compile committed backend binaries first", () => {
   assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh backend[\s\S]*?scripts\/docker-build-microservice-images\.sh/);
 });
