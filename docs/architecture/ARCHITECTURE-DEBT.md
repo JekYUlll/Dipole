@@ -1098,4 +1098,5 @@
 - **验证：** 主机资源和 Docker/Compose 配置门禁已有测试，轻量 smoke 已通过 Gateway 依赖闭包契约测试；实际远程部署、运行证据、故障演练和清理回滚仍待明确窗口后完成。
 - **只读主机证据：** 2026-08-30 通过 SSH 内存脚本复核 Remote GPU（224 vCPU、可用内存约 163510 MiB、可用磁盘约 1084340 MiB）和 TencentCloud_01（2 vCPU、可用内存约 1172 MiB、可用磁盘约 34347 MiB）的 `check-dev-host.sh` profile；两者均通过资源门禁，未启动容器，仍不构成部署或负载测试证据。
 - **代码同步证据：** 2026-08-30 通过 `scripts/remote-dev.sh sync` 在 Remote GPU 创建 `/home/zhangzhuyu/workspaces/Dipole`，并更新至提交 `c3739971`；同步不启动容器，资源 preflight 通过，但主机缺少 Docker Compose v2 插件，Compose 部署、readiness、压测和清理回滚证据仍待维护窗口。
+- **管理员连接校正：** Remote GPU 的可用管理员 SSH alias 为 `LAB113-OPS`，实际用户 `admin1`；后续远端工作流默认目录切换为 `/home/admin1/workspaces/Dipole`。现有 `zhangzhuyu` 工作目录保留，不清理、不覆盖。
 - **TencentCloud 占用证据：** 同次只读核验发现已有 `nkdoing-app` 容器占用公网 `80`、`nkdoing-postgres` 绑定本机 `5432`，宿主 MySQL 监听 `3306`；因此 TencentCloud 只能在明确端口、Compose project、卷和业务影响隔离后执行轻量 smoke，不能视为干净测试主机。

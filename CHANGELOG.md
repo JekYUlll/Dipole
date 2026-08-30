@@ -121,6 +121,7 @@
 
 ## [Unreleased]
 
+- Remote GPU 工作流默认切换为 SSH alias `LAB113-OPS` 的 `admin1` 账号和 `/home/admin1/workspaces/Dipole`，与实际可用的管理员连接配置一致；凭据仍不写入仓库。
 - preflight 现在区分 Docker Compose 插件缺失和 Compose 文件无效，Remote GPU 缺少 `docker compose` 时会以 `compose=plugin-missing` fail-closed；不会自动安装主机组件。
 - Remote GPU 代码同步已更新至 `c3739971`；资源 preflight 通过，但因主机缺少 Docker Compose v2 插件返回 `compose=plugin-missing`，未启动容器，部署与压测继续等待维护窗口。
 - 修正 Remote GPU 默认工作目录为实际账号可用的 `/home/zhangzhuyu/workspaces/Dipole`，并补充首次同步自动创建目录的说明；不改变现有主机保护和隔离 project 规则。
