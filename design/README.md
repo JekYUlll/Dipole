@@ -121,7 +121,7 @@ Vue 实现位于 `frontend/src/components/AgentDefinitionCatalog.vue`，路由�
 
 批准的 2x 预览位于 `exports/agent-artifact-v1/`。页面不会显示正文、对象键、metadata JSON、公开 URL、下载或写入控制；未来正文/下载需要独立的对象访问授权、披露策略和设计切片。
 
-Vue 实现位于 `frontend/src/components/AgentArtifactMetadata.vue`，路由为 `/agent/artifacts/:artifactId`，由 `VITE_AGENT_ARTIFACTS_ENABLED=true` 显式启用。Timeline 只在 `kind=artifact` 和 64 位内容寻址 ID 同时成立时提供跳转；Chromium visual baseline 只固定受控 metadata fixture，不能替代共享环境或下载授权验收。
+Vue 实现位于 `frontend/src/components/AgentArtifactMetadata.vue`，路由为 `/agent/artifacts/:artifactId`，由 `VITE_AGENT_ARTIFACTS_ENABLED=true` 显式启用。Timeline 只在 `kind=artifact` 和 64 位内容寻址 ID 同时成立时提供跳转；认证读取流程已在 Chromium、Firefox、WebKit 复核，Chromium visual baseline 只固定受控 metadata fixture，不能替代共享环境或下载授权验收。
 
 ## Sync 交互契约
 

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Agent Artifact metadata 的受认证只读流程已在 Chromium、Firefox、WebKit 三浏览器完成本地功能复核，继续固定为 metadata-only 且无下载面。视觉快照仍仅以 Chromium 受控 fixture 为基线；共享环境、正文和下载授权保持关闭。
+
 - 2026-08-30：新增默认关闭的 Agent Artifact metadata 页面：Pencil canonical 已补齐 desktop/mobile/state matrix 与批准导出，Vue 仅按经认证的精确 64 位内容寻址 ID 读取类型、版本、标题、媒体类型、大小、Task/Run、创建时间和 SHA-256。Timeline 仅对 `artifact` event 提供条件跳转；失败清空旧 metadata，正文、对象键、metadata JSON、下载和写控制继续关闭，Chromium visual fixture 仅覆盖低敏本地基线。
 
 - 2026-08-30：Agent Memory candidate promotion 新增显式持久化 `target_memory_type`，贯通 Gateway、版本化 gRPC、Core 与 MySQL 事务。已接受 review 的 owner 可写入 episodic、semantic、procedural 或 observational Memory；空字段保持 observational 兼容，task-scoped working 在 Gateway 与 Core 双层拒绝，重复请求保持幂等。TS receipt v2 到 active executor 的接线仍默认关闭。

@@ -60,7 +60,7 @@
 | Agent Runtime 与权限 | **已验证** | 第 3 节 Agent 描述；第 5 节 Agent 安全与可恢复执行 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)；“模型为何不能决定权限？” |
 | Owner-reviewed Memory 类型晋级 | **已验证（本地）** | 受控 candidate/review 选择 semantic 等持久类型 | [Memory promotion 契约](../../contracts/agent-memory-promotion/v1/README.md)；“为何 working 不能晋级？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
-| Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`；“为什么 Timeline 只返回 Artifact ID？” |
+| Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
 
 #### 2026-08-30 · Owner-reviewed Memory 类型晋级
@@ -80,7 +80,7 @@
 - **演示：** 使用受控 Artifact 创建事件读取 Timeline，确认 `kind=artifact` 返回 64 位 `artifact_id`；再通过 owner-scoped metadata API 读取低敏元数据。
 - **证据：** [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、[Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、`internal/transport/grpc/agent/server_test.go`、`services/agent-runtime/src/capabilities/agent-capability-rpc.test.ts`。
 - **追问：** “为什么不在 Timeline 直接返回正文或对象键？” Timeline 是低敏执行索引，正文读取需要独立披露策略、对象访问授权和前端设计，避免时间线接口扩大数据暴露范围。
-- **限制：** Artifact metadata 页面仅在默认关闭的 flag 下通过本地组件、Chromium fixture 和设计导出验证；正文、下载、跨浏览器视觉证据和共享环境运行记录尚未完成。
+- **限制：** Artifact metadata 页面仅在默认关闭的 flag 下通过本地组件、三浏览器认证读取、Chromium fixture 和设计导出验证；正文、下载、跨浏览器视觉证据和共享环境运行记录尚未完成。
 - **复核条件：** 启用 Artifact Web 页面、正文读取或下载、修改对象生命周期，或改变 Timeline 事件 schema 时。
 
 #### 2026-08-30 · Artifact 只读 Metadata 页面
@@ -90,7 +90,7 @@
 - **演示：** 使用受控 Timeline Artifact event 打开 metadata 页面，确认只显示类型、版本、大小、Task/Run、创建时间与摘要；模拟读取失败，确认旧 metadata 被清空并只提供重试。
 - **证据：** [Pencil 设计说明](../../design/README.md)、`frontend/src/api/agentArtifacts.test.ts`、`frontend/src/components/AgentArtifactMetadata.test.ts`、`frontend/e2e/agent-artifact.spec.ts`。
 - **追问：** “为何不直接给 Artifact 加下载链接？” 下载需要独立的对象访问授权、审计和披露策略；当前读取页只承担低敏发现，避免 Timeline 或 metadata API 扩大对象访问面。
-- **限制：** Chromium 截图与本地 fixture 不能代表共享环境、跨浏览器视觉或任何正文读取能力。
+- **限制：** 三浏览器功能验证与 Chromium 截图均不能代表共享环境、跨浏览器像素级视觉或任何正文读取能力。
 - **复核条件：** 改变 metadata schema、Feature Flag、Timeline 关联，或评审正文/下载授权时。
 
 #### 2026-08-30 · 学习、简历与面试叙事维护
