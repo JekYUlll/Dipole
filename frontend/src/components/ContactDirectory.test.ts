@@ -25,6 +25,6 @@ describe('ContactDirectory', () => {
 
     expect(wrapper.text()).toContain('联系人目录暂时不可用')
     expect(wrapper.text()).not.toContain('Lin Qiao')
-    expect(wrapper.get('[data-contact-retry]').exists()).toBe(true)
+    expect(wrapper.find('[data-contact-retry]').exists()).toBe(true)
   })
 })

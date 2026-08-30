@@ -35,7 +35,7 @@ function parsePublicUser(raw: unknown): PublicUser {
   }
   return {
     uuid: raw.uuid, nickname: raw.nickname, avatar: raw.avatar, signature: raw.signature,
-    user_type: raw.user_type, status: raw.status,
+    user_type: raw.user_type as number, status: raw.status as number,
   }
 }
 
