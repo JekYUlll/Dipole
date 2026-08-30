@@ -78,7 +78,7 @@
 | Receipt Commit Promotion Compose Gate | **已验证（本地）** | 受控渲染 active + promotion overlay，确认写入前的多重静态开关与 authority | `scripts/check-compose.sh`；“Compose 通过能证明写权限安全吗？” |
 | Receipt Commit mTLS RPC Drill | **已验证（隔离 Remote GPU）** | 用 Go fixture 与 TS generated client 验证跨语言 prepared receipt 的 mTLS 提交 | `scripts/drill-agent-memory-promotion-rpc.sh`；“fixture 能证明真实写入吗？” |
 | Receipt Commit MySQL mTLS Contract | **已验证（隔离 Remote GPU）** | 经实际 Core receipt adapter、TCP+mTLS 和 Agent 证书身份验证 receipt 到持久 candidate/review 和 Memory 事务的完整约束 | `scripts/test-agent-memory-promotion-mysql-contract.sh`；“为何还需要 Temporal 联合演练？” |
-| Temporal/Core/MySQL Receipt Retry | **已验证（隔离 Remote GPU）** | 在首次持久提交后故意失败 Activity，验证重试经 mTLS 返回同一条 MySQL Memory | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh`；“怎样保证重试不改变首次提交时间？” |
+| Temporal/Core/MySQL Receipt Retry | **已验证（隔离 Remote GPU）** | 在首次持久提交后故意失败 Activity，验证重试经 mTLS 返回同一条 MySQL Memory，并验证 admission 后 grant 撤销拒绝 | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh`；“撤销后为何预 admission Run 不能继续写入？” |
 | MinIO Multipart 与可恢复上传 | **已验证（隔离 Remote GPU）** | 上传超过阈值的文件，展示分片、暂停、恢复与完成；预签名直传维持候选状态 | [大文件上传计划](../architecture/PLATFORM-EVOLUTION-PLAN.md)；“为什么还不默认切到预签名直传？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
@@ -210,12 +210,12 @@
 
 - **状态：** 已验证（隔离 Remote GPU）
 - **简历句：** 设计 Agent Memory promotion 的跨语言 durable retry 合约：Temporal Activity 在 Core 已持久化后故障重试，经 mTLS 复用同一 receipt 并收敛到同一条 MySQL Memory。
-- **对外表述：** receipt 绑定 candidate/review、目标类型和时效；Core 重新解析 Task/Run 与 grant，MySQL 用候选的确定性 Memory ID 保证幂等。首次提交时间由持久记录保存，重试墙钟不会改变其语义。
-- **演示：** 在 Remote GPU 一次性 worktree 中使用显式 Node 22 和 Go 1.27 运行 `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh`，观察第一次 commit 后的受控 Activity 失败以及第二次调用成功。
+- **对外表述：** receipt 绑定 candidate/review、目标类型和时效；Core 每次提交重新解析 Task/Run 与有效 grant，MySQL 用候选的确定性 Memory ID 保证幂等。首次提交时间由持久记录保存，重试墙钟不会改变其语义；已 admission 的 Run 在 grant 撤销后也无法继续写入。
+- **演示：** 在 Remote GPU 一次性 worktree 中使用显式 Node 22 和 Go 1.27 运行 `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh`，观察第一次 commit 后的受控 Activity 失败、第二次调用成功，以及撤销 grant 后的 `PERMISSION_DENIED`。
 - **证据：** `services/agent-runtime/src/temporal/agent-memory-promotion-mtls-mysql.integration.test.ts`、`internal/services/agent/infrastructure/mysql/agent_memory_promotion_temporal_fixture_test.go`、`internal/services/agent/infrastructure/mysql/agent_memory_candidate.go`、`scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh`。
-- **追问：** “怎样保证重试不改变首次提交时间？” 已晋级候选会锁定并读取首条 Memory；重试继续校验确定性 ID、主体、内容、类型、状态和 provenance，保留首次 `ValidFrom`，不把新的墙钟时间误判为冲突。
-- **限制：** Temporal 为内存 test server，MySQL/证书/监听器均为临时资源；没有接入 Kafka，也未在同一次运行中验证 admission 后 grant 撤销或 overlay 回滚。
-- **下一步：** 在受控共享环境归档 Kafka trigger、admission 后 grant 撤销、回滚和观测窗口证据，再评估 `promotion_active` 的灰度。
+- **追问：** “撤销后为何预 admission Run 不能继续写入？” admission 与 receipt commit 都查询有效 grant；夹具在两个 Run admission 后撤销同一 grant，第二个 receipt 仍由 Core 拒绝，避免旧 Task/Run 因缓存授权继续写入。
+- **限制：** Temporal 为内存 test server，MySQL/证书/监听器均为临时资源；没有接入 Kafka，也未验证 overlay 回滚或业务级 Memory rollback。
+- **下一步：** 在受控共享环境归档 Kafka trigger、overlay 回滚、业务级 Memory rollback 和观测窗口证据，再评估 `promotion_active` 的灰度。
 - **复核条件：** 修改 receipt canonicalization、candidate promotion 事务、Temporal retry、Core caller policy、mTLS 或 Memory schema 时。
 
 #### 2026-08-30 · MinIO Multipart 与可恢复上传

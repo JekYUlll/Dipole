@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：Remote GPU 隔离联合演练已将 admission 后 grant 撤销纳入同一 Temporal/Core/MySQL mTLS fixture：同一 active grant 先 admission 两个 Task/Run，首个 receipt 在故障重试后收敛，撤销 grant 后第二个预 admission Run 的 receipt 被 Core 拒绝，MySQL 断言候选未生成 Memory。该证据不包含 Kafka、共享环境 authority、overlay rollback 或业务级 Memory rollback，`AD-009` 继续开放。
+
 - 2026-08-30：Remote GPU 在隔离 worktree 中通过 Temporal/Core/MySQL mTLS 联合演练：临时 MySQL 8.4、实际 `MemoryPromotionReceiptServer`、loopback TCP+mTLS 和内存 Temporal test server 串联；首个 Core 持久提交后，受控 Worker 故障触发 Activity 重试，第二次请求返回同一条 Memory。演练同时修复了重复候选晋级将首次 `ValidFrom` 与重试墙钟时间比较而错误冲突的问题。Kafka、admission 后 grant 撤销和 overlay rollback 尚未纳入同一运行，`AD-009` 继续开放。
 
 - 2026-08-30：Remote GPU 在 `ac7b8790` 一次性 worktree 上通过 receipt MySQL mTLS contract。临时 CA 下的 loopback Core listener 使用项目 `platformrpc.Dial`、Core Agent 方法白名单和 `dipole-agent` 客户端证书；真实 adapter 继续验证首个提交、同 receipt 重放和 admission 后 grant 撤销拒绝。Temporal Worker 与该 TCP/MySQL 链仍未同组运行，`AD-009` 继续开放。
