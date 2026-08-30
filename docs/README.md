@@ -78,5 +78,6 @@ Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/agen
 
 ## 指南与参考
 
+- [项目学习与面试主文档](guides/PROJECT-LEARNING-AND-INTERVIEW.md)
 - [面试问答](guides/INTERVIEW-QA.md)
 - [参考项目目录说明](references/README.md)

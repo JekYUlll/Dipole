@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增项目学习与面试主文档，集中维护简历描述、60 秒/3 分钟介绍、工程故事、高频问答、学习路线与面试前检查；详细题库保留为扩展阅读，状态标签要求区分已验证、默认关闭和规划能力。
+
 - 2026-08-30：Agent active overlay 强制固定 direct-target、Memory、Control、MCP Server 与 External MCP 为关闭；Compose 门禁覆盖 host 环境试图开启 Control/MCP 的回归，user-gray 继续只允许只读 Temporal 路径。
 
 - 2026-08-30：新增 Agent Active 部署运行手册，明确 user-gray 的 Provider、Kafka、Temporal、Capability RPC、五类 Eval、operator grant 与维护窗口证据边界，并提供静态渲染和移除 override 的回滚步骤。
