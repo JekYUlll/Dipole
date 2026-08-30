@@ -19,6 +19,9 @@
         <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">
           <IconGroups :size="22" />
         </button>
+        <button class="icon-btn" type="button" title="设置" aria-label="打开设置" @click="router.push({ name: 'settings' })">
+          <IconSettings :size="22" />
+        </button>
       </div>
       <button class="icon-btn logout-btn" @click="handleLogout" title="退出">
         <IconLogout :size="22" />
@@ -588,7 +591,7 @@ import {
   IconChat, IconContacts, IconGroups, IconLogout,
   IconInfo, IconBack, IconPaperclip, IconSend,
   IconDownload, IconClose, IconAlertCircle,
-  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch,
+  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch, IconSettings,
 } from '@/components/icons'
 import SearchWorkspace from '@/components/SearchWorkspace.vue'
 import { useRouter } from 'vue-router'

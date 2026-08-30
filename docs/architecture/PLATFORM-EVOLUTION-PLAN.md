@@ -607,7 +607,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 ## 10. 持续轨道：Pencil 前端设计
 
 - [x] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
-- [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿、标题栏状态、Contact、Group、File 与 Device 的只读或受确认流程均已完成；Settings 仍待设计与实现。Group 目录从认证会话投影派生范围、逐项读取权威群投影，热群保持 `notify + pull`，所有群管理写操作继续关闭。Device 的跨浏览器执行、像素基线与真实 Presence 踢出继续作为环境切片。
+- [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿、标题栏状态、Contact、Group、File、Device 与 Settings 的只读或受确认流程均已完成。Settings 仅复用签名、同步状态、Device Security 入口和退出边界，canonical Pencil frame、批准导出与跨浏览器视觉回归继续待办。Group 目录从认证会话投影派生范围、逐项读取权威群投影，热群保持 `notify + pull`，所有群管理写操作继续关闭。Device 的跨浏览器执行、像素基线与真实 Presence 踢出继续作为环境切片。
 - [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval、普通 Elicitation Form、Task Timeline、Definition、Subscription、Memory 和 Artifact 的 desktop/mobile/state matrix 已完成；相应默认关闭或只读 Vue 页面已按认证与低敏边界接入，Definition/Subscription/Artifact 的受控跨浏览器读取证据已归档。MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity；多轮、敏感授权、产品入口编排与其余视觉回归仍由 AD-036 跟踪。
 - [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、Vue token 映射、核心页面流程、组件测试和 Playwright IndexedDB/跨浏览器功能回归；真实 Pencil CLI 增量编辑与 Agent Timeline Chromium 截图基线已通过小批次完成，截图级全页面视觉基线和未覆盖平台场景仍待完成。
   - [x] 增加无网络 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该门禁不替代 Pencil 视觉评审。

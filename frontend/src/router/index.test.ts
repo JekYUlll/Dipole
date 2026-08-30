@@ -16,9 +16,9 @@ describe('Agent route security contract', () => {
       'agent-memories',
     ]) {
       expect(source).toContain(`name: '${routeName}'`)
+      expect(source).toMatch(new RegExp(`name: '${routeName}'[\\s\\S]{0,220}?meta: \\{ requiresAuth: true \\}`))
     }
 
-    expect(source.match(/meta: \{ requiresAuth: true \}/g)?.length).toBe(12)
     expect(source).toContain("import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'")
     expect(source).toContain("import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'")

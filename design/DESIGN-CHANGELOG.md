@@ -6,6 +6,7 @@
 
 ### 新增
 
+- 增加 `settings-v1-brief.md`，固定资料签名、低敏设备安全入口、同步状态和退出账户范围；当前只形成实现对应的设计 brief，canonical Pencil frame 与批准导出继续待补。
 - 增加 Device Security v1 的 desktop/mobile 会话页与七态 State Matrix，归档三张 `exports/device-security-*-review.png` 2x 评审基线。
 - 增加 `Device Session Row`、`Device Trust Status` 和 `Session Sign-out Confirmation` 三个复用组件；移动端使用堆叠会话卡片与明确批准区，避免桌面行布局在窄屏拥挤。
 - 固定 Device Security 隐私披露边界：仅显示设备标签、粗粒度设备或浏览器说明、相对活动时间和状态；IP、节点、连接 ID、用户 ID、Token、精确位置和原始 User-Agent 均不进入设计稿。
