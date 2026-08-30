@@ -18,6 +18,7 @@
 | Group Directory desktop/mobile/state matrix | `exports/group-v1/` |
 | Settings desktop/mobile/state matrix | `exports/settings-v1/` |
 | Device Security desktop/mobile/state matrix | `exports/device-security-*-review.png` |
+| Agent Task Create desktop/mobile/state matrix | `exports/agent-task-create-v1/` |
 
 ## 当前 Frame
 
@@ -143,6 +144,15 @@ Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 
 Vue 实现位于 `frontend/src/components/AgentTaskTimeline.vue`，路由为 `/agent/tasks/:taskId/timeline`，由 `VITE_AGENT_TASK_TIMELINE_ENABLED=true` 显式启用。设计稿不表示 active Agent authority、MCP continuation 或写 Capability 已开放。
 
 当前 Vue 只读页面的 Chromium visual baseline 位于 `frontend/e2e/agent-task-timeline.visual.spec.ts`；它使用受控低敏 fixture 固定 revision、Capability、等待审批、分页入口与 event kind 展示边界，不能替代全页面或跨浏览器视觉验收。
+
+### Agent Task Create v1
+
+- `Agent Task Create/Desktop`：认证后的聚焦任务创建器，展示本地 request identity、任务目标、只读会话访问边界与未校验时禁用的提交动作。
+- `Agent Task Create/Mobile`：390px 单列版本，保留任务范围与提交状态，避免横向溢出。
+- `Agent Task Create/State Matrix`：覆盖 idle、validation error、submitting、accepted/redirecting 与 unavailable；只有严格 accepted 回包才允许跳转 Timeline。
+- `Component/Agent Task Goal Field`、`Component/Agent Task Request Badge` 与 `Component/Agent Task Submit State`：创建页及后续受控入口复用的低敏组件。
+
+批准的 2x 预览位于 `exports/agent-task-create-v1/`。Vue 实现位于 `frontend/src/components/AgentTaskCreate.vue`，路由为 `/agent/tasks/new`；只有 `VITE_AGENT_TASK_CREATE_ENABLED=true` 且 Timeline 开关同时开启时才可访问。页面只提交本地 `client_request_id` 与目标文本，principal、tenant、Agent、Tool、Memory 和 Runtime 控制均由服务端恢复或固定；设计与页面均不表达 active authority、Compose、Kafka 或 Temporal 已启用。
 
 ### Agent Definition Catalog v1
 

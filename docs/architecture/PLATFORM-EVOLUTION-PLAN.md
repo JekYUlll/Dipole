@@ -462,7 +462,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 使用 Temporal TypeScript SDK 实现 AgentTask 状态机、Signal、Timer、Retry、取消和恢复；input/approval deadline 到期后确定性取消并完成持久 Run。
 - [x] 建立 Agent Task Timeline v1：Core owner-scoped cursor API、Runtime/Gateway 只读代理、前端默认关闭展示，以及 Task/Run/Model/Tool/Approval/Artifact 的低敏确定性事件。
 - [x] 建立 Timeline repair ledger 与显式 `agent-task-timeline-repair` 运维进程；投影失败可 durable claim、重放、完成或 retry，Prometheus 观测默认关闭；真实 MySQL 故障注入已验证 retry 到 completed 和单事件收敛。
-- [x] 增加默认关闭的交互式 Task admission 前端：认证 `/agent/tasks/new` 仅发送本地幂等键和目标文本，严格确认 accepted 绑定后跳转只读 Timeline；Remote GPU Node 22 定向单元、typecheck 与 production build 已通过。Pencil 创建画板导出和共享环境控制面演练继续独立推进。
+- [x] 增加默认关闭的交互式 Task admission 前端：认证 `/agent/tasks/new` 仅发送本地幂等键和目标文本，严格确认 accepted 绑定后跳转只读 Timeline；Pencil canonical desktop/mobile/五态创建画板、三项复用组件与 2x 导出已完成，Remote GPU Node 22 定向单元、typecheck 与 production build 已通过。共享环境控制面演练继续独立推进。
 - [ ] 完成 repair worker 的 operator 灰度、告警阈值和默认生产开关；在此之前继续保留 MySQL Timeline 主存储和前端关闭状态。
   - [x] 增加 Compose profile 级隔离 smoke：校验 v50 migration、UTC 时间基准、最小权限、worker readiness、持续 replay 和 event UUID 幂等；共享环境 operator 灰度与默认生产开关仍待完成。
   - [x] smoke 增加 worker 启动前 pending intent 与启用后恢复断言，并锁定 MySQL 全局/会话 UTC；共享环境 operator 灰度、告警抓取和轮换/回滚仍待完成。

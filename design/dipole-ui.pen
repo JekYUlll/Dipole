@@ -38424,6 +38424,950 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "haDzA",
+      "x": 41506,
+      "y": 0,
+      "name": "Component/Agent Task Goal Field",
+      "reusable": true,
+      "width": 620,
+      "fill": "$surface",
+      "cornerRadius": "$radius-md",
+      "stroke": "$line",
+      "layout": "vertical",
+      "gap": "$space-xs",
+      "padding": "$space-md",
+      "children": [
+        {
+          "type": "text",
+          "id": "Il3VR",
+          "name": "Goal Field Label",
+          "fill": "$ink",
+          "content": "任务目标",
+          "fontFamily": "$font-body",
+          "fontSize": 14,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "tNBuN",
+          "name": "Goal Field Hint",
+          "fill": "$ink-soft",
+          "content": "描述希望助手完成的工作",
+          "fontFamily": "$font-body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "e4i4W",
+          "name": "Goal Textarea",
+          "width": "fill_container",
+          "height": 112,
+          "fill": "$surface-muted",
+          "cornerRadius": "$radius-sm",
+          "stroke": "$line",
+          "layout": "vertical",
+          "padding": 12,
+          "justifyContent": "space_between",
+          "children": [
+            {
+              "type": "text",
+              "id": "qh8TO",
+              "name": "Goal Placeholder",
+              "fill": "$ink-faint",
+              "content": "例如：整理今天错过的项目群讨论，并列出待确认事项",
+              "fontFamily": "$font-body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "YWdVa",
+              "name": "Goal Character Hint",
+              "fill": "$ink-faint",
+              "content": "0 / 2,000",
+              "textAlign": "right",
+              "fontFamily": "$font-data",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "C1xVk",
+      "x": 42226,
+      "y": 0,
+      "name": "Component/Agent Task Request Badge",
+      "reusable": true,
+      "fill": "$accent-soft",
+      "cornerRadius": "$radius-sm",
+      "gap": "$space-xs",
+      "padding": 12,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "text",
+          "id": "eAK26",
+          "name": "Request Badge Code",
+          "fill": "$accent-strong",
+          "content": "REQUEST / LOCAL-001",
+          "fontFamily": "$font-data",
+          "fontSize": 12,
+          "fontWeight": "600"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "oy1pa",
+      "x": 42226,
+      "y": 96,
+      "name": "Component/Agent Task Submit State",
+      "reusable": true,
+      "fill": "$surface-muted",
+      "cornerRadius": "$radius-md",
+      "stroke": "$line",
+      "layout": "vertical",
+      "gap": 4,
+      "padding": "$space-md",
+      "children": [
+        {
+          "type": "text",
+          "id": "b5hBEq",
+          "name": "Submit State Title",
+          "fill": "$ink-soft",
+          "content": "IDLE · VALIDATE BEFORE SUBMIT",
+          "fontFamily": "$font-data",
+          "fontSize": 12,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "lljxi",
+          "name": "Submit State Copy",
+          "fill": "$ink-soft",
+          "content": "目标内容通过本地校验后才允许创建任务。",
+          "fontFamily": "$font-body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "KEyIC",
+      "x": 41506,
+      "y": 295,
+      "name": "Agent Task Create/Desktop",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$canvas",
+      "children": [
+        {
+          "type": "frame",
+          "id": "g5WdcG",
+          "name": "Agent Task Create Rail",
+          "width": 208,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "XJ9co",
+              "name": "Rail Brand",
+              "fill": "$text-inverse",
+              "content": "DIPOLE",
+              "fontFamily": "$font-display",
+              "fontSize": 22,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "shhmq",
+              "name": "Rail Section",
+              "fill": "$accent",
+              "content": "AGENT / TASKS",
+              "fontFamily": "$font-data",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "ZZ4Du",
+              "name": "Rail Spacer",
+              "width": "fill_container",
+              "height": "fill_container"
+            },
+            {
+              "type": "text",
+              "id": "cDrM4",
+              "name": "Rail Boundary",
+              "fill": "#9AB1A6",
+              "content": "READ-ONLY\nCONVERSATION\nACCESS",
+              "fontFamily": "$font-data",
+              "fontSize": 11,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "F2bD9e",
+          "name": "Agent Task Create Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": 28,
+          "padding": 64,
+          "children": [
+            {
+              "type": "frame",
+              "id": "sawjC",
+              "name": "Create Task Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bOfu6",
+                  "name": "Header Copy",
+                  "width": 620,
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "YQUZo",
+                      "name": "Header Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "INTERACTIVE TASK / LOCAL",
+                      "fontFamily": "$font-data",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nKGu3",
+                      "name": "Header Title",
+                      "fill": "$ink",
+                      "content": "创建 Agent 任务",
+                      "fontFamily": "$font-display",
+                      "fontSize": 44,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "svH5z",
+                      "name": "Header Description",
+                      "fill": "$ink-soft",
+                      "content": "提交目标后进入只读时间线，追踪持久化状态与受控步骤。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "KwSBQ",
+                  "type": "ref",
+                  "ref": "C1xVk",
+                  "name": "Request Identity Badge"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "T9XHXD",
+              "name": "Task Create Form",
+              "width": 760,
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "id": "eGsPE",
+                  "type": "ref",
+                  "ref": "haDzA",
+                  "name": "Task Goal Field",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "UvbZw",
+                  "name": "Read-only Access Boundary",
+                  "width": "fill_container",
+                  "fill": "$accent-soft",
+                  "cornerRadius": "$radius-md",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "padding": "$space-md",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tP9ut",
+                      "name": "Boundary Label",
+                      "fill": "$accent-strong",
+                      "content": "READ-ONLY ACCESS BOUNDARY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "DgBu1",
+                      "name": "Boundary Copy",
+                      "fill": "$ink",
+                      "content": "只读取当前认证账号已授权的会话；提交不会启用 Runtime、Tool 或外部服务。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "OUNcr",
+                  "name": "Submit Row",
+                  "width": "fill_container",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "VVgOo",
+                      "name": "Submit Task Disabled Button",
+                      "width": 160,
+                      "height": 48,
+                      "fill": "$surface-muted",
+                      "cornerRadius": "$radius-sm",
+                      "stroke": "$line",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "lJhs6",
+                          "name": "Submit Button Label",
+                          "fill": "$ink-faint",
+                          "content": "提交任务",
+                          "fontFamily": "$font-body",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "RgKmI",
+                  "type": "ref",
+                  "ref": "oy1pa",
+                  "name": "Idle Submit State",
+                  "width": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iJ1GU",
+              "name": "Create Task Guidance",
+              "width": "fill_container",
+              "fill": "$surface-muted",
+              "cornerRadius": "$radius-md",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": "$space-md",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "anbnj",
+                  "name": "Guidance Title",
+                  "fill": "$ink",
+                  "content": "提交范围",
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "XYg3r",
+                  "name": "Guidance Copy",
+                  "fill": "$ink-soft",
+                  "content": "浏览器仅传递本地请求身份与任务目标。身份、权限、Agent、Capability、Memory 与运行模式由服务端权威恢复。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "R6io4Y",
+      "x": 43042,
+      "y": 295,
+      "name": "Agent Task Create/Mobile",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$surface",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "WrYsv",
+          "name": "Mobile Task Header",
+          "width": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "aYFRV",
+              "name": "Mobile Header Eyebrow",
+              "fill": "$accent",
+              "content": "AGENT / INTERACTIVE TASK",
+              "fontFamily": "$font-data",
+              "fontSize": 11,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "FLpxS",
+              "name": "Mobile Header Title",
+              "fill": "$text-inverse",
+              "content": "创建任务",
+              "fontFamily": "$font-display",
+              "fontSize": 32,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "Xo9NN",
+              "name": "Mobile Header Description",
+              "fill": "#C3D1CA",
+              "content": "提交后进入只读时间线。",
+              "fontFamily": "$font-body",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "G2Ieiz",
+          "name": "Mobile Task Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "$surface",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 20,
+          "children": [
+            {
+              "id": "I9rJsa",
+              "type": "ref",
+              "ref": "C1xVk",
+              "name": "Mobile Request Identity Badge"
+            },
+            {
+              "id": "S4IFwg",
+              "type": "ref",
+              "ref": "haDzA",
+              "name": "Mobile Task Goal Field",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "OOMDV",
+              "name": "Mobile Read-only Boundary",
+              "width": "fill_container",
+              "fill": "$accent-soft",
+              "cornerRadius": "$radius-md",
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "AM4Pd",
+                  "name": "Mobile Boundary Label",
+                  "fill": "$accent-strong",
+                  "content": "READ-ONLY ACCESS",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "rIwpQ",
+                  "name": "Mobile Boundary Copy",
+                  "fill": "$ink",
+                  "content": "仅限授权会话；不启用 Runtime 或 Tool。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fM2JQ",
+              "name": "Mobile Action Spacer",
+              "width": "fill_container",
+              "height": "fill_container"
+            },
+            {
+              "id": "al4Kf",
+              "type": "ref",
+              "ref": "oy1pa",
+              "name": "Mobile Idle Submit State",
+              "width": "fill_container"
+            },
+            {
+              "type": "frame",
+              "id": "exStv",
+              "name": "Mobile Submit Disabled Button",
+              "width": "fill_container",
+              "height": 48,
+              "fill": "$surface-muted",
+              "cornerRadius": "$radius-sm",
+              "stroke": "$line",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XXQMB",
+                  "name": "Mobile Submit Button Label",
+                  "fill": "$ink-faint",
+                  "content": "提交任务",
+                  "fontFamily": "$font-body",
+                  "fontSize": 15,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "d28ojR",
+      "x": 43042,
+      "y": 1235,
+      "name": "Agent Task Create/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 820,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 32,
+      "children": [
+        {
+          "type": "frame",
+          "id": "dKqto",
+          "name": "Task Create State Header",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "id": "YcmZw",
+              "name": "State Matrix Eyebrow",
+              "fill": "$accent-strong",
+              "content": "AGENT TASK CREATE / STATE MATRIX",
+              "fontFamily": "$font-data",
+              "fontSize": 12,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "mb0MV",
+              "name": "State Matrix Title",
+              "fill": "$ink",
+              "content": "创建任务前后的确定性界面状态",
+              "fontFamily": "$font-display",
+              "fontSize": 30,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ZH28e",
+          "name": "Task Create State Rows",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "RxOXV",
+              "name": "Task Create State Row One",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Cnvt2",
+                  "name": "Task Create State Idle",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kk5ah",
+                      "name": "Idle Label",
+                      "fill": "$accent-strong",
+                      "content": "IDLE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "D0TDsT",
+                      "name": "Idle Title",
+                      "fill": "$ink",
+                      "content": "Idle",
+                      "fontFamily": "$font-display",
+                      "fontSize": 22,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "MKMEN",
+                      "name": "Idle Copy",
+                      "fill": "$ink-soft",
+                      "content": "填写目标后执行本地校验。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "cdj4s",
+                      "name": "Idle Status Chip",
+                      "fill": "$accent-soft",
+                      "cornerRadius": "$radius-sm",
+                      "padding": "$space-xs",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "IHq70",
+                          "name": "Idle Status Text",
+                          "fill": "$accent-strong",
+                          "content": "IDLE",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EoUNQ",
+                  "name": "Task Create State Validation Error",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "saBYL",
+                      "name": "Validation Error Label",
+                      "fill": "$danger",
+                      "content": "VALIDATION ERROR",
+                      "fontFamily": "$font-data",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "u21ugA",
+                      "name": "Validation Error Title",
+                      "fill": "$ink",
+                      "content": "Validation Error",
+                      "fontFamily": "$font-display",
+                      "fontSize": 22,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "frF7l",
+                      "name": "Validation Error Copy",
+                      "fill": "$ink-soft",
+                      "content": "保留目标文本，说明需要补充内容。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "lpCqB",
+                      "name": "Validation Error Status Chip",
+                      "fill": "$danger-soft",
+                      "cornerRadius": "$radius-sm",
+                      "padding": "$space-xs",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Z7OkM",
+                          "name": "Validation Error Status Text",
+                          "fill": "$danger",
+                          "content": "VALIDATION ERROR",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ET23t",
+                  "name": "Task Create State Submitting",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Jx8JX",
+                      "name": "Submitting Label",
+                      "fill": "$warning",
+                      "content": "SUBMITTING",
+                      "fontFamily": "$font-data",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "U1Su9L",
+                      "name": "Submitting Title",
+                      "fill": "$ink",
+                      "content": "Submitting",
+                      "fontFamily": "$font-display",
+                      "fontSize": 22,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "CFoLJ",
+                      "name": "Submitting Copy",
+                      "fill": "$ink-soft",
+                      "content": "请求身份已保留，等待权威回包。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "m5dZA",
+                      "name": "Submitting Status Chip",
+                      "fill": "$warning-soft",
+                      "cornerRadius": "$radius-sm",
+                      "padding": "$space-xs",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Bgwoi",
+                          "name": "Submitting Status Text",
+                          "fill": "$warning",
+                          "content": "SUBMITTING",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ylv9y",
+              "name": "Task Create State Row Two",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HIx4C",
+                  "name": "Task Create State Accepted / Redirecting",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "YXtgq",
+                      "name": "Accepted / Redirecting Label",
+                      "fill": "$accent-strong",
+                      "content": "ACCEPTED / REDIRECTING",
+                      "fontFamily": "$font-data",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "lLX07",
+                      "name": "Accepted / Redirecting Title",
+                      "fill": "$ink",
+                      "content": "Accepted / Redirecting",
+                      "fontFamily": "$font-display",
+                      "fontSize": 22,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "BJHsY",
+                      "name": "Accepted / Redirecting Copy",
+                      "fill": "$ink-soft",
+                      "content": "仅在 accepted 回包后进入只读 Timeline。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "uzudF",
+                      "name": "Accepted / Redirecting Status Chip",
+                      "fill": "$accent-soft",
+                      "cornerRadius": "$radius-sm",
+                      "padding": "$space-xs",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "u8XZck",
+                          "name": "Accepted / Redirecting Status Text",
+                          "fill": "$accent-strong",
+                          "content": "ACCEPTED / REDIRECTING",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VhJFH",
+                  "name": "Task Create State Unavailable",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 18,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vsbId",
+                      "name": "Unavailable Label",
+                      "fill": "$danger",
+                      "content": "UNAVAILABLE",
+                      "fontFamily": "$font-data",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "F974B1",
+                      "name": "Unavailable Title",
+                      "fill": "$ink",
+                      "content": "Unavailable",
+                      "fontFamily": "$font-display",
+                      "fontSize": 22,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "K8Ct4",
+                      "name": "Unavailable Copy",
+                      "fill": "$ink-soft",
+                      "content": "依赖不可用时不创建 fallback Task。",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "GwmhX",
+                      "name": "Unavailable Status Chip",
+                      "fill": "$danger-soft",
+                      "cornerRadius": "$radius-sm",
+                      "padding": "$space-xs",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "DiMSy",
+                          "name": "Unavailable Status Text",
+                          "fill": "$danger",
+                          "content": "UNAVAILABLE",
+                          "fontFamily": "$font-data",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

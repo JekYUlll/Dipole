@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 增加 Agent Task Create v1 的 desktop/mobile 创建页、五态 State Matrix 与 `exports/agent-task-create-v1/` 批准预览。
+- 增加 `Component/Agent Task Goal Field`、`Component/Agent Task Request Badge` 和 `Component/Agent Task Submit State`；页面固定只提交本地请求身份与目标文本，身份、权限、Agent、Capability、Memory 与 Runtime 控制不进入浏览器输入。
 - 增加 Settings v1 的 desktop/mobile 账户页、四态 State Matrix 与 `exports/settings-v1/` 批准预览。
 - 增加 `Component/Settings Profile`、`Component/Settings Sync Status` 和 `Component/Settings Logout Boundary`；资料、同步和危险会话操作沿用现有绿色与风险色语义。
 - 固定 Settings 数据披露边界：只呈现签名、本机 safe cursor、同步状态和 Device Security 入口；IP、节点、连接 ID、消息正文及设备原始标识保持关闭。
@@ -30,6 +32,7 @@
 
 ### 验证
 
+- Agent Task Create v1 通过 Pencil CLI 增量编辑、无裁切/placeholder 检查、canonical JSON 结构门禁和三张 2x 导出复核；Vue 交互的 Remote GPU Node 22 定向测试、typecheck 和 production build 已在前置切片通过。active authority、Compose、Kafka、Temporal 与共享环境控制面演练继续关闭。
 - Settings v1 认证页面在 Chromium 固定截图基线，Remote GPU Firefox 已通过路由与低敏披露断言；WebKit 二进制虽已安装，当前共享宿主缺少浏览器运行库，待系统维护窗口后补充验证。
 
 - File Directory 的 Chromium 受控 fixture 现固定 owner-scoped 文件 metadata、逐项授权下载入口和存储信息披露边界；截图不连接对象存储，也不覆盖其他浏览器或上传写路径。
