@@ -14,6 +14,8 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	storageops "github.com/JekYUlll/Dipole/internal/operations/storage"
 )
 
 func TestMinIOMultipartUploadLifecycle(t *testing.T) {
@@ -141,6 +143,42 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 	if !bytes.Equal(resumedContent, interruptedPart) {
 		t.Fatalf("resumed content length=%d, want %d", len(resumedContent), len(interruptedPart))
 	}
+
+	staleUpload, err := uploader.InitiateMessageMultipartUpload(ctx, "multipart-cleanup-integration.bin", "application/octet-stream")
+	if err != nil {
+		t.Fatalf("initiate cleanup upload: %v", err)
+	}
+	if _, err := uploader.UploadMultipartPart(ctx, staleUpload.ObjectKey, staleUpload.UploadID, 1,
+		bytes.NewReader([]byte("cleanup-part")), int64(len("cleanup-part"))); err != nil {
+		t.Fatalf("upload cleanup part: %v", err)
+	}
+
+	cleanupReport := storageops.RunMultipartCleanup(ctx, minioCleanupClient{client: client, core: minio.Core{Client: client}},
+		bucket, "message-files/", time.Now().UTC().Add(time.Hour), true)
+	if !cleanupReport.Complete || cleanupReport.Selected != 1 || cleanupReport.Aborted != 1 || cleanupReport.Failed != 0 {
+		t.Fatalf("unexpected cleanup report: %+v", cleanupReport)
+	}
+	for upload := range client.ListIncompleteUploads(ctx, bucket, "message-files/", true) {
+		if upload.Err != nil {
+			t.Fatalf("list uploads after cleanup: %v", upload.Err)
+		}
+		if upload.UploadID == staleUpload.UploadID {
+			t.Fatalf("cleanup left incomplete upload %s", upload.UploadID)
+		}
+	}
+}
+
+type minioCleanupClient struct {
+	client *minio.Client
+	core   minio.Core
+}
+
+func (c minioCleanupClient) ListIncompleteUploads(ctx context.Context, bucket, prefix string, recursive bool) <-chan minio.ObjectMultipartInfo {
+	return c.client.ListIncompleteUploads(ctx, bucket, prefix, recursive)
+}
+
+func (c minioCleanupClient) AbortMultipartUpload(ctx context.Context, bucket, objectKey, uploadID string) error {
+	return c.core.AbortMultipartUpload(ctx, bucket, objectKey, uploadID)
 }
 
 var errMultipartClientInterrupted = errors.New("multipart client interrupted")
