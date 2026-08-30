@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Remote GPU 候选同步新增目标 blob SHA-256 守卫。远端有已跟踪修改时直接拒绝；只清理与待 checkout 提交逐字节一致的未跟踪路径，内容不同的文件与其他 checkout 冲突保持 fail-closed。该保护只处理可再生测试产物，不替代候选目录隔离、活动会话保护或发布审批。
+
 - 2026-08-31：Core 已具备默认关闭的 Agent Search assembly：仅在 `internal_rpc.agent_conversation_search_enabled` 与 mTLS 同时成立时，Core 才以 `dipole-core` 身份建立 Search client、装配持久 Agent invocation/admission 与 Search Capability adapter；关闭时不拨号 Search、不注册该 adapter。Search RPC allowlist 扩展为 Gateway/Core，默认 Compose 与静态门禁固定该开关为 `false`。共享 Shadow、召回质量与生产切流仍未完成。
 
 - 2026-08-31：基础 Compose、active read 与 External MCP Shadow overlay 现显式固定 `DIPOLE_AGENT_RETRIEVAL_ENABLED=false` 和 `DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED=false`，静态 Compose 门禁同时复核渲染值。宿主环境无法借由未声明变量扩张默认 Capability surface；受控 Search assembly、共享 Shadow 观察和生产切流仍未完成。

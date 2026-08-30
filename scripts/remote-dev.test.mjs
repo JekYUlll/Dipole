@@ -1,8 +1,45 @@
 import assert from "node:assert/strict";
+import childProcess from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 const source = fs.readFileSync(new URL("./remote-dev.sh", import.meta.url), "utf8");
+const conflictHelper = new URL("./remote-sync-conflicts.sh", import.meta.url);
+
+function git(cwd, ...args) {
+  return childProcess.execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+}
+
+function runConflictHelper(cwd, target) {
+  return childProcess.spawnSync(
+    "bash",
+    ["-c", 'source <(git show "${1}:scripts/remote-sync-conflicts.sh"); dipole_prepare_remote_checkout "$1"', "--", target],
+    { cwd, encoding: "utf8" },
+  );
+}
+
+function createConflictFixture() {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "dipole-remote-sync-"));
+  git(cwd, "init", "--quiet");
+  git(cwd, "config", "user.name", "Dipole Test");
+  git(cwd, "config", "user.email", "dipole-test@example.invalid");
+  fs.writeFileSync(path.join(cwd, "README.md"), "initial\n");
+  fs.mkdirSync(path.join(cwd, "scripts"), { recursive: true });
+  fs.writeFileSync(path.join(cwd, "scripts", "remote-sync-conflicts.sh"), fs.readFileSync(conflictHelper));
+  git(cwd, "add", "README.md", "scripts/remote-sync-conflicts.sh");
+  git(cwd, "commit", "--quiet", "-m", "initial");
+  const base = git(cwd, "rev-parse", "HEAD");
+
+  fs.mkdirSync(path.join(cwd, "frontend", "e2e", "__screenshots__"), { recursive: true });
+  fs.writeFileSync(path.join(cwd, "frontend", "e2e", "__screenshots__", "settings.png"), "approved-baseline\n");
+  git(cwd, "add", "frontend/e2e/__screenshots__/settings.png");
+  git(cwd, "commit", "--quiet", "-m", "add baseline");
+  const target = git(cwd, "rev-parse", "HEAD");
+  git(cwd, "checkout", "--quiet", "--detach", base);
+  return { cwd, target };
+}
 
 test("remote sync only accepts a clean committed worktree", () => {
   assert.match(source, /sync_revision\(\)[\s\S]*?git status --porcelain/);
@@ -20,6 +57,47 @@ test("remote candidate tracking refs accept only the expected mutable update", (
   assert.match(source, /if \[\[ "\$branch" == dipole-dev\/\* \]\]; then[\s\S]*?git fetch origin "\+refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
   assert.match(source, /else\n  git fetch origin "refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
   assert.doesNotMatch(source, /git fetch origin "refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}" \|\| true/);
+});
+
+test("remote checkout prepares only verified generated conflicts before switching revisions", () => {
+  assert.ok(source.includes('source <(git show "${commit}:scripts/remote-sync-conflicts.sh")'));
+  assert.match(source, /source <\(git show[\s\S]*?dipole_prepare_remote_checkout "\$commit"[\s\S]*?git checkout --detach "\$commit"/);
+});
+
+test("remote sync removes only an identical untracked target conflict", (t) => {
+  const { cwd, target } = createConflictFixture();
+  t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
+  const snapshot = path.join(cwd, "frontend", "e2e", "__screenshots__", "settings.png");
+  fs.mkdirSync(path.dirname(snapshot), { recursive: true });
+  fs.writeFileSync(snapshot, "approved-baseline\n");
+
+  const result = runConflictHelper(cwd, target);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /removed identical generated conflict/);
+  assert.equal(fs.existsSync(snapshot), false);
+});
+
+test("remote sync preserves divergent untracked target conflicts and tracked edits", (t) => {
+  const { cwd, target } = createConflictFixture();
+  t.after(() => fs.rmSync(cwd, { recursive: true, force: true }));
+  const snapshot = path.join(cwd, "frontend", "e2e", "__screenshots__", "settings.png");
+  fs.mkdirSync(path.dirname(snapshot), { recursive: true });
+  fs.writeFileSync(snapshot, "remote-local-difference\n");
+
+  const divergent = runConflictHelper(cwd, target);
+
+  assert.equal(divergent.status, 3);
+  assert.match(divergent.stderr, /divergent untracked target path/);
+  assert.equal(fs.readFileSync(snapshot, "utf8"), "remote-local-difference\n");
+
+  fs.rmSync(snapshot);
+  fs.writeFileSync(path.join(cwd, "README.md"), "remote tracked edit\n");
+  const tracked = runConflictHelper(cwd, target);
+
+  assert.equal(tracked.status, 2);
+  assert.match(tracked.stderr, /tracked modifications/);
+  assert.equal(fs.readFileSync(path.join(cwd, "README.md"), "utf8"), "remote tracked edit\n");
 });
 
 test("node verification preserves package locks and cleans generated webapp output", () => {

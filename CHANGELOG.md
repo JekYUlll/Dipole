@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 候选同步会先拒绝已跟踪的远端修改；对于与目标 Git blob 的 SHA-256 完全一致的未跟踪文件冲突，仅清理可由提交恢复的生成物。内容不同的文件保持原样并 fail closed，避免视觉快照等测试产物阻塞后续已提交 revision。
+
 - 2026-08-31：Settings 的认证页面检查现运行于全部 Playwright 项目，Chromium 保留像素基线，Remote GPU Firefox 已通过真实路由与披露断言。WebKit 二进制已安装，但共享宿主缺少 `libgstreamer-plugins-bad1.0-0` 与 `libavif16`，系统依赖安装留待维护窗口。
 
 - 2026-08-31：完成 Settings 的 canonical Pencil desktop/mobile/四态设计、批准 PNG 导出和 Chromium 受控截图基线。认证账户页继续只呈现签名、本机同步状态、Device Security 入口和当前会话退出边界，跨浏览器视觉回归保持后续独立切片。

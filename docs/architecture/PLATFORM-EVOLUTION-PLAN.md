@@ -39,6 +39,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 - [x] 增加业务集群 Compose override：MySQL Router/InnoDB Cluster、Kafka 三节点和 Redis Sentinel 已可在独立 project 中渲染；真实业务故障切换与恢复收敛仍需运行时证据和活动会话批准。
 - [x] 将 Go canonical 测试和架构静态门禁接入 `scripts/remote-dev.sh test`，允许在 Remote GPU 验证提交而不启动 Compose，降低本机测试负载；远程入口自动发现用户态 Go，显式工具链路径优先。
   - [x] 候选 `dipole-dev/<user>` 的远端 tracking ref 使用受限强制 refspec 刷新，避免 squash 合并后产生非快进警告；共享 ref 继续普通 fetch，fetch 错误 fail closed。
+  - [x] 候选目录 checkout 前拒绝已跟踪修改，仅清理 SHA-256 与目标 Git blob 完全一致的未跟踪冲突；不同内容和其他冲突保留文件并 fail closed，避免测试生成物阻塞提交同步。
 - [x] 将 Agent Runtime 与 Frontend 的 Node 验证接入 `scripts/remote-dev.sh node-test`；Remote GPU 已通过 Agent `125` 个测试文件/`665` 个测试、Frontend `29` 个测试文件/`114` 个测试、typecheck 与生产构建，且构建产物退出清理已验证。
 - [x] F2 File Directory：Pencil canonical desktop/mobile/state matrix、批准导出和 `/files` 认证只读目录已建立。Core 通过 SQLC owner-scoped cursor 查询和版本化 gRPC 暴露低敏 projection；存储 URL、对象键、校验值和上传会话不跨 HTTP 边界，下载逐项重新授权。Remote GPU Node 22 在 `a29d9927` 通过 38 个前端测试文件、157 项测试、typecheck 与 production build。
 - [ ] F2 Device Security：已完成 Pencil desktop/mobile/七态矩阵、认证 `/devices` 页面、严格低敏会话 projection 和按稳定 Device ID 排除自身的 `logout-others` 语义；Remote GPU Node 22 已通过前端 `40/162`、typecheck/build，并发现 Chromium/Firefox/WebKit binary 缺失。跨浏览器执行、视觉基线与真实 Presence 踢出仍待环境准备，不能将实现写为生产多设备安全控制。

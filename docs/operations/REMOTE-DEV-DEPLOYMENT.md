@@ -41,6 +41,8 @@ scripts/remote-dev.sh build
 
 脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。默认 `dipole-dev/<user>` 是提交绑定的临时候选引用：每次同步以远端 tip 的精确 lease 更新，远端 tracking ref 使用受限强制 refspec 刷新，因此 squash 合并后的新 revision 可以复用该单一引用且不会产生陈旧 ref 警告；有并发写入时 lease 会拒绝覆盖。显式指定 `master` 或其他共享分支时保持普通快进推送与普通 tracking ref 更新，不能由该入口改写历史。`build`、`smoke-lite`、`bench` 会记录 GPU 进程快照并允许 CPU/容器型开发动作继续执行；活跃登录用户仍会默认阻断，只有取得明确维护窗口后才可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
 
+重复使用候选目录时，`sync` 先拒绝任何已跟踪修改。若未跟踪文件与目标 revision 的同路径 Git blob 具有完全相同的 SHA-256，脚本仅清理这类可由目标提交恢复的生成物，以避免 Playwright 视觉快照等输出阻塞 detached checkout。内容不同的未跟踪文件、目录级冲突和所有其他 checkout 错误都会保留原文件并中止；脚本不执行 `git clean`，也不覆盖远端人工修改。
+
 `multipart-smoke` 只创建脚本自有的随机命名临时 MinIO 容器，使用 `GOTOOLCHAIN=local` 和 `DIPOLE_REMOTE_GO_ROOT` 提供的远端 Go 工具链；该动作不申请 GPU，也不经过活动 GPU 阻断，但仍要求脚本退出时完成容器清理。
 
 `multipart-restart-smoke` 在相同隔离边界内上传首个分片，重启临时 MinIO 容器，再继续上传并完成对象，用于验证 Multipart 数据卷持久性。该动作不申请 GPU，不触碰其他容器或卷。

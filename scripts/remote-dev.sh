@@ -80,6 +80,10 @@ if [[ "$branch" == dipole-dev/* ]]; then
 else
   git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
 fi
+# Load the guard from the fetched target rather than the old checkout. This
+# keeps a reused remote candidate able to self-upgrade before checkout.
+source <(git show "${commit}:scripts/remote-sync-conflicts.sh")
+dipole_prepare_remote_checkout "$commit"
 git checkout --detach "$commit"
 printf 'remote source ready: commit=%s root=%s\n' "$commit" "$root"
 REMOTE_SYNC
