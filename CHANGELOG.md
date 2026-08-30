@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：校正 External MCP Shadow 的运行口径：`external_mcp_shadow` 已作为独占、默认关闭的 TypeScript Runtime mode 接入受控 Kafka/Temporal/Capability RPC 生命周期；基础 Compose 仍为 `foundation`，未配置完整 Shadow 依赖时零外部连接或消费。文档、架构债务和 Agent 面试材料现明确区分该本地/隔离能力与尚未完成的共享环境、DNS/TLS、凭据和生产授权证据。
+
 - 2026-08-30：F2 File Directory 完成 Pencil desktop/mobile/状态矩阵、批准导出和认证只读 `/files` 路由。Core 经 SQLC owner-scoped 文件 UUID cursor 和版本化 gRPC 返回低敏目录投影；HTTP、Swagger 与 Vue 严格排除对象键、存储 URL、校验值和上传会话，下载逐项重新授权，读取失败清空旧状态。Remote GPU Node 22 在提交 `a29d9927` 通过 38 个前端测试文件、157 项测试、typecheck 和 production build。上传仍由会话编辑器和既有 MinIO Multipart 数据面处理；删除、分享、跨浏览器视觉回归和预签名直传默认切流继续作为独立切片。
 
 - 2026-08-30：修复 Remote GPU `node-test` 的 Vite 构建清理：原先对 Web 产物反向应用 diff 会误删基线 hashed assets，现改为仅对受控 `internal/services/core/server/webapp` 目录恢复固定 `HEAD` 后清理新文件。Remote GPU 在 `3f1f3936` 复跑后工作树干净，未启动 Compose 或 GPU 任务。

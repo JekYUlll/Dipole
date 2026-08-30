@@ -17,7 +17,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | ExecutionContext、Capability Policy、Temporal Task | 已验证 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md) |
 | reviewed Memory receipt、mTLS、MySQL retry | 已验证（隔离 Remote GPU） | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh` |
 | External MCP Shadow 完整链路 | 已验证（隔离 Remote GPU） | `scripts/drill-agent-external-mcp-shadow.sh` |
-| `promotion_active` 与外部 MCP | 默认关闭 | [Active 部署手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md) |
+| `promotion_active` 与 External MCP Shadow mode | 默认关闭 | [External MCP 运行手册](../agent/agent-external-mcp.md) |
 | Project Guardian 预筛评测基线 | 已验证（合成离线） | `contracts/agent-evals/v1/project-guardian-synthetic-corpus.json` |
 
 #### Project Guardian Evaluation Baseline

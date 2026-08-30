@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-30：校正 External MCP Shadow 文档口径：`external_mcp_shadow` 已作为独占、默认关闭的 Runtime mode 接入 `index.ts`，完整配置才会启动受控 Kafka/Temporal/Capability RPC process；基础 Compose 仍不选择该 mode。隔离全栈证据不覆盖共享 Shadow tenant、真实外部 DNS/TLS、凭据、Provider owner 或生产 authority，相关债务继续开放。
+
 - 2026-08-30：修复 Remote GPU Node 验证的 Vite 清理流程：`remote-dev.sh` 仅恢复受控 `internal/services/core/server/webapp` 固定 `HEAD`，再删除未跟踪构建产物，避免反向 patch 误删已有 hashed assets。`3f1f3936` 复跑后远端候选工作树干净；该修复不启动 Compose 或 GPU 任务。
 
 - 2026-08-30：F2 File Directory 已建立从 SQLC owner-scoped 查询、Core gRPC 到认证 `/files` 的低敏读取边界；前端严格拒绝额外存储字段，读取失败清空旧数据，下载逐项重新授权。Remote GPU Node 22 在 `a29d9927` 通过 38 个测试文件、157 项测试、typecheck 与 production build。上传仍在会话编辑器，文件删除、设备与设置页面、跨浏览器视觉回归和预签名直传默认切流继续按独立切片推进。
