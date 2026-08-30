@@ -81,6 +81,9 @@ func TestMultipartReconciliationWithRealMinIOAndRedis(t *testing.T) {
 	if !matched.Complete || matched.RedisKeysScanned != 1 || matched.MinIOUploadsSeen != 1 || matched.MissingRedis != 0 || matched.MissingMinIO != 0 {
 		t.Fatalf("matching stores reported drift: %+v", matched)
 	}
+	if err := waitForRedisRestartWindow(ctx); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := redisClient.Expire(ctx, redisKey, time.Second).Err(); err != nil {
 		t.Fatalf("expire matching session: %v", err)
@@ -189,6 +192,36 @@ func waitForRedisKeyAbsence(ctx context.Context, client *redis.Client, key strin
 			return fmt.Errorf("wait for Redis key %s expiry: %w", key, ctx.Err())
 		case <-deadline.C:
 			return fmt.Errorf("Redis key %s remained after TTL", key)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+}
+
+func waitForRedisRestartWindow(ctx context.Context) error {
+	readyFile := strings.TrimSpace(os.Getenv("DIPOLE_TEST_MULTIPART_RECONCILIATION_REDIS_RESTART_READY_FILE"))
+	resumeFile := strings.TrimSpace(os.Getenv("DIPOLE_TEST_MULTIPART_RECONCILIATION_REDIS_RESTART_RESUME_FILE"))
+	if readyFile == "" && resumeFile == "" {
+		return nil
+	}
+	if readyFile == "" || resumeFile == "" {
+		return fmt.Errorf("both Redis restart marker files are required")
+	}
+	if err := os.WriteFile(readyFile, []byte("ready\n"), 0o600); err != nil {
+		return fmt.Errorf("write Redis restart ready marker: %w", err)
+	}
+	deadline := time.NewTimer(15 * time.Second)
+	defer deadline.Stop()
+	for {
+		if _, err := os.Stat(resumeFile); err == nil {
+			return nil
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("check Redis restart resume marker: %w", err)
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for Redis restart resume: %w", ctx.Err())
+		case <-deadline.C:
+			return fmt.Errorf("Redis restart resume marker did not appear")
 		case <-time.After(100 * time.Millisecond):
 		}
 	}

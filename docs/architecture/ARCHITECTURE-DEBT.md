@@ -1248,4 +1248,5 @@
 - **本轮进展：** `TestRedisMultipartSessionTTLExpiresMetadataAndPartsTogether` 验证 metadata/parts 同步过期与分片续期，`TestRedisMultipartSessionCompletionUsesIndependentTTL` 验证完成收据到期；测试使用确定性 Redis 时钟推进，不改变默认上传或清理路径。
 - **本轮进展：** 新增 `smoke-multipart-reconciliation.sh` 与真实 MinIO/Redis 集成测试，覆盖匹配状态、Redis metadata 缺失和 Redis orphan drift；脚本使用隔离端口和自动清理，未触碰业务 Compose。
 - **真实验证：** Remote GPU 在 `8940bff1` 使用 Go `1.27.0` 通过联合 smoke，退出码 `0`，GPU 进程保持 `0`，临时容器为 `0`；当前 MinIO 版本要求 reconciliation 使用完整对象键并等待 listing 收敛，目录前缀行为继续保留为兼容性约束。
-- **下一步：** 在 Remote GPU 维护窗口用隔离 Redis/MinIO 实例注入 TTL 到期、服务重启、cleanup race 和 reconciliation drift，记录 active/expired/abort/retry 指标后再评估关闭本条债务。
+- **本轮进展：** 真实集成 smoke 增加可选 Redis restart 注入窗口：匹配状态建立后暂停测试，重启隔离 Redis，恢复后确认 Redis metadata 缺失、MinIO incomplete upload 可 Abort，随后继续验证 Redis orphan drift；默认路径不变。
+- **下一步：** 在 Remote GPU 维护窗口补充 cleanup race 与指标故障注入，记录 active/expired/abort/retry 指标后再评估关闭本条债务。
