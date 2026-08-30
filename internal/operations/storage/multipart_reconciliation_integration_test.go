@@ -69,6 +69,9 @@ func TestMultipartReconciliationWithRealMinIOAndRedis(t *testing.T) {
 		t.Fatalf("write matching session: %v", err)
 	}
 	reconciliationClient := realMultipartClient{client: minioClient, core: core}
+	if err := waitForMultipartListing(ctx, minioClient, bucket, objectKey, uploadID); err != nil {
+		t.Fatal(err)
+	}
 
 	matched := RunMultipartReconciliation(ctx, reconciliationClient, redisClient, bucket, "message-files/", 100)
 	if !matched.Complete || matched.RedisKeysScanned != 1 || matched.MinIOUploadsSeen != 1 || matched.MissingRedis != 0 || matched.MissingMinIO != 0 {
@@ -105,4 +108,26 @@ func (c realMultipartClient) ListIncompleteUploads(ctx context.Context, bucket, 
 
 func (c realMultipartClient) AbortMultipartUpload(ctx context.Context, bucket, objectKey, uploadID string) error {
 	return c.core.AbortMultipartUpload(ctx, bucket, objectKey, uploadID)
+}
+
+func waitForMultipartListing(ctx context.Context, client *minio.Client, bucket, prefix, uploadID string) error {
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		for upload := range client.ListIncompleteUploads(ctx, bucket, prefix, true) {
+			if upload.Err != nil {
+				return fmt.Errorf("list multipart uploads while waiting for %s: %w", uploadID, upload.Err)
+			}
+			if upload.UploadID == uploadID {
+				return nil
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("wait for multipart upload %s: %w", uploadID, ctx.Err())
+		case <-deadline.C:
+			return fmt.Errorf("multipart upload %s did not appear in listing", uploadID)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }
