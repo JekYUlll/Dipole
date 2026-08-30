@@ -5,6 +5,15 @@ root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 container="dipole-minio-multipart-${RANDOM}-$$"
 port="${DIPOLE_MINIO_MULTIPART_PORT:-$((20000 + RANDOM % 1000))}"
 
+if [[ -n "${DIPOLE_REMOTE_GO_ROOT:-}" ]]; then
+  [[ -x "${DIPOLE_REMOTE_GO_ROOT}/bin/go" ]] || {
+    echo "configured DIPOLE_REMOTE_GO_ROOT does not contain an executable Go binary" >&2
+    exit 2
+  }
+  export PATH="${DIPOLE_REMOTE_GO_ROOT}/bin:${PATH}"
+  export GOTOOLCHAIN="${GOTOOLCHAIN:-local}"
+fi
+
 cleanup() {
   local exit_code=$?
   docker rm -f "$container" >/dev/null 2>&1 || true
