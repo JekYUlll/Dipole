@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：为 Multipart `upload_part` retry counter 增加 Prometheus 连续重试告警与 promtool firing 时序测试；告警仅聚合 operation，保持低基数和业务路径不变。
+
 - 2026-08-30：Multipart Core 为同一 session 重复上传同一 `partNumber` 增加低基数 `upload_part{outcome="retry"}` 计数；retry 与最终结果分开记录，耗时只采样一次，旧 session store 可通过可选接口兼容，上传默认路径和回滚语义保持不变。
 
 - 2026-08-30：Multipart cleanup 的 Prometheus textfile 输出新增低基数生命周期状态指标，覆盖 active、expired、aborted、failed、扫描完成状态和清理耗时；`--metrics-output` 可在仅 cleanup 场景使用，reconciliation 指标保持兼容，默认 dry-run 和 relay 回滚路径不变。
