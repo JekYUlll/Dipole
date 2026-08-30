@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：更新为 Signal Link 品牌体系：实心端点、空心端点与连接轨迹取代旧的蓝色成对极形，统一用于主字标、IM、Agent 和紧凑应用图标；运行时行为不受影响。
+
 - 2026-08-31：新增默认关闭的 Agent `conversation.search` 契约。Core Agent Capability 从 Task/Run 恢复身份后，经可注入 Search port 查询，要求独立 permission 与 `conversation/*/read` scope；RPC/TS 双端拒绝客户端 principal、超限输入和冲突 evidence，并限制 query、结果数及正文。默认 composition 未注入 Search port，生产 Elasticsearch 与 Runtime 注册继续关闭。
 
 - 2026-08-31：恢复蓝色双极 SVG 品牌体系。README 和文档入口重新采用更高识别度的成对信号标记、冷色画布与深蓝字色；历史单色 PNG 继续弃用。本项只影响品牌呈现。

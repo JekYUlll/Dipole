@@ -1,16 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="420" height="160" viewBox="0 0 420 160" role="img" aria-labelledby="title desc">
   <title id="title">Dipole IM</title>
-  <desc id="desc">Dipole IM mark for the realtime messaging platform.</desc>
-  <defs>
-    <linearGradient id="im-blue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2768f5"/>
-      <stop offset="1" stop-color="#0b3ed0"/>
-    </linearGradient>
-  </defs>
-  <rect width="420" height="160" rx="26" fill="#f2f6ff"/>
-  <path d="M50 43C28 56 15 78 15 102c0 21 12 39 31 49 12 6 23-1 23-14v-29c0-9 7-16 16-16V43c-11-6-23-6-35 0Z" fill="url(#im-blue)"/>
-  <path d="M120 43c22 13 35 35 35 59 0 21-12 39-31 49-12 6-23-1-23-14v-29c0-9-7-16-16-16V43c11-6 23-6 35 0Z" fill="url(#im-blue)"/>
-  <path d="M85 92c5 0 10 2 14 6-4 4-9 6-14 6s-10-2-14-6c4-4 9-6 14-6Z" fill="#f2f6ff"/>
-  <text x="186" y="69" fill="#112653" font-family="DejaVu Sans, sans-serif" font-size="29" font-weight="700">DIPOLE IM</text>
-  <text x="186" y="101" fill="#53617b" font-family="DejaVu Sans, sans-serif" font-size="15" font-weight="700" letter-spacing="1.1">MESSAGE / SYNC / DELIVERY</text>
+  <desc id="desc">Dipole IM mark with linked message endpoints.</desc>
+  <rect width="420" height="160" rx="26" fill="#f7f9fd"/>
+  <g aria-hidden="true">
+    <circle cx="74" cy="104" r="26" fill="#2d63e8"/>
+    <circle cx="118" cy="61" r="22" fill="#f7f9fd" stroke="#2d63e8" stroke-width="9"/>
+    <path d="M91 99C90 80 98 69 108 66" fill="none" stroke="#2d63e8" stroke-width="9" stroke-linecap="round"/>
+  </g>
+  <text x="166" y="75" fill="#14233d" font-family="Avenir Next, Manrope, Noto Sans SC, sans-serif" font-size="29" font-weight="700" letter-spacing="1">DIPOLE IM</text>
+  <text x="168" y="108" fill="#58708e" font-family="Avenir Next, Manrope, Noto Sans SC, sans-serif" font-size="14" font-weight="700" letter-spacing="1.7">MESSAGE / SYNC / DELIVERY</text>
 </svg>

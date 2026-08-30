@@ -1,17 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="420" height="160" viewBox="0 0 420 160" role="img" aria-labelledby="title desc">
   <title id="title">Dipole Agent</title>
-  <desc id="desc">Dipole Agent mark for governed AI workflows.</desc>
-  <defs>
-    <linearGradient id="agent-blue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2768f5"/>
-      <stop offset="1" stop-color="#0b3ed0"/>
-    </linearGradient>
-  </defs>
-  <rect width="420" height="160" rx="26" fill="#f2f6ff"/>
-  <path d="M50 43C28 56 15 78 15 102c0 21 12 39 31 49 12 6 23-1 23-14v-29c0-9 7-16 16-16V43c-11-6-23-6-35 0Z" fill="url(#agent-blue)"/>
-  <path d="M120 43c22 13 35 35 35 59 0 21-12 39-31 49-12 6-23-1-23-14v-29c0-9-7-16-16-16V43c11-6 23-6 35 0Z" fill="url(#agent-blue)"/>
-  <path d="M85 92c5 0 10 2 14 6-4 4-9 6-14 6s-10-2-14-6c4-4 9-6 14-6Z" fill="#f2f6ff"/>
-  <circle cx="137" cy="41" r="9" fill="#22a699"/>
-  <text x="176" y="69" fill="#112653" font-family="DejaVu Sans, sans-serif" font-size="25" font-weight="700">DIPOLE AGENT</text>
-  <text x="176" y="101" fill="#53617b" font-family="DejaVu Sans, sans-serif" font-size="11" font-weight="700" letter-spacing="0.45">CONTEXT / CAPABILITY / MEMORY</text>
+  <desc id="desc">Dipole Agent mark for governed tasks and capabilities.</desc>
+  <rect width="420" height="160" rx="26" fill="#f7f9fd"/>
+  <g aria-hidden="true">
+    <circle cx="74" cy="104" r="26" fill="#2d63e8"/>
+    <circle cx="118" cy="61" r="22" fill="#f7f9fd" stroke="#2d63e8" stroke-width="9"/>
+    <path d="M91 99C90 80 98 69 108 66" fill="none" stroke="#2d63e8" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="74" cy="104" r="8" fill="#f7f9fd"/>
+  </g>
+  <text x="155" y="74" fill="#14233d" font-family="Avenir Next, Manrope, Noto Sans SC, sans-serif" font-size="24" font-weight="700" letter-spacing=".7">DIPOLE AGENT</text>
+  <text x="156" y="106" fill="#58708e" font-family="Avenir Next, Manrope, Noto Sans SC, sans-serif" font-size="11" font-weight="700" letter-spacing="1.05">GOVERNED TASKS / CAPABILITIES</text>
 </svg>
