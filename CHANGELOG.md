@@ -1443,3 +1443,6 @@
 - 修复 `remote-dev.sh bench` 通过 SSH 传递可选参数时的空值左移；所有可选工具链、代理和 workload 参数使用显式哨兵并在远端解码，入口契约测试 `10/10` 通过。
 - Remote GPU provenance 门禁拦截旧候选镜像后，重建并绑定 `master` `959ac70d` 的 `dipole-server:c1-959ac70d`；正式入口完成 200 成员 `group_blast`，200/200 VU、10/10 消息 accepted/persisted、群 Inbox `2000` 行、1990/1990 回执、投递率 `100%`、HTTP failure `0%`。
 - 端到端平均/P50/P95/P99/最大值为 `126.84/121/167/169/169 ms`，Kafka 峰值 lag `1`、结算 lag `0`，Node1/2/3 CPU 峰值 `72.14%/20.99%/19.85%`；候选拓扑清理后无 `dipole-c1` 残留。热群 notify/pull、背压阈值和 broker/Redis 故障回切仍待独立验收。
+
+- 2026-08-30：扩展 `remote-dev.sh bench` workload 白名单，支持选择 `bench_group.js`、隔离 `PHONE_PREFIX`、warm-up、激活等待和 hot-group 阈值；默认仍使用原有 `bench.js` 和默认参数，入口契约测试 `10/10` 通过。
+- 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
