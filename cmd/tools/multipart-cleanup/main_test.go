@@ -63,6 +63,34 @@ func TestWriteMultipartReconciliationMetricsRequiresReport(t *testing.T) {
 	}
 }
 
+func TestWriteMultipartMetricsPublishesCleanupLifecycleStates(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "multipart.prom")
+	report := &storageops.MultipartCleanupReport{Complete: true, Scanned: 7, Selected: 3, Aborted: 2, Failed: 1}
+	if err := writeMultipartMetrics(path, report, nil, time.Unix(789, 0).UTC(), 1500*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(body)
+	for _, want := range []string{
+		`dipole_multipart_cleanup_complete 1`,
+		`dipole_multipart_cleanup_uploads{state="active"} 7`,
+		`dipole_multipart_cleanup_uploads{state="expired"} 3`,
+		`dipole_multipart_cleanup_uploads{state="aborted"} 2`,
+		`dipole_multipart_cleanup_uploads{state="failed"} 1`,
+		`dipole_multipart_cleanup_duration_seconds 1.500000000`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("cleanup metrics output missing %q: %s", want, text)
+		}
+	}
+	if strings.Contains(text, "object_key") || strings.Contains(text, "upload_id") {
+		t.Fatalf("cleanup metrics output contains high-cardinality fields: %s", text)
+	}
+}
+
 func TestWriteMultipartReconciliationMetricsPublishFailureKeepsTargetAndCleansTemp(t *testing.T) {
 	directory := t.TempDir()
 	target := filepath.Join(directory, "multipart.prom")
