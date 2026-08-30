@@ -529,3 +529,11 @@ docs/
 - Gateway 在提交时重新派生 event/resource，Core 在 Store 写入前再次执行同一 authority 校验；模型与浏览器不能提供 principal、tenant、event type 或 resource。
 - `all|message_contains_any` 保持确定性规范化；关键词最多 32 项、单项最多 64 个 Unicode 字符，前端不得静默截断用户意图。
 - list/create/revoke、Definition 目录和 conversation chooser 共享默认关闭的 Gateway/Frontend 开关。控制记录 active 只表示持久授权有效，Runtime 与 Compose 继续固定 `direct_target`。
+
+## 21. Agent 检索 Context 边界（2026-08-30）
+
+- `dipole-agent` 不得直接调用 Search Service。Search 的服务认证与用户 principal 只适用于 Gateway；给 Agent 增加同等服务身份会使其可以构造未绑定 Task/Run 的查询。
+- 后续检索通过 Core 的 `AgentCapability` surface 调解：RPC caller 必须是 `dipole-agent` 且公开 request 不含 principal；Core 从权威 Task/Run 恢复 principal、tenant、runtime mode、permission 与 resource scope 后才允许查询。
+- 新 capability 固定为 `conversation.search`，要求独立 permission 与 `conversation/*/read` scope。query、页大小、返回条数、单条正文和总正文均须有硬上限；空 query、超限、scope 漂移、Task/Run 不匹配和 Search 不可用一律 fail closed。
+- Search 结果只以不可执行的 `trust=untrusted` evidence fragment 进入 Context Compiler，记录 Search document 的 message ID、conversation key、sequence、revision 与 query provenance；不得把命中内容提升为 policy、identity、task 或 memory，也不得将原始 Elasticsearch hit、索引名、内部 ID 或请求凭据写入 Task/Run 审计。
+- 首个切片只交付 Core/Proto/TypeScript 契约和 deterministic test。生产 Elasticsearch 连接、默认 Runtime 启用、跨会话全局检索、向量检索及任何 write capability 均保持关闭，待 owner-reviewed evidence 后单独灰度。

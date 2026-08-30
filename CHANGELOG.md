@@ -2,6 +2,8 @@
 
 - 2026-08-31：恢复蓝色双极 SVG 品牌体系。README 和文档入口重新采用更高识别度的成对信号标记、冷色画布与深蓝字色；历史单色 PNG 继续弃用。本项只影响品牌呈现。
 
+- 2026-08-30：固定 Agent 检索 Context 的安全契约：Runtime 不直连 Search，后续由 Core 以 Task/Run 恢复的身份、permission 与 scope 调解查询；命中只能作为有界 `untrusted` evidence 进入 Context Compiler。生产 Elasticsearch、默认 Runtime 和跨会话检索继续关闭。
+
 - 2026-08-30：校正平台计划与已合并实现的交付口径：Context Compiler v1/v2 已编译预算、可信度、会话证据、Memory、Capability 元数据和 route tokenizer，完整检索编排仍未完成；F2 仅保留 Settings，F3 仅保留 MCP 多轮、敏感授权、产品入口与未覆盖视觉回归。
 
 - 2026-08-30：修复 Remote GPU 临时候选引用在 squash 合并后的同步失败。默认 `dipole-dev/<user>` 现以远端 tip 的精确 lease 更新，允许复用单一候选引用并拒绝并发覆盖；显式 `master` 或其他共享分支继续只接受快进推送。
