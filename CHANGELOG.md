@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：修复 `smoke-sync-write-ownership.sh` 在服务目录重排后仍指向 `internal/bootstrap` 的三个测试选择器，改为 Sync/Message 服务实际拥有的测试包，并保留“selector 无匹配即失败”保护。
+
 - 2026-08-30：为 C3 灰度发布增加独立 `RolloutPolicy` 契约，支持按节点/用户作用域使用稳定盐值确定性选择 `go|shadow|cpp` 目标；默认百分比为 Go，配置或 subject 异常 fail closed。当前仅提供纯策略和测试，未接入 Gateway 投递副作用，性能收益与可执行回切门禁保持不变。
 - 2026-08-30：修复 `RolloutPolicy` 未拒绝 `101..255` 百分比的边界问题；非法灰度比例现在在选择前 fail closed，并增加回归测试。
 
