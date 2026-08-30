@@ -41,17 +41,20 @@ export function parseGroupDirectoryItem(raw: unknown): Group {
   if (!isRecord(raw)) throw new Error('group directory item is invalid')
   const status = raw.status
   const owner = raw.owner
+  const memberCount = raw.member_count
+  const recentMessageCount = raw.recent_message_count
+  const meRole = raw.me_role
   if (!isRecord(raw) || !exactKeys(raw, groupKeys) || typeof raw.uuid !== 'string' || !identifier.test(raw.uuid) ||
     typeof raw.name !== 'string' || typeof raw.notice !== 'string' || typeof raw.avatar !== 'string' ||
-    (status !== 0 && status !== 1) || !nonNegativeInteger(raw.member_count) || typeof raw.is_hot !== 'boolean' ||
-    !nonNegativeInteger(raw.recent_message_count) || !Number.isSafeInteger(raw.me_role) || typeof raw.created_at !== 'string' ||
+    (status !== 0 && status !== 1) || !nonNegativeInteger(memberCount) || typeof raw.is_hot !== 'boolean' ||
+    !nonNegativeInteger(recentMessageCount) || !Number.isSafeInteger(meRole) || typeof raw.created_at !== 'string' ||
     (owner !== undefined && !validUser(owner)) || raw.members !== undefined) {
     throw new Error('group directory item is invalid')
   }
   return {
     uuid: raw.uuid, name: raw.name, notice: raw.notice, avatar: raw.avatar, status,
-    member_count: raw.member_count, is_hot: raw.is_hot, recent_message_count: raw.recent_message_count,
-    owner: owner === undefined ? undefined : toUser(owner), me_role: raw.me_role,
+    member_count: memberCount, is_hot: raw.is_hot, recent_message_count: recentMessageCount,
+    owner: owner === undefined ? undefined : toUser(owner), me_role: meRole,
   }
 }
 
