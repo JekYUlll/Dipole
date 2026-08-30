@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：新增隔离 MySQL receipt promotion contract。它经完整 migration 验证持久 Task/Run、active grant、accepted candidate/review、首个晋级、同 receipt 幂等重放和撤销 grant 后拒绝；同时修复 candidate promotion 未 canonicalize Memory lineage 而触发 MySQL 约束回滚的问题。默认 active Worker 路径继续关闭。
+
 - 2026-08-30：学习、简历与面试主文档新增合并前复核清单；门禁要求项目定位、简历描述、现场介绍、工程故事和独立问答入口保持完整。后续架构、Agent、前端与性能切片须按清单同步叙事、证据与限制。
 
 - 2026-08-30：新增 `drill-agent-memory-promotion-rpc.sh`，以临时 CA、loopback Go fixture 和 TypeScript generated gRPC client 演练 reviewed receipt 的跨语言 mTLS 提交。Fixture 覆盖 `dipole-agent` 身份、错误 secret/证书拒绝、prepared receipt 序列化及低敏回包绑定，并支持 `DIPOLE_GO_BIN` 固定远端工具链；不启动 Docker、Temporal、Kafka 或 MySQL，不写入真实 Memory。

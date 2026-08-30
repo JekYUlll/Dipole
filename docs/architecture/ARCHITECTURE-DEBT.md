@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：隔离 Remote GPU MySQL 8.4 contract 已验证 receipt commit 的持久 Task/Run、grant、candidate/review 和幂等晋级事务，并发现后修复 promotion Memory lineage 未 canonicalize 导致的数据库约束回滚。该证据不覆盖 Core mTLS、Temporal、Kafka 或共享环境 rollback，`AD-009` 继续开放。
 - 2026-08-30：学习、简历与面试主文档补充合并前复核清单，门禁同时检查现场介绍、工程故事与独立问答入口；该约束降低叙事遗漏风险，但无法替代每项技术结论的实现、测试、基准和运行记录复核。
 - 2026-08-30：新增 Agent Memory promotion 跨语言 mTLS RPC drill：Go loopback fixture 认证 `dipole-agent`、拒绝错误 secret/证书，TypeScript generated client 提交 prepared receipt 并复核低敏 response binding；脚本支持显式用户态 `DIPOLE_GO_BIN`，避免远端系统 Go 自动下载。该 fixture 不连接 Core 持久事务、Temporal、Kafka 或 grant，真实提交/撤销/回滚仍由 `AD-009` 跟踪。
 - 2026-08-30：Remote GPU 在隔离 Node 22 worktree 上通过 Agent Memory promotion profile、隔离 Temporal receipt retry 与 TypeScript typecheck；运行前后未启动 Dipole Compose 或 GPU workload。该开发期证据不覆盖跨进程 Core、Kafka、真实 grant、撤销或 rollback，`AD-009` 继续开放。
