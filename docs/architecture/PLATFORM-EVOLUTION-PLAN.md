@@ -380,6 +380,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] `--reconcile --metrics-output` 可选输出低基数 Prometheus textfile gauges，并以同目录临时文件原子替换；默认关闭，任务新鲜度监控与 Alertmanager 联调仍待完成。
   - [x] cleanup textfile 输出增加 active、expired、aborted、failed、complete 和 duration 状态指标；`--metrics-output` 兼容 cleanup-only 运行，retry、checksum mismatch 的业务观测继续由 Core operation 指标提供。
   - [x] Core 对同一 session 重复 `partNumber` 上传记录 `upload_part` retry outcome，并保持最终结果与耗时统计独立；旧 session store 通过可选 presence 接口兼容。
+  - [x] 为 retry outcome 增加按 operation 聚合的连续重试告警和 promtool firing 测试；未引入用户、文件或 session 标签。
 - [ ] 将大文件上限、分片大小、并发数、URL TTL 和失败重试次数纳入版本化配置与发布清单，保留旧单请求路径作为可即时回切的兼容实现。
   - [x] 建立 `contracts/multipart-upload/v1` 策略契约、默认策略和 SHA-256 绑定的 release manifest；当前默认 `relay`，`presigned` 仅作为候选模式，契约校验保留旧路径回切要求。
 - [ ] 用真实 MinIO 集成测试覆盖大文件、多 part、重复 part、乱序 part、断网重试、过期会话、Abort、Complete 幂等、权限越界和服务重启恢复；补齐网关限流与代理超时验证。
