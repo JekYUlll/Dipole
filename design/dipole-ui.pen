@@ -28336,6 +28336,1294 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "g7vF2",
+      "x": 21498,
+      "y": 0,
+      "name": "Component/Agent Artifact Disclosure",
+      "reusable": true,
+      "width": 560,
+      "height": 204,
+      "fill": "$surface",
+      "cornerRadius": "$radius-md",
+      "stroke": "$line",
+      "strokeWidth": 1,
+      "layout": "vertical",
+      "gap": 12,
+      "padding": 18,
+      "children": [
+        {
+          "type": "text",
+          "id": "kLbKI",
+          "name": "Artifact Disclosure Eyebrow",
+          "fill": "$accent-strong",
+          "content": "DISCLOSURE BOUNDARY",
+          "fontFamily": "$font-data",
+          "fontSize": 11,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "Z2psND",
+          "name": "Artifact Disclosure Title",
+          "fill": "$ink",
+          "content": "内容与下载保持关闭",
+          "fontFamily": "$font-display",
+          "fontSize": 21,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "OF5K9",
+          "name": "Artifact Disclosure Copy",
+          "fill": "$ink-soft",
+          "content": "正文、对象键与下载保持关闭。",
+          "fontFamily": "$font-body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "Gfm3x",
+      "x": 21498,
+      "y": 216,
+      "name": "Component/Agent Artifact Integrity",
+      "reusable": true,
+      "width": 560,
+      "height": 144,
+      "fill": "$accent-soft",
+      "cornerRadius": "$radius-md",
+      "layout": "vertical",
+      "gap": 8,
+      "padding": 18,
+      "children": [
+        {
+          "type": "text",
+          "id": "LRn6D",
+          "name": "Artifact Integrity Eyebrow",
+          "fill": "$accent-strong",
+          "content": "CONTENT ADDRESS",
+          "fontFamily": "$font-data",
+          "fontSize": 11,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "z59D88",
+          "name": "Artifact Integrity Hash",
+          "fill": "$ink",
+          "content": "sha256: 6fd1…9a42",
+          "fontFamily": "$font-data",
+          "fontSize": 15,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "W8KJX",
+          "name": "Artifact Integrity Copy",
+          "fill": "$ink-soft",
+          "content": "64 位内容寻址 ID 仅用于定位可披露 metadata。",
+          "fontFamily": "$font-body",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "VO0Fj",
+      "x": 22178,
+      "y": 252,
+      "name": "Agent Artifact/Desktop/Metadata",
+      "clip": true,
+      "width": 1440,
+      "height": 1024,
+      "fill": "$canvas",
+      "children": [
+        {
+          "type": "frame",
+          "id": "W3sldS",
+          "name": "Artifact Desktop Rail",
+          "width": 256,
+          "height": "fill_container",
+          "fill": "$rail",
+          "layout": "vertical",
+          "gap": 26,
+          "padding": [
+            34,
+            28
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "ZD5Qr",
+              "name": "Artifact Desktop Brand",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "xKOYC",
+                  "name": "Artifact Desktop Brand Mark",
+                  "fill": "$accent",
+                  "content": "DIPOLE / AGENT",
+                  "fontFamily": "$font-data",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "T7o0X",
+                  "name": "Artifact Desktop Brand Title",
+                  "fill": "$text-inverse",
+                  "content": "运行档案",
+                  "fontFamily": "$font-display",
+                  "fontSize": 24,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GfwwH",
+              "name": "Artifact Desktop Navigation",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 10,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "hIO2M",
+                  "name": "Artifact Desktop Nav 任务时间线",
+                  "fill": "$text-inverse",
+                  "content": "任务时间线",
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "j7xNt9",
+                  "name": "Artifact Desktop Nav Artifact metadata",
+                  "fill": "$accent",
+                  "content": "Artifact metadata",
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "aixgL",
+                  "name": "Artifact Desktop Nav 定义目录",
+                  "fill": "$text-muted",
+                  "content": "定义目录",
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "N70f9",
+              "name": "Artifact Desktop Rail Boundary",
+              "width": "fill_container",
+              "fill": "$rail-soft",
+              "cornerRadius": "$radius-md",
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "MxwIL",
+                  "name": "Artifact Desktop Rail Boundary Label",
+                  "fill": "$accent",
+                  "content": "READ ONLY",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "jVkQo",
+                  "name": "Artifact Desktop Rail Boundary Copy",
+                  "fill": "$text-inverse",
+                  "content": "仅查看 owner-scoped metadata",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "sJ05M",
+          "name": "Artifact Desktop Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 20,
+          "padding": [
+            36,
+            42
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "SyEUj",
+              "name": "Artifact Desktop Header",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "lwlki",
+                  "name": "Artifact Desktop Header Copy",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gqd0o",
+                      "name": "Artifact Desktop Eyebrow",
+                      "fill": "$accent-strong",
+                      "content": "TASK ARTIFACT / OWNER VIEW",
+                      "fontFamily": "$font-data",
+                      "fontSize": 12,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "uBENA",
+                      "name": "Artifact Desktop Title",
+                      "fill": "$ink",
+                      "content": "Artifact metadata",
+                      "fontFamily": "$font-display",
+                      "fontSize": 32,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Q7hHpQ",
+                      "name": "Artifact Desktop Subtitle",
+                      "fill": "$ink-soft",
+                      "content": "从 Task Timeline 定位的低敏运行产物信息",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mlpYJ",
+                  "name": "Artifact Desktop Status Chip",
+                  "fill": "$accent-soft",
+                  "cornerRadius": 999,
+                  "padding": [
+                    8,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "buVoh",
+                      "name": "Artifact Desktop Status Chip Text",
+                      "fill": "$accent-strong",
+                      "content": "METADATA ONLY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "P9JcZp",
+              "name": "Artifact Desktop Summary",
+              "width": "fill_container",
+              "height": 120,
+              "fill": "$surface",
+              "cornerRadius": "$radius-md",
+              "stroke": "$line",
+              "strokeWidth": 1,
+              "gap": 18,
+              "padding": [
+                18,
+                20
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ZUuIu",
+                  "name": "Artifact Desktop Type Tile",
+                  "width": 74,
+                  "height": 74,
+                  "fill": "$accent-soft",
+                  "cornerRadius": "$radius-sm",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "v8ihM",
+                      "name": "Artifact Desktop Type Tile Text",
+                      "fill": "$accent-strong",
+                      "content": "JSON",
+                      "fontFamily": "$font-data",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lsKTr",
+                  "name": "Artifact Desktop Summary Copy",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "sFLcE",
+                      "name": "Artifact Desktop Artifact Title",
+                      "fill": "$ink",
+                      "content": "项目风险汇总 · 2026-08-30",
+                      "fontFamily": "$font-display",
+                      "fontSize": 20,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "yXRnI",
+                      "name": "Artifact Desktop Artifact Description",
+                      "fill": "$ink-soft",
+                      "content": "analysis-report · application/json · 18.4 KB",
+                      "fontFamily": "$font-data",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "sWPsr",
+              "name": "Artifact Desktop Metadata Grid",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "SoUgn",
+                  "name": "Artifact Desktop Metadata Artifact ID",
+                  "width": "fill_container",
+                  "height": 102,
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "d93W9",
+                      "name": "Artifact Desktop Metadata Label Artifact ID",
+                      "fill": "$ink-faint",
+                      "content": "Artifact ID",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "zrWzr",
+                      "name": "Artifact Desktop Metadata Value Artifact ID",
+                      "fill": "$ink",
+                      "content": "6fd1…9a42",
+                      "fontFamily": "$font-data",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "E8mV3",
+                  "name": "Artifact Desktop Metadata Task",
+                  "width": "fill_container",
+                  "height": 102,
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "i6JHLP",
+                      "name": "Artifact Desktop Metadata Label Task",
+                      "fill": "$ink-faint",
+                      "content": "Task",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "WtFzW",
+                      "name": "Artifact Desktop Metadata Value Task",
+                      "fill": "$ink",
+                      "content": "task_01HQ…8PY",
+                      "fontFamily": "$font-data",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "W4RMu",
+                  "name": "Artifact Desktop Metadata Run",
+                  "width": "fill_container",
+                  "height": 102,
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "joCte",
+                      "name": "Artifact Desktop Metadata Label Run",
+                      "fill": "$ink-faint",
+                      "content": "Run",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "A9OI1",
+                      "name": "Artifact Desktop Metadata Value Run",
+                      "fill": "$ink",
+                      "content": "run_01HQ…31K",
+                      "fontFamily": "$font-data",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v7lPm",
+                  "name": "Artifact Desktop Metadata 创建时间",
+                  "width": "fill_container",
+                  "height": 102,
+                  "fill": "$surface",
+                  "cornerRadius": "$radius-md",
+                  "stroke": "$line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 10,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "TysQD",
+                      "name": "Artifact Desktop Metadata Label 创建时间",
+                      "fill": "$ink-faint",
+                      "content": "创建时间",
+                      "fontFamily": "$font-data",
+                      "fontSize": 11,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "L5yO7",
+                      "name": "Artifact Desktop Metadata Value 创建时间",
+                      "fill": "$ink",
+                      "content": "2026-08-30 14:22 CST",
+                      "fontFamily": "$font-data",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "I4P5zM",
+              "type": "ref",
+              "ref": "g7vF2",
+              "name": "Artifact Desktop Disclosure"
+            },
+            {
+              "id": "bRtz5",
+              "type": "ref",
+              "ref": "Gfm3x",
+              "name": "Artifact Desktop Integrity"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "mRo1C",
+      "x": 22178,
+      "y": 1396,
+      "name": "Agent Artifact/Mobile/Metadata",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 16,
+      "padding": [
+        24,
+        18
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "hfx4M",
+          "name": "Artifact Mobile Topbar",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "RzJaN",
+              "name": "Artifact Mobile Back",
+              "fill": "$accent-strong",
+              "content": "‹  Timeline",
+              "fontFamily": "$font-body",
+              "fontSize": 14,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "OtrUE",
+              "name": "Artifact Mobile Status",
+              "fill": "$accent-strong",
+              "content": "READ ONLY",
+              "fontFamily": "$font-data",
+              "fontSize": 10,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "GJM6O",
+          "name": "Artifact Mobile Header Copy",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "text",
+              "id": "T7wkzj",
+              "name": "Artifact Mobile Eyebrow",
+              "fill": "$accent-strong",
+              "content": "TASK ARTIFACT",
+              "fontFamily": "$font-data",
+              "fontSize": 11,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "hvx8a",
+              "name": "Artifact Mobile Title",
+              "fill": "$ink",
+              "content": "Artifact metadata",
+              "fontFamily": "$font-display",
+              "fontSize": 28,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "hHpCL",
+              "name": "Artifact Mobile Subtitle",
+              "fill": "$ink-soft",
+              "content": "低敏运行产物信息",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "y47UgY",
+          "name": "Artifact Mobile Summary",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": "$radius-md",
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 10,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "clyjw",
+              "name": "Artifact Mobile Summary Type",
+              "fill": "$accent-strong",
+              "content": "JSON · analysis-report",
+              "fontFamily": "$font-data",
+              "fontSize": 12,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "EN4xg",
+              "name": "Artifact Mobile Summary Title",
+              "fill": "$ink",
+              "content": "项目风险汇总 · 2026-08-30",
+              "fontFamily": "$font-display",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "Q1YT8",
+              "name": "Artifact Mobile Summary Size",
+              "fill": "$ink-soft",
+              "content": "application/json · 18.4 KB",
+              "fontFamily": "$font-data",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Yfmj2",
+          "name": "Artifact Mobile Metadata List",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": "$radius-md",
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Xd7IH",
+              "name": "Artifact Mobile Metadata Artifact ID",
+              "width": "fill_container",
+              "height": 54,
+              "stroke": "$line",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                0,
+                14
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Yz2VH",
+                  "name": "Artifact Mobile Label Artifact ID",
+                  "fill": "$ink-soft",
+                  "content": "Artifact ID",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "rqqTi",
+                  "name": "Artifact Mobile Value Artifact ID",
+                  "fill": "$ink",
+                  "content": "6fd1…9a42",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "o240wf",
+              "name": "Artifact Mobile Metadata Task",
+              "width": "fill_container",
+              "height": 54,
+              "stroke": "$line",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                0,
+                14
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XKoks",
+                  "name": "Artifact Mobile Label Task",
+                  "fill": "$ink-soft",
+                  "content": "Task",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "ybeDZ",
+                  "name": "Artifact Mobile Value Task",
+                  "fill": "$ink",
+                  "content": "task_01HQ…8PY",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nTVxN",
+              "name": "Artifact Mobile Metadata Run",
+              "width": "fill_container",
+              "height": 54,
+              "stroke": "$line",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                0,
+                14
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "egEfL",
+                  "name": "Artifact Mobile Label Run",
+                  "fill": "$ink-soft",
+                  "content": "Run",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "JDgVz",
+                  "name": "Artifact Mobile Value Run",
+                  "fill": "$ink",
+                  "content": "run_01HQ…31K",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "FFf1E",
+              "name": "Artifact Mobile Metadata 创建时间",
+              "width": "fill_container",
+              "height": 54,
+              "stroke": "$line",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "padding": [
+                0,
+                14
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LndtP",
+                  "name": "Artifact Mobile Label 创建时间",
+                  "fill": "$ink-soft",
+                  "content": "创建时间",
+                  "fontFamily": "$font-body",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "o5Bmi",
+                  "name": "Artifact Mobile Value 创建时间",
+                  "fill": "$ink",
+                  "content": "2026-08-30 14:22",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "L3oEwA",
+          "type": "ref",
+          "ref": "g7vF2",
+          "name": "Artifact Mobile Disclosure",
+          "width": "fill_container"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "DoCPs",
+      "x": 22178,
+      "y": 2360,
+      "name": "Agent Artifact/State Matrix",
+      "clip": true,
+      "width": 1440,
+      "height": 820,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 22,
+      "padding": [
+        36,
+        42
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "n64YB",
+          "name": "Artifact Matrix Header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "M4vR0",
+              "name": "Artifact Matrix Header Copy",
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "SVuge",
+                  "name": "Artifact Matrix Eyebrow",
+                  "fill": "$accent-strong",
+                  "content": "ARTIFACT READ SURFACE",
+                  "fontFamily": "$font-data",
+                  "fontSize": 12,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "RS8Fs",
+                  "name": "Artifact Matrix Title",
+                  "fill": "$ink",
+                  "content": "Metadata state matrix",
+                  "fontFamily": "$font-display",
+                  "fontSize": 30,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "t9ybzI",
+                  "name": "Artifact Matrix Subtitle",
+                  "fill": "$ink-soft",
+                  "content": "每个状态都保留 owner-scoped API 与正文披露边界。",
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "S5kUN",
+              "name": "Artifact Matrix Boundary Badge",
+              "fill": "$warning-soft",
+              "cornerRadius": 999,
+              "padding": [
+                8,
+                12
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "DQZyH",
+                  "name": "Artifact Matrix Boundary Badge Text",
+                  "fill": "$warning",
+                  "content": "NO BODY · NO DOWNLOAD",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QoSgD",
+          "name": "Artifact Matrix Table",
+          "width": "fill_container",
+          "fill": "$surface",
+          "cornerRadius": "$radius-md",
+          "stroke": "$line",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "E5Uxf",
+              "name": "Artifact Matrix Table Header",
+              "width": "fill_container",
+              "height": 54,
+              "fill": "$surface-muted",
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "sTmPg",
+                  "name": "Artifact Matrix Header 状态",
+                  "fill": "$ink-faint",
+                  "content": "状态",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "SmLwz",
+                  "name": "Artifact Matrix Header 用户看到的 metadata",
+                  "fill": "$ink-faint",
+                  "content": "用户看到的 metadata",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "Nafw5",
+                  "name": "Artifact Matrix Header 可用操作",
+                  "fill": "$ink-faint",
+                  "content": "可用操作",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "o4EBr",
+                  "name": "Artifact Matrix Header 安全边界",
+                  "fill": "$ink-faint",
+                  "content": "安全边界",
+                  "fontFamily": "$font-data",
+                  "fontSize": 11,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UGzeH",
+              "name": "Artifact Matrix Row Loading",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$surface",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "MzbxI",
+                  "name": "Artifact Matrix State Loading",
+                  "fill": "$ink",
+                  "content": "Loading",
+                  "fontFamily": "$font-data",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "IlFsR",
+                  "name": "Artifact Matrix Metadata Loading",
+                  "fill": "$ink-soft",
+                  "content": "保留骨架，不展示上一次 Artifact",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "r7GSF8",
+                  "name": "Artifact Matrix Action Loading",
+                  "fill": "$accent-strong",
+                  "content": "无",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "Hiuvd",
+                  "name": "Artifact Matrix Boundary Loading",
+                  "fill": "$ink-soft",
+                  "content": "不猜测 ID 或正文",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "y0w8Zp",
+              "name": "Artifact Matrix Row Ready",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$surface",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "dkai1",
+                  "name": "Artifact Matrix State Ready",
+                  "fill": "$ink",
+                  "content": "Ready",
+                  "fontFamily": "$font-data",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "EEsRz",
+                  "name": "Artifact Matrix Metadata Ready",
+                  "fill": "$ink-soft",
+                  "content": "类型、标题、大小、Task/Run、SHA-256",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "cJnwG",
+                  "name": "Artifact Matrix Action Ready",
+                  "fill": "$accent-strong",
+                  "content": "返回 Timeline",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "I2B4jD",
+                  "name": "Artifact Matrix Boundary Ready",
+                  "fill": "$ink-soft",
+                  "content": "正文与下载关闭",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qew8a",
+              "name": "Artifact Matrix Row Unavailable",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$surface",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "IDp4G",
+                  "name": "Artifact Matrix State Unavailable",
+                  "fill": "$ink",
+                  "content": "Unavailable",
+                  "fontFamily": "$font-data",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "igRfd",
+                  "name": "Artifact Matrix Metadata Unavailable",
+                  "fill": "$ink-soft",
+                  "content": "清空旧 metadata，显示重试",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "qoFVE",
+                  "name": "Artifact Matrix Action Unavailable",
+                  "fill": "$accent-strong",
+                  "content": "重试读取",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "inY6a",
+                  "name": "Artifact Matrix Boundary Unavailable",
+                  "fill": "$ink-soft",
+                  "content": "不泄漏授权或对象存在性",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kuesz",
+              "name": "Artifact Matrix Row Disclosure closed",
+              "width": "fill_container",
+              "height": 112,
+              "fill": "$surface",
+              "stroke": "$line",
+              "strokeWidth": {
+                "top": 1
+              },
+              "gap": 18,
+              "padding": [
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wChwW",
+                  "name": "Artifact Matrix State Disclosure closed",
+                  "fill": "$ink",
+                  "content": "Disclosure closed",
+                  "fontFamily": "$font-data",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "FOzFd",
+                  "name": "Artifact Matrix Metadata Disclosure closed",
+                  "fill": "$ink-soft",
+                  "content": "metadata 仍可见，下载面板保持关闭",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "F6zBpN",
+                  "name": "Artifact Matrix Action Disclosure closed",
+                  "fill": "$accent-strong",
+                  "content": "查看披露说明",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "B5fYMy",
+                  "name": "Artifact Matrix Boundary Disclosure closed",
+                  "fill": "$ink-soft",
+                  "content": "对象键与 metadata JSON 不入浏览器",
+                  "fontFamily": "$font-body",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "KhFFd",
+          "name": "Artifact Matrix Review Note",
+          "width": "fill_container",
+          "fill": "$accent-soft",
+          "cornerRadius": "$radius-md",
+          "padding": [
+            15,
+            18
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "M0HRY",
+              "name": "Artifact Matrix Review Note Text",
+              "fill": "$ink",
+              "content": "Implementation must validate exact 64-character SHA-256 IDs, clear stale metadata on any failed request, and keep body/download routes unavailable until a separately reviewed authorization design exists.",
+              "fontFamily": "$font-body",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

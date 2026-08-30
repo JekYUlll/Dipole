@@ -30,7 +30,8 @@ const requiredFrames = [
   'Agent Repair/Desktop/Proposed', 'Agent Repair/Mobile/Approval',
   'Agent Elicitation/Desktop/Form', 'Agent Elicitation/Mobile/Form',
   'Agent Subscription/Desktop/Manage', 'Agent Subscription/Mobile/Revoke',
-  'Agent Memory/Desktop/Manage', 'Agent Memory/Mobile/Revoke'
+  'Agent Memory/Desktop/Manage', 'Agent Memory/Mobile/Revoke',
+  'Agent Artifact/Desktop/Metadata', 'Agent Artifact/Mobile/Metadata', 'Agent Artifact/State Matrix'
 ]
 const missing = requiredFrames.filter(name => !names.has(name))
 if (missing.length > 0) fail(`required design frames are missing: ${missing.join(', ')}`)

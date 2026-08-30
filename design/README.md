@@ -112,6 +112,17 @@ Vue 实现位于 `frontend/src/components/AgentTaskTimeline.vue`，路由为 `/a
 
 Vue 实现位于 `frontend/src/components/AgentDefinitionCatalog.vue`，路由为 `/agent/definitions`，由 `VITE_AGENT_DEFINITIONS_ENABLED=true` 显式启用。Chromium visual baseline 位于 `frontend/e2e/agent-definitions.visual.spec.ts`，受控 fixture 只固定低敏 Definition metadata；它不能替代 active Runtime、写 Capability、跨浏览器或真实共享环境验收。
 
+### Agent Artifact Metadata v1
+
+- `Agent Artifact/Desktop/Metadata`：owner-scoped 的只读 Artifact metadata 页面，展示类型、版本、标题、媒体类型、大小、Task/Run、创建时间和内容寻址摘要。
+- `Agent Artifact/Mobile/Metadata`：390x844 单列布局，保留 Timeline 返回入口、metadata 状态和正文披露边界。
+- `Agent Artifact/State Matrix`：覆盖 loading、ready、unavailable/retry 和 disclosure closed；读取失败必须清空旧 metadata。
+- `Component/Agent Artifact Disclosure` 与 `Component/Agent Artifact Integrity`：固定“正文、对象键与下载保持关闭”和 SHA-256 content address 的只读语义。
+
+批准的 2x 预览位于 `exports/agent-artifact-v1/`。页面不会显示正文、对象键、metadata JSON、公开 URL、下载或写入控制；未来正文/下载需要独立的对象访问授权、披露策略和设计切片。
+
+Vue 实现位于 `frontend/src/components/AgentArtifactMetadata.vue`，路由为 `/agent/artifacts/:artifactId`，由 `VITE_AGENT_ARTIFACTS_ENABLED=true` 显式启用。Timeline 只在 `kind=artifact` 和 64 位内容寻址 ID 同时成立时提供跳转；Chromium visual baseline 只固定受控 metadata fixture，不能替代共享环境或下载授权验收。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。

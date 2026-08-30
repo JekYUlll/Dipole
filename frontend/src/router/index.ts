@@ -43,6 +43,15 @@ const router = createRouter({
         : { name: 'chat' },
     },
     {
+      path: '/agent/artifacts/:artifactId',
+      name: 'agent-artifact',
+      component: () => import('@/views/AgentArtifactView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
       path: '/agent/subscriptions',
       name: 'agent-subscriptions',
       component: () => import('@/views/AgentSubscriptionsView.vue'),

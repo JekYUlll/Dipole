@@ -20,6 +20,8 @@
 
 ### 新增
 
+- 增加 Agent Artifact metadata desktop/mobile 页面、loading/ready/unavailable/disclosure-closed 状态矩阵和 `exports/agent-artifact-v1/` 批准预览。
+- 增加 Artifact Disclosure 与 Integrity 两个可复用组件；设计固定只披露 owner-scoped metadata 和内容寻址摘要，正文、对象键、metadata JSON、下载与写控制继续关闭。
 - 增加 Agent Definition Catalog desktop/mobile 目录、loading/empty/unavailable/pagination 状态矩阵和只读 Runtime 边界，并归档 `exports/agent-definition-overview/` 和 `exports/agent-definition-v1/overview.png`。
 - 增加 Agent Definition Row、Scope Chip 和 Status 三个可复用组件；目录设计不提供创建、编辑、激活、删除、模型或 Tool 控制，也不披露 owner、tenant、内部 provenance 或参数。
 - 增加 Agent Task Timeline desktop/mobile 事件历史和四态矩阵，明确 revision、序号、Capability、状态与低敏 provenance 的只读边界，并归档 `exports/agent-timeline-overview/` 和全画布 `exports/agent-timeline-v1/overview.png`。

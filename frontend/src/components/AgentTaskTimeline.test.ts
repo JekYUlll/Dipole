@@ -35,4 +35,11 @@ describe('AgentTaskTimeline', () => {
     expect(wrapper.find('[data-agent-timeline-retry]').exists()).toBe(true)
     expect(wrapper.find('[data-event-seq]').exists()).toBe(false)
   })
+
+  it('links only validated Artifact events to the metadata surface', async () => {
+    const getTimeline = vi.fn().mockResolvedValue({ schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 2, events: [{ eventSeq: '1', eventId: 'EV-1', taskId: 'TASK-1', runId: 'RUN-1', kind: 'artifact', status: 'created', artifactId: 'a'.repeat(64), occurredAtUnixMs: 1_000 }], nextCursor: '' })
+    const wrapper = mount(AgentTaskTimeline, { props: { taskId: 'TASK-1', client: { getTimeline, getTask: vi.fn(), provideInput: vi.fn(), resolveApproval: vi.fn(), cancelTask: vi.fn() } }, global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } } })
+    await flushPromises()
+    expect(wrapper.get('.artifact-link').text()).toBe('查看 Artifact metadata')
+  })
 })
