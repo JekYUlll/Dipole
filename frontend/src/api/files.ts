@@ -60,7 +60,14 @@ function parseItem(raw: unknown): OwnedFileDirectoryItem {
       typeof raw.download_path !== 'string' || raw.download_path !== `/api/v1/files/${raw.file_id}/download`) {
     throw new Error('file directory item is invalid')
   }
-  return raw as OwnedFileDirectoryItem
+  return {
+    file_id: raw.file_id,
+    file_name: raw.file_name,
+    file_size: raw.file_size,
+    content_type: raw.content_type,
+    created_at: raw.created_at,
+    download_path: raw.download_path,
+  }
 }
 
 function exactKeys(value: Record<string, unknown>, allowed: Set<string>) {
