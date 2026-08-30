@@ -47,7 +47,7 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 	})
 
 	uploader := &MinIOUploader{client: client, core: minio.Core{Client: client}, bucket: bucket}
-	first := []byte("replacement part")
+	first := bytes.Repeat([]byte("r"), 5*1024*1024)
 	second := []byte("second part")
 	upload, err := uploader.InitiateMessageMultipartUpload(ctx, "multipart-integration.bin", "application/octet-stream")
 	if err != nil {
@@ -59,7 +59,8 @@ func TestMinIOMultipartUploadLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("upload part two: %v", err)
 	}
-	if _, err := uploader.UploadMultipartPart(ctx, upload.ObjectKey, upload.UploadID, 1, bytes.NewReader([]byte("stale part")), int64(len("stale part"))); err != nil {
+	stale := bytes.Repeat([]byte("s"), 5*1024*1024)
+	if _, err := uploader.UploadMultipartPart(ctx, upload.ObjectKey, upload.UploadID, 1, bytes.NewReader(stale), int64(len(stale))); err != nil {
 		t.Fatalf("upload stale part one: %v", err)
 	}
 	partOne, err := uploader.UploadMultipartPart(ctx, upload.ObjectKey, upload.UploadID, 1, bytes.NewReader(first), int64(len(first)))
