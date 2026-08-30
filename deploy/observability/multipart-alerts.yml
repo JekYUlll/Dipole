@@ -16,6 +16,14 @@ groups:
         annotations:
           summary: Multipart checksum mismatches were detected
 
+      - alert: DipoleMultipartPartRetries
+        expr: sum by (operation) (increase(dipole_multipart_operations_total{outcome="retry"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Multipart part retries are recurring
+
       - alert: DipoleMultipartOperationLatencyHigh
         expr: histogram_quantile(0.95, sum by (le, operation) (rate(dipole_multipart_operation_duration_seconds_bucket[10m]))) > 30
         for: 10m
