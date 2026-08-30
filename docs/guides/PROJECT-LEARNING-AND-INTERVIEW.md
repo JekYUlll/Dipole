@@ -78,6 +78,7 @@
 | Receipt Commit Promotion Compose Gate | **已验证（本地）** | 受控渲染 active + promotion overlay，确认写入前的多重静态开关与 authority | `scripts/check-compose.sh`；“Compose 通过能证明写权限安全吗？” |
 | Receipt Commit mTLS RPC Drill | **已验证（隔离 Remote GPU）** | 用 Go fixture 与 TS generated client 验证跨语言 prepared receipt 的 mTLS 提交 | `scripts/drill-agent-memory-promotion-rpc.sh`；“fixture 能证明真实写入吗？” |
 | Receipt Commit MySQL Contract | **已验证（隔离 Remote GPU）** | 使用临时 MySQL 验证 receipt 到持久 candidate/review 和 Memory 事务的完整约束 | `scripts/test-agent-memory-promotion-mysql-contract.sh`；“为何还需要 mTLS/Temporal 演练？” |
+| MinIO Multipart 与可恢复上传 | **已验证（隔离 Remote GPU）** | 上传超过阈值的文件，展示分片、暂停、恢复与完成；预签名直传维持候选状态 | [大文件上传计划](../architecture/PLATFORM-EVOLUTION-PLAN.md)；“为什么还不默认切到预签名直传？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
 | Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件以内容寻址 ID 打开 owner-scoped metadata 页面，并固定正文与下载关闭边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、`frontend/src/components/AgentArtifactMetadata.vue`、`frontend/e2e/agent-artifact.spec.ts`；认证读取已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
@@ -204,6 +205,18 @@
 - **限制：** 此测试使用 stubbed commit Activity，不连接真实 Core、grant 或共享 Kafka/Temporal，因此不能代替共享环境重放、撤销与回滚演练。
 - **复核条件：** 改动 Workflow retry、receipt schema、Core 回包绑定或 Activity mode 时。
 
+#### 2026-08-30 · MinIO Multipart 与可恢复上传
+
+- **状态：** 已验证（隔离 Remote GPU）
+- **简历句：** 基于 MinIO S3 Multipart Upload 实现大文件分片、校验、暂停恢复、会话续传、Redis/对象存储对账与生命周期清理，并以版本化策略保持预签名直传默认关闭且可即时回切。
+- **对外表述：** 文件数据面交给对象存储，Core 保留上传会话、文件所有权、ETag/大小登记和完成事务。浏览器按文件指纹恢复已确认分片，网络异常与 `408`、`429`、`5xx` 执行有界退避，确定的预签名 `4xx` 立即失败。
+- **演示：** 在隔离环境运行 `scripts/smoke-minio-multipart.sh` 与 `scripts/smoke-minio-multipart-restart.sh`，展示乱序分片、同编号替换、服务重启后续传、完成内容校验和重复 Abort；前端执行 `npm test -- --run src/upload/multipartUpload.test.ts`。
+- **证据：** [平台演进计划 A7](../architecture/PLATFORM-EVOLUTION-PLAN.md)、[架构债务 AD-055](../architecture/ARCHITECTURE-DEBT.md)、`internal/services/core/domain/file/file_service.go`、`frontend/src/upload/multipartUpload.ts`、`scripts/smoke-minio-multipart.sh`。
+- **追问：** “为什么预签名直传仍然默认关闭？” 对象存储跨域/同源代理、URL 失效、断网恢复、限流、超时和回切必须完成同版本故障矩阵；当前 relay 仍是权威兼容路径。
+- **限制：** 浏览器调度的断连、限流、服务端 `5xx` 与永久 `4xx` 已有单元证据，真实代理断网、跨网络恢复、共享环境告警路由和默认直传切流仍未验收。
+- **下一步：** 在隔离环境补齐 presigned proxy 的浏览器级网络故障矩阵，并归档切流前的 shadow、回切和负责人批准证据。
+- **复核条件：** 修改文件阈值、分片大小、重试策略、URL TTL、对象存储、Gateway proxy 或默认上传策略时。
+
 #### 2026-08-30 · Artifact 与 Task Timeline 关联
 
 - **状态：** 已验证（本地）
@@ -272,6 +285,7 @@ Dipole 是一个面向实时协作与 Agent 能力演进的现代 IM 平台：Go
 Dipole 现代 IM 平台 | Go, sqlc, MySQL, Kafka, Redis, Cassandra, Elasticsearch, MinIO, WebSocket
 - 设计消息幂等、Transactional Outbox 与 Kafka 事件链路，按 Message、Conversation 和 Sync Timeline 分离事实存储、用户会话状态与多端增量同步。
 - 将 Core、Gateway、Message、Sync、Search 抽象为可独立部署的服务边界，保留 embedded 兼容路径，并以 gRPC、版本化契约、Shadow、回滚和故障演练推进迁移。
+- 基于 MinIO S3 Multipart Upload 实现大文件分片、校验、暂停恢复、会话续传、生命周期清理与 Redis/对象存储对账；预签名直传通过版本化策略保持默认关闭和可回切。
 - 面向热点群采用 notify + pull 与增量 Timeline；基准记录 100 成员场景的投递、Kafka lag、Inbox 写放大和端到端延迟，性能结论均以归档报告为准。
 ```
 
@@ -321,6 +335,7 @@ Dipole 是我持续迭代的现代 IM 项目。核心消息链路由 Go 服务�
 | Sync Timeline | 将历史、会话状态和用户同步流拆开，避免用 `messages.id` 同时承担所有语义 | [消息存储与同步模型](../architecture/MESSAGE-STORAGE-AND-SYNC.md)、[Sync Service](../architecture/SYNC-SERVICE.md) |
 | 可靠消息 | 通过 Outbox 缩小“已落库但未发布”缺口，consumer 依赖幂等和重试边界 | [Kafka 事件契约](../data/KAFKA-EVENT-CONTRACT.md)、[面试问答](INTERVIEW-QA.md) |
 | 热点群 | 在完整 push 与 notify + pull 之间按负载切换，接受客户端补拉复杂度以控制扇出 | [Realtime Delivery](../architecture/REALTIME-DELIVERY.md)、[性能基线](../performance/PERFORMANCE-BASELINE.md) |
+| 大文件上传 | 将对象存储的 multipart 数据面与 Core 的会话、授权和完成事务分开，先以 relay 保持兼容，再用策略、重试分类和 smoke 逐步验证直传候选 | [平台演进计划](../architecture/PLATFORM-EVOLUTION-PLAN.md)、[架构债务台账](../architecture/ARCHITECTURE-DEBT.md) |
 | 渐进微服务 | 接口、契约、Shadow、独立入口和 embedded 回滚并存，降低一次性拆分风险 | [服务边界](../architecture/SERVICE-BOUNDARIES.md)、[微服务部署](../architecture/MICROSERVICES-DEPLOYMENT.md) |
 | Agent 安全 | ExecutionContext 和 Capability policy 位于模型外层，Tool 与权限分离 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、[MCP 授权](../agent/agent-mcp-authorization.md) |
 | Agent 可恢复执行 | Temporal 保存任务状态，人工输入与审批可恢复；模型输出仍受审计和预算约束 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、[Active 部署运行手册](../agent/AGENT-ACTIVE-DEPLOYMENT.md) |
@@ -355,6 +370,10 @@ Workflow 先通过 Core 创建持久 Approval，再进入 `waiting_approval`。S
 ### 为什么从 GORM 迁移到 SQLC？
 
 消息、同步和投影的关键路径需要明确 SQL、索引、锁语义和跨服务可复用的数据契约。SQLC 让查询、参数和结果类型在编译期绑定，便于审查 MySQL 事务边界、迁移版本和最小权限授权；Go 服务继续把领域规则放在 application 层。这个选择也让后续多语言服务能够共享 protobuf、SQL schema 与数据库所有权约束，而不依赖某个语言的 ORM 行为。
+
+### 为什么预签名 Multipart 直传仍然默认关闭？
+
+直传可以降低 Core 的大文件带宽与连接占用，但它还依赖对象存储 CORS 或同源代理、短期 URL 刷新、客户端断网恢复、限流、超时、生命周期清理与跨存储对账。当前 relay 路径已具备 MinIO Multipart、暂停恢复、session 续传和可观测性，预签名路径作为受版本化策略保护的候选实现保留。切换前需要同版本故障矩阵、隔离环境 smoke、责任人批准和可执行回切证据。
 
 ### 远程部署和压力测试怎样避免“本地能跑”的伪证据？
 
