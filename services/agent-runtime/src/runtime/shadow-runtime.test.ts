@@ -11,7 +11,7 @@ describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
-      modelProvider: { kind: "disabled" }, contextCompilerVersion: "v1", memoryEnabled: false, retrievalEnabled: false,
+      modelProvider: { kind: "disabled" }, contextCompilerVersion: "v1", memoryEnabled: false, retrievalEnabled: false, retrievalContextEnabled: false,
       triggerMode: "direct_target", capabilityRpc: { enabled: false }
     });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
@@ -50,6 +50,7 @@ describe("shadow runtime composition", () => {
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_MODEL_MODE: "ai_sdk" })).toThrow(/model routes/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_MEMORY_ENABLED: "true" })).toThrow(/Memory.*AI SDK/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RETRIEVAL_ENABLED: "true" })).toThrow(/retrieval.*AI SDK/i);
+    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "true" })).toThrow(/retrieval Context.*retrieval/i);
     expect(() => loadShadowRuntimeConfig({
       DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "provider/model"
     })).toThrow(/persistent MySQL model audit/);
@@ -79,11 +80,13 @@ describe("shadow runtime composition", () => {
       DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
       DIPOLE_AGENT_MEMORY_ENABLED: "true",
       DIPOLE_AGENT_RETRIEVAL_ENABLED: "true",
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "true",
       DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]'
     })).toMatchObject({
       modelMode: "ai_sdk",
       memoryEnabled: true,
       retrievalEnabled: true,
+      retrievalContextEnabled: true,
       contextCompilerVersion: "v2",
       modelRoutes: ["openai/gpt-5-mini", "openai/gpt-5-nano"],
       modelProvider: { kind: "openai_compatible", name: "openai", baseURL: "https://gateway.example.test/v1" },

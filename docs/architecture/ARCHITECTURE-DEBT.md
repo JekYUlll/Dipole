@@ -12,6 +12,8 @@
 
 - 2026-08-31：`conversation.search` 已完成 Core/Proto/TS 契约，严格从 Task/Run 恢复 principal，独立检查 permission 与 wildcard read scope，并将 query、结果和正文限制为有界 `untrusted` evidence。Runtime 现以默认关闭的 `DIPOLE_AGENT_RETRIEVAL_ENABLED` 将该 Capability 装配到 AI SDK Shadow/Temporal read 路径；关闭时 Registry、模型 allowlist 与执行 Context 均不包含 search。生产 Elasticsearch、跨会话灰度与完整 Context Compiler retrieval orchestration 继续关闭。
 
+- 2026-08-31：Planner 新增默认关闭的 retrieval-to-Context 编排。独立开关只接受当前消息正文的有界查询，经 Core Capability 返回最多 8 条命中并以 query hash、message ID、会话与 sequence provenance 作为 `untrusted` evidence；解析/检索异常会在模型调用前 fail closed。真实 Search assembly、共享 shadow 观察、跨会话/向量检索和生产切流仍未完成。
+
 - 2026-08-31：Remote GPU 全量 Go 门禁发现 legacy Eino 测试桩未随 `AgentCapabilityV1.SearchConversations` 扩展，现已补齐受控返回/调用记录并增加编译期接口断言。该修复只恢复测试契约，Runtime 默认检索开关与生产搜索路径不变。
 
 - 2026-08-30：固定 Agent 检索 Context 的 fail-closed 边界。`dipole-agent` 不获得 Search 直连身份；后续由 Core Agent Capability 从 Task/Run 恢复 principal、permission 和 scope 后调用检索，结果只能进入有界 `untrusted` evidence。Core/Proto/TS 契约尚待实现，生产 Elasticsearch、默认启用和跨会话检索继续关闭。
