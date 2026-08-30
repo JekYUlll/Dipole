@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：远端基础镜像经一次性流式导入后，隔离 `smoke-lite` 在提交 `f227401a` 上完整通过；MySQL、Redis、Kafka、MinIO、Core、Message、Sync、Gateway 均 healthy，Gateway readiness、认证代理和可选服务隔离检查通过。脚本退出后自动清理，无本项目容器或卷残留；现有 GPU 任务未被操作，完整基线压测仍单独排队。
+
 - 2026-08-30：在用户明确授权 GPU 任务并行的前提下，Remote GPU 对 `c09334f0` 完成提交绑定 Go 编译和 8 个微服务镜像构建；Go 镜像构建上下文实测约 `688MB`，未启动或影响现有 GPU 任务。隔离 `smoke-lite` 已完成 preflight/证书阶段，但首次拉取 MySQL 基础镜像耗时过长后安全中止；Compose trap 清理后无本项目容器或卷残留，完整 Smoke 与负载测试继续待镜像缓存或受控代理条件。
 
 - 2026-08-30：修复 Go 微服务镜像最小上下文切换中的变量引用错误，并以脚本契约测试锁定 `root_dir/dist`；首次远端实测的 fail-closed 结果已记录，未启动容器。

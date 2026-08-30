@@ -1125,6 +1125,7 @@
 - **远端 Smoke 证据：** 2026-08-30 在明确授权允许 GPU 任务并行的情况下运行隔离 `smoke-lite`；preflight、证书生成和项目隔离通过，随后因 Docker registry mirror 对缺失的 `dipole-core:latest` 返回 `403 Forbidden` 退出，trap 已清理隔离容器/卷，未触碰其他项目或 GPU 进程。该失败暴露远端需要先构建提交绑定服务镜像的流程缺口。
 - **远端构建修复：** `scripts/remote-dev.sh build` 现先执行 `scripts/docker-build.sh backend` 生成提交绑定 Go 二进制，再执行逐服务镜像构建；入口契约测试 `5/5`、shell 语法和 diff 检查通过。下一次 Smoke 仍需验证基础镜像缓存/registry 可用性，真实负载和故障矩阵保持未完成。
 - **最新远端构建与 Smoke 证据：** 2026-08-30 在提交 `c09334f0` 使用用户态 Go 1.27.0 完成 Go 二进制和 8 个微服务镜像构建；镜像构建上下文约 `688MB`。随后隔离 `smoke-lite` 完成资源 preflight、内部证书生成和项目隔离，但首次拉取 MySQL 基础镜像耗时过长后安全中止；Compose trap 已清理本项目容器/卷，远端 GPU 进程仍保持运行。完整 Smoke、真实服务 readiness 和基线压测仍待镜像缓存或受控下载条件。
+- **Smoke 完成证据：** 2026-08-30 将 `mysql:8.4` 通过一次性 SSH 流式导入远端后，在提交 `f227401a` 对隔离 Compose project 重跑 `smoke-lite`；MySQL、Redis、Kafka、MinIO、Core、Message、Sync、Gateway 全部 healthy，Gateway readiness、认证代理和可选服务隔离通过。退出清理核验无该 project 容器或卷残留，完整基线压测、故障注入和共享环境证据仍待完成。
 - **构建上下文优化：** Go 服务镜像 Dockerfile 改为从 `dist/` 上下文复制指定二进制，构建脚本不再为每个镜像发送根目录上下文；契约测试覆盖上下文和 COPY 关系。Agent/C++ 镜像上下文保持独立，远端实际构建需进一步确认上下文大小与耗时收益。
 - **变量修复证据：** 首次远端实测发现上下文切换代码引用未定义的大写变量 `ROOT_DIR`，在镜像构建前 fail-closed；已改为脚本实际定义的 `root_dir`，6 项入口契约/语法测试通过，未产生错误镜像或容器。下一次远端 build 负责确认最小上下文实测值。
 - **TencentCloud 占用证据：** 同次只读核验发现已有 `nkdoing-app` 容器占用公网 `80`、`nkdoing-postgres` 绑定本机 `5432`，宿主 MySQL 监听 `3306`；因此 TencentCloud 只能在明确端口、Compose project、卷和业务影响隔离后执行轻量 smoke，不能视为干净测试主机。
