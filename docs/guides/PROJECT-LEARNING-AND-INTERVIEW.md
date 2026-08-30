@@ -106,6 +106,16 @@
 - **限制：** 当前通过的是本地契约与 CLI；没有任何共享环境提交、grant 撤销或回滚运行记录，因此默认写路径继续关闭。
 - **复核条件：** 修改 receipt、grant、Worker profile、Core 入口或演练标准时。
 
+#### 2026-08-30 · Temporal Receipt Commit Retry
+
+- **状态：** 已验证（隔离 Temporal）
+- **对外表述：** 为 reviewed Memory receipt 的 durable Workflow 补充临时提交失败重试：Temporal 会重用同一 prepared receipt，最终仅记录与 receipt hash 对应的低敏 Memory binding。
+- **演示：** 启用 `DIPOLE_AGENT_TEMPORAL_INTEGRATION=true` 运行 promotion workflow integration test，观察首个 commit Activity 故意失败一次后由重试收敛为 completed。
+- **证据：** `services/agent-runtime/src/temporal/agent-memory-promotion-workflow.integration.test.ts`、`services/agent-runtime/src/temporal/agent-task-workflow.ts`。
+- **追问：** “为什么重试不会重复写入？” Worker 重试复用同一 receipt；Core 的 candidate/review promotion 事务对同一 binding 幂等，重复提交应返回同一 Memory。集成测试固定 Worker 侧 receipt 一致性，Core 事务幂等由 Go 合约测试覆盖。
+- **限制：** 此测试使用 stubbed commit Activity，不连接真实 Core、grant 或共享 Kafka/Temporal，因此不能代替共享环境重放、撤销与回滚演练。
+- **复核条件：** 改动 Workflow retry、receipt schema、Core 回包绑定或 Activity mode 时。
+
 #### 2026-08-30 · Artifact 与 Task Timeline 关联
 
 - **状态：** 已验证（本地）
