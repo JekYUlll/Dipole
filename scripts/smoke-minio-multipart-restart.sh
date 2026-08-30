@@ -5,6 +5,15 @@ root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 container="dipole-minio-multipart-restart-${RANDOM}-$$"
 volume="${container}-data"
 port="${DIPOLE_MINIO_MULTIPART_PORT:-$((21000 + RANDOM % 1000))}"
+
+if [[ -n "${DIPOLE_REMOTE_GO_ROOT:-}" ]]; then
+  [[ -x "${DIPOLE_REMOTE_GO_ROOT}/bin/go" ]] || {
+    echo "configured DIPOLE_REMOTE_GO_ROOT does not contain an executable Go binary" >&2
+    exit 2
+  }
+  export PATH="${DIPOLE_REMOTE_GO_ROOT}/bin:${PATH}"
+  export GOTOOLCHAIN="${GOTOOLCHAIN:-local}"
+fi
 marker_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-multipart-restart.XXXXXX")
 ready_file="${marker_dir}/ready"
 resume_file="${marker_dir}/resume"
