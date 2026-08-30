@@ -2,7 +2,7 @@
 
 本文仅用于开发环境，不承诺生产容量，也不替代共享环境发布审批。
 
-Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链，避免修改系统 Go。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
+Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链，依赖源可通过 `DIPOLE_REMOTE_GOPROXY` 指向受控缓存代理，避免修改系统 Go 和远端网络配置。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
 
 ## 环境选择
 
