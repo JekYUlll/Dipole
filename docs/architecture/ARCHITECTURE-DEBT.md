@@ -10,6 +10,7 @@
 
 ### 本轮进展
 
+- 2026-08-30：架构文档门禁新增索引相对链接校验，覆盖项目、Agent 和契约入口；该检查只验证本地导航存在性，不替代 Schema、运行时和共享环境证据。
 - 2026-08-30：新增 `contracts/README.md` 顶层契约索引并从 README/Agent 文档入口链接，降低跨服务协议发现和版本漂移风险；契约索引只改善治理与导航，不改变各 Agent 能力默认关闭及共享环境证据门槛。
 - 2026-08-30：Agent 文档已增加独立入口 `docs/agent/README.md`，统一 Runtime 边界、默认开关、验收顺序和真实环境证据边界；该整理降低文档入口漂移风险，但不改变共享环境证据、active authority 或外部 MCP 的未完成状态。
 - 2026-08-30：直接 Multipart smoke 脚本现已尊重显式 `DIPOLE_REMOTE_GO_ROOT`，无效路径 fail-closed 并禁止隐式 Go toolchain 下载；Remote GPU 使用用户态 Go `1.27.0` 复跑基础与 restart smoke 均通过。完整浏览器断网、过期会话、网关限流、代理超时及跨存储故障矩阵仍待完成。
