@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：为 reviewed Memory receipt 增加可注入的 Temporal commit Activity。Workflow 仅在显式 `commit=true` 的受控输入完成后提交 prepared receipt，基础 Worker 固定拒绝；Activity 只转发 receipt 与 correlation 至 active RPC client，持久化结果只保留低敏 binding。Worker 组合、Core bootstrap、Compose profile 和自动写入保持关闭。
+
 - 2026-08-30：收紧 `CommitMemoryPromotionReceipt` 的返回契约为低敏 receipt response，移除 `AgentOwnedMemory` 中的正文、资源与 owner 字段；TS active client 会先校验 receipt v2，再复核 Memory ID、类型、状态、provenance 和 receipt hash。默认 Worker、Temporal Activity、Core bootstrap 和自动写入继续关闭。
 
 - 2026-08-30：新增 `CommitMemoryPromotionReceipt` 内部 protobuf/gRPC seam，仅允许认证的 `dipole-agent` 调用并由 Core caller policy 放行；未注入 commit service 时 fail closed 为 `Unavailable`。Gateway owner RPC 不获得该方法，Temporal Activity、Runtime client、Core bootstrap 和自动写入开关继续关闭。

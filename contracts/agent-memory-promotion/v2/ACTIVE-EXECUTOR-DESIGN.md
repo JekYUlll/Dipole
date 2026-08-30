@@ -41,7 +41,7 @@ expires_at
 
 ## 生命周期与回滚
 
-Temporal Workflow 先持久化 `prepared` receipt，再调用提交 Activity。Activity 由 Temporal 重试；Core promotion 的既有唯一性保证处理 crash-after-commit。成功后 Workflow 只记录低敏 `committed` 结果，失败保留 `prepared` receipt 和固定错误分类，供人工 owner/Gateway 路径重新审核。
+Temporal Workflow 先持久化 `prepared` receipt，再在受控输入显式请求 `commit=true` 后调用提交 Activity。Activity 由 Temporal 重试；Core promotion 的既有唯一性保证处理 crash-after-commit。成功后 Workflow 只记录低敏 `committed` 结果，失败保留 `prepared` receipt 和固定错误分类，供人工 owner/Gateway 路径重新审核。基础 Worker 的同名 Activity 固定拒绝，只有未来经过 active authority 审核的组合根才能注入 RPC Activity。
 
 默认配置不注册该 Activity、不放行该 RPC，也不创建 Network/Provider/Memory 写副作用。回滚删除 active Runtime overlay 或关闭专用开关即可恢复 receipt-only 行为；已提交的 owner-reviewed Memory 保持可审计和可撤销。
 

@@ -8,6 +8,7 @@ import {
   type AgentMemoryPromotionIntent,
   type AgentMemoryPromotionReceipt
 } from "../memory/agent-memory-promotion-receipt.js";
+import type { AgentMemoryPromotionReceiptCommitResult } from "../capabilities/agent-capability-rpc.js";
 
 export interface AgentTaskActivityInput extends AgentTaskWorkflowInput {
   runId: string;
@@ -20,8 +21,15 @@ export interface AgentMemoryPromotionReceiptActivityInput extends AgentMemoryPro
   readonly createdAt: string;
 }
 
+export interface AgentMemoryPromotionReceiptCommitActivityInput {
+  readonly receipt: AgentMemoryPromotionReceipt;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}
+
 export interface AgentMemoryPromotionActivities {
   prepareAgentMemoryPromotion(input: AgentMemoryPromotionReceiptActivityInput): Promise<AgentMemoryPromotionReceipt>;
+  commitPreparedAgentMemoryPromotion(input: AgentMemoryPromotionReceiptCommitActivityInput): Promise<AgentMemoryPromotionReceiptCommitResult>;
 }
 
 export type AgentTaskDirective =
@@ -82,6 +90,9 @@ export const foundationAgentTaskActivities: AgentTaskWorkerActivities & AgentMem
   async prepareAgentMemoryPromotion(input: AgentMemoryPromotionReceiptActivityInput): Promise<AgentMemoryPromotionReceipt> {
     const { createdAt, ...intent } = input;
     return createAgentMemoryPromotionReceipt(intent, new Date(createdAt));
+  },
+  async commitPreparedAgentMemoryPromotion(): Promise<AgentMemoryPromotionReceiptCommitResult> {
+    throw new Error("Temporal Agent Memory promotion commit Activity is not enabled");
   },
   async executeAgentTaskStep(): Promise<AgentTaskDirective> {
     return { kind: "failed", message: "Temporal Agent Task execution is not connected" };
