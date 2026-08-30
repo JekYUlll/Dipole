@@ -18,6 +18,7 @@
 
 ## [Unreleased]
 
+- Dipole 文档主标升级为 `Signal Link` SVG：实心端点、空心端点与连续连接轨迹在 README、架构材料和小尺寸入口中保持可读；新增独立方形应用图标，并移除深青/橙色混搭。该变更只影响品牌呈现。
 - 移除遗留单色蓝色 PNG 主标，README 与文档入口统一使用深青色 Signal SVG 视觉系统；双极与橙色事件脉冲继续表达实时协作链路。本项只影响品牌呈现。
 
 - 修复 Gateway 服务入口 `RunServer` 递归调用自身的迁移回归，改为委托服务自有 `RunGatewayServer`；新增架构测试锁定入口委托关系，HTTP/WS 与 TLS 启动路径已通过验证。

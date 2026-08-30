@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="420" height="160" viewBox="0 0 420 160" role="img" aria-labelledby="title desc">
   <title id="title">Dipole IM</title>
-  <desc id="desc">Connected message nodes for the Dipole IM project.</desc>
-  <rect width="420" height="160" rx="26" fill="#edf6f8"/>
-  <path d="M70 89 H184 M236 89 H350" stroke="#1c6b8a" stroke-width="8" stroke-linecap="round"/>
-  <path d="M184 89 L207 66 L236 89 L207 112 Z" fill="#e47a36"/>
-  <circle cx="54" cy="89" r="28" fill="#0c354c"/>
-  <circle cx="366" cy="89" r="28" fill="#0c354c"/>
-  <text x="128" y="47" fill="#102f40" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="26" font-weight="700">DIPOLE IM</text>
-  <text x="128" y="138" fill="#4e6877" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="17" font-weight="600">MESSAGE / SYNC / DELIVERY</text>
+  <desc id="desc">Dipole IM mark with linked message endpoints.</desc>
+  <rect width="420" height="160" rx="26" fill="#f7f9fd"/>
+  <g aria-hidden="true">
+    <circle cx="74" cy="104" r="26" fill="#2d63e8"/>
+    <circle cx="118" cy="61" r="22" fill="#f7f9fd" stroke="#2d63e8" stroke-width="9"/>
+    <path d="M91 99C90 80 98 69 108 66" fill="none" stroke="#2d63e8" stroke-width="9" stroke-linecap="round"/>
+  </g>
+  <text x="166" y="75" fill="#14233d" font-family="Avenir Next, Manrope, Noto Sans SC, sans-serif" font-size="29" font-weight="700" letter-spacing="1">DIPOLE IM</text>
+  <text x="168" y="108" fill="#58708e" font-family="Avenir Next, Manrope, Noto Sans SC, sans-serif" font-size="14" font-weight="700" letter-spacing="1.7">MESSAGE / SYNC / DELIVERY</text>
 </svg>
