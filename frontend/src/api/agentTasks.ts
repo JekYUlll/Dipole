@@ -64,6 +64,7 @@ export interface AgentTaskTimelineEvent {
   status: string
   capabilityId?: string
   approvalId?: string
+  artifactId?: string
   occurredAtUnixMs: number
 }
 
@@ -157,11 +158,13 @@ function parseAgentTaskTimelineEvent(raw: unknown): AgentTaskTimelineEvent {
       (raw.occurredAtUnixMs as number) <= 0) throw new Error('Agent Task Timeline event is invalid')
   if (raw.capabilityId !== undefined && !validIdentity(raw.capabilityId)) throw new Error('Agent Task Timeline capability is invalid')
   if (raw.approvalId !== undefined && !validIdentity(raw.approvalId)) throw new Error('Agent Task Timeline approval is invalid')
+  if (raw.artifactId !== undefined && (typeof raw.artifactId !== 'string' || raw.kind !== 'artifact' || !/^[a-f0-9]{64}$/.test(raw.artifactId))) throw new Error('Agent Task Timeline Artifact is invalid')
   return {
     eventSeq: raw.eventSeq as string, eventId: raw.eventId as string, taskId: raw.taskId as string, runId: raw.runId as string,
     kind: raw.kind as string, status: raw.status as string,
     ...(raw.capabilityId === undefined ? {} : { capabilityId: raw.capabilityId as string }),
     ...(raw.approvalId === undefined ? {} : { approvalId: raw.approvalId as string }),
+    ...(raw.artifactId === undefined ? {} : { artifactId: raw.artifactId as string }),
     occurredAtUnixMs: raw.occurredAtUnixMs as number,
   }
 }

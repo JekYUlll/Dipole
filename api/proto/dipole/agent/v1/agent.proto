@@ -195,6 +195,7 @@ message AgentTaskTimelineEvent {
   string capability_id = 7;
   string approval_id = 8;
   int64 occurred_at_unix_ms = 9;
+  string artifact_id = 10;
 }
 
 message ListAgentTaskTimelineResponse {
@@ -215,6 +216,7 @@ message AppendAgentTaskTimelineEventRequest {
   string capability_id = 7;
   string approval_id = 8;
   int64 occurred_at_unix_ms = 9;
+  string artifact_id = 10;
 }
 
 message AppendAgentTaskTimelineEventResponse {

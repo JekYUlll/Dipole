@@ -14,9 +14,9 @@ import (
 
 const enqueueAgentTaskTimelineRepair = `-- name: EnqueueAgentTaskTimelineRepair :execresult
 INSERT INTO agent_task_timeline_repairs (
-    event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at,
+    event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, artifact_uuid, occurred_at,
     repair_status, retry_count, last_error, next_retry_at, locked_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, CURRENT_TIMESTAMP(3), NULL)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, CURRENT_TIMESTAMP(3), NULL)
 ON DUPLICATE KEY UPDATE event_uuid = event_uuid
 `
 
@@ -28,6 +28,7 @@ type EnqueueAgentTaskTimelineRepairParams struct {
 	Status       string
 	CapabilityID sql.NullString
 	ApprovalUuid sql.NullString
+	ArtifactUuid sql.NullString
 	OccurredAt   time.Time
 	LastError    sql.NullString
 }
@@ -41,13 +42,14 @@ func (q *Queries) EnqueueAgentTaskTimelineRepair(ctx context.Context, arg Enqueu
 		arg.Status,
 		arg.CapabilityID,
 		arg.ApprovalUuid,
+		arg.ArtifactUuid,
 		arg.OccurredAt,
 		arg.LastError,
 	)
 }
 
 const getAgentTaskTimelineEvent = `-- name: GetAgentTaskTimelineEvent :one
-SELECT event_seq, event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at, created_at FROM agent_task_timeline_events
+SELECT event_seq, event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at, created_at, artifact_uuid FROM agent_task_timeline_events
 WHERE task_uuid = ? AND event_seq = ?
 LIMIT 1
 `
@@ -71,12 +73,13 @@ func (q *Queries) GetAgentTaskTimelineEvent(ctx context.Context, arg GetAgentTas
 		&i.ApprovalUuid,
 		&i.OccurredAt,
 		&i.CreatedAt,
+		&i.ArtifactUuid,
 	)
 	return i, err
 }
 
 const getAgentTaskTimelineEventByUUID = `-- name: GetAgentTaskTimelineEventByUUID :one
-SELECT event_seq, event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at, created_at FROM agent_task_timeline_events
+SELECT event_seq, event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at, created_at, artifact_uuid FROM agent_task_timeline_events
 WHERE event_uuid = ?
 LIMIT 1
 `
@@ -95,14 +98,15 @@ func (q *Queries) GetAgentTaskTimelineEventByUUID(ctx context.Context, eventUuid
 		&i.ApprovalUuid,
 		&i.OccurredAt,
 		&i.CreatedAt,
+		&i.ArtifactUuid,
 	)
 	return i, err
 }
 
 const insertAgentTaskTimelineEvent = `-- name: InsertAgentTaskTimelineEvent :execresult
 INSERT INTO agent_task_timeline_events (
-    event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, artifact_uuid, occurred_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON DUPLICATE KEY UPDATE event_seq = event_seq
 `
 
@@ -114,6 +118,7 @@ type InsertAgentTaskTimelineEventParams struct {
 	Status       string
 	CapabilityID sql.NullString
 	ApprovalUuid sql.NullString
+	ArtifactUuid sql.NullString
 	OccurredAt   time.Time
 }
 
@@ -126,12 +131,13 @@ func (q *Queries) InsertAgentTaskTimelineEvent(ctx context.Context, arg InsertAg
 		arg.Status,
 		arg.CapabilityID,
 		arg.ApprovalUuid,
+		arg.ArtifactUuid,
 		arg.OccurredAt,
 	)
 }
 
 const listAgentTaskTimelineEvents = `-- name: ListAgentTaskTimelineEvents :many
-SELECT event_seq, event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at, created_at FROM agent_task_timeline_events
+SELECT event_seq, event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at, created_at, artifact_uuid FROM agent_task_timeline_events
 WHERE task_uuid = ? AND event_seq > ?
 ORDER BY event_seq ASC
 LIMIT ?
@@ -163,6 +169,7 @@ func (q *Queries) ListAgentTaskTimelineEvents(ctx context.Context, arg ListAgent
 			&i.ApprovalUuid,
 			&i.OccurredAt,
 			&i.CreatedAt,
+			&i.ArtifactUuid,
 		); err != nil {
 			return nil, err
 		}
@@ -237,7 +244,7 @@ func (q *Queries) MarkAgentTaskTimelineRepairsProcessing(ctx context.Context, ar
 }
 
 const selectClaimableAgentTaskTimelineRepairs = `-- name: SelectClaimableAgentTaskTimelineRepairs :many
-SELECT event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at,
+SELECT event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, artifact_uuid, occurred_at,
        repair_status, retry_count, last_error, next_retry_at, locked_at, created_at, updated_at
 FROM agent_task_timeline_repairs
 WHERE ((repair_status = 'pending' AND (next_retry_at IS NULL OR next_retry_at <= CURRENT_TIMESTAMP(3)))
@@ -252,15 +259,34 @@ type SelectClaimableAgentTaskTimelineRepairsParams struct {
 	Limit    int32
 }
 
-func (q *Queries) SelectClaimableAgentTaskTimelineRepairs(ctx context.Context, arg SelectClaimableAgentTaskTimelineRepairsParams) ([]AgentTaskTimelineRepair, error) {
+type SelectClaimableAgentTaskTimelineRepairsRow struct {
+	EventUuid    string
+	TaskUuid     string
+	RunUuid      sql.NullString
+	EventKind    string
+	Status       string
+	CapabilityID sql.NullString
+	ApprovalUuid sql.NullString
+	ArtifactUuid sql.NullString
+	OccurredAt   time.Time
+	RepairStatus string
+	RetryCount   uint32
+	LastError    sql.NullString
+	NextRetryAt  sql.NullTime
+	LockedAt     sql.NullTime
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+func (q *Queries) SelectClaimableAgentTaskTimelineRepairs(ctx context.Context, arg SelectClaimableAgentTaskTimelineRepairsParams) ([]SelectClaimableAgentTaskTimelineRepairsRow, error) {
 	rows, err := q.db.QueryContext(ctx, selectClaimableAgentTaskTimelineRepairs, arg.LockedAt, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AgentTaskTimelineRepair{}
+	items := []SelectClaimableAgentTaskTimelineRepairsRow{}
 	for rows.Next() {
-		var i AgentTaskTimelineRepair
+		var i SelectClaimableAgentTaskTimelineRepairsRow
 		if err := rows.Scan(
 			&i.EventUuid,
 			&i.TaskUuid,
@@ -269,6 +295,7 @@ func (q *Queries) SelectClaimableAgentTaskTimelineRepairs(ctx context.Context, a
 			&i.Status,
 			&i.CapabilityID,
 			&i.ApprovalUuid,
+			&i.ArtifactUuid,
 			&i.OccurredAt,
 			&i.RepairStatus,
 			&i.RetryCount,

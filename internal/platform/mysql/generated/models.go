@@ -452,24 +452,7 @@ type AgentTaskTimelineEvent struct {
 	ApprovalUuid sql.NullString
 	OccurredAt   time.Time
 	CreatedAt    time.Time
-}
-
-type AgentTaskTimelineRepair struct {
-	EventUuid    string
-	TaskUuid     string
-	RunUuid      sql.NullString
-	EventKind    string
-	Status       string
-	CapabilityID sql.NullString
-	ApprovalUuid sql.NullString
-	OccurredAt   time.Time
-	RepairStatus string
-	RetryCount   uint32
-	LastError    sql.NullString
-	NextRetryAt  sql.NullTime
-	LockedAt     sql.NullTime
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ArtifactUuid sql.NullString
 }
 
 type AgentToolInvocation struct {

@@ -25,7 +25,8 @@
       "occurred_at_unix_ms": 1788000000000,
       "run_id": "RUN-1",
       "capability_id": "conversation.read",
-      "approval_id": "APR-1"
+      "approval_id": "APR-1",
+      "artifact_id": "f1d2d2f924e986ac86fdf7b36c94bcdf32beec15c1a4f4d6b4f6d8b6f9c7e1a2"
     }
   ],
   "next_cursor": "4"
@@ -33,6 +34,8 @@
 ```
 
 允许的 `kind` 为 `task`、`run`、`context_compile`、`model_call`、`tool_invocation`、`approval`、`input_request`、`artifact` 和 `terminal`。`status` 使用对应持久化域的枚举值，未知值必须 fail closed。
+
+`artifact_id` 是可选的内容寻址引用，仅允许出现在 `kind=artifact` 事件中，值必须是小写的 64 位 SHA-256。它用于把 Timeline 事件关联到 owner-scoped Artifact metadata API；不包含正文、对象位置或 metadata JSON。历史 `artifact` 事件可能没有该字段，客户端必须继续以低敏事件展示处理，不能推测或拼接 Artifact ID。
 
 ## 读取与权限
 

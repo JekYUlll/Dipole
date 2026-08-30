@@ -98,7 +98,7 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, {
         schemaVersion: "dipole.agent.task.timeline.v1", taskId: "TASK-1", revision: 3n,
         events: [
-          { eventSeq: 4n, eventId: "EV-4", taskId: "TASK-1", runId: "RUN-1", kind: "run", status: "running", capabilityId: "", approvalId: "", occurredAtUnixMs: 4_000n },
+          { eventSeq: 4n, eventId: "EV-4", taskId: "TASK-1", runId: "RUN-1", kind: "artifact", status: "created", capabilityId: "", approvalId: "", artifactId: "a".repeat(64), occurredAtUnixMs: 4_000n },
           { eventSeq: 5n, eventId: "EV-5", taskId: "TASK-1", runId: "RUN-1", kind: "terminal", status: "completed", capabilityId: "", approvalId: "", occurredAtUnixMs: 5_000n }
         ], nextCursor: "5"
       });
@@ -107,7 +107,7 @@ describe("AgentCapabilityRPCClient", () => {
     const client = new AgentCapabilityRPCClient({ listAgentTaskTimeline } as unknown as IAgentCapabilityServiceClient, "secret");
 
     await expect(client.listAgentTaskTimeline("TASK-1", "U100", 3n, 20)).resolves.toMatchObject({
-      taskId: "TASK-1", nextCursor: "5", events: [{ eventSeq: 4n }, { eventSeq: 5n }]
+      taskId: "TASK-1", nextCursor: "5", events: [{ eventSeq: 4n, artifactId: "a".repeat(64) }, { eventSeq: 5n }]
     });
   });
 

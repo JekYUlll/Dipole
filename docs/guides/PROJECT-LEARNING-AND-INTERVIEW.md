@@ -59,7 +59,18 @@
 | 渐进式微服务与 SQLC | **已验证** | 第 3 节后端描述；第 5 节渐进微服务故事 | [服务边界](../architecture/SERVICE-BOUNDARIES.md)；“为什么不一次性拆分？” |
 | Agent Runtime 与权限 | **已验证** | 第 3 节 Agent 描述；第 5 节 Agent 安全与可恢复执行 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)；“模型为何不能决定权限？” |
 | Agent Definition Catalog | **已验证（本地）** | 只读目录演示：版本、scope 和 runtime 关闭边界 | `frontend/src/components/AgentDefinitionCatalog.vue`、`frontend/e2e/agent-definitions.spec.ts`、`frontend/e2e/agent-definitions.visual.spec.ts`；认证流程已通过 Chromium/Firefox/WebKit，视觉基线仅固定 Chromium；“为何 Definition 目录不提供激活或编辑？” |
+| Artifact 与 Task Timeline 关联 | **已验证（本地）** | Timeline `artifact` 事件可携带内容寻址 ID，用于定位 owner-scoped metadata 边界 | [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、[Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)；“为什么 Timeline 只返回 Artifact ID？” |
 | Active Agent、外部 MCP 与 C++ 数据面 | **默认关闭 / 规划中** | 仅展示门禁、Shadow 与回滚设计，不作为上线能力演示 | [架构债务台账](../architecture/ARCHITECTURE-DEBT.md)；“何时允许切流？” |
+
+#### 2026-08-30 · Artifact 与 Task Timeline 关联
+
+- **状态：** 已验证（本地）
+- **对外表述：** 为 Agent Task Timeline 增加内容寻址 Artifact 关联，并让主投影与失败修复队列共享同一持久化契约，保证重试后仍可回到相同 Artifact metadata 边界。
+- **演示：** 使用受控 Artifact 创建事件读取 Timeline，确认 `kind=artifact` 返回 64 位 `artifact_id`；再通过 owner-scoped metadata API 读取低敏元数据。
+- **证据：** [Timeline 契约](../../contracts/agent-task-timeline/v1/README.md)、[Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、`internal/transport/grpc/agent/server_test.go`、`services/agent-runtime/src/capabilities/agent-capability-rpc.test.ts`。
+- **追问：** “为什么不在 Timeline 直接返回正文或对象键？” Timeline 是低敏执行索引，正文读取需要独立披露策略、对象访问授权和前端设计，避免时间线接口扩大数据暴露范围。
+- **限制：** 仅验证本地契约与单元测试；Artifact 页面、下载、跨浏览器视觉证据和共享环境运行记录尚未完成。
+- **复核条件：** 启用 Artifact Web 页面、正文读取或下载、修改对象生命周期，或改变 Timeline 事件 schema 时。
 
 #### 2026-08-30 · 学习、简历与面试叙事维护
 

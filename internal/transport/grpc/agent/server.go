@@ -573,7 +573,7 @@ func (s *Server) CreateArtifact(ctx context.Context, request *agentv1.CreateArti
 	}
 	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
 		EventUUID: fmt.Sprintf("artifact:%s:create", artifact.ArtifactUUID), TaskUUID: artifact.TaskUUID, RunUUID: artifact.RunUUID,
-		Kind: application.AgentTaskTimelineEventArtifact, Status: "created", OccurredAt: artifact.CreatedAt,
+		Kind: application.AgentTaskTimelineEventArtifact, Status: "created", ArtifactUUID: artifact.ArtifactUUID, OccurredAt: artifact.CreatedAt,
 	})
 	return &agentv1.CreateArtifactResponse{Artifact: agentArtifactResponseV1(artifact)}, nil
 }
@@ -1138,7 +1138,7 @@ func (s *Server) ListAgentTaskTimeline(ctx context.Context, request *agentv1.Lis
 		response.Events = append(response.Events, &agentv1.AgentTaskTimelineEvent{
 			EventSeq: event.EventSeq, EventId: event.EventUUID, TaskId: event.TaskUUID, RunId: event.RunUUID,
 			Kind: string(event.Kind), Status: event.Status, CapabilityId: event.CapabilityID, ApprovalId: event.ApprovalUUID,
-			OccurredAtUnixMs: event.OccurredAt.UnixMilli(),
+			ArtifactId: event.ArtifactUUID, OccurredAtUnixMs: event.OccurredAt.UnixMilli(),
 		})
 	}
 	if len(events) == int(request.GetLimit()) {
@@ -1164,7 +1164,7 @@ func (s *Server) AppendAgentTaskTimelineEvent(ctx context.Context, request *agen
 	event := application.AgentTaskTimelineEventV1{
 		EventUUID: request.GetEventId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
 		Kind: application.AgentTaskTimelineEventKindV1(request.GetKind()), Status: request.GetStatus(),
-		CapabilityID: request.GetCapabilityId(), ApprovalUUID: request.GetApprovalId(), OccurredAt: time.UnixMilli(request.GetOccurredAtUnixMs()).UTC(),
+		CapabilityID: request.GetCapabilityId(), ApprovalUUID: request.GetApprovalId(), ArtifactUUID: request.GetArtifactId(), OccurredAt: time.UnixMilli(request.GetOccurredAtUnixMs()).UTC(),
 	}
 	if err := event.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "Agent Task Timeline event is invalid")

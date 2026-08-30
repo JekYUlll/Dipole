@@ -664,6 +664,7 @@
 - **风险：** MinIO 写入成功后若 MySQL 持续失败且任务不再重试，会留下无法从用户 API 引用的内容寻址对象。该对象不会覆盖其他版本，也不会获得读取授权，但会长期占用容量。
 - **建议方向：** 在真实 Shadow 观察窗口持续归档 dry-run 报告和 receipt；是否增加 DeleteObject-capable 执行器需单独评审，并要求新的不可回退契约版本、独立删除身份、对象版本/保留策略、审批持久化和删除后 receipt，现有 Runtime/Core/audit/inspect 账号继续没有删除权限。
 - **处理门槛：** Artifact 进入 active 模式或配置自动保留期限前完成；Shadow 阶段以容量指标和人工审计接受该风险。
+- **本轮进展：** Agent Task Timeline 的 v1 protobuf、SQLC Store 和 repair queue 现保存可选 `artifact_id`；新 Artifact 事件要求小写内容寻址 ID，非 Artifact 事件携带该字段会 fail closed。该关联只支持 owner-scoped metadata 发现，不开放正文、对象键、下载或公开 URL；历史事件允许缺失关联以保持读取兼容。
 
 ### AD-031：Context Token 预算使用确定性近似估算
 

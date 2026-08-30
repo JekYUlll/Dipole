@@ -612,6 +612,10 @@ export interface AgentTaskTimelineEvent {
      * @generated from protobuf field: int64 occurred_at_unix_ms = 9
      */
     occurredAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string artifact_id = 10
+     */
+    artifactId: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.ListAgentTaskTimelineResponse
@@ -678,6 +682,10 @@ export interface AppendAgentTaskTimelineEventRequest {
      * @generated from protobuf field: int64 occurred_at_unix_ms = 9
      */
     occurredAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string artifact_id = 10
+     */
+    artifactId: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.AppendAgentTaskTimelineEventResponse
@@ -4475,7 +4483,8 @@ class AgentTaskTimelineEvent$Type extends MessageType<AgentTaskTimelineEvent> {
             { no: 6, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 7, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "approval_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 9, name: "occurred_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+            { no: 9, name: "occurred_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 10, name: "artifact_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<AgentTaskTimelineEvent>): AgentTaskTimelineEvent {
@@ -4489,6 +4498,7 @@ class AgentTaskTimelineEvent$Type extends MessageType<AgentTaskTimelineEvent> {
         message.capabilityId = "";
         message.approvalId = "";
         message.occurredAtUnixMs = 0n;
+        message.artifactId = "";
         if (value !== undefined)
             reflectionMergePartial<AgentTaskTimelineEvent>(this, message, value);
         return message;
@@ -4524,6 +4534,9 @@ class AgentTaskTimelineEvent$Type extends MessageType<AgentTaskTimelineEvent> {
                     break;
                 case /* int64 occurred_at_unix_ms */ 9:
                     message.occurredAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string artifact_id */ 10:
+                    message.artifactId = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -4564,6 +4577,9 @@ class AgentTaskTimelineEvent$Type extends MessageType<AgentTaskTimelineEvent> {
         /* int64 occurred_at_unix_ms = 9; */
         if (message.occurredAtUnixMs !== 0n)
             writer.tag(9, WireType.Varint).int64(message.occurredAtUnixMs);
+        /* string artifact_id = 10; */
+        if (message.artifactId !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.artifactId);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -4665,7 +4681,8 @@ class AppendAgentTaskTimelineEventRequest$Type extends MessageType<AppendAgentTa
             { no: 6, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 7, name: "capability_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "approval_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 9, name: "occurred_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+            { no: 9, name: "occurred_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 10, name: "artifact_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<AppendAgentTaskTimelineEventRequest>): AppendAgentTaskTimelineEventRequest {
@@ -4678,6 +4695,7 @@ class AppendAgentTaskTimelineEventRequest$Type extends MessageType<AppendAgentTa
         message.capabilityId = "";
         message.approvalId = "";
         message.occurredAtUnixMs = 0n;
+        message.artifactId = "";
         if (value !== undefined)
             reflectionMergePartial<AppendAgentTaskTimelineEventRequest>(this, message, value);
         return message;
@@ -4713,6 +4731,9 @@ class AppendAgentTaskTimelineEventRequest$Type extends MessageType<AppendAgentTa
                     break;
                 case /* int64 occurred_at_unix_ms */ 9:
                     message.occurredAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string artifact_id */ 10:
+                    message.artifactId = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -4753,6 +4774,9 @@ class AppendAgentTaskTimelineEventRequest$Type extends MessageType<AppendAgentTa
         /* int64 occurred_at_unix_ms = 9; */
         if (message.occurredAtUnixMs !== 0n)
             writer.tag(9, WireType.Varint).int64(message.occurredAtUnixMs);
+        /* string artifact_id = 10; */
+        if (message.artifactId !== "")
+            writer.tag(10, WireType.LengthDelimited).string(message.artifactId);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

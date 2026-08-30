@@ -64,13 +64,19 @@ describe('Agent Task response parser', () => {
   it('fetches and validates an owner-scoped timeline page', async () => {
     const get = vi.spyOn(api, 'get').mockResolvedValue({
       schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 4,
-      events: [{ eventSeq: '7', eventId: 'EV-7', taskId: 'TASK-1', runId: 'RUN-1', kind: 'tool_invocation', status: 'completed', capabilityId: 'conversation.read', occurredAtUnixMs: 7_000 }],
+      events: [{ eventSeq: '7', eventId: 'EV-7', taskId: 'TASK-1', runId: 'RUN-1', kind: 'artifact', status: 'created', artifactId: 'a'.repeat(64), occurredAtUnixMs: 7_000 }],
       nextCursor: '7',
     } as never)
     await expect(agentTaskClient.getTimeline!('TASK-1', '3', 20)).resolves.toMatchObject({ taskId: 'TASK-1', nextCursor: '7' })
     expect(get).toHaveBeenCalledWith('/api/v1/agent/tasks/TASK-1/timeline?limit=20&after=3')
     await expect(agentTaskClient.getTimeline!('TASK-1', 'bad cursor', 20)).rejects.toThrow(/cursor/i)
     await expect(agentTaskClient.getTimeline!('TASK-1', '', 101)).rejects.toThrow(/limit/i)
+    get.mockResolvedValueOnce({
+      schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 4,
+      events: [{ eventSeq: '8', eventId: 'EV-8', taskId: 'TASK-1', runId: 'RUN-1', kind: 'model_call', status: 'completed', artifactId: 'a'.repeat(64), occurredAtUnixMs: 8_000 }],
+      nextCursor: '',
+    } as never)
+    await expect(agentTaskClient.getTimeline!('TASK-1')).rejects.toThrow(/Artifact/i)
     get.mockResolvedValueOnce({
       schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 4,
       events: [{ eventSeq: '7', eventId: 'EV-7', taskId: 'TASK-2', runId: 'RUN-1', kind: 'tool_invocation', status: 'completed', occurredAtUnixMs: 7_000 }],

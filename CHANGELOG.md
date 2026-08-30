@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：Agent Task Timeline v1 增加可选的内容寻址 `artifact_id`，通过 MySQL 主投影与失败修复队列、Core gRPC、TypeScript Runtime 和前端解析贯通。新 `artifact` 事件要求精确小写 SHA-256 ID，其他事件携带该字段会拒绝；该能力只支持 owner-scoped metadata 关联，正文、对象键、下载与 Artifact 页面仍未开放。
+
 - 2026-08-30：学习、简历与面试主文档新增合并切片维护记录模板，要求针对可讲能力同步维护对外表述、演示、证据、追问、限制和复核条件；根 README 增加直接入口，文档叙事继续以代码、契约、测试和运行记录为准。
 
 - 2026-08-30：Gateway 新增默认关闭的 owner-scoped Artifact metadata 读取 seam，复用认证 Core gRPC 绑定 principal，并要求精确 64 位 SHA-256 Artifact ID、校验正文长度与 SHA-256 后只返回身份、Task/Run、类型、版本、标题、媒体类型、摘要和大小；Artifact 正文、对象键与 metadata JSON 继续不暴露给浏览器，下载与 Web 页面等待独立契约。

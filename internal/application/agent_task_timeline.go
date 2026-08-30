@@ -33,6 +33,7 @@ type AgentTaskTimelineEventV1 struct {
 	Status       string
 	CapabilityID string
 	ApprovalUUID string
+	ArtifactUUID string
 	OccurredAt   time.Time
 }
 
@@ -49,6 +50,7 @@ type AgentTaskTimelineRepairV1 struct {
 	Status       string
 	CapabilityID string
 	ApprovalUUID string
+	ArtifactUUID string
 	OccurredAt   time.Time
 	RepairStatus string
 	RetryCount   uint32
@@ -72,8 +74,18 @@ func (e AgentTaskTimelineEventV1) Validate() error {
 	case AgentTaskTimelineEventTask, AgentTaskTimelineEventRun, AgentTaskTimelineEventContextCompile,
 		AgentTaskTimelineEventModelCall, AgentTaskTimelineEventToolInvocation, AgentTaskTimelineEventApproval,
 		AgentTaskTimelineEventInputRequest, AgentTaskTimelineEventArtifact, AgentTaskTimelineEventTerminal:
-		return nil
 	default:
 		return fmt.Errorf("unsupported Agent Task Timeline event kind %q", e.Kind)
 	}
+	artifactUUID := strings.TrimSpace(e.ArtifactUUID)
+	if artifactUUID == "" {
+		if e.Kind == AgentTaskTimelineEventArtifact {
+			return errors.New("Agent Task Timeline artifact event requires an Artifact ID")
+		}
+		return nil
+	}
+	if artifactUUID != e.ArtifactUUID || e.Kind != AgentTaskTimelineEventArtifact || !validSHA256V1(artifactUUID) {
+		return errors.New("Agent Task Timeline Artifact ID is invalid")
+	}
+	return nil
 }

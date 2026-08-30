@@ -38,7 +38,7 @@ func appendAgentTaskTimelineEvent(ctx context.Context, queries generated.Querier
 	result, err := queries.InsertAgentTaskTimelineEvent(ctx, generated.InsertAgentTaskTimelineEventParams{
 		EventUuid: event.EventUUID, TaskUuid: event.TaskUUID, RunUuid: nullableString(event.RunUUID),
 		EventKind: string(event.Kind), Status: event.Status, CapabilityID: nullableString(event.CapabilityID),
-		ApprovalUuid: nullableString(event.ApprovalUUID), OccurredAt: event.OccurredAt,
+		ApprovalUuid: nullableString(event.ApprovalUUID), ArtifactUuid: nullableString(event.ArtifactUUID), OccurredAt: event.OccurredAt,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("append Agent Task Timeline event: %w", err)
@@ -70,7 +70,7 @@ func (r *AgentPolicyRepository) EnqueueAgentTaskTimelineRepair(ctx context.Conte
 	_, err := r.queries.EnqueueAgentTaskTimelineRepair(ctx, generated.EnqueueAgentTaskTimelineRepairParams{
 		EventUuid: event.EventUUID, TaskUuid: event.TaskUUID, RunUuid: nullableString(event.RunUUID),
 		EventKind: string(event.Kind), Status: event.Status, CapabilityID: nullableString(event.CapabilityID),
-		ApprovalUuid: nullableString(event.ApprovalUUID), OccurredAt: event.OccurredAt, LastError: sql.NullString{String: lastError, Valid: true},
+		ApprovalUuid: nullableString(event.ApprovalUUID), ArtifactUuid: nullableString(event.ArtifactUUID), OccurredAt: event.OccurredAt, LastError: sql.NullString{String: lastError, Valid: true},
 	})
 	if err != nil {
 		return fmt.Errorf("enqueue Agent Task Timeline repair: %w", err)
@@ -104,7 +104,7 @@ func (r *AgentPolicyRepository) ClaimAgentTaskTimelineRepairs(limit int, now tim
 			return fmt.Errorf("mark Agent Task Timeline repairs processing: %w", err)
 		}
 		for _, row := range rows {
-			result = append(result, application.AgentTaskTimelineRepairV1{EventUUID: row.EventUuid, TaskUUID: row.TaskUuid, RunUUID: row.RunUuid.String, Kind: application.AgentTaskTimelineEventKindV1(row.EventKind), Status: row.Status, CapabilityID: row.CapabilityID.String, ApprovalUUID: row.ApprovalUuid.String, OccurredAt: row.OccurredAt, RepairStatus: "processing", RetryCount: uint32(row.RetryCount), LastError: row.LastError.String, NextRetryAt: timePointer(row.NextRetryAt), LockedAt: timePointer(row.LockedAt)})
+			result = append(result, application.AgentTaskTimelineRepairV1{EventUUID: row.EventUuid, TaskUUID: row.TaskUuid, RunUUID: row.RunUuid.String, Kind: application.AgentTaskTimelineEventKindV1(row.EventKind), Status: row.Status, CapabilityID: row.CapabilityID.String, ApprovalUUID: row.ApprovalUuid.String, ArtifactUUID: row.ArtifactUuid.String, OccurredAt: row.OccurredAt, RepairStatus: "processing", RetryCount: uint32(row.RetryCount), LastError: row.LastError.String, NextRetryAt: timePointer(row.NextRetryAt), LockedAt: timePointer(row.LockedAt)})
 		}
 		return nil
 	})
@@ -161,7 +161,8 @@ func (r *AgentPolicyRepository) ListAgentTaskTimelineEvents(ctx context.Context,
 			EventSeq: uint64(row.EventSeq), EventUUID: row.EventUuid, TaskUUID: row.TaskUuid,
 			RunUUID: row.RunUuid.String, Kind: application.AgentTaskTimelineEventKindV1(row.EventKind),
 			Status: row.Status, CapabilityID: row.CapabilityID.String, ApprovalUUID: row.ApprovalUuid.String,
-			OccurredAt: row.OccurredAt,
+			ArtifactUUID: row.ArtifactUuid.String,
+			OccurredAt:   row.OccurredAt,
 		})
 	}
 	return result, nil

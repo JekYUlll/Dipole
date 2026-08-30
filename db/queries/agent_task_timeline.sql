@@ -1,7 +1,7 @@
 -- name: InsertAgentTaskTimelineEvent :execresult
 INSERT INTO agent_task_timeline_events (
-    event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, artifact_uuid, occurred_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON DUPLICATE KEY UPDATE event_seq = event_seq;
 
 -- name: GetAgentTaskTimelineEvent :one
@@ -22,13 +22,13 @@ LIMIT ?;
 
 -- name: EnqueueAgentTaskTimelineRepair :execresult
 INSERT INTO agent_task_timeline_repairs (
-    event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at,
+    event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, artifact_uuid, occurred_at,
     repair_status, retry_count, last_error, next_retry_at, locked_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, CURRENT_TIMESTAMP(3), NULL)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, CURRENT_TIMESTAMP(3), NULL)
 ON DUPLICATE KEY UPDATE event_uuid = event_uuid;
 
 -- name: SelectClaimableAgentTaskTimelineRepairs :many
-SELECT event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, occurred_at,
+SELECT event_uuid, task_uuid, run_uuid, event_kind, status, capability_id, approval_uuid, artifact_uuid, occurred_at,
        repair_status, retry_count, last_error, next_retry_at, locked_at, created_at, updated_at
 FROM agent_task_timeline_repairs
 WHERE ((repair_status = 'pending' AND (next_retry_at IS NULL OR next_retry_at <= CURRENT_TIMESTAMP(3)))

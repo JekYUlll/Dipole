@@ -416,7 +416,7 @@ func TestListAgentTaskTimelineUsesOwnerAuthorizationAndCursor(t *testing.T) {
 		Workflow: &application.AgentTaskWorkflowProjectionV1{Revision: 7},
 	}}
 	timeline := &taskTimelineStub{events: []application.AgentTaskTimelineEventV1{
-		{EventSeq: 4, EventUUID: "EV-4", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventToolInvocation, Status: "completed", OccurredAt: time.UnixMilli(4_000)},
+		{EventSeq: 4, EventUUID: "EV-4", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventArtifact, Status: "created", ArtifactUUID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", OccurredAt: time.UnixMilli(4_000)},
 		{EventSeq: 5, EventUUID: "EV-5", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventTerminal, Status: "completed", OccurredAt: time.UnixMilli(5_000)},
 	}}
 	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
@@ -432,7 +432,7 @@ func TestListAgentTaskTimelineUsesOwnerAuthorizationAndCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list timeline: %v", err)
 	}
-	if response.GetSchemaVersion() != application.AgentTaskTimelineSchemaVersionV1 || response.GetRevision() != 7 || len(response.GetEvents()) != 1 || response.GetEvents()[0].GetEventSeq() != 4 || response.GetNextCursor() != "4" || controls.principalUUID != "U100" {
+	if response.GetSchemaVersion() != application.AgentTaskTimelineSchemaVersionV1 || response.GetRevision() != 7 || len(response.GetEvents()) != 1 || response.GetEvents()[0].GetEventSeq() != 4 || response.GetEvents()[0].GetArtifactId() != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" || response.GetNextCursor() != "4" || controls.principalUUID != "U100" {
 		t.Fatalf("unexpected timeline response: response=%+v controls=%+v", response, controls)
 	}
 }
@@ -478,9 +478,9 @@ func TestAppendAgentTaskTimelineEventRequiresRuntimeAndValidRunBinding(t *testin
 	}
 	response, err := server.AppendAgentTaskTimelineEvent(context.Background(), &agentv1.AppendAgentTaskTimelineEventRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), EventId: "MODEL-1", TaskId: "TASK-1", RunId: "RUN-1",
-		Kind: "model_call", Status: "completed", OccurredAtUnixMs: 1_000,
+		Kind: "artifact", Status: "created", ArtifactId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", OccurredAtUnixMs: 1_000,
 	})
-	if err != nil || response.GetEventId() != "MODEL-1" || len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventModelCall {
+	if err != nil || response.GetEventId() != "MODEL-1" || len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventArtifact || timeline.events[0].ArtifactUUID != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
 		t.Fatalf("unexpected append response=%+v events=%+v err=%v", response, timeline.events, err)
 	}
 	_, err = server.AppendAgentTaskTimelineEvent(context.Background(), &agentv1.AppendAgentTaskTimelineEventRequest{

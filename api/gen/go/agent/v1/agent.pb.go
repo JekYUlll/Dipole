@@ -1722,6 +1722,7 @@ type AgentTaskTimelineEvent struct {
 	CapabilityId     string                 `protobuf:"bytes,7,opt,name=capability_id,json=capabilityId,proto3" json:"capability_id,omitempty"`
 	ApprovalId       string                 `protobuf:"bytes,8,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
 	OccurredAtUnixMs int64                  `protobuf:"varint,9,opt,name=occurred_at_unix_ms,json=occurredAtUnixMs,proto3" json:"occurred_at_unix_ms,omitempty"`
+	ArtifactId       string                 `protobuf:"bytes,10,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1819,6 +1820,13 @@ func (x *AgentTaskTimelineEvent) GetOccurredAtUnixMs() int64 {
 	return 0
 }
 
+func (x *AgentTaskTimelineEvent) GetArtifactId() string {
+	if x != nil {
+		return x.ArtifactId
+	}
+	return ""
+}
+
 type ListAgentTaskTimelineResponse struct {
 	state         protoimpl.MessageState    `protogen:"open.v1"`
 	SchemaVersion string                    `protobuf:"bytes,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
@@ -1906,6 +1914,7 @@ type AppendAgentTaskTimelineEventRequest struct {
 	CapabilityId     string                 `protobuf:"bytes,7,opt,name=capability_id,json=capabilityId,proto3" json:"capability_id,omitempty"`
 	ApprovalId       string                 `protobuf:"bytes,8,opt,name=approval_id,json=approvalId,proto3" json:"approval_id,omitempty"`
 	OccurredAtUnixMs int64                  `protobuf:"varint,9,opt,name=occurred_at_unix_ms,json=occurredAtUnixMs,proto3" json:"occurred_at_unix_ms,omitempty"`
+	ArtifactId       string                 `protobuf:"bytes,10,opt,name=artifact_id,json=artifactId,proto3" json:"artifact_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -2001,6 +2010,13 @@ func (x *AppendAgentTaskTimelineEventRequest) GetOccurredAtUnixMs() int64 {
 		return x.OccurredAtUnixMs
 	}
 	return 0
+}
+
+func (x *AppendAgentTaskTimelineEventRequest) GetArtifactId() string {
+	if x != nil {
+		return x.ArtifactId
+	}
+	return ""
 }
 
 type AppendAgentTaskTimelineEventResponse struct {
@@ -8123,7 +8139,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12*\n" +
 	"\x11principal_user_id\x18\x03 \x01(\tR\x0fprincipalUserId\x12\x1b\n" +
 	"\tafter_seq\x18\x04 \x01(\x04R\bafterSeq\x12\x14\n" +
-	"\x05limit\x18\x05 \x01(\rR\x05limit\"\xa1\x02\n" +
+	"\x05limit\x18\x05 \x01(\rR\x05limit\"\xc2\x02\n" +
 	"\x16AgentTaskTimelineEvent\x12\x1b\n" +
 	"\tevent_seq\x18\x01 \x01(\x04R\beventSeq\x12\x19\n" +
 	"\bevent_id\x18\x02 \x01(\tR\aeventId\x12\x17\n" +
@@ -8134,14 +8150,17 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\rcapability_id\x18\a \x01(\tR\fcapabilityId\x12\x1f\n" +
 	"\vapproval_id\x18\b \x01(\tR\n" +
 	"approvalId\x12-\n" +
-	"\x13occurred_at_unix_ms\x18\t \x01(\x03R\x10occurredAtUnixMs\"\xdd\x01\n" +
+	"\x13occurred_at_unix_ms\x18\t \x01(\x03R\x10occurredAtUnixMs\x12\x1f\n" +
+	"\vartifact_id\x18\n" +
+	" \x01(\tR\n" +
+	"artifactId\"\xdd\x01\n" +
 	"\x1dListAgentTaskTimelineResponse\x12%\n" +
 	"\x0eschema_version\x18\x01 \x01(\tR\rschemaVersion\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x1a\n" +
 	"\brevision\x18\x03 \x01(\x04R\brevision\x12?\n" +
 	"\x06events\x18\x04 \x03(\v2'.dipole.agent.v1.AgentTaskTimelineEventR\x06events\x12\x1f\n" +
 	"\vnext_cursor\x18\x05 \x01(\tR\n" +
-	"nextCursor\"\xcd\x02\n" +
+	"nextCursor\"\xee\x02\n" +
 	"#AppendAgentTaskTimelineEventRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x19\n" +
 	"\bevent_id\x18\x02 \x01(\tR\aeventId\x12\x17\n" +
@@ -8152,7 +8171,10 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\rcapability_id\x18\a \x01(\tR\fcapabilityId\x12\x1f\n" +
 	"\vapproval_id\x18\b \x01(\tR\n" +
 	"approvalId\x12-\n" +
-	"\x13occurred_at_unix_ms\x18\t \x01(\x03R\x10occurredAtUnixMs\"^\n" +
+	"\x13occurred_at_unix_ms\x18\t \x01(\x03R\x10occurredAtUnixMs\x12\x1f\n" +
+	"\vartifact_id\x18\n" +
+	" \x01(\tR\n" +
+	"artifactId\"^\n" +
 	"$AppendAgentTaskTimelineEventResponse\x12\x1b\n" +
 	"\tevent_seq\x18\x01 \x01(\x04R\beventSeq\x12\x19\n" +
 	"\bevent_id\x18\x02 \x01(\tR\aeventId\"\xb2\x01\n" +

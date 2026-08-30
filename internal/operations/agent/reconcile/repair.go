@@ -68,7 +68,7 @@ func (r *Repairer) RunOnce(ctx context.Context, now time.Time) (Report, error) {
 		event := application.AgentTaskTimelineEventV1{
 			EventUUID: item.EventUUID, TaskUUID: item.TaskUUID, RunUUID: item.RunUUID,
 			Kind: item.Kind, Status: item.Status, CapabilityID: item.CapabilityID,
-			ApprovalUUID: item.ApprovalUUID, OccurredAt: item.OccurredAt,
+			ApprovalUUID: item.ApprovalUUID, ArtifactUUID: item.ArtifactUUID, OccurredAt: item.OccurredAt,
 		}
 		if err := event.Validate(); err != nil {
 			r.observe("invalid", time.Since(itemStarted))

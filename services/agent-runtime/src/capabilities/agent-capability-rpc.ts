@@ -634,7 +634,9 @@ export class AgentCapabilityRPCClient {
         }
         let previousEventSeq = afterSeq;
         for (const event of response.events) {
-          if (event.taskId !== taskId || event.eventId.trim().length === 0 || event.eventSeq <= previousEventSeq) {
+          const artifactId = event.artifactId ?? "";
+          if (event.taskId !== taskId || event.eventId.trim().length === 0 || event.eventSeq <= previousEventSeq ||
+              (artifactId !== "" && (event.kind !== "artifact" || !/^[a-f0-9]{64}$/.test(artifactId)))) {
             reject(new Error("Agent Task Timeline returned invalid event ordering or task binding"));
             return;
           }
@@ -645,6 +647,7 @@ export class AgentCapabilityRPCClient {
           events: response.events.map(event => ({
             eventSeq: event.eventSeq, eventId: event.eventId, runId: event.runId, kind: event.kind,
             status: event.status, capabilityId: event.capabilityId, approvalId: event.approvalId,
+            artifactId: event.artifactId ?? "",
             occurredAtUnixMs: event.occurredAtUnixMs
           })),
           nextCursor: response.nextCursor
@@ -655,14 +658,14 @@ export class AgentCapabilityRPCClient {
 
   async appendAgentTaskTimelineEvent(input: {
     readonly eventId: string; readonly taskId: string; readonly runId: string; readonly kind: string; readonly status: string;
-    readonly capabilityId?: string; readonly approvalId?: string; readonly occurredAtUnixMs: number;
+    readonly capabilityId?: string; readonly approvalId?: string; readonly artifactId?: string; readonly occurredAtUnixMs: number;
     readonly requestId?: string; readonly traceId?: string;
   }): Promise<{ readonly eventSeq: bigint; readonly eventId: string }> {
     const metadata = this.metadata(input.requestId, input.traceId);
     return new Promise((resolve, reject) => {
       this.rpc.appendAgentTaskTimelineEvent({
         context: this.requestContext(input.requestId, input.traceId), eventId: input.eventId, taskId: input.taskId, runId: input.runId,
-        kind: input.kind, status: input.status, capabilityId: input.capabilityId ?? "", approvalId: input.approvalId ?? "",
+        kind: input.kind, status: input.status, capabilityId: input.capabilityId ?? "", approvalId: input.approvalId ?? "", artifactId: input.artifactId ?? "",
         occurredAtUnixMs: BigInt(input.occurredAtUnixMs)
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response: AppendAgentTaskTimelineEventResponse | undefined) => {
         if (error !== null || response === undefined) {

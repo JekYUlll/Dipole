@@ -256,7 +256,7 @@ type Querier interface {
 	RollbackAgentWorkflowRepairProjection(ctx context.Context, arg RollbackAgentWorkflowRepairProjectionParams) (int64, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
 	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
-	SelectClaimableAgentTaskTimelineRepairs(ctx context.Context, arg SelectClaimableAgentTaskTimelineRepairsParams) ([]AgentTaskTimelineRepair, error)
+	SelectClaimableAgentTaskTimelineRepairs(ctx context.Context, arg SelectClaimableAgentTaskTimelineRepairsParams) ([]SelectClaimableAgentTaskTimelineRepairsRow, error)
 	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)
 	SupersedeOwnedAgentMemory(ctx context.Context, arg SupersedeOwnedAgentMemoryParams) (int64, error)
 	TransitionAgentRunStatus(ctx context.Context, arg TransitionAgentRunStatusParams) (int64, error)

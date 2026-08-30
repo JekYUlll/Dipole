@@ -28,6 +28,7 @@ export interface AgentTaskTimeline {
     readonly status: string;
     readonly capabilityId: string;
     readonly approvalId: string;
+    readonly artifactId: string;
     readonly occurredAtUnixMs: bigint;
   }[];
   readonly nextCursor: string;
