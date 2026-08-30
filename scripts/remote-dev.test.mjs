@@ -28,10 +28,11 @@ test("remote image builds compile committed backend binaries first", () => {
 
 test("candidate image builds are explicit and carry source provenance", () => {
   assert.match(source, /REMOTE_BUILD_CANDIDATE="\$\{DIPOLE_REMOTE_BUILD_CANDIDATE:-0\}"/);
-  assert.match(source, /candidate_tag="dipole-server:c1-\$\(git rev-parse --short HEAD\)"/);
-  assert.match(source, /--build-arg DIPOLE_VCS_REVISION="\$\{candidate_revision\}"/);
-  assert.match(source, /--build-arg DIPOLE_BUILD_CREATED="\$\{candidate_created\}"/);
+  assert.match(source, /candidate_tag="dipole-server:c1-\\\$\(git rev-parse --short HEAD\)"/);
+  assert.match(source, /--build-arg DIPOLE_VCS_REVISION="\\\$\{candidate_revision\}"/);
+  assert.match(source, /--build-arg DIPOLE_BUILD_CREATED="\\\$\{candidate_created\}"/);
   assert.match(source, /--build-arg DIPOLE_VCS_DIRTY=false/);
+  assert.match(source, /candidate_revision="\\\$\(git rev-parse HEAD\)"/);
 });
 
 test("remote node toolchain is explicit and version-gated", () => {

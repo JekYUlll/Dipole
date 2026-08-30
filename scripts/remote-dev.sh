@@ -141,15 +141,15 @@ case "${action}" in
     scripts/docker-build.sh backend
     scripts/docker-build-microservice-images.sh
     if [[ "${REMOTE_BUILD_CANDIDATE}" == "1" ]]; then
-      candidate_tag="dipole-server:c1-$(git rev-parse --short HEAD)"
-      candidate_revision="$(git rev-parse HEAD)"
-      candidate_created="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      candidate_tag="dipole-server:c1-\$(git rev-parse --short HEAD)"
+      candidate_revision="\$(git rev-parse HEAD)"
+      candidate_created="\$(date -u +%Y-%m-%dT%H:%M:%SZ)"
       docker build \
-        --build-arg DIPOLE_VCS_REVISION="${candidate_revision}" \
-        --build-arg DIPOLE_BUILD_CREATED="${candidate_created}" \
+        --build-arg DIPOLE_VCS_REVISION="\${candidate_revision}" \
+        --build-arg DIPOLE_BUILD_CREATED="\${candidate_created}" \
         --build-arg DIPOLE_VCS_DIRTY=false \
-        -t "${candidate_tag}" .
-      printf 'candidate image built: %s revision=%s\n' "${candidate_tag}" "${candidate_revision}"
+        -t "\${candidate_tag}" .
+      printf 'candidate image built: %s revision=%s\n' "\${candidate_tag}" "\${candidate_revision}"
     fi
     ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
