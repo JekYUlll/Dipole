@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：学习、简历与面试主文档新增合并前复核清单；门禁要求项目定位、简历描述、现场介绍、工程故事和独立问答入口保持完整。后续架构、Agent、前端与性能切片须按清单同步叙事、证据与限制。
+
 - 2026-08-30：新增 `drill-agent-memory-promotion-rpc.sh`，以临时 CA、loopback Go fixture 和 TypeScript generated gRPC client 演练 reviewed receipt 的跨语言 mTLS 提交。Fixture 覆盖 `dipole-agent` 身份、错误 secret/证书拒绝、prepared receipt 序列化及低敏回包绑定，并支持 `DIPOLE_GO_BIN` 固定远端工具链；不启动 Docker、Temporal、Kafka 或 MySQL，不写入真实 Memory。
 
 - 2026-08-30：Remote GPU 的隔离 Node 22 worktree 已复核 Agent Memory promotion 基线：`promotion_active` profile 6 项、in-memory Temporal receipt preparation/retry 2 项与 TypeScript typecheck 全部通过。该验证未启动 Compose、未占用 GPU，且不连接共享 Core、Kafka 或真实 grant，因此默认写路径保持关闭。

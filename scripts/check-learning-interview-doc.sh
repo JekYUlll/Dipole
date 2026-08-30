@@ -30,6 +30,8 @@ required_sections=(
   "### 能力卡片模板与索引"
   "## 2. 一句话定位"
   "## 3. 简历描述"
+  "## 4. 现场介绍"
+  "## 5. 可展开的工程故事"
 )
 for section in "${required_sections[@]}"; do
   if ! rg --fixed-strings --quiet "${section}" "${document}"; then
@@ -37,6 +39,11 @@ for section in "${required_sections[@]}"; do
     exit 1
   fi
 done
+
+if ! rg --fixed-strings --quiet "[面试问答](INTERVIEW-QA.md)" "${document}"; then
+  echo "learning and interview document is missing the interview Q&A entry" >&2
+  exit 1
+fi
 
 required_card_fields=(
   "- **状态：**"
