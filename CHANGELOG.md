@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-30：学习、简历与面试主文档加入可执行维护门禁。架构文档检查现验证主文档受版本控制、README/文档目录入口、核心章节和能力卡片模板字段；每个改变服务边界、默认路径、用户流程、性能结论或 Agent 权限的合并切片均须同步叙事与证据。
+
 - 2026-08-30：Temporal Memory promotion 集成测试新增 `commit=true` 路径：首次 receipt commit Activity 临时失败后由 Temporal 重试，重试复用相同 receipt hash 并收敛到同一低敏 Memory binding。该测试使用隔离 Temporal test server，不连接 Core、Kafka 或共享环境，默认 Worker 写路径继续关闭。
 
 - 2026-08-30：新增 Memory receipt `promotion:memory-worker-drill` evidence 契约与 CLI，将共享环境的候选版本、manifest/configuration/evidence 摘要、grant、首个提交、重试幂等、失效 grant 拒绝和回滚结果收敛为低敏 decision。CLI 不连接 Runtime、Temporal、Core 或数据库，也不提供写入授权；缺少任一演练结果固定为 `blocked`。

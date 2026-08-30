@@ -85,4 +85,5 @@ while IFS= read -r directory; do
 done < <(git ls-files | awk -F/ 'NF > 1 {print $1}' | sort -u)
 
 bash scripts/check-doc-indexes.sh
+bash scripts/check-learning-interview-doc.sh
 echo "architecture documentation gate passed"
