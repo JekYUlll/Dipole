@@ -10,6 +10,7 @@ REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose
 REMOTE_GO_ROOT="${DIPOLE_REMOTE_GO_ROOT:-}"
 REMOTE_GOPROXY="${DIPOLE_REMOTE_GOPROXY:-}"
 REMOTE_NODE_ROOT="${DIPOLE_REMOTE_NODE_ROOT:-/home/admin1/.local/node-22.12.0}"
+REMOTE_BUILD_CANDIDATE="${DIPOLE_REMOTE_BUILD_CANDIDATE:-0}"
 
 usage() {
   cat <<'EOF'
@@ -17,7 +18,7 @@ Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|ben
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
-  DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT.
+  DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT, DIPOLE_REMOTE_BUILD_CANDIDATE.
   Set DIPOLE_REMOTE_ALLOW_ACTIVE=1 only during an explicitly approved window.
 EOF
 }
@@ -136,7 +137,21 @@ case "${action}" in
       npm --prefix "\$app" run build
     done
     ;;
-  build) scripts/docker-build.sh backend && scripts/docker-build-microservice-images.sh ;;
+  build)
+    scripts/docker-build.sh backend
+    scripts/docker-build-microservice-images.sh
+    if [[ "${REMOTE_BUILD_CANDIDATE}" == "1" ]]; then
+      candidate_tag="dipole-server:c1-$(git rev-parse --short HEAD)"
+      candidate_revision="$(git rev-parse HEAD)"
+      candidate_created="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      docker build \
+        --build-arg DIPOLE_VCS_REVISION="${candidate_revision}" \
+        --build-arg DIPOLE_BUILD_CREATED="${candidate_created}" \
+        --build-arg DIPOLE_VCS_DIRTY=false \
+        -t "${candidate_tag}" .
+      printf 'candidate image built: %s revision=%s\n' "${candidate_tag}" "${candidate_revision}"
+    fi
+    ;;
   smoke-lite) scripts/smoke-microservices-lite.sh ;;
   bench) scripts/bench/run_bench.sh ;;
   down) docker compose -p "\$project" -f "${REMOTE_COMPOSE_FILE}" down --remove-orphans ;;

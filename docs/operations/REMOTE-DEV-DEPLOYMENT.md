@@ -28,6 +28,15 @@ scripts/remote-dev.sh bench      # 远端运行完整基准
 scripts/remote-dev.sh down       # 仅停止本次 project
 ```
 
+默认 `build` 只生成微服务镜像。完整 C1 三节点候选拓扑需要旧单体候选镜像时，显式开启附加构建；镜像标签绑定当前提交：
+
+```bash
+DIPOLE_REMOTE_BUILD_CANDIDATE=1 \
+DIPOLE_REMOTE_BRANCH=master \
+DIPOLE_REMOTE_GO_ROOT=/home/admin1/.local/go-1.27.0 \
+scripts/remote-dev.sh build
+```
+
 脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。`build`、`smoke-lite`、`bench` 会拒绝存在登录用户或 GPU 进程的主机；只有取得明确维护窗口后，才可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`，并仍需人工确认不会影响现有实验。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
 
 管理员已将 Go 1.27.0 以用户态方式放置于 `/home/admin1/.local/go-1.27.0`。使用该工具链执行远端测试：
