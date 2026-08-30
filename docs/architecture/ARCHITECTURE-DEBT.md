@@ -1096,3 +1096,4 @@
 - **现状：** Remote GPU 已具备完整验证所需资源，但当前存在多个登录会话和 GPU 任务；TencentCloud_01 仅有 2 vCPU、2 GiB 内存和 50 GiB 磁盘，只适合轻量 smoke；本机根分区剩余约 19 GiB，完整集群压测风险较高。
 - **解决方式：** 使用 `scripts/check-dev-host.sh` 做启动前 fail-closed 检查，采用独立工作目录、Compose project、端口、网络、非生产凭据和提交绑定镜像；先在维护窗口完成 Remote GPU smoke/基线，再做 TencentCloud 低资源回归。
 - **验证：** 主机资源和 Docker/Compose 配置门禁已有测试，轻量 smoke 已通过 Gateway 依赖闭包契约测试；实际远程部署、运行证据、故障演练和清理回滚仍待明确窗口后完成。
+- **只读主机证据：** 2026-08-30 通过 SSH 内存脚本复核 Remote GPU（224 vCPU、可用内存约 163510 MiB、可用磁盘约 1084340 MiB）和 TencentCloud_01（2 vCPU、可用内存约 1172 MiB、可用磁盘约 34347 MiB）的 `check-dev-host.sh` profile；两者均通过资源门禁，未启动容器，仍不构成部署或负载测试证据。
