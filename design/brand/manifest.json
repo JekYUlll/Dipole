@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "name": "Dipole V3 Brand Kit",
+  "sourceAssets": [
+    "source/dipole-v3-im.svg",
+    "source/dipole-v3-agent.svg",
+    "source/dipole-v3-brand-lockup.svg"
+  ],
+  "variants": [
+    "variants/dipole-v3-im-mono-navy.svg",
+    "variants/dipole-v3-im-reverse.svg",
+    "variants/dipole-v3-agent-mono-navy.svg",
+    "variants/dipole-v3-agent-reverse.svg",
+    "variants/dipole-v3-favicon.svg"
+  ],
+  "referenceAssets": [
+    "reference/dipole-brand-v3.png"
+  ],
+  "publishedCopies": {
+    "source/dipole-v3-im.svg": "docs/images/dipole-v3-im.svg",
+    "source/dipole-v3-agent.svg": "docs/images/dipole-v3-agent.svg",
+    "source/dipole-v3-brand-lockup.svg": "docs/images/dipole-v3-brand-lockup.svg"
+  },
+  "colors": {
+    "navy": "#0B2A4A",
+    "ink": "#092545",
+    "signalRed": "#F2262A",
+    "signalRedDark": "#CD1520",
+    "orbitGold": "#F4B000",
+    "ivory": "#F8F1E4",
+    "paper": "#FFFDF8",
+    "line": "#D8D3C8"
+  }
+}

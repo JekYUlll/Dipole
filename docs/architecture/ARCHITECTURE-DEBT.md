@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：V3 品牌资产已收口到版本化 `design/brand/`：canonical SVG、反白/单色变体、favicon、参考板、色彩规则与发布副本映射均可审计，设计门禁会拒绝 `docs/images/` 与源 SVG 漂移。该治理只统一品牌资产来源；其余页面的 Pencil 复核与跨浏览器视觉验收仍需按 F2/F3/F4 逐页完成。
+
 - 2026-09-01：Chat 主工作台已完成 V3 页面级视觉迁移，并以受控 IM 数据、mock HTTP/WebSocket 的 Chromium 场景固定导航、会话索引、同步、时间线和输入区基线。Remote GPU Node 22 前端单元 `44/178`、typecheck 与 production build 通过。完整 Chromium 套件仍有 14 张既有页面基线因全局 V3 token 迁移产生预期差异，必须逐页截图复核后才可更新；该项不影响 Chat 功能验收，也不构成全站视觉验收完成。
 
 - 2026-09-01：V3 Pencil 设计合同已通过结构校验，并同步重绘产品 SVG 与全局语义 token。当前仅完成基础层；Chat、Agent Timeline、设置与目录页仍需按同一设计合同完成页面级实现和 Chromium/Firefox/WebKit 视觉回归。在这些验收完成前，禁止表述为全站前端改版完成。

@@ -12,7 +12,7 @@
     "build": "vue-tsc && vite build",
     "test": "vitest run",
     "test:toolchain": "node --test toolchain.test.mjs",
-    "test:design": "node --test ../scripts/check-pencil-design.test.mjs && node ../scripts/check-pencil-design.mjs ../design/dipole-ui.pen",
+    "test:design": "node --test ../scripts/check-pencil-design.test.mjs ../scripts/check-brand-assets.test.mjs && node ../scripts/check-pencil-design.mjs ../design/dipole-ui.pen && node ../scripts/check-brand-assets.mjs ../design/brand",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium firefox webkit",
     "test:watch": "vitest",

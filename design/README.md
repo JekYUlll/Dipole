@@ -4,6 +4,8 @@
 
 `export-manifest.json` 是批准评审导出的清单。新增或替换评审图时，先更新清单和设计更新日志，再运行 `npm run test:design`；清单路径相对于 `design/`，目录条目至少需要包含一个 PNG 文件。
 
+`brand/` 是 Dipole V3 的品牌套件：其中保存可维护 SVG 源、深浅背景与单色变体、品牌基准图和机器可校验的清单；[`brand/README.md`](brand/README.md) 规定资产用途、色彩和变更流程。`dipole-ui.pen` 继续负责页面、组件与响应式状态。
+
 ## F1 Frame 与评审导出
 
 | Frame | 评审导出 |
@@ -22,9 +24,9 @@
 
 ## 当前 Frame
 
-### Brand Signal v2
+### Brand V3
 
-`brand-signal-v2-brief.md` 记录新版标识的评审约束。Pencil CLI 在本轮增量写入超过安全超时前已导出一张方向性评审图，但没有完成 canonical `.pen` 保存，因此该文件尚未形成一个已批准的 Canvas Frame。仓库 SVG 使用同一套 Signal Link 方向交付；后续 Pencil 小批次只补充品牌评审区和导出，不能重建现有页面。
+`brand-v3-ui-brief.md` 记录 V3 页面语言，[`brand/`](brand/) 维护完整品牌资产。canonical `.pen` 已包含 `Brand / V3 / Dipole IM & Agent` 的 Foundations、Login、Chat 与 Agent Task desktop/mobile 评审矩阵；页面级实现和跨浏览器截图仍按独立切片逐页验收。历史 `brand-signal-v2-brief.md` 只保留为前序探索记录。
 
 ### Foundations 与组件
 
