@@ -21,6 +21,8 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   dirty=true
 fi
 context_dir="${root_dir}/dist"
+build_context=$(mktemp -d -t dipole-microservice-image.XXXXXX)
+trap 'rm -rf "${build_context}"' EXIT
 
 declare -a services=(
   "migrate:dipole-migrate"
@@ -42,6 +44,14 @@ for service_binary in "${services[@]}"; do
     *) image_variable="DIPOLE_${service^^}_IMAGE" ;;
   esac
   image=${!image_variable:-dipole-${service}:latest}
+  source_binary="${context_dir}/${binary}"
+  if [[ ! -x "${source_binary}" ]]; then
+    echo "Go binary is missing or not executable: ${source_binary}" >&2
+    exit 1
+  fi
+
+  # Docker receives only the target service binary, rather than every dist artifact.
+  install -m 755 "${source_binary}" "${build_context}/${binary}"
   echo "==> building ${service} image ${image}"
   docker build \
     --file deploy/images/go-service.Dockerfile \
@@ -50,7 +60,7 @@ for service_binary in "${services[@]}"; do
     --build-arg "DIPOLE_VCS_REVISION=${revision}" \
     --build-arg "DIPOLE_BUILD_CREATED=${created}" \
     --build-arg "DIPOLE_BUILD_DIRTY=${dirty}" \
-    "${context_dir}"
+    "${build_context}"
 done
 
 agent_image=${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}

@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 同版本 smoke 观察到每个 Go 微服务镜像重复传输完整 `dist` 上下文。构建脚本现只为目标二进制创建临时 Docker context，并在缺失或无执行权限时失败关闭；服务镜像模板继续只复制一个 `/app/service`。该优化不改变镜像 provenance、服务隔离或默认 authority，后续需在下一次同版本 smoke 记录实际 context 大小与总耗时。
+
 - 2026-09-01：C++ Realtime Delivery 的 `primary` 投影已与 Go body-free Timeline 主路径对齐：direct/普通 group 仅生成 `sync.item.notify.v1`，`shadow` 仍生成完整事件加 locator，冲突策略 fail closed；热群 notify + pull 保持原有处理。Ubuntu 24.04 容器门禁通过 `14/14` CTest。该修复仅收敛候选实现语义，C++ 性能晋级门槛未通过，默认 Go authority 和 C++ 灰度关闭状态不变。
 
 - 2026-09-01：审计发现 `message.timeline_notify_mode=primary` 在 Gateway Kafka 与 embedded Dispatcher 中仍同时发送完整消息和 locator，与 body-free 主路径契约冲突。primary 现只向接收方投递 `sync.item.notify.v1`，发送者保留 `chat.sent` 回执；`shadow` 继续双投递以支持观察，`off` 保留完整消息，热群聚合不变。Go direct/group/embedded 回归通过；真实 Cassandra 主读观察、自动停止和回切证据继续由 A6/AD-019 门禁约束。
