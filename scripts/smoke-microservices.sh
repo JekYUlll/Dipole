@@ -7,6 +7,7 @@ COMPOSE_FILE="${ROOT_DIR}/deploy/compose/docker-compose.microservices.yml"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-microservices-smoke}"
 GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:8080}"
 COMPOSE_OVERLAYS="${COMPOSE_OVERLAYS:-}"
+COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
 RESTART_CORE="${RESTART_CORE:-0}"
 RESTART_CORE_AFTER_EVENT="${RESTART_CORE_AFTER_EVENT:-0}"
 EXPECT_READ_SHADOW="${EXPECT_READ_SHADOW:-0}"
@@ -31,7 +32,13 @@ fi
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE
 export DIPOLE_SYNC_IMAGE DIPOLE_SEARCH_IMAGE DIPOLE_SEARCH_INDEXER_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
-compose_args=(-p "${PROJECT_NAME}" -f "${COMPOSE_FILE}")
+compose_args=()
+if [[ -n "${COMPOSE_ENV_FILE}" ]]; then
+  compose_env_path="${ROOT_DIR}/${COMPOSE_ENV_FILE}"
+  [[ -f "${compose_env_path}" ]] || { echo "Compose environment file does not exist: ${COMPOSE_ENV_FILE}" >&2; exit 2; }
+  compose_args+=(--env-file "${compose_env_path}")
+fi
+compose_args+=(-p "${PROJECT_NAME}" -f "${COMPOSE_FILE}")
 if [[ -n "${COMPOSE_OVERLAYS}" ]]; then
   IFS=':' read -r -a overlay_files <<<"${COMPOSE_OVERLAYS}"
   for overlay_file in "${overlay_files[@]}"; do

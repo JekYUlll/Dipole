@@ -42,6 +42,7 @@ Gateway 代理，并等待同一事件的 EventLedger、Task/Run、模型调用�
 COMPOSE_PROJECT_NAME=dipole-read-shadow-restart \
 DIPOLE_GATEWAY_PORT=28084 \
 GATEWAY_URL=http://127.0.0.1:28084 \
+COMPOSE_ENV_FILE=.env \
 COMPOSE_OVERLAYS=deploy/microservices/agent-ai-sdk-shadow.yml:deploy/microservices/agent-temporal-read-shadow.yml \
 EXPECT_READ_SHADOW=1 \
 RESTART_CORE_AFTER_EVENT=1 \
