@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：简历 Claim 验收矩阵已同步 Shadow Eval 的缺失 Token 计量语义：失败调用保留为可分类的 `token_metrics_unavailable`，固定任务集与共享环境观察窗口仍是填写任务成功率前的 P0 门禁。
+
 - 2026-09-01：Shadow Eval 窗口输入的发布 JSON Schema 现与 Runtime 对齐，同时接受 40 位 Git revision 与 64 位内容摘要；外部 Schema 校验不再拒绝真实 OCI Git provenance。
 
 - 2026-09-01：Shadow Eval 现将失败模型调用的缺失 Token 计量编码为可审计的 `availability.tokenMetrics=unavailable`，仍输出五类报告并在 Cost case 固定为 `token_metrics_unavailable` 失败；已知调用数和延迟保留，缺失 Token 不再被当作零或导致整份证据无法分类。完整计量样本的既有契约保持兼容。

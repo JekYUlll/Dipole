@@ -40,7 +40,7 @@
 | TypeScript Runtime、可信上下文、Capability 授权、MCP、审批 | 部分完成 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md)、mTLS Core Capability、默认关闭写能力；[External MCP Shadow drill](../agent/agent-external-mcp.md)覆盖临时 Kafka/MySQL/Temporal/MCP 组合 | 形成同一可重跑 Shadow 环境的 Capability allow/deny、approval approve/deny、MCP 调用与回滚 receipt。对外表述应继续限定为只读 Shadow，直到获得共享环境的授权与观测证据。 | P0 |
 | Temporal Durable Task、故障恢复、等待输入与 HITL | 部分完成 | Temporal workflow、approval/input 状态机、Memory promotion retry；Remote GPU read-shadow 已验证 Kafka 到 Task/Run/Artifact 的只读闭环 | 增加任务级故障演练：Worker 重启、Core 重启、lease expiry、approval/input resume，并为每次生成状态转换与副作用基数 receipt。 | P0 |
 | Context、检索增强与分层 Memory | 部分完成 | Context Compiler、受限 conversation search、working/episodic/semantic/procedural/observational 策略、reviewed promotion | 建立版本化且脱敏或合成的多轮任务集，分别评估无检索、检索、Memory 三种条件；记录 evidence recall、无授权访问、token/cost 与结果质量。 | P1 |
-| OpenTelemetry、Eval、任务成功率 | 部分完成 | OTel 设计、模型调用审计、五类 Eval harness、`reviewed_shadow` 窗口汇总与持久化 Run Trace 绑定；已归档隔离完成子集 [N=2](../../benchmarks/agent-shadow-eval-window-2026-09-01-n2/) | 对受控、人工评审的终态 Shadow 报告输出样本量、成功率、五类通过率、失败分类和 Run Trace ID；失败调用仍可能缺少完整 token 计量，且尚无固定任务集与共享环境观察窗口。完成这些证据后才能填写任务成功率 `[XX]%`。 | P0 |
+| OpenTelemetry、Eval、任务成功率 | 部分完成 | OTel 设计、模型调用审计、五类 Eval harness、`reviewed_shadow` 窗口汇总与持久化 Run Trace 绑定；已归档隔离完成子集 [N=2](../../benchmarks/agent-shadow-eval-window-2026-09-01-n2/) | 对受控、人工评审的终态 Shadow 报告输出样本量、成功率、五类通过率、失败分类和 Run Trace ID；缺失 Token 的失败调用现会生成 `token_metrics_unavailable` 分类，仍尚无固定任务集与共享环境观察窗口。完成这些证据后才能填写任务成功率 `[XX]%`。 | P0 |
 
 ### 当前可安全使用的 Agent 表述
 
