@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：真实 Shadow read 联调发现 standalone Core 将无本地 repository 的 Message application 传给 Agent Capability，`conversation.read` 会触发 nil repository panic。现已在 gRPC Message transport 下切换为惰性、可关闭的 Core-to-Message history reader；reader 保持 `dipole-core` RPC 身份，运行时缺失 Message 只返回调用错误，不再使 Core 进程退出。Core/Message 联合恢复演练仍待完成。
+
 - 2026-08-31：Agent Capability RPC 在 `UNAVAILABLE` 后替换底层 gRPC transport，失败请求不在客户端层重放，由 Kafka/EventLedger 按原有幂等语义重新领取和尝试，避免 Core 容器重建后长期持有过期 DNS 地址。真实 Core 重建、retry 重新领取与 dead-letter 恢复的完整演练仍待完成。
 
 - 2026-08-31：Agent Compose 启动顺序现显式等待 Core health，避免首次启动时能力 RPC 在 Core listener 就绪前失败。运行中故障恢复继续由 transport reconnect 和 EventLedger 重试共同覆盖。

@@ -39,6 +39,7 @@ type CoreRuntime struct {
 	coreRPC       *InternalRPCServer
 	metrics       *platformObservability.MetricsServer
 	messageSender *lazyCoreMessageSender
+	messageReader *lazyCoreMessageReader
 	searchConn    *grpc.ClientConn
 }
 
@@ -149,12 +150,17 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("ensure standalone Agent Definition: %w", composeErr)
 		}
+		agentMessages := agentapplication.AgentCapabilityMessages(messaging.Messages)
+		if config.CoreMessageConfig().Transport == "grpc" {
+			runtime.messageReader = newLazyCoreMessageReader(rpcCfg)
+			agentMessages = runtime.messageReader
+		}
 		commands, composeErr := agentapplication.NewLocalAgentCommandV1(messaging.Messages)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Command: %w", composeErr)
 		}
-		capability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, messaging.Messages, messaging.Conversations, commands, searches...)
+		capability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, agentMessages, messaging.Conversations, commands, searches...)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent capability: %w", composeErr)
@@ -308,6 +314,12 @@ func (r *CoreRuntime) Close() {
 			logger.Warn("Core Message sender close failed", zap.Error(err))
 		}
 		r.messageSender = nil
+	}
+	if r.messageReader != nil {
+		if err := r.messageReader.Close(); err != nil {
+			logger.Warn("Core Message reader close failed", zap.Error(err))
+		}
+		r.messageReader = nil
 	}
 	if r.searchConn != nil {
 		if err := r.searchConn.Close(); err != nil {
