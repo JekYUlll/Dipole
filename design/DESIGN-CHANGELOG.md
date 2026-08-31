@@ -7,6 +7,7 @@
 ### 新增
 
 - 使用 VTracer 从用户提供的 V3 PNG 生成 IM、Agent 与产品族 lockup SVG；高精度输出保留原图的消息极、白色横向连接槽、产品字标、Agent 轨道和留白，品牌门禁校验生成器来源与发布副本一致性。
+- Login、Chat rail 与 Agent Task 的图像容器按 traced SVG 的原始比例使用 `object-fit: contain`，避免将横向 V3 标识挤压为旧的正方形图标。
 
 - 建立 `design/brand/` V3 品牌套件：收口 IM、Agent 与产品族 lockup 的 canonical SVG、深浅背景和单色变体、favicon、批准的 PNG 基准图、调色板清单与使用规范。`docs/images/` 继续作为 Vue/README 的发布副本，`npm run test:design` 新增一致性门禁以阻止副本漂移。
 - 浏览器壳层接入受版本控制的 V3 favicon 与 `Dipole | IM & Agent` 标题，替换旧的内联绿色图标；构建测试固定 `/app/` 部署路径下的输出。

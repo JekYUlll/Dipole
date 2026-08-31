@@ -20,5 +20,6 @@ describe('LoginView design contract', () => {
     expect(source).toContain("import dipoleAgentMark from '../../../docs/images/dipole-v3-agent.svg'")
     expect(source).toContain('class="brand-mark"')
     expect(source).toContain('IM DATA PLANE / AGENT CONTROL PLANE')
+    expect(source).toContain('object-fit: contain')
   })
 })

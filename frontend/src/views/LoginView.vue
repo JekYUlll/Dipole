@@ -149,6 +149,7 @@ const handleRegister = async () => {
   width: 52px;
   height: 52px;
   flex: 0 0 52px;
+  object-fit: contain;
 }
 .brand {
   font-size: 30px;

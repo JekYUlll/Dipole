@@ -23,7 +23,7 @@ import AgentTaskCreate from '@/components/AgentTaskCreate.vue'
 .task-create-orbit::after { position: absolute; top: 10%; left: 19%; width: 12px; height: 12px; border-radius: 50%; background: var(--dp-v3-gold); content: ''; }
 .product-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--dp-space-md); margin-bottom: clamp(32px, 6vw, 72px); }
 .product-lockup { display: inline-flex; align-items: center; gap: 10px; color: var(--dp-v3-navy); font: 800 1rem/1 var(--dp-font-display); letter-spacing: -.03em; text-decoration: none; }
-.product-lockup img { width: 35px; height: 35px; }
+.product-lockup img { width: 42px; height: 35px; object-fit: contain; }
 .product-boundary { color: var(--dp-v3-muted); font: 700 .63rem/1.2 var(--dp-font-data); letter-spacing: .14em; text-align: right; }
 @media (max-width: 560px) { .task-create-page { padding-top: 22px; } .product-bar { margin-bottom: 30px; } .product-boundary { max-width: 8rem; } }
 </style>

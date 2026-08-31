@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Login、Chat 导航与 Agent Task 入口改为保留 VTracer SVG 的原始纵横比，避免 V3 横向标识按旧正方形容器压缩；页面源码契约覆盖 Login 与两个 Agent Task View。
+
 - 2026-09-01：V3 Logo SVG 使用 VTracer 从用户提供的 PNG 高精度生成，保留双极对话轮廓、白色连接槽、IM/Agent 产品字标与 Agent 的金色轨道；品牌门禁校验生成器来源与发布副本一致性。
 
 - 2026-09-01：新增仓库内 `design/brand/` V3 品牌套件，集中维护 IM、Agent 与产品族 SVG 源、深浅背景和单色变体、favicon、品牌基准图、色彩与使用规范；`docs/images/` 与 `frontend/public/` 分别保持文档/组件和浏览器壳层的稳定发布副本，并通过设计门禁校验同步。页面级前端改版继续按 Pencil 设计和 Chromium 基线逐页推进。

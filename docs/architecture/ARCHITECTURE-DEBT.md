@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：VTracer 生成的 IM/Agent 资产具有横向原始比例。Login、Chat rail 和 Agent Task 入口已使用 contain 保留其比例，页面契约覆盖关键容器。完整 Chromium/Firefox/WebKit 视觉回归仍需在具备依赖的隔离候选中完成。
+
 - 2026-09-01：先前 V3 SVG 仅保留双色/轨道概念，未忠实还原用户提供的 PNG 产品设计。现已使用 VTracer 从 PNG 高精度生成 IM、Agent、产品族 lockup 和 favicon，门禁校验生成器来源与发布副本一致性；深浅背景和单色受限变体仍需在后续品牌复核中逐一对照原图。
 
 - 2026-09-01：浏览器壳层已接入 V3 title 与受版本控制的 favicon，品牌门禁会同时核对其与 `design/brand/` 变体的字节一致性。本地工作树缺少 Vite/Playwright 依赖，Remote GPU 新候选同步暂时阻塞在 SCP 传输，因此 toolchain build 与 Chromium 快照需在可用的隔离候选上补跑；当前不将该接入表述为跨浏览器视觉验收完成。
