@@ -8,7 +8,8 @@ export const modelProviderConfigSchema = z.object({
   kind: z.enum(["disabled", "openai_compatible"]),
   name: z.string().trim(),
   baseURL: z.string().trim(),
-  apiKey: z.string()
+  apiKey: z.string(),
+  supportsStructuredOutputs: z.boolean()
 }).strict().superRefine((config, refinement) => {
   if (config.kind === "disabled") return;
   if (!providerNameSchema.safeParse(config.name).success) {
@@ -38,7 +39,8 @@ export function loadModelProviderConfig(env: NodeJS.ProcessEnv): ModelProviderCo
     kind: env.DIPOLE_AGENT_MODEL_PROVIDER?.trim().toLowerCase() || "disabled",
     name: env.DIPOLE_AGENT_MODEL_PROVIDER_NAME ?? "",
     baseURL: env.DIPOLE_AGENT_MODEL_BASE_URL ?? "",
-    apiKey: env.DIPOLE_AGENT_MODEL_API_KEY ?? ""
+    apiKey: env.DIPOLE_AGENT_MODEL_API_KEY ?? "",
+    supportsStructuredOutputs: env.DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS?.trim().toLowerCase() === "true"
   });
 }
 
@@ -49,7 +51,8 @@ export function createOpenAICompatibleModelResolver(config: ModelProviderConfig)
   const provider = createOpenAICompatible({
     name: config.name,
     baseURL: config.baseURL,
-    apiKey: config.apiKey
+    apiKey: config.apiKey,
+    supportsStructuredOutputs: config.supportsStructuredOutputs
   });
   return (route) => provider(modelIDForRoute(route, config.name));
 }

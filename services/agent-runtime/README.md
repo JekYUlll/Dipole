@@ -162,6 +162,7 @@ DIPOLE_AGENT_MODEL_PROVIDER=openai_compatible \
 DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
 DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.com/v1 \
 DIPOLE_AGENT_MODEL_API_KEY=... \
+DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS=false \
 DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini,openai/gpt-5-nano \
 DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2 \
 DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
@@ -172,6 +173,8 @@ npm start
 ```
 
 Provider name 是 route 的稳定前缀，所有 route 必须使用相同前缀，例如 `openai/<model-id>`；Runtime 拒绝跨 Provider route、空密钥、无效 Provider name 和包含凭据/query/fragment 的 base URL，HTTP 仅允许 loopback 开发端点。密钥只从进程环境或部署 Secret 注入，不写入 Compose、Artifact、审计或日志。
+
+`DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS` 默认 `false`。只有 Provider 已验证支持 OpenAI JSON Schema response format 时才设为 `true`；该声明决定 AI SDK 是否为 Zod plan schema 请求结构化输出，避免向通用兼容网关发送不支持的字段。
 
 Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
 

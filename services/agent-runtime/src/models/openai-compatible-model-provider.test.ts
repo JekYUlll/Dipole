@@ -15,11 +15,20 @@ describe("OpenAI-compatible model provider", () => {
   };
 
   it("creates a provider-scoped resolver without exposing the API key", () => {
-    const config = loadModelProviderConfig(environment);
+    const config = loadModelProviderConfig({
+      ...environment,
+      DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS: "true"
+    });
     const resolve = createOpenAICompatibleModelResolver(config);
 
-    expect(() => resolve("gateway/gpt-5-mini")).not.toThrow();
+    expect(resolve("gateway/gpt-5-mini").supportsStructuredOutputs).toBe(true);
     expect(modelIDForRoute("gateway/gpt-5-mini", "gateway")).toBe("gpt-5-mini");
+  });
+
+  it("keeps structured output disabled until the provider is explicitly declared compatible", () => {
+    const config = loadModelProviderConfig(environment);
+
+    expect(createOpenAICompatibleModelResolver(config)("gateway/gpt-5-mini").supportsStructuredOutputs).toBe(false);
   });
 
   it("rejects malformed provider configuration and cross-provider routes", () => {
