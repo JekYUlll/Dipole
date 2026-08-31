@@ -45,6 +45,18 @@ npm run eval:context-ablation -- --manifest=/secure/reviewed-context-ablation.js
 
 命令拒绝不完整条件、候选版本漂移、非终态记录或不完整的授权、延迟和 Token 计量。输出不包含消息正文、原始资源 ID 或模型正文；成功表示证据输入可复算，效果结论仍须基于受控窗口和人工评审任务集。
 
+## Context Ablation 条件
+
+Context Ablation 必须使用独立 Compose 项目、一次一个条件，并与 AI SDK 和 Temporal read-shadow overlay 一起加载。三个 overlay 都不在默认路径加载：
+
+| 条件 | Overlay | Context 来源 |
+| --- | --- | --- |
+| `baseline` | `agent-context-ablation-baseline.yml` | 会话与事件基础上下文 |
+| `retrieval` | `agent-context-ablation-retrieval.yml` | 基础上下文加 Core-authorized search evidence |
+| `memory` | `agent-context-ablation-memory.yml` | 基础上下文加已审核的只读 Context Memory |
+
+每个条件使用独立 Temporal queue，防止同一 Workflow worker 混入不同 Context。Memory overlay 不创建、晋级或修改 Memory；运行前必须以隔离 migration `000056` 数据库预置经审核的低敏 fixture。所有条件都继续关闭消息写入、Control、MCP 与 External MCP，完成后销毁整个 Compose 项目和卷。
+
 ## Core 恢复演练
 
 以下命令只适用于隔离开发 Compose 项目。它在 Kafka 事件发布后重启 Core，重新验证

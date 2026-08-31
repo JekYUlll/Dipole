@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：新增 baseline、retrieval、memory 三份默认不加载的 Context Ablation Compose overlay。它们使用独立 Temporal queue，并以开关互斥地选择只读 Context 来源；Memory 写入、消息写入、Control、MCP 和 External MCP 不因此开启。
+
 - 2026-09-01：Context Ablation 增加版本化 manifest JSON Schema 与低敏示例，并将 `agent_context_ablation_bindings` 纳入 `dipole_agent_eval` 的最小 `SELECT` 授权。评测账号继续没有任何写权限，示例不能作为效果或晋级证据。
 
 - 2026-09-01：新增 `eval:context-ablation` 只读 CLI。它以一个低敏评审 manifest 加载 experiment 的三条件绑定观测并输出聚合报告；参数、数据库、审计、版本或计量不完整时失败关闭，成功只表示输入可复算。
