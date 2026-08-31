@@ -27,7 +27,12 @@ describe("Shadow evaluation summary", () => {
   it("rejects a mixed candidate window and duplicate evaluation evidence", () => {
     expect(() => parseShadowEvalSummaryInput(input([passingReport(), { ...passingReport(), candidateVersion: "candidate/v2" }]))).toThrow("candidate version");
     expect(() => parseShadowEvalSummaryInput(input([passingReport(), passingReport()]))).toThrow("unique suite SHA-256");
-    expect(() => parseShadowEvalSummaryInput(input([{ ...passingReport(), cases: [{ ...passingReport().cases[0]!, id: "outcome.offline.fixture" }, ...passingReport().cases.slice(1) }]))).toThrow("bound Shadow case");
+    const shadowReport = passingReport();
+    const malformedReport = {
+      ...shadowReport,
+      cases: [{ ...shadowReport.cases[0]!, id: "outcome.offline.fixture" }, ...shadowReport.cases.slice(1)]
+    };
+    expect(() => parseShadowEvalSummaryInput(input([malformedReport]))).toThrow("bound Shadow case");
   });
 
   it("writes a valid report and uses exit code two for reviewed failures", async () => {
