@@ -39,8 +39,21 @@ function parseJSONText(text: string): unknown {
   try {
     return JSON.parse(extractTerminalJSONObject(fenced?.[1] ?? trimmed));
   } catch {
-    throw new Error("model JSON-text response is not a valid JSON object");
+    throw new Error(`model JSON-text response is not a valid JSON object (${jsonTextShape(trimmed)})`);
   }
+}
+
+function jsonTextShape(text: string): string {
+  const candidate = text.trim();
+  const first = candidate[0] ?? "empty";
+  return [
+    `bytes=${Buffer.byteLength(candidate, "utf8")}`,
+    `first=${JSON.stringify(first)}`,
+    `has_object=${candidate.includes("{")}`,
+    `has_think_open=${candidate.includes("<think>")}`,
+    `has_think_close=${candidate.includes("</think>")}`,
+    `has_fence=${candidate.includes("```")}`
+  ].join(",");
 }
 
 function extractTerminalJSONObject(text: string): string {
