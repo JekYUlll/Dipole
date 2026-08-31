@@ -50,6 +50,8 @@
 
 - 2026-08-31：README 已切换到用户提供的 V3 双产品品牌板，并使用可核验的技术/许可证 badge；`docs/images/dipole-brand-v3.png` 作为后续 IM 与 Agent 产品视觉的一致性参考。页面级 UI 迁移仍在前端设计轨道中单独验收，不改变运行时或服务 authority。
 
+- 2026-09-01：Context Ablation Eval v1 已建立 baseline/retrieval/memory 的统一低敏对照汇总。真实 Task/Context/Memory 审计查询 adapter、人工评审任务集与共享 Shadow 样本仍待完成，当前结果不能外推模型效果。
+
 - 2026-09-01：Shadow Eval 汇总 Runtime 已接受 40 位 Git revision，但发布 JSON Schema 曾仅允许 64 位摘要，导致外部 Schema 校验与 OCI provenance 不一致。Schema 已对齐并由 Runtime 测试锁定；窗口仍仅代表受控 Shadow 样本。
 
 - 2026-08-31：Remote GPU 以 `53a4edf7` 在独立 Compose 项目完成 Message Service 的持久化后重启与同一幂等键重放。最终 Message、Outbox、目标 Inbox 均为 `1`，退出后候选容器、卷和网络均清理；receipt 归档于 [`microservices-message-recovery-2026-08-31`](../../benchmarks/microservices-message-recovery-2026-08-31/)。该证据只覆盖一个 post-persistence service restart，Kafka/broker/in-flight 故障矩阵继续开放。
