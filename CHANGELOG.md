@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：新增简历 Claim 验收矩阵，将 Dipole IM 与 Dipole Agent 的目标表述逐项绑定到实现、可重跑运行证据和剩余门禁。后续优先补齐消息/Agent 故障副作用 receipt、Sync/Cassandra/Search/热点群 P99 和 Agent Eval 成功率；无对应报告时继续保留指标占位符。
+
 - 2026-08-31：微服务 smoke 现支持版本化 Compose overlay、受控 Compose 环境文件、事件发布后的可选 Core 重启，以及 Read Shadow 的模型调用和 `conversation_digest` Artifact 绑定断言。Remote GPU 已在隔离 Compose 项目完成事件发布后 Core 重启、Temporal 收敛与 Artifact 绑定演练，资源随后自动清理。该工具不改变默认基础 Shadow 路径和 authority。
 
 - 2026-08-31：基础微服务 Compose 的 Agent Shadow profile 现显式清空 v2 模型 route context profile，避免宿主 `.env` 的 AI SDK/active 配置与固定的 v1 Context Compiler 冲突而导致 Agent 启动失败。专用 AI SDK 与 active overlay 继续显式启用 v2 并注入 profile。

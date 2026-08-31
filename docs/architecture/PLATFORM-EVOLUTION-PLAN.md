@@ -17,7 +17,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 
 微服务阶段内先将 GORM 渐进迁移到 sqlc；前端从当前阶段开始维护 Pencil `.pen` 设计基线，并随 IM、Agent 和数据面能力持续更新。
 
-当前微服务 Go 全量测试已在干净 worktree 中通过：测试显式绑定版本化 `configs/config.dist.yaml`，不改变生产配置搜索路径。
+当前微服务 Go 全量测试已在干净 worktree 中通过：测试显式绑定版本化 `configs/config.dist.yaml`，不改变生产配置搜索路径。后续实施优先级受[简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)约束：先补消息/Agent 故障证据、Sync 观察与 P99，再扩大 Cassandra、Elasticsearch 与热点群的性能结论。
 
 整个过程采用 Strangler Fig 和事件驱动抽离，任何阶段结束时都必须存在可部署、可测试、可回滚的版本。
 

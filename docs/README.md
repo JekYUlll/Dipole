@@ -84,6 +84,7 @@ Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/agen
 
 ## 指南与参考
 
+- [简历 Claim 验收矩阵](guides/RESUME-CLAIM-READINESS.md)
 - [学习、简历与面试入口](guides/PROJECT-LEARNING-AND-INTERVIEW.md)
 - [Dipole IM 项目材料](guides/DIPOLE-IM-LEARNING-AND-INTERVIEW.md)
 - [Dipole Agent 项目材料](guides/DIPOLE-AGENT-LEARNING-AND-INTERVIEW.md)

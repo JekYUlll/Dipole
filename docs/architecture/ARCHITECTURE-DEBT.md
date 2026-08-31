@@ -1,5 +1,7 @@
 # 架构债务台账
 
+> 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
+
 本文档记录已确认但暂缓处理的架构风险、兼容性缺口和可清理冗余，便于后续按优先级滚动治理。
 
 ## 维护约定
