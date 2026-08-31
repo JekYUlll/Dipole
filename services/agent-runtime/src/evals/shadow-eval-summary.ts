@@ -6,11 +6,13 @@ import { parseShadowEvalReport, type ShadowEvalReport } from "./shadow-eval-repo
 export const shadowEvalSummaryInputSchemaVersion = "dipole.agent.shadow-eval-summary-input.v1" as const;
 export const shadowEvalSummaryReportSchemaVersion = "dipole.agent.shadow-eval-summary-report.v1" as const;
 
-const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
+// Container provenance uses a Git revision today (40 hex characters), while
+// content-addressed build systems may provide a 64-character digest.
+const runtimeRevisionSchema = z.string().regex(/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/);
 const sourceSchema = z.object({
   kind: z.literal("reviewed_shadow"),
   environment: z.enum(["isolated", "shared_development"]),
-  runtimeRevision: sha256Schema,
+  runtimeRevision: runtimeRevisionSchema,
   windowStart: z.string().datetime({ offset: true }),
   windowEnd: z.string().datetime({ offset: true })
 }).strict();

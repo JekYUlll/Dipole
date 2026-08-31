@@ -52,6 +52,10 @@ describe("Shadow evaluation summary", () => {
     expect(stderr).toEqual([]);
   });
 
+  it("accepts a 40-character Git revision from an OCI runtime image", () => {
+    expect(parseShadowEvalSummaryInput(input([passingReport()], "a".repeat(40))).source.runtimeRevision).toHaveLength(40);
+  });
+
   it("fails closed for invalid arguments", async () => {
     const stderr: string[] = [];
     await expect(runShadowEvalSummaryCLI([], writer([]), writer(stderr))).resolves.toBe(1);
@@ -59,12 +63,12 @@ describe("Shadow evaluation summary", () => {
   });
 });
 
-function input(reports: readonly ReturnType<typeof passingReport>[]) {
+function input(reports: readonly ReturnType<typeof passingReport>[], runtimeRevision = "a".repeat(64)) {
   return {
     schemaVersion: "dipole.agent.shadow-eval-summary-input.v1",
     source: {
       kind: "reviewed_shadow", environment: "isolated",
-      runtimeRevision: "a".repeat(64), windowStart: "2026-08-31T00:00:00.000Z", windowEnd: "2026-08-31T01:00:00.000Z"
+      runtimeRevision, windowStart: "2026-08-31T00:00:00.000Z", windowEnd: "2026-08-31T01:00:00.000Z"
     },
     reports
   };

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Shadow Eval 汇总的 `runtimeRevision` 同时接受 40 位 Git SHA-1 与 64 位内容摘要；此前 OCI 镜像的有效 Git revision 会在汇总阶段被错误拒绝，现已由回归测试覆盖。
+
 - 2026-09-01：Shadow Eval 窗口收集器改为从运行中 `agent` 容器的 OCI revision 与 clean-source
   标签取得 Runtime provenance；缺失或 dirty 标签立即失败关闭，避免候选 checkout 与实际评测镜像漂移。
 
