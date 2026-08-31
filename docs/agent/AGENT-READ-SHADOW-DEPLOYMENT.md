@@ -57,6 +57,14 @@ Context Ablation 必须使用独立 Compose 项目、一次一个条件，并与
 
 每个条件使用独立 Temporal queue，防止同一 Workflow worker 混入不同 Context。Memory overlay 不创建、晋级或修改 Memory；运行前必须以隔离 migration `000056` 数据库预置经审核的低敏 fixture。所有条件都继续关闭消息写入、Control、MCP 与 External MCP，完成后销毁整个 Compose 项目和卷。
 
+在启动完整项目之前，先运行只创建临时 MySQL 的预检：
+
+```bash
+DIPOLE_GO_BIN=/path/to/go scripts/smoke-agent-context-ablation-preflight.sh
+```
+
+该脚本应用全部 migration，确认 `000056` 与 binding 表存在，并检查 `dipole_agent_eval` 能读取空表且没有 `INSERT`、`UPDATE` 或 `DELETE` 权限。它不启动 Compose、Kafka、Temporal、Gateway 或 Provider，并在退出时移除临时容器和网络。
+
 ## Core 恢复演练
 
 以下命令只适用于隔离开发 Compose 项目。它在 Kafka 事件发布后重启 Core，重新验证

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：新增 Context Ablation 隔离 MySQL 预检。它应用 migration `000056`、核对 binding 表并验证 Eval 账号可读取且没有写权限；脚本不启动完整 Compose 或 Agent 运行时，退出后清理临时容器与网络。
+
 - 2026-09-01：新增 baseline、retrieval、memory 三份默认不加载的 Context Ablation Compose overlay。它们使用独立 Temporal queue，并以开关互斥地选择只读 Context 来源；Memory 写入、消息写入、Control、MCP 和 External MCP 不因此开启。
 
 - 2026-09-01：Context Ablation 增加版本化 manifest JSON Schema 与低敏示例，并将 `agent_context_ablation_bindings` 纳入 `dipole_agent_eval` 的最小 `SELECT` 授权。评测账号继续没有任何写权限，示例不能作为效果或晋级证据。

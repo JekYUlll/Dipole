@@ -62,6 +62,8 @@
 
 - 2026-09-01：Context Ablation 的 baseline/retrieval/memory 已拆为默认不加载的独立 Compose overlay，固定互斥 Context 开关和独立 Temporal queue。隔离 fixture 预置、三次真实 Task/Run、binding 写入、只读 CLI 报告和窗口归档仍待完成；共享 read-shadow 配置没有改变。
 
+- 2026-09-01：Context Ablation 增加隔离 MySQL 预检，验证 migration `000056`、binding 表和 Eval 账号的只读权限。它不覆盖真实三条件运行、fixture 审阅、Task/Run binding 或窗口级效果报告；这些步骤仍须在独立 Compose 项目完成。
+
 - 2026-09-01：Shadow Eval 汇总 Runtime 已接受 40 位 Git revision，但发布 JSON Schema 曾仅允许 64 位摘要，导致外部 Schema 校验与 OCI provenance 不一致。Schema 已对齐并由 Runtime 测试锁定；窗口仍仅代表受控 Shadow 样本。
 
 - 2026-08-31：Remote GPU 以 `53a4edf7` 在独立 Compose 项目完成 Message Service 的持久化后重启与同一幂等键重放。最终 Message、Outbox、目标 Inbox 均为 `1`，退出后候选容器、卷和网络均清理；receipt 归档于 [`microservices-message-recovery-2026-08-31`](../../benchmarks/microservices-message-recovery-2026-08-31/)。该证据只覆盖一个 post-persistence service restart，Kafka/broker/in-flight 故障矩阵继续开放。
