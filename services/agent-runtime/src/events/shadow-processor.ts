@@ -299,6 +299,12 @@ async function executeShadowPlanSteps(
     const claimToken = claim.token;
     try {
       const resolvedStep = resolveTrustedDiscoveryStep(plan.steps, index, step, outputs);
+      if (resolvedStep === undefined) {
+        const output = { status: "skipped", reason: "no_discovered_conversation" };
+        await trajectory.completeStep(context.taskId, stepNo, claimToken, output);
+        outputs.push(output);
+        continue;
+      }
       const invocation = registry.prepare(resolvedStep.capabilityId, resolvedStep.input, context);
       if (trajectory.recordAuthorization === undefined) throw new Error("Agent shadow Step authorization audit is unavailable");
       await trajectory.recordAuthorization(context.taskId, stepNo, claimToken, invocation.resource, "allowed");
@@ -325,7 +331,7 @@ function resolveTrustedDiscoveryStep(
   index: number,
   step: ShadowPlanStep,
   outputs: readonly unknown[]
-): ShadowPlanStep {
+): ShadowPlanStep | undefined {
   if (step.capabilityId !== "conversation.read") return step;
   if (step.input.conversationId !== discoveredConversationMarker) {
     throw new Error("conversation.read requires the trusted conversation discovery marker");
@@ -334,7 +340,9 @@ function resolveTrustedDiscoveryStep(
     throw new Error("conversation.read requires the immediately preceding trusted conversation.list result");
   }
   const conversationId = firstDiscoveredConversationId(outputs.at(-1));
-  if (conversationId === undefined) throw new Error("conversation.read has no trusted conversation discovery result");
+  // An empty list is a valid user state. Keep the skipped result in the
+  // trajectory, but never turn it into a guessed or unauthorised read.
+  if (conversationId === undefined) return undefined;
   return { ...step, input: { ...step.input, conversationId } };
 }
 

@@ -152,6 +152,43 @@ describe("ShadowEventProcessor", () => {
     expect(trajectory.failStep).toHaveBeenCalledOnce();
   });
 
+  it("records an empty discovery and skips its dependent read", async () => {
+    const registry = new CapabilityRegistry();
+    const listConversations = vi.fn(async () => []);
+    const readConversation = vi.fn(async () => ({ found: true, reason: "", targetId: "G1", targetType: 2, messages: [] }));
+    registry.register(new ConversationListCapability({ listConversations }));
+    registry.register(new ConversationReadCapability({ readConversation }));
+    let claimCount = 0;
+    const trajectory = {
+      append: vi.fn(async () => undefined),
+      claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: `TOKEN-${++claimCount}` })),
+      recordAuthorization: vi.fn(async () => undefined),
+      completeStep: vi.fn(async () => undefined),
+      failStep: vi.fn(async () => undefined)
+    };
+    const processor = new ShadowEventProcessor(
+      { plan: async () => ({ summary: "read newest", steps: [
+        { capabilityId: "conversation.list", input: { limit: 20 } },
+        { capabilityId: "conversation.read", input: { conversationId: "$discovered.previous" } }
+      ] }) },
+      trajectory, new InMemoryEventLedger(), undefined, registry, trajectory
+    );
+
+    await expect(processor.process({
+      eventId: "E-EMPTY-DISCOVERY", eventType: "message.direct.created", aggregateId: "M-EMPTY-DISCOVERY",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: {}
+    }, { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI" })).resolves.toMatchObject({ outcome: "recorded" });
+
+    expect(listConversations).toHaveBeenCalledOnce();
+    expect(readConversation).not.toHaveBeenCalled();
+    expect(trajectory.recordAuthorization).toHaveBeenCalledOnce();
+    expect(trajectory.completeStep).toHaveBeenNthCalledWith(1, expect.any(String), 1, "TOKEN-1", []);
+    expect(trajectory.completeStep).toHaveBeenNthCalledWith(2, expect.any(String), 2, "TOKEN-2", {
+      status: "skipped", reason: "no_discovered_conversation"
+    });
+    expect(trajectory.failStep).not.toHaveBeenCalled();
+  });
+
   it("executes a retrieval Step only when the composed context grants search", async () => {
     const registry = new CapabilityRegistry();
     const searchConversations = vi.fn(async () => []);
