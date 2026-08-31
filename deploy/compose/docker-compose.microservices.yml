@@ -91,6 +91,8 @@ services:
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
     depends_on:
+      core:
+        condition: service_healthy
       kafka:
         condition: service_healthy
       mysql-permissions:

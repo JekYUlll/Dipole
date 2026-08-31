@@ -112,6 +112,7 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_UUID == "UAI000000000000000001"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
+  and .services.agent.depends_on.core.condition == "service_healthy"
   and ((.services.core.depends_on // {}) | has("message") | not)
   and ((.services.message.depends_on // {}) | has("core") | not)
   and .services.gateway.depends_on.sync.condition == "service_healthy"

@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Agent Compose 启动顺序现显式等待 Core health，避免首次启动时能力 RPC 在 Core listener 就绪前失败。Core 滚动重启期间的 transport reconnect、retry 重新领取与 dead-letter 恢复尚未形成完整演练，继续跟踪。
+
 - 2026-08-31：修复微服务 Compose 中 Core assistant identity seed 与 TS Agent UUID 的漂移。Core 以 `ai.enabled=true`、`ai.runtime_mode=remote` 维护唯一系统用户，TS Runtime 仍只消费 Shadow 事件；该组合不恢复 embedded Eino consumer。真实私聊到 Shadow plan 的远程证据继续待补。
 
 - 2026-08-31：修复 standalone Core 将完整 Agent Capability adapter 误绑定到 Search 开关的装配缺口。内部 RPC 与 mTLS 完整时，基础只读/任务能力始终注册；Search client 仍仅在 `internal_rpc.agent_conversation_search_enabled=true` 时建立，关闭时只拒绝 `conversation.search`。Remote GPU 的 DeepSeek shadow 验证和公网体验入口仍需完成。

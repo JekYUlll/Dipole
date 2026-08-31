@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：微服务 Compose 的 Agent 现等待 Core `service_healthy` 后才启动，避免首次部署时 Agent gRPC transport 在 Core listener 就绪前固定失败连接。Core 运行中重启后的 retry/reconnect 演练继续作为独立可靠性切片推进。
+
 - 2026-08-31：微服务 Compose 的 Core 现以 `ai.enabled=true` 和 `ai.runtime_mode=remote` 维护唯一 assistant identity；独立 TypeScript Agent Runtime 继续作为 Shadow consumer。Compose 门禁同时固定 Core remote mode 与 Agent UUID，避免运行时目标用户缺失。
 
 - 2026-08-31：Core standalone 现在在内部 RPC 已启用且 mTLS 完整时始终装配基础 Agent Capability RPC，确保独立 TS Runtime 可以执行 `admit_run`、会话列表和会话读取。`conversation.search` 仍由 `internal_rpc.agent_conversation_search_enabled` 单独控制；关闭时 Core 不拨号 Search，调用搜索能力返回受控 `Unavailable`。
