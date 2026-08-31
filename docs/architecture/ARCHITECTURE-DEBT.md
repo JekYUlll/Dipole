@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Approval gate 联合演练已升级为 `dipole.agent.approval-gate-drill.v1` 低敏 receipt。Remote GPU 生成的 receipt 经独立 CLI 复核 exact effect 基数、mTLS 类型、canonical SHA-256 与 24 小时窗口；artifact 为 gitignored 临时文件。该证据覆盖 fixture operation 的授权与重放边界，未覆盖 IM 持久化、service-side commit 不确定性、审批 UI 或共享 Shadow。
+
 - 2026-08-31：Remote GPU 在 disposable MySQL/Kafka/Temporal/Go Core mTLS/local MCP 拓扑完成 Approval gate drill。Runtime 使用真实 `AgentCapabilityRPCClient` 验证 approved grant 单次执行、denied/consumed 零执行与 operation failure 后不自动重放；同轮 External MCP receipt 继续通过。脚本现在将 `DIPOLE_NODE_BIN` 的目录置于 `PATH` 首位并以路径标记驱动 lockfile 重装，避免 Node 18 启动 Node 22 依赖。该 fixture operation 不写 IM，active write、审批 UI、共享 Shadow 与提交后不确定性 receipt 保持开放。
 
 - 2026-08-31：补齐 Core Agent mTLS caller allowlist 对 `ResolveApprovalGrant` 与 `ConsumeApproval` 的显式授权。隔离认证测试现验证 request、approve、exact grant 与单次 consume 的闭环，并验证错误 shared secret 和非 Agent 证书拒绝。真实写投递、审批 UI、共享 Shadow 观察与 service-side commit 后不确定性 receipt 继续作为 Agent P0 门禁。
