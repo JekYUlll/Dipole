@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：OAuth callback handoff 增加 Runtime 重启重复通知与 terminal completion 不可用的组合测试：进程内去重不会跨重启保留，重复请求重新交给 Core lease；完成终态不确定时不释放 lease。callback HTTP、key source、provider exchange 与默认启动配置仍保持关闭。
+
 - 2026-08-31：Remote GPU 开发环境使用 `.env` 托管的 DeepSeek V4 Flash 完成真实私聊到 Kafka、Agent Capability RPC、单次 JSON-text 模型调用、持久化 Model Run/Call 与 Shadow Plan 的只读闭环验证；该证据仅覆盖 Shadow Runtime，不代表 active authority 或写能力已开放。
 
 - 2026-08-31：`json_text` 解析支持受限的前置标签：仅提取响应末尾唯一、完整的 JSON 对象；对象后的任意文本仍拒绝。提取结果继续经过 Zod schema 与 Capability allowlist 验证。
