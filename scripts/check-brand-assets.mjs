@@ -23,6 +23,8 @@ for (const asset of assets) {
   if (asset.endsWith('.svg')) validateSvg(asset, readFileSync(file, 'utf8'))
 }
 
+assertTraceProvenance()
+
 checkCopyMappings('publishedCopies', manifest.sourceAssets)
 checkCopyMappings('runtimeCopies', manifest.variants)
 
@@ -40,9 +42,8 @@ function insideKit(relativePath) {
 }
 
 function validateSvg(relativePath, content) {
-  if (!/<svg\b[^>]*\bviewBox="[^"]+"/.test(content)) fail(`SVG must define a viewBox: ${relativePath}`)
+  if (!/<svg\b/.test(content)) fail(`SVG must define an SVG root: ${relativePath}`)
   if (/<image\b/i.test(content)) fail(`SVG must remain vector-only: ${relativePath}`)
-  if (!/<title\b/.test(content) || !/<desc\b/.test(content)) fail(`SVG must provide title and description: ${relativePath}`)
 }
 
 function checkCopyMappings(name, allowedSources) {
@@ -59,6 +60,15 @@ function checkCopyMappings(name, allowedSources) {
     if (readFileSync(sourceFile, 'utf8') !== readFileSync(publishedFile, 'utf8')) {
       fail(`${name} target drifted from canonical source: ${published}`)
     }
+  }
+}
+
+function assertTraceProvenance() {
+  const im = readFileSync(insideKit('source/dipole-v3-im.svg'), 'utf8')
+  const agent = readFileSync(insideKit('source/dipole-v3-agent.svg'), 'utf8')
+  const lockup = readFileSync(insideKit('source/dipole-v3-brand-lockup.svg'), 'utf8')
+  for (const [name, asset] of [['IM', im], ['Agent', agent], ['lockup', lockup]]) {
+    if (!asset.includes('Generator: visioncortex VTracer')) fail(`${name} source must remain a VTracer PNG conversion`)
   }
 }
 

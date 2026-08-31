@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：先前 V3 SVG 仅保留双色/轨道概念，未忠实还原用户提供的 PNG 产品设计。现已使用 VTracer 从 PNG 高精度生成 IM、Agent、产品族 lockup 和 favicon，门禁校验生成器来源与发布副本一致性；深浅背景和单色受限变体仍需在后续品牌复核中逐一对照原图。
+
 - 2026-09-01：浏览器壳层已接入 V3 title 与受版本控制的 favicon，品牌门禁会同时核对其与 `design/brand/` 变体的字节一致性。本地工作树缺少 Vite/Playwright 依赖，Remote GPU 新候选同步暂时阻塞在 SCP 传输，因此 toolchain build 与 Chromium 快照需在可用的隔离候选上补跑；当前不将该接入表述为跨浏览器视觉验收完成。
 
 - 2026-09-01：V3 品牌资产已收口到版本化 `design/brand/`：canonical SVG、反白/单色变体、favicon、参考板、色彩规则与发布副本映射均可审计，设计门禁会拒绝 `docs/images/` 与源 SVG 漂移。该治理只统一品牌资产来源；其余页面的 Pencil 复核与跨浏览器视觉验收仍需按 F2/F3/F4 逐页完成。

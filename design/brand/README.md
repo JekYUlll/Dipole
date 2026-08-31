@@ -1,6 +1,6 @@
 # Dipole V3 Brand Kit
 
-`design/brand/` is the versioned source of truth for the Dipole visual identity. It packages the V3 dual-pole mark for IM, the governed Agent orbit, approved color roles, and practical usage rules.
+`design/brand/` is the versioned source of truth for the Dipole visual identity. The approved V3 PNG reference is the visual authority. Primary SVGs are generated from it with VTracer rather than hand-redrawn.
 
 ## Asset Layout
 
@@ -37,14 +37,15 @@
 
 - Keep a clear space of at least one quarter of the mark width on every side.
 - Use the IM mark from 20 px and the Agent mark from 24 px; use the favicon below those thresholds.
-- Preserve the navy/red relationship. The gold orbit only belongs to Agent contexts.
+- Preserve the navy/red relationship, the white horizontal link, and the opposing speech-tail silhouette. The gold orbit only belongs to Agent contexts.
 - Do not redraw the pole geometry, add effects, place the primary mark over busy imagery, or use the raster reference as a product icon.
 
 ## Change Procedure
 
-1. Update the canonical SVG under `source/` and any approved variants.
-2. Update every matching published or runtime file declared in `manifest.json` in the same change.
-3. Update `manifest.json`, this guide, `design/DESIGN-CHANGELOG.md`, and the relevant Pencil frame when the visual contract changes.
-4. Run `cd frontend && npm run test:design`.
+1. Regenerate primary SVGs from `reference/dipole-brand-v3.png` with VTracer; do not hand-redraw its geometry.
+2. Update the canonical SVG under `source/` and any approved variants.
+3. Update every matching published or runtime file declared in `manifest.json` in the same change.
+4. Update `manifest.json`, this guide, `design/DESIGN-CHANGELOG.md`, and the relevant Pencil frame when the visual contract changes.
+5. Run `cd frontend && npm run test:design`.
 
 The brand kit governs shared identity. Page composition, responsive behavior, and component states remain in [`../dipole-ui.pen`](../dipole-ui.pen).
