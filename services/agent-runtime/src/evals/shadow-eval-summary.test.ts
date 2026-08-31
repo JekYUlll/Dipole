@@ -82,7 +82,7 @@ function passingReport() {
       { id: `trajectory.shadow.${"a".repeat(24)}`, category: "trajectory", expected: { steps: [], forbiddenSteps: [] }, observed: { steps: [] } },
       { id: `permission.shadow.${"a".repeat(24)}`, category: "permission", expected: { decisions: [] }, observed: { decisions: [] } },
       { id: `retrieval.shadow.${"a".repeat(24)}`, category: "retrieval", expected: { relevantEvidenceIds: ["evidence:one"], minimumRecall: 1, minimumPrecision: 1 }, observed: { retrievedEvidenceIds: ["evidence:one"] } },
-      { id: `cost.shadow.${"a".repeat(24)}`, category: "cost", expected: { maximums: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }, observed: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }
+      { id: `cost.shadow.${"a".repeat(24)}`, category: "cost", expected: { maximums: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }, observed: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10, tokenMetrics: "complete" } }
     ]
   }));
 }
@@ -95,7 +95,7 @@ function failingReport() {
       { id: `trajectory.shadow.${"b".repeat(24)}`, category: "trajectory", expected: { steps: [], forbiddenSteps: [] }, observed: { steps: [] } },
       { id: `permission.shadow.${"b".repeat(24)}`, category: "permission", expected: { decisions: [] }, observed: { decisions: [] } },
       { id: `retrieval.shadow.${"b".repeat(24)}`, category: "retrieval", expected: { relevantEvidenceIds: ["evidence:two"], minimumRecall: 1, minimumPrecision: 1 }, observed: { retrievedEvidenceIds: ["evidence:two"] } },
-      { id: `cost.shadow.${"b".repeat(24)}`, category: "cost", expected: { maximums: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }, observed: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }
+      { id: `cost.shadow.${"b".repeat(24)}`, category: "cost", expected: { maximums: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }, observed: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10, tokenMetrics: "complete" } }
     ]
   }));
 }

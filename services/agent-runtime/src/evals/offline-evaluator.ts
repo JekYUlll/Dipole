@@ -230,7 +230,8 @@ function evaluateCase(testCase: OfflineEvalCase): OfflineEvalCaseResult {
 
   reasons.sort();
   const result: OfflineEvalCaseResult = { id: testCase.id, category: testCase.category, passed: reasons.length === 0, reasons };
-  return metrics === undefined ? result : { ...result, metrics, availability };
+  if (metrics === undefined) return result;
+  return availability === undefined ? { ...result, metrics } : { ...result, metrics, availability };
 }
 
 function permissionBinding(decision: z.infer<typeof permissionDecisionSchema>): string {
