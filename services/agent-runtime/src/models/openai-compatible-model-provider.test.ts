@@ -21,14 +21,14 @@ describe("OpenAI-compatible model provider", () => {
     });
     const resolve = createOpenAICompatibleModelResolver(config);
 
-    expect(resolve("gateway/gpt-5-mini").supportsStructuredOutputs).toBe(true);
+    expect(resolve("gateway/gpt-5-mini")).toMatchObject({ supportsStructuredOutputs: true });
     expect(modelIDForRoute("gateway/gpt-5-mini", "gateway")).toBe("gpt-5-mini");
   });
 
   it("keeps structured output disabled until the provider is explicitly declared compatible", () => {
     const config = loadModelProviderConfig(environment);
 
-    expect(createOpenAICompatibleModelResolver(config)("gateway/gpt-5-mini").supportsStructuredOutputs).toBe(false);
+    expect(createOpenAICompatibleModelResolver(config)("gateway/gpt-5-mini")).toMatchObject({ supportsStructuredOutputs: false });
   });
 
   it("rejects malformed provider configuration and cross-provider routes", () => {
