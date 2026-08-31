@@ -33,6 +33,7 @@ func RestrictAgentServiceMethods(ctx context.Context, request any, info *grpc.Un
 		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ReadConversation_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ListAgentTaskTimeline_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpContext_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_BeginMcpToolInvocation_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpToolCommand_FullMethodName &&

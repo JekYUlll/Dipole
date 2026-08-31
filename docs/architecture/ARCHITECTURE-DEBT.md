@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Interactive Agent Timeline 的同版本候选验收发现 Core 最小权限 allowlist 遗漏 `ListAgentTaskTimeline`，已用 Agent 身份的真实 gRPC 回归测试补齐。候选仍需完成 Gateway 创建、终态读取与分页 Timeline 的同版本端到端 receipt，才可关闭体验链路门禁。
+
 - 2026-09-01：Interactive Agent Task 的公开 Timeline 在 Remote GPU 候选返回通用依赖错误，数据库迁移、持久事件、SQLC 查询和账户认证均已单独验证。Core 现仅在服务端记录脱敏结构化查询错误，公共 gRPC/HTTP 仍不返回数据库细节；待以同版本候选取得根因并补充功能修复与端到端 receipt。
 
 - 2026-09-01：Remote GPU 同版本 Interactive Agent Task 验收发现，Gateway 控制客户端将 Timeline 的 `limit`/`after` 查询串编码进 path，Runtime 因此返回 `404`。客户端现通过结构化 URL 解析保留 query，并覆盖真实 `task:` 标识、cursor 与 limit；仍需用同一 revision 的隔离 Compose 重跑创建、终态读取和时间线读取后，才可关闭该体验链路门禁。
