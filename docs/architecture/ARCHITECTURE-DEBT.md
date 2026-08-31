@@ -14,6 +14,8 @@
 
 - 2026-09-01：个人资料入口补齐了当前密码验证、bcrypt 重哈希和当前 session 撤销的密码更新闭环。当前仅撤销发起修改的会话；“修改密码后撤销全部设备令牌”需要先让 Session/Token Store 提供用户范围的可审计失效能力，作为后续安全增强，不将当前实现表述为全设备登出。
 
+- 2026-09-01：密码更新的隔离端到端验证发现资料缓存按设计脱敏 `PasswordHash`，认证中间件的 cached user 不能直接参与 bcrypt 对比。流程现经已认证主体的手机号加载权威记录并核验 UUID；用户资料缓存继续不保存密码哈希。后续认证能力需保持“敏感凭据从权威 store 获取、资料 cache 只承载脱敏投影”的边界。
+
 - 2026-09-01：体验环境实测发现 Agent Task 创建页的 Function prop 默认值返回了函数而非 UUID 字符串，前端在网络请求前失败，Gateway/Temporal 控制链不会收到请求。现已修正并以组件回归测试锁定；远端隔离体验需重建 Gateway 静态资源后复验创建与时间线闭环。
 
 - 2026-09-01：增加 reviewed Shadow Eval window collector。它只执行已评审 manifest，保存每份低敏 report、输入与去重 Trace/Suite 汇总，并保留有效失败窗口以统计失败分类；没有自动任务创建、标签生成或环境切流。收集器从运行中 `agent` 容器读取 clean OCI revision，拒绝缺失或 dirty provenance，避免脚本 checkout 与实际评测镜像漂移。Remote GPU 已归档 [受控完成子集 N=2](../../benchmarks/agent-shadow-eval-window-2026-09-01-n2/)；五类报告全部通过，但 `100%` 仅描述该子集，当前尚无固定多样本任务集和共享环境窗口，任务成功率继续保留占位符。

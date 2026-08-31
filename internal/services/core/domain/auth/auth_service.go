@@ -171,13 +171,25 @@ func (s *AuthService) ChangePassword(user *model.User, token string, input Chang
 	if user == nil || user.Status == model.UserStatusDisabled {
 		return ErrUserDisabled
 	}
+	// Profile-cache entries intentionally exclude PasswordHash. Resolve the
+	// credential record through the authoritative telephone lookup instead.
+	storedUser, err := s.repo.GetByTelephone(user.Telephone)
+	if err != nil {
+		return fmt.Errorf("resolve password change user: %w", err)
+	}
+	if storedUser == nil || storedUser.UUID != user.UUID {
+		return ErrInvalidCurrentPassword
+	}
+	if storedUser.Status == model.UserStatusDisabled {
+		return ErrUserDisabled
+	}
 	if !validPassword(input.CurrentPassword) || !validPassword(input.NewPassword) {
 		return ErrInvalidPassword
 	}
 	if input.CurrentPassword == input.NewPassword {
 		return ErrPasswordUnchanged
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.CurrentPassword)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(storedUser.PasswordHash), []byte(input.CurrentPassword)); err != nil {
 		return ErrInvalidCurrentPassword
 	}
 
@@ -185,8 +197,8 @@ func (s *AuthService) ChangePassword(user *model.User, token string, input Chang
 	if err != nil {
 		return fmt.Errorf("hash changed password: %w", err)
 	}
-	user.PasswordHash = string(passwordHash)
-	if err := s.repo.Update(user); err != nil {
+	storedUser.PasswordHash = string(passwordHash)
+	if err := s.repo.Update(storedUser); err != nil {
 		return fmt.Errorf("persist changed password: %w", err)
 	}
 	if err := s.tokenService.Revoke(token); err != nil {

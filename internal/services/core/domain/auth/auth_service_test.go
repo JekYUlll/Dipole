@@ -221,18 +221,20 @@ func TestAuthServiceChangePasswordRehashesAndRevokesCurrentSession(t *testing.T)
 	if err != nil {
 		t.Fatalf("hash current password: %v", err)
 	}
-	repo := &stubAuthRepository{}
+	storedUser := &model.User{UUID: "U100", Telephone: "13800138000", PasswordHash: string(currentHash), Status: model.UserStatusNormal}
+	// Middleware receives a redacted profile-cache projection without PasswordHash.
+	user := &model.User{UUID: storedUser.UUID, Telephone: storedUser.Telephone, Status: model.UserStatusNormal}
+	repo := &stubAuthRepository{usersByTelephone: map[string]*model.User{user.Telephone: storedUser}}
 	tokens := &stubTokenIssuer{}
 	auth := NewAuthService(repo, tokens)
-	user := &model.User{UUID: "U100", PasswordHash: string(currentHash), Status: model.UserStatusNormal}
 
 	if err := auth.ChangePassword(user, "CURRENT_TOKEN", ChangePasswordInput{CurrentPassword: "old-secret", NewPassword: "new-secret"}); err != nil {
 		t.Fatalf("change password: %v", err)
 	}
-	if repo.updatedUser != user {
-		t.Fatal("expected updated authenticated user")
+	if repo.updatedUser != storedUser {
+		t.Fatal("expected authoritative user record to be updated")
 	}
-	if user.PasswordHash == string(currentHash) || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte("new-secret")) != nil {
+	if storedUser.PasswordHash == string(currentHash) || bcrypt.CompareHashAndPassword([]byte(storedUser.PasswordHash), []byte("new-secret")) != nil {
 		t.Fatal("expected password to be replaced with a bcrypt hash")
 	}
 	if tokens.revoked != "CURRENT_TOKEN" {
@@ -246,12 +248,14 @@ func TestAuthServiceChangePasswordRejectsInvalidCurrentAndReusedSecrets(t *testi
 	if err != nil {
 		t.Fatalf("hash current password: %v", err)
 	}
-	user := &model.User{UUID: "U100", PasswordHash: string(currentHash), Status: model.UserStatusNormal}
+	storedUser := &model.User{UUID: "U100", Telephone: "13800138000", PasswordHash: string(currentHash), Status: model.UserStatusNormal}
+	user := &model.User{UUID: storedUser.UUID, Telephone: storedUser.Telephone, Status: model.UserStatusNormal}
+	repo := &stubAuthRepository{usersByTelephone: map[string]*model.User{user.Telephone: storedUser}}
 
-	if err := NewAuthService(&stubAuthRepository{}, &stubTokenIssuer{}).ChangePassword(user, "TOKEN", ChangePasswordInput{CurrentPassword: "wrong-secret", NewPassword: "new-secret"}); !errors.Is(err, ErrInvalidCurrentPassword) {
+	if err := NewAuthService(repo, &stubTokenIssuer{}).ChangePassword(user, "TOKEN", ChangePasswordInput{CurrentPassword: "wrong-secret", NewPassword: "new-secret"}); !errors.Is(err, ErrInvalidCurrentPassword) {
 		t.Fatalf("expected invalid current password, got %v", err)
 	}
-	if err := NewAuthService(&stubAuthRepository{}, &stubTokenIssuer{}).ChangePassword(user, "TOKEN", ChangePasswordInput{CurrentPassword: "old-secret", NewPassword: "old-secret"}); !errors.Is(err, ErrPasswordUnchanged) {
+	if err := NewAuthService(repo, &stubTokenIssuer{}).ChangePassword(user, "TOKEN", ChangePasswordInput{CurrentPassword: "old-secret", NewPassword: "old-secret"}); !errors.Is(err, ErrPasswordUnchanged) {
 		t.Fatalf("expected unchanged password error, got %v", err)
 	}
 }
