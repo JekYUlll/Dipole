@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Cassandra read-rollout 已可把不可覆盖的 Message Service Prometheus 起止快照转换为 evidence v1。转换器拒绝 route/verification counter 回退、未知标签、histogram bucket 漂移和延迟覆盖缺口，`mysql_fallback` 同时归入 MySQL 最终路径与 fallback 比例。真实共享环境观察、责任人审核和读比例扩大仍由 AD-043 的运行证据门槛约束。
+
 - 2026-08-31：补齐主链路外部阻塞期间的并行治理规则。前端设计、只读体验、视觉回归、文档入口和图表可在独立分支推进，但不改变服务 authority、默认 feature flag 或真实环境证据门槛。该规则减少等待窗口造成的工程停滞；共享环境切流、负载测试和 active 能力仍按各自验收条件执行。
 
 - 2026-08-31：Remote GPU 的 DeepSeek V4 Flash shadow 审计显示已完成真实 Kafka/Capability RPC/模型/Shadow Plan 链路的至少一条成功调用，但当前观察样本仍存在 Provider `response_format` 不可用、空输出与 JSON-text 包装造成的失败。Runtime 已将单一、短包装的 JSON 对象恢复为本地 Zod 校验输入，并继续拒绝多对象或不合法结构；需在 Temporal `read_shadow` 实机启动后收集新的成功率、Run 终态与 Artifact 证据，AD-009 不关闭。

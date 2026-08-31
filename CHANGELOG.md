@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Cassandra read-rollout 新增 Prometheus 窗口转换器与 CLI。它将 Message Service 的起止快照转换为 evidence v1，并拒绝 route/verification counter 回退、未知标签、histogram bucket 漂移及未覆盖最终路由的延迟数据；`mysql_fallback` 同时归入 MySQL 最终路径和 fallback 比例。转换过程只读取快照文件，不改变 Cassandra 读比例或 MySQL 回退。
+
 - 2026-08-31：补齐主链路外部阻塞期间的并行治理规则。前端设计、只读体验、视觉回归、文档入口和图表可在独立分支推进；这些切片不改变服务 authority、默认 feature flag 或真实环境证据门槛。
 
 - 2026-08-31：新增 Cassandra read-rollout 原始 Prometheus 窗口采集脚本，严格分离不可覆盖的 `start` 与 `end` 快照，并绑定部署 revision 与配置读比例。脚本只读取 Message Service `/metrics`，为后续 evidence v1 转换与共享灰度归档提供输入，不修改流量开关。
