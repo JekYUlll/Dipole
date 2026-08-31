@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU interactive Shadow 复验发现：任务已被 Core 所有权授权且投影为终态时，Temporal 对关闭 Workflow 的 Query 返回不可用，Gateway 随之错误映射为 `404`。Task control 现仅在该特定终态条件下返回 Core 持久投影；运行中、缺投影或任意其他依赖错误保持失败关闭。后续仍需以同版本镜像重跑完整交互 receipt，当前不构成 active authority 或用户体验验收。
+
 - 2026-09-01：Remote GPU 已以 clean `676a6d93` 完成同版本 Core/Gateway/Message/Sync/Agent 候选 smoke。私聊写入后重启 Core，Message、Outbox 与目标 Inbox 精确均为 `1`，低敏 receipt 归档于 [`microservices-same-revision-smoke-2026-09-01`](../../benchmarks/microservices-same-revision-smoke-2026-09-01/)。该结果覆盖 atomic Inbox 的一条服务恢复路径；Agent interactive control、Cassandra 主读、Kafka/broker/in-flight 故障矩阵与 A6 Web Sync 观察继续独立验收。
 
 - 2026-09-01：Remote GPU 同版本 smoke 观察到每个 Go 微服务镜像重复传输完整 `dist` 上下文。构建脚本现只为目标二进制创建临时 Docker context，并在缺失或无执行权限时失败关闭；服务镜像模板继续只复制一个 `/app/service`。该优化不改变镜像 provenance、服务隔离或默认 authority，后续需在下一次同版本 smoke 记录实际 context 大小与总耗时。

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Agent Task control 在已授权的 Durable Workflow 终态关闭后，使用 Core 持久化的终态投影响应读取请求。此前 Temporal 不再接受关闭工作流的 Query 会使已完成任务返回 `404`；运行中任务和非“工作流不可用”错误继续失败关闭，避免旧投影掩盖执行中断。
+
 - 2026-09-01：Remote GPU 以同一 clean revision `676a6d93` 完成隔离微服务 smoke。Gateway/Core/Message/Sync 与 Agent 镜像来自同一源码版本；私聊持久化后重启 Core，最终 Message、Outbox 和目标 Inbox 均为单条，receipt 归档于 [`microservices-same-revision-smoke-2026-09-01`](benchmarks/microservices-same-revision-smoke-2026-09-01/)。该演练不构成 Agent active authority、Cassandra 主读或 A6 浏览器观察验收。
 
 - 2026-09-01：微服务镜像构建将 Go Docker context 收敛为当前目标二进制。构建仍使用同一 `dist` 基线与版本化标签，但每个服务不再重复上传整套 `dist` 工具集，降低 Remote GPU 验收的 Docker I/O 与传输开销；缺少或不可执行的目标二进制会在 build 前失败关闭。

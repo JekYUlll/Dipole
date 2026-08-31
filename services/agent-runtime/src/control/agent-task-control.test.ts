@@ -37,6 +37,35 @@ describe("AgentTaskControlService", () => {
     });
   });
 
+  it("returns the owner-authorized terminal projection when Temporal has closed the Workflow", async () => {
+    const query = vi.fn(async () => { throw Object.assign(new Error("workflow closed"), { code: 5 }); });
+    const service = new AgentTaskControlService({ authorizeTaskControl: vi.fn(async () => ({
+      taskId: "TASK-1", taskStatus: "running",
+      workflow: {
+        taskId: "TASK-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
+        workflowStatus: "completed", workflowRevision: 2
+      }
+    })) }, { query, cancel: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() });
+
+    await expect(service.getTask({ taskId: "TASK-1", principalUserId: "U100" })).resolves.toEqual({
+      taskId: "TASK-1", status: "completed", revision: 2, persistentStatus: "running",
+      workflowProjection: { outcome: "match", status: "completed", revision: 2 }
+    });
+  });
+
+  it("does not replace a non-terminal Workflow query failure with persisted evidence", async () => {
+    const unavailable = Object.assign(new Error("workflow unavailable"), { code: 5 });
+    const service = new AgentTaskControlService({ authorizeTaskControl: vi.fn(async () => ({
+      taskId: "TASK-1", taskStatus: "running",
+      workflow: {
+        taskId: "TASK-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
+        workflowStatus: "running", workflowRevision: 1
+      }
+    })) }, { query: vi.fn(async () => { throw unavailable; }), cancel: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() });
+
+    await expect(service.getTask({ taskId: "TASK-1", principalUserId: "U100" })).rejects.toBe(unavailable);
+  });
+
   it("binds approval Signals to the current pending request", async () => {
     const authorizeTaskControl = vi.fn(async () => ({ taskId: "TASK-1", taskStatus: "waiting_approval" }));
     const query = vi.fn(async () => ({
