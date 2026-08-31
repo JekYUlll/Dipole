@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 隔离 Interactive Shadow 候选已验证认证用户从 Gateway 创建任务、异步 admission、Temporal 执行到终态读取的完整只读链路，receipt 归档于 [`agent-interactive-control-2026-09-01`](../../benchmarks/agent-interactive-control-2026-09-01/)。Provider 使用 `deepseek/deepseek-v4-flash` 且显式禁用 thinking，避免 JSON-text 输出为空；该配置目前只在候选环境采用。Gateway/Core 未重建到 Agent `c9f3f424`，同版本发布、体验 URL 验收、active authority、写 Capability、MCP 和统计成功率仍需独立门禁。
+
 - 2026-09-01：Remote GPU interactive Shadow 复验发现：任务已被 Core 所有权授权且投影为终态时，Temporal 对关闭 Workflow 的 Query 返回不可用，Gateway 随之错误映射为 `404`。Task control 现仅在该特定终态条件下返回 Core 持久投影；运行中、缺投影或任意其他依赖错误保持失败关闭。后续仍需以同版本镜像重跑完整交互 receipt，当前不构成 active authority 或用户体验验收。
 
 - 2026-09-01：Remote GPU 已以 clean `676a6d93` 完成同版本 Core/Gateway/Message/Sync/Agent 候选 smoke。私聊写入后重启 Core，Message、Outbox 与目标 Inbox 精确均为 `1`，低敏 receipt 归档于 [`microservices-same-revision-smoke-2026-09-01`](../../benchmarks/microservices-same-revision-smoke-2026-09-01/)。该结果覆盖 atomic Inbox 的一条服务恢复路径；Agent interactive control、Cassandra 主读、Kafka/broker/in-flight 故障矩阵与 A6 Web Sync 观察继续独立验收。
