@@ -20,7 +20,7 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
     const parsed = new URL(adminUrl!);
     parsed.pathname = `/${database}`;
     pool = createPool({ uri: parsed.toString(), timezone: "Z", connectionLimit: 4, multipleStatements: true });
-    for (const migration of [16, 17, 19, 20, 21, 22, 23, 24, 26, 30, 32, 54]) {
+    for (const migration of [16, 17, 19, 20, 21, 22, 23, 24, 26, 30, 32, 54, 55]) {
       const prefix = migration.toString().padStart(6, "0");
       const [path] = migrationPaths.filter(item => item.includes(`/${prefix}_`));
       if (path === undefined) throw new Error(`missing Agent migration ${prefix}`);
@@ -46,7 +46,7 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
       contextManifest: {
         selected: [{ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } }], omitted: []
       },
-      steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 20 }],
+      steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 20, authorization: { resourceType: "conversation", resourceId: "*", action: "list", decision: "allowed" } }],
       artifacts: [{ artifactType: "conversation_digest", version: 1 }],
       modelCalls: [{ route: "gateway/primary", status: "completed", inputTokens: 12, outputTokens: 3, latencyMs: 40 }],
       toolCalls: [{ status: "completed", latencyMs: 5 }]
@@ -66,7 +66,8 @@ const migrationPaths = [
   "../../../../db/migrations/000026_agent_artifacts.up.sql",
   "../../../../db/migrations/000030_agent_tool_invocations.up.sql",
   "../../../../db/migrations/000032_agent_runtime_promotion_grants.up.sql",
-  "../../../../db/migrations/000054_agent_run_trace_correlation.up.sql"
+  "../../../../db/migrations/000054_agent_run_trace_correlation.up.sql",
+  "../../../../db/migrations/000055_agent_shadow_step_authorization.up.sql"
 ];
 
 async function seed(pool: Pool): Promise<void> {
@@ -82,7 +83,7 @@ async function seed(pool: Pool): Promise<void> {
     ["a".repeat(64), JSON.stringify({ selected: [{ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } }], omitted: [] })]
   );
   await pool.execute(
-    "INSERT INTO agent_shadow_steps (task_uuid, step_no, capability_id, status, input_json, output_json, attempt_count, started_at, finished_at) VALUES ('TASK-EVAL-1', 1, 'conversation.list', 'completed', JSON_OBJECT(), JSON_OBJECT(), 1, '2026-08-27 00:00:00.000', '2026-08-27 00:00:00.020')"
+    "INSERT INTO agent_shadow_steps (task_uuid, step_no, capability_id, authorization_resource_type, authorization_resource_id, authorization_action, authorization_decision, status, input_json, output_json, attempt_count, started_at, finished_at) VALUES ('TASK-EVAL-1', 1, 'conversation.list', 'conversation', '*', 'list', 'allowed', 'completed', JSON_OBJECT(), JSON_OBJECT(), 1, '2026-08-27 00:00:00.000', '2026-08-27 00:00:00.020')"
   );
   await pool.execute(
     "INSERT INTO agent_model_runs (run_uuid, task_uuid, status, max_calls, total_timeout_ms, max_output_tokens_per_call, calls_reserved, started_at, completed_at) VALUES ('MODEL-RUN-1', 'TASK-EVAL-1', 'completed', 1, 1000, 100, 1, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))"

@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Shadow Eval 的 Permission evidence 已改为读取 Step lease 内持久化的 `resourceType/resourceId/action/decision`，并对 manifest 逐项核对；旧、部分、空值和非 `allowed` 记录全部拒绝。该实现修复了此前资源 scope 可由评审标签替代的证据缺口，仍需在隔离 MySQL/Runtime 拓扑重新生成五类报告，当前不恢复已撤回的成功率结论。
+
 - 2026-08-31：EventLedger lease expiry 现有 `dipole.agent.event-lease-reclaim.v1` receipt，要求过期 claim 被第二次 claim 回收、旧 token 完成失败且最终 completed 行唯一。Remote GPU 已在 loopback-only MySQL 8.4 临时容器通过真实集成 `3/3`、receipt 单测 `4/4` 和 Runtime typecheck；该结论只覆盖消费 ownership，Temporal Workflow、共享 Kafka/Temporal 与 active authority 仍需独立门禁。
 
 - 2026-08-31：隔离 Core restart 演练暴露 `BUILD_IMAGE=1` 只构建 Go 镜像、Compose Agent 可能沿用旧 `latest` 的版本漂移。`docker-build-microservice-images.sh` 现按同一 revision 构建 `dipole-agent`，并由静态测试锁定；Remote GPU 已在候选 `a7bc03ef` 的新 Agent 镜像下重跑，Core 重启后 Gateway 与单次 Ledger/Task/Run/模型调用/Artifact 均收敛。默认 authority 不变。

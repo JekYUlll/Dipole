@@ -9,6 +9,7 @@ import {
   FAIL_AGENT_SHADOW_STEP,
   GET_AGENT_SHADOW_PLAN,
   GET_AGENT_SHADOW_STEP,
+  RECORD_AGENT_SHADOW_STEP_AUTHORIZATION,
   INSERT_AGENT_MEMORY_TASK_LINEAGE,
   INSERT_AGENT_SHADOW_PLAN,
   INSERT_AGENT_SHADOW_STEP
@@ -129,6 +130,14 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
     if (result.affectedRows !== 1) {
       throw new Error(`Agent shadow Step ${taskId}/${stepNo} completion is stale`);
     }
+  }
+
+  async recordAuthorization(taskId: string, stepNo: number, token: string, resource: { readonly resourceType: string; readonly resourceId: string; readonly action: string }, decision: "allowed"): Promise<void> {
+    const [result] = await this.pool.execute<ResultSetHeader>(RECORD_AGENT_SHADOW_STEP_AUTHORIZATION, [
+      required(resource.resourceType, "authorization resource type"), required(resource.resourceId, "authorization resource ID"),
+      required(resource.action, "authorization action"), decision, required(taskId, "Task ID"), stepNo, required(token, "Step claim token")
+    ]);
+    if (result.affectedRows !== 1) throw new Error(`Agent shadow Step ${taskId}/${stepNo} authorization is stale`);
   }
 
   async failStep(taskId: string, stepNo: number, token: string, error: unknown): Promise<void> {

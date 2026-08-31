@@ -60,6 +60,7 @@ export interface ShadowEvalObservation {
   readonly steps: readonly {
     readonly stepNo: number; readonly capabilityId: string; readonly status: string;
     readonly attemptCount: number; readonly latencyMs: number | null;
+    readonly authorization: { readonly resourceType: string; readonly resourceId: string; readonly action: string; readonly decision: "allowed" } | null;
   }[];
   readonly artifacts: readonly { readonly artifactType: string; readonly version: number }[];
   readonly modelCalls: readonly {
@@ -89,12 +90,12 @@ export function buildShadowEvalSuite(manifest: ShadowEvalManifest, observation: 
   ];
   const decisions = labels.permission.map(label => {
     const observed = observation.steps.find(step => step.stepNo === label.stepNo);
-    if (observed === undefined || observed.capabilityId !== label.capabilityId) {
+    if (observed === undefined || observed.capabilityId !== label.capabilityId || observed.authorization === null) {
       throw new Error(`Shadow evaluation capability binding is invalid at Step ${label.stepNo}`);
     }
+    if (observed.authorization.resourceType !== label.resourceType || observed.authorization.resourceId !== label.resourceId || observed.authorization.action !== label.action || observed.authorization.decision !== label.decision) throw new Error(`Shadow evaluation authorization binding is invalid at Step ${label.stepNo}`);
     return {
-      capabilityId: label.capabilityId, resourceType: label.resourceType, resourceId: label.resourceId, action: label.action,
-      decision: observed.status === "denied" ? "denied" as const : "allowed" as const
+      capabilityId: observed.capabilityId, ...observed.authorization
     };
   });
   const retrievedEvidenceIds = [...new Set(observation.contextManifest.selected.map(item => evidenceId(item.provenance)))].sort();
@@ -129,6 +130,8 @@ function assertTerminal(observation: ShadowEvalObservation): void {
   if (invalidStep !== undefined) throw new Error(`Shadow evaluation Step ${invalidStep.stepNo} is not terminal`);
   const incompleteStep = observation.steps.find(item => item.latencyMs === null);
   if (incompleteStep !== undefined) throw new Error(`Shadow evaluation Step ${incompleteStep.stepNo} has incomplete latency`);
+  const missingAuthorization = observation.steps.find(item => item.authorization === null);
+  if (missingAuthorization !== undefined) throw new Error(`Shadow evaluation Step ${missingAuthorization.stepNo} has no persisted authorization`);
   const retriedStep = observation.steps.find(item => item.attemptCount !== 1);
   if (retriedStep !== undefined) throw new Error(`Shadow evaluation Step ${retriedStep.stepNo} lacks per-attempt latency evidence`);
   const invalidCall = observation.modelCalls.find(item => !["completed", "failed", "abandoned"].includes(item.status));

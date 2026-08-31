@@ -127,6 +127,9 @@ export interface ShadowStepTrajectory extends ShadowAuditSink {
   claimStep(taskId: string, stepNo: number, leaseMs: number): Promise<
     { readonly outcome: "claimed"; readonly token: string } | { readonly outcome: "completed" | "busy" }
   >;
+  recordAuthorization?(taskId: string, stepNo: number, token: string, resource: {
+    readonly resourceType: string; readonly resourceId: string; readonly action: string;
+  }, decision: "allowed"): Promise<void>;
   completeStep(taskId: string, stepNo: number, token: string, output: unknown): Promise<void>;
   failStep(taskId: string, stepNo: number, token: string, error: unknown): Promise<void>;
 }
@@ -289,6 +292,9 @@ async function executeShadowPlanSteps(
     }
     const claimToken = claim.token;
     try {
+      const invocation = registry.prepare(step.capabilityId, step.input, context);
+      if (trajectory.recordAuthorization === undefined) throw new Error("Agent shadow Step authorization audit is unavailable");
+      await trajectory.recordAuthorization(context.taskId, stepNo, claimToken, invocation.resource, "allowed");
       const output = await telemetry.withSpan("agent.tool.call", {
         taskId: context.taskId, runId: context.runId,
         attributes: {
@@ -296,7 +302,7 @@ async function executeShadowPlanSteps(
           "dipole.agent.step.number": stepNo,
           "dipole.agent.tool.transport": "native"
         }
-      }, async () => registry.execute(step.capabilityId, step.input, context));
+      }, async () => invocation.execute());
       await trajectory.completeStep(context.taskId, stepNo, claimToken, output);
     } catch (error) {
       await trajectory.failStep(context.taskId, stepNo, claimToken, error);

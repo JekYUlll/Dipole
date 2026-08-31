@@ -54,7 +54,7 @@ function observation(): ShadowEvalObservation {
   return {
     taskId: "TASK-1", taskStatus: "completed", runId: "RUN-1", runStatus: "completed", traceId: "trace:shadow-1",
     contextManifest: { selected: [{ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } }], omitted: [] },
-    steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 3 }], artifacts: [],
+    steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 3, authorization: { resourceType: "conversation", resourceId: "user:u1", action: "read", decision: "allowed" } }], artifacts: [],
     modelCalls: [{ route: "gateway/primary", status: "completed", inputTokens: 10, outputTokens: 2, latencyMs: 10 }], toolCalls: []
   };
 }

@@ -110,7 +110,13 @@ describe("Shadow evaluation adapter", () => {
   });
 
   it("accepts the bounded wildcard resource scope emitted by the read-shadow policy", () => {
-    const observed = { ...observation(), taskStatus: "running", workflowStatus: "completed" };
+    const base = observation();
+    const observed = {
+      ...base,
+      taskStatus: "running",
+      workflowStatus: "completed",
+      steps: [{ ...base.steps[0]!, authorization: { resourceType: "conversation", resourceId: "*", action: "list", decision: "allowed" as const } }]
+    };
     const manifest = parseShadowEvalManifest({
       schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1",
       taskId: observed.taskId, runId: observed.runId,
@@ -172,7 +178,7 @@ function observation(): ShadowEvalObservation {
     contextManifest: {
       selected: [{ id: "event:E42", provenance: { sourceType: "kafka_event", sourceId: "E42" } }], omitted: []
     },
-    steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 20 }],
+    steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 20, authorization: { resourceType: "conversation", resourceId: "user:u100", action: "read", decision: "allowed" } }],
     artifacts: [{ artifactType: "conversation_digest", version: 1 }],
     modelCalls: [{ route: "gateway/primary", status: "completed", inputTokens: 120, outputTokens: 30, latencyMs: 700 }],
     toolCalls: [{ status: "completed", latencyMs: 50 }]

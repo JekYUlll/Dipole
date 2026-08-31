@@ -25,6 +25,10 @@ interface StepRow extends RowDataPacket {
   capability_id: string;
   status: string;
   attempt_count: number;
+  authorization_resource_type: string | null;
+  authorization_resource_id: string | null;
+  authorization_action: string | null;
+  authorization_decision: string | null;
   latency_ms: number | string | null;
 }
 
@@ -81,7 +85,8 @@ export class MySQLShadowEvalObservationStore implements ShadowEvalObservationSto
       contextManifest,
       steps: steps.map(item => ({
         stepNo: item.step_no, capabilityId: item.capability_id, status: item.status, attemptCount: item.attempt_count,
-        latencyMs: nullableSafeInteger(item.latency_ms, "Step latency")
+        latencyMs: nullableSafeInteger(item.latency_ms, "Step latency"),
+        authorization: authorization(item)
       })),
       artifacts: artifacts.map(item => ({ artifactType: item.artifact_type, version: item.version })),
       modelCalls: modelCalls.map(item => ({
@@ -91,6 +96,14 @@ export class MySQLShadowEvalObservationStore implements ShadowEvalObservationSto
       toolCalls: toolCalls.map(item => ({ status: item.status, latencyMs: nullableSafeInteger(item.latency_ms, "Tool latency") }))
     };
   }
+}
+
+function authorization(row: StepRow) {
+  const values = [row.authorization_resource_type, row.authorization_resource_id, row.authorization_action, row.authorization_decision];
+  if (values.every(value => value === null)) return null;
+  if (values.some(value => value === null)) throw new Error("Shadow evaluation Step authorization is incomplete");
+  if (values.some(value => value!.trim() === "") || row.authorization_decision !== "allowed") throw new Error("Shadow evaluation Step authorization is invalid");
+  return { resourceType: row.authorization_resource_type!, resourceId: row.authorization_resource_id!, action: row.authorization_action!, decision: "allowed" as const };
 }
 
 function decodedJSON(value: unknown): unknown {

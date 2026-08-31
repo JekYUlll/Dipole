@@ -100,6 +100,7 @@ describe("ShadowEventProcessor", () => {
     const trajectory = {
       append: vi.fn(async () => undefined),
       claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-1" })),
+      recordAuthorization: vi.fn(async () => undefined),
       completeStep: vi.fn(async () => undefined),
       failStep: vi.fn(async () => undefined)
     };
@@ -132,6 +133,7 @@ describe("ShadowEventProcessor", () => {
     const trajectory = {
       append: vi.fn(async () => undefined),
       claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-SEARCH" })),
+      recordAuthorization: vi.fn(async () => undefined),
       completeStep: vi.fn(async () => undefined),
       failStep: vi.fn(async () => undefined)
     };
