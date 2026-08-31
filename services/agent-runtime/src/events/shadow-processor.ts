@@ -321,7 +321,10 @@ function resolveTrustedDiscoveryStep(
   step: ShadowPlanStep,
   outputs: readonly unknown[]
 ): ShadowPlanStep {
-  if (step.capabilityId !== "conversation.read" || step.input.conversationId !== discoveredConversationMarker) return step;
+  if (step.capabilityId !== "conversation.read") return step;
+  if (step.input.conversationId !== discoveredConversationMarker) {
+    throw new Error("conversation.read requires the trusted conversation discovery marker");
+  }
   if (index === 0 || steps[index - 1]?.capabilityId !== "conversation.list") {
     throw new Error("conversation.read requires the immediately preceding trusted conversation.list result");
   }

@@ -351,6 +351,8 @@
 
 - 2026-09-01：read-shadow 的单轮 Planner 允许受限两步发现读取：`conversation.read` 必须紧邻 `conversation.list` 并携带唯一 `$discovered.previous` 标记。执行层仅从已完成 List 输出提取首个合法会话键，再进入 Capability scope/permission 检查；模型构造 ID、越过前置步骤或空输出会在 Tool 调用前失败。当前未提供任意索引、多会话 fan-out 或写 Capability，后续选择策略必须以同等的服务端数据绑定与审计实现。
 
+- 2026-09-01：受信发现约束同时在 Planner 与执行层实施。执行层对任何非 `$discovered.previous` 的 `conversation.read` 固定拒绝，并在拒绝路径不调用远程 Capability、不记录 allowed authorization；因此后续新增 Planner、MCP adapter 或测试夹具不能靠直接 ID 意外绕开绑定。多候选选择、用户显式选择和写能力仍需独立的可审计契约。
+
 - 2026-08-31：Runtime bootstrap 现显式解析 OAuth callback 配置并拒绝启用状态，避免缺 Provider processor 的环境变量被静默忽略。拒绝发生在任何网络资源初始化前；后续独立 profile 需要将 processor、Core credential、key mount、运行证据和回滚开关作为同一部署契约交付。
 - 2026-08-30：长时 C++ profiling 受远端内核缺少匹配 linux-tools 阻断，未安装系统包也未将 `perf` 失败误判为热点结论；下一步可在具备匹配工具链的隔离 runner 中采集，当前仍禁止据 benchmark 切换 C++ authority。
 
