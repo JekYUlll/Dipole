@@ -9,7 +9,8 @@ export const modelProviderConfigSchema = z.object({
   name: z.string().trim(),
   baseURL: z.string().trim(),
   apiKey: z.string(),
-  supportsStructuredOutputs: z.boolean()
+  supportsStructuredOutputs: z.boolean(),
+  outputMode: z.enum(["json_schema", "json_text"])
 }).strict().superRefine((config, refinement) => {
   if (config.kind === "disabled") return;
   if (!providerNameSchema.safeParse(config.name).success) {
@@ -40,7 +41,8 @@ export function loadModelProviderConfig(env: NodeJS.ProcessEnv): ModelProviderCo
     name: env.DIPOLE_AGENT_MODEL_PROVIDER_NAME ?? "",
     baseURL: env.DIPOLE_AGENT_MODEL_BASE_URL ?? "",
     apiKey: env.DIPOLE_AGENT_MODEL_API_KEY ?? "",
-    supportsStructuredOutputs: env.DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS?.trim().toLowerCase() === "true"
+    supportsStructuredOutputs: env.DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS?.trim().toLowerCase() === "true",
+    outputMode: env.DIPOLE_AGENT_MODEL_OUTPUT_MODE?.trim().toLowerCase() === "json_text" ? "json_text" : "json_schema"
   });
 }
 
@@ -52,7 +54,7 @@ export function createOpenAICompatibleModelResolver(config: ModelProviderConfig)
     name: config.name,
     baseURL: config.baseURL,
     apiKey: config.apiKey,
-    supportsStructuredOutputs: config.supportsStructuredOutputs
+    supportsStructuredOutputs: config.outputMode === "json_schema" && config.supportsStructuredOutputs
   });
   return (route) => provider(modelIDForRoute(route, config.name));
 }

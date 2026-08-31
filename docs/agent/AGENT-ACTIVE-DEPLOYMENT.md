@@ -37,6 +37,7 @@ active Runtime 当前只执行 `conversation.list/read`。Artifact、消息发�
 | `DIPOLE_AGENT_MODEL_BASE_URL` | HTTPS Provider endpoint；loopback HTTP 仅限开发 |
 | `DIPOLE_AGENT_MODEL_API_KEY` | 从部署 Secret 注入，禁止写入 `.env`、命令历史或证据正文 |
 | `DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS` | 仅在 Provider 已验证支持 JSON Schema 时设为 `true`，默认 `false` |
+| `DIPOLE_AGENT_MODEL_OUTPUT_MODE` | `json_schema`（默认）或经验证的单次调用 `json_text` fallback |
 | `DIPOLE_AGENT_MODEL_ROUTES` | 与 Provider name 前缀一致的有序模型 route |
 | `DIPOLE_AGENT_MODEL_CONTEXT_PROFILES` | v2 Context Compiler 的严格 JSON profile |
 | `DIPOLE_AGENT_TEMPORAL_ADDRESS` | 共享 Temporal endpoint |

@@ -46,4 +46,30 @@ describe("AISDKStructuredModelClient", () => {
     })).rejects.toThrow(/provider unavailable/);
     expect(doGenerate).toHaveBeenCalledOnce();
   });
+
+  it("validates one JSON-text response locally when the provider lacks JSON Schema response format", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "test",
+      modelId: "json-text",
+      doGenerate: {
+        content: [{ type: "text", text: JSON.stringify({ summary: "observe E2", capabilityIds: ["conversation.read"] }) }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: {
+          inputTokens: { total: 18, noCache: 18, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 9, text: 9, reasoning: 0 }
+        },
+        warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model, "json_text");
+    const schema = z.object({ summary: z.string(), capabilityIds: z.array(z.string()) });
+
+    await expect(client.generate({
+      route: "test/json-text", prompt: "plan event", schema, maxOutputTokens: 96, timeoutMs: 2000
+    })).resolves.toMatchObject({ output: { summary: "observe E2", capabilityIds: ["conversation.read"] } });
+    expect(model.doGenerateCalls).toHaveLength(1);
+    expect(model.doGenerateCalls[0]?.prompt).toEqual(expect.arrayContaining([
+      expect.objectContaining({ content: expect.stringContaining("Return only a single JSON object") })
+    ]));
+  });
 });

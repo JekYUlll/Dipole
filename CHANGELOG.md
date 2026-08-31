@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent AI SDK 输出协议新增 `DIPOLE_AGENT_MODEL_OUTPUT_MODE=json_text`。对于不支持 OpenAI JSON Schema response format 的兼容 Provider，Runtime 在单次、零内部重试调用中要求纯 JSON 并以原始 Zod schema 本地复核，失败仍由既有 ModelRouter 预算与审计处理。
+
 - 2026-08-31：新增受版本控制的 `agent-ai-sdk-shadow.yml` 开发 overlay，统一从受忽略 `.env` 读取 OpenAI-compatible Provider、预算、Context profile 和可选 structured-output 声明；移除该 overlay 即回退为基础 metadata Shadow Runtime。
 
 - 2026-08-31：OpenAI-compatible Agent Provider 增加显式 `DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS` 能力声明，默认关闭；声明为 `true` 时才请求 AI SDK/Zod JSON Schema structured output。该配置可由开发环境 `.env` 为已验证 Provider 启用，API key 始终只从环境读取。

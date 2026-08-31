@@ -31,6 +31,17 @@ describe("OpenAI-compatible model provider", () => {
     expect(createOpenAICompatibleModelResolver(config)("gateway/gpt-5-mini")).toMatchObject({ supportsStructuredOutputs: false });
   });
 
+  it("uses JSON-text mode without advertising unavailable JSON Schema support", () => {
+    const config = loadModelProviderConfig({
+      ...environment,
+      DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS: "true",
+      DIPOLE_AGENT_MODEL_OUTPUT_MODE: "json_text"
+    });
+
+    expect(config.outputMode).toBe("json_text");
+    expect(createOpenAICompatibleModelResolver(config)("gateway/gpt-5-mini")).toMatchObject({ supportsStructuredOutputs: false });
+  });
+
   it("rejects malformed provider configuration and cross-provider routes", () => {
     expect(() => loadModelProviderConfig({
       ...environment, DIPOLE_AGENT_MODEL_BASE_URL: "https://user:secret@models.example.test/v1"

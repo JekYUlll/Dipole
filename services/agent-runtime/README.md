@@ -163,6 +163,7 @@ DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
 DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.com/v1 \
 DIPOLE_AGENT_MODEL_API_KEY=... \
 DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS=false \
+DIPOLE_AGENT_MODEL_OUTPUT_MODE=json_schema \
 DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini,openai/gpt-5-nano \
 DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2 \
 DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
@@ -175,6 +176,8 @@ npm start
 Provider name 是 route 的稳定前缀，所有 route 必须使用相同前缀，例如 `openai/<model-id>`；Runtime 拒绝跨 Provider route、空密钥、无效 Provider name 和包含凭据/query/fragment 的 base URL，HTTP 仅允许 loopback 开发端点。密钥只从进程环境或部署 Secret 注入，不写入 Compose、Artifact、审计或日志。
 
 `DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS` 默认 `false`。只有 Provider 已验证支持 OpenAI JSON Schema response format 时才设为 `true`；该声明决定 AI SDK 是否为 Zod plan schema 请求结构化输出，避免向通用兼容网关发送不支持的字段。
+
+`DIPOLE_AGENT_MODEL_OUTPUT_MODE` 默认 `json_schema`。Provider 不支持该 response format 时可显式设置 `json_text`：Runtime 在同一次、无内部重试的调用中要求纯 JSON，再用同一份 Zod schema 在本地验证。无效 JSON 或 schema 不匹配照常使该次调用失败并由既有 ModelRouter 记录与预算控制。
 
 开发环境使用 `deploy/microservices/agent-ai-sdk-shadow.yml` 覆盖基础微服务 Compose。该 overlay 固定 `ai_sdk` 与 `openai_compatible`，其余 Provider、预算与 Context 输入均由受忽略的 `.env` 提供；移除 overlay 即回到默认 metadata Shadow Runtime。
 

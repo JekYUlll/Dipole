@@ -533,7 +533,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
 }
 
 function createAISDKModelClient(config: ShadowRuntimeConfig): AISDKStructuredModelClient {
-  return new AISDKStructuredModelClient(createOpenAICompatibleModelResolver(config.modelProvider));
+  return new AISDKStructuredModelClient(createOpenAICompatibleModelResolver(config.modelProvider), config.modelProvider.outputMode);
 }
 
 export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {
