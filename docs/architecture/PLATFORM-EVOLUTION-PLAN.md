@@ -57,6 +57,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 - **一次只改变一个维度：** 模块边界、进程边界、通信协议、存储实现和 Agent 运行时分开迁移。
 - **先契约后拆分：** 先让单体内部通过稳定接口调用，再把本地实现替换为 RPC client。
 - **先影子后切流：** 新存储和新服务先接收镜像流量，通过校验后逐步承担读取和写入。
+- **并行证据轨道：** Agent 功能闭环、Cassandra 只读灰度和 Web Sync 客户端观察可并行推进；每条轨道各自归档证据并独立决定是否扩大范围。
 - **数据所有权明确：** Gateway 不访问业务数据库；服务之间不跨库写表；Elasticsearch 和 Redis 不承担消息事实源。
 - **事件可演进：** Kafka 事件包含版本、事件 ID、聚合 ID、发生时间和幂等键；消费者兼容至少一个旧版本。
 - **兼容旧客户端：** `/messages/offline`、历史 `after_id` 和现有 WS 协议在替代链路完成验收前继续保留。
@@ -77,7 +78,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 | 消息 | Message Service application + SQLC repository + Outbox | Message 负责消息事实、幂等、Seq 和事件发布，Core 通过 Capability/RPC 协作 |
 | 同步 | Sync Service 管理 MySQL `user_sync_inbox`、设备 Cursor 和群 checkpoint | Cassandra hydration 可选，旧 Offline 接口继续兼容 |
 | 会话 | Core Conversation Projection 消费 Kafka 事件 | Conversation State 仍归 Core，后续按压力独立扩展 |
-| 消息存储 | MySQL `messages` 为当前事实源，Cassandra Timeline 支持 shadow/primary 实验 | 通过 storage-neutral Store、回退和证据门禁推进迁移 |
+| 消息存储 | MySQL `messages` 为当前事实源和即时回退，Cassandra Timeline 已具备 shadow/primary 候选路径 | 通过 storage-neutral Store、回退和证据门禁持续推进受控读灰度 |
 | 事件 | Kafka + Transactional Outbox，按服务拆分 consumer ownership | 事件版本、retry/DLQ、幂等和 readiness 门禁已建立 |
 | 实时状态 | Redis Presence / PubSub / Hot Group，Go Delivery 为当前 authority | C++ Realtime Delivery 保留为默认关闭候选 profile，当前开发窗口暂缓 |
 | 文件 | MinIO，文件元数据归 Core，Agent Artifact 使用独立 bucket/身份 | 保持独立对象存储，不随消息库迁移 |
@@ -268,6 +269,8 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 - [x] 按会话灰度将 Direct/Group Seq 历史读取切到 Cassandra，失败时使用同一 Seq cursor 整页回退 MySQL。
 - [ ] 逐步提升 Cassandra 读取比例，持续比较结果和延迟。
+- [ ] 在共享受控环境创建 Cassandra 读灰度 Observation Session：固定 deployment revision、Cassandra schema revision、路由 cohort、起止 Prometheus 快照和 MySQL 回退开关；从小比例 Seq 历史读取开始采样。
+- [ ] 为每次比例提升归档 `eligible|blocked` evidence、人工复核和自动停止/回切演练；任何 evidence 间断、fallback、payload mismatch 或 p95 越界均将比例归零并切回 MySQL。
 - [x] 首批按会话稳定 cohort 灰度群 `after_seq` 增量读取，缺页或存储错误自动回退 MySQL，百分比 0 可即时回切。
 - [x] 增加 Direct/Group `before_seq` HTTP/RPC 契约，Web 首屏、历史分页与热群补拉统一使用 Seq cursor domain。
 - [x] 暴露 Cassandra/MySQL fallback 路由计数和延迟指标，并通过真实双存储缺行演练。
@@ -324,6 +327,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 增加 `package-web-sync-bundle.sh`：以干净 revision、显式模式和稳定 tar 元数据生成不可覆盖的 `web-sync-bundle.v1`，输出权限固定为 `0600`，并拒绝把归档写入源目录。
 - [x] 将 Web Sync bundle 打包接入 `scripts/remote-dev.sh web-sync-bundle`；远程入口固定生成 `shadow` 候选并使用 `/tmp` 输出，不启动 Compose、不申请 GPU、不改变生产客户端开关。
 - [ ] 使用候选 commit/bundle 哈希绑定的 Observation Session/Evidence 完成真实客户端观察窗口：match 样本达到门槛，grace 后 `legacy_only/sync_only/overflow` 持续为零，并归档 Prometheus 原始响应和对象版本后，再结束旧 Offline 兼容窗口。
+  - 此客户端窗口约束旧 Offline 协议退役和客户端 Timeline locator 主路径；它不阻塞 Cassandra 服务端历史读取或 hydration 的独立灰度证据。
 - [x] 统一显式退出、HTTP 401、WS kick 与账号切换的 Session Termination；凭据先撤销，IndexedDB 清理等待在途同步收敛，快速重登等待旧清理完成。
 - [x] 建立 IndexedDB 高低容量水位、按会话保底的最近消息安全淘汰、缓存 manifest 和 quota error 状态；淘汰与 Cursor 提交保持同一事务且不额外推进安全游标。
 - [x] 建立 Playwright 三浏览器 IndexedDB 验收，覆盖淘汰、重开、账号隔离、延迟清理和页面中断事务原子性；增加 `storage_full/sync_error` 聚合指标与 promtool 告警。
@@ -342,6 +346,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] Sync Item 固化 `conversation_key + message_seq + message_uuid` 定位契约并通过 HTTP/gRPC 暴露。
 - [x] 建立 storage-neutral Message hydrator；Sync 返回继续取自 MySQL，并按 locator 异步比较 Cassandra Timeline，覆盖 match、payload mismatch、缺失投影和依赖错误且不影响主响应。
 - [ ] 达到观察门槛后为 Cassandra hydration 增加受控主读与 MySQL fallback；切换前补齐告警、灰度比例和无 MySQL 内部 ID 的兼容审计。
+  - 该灰度与 Web Sync Observation Session 并行执行：使用独立的 Sync/Cassandra 受控窗口、evidence、复核和回切演练，达标后才扩大 hydration 比例。
   - [x] 增加 Sync Cassandra hydration evidence v1 与低敏 Go CLI，统一 shadow/primary 的命中、fallback、缺失/冲突/错误和 p95 门禁；真实客户端窗口、责任人批准和生产主读仍待完成。
 - [x] 增加 Prometheus snapshot adapter 与 `sync-cassandra-hydration-snapshot` CLI，将运行时低敏指标转换为既有 evidence v1；真实共享环境归档、missing/conflict 端到端归因、责任人批准和自动回切仍待完成。
 - [x] 将 snapshot 转换改为起止快照差分，拒绝 counter reset 与 histogram 桶漂移，确保 evidence 计数对应明确窗口；真实共享环境采集与责任人批准仍待完成。

@@ -650,8 +650,8 @@
 - **追加验证：** 2026-08-30 再次执行同一 read-routing smoke，结果保持一致；本次仍仅证明隔离候选路径和即时回退，不提升生产 Cassandra 主读比例。
 - **验证记录：** 2026-08-29 `scripts/smoke-sync-cassandra-primary-compose.sh` 通过隔离微服务 Compose：Cassandra schema init、Core/Message/Sync 依赖 readiness、primary hydration 配置和 Sync `/readyz` 均通过，临时拓扑自动清理；共享环境长期观测、责任人批准和生产回切演练仍待完成。
 - **验证记录：** 2026-08-30 重新执行 `scripts/smoke-sync-cassandra-primary-compose.sh`，真实验证 Cassandra schema init、Core/Message/Sync 依赖 readiness、primary hydration 配置和 Sync `/readyz`；临时拓扑自动清理，生产 Cassandra 主读、共享环境长期观测、责任人批准和生产回切演练仍待完成。
-- **建议方向：** 将 Prometheus snapshot 与脱敏客户端/服务 revision、配置比例、窗口和回切演练 ID 合成为 evidence，再交给既有 evaluator；缺少完整窗口或观测断层时保持 blocked，并持续保留 MySQL 完整消息。
-- **处理门槛：** 任何提高 `sync.cassandra_primary_hydration` 比例前，必须归档共享环境 evidence、复核人批准和自动回切记录；未满足前保持默认关闭或人工小比例运行。
+- **建议方向：** 将 Prometheus snapshot 与脱敏服务 revision、Cassandra schema revision、配置比例、窗口和回切演练 ID 合成为 hydration evidence，再交给既有 evaluator；同时独立建立 Cassandra 历史读取 cohort 的 read-rollout evidence。两条服务端 Cassandra 轨道可与 Agent 和 Web Sync 客户端观察并行执行；Web Sync 窗口只约束旧 Offline 协议退役与客户端 locator 主路径。
+- **处理门槛：** 任一 Cassandra 服务端比例提升前，必须归档对应共享环境 evidence、复核人批准和自动回切记录。evidence 间断、fallback、payload mismatch、冲突或延迟越界时立即将该轨道比例归零并回退 MySQL；MySQL 完整消息持续保留，直到各自替代契约完成验收。
 
 ### AD-044：Pencil 增量设计任务缺少稳定的 CLI 执行闭环
 
