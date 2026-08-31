@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Core 的 `dipole-agent` mTLS Capability allowlist 现包含 `ResolveApprovalGrant` 与 `ConsumeApproval`。隔离认证测试覆盖审批请求、批准、精确 grant、单次消费，以及错误 service secret 和错误客户端证书拒绝；该改动不启用常驻写 Capability、外部 MCP 写入或生产 authority。
+
 - 2026-08-31：External MCP Shadow drill 现在在干净候选 worktree 缺少 `vitest` 时，以 `DIPOLE_NODE_BIN` 相邻的锁定 npm 执行 `npm ci --ignore-scripts`；已有依赖不重复安装。该修复使 Remote GPU 演练使用 Node 22，默认运行时 authority 不变。
 
 - 2026-08-31：Remote GPU 在 `bb1e43e8` 上重跑 External MCP Shadow drill：`2/2` EventLedger 收敛、一次 Tool 与一次 Artifact、重启重复投递被抑制、过期 readiness 被拒绝，并通过 Go internal gRPC mTLS identity denial 检查。receipt 为短时低敏隔离证据，明确 `production_authority=false`。

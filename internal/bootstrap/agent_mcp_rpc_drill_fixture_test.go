@@ -36,12 +36,19 @@ type agentMCPRPCDrillFixture struct {
 	mu                         sync.Mutex
 	commands                   map[string]*agentv1.ResolveMcpToolCommandResponse
 	rounds                     map[string]*agentv1.FinishMcpToolRoundRequest
+	approvals                  map[string]*agentMCPRPCDrillApproval
 	finishedStatuses           []string
 	artifactCount              int
 	memoryPromotionCommitCount int
 	rpcCallCount               int
 	statePath                  string
 	stalePath                  string
+}
+
+type agentMCPRPCDrillApproval struct {
+	request  *agentv1.RequestApprovalRequest
+	status   string
+	consumed bool
 }
 
 type agentMCPRPCDrillState struct {
@@ -66,6 +73,28 @@ func TestAgentMCPRPCDrillFixtureAuthentication(t *testing.T) {
 	if response, err := valid.CommitMemoryPromotionReceipt(context.Background(), drillMemoryPromotionCommitRequest()); err != nil || response.GetMemoryId() != "MEM-COMMIT-CAND-1" || response.GetMemoryType() != "semantic" {
 		t.Fatalf("valid mTLS receipt commit response=%+v err=%v", response, err)
 	}
+	approvalRequest := drillApprovalRequest()
+	if response, err := valid.RequestApproval(context.Background(), approvalRequest); err != nil || response.GetStatus() != "pending" {
+		t.Fatalf("valid mTLS Approval request response=%+v err=%v", response, err)
+	}
+	if response, err := valid.ResolveApproval(context.Background(), &agentv1.ResolveApprovalRequest{
+		TaskId: approvalRequest.GetTaskId(), RunId: approvalRequest.GetRunId(), ApprovalId: approvalRequest.GetApprovalId(), ActorUserId: "U100", Decision: "approved",
+	}); err != nil || response.GetStatus() != "approved" {
+		t.Fatalf("valid mTLS Approval resolution response=%+v err=%v", response, err)
+	}
+	grant, err := valid.ResolveApprovalGrant(context.Background(), &agentv1.ResolveApprovalGrantRequest{
+		TaskId: approvalRequest.GetTaskId(), RunId: approvalRequest.GetRunId(), CapabilityId: approvalRequest.GetCapabilityId(),
+		ResourceScope: approvalRequest.GetResourceScope(), ArgumentsSha256: approvalRequest.GetArgumentsSha256(),
+	})
+	if err != nil || grant.GetApprovalId() != approvalRequest.GetApprovalId() || grant.GetNonceSha256() != approvalRequest.GetNonceSha256() {
+		t.Fatalf("valid mTLS Approval grant response=%+v err=%v", grant, err)
+	}
+	if response, err := valid.ConsumeApproval(context.Background(), &agentv1.ConsumeApprovalRequest{
+		TaskId: approvalRequest.GetTaskId(), RunId: approvalRequest.GetRunId(), ApprovalId: approvalRequest.GetApprovalId(), CapabilityId: approvalRequest.GetCapabilityId(),
+		ScopeSha256: approvalRequest.GetScopeSha256(), ArgumentsSha256: approvalRequest.GetArgumentsSha256(), NonceSha256: approvalRequest.GetNonceSha256(), Mode: "active",
+	}); err != nil || response.GetStatus() != "consumed" {
+		t.Fatalf("valid mTLS Approval consume response=%+v err=%v", response, err)
+	}
 
 	wrongSecret := dialAgentMCPRPCDrillClient(t, server.Address(), certs.ca, certs.agentCert, certs.agentKey, "wrong-secret", agentServiceName)
 	if _, err := wrongSecret.MatchEventSubscriptions(context.Background(), drillMatchRequest()); status.Code(err) != codes.Unauthenticated {
@@ -74,6 +103,12 @@ func TestAgentMCPRPCDrillFixtureAuthentication(t *testing.T) {
 	if _, err := wrongSecret.CommitMemoryPromotionReceipt(context.Background(), drillMemoryPromotionCommitRequest()); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("wrong secret receipt commit code=%s", status.Code(err))
 	}
+	if _, err := wrongSecret.ResolveApprovalGrant(context.Background(), &agentv1.ResolveApprovalGrantRequest{
+		TaskId: approvalRequest.GetTaskId(), RunId: approvalRequest.GetRunId(), CapabilityId: approvalRequest.GetCapabilityId(),
+		ResourceScope: approvalRequest.GetResourceScope(), ArgumentsSha256: approvalRequest.GetArgumentsSha256(),
+	}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("wrong secret Approval grant code=%s", status.Code(err))
+	}
 
 	wrongIdentity := dialAgentMCPRPCDrillClient(t, server.Address(), certs.ca, certs.messageCert, certs.messageKey, agentMCPRPCDrillSecret, agentServiceName)
 	if _, err := wrongIdentity.MatchEventSubscriptions(context.Background(), drillMatchRequest()); status.Code(err) != codes.PermissionDenied {
@@ -81,6 +116,12 @@ func TestAgentMCPRPCDrillFixtureAuthentication(t *testing.T) {
 	}
 	if _, err := wrongIdentity.CommitMemoryPromotionReceipt(context.Background(), drillMemoryPromotionCommitRequest()); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("wrong certificate receipt commit code=%s", status.Code(err))
+	}
+	if _, err := wrongIdentity.ConsumeApproval(context.Background(), &agentv1.ConsumeApprovalRequest{
+		TaskId: approvalRequest.GetTaskId(), RunId: approvalRequest.GetRunId(), ApprovalId: approvalRequest.GetApprovalId(), CapabilityId: approvalRequest.GetCapabilityId(),
+		ScopeSha256: approvalRequest.GetScopeSha256(), ArgumentsSha256: approvalRequest.GetArgumentsSha256(), NonceSha256: approvalRequest.GetNonceSha256(), Mode: "active",
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("wrong certificate Approval consume code=%s", status.Code(err))
 	}
 
 	withoutCertificate := dialAgentMCPRPCDrillClient(t, server.Address(), certs.ca, "", "", agentMCPRPCDrillSecret, agentServiceName)
@@ -133,8 +174,76 @@ func newAgentMCPRPCDrillFixture(statePath, stalePath string) *agentMCPRPCDrillFi
 	return &agentMCPRPCDrillFixture{
 		commands:  make(map[string]*agentv1.ResolveMcpToolCommandResponse),
 		rounds:    make(map[string]*agentv1.FinishMcpToolRoundRequest),
+		approvals: make(map[string]*agentMCPRPCDrillApproval),
 		statePath: statePath, stalePath: stalePath,
 	}
+}
+
+func (f *agentMCPRPCDrillFixture) RequestApproval(_ context.Context, request *agentv1.RequestApprovalRequest) (*agentv1.ApprovalResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if request.GetApprovalId() == "" || request.GetTaskId() == "" || request.GetRunId() == "" || request.GetCapabilityId() == "" || request.GetResourceScope() == nil {
+		return nil, status.Error(codes.InvalidArgument, "drill Approval request is invalid")
+	}
+	if _, exists := f.approvals[request.GetApprovalId()]; !exists {
+		f.approvals[request.GetApprovalId()] = &agentMCPRPCDrillApproval{request: proto.Clone(request).(*agentv1.RequestApprovalRequest), status: "pending"}
+	}
+	f.rpcCallCount++
+	f.writeStateLocked()
+	return &agentv1.ApprovalResponse{ApprovalId: request.GetApprovalId(), Status: f.approvals[request.GetApprovalId()].status}, nil
+}
+
+func (f *agentMCPRPCDrillFixture) ResolveApproval(_ context.Context, request *agentv1.ResolveApprovalRequest) (*agentv1.ApprovalResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	approval := f.approvals[request.GetApprovalId()]
+	if approval == nil || approval.request.GetTaskId() != request.GetTaskId() || approval.request.GetRunId() != request.GetRunId() {
+		return nil, status.Error(codes.NotFound, "drill Approval is unavailable")
+	}
+	switch request.GetDecision() {
+	case "approved":
+		approval.status = "approved"
+	case "denied":
+		approval.status = "revoked"
+	default:
+		return nil, status.Error(codes.InvalidArgument, "drill Approval decision is invalid")
+	}
+	f.rpcCallCount++
+	f.writeStateLocked()
+	return &agentv1.ApprovalResponse{ApprovalId: request.GetApprovalId(), Status: approval.status, ApprovedByUserId: request.GetActorUserId()}, nil
+}
+
+func (f *agentMCPRPCDrillFixture) ResolveApprovalGrant(_ context.Context, request *agentv1.ResolveApprovalGrantRequest) (*agentv1.ResolveApprovalGrantResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, approval := range f.approvals {
+		stored := approval.request
+		if approval.status != "approved" || approval.consumed || stored.GetTaskId() != request.GetTaskId() || stored.GetRunId() != request.GetRunId() ||
+			stored.GetCapabilityId() != request.GetCapabilityId() || stored.GetScopeSha256() == "" ||
+			stored.GetArgumentsSha256() != request.GetArgumentsSha256() || !proto.Equal(stored.GetResourceScope(), request.GetResourceScope()) {
+			continue
+		}
+		f.rpcCallCount++
+		f.writeStateLocked()
+		return &agentv1.ResolveApprovalGrantResponse{ApprovalId: stored.GetApprovalId(), CapabilityId: stored.GetCapabilityId(), ResourceScope: proto.Clone(stored.GetResourceScope()).(*agentv1.AgentResourceScope),
+			ScopeSha256: stored.GetScopeSha256(), ArgumentsSha256: stored.GetArgumentsSha256(), NonceSha256: stored.GetNonceSha256(), ExpiresAtUnixMs: stored.GetExpiresAtUnixMs()}, nil
+	}
+	return nil, status.Error(codes.NotFound, "drill Approval grant is unavailable")
+}
+
+func (f *agentMCPRPCDrillFixture) ConsumeApproval(_ context.Context, request *agentv1.ConsumeApprovalRequest) (*agentv1.ConsumeApprovalResponse, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	approval := f.approvals[request.GetApprovalId()]
+	if approval == nil || approval.status != "approved" || approval.consumed || approval.request.GetTaskId() != request.GetTaskId() || approval.request.GetRunId() != request.GetRunId() ||
+		approval.request.GetCapabilityId() != request.GetCapabilityId() || approval.request.GetScopeSha256() != request.GetScopeSha256() ||
+		approval.request.GetArgumentsSha256() != request.GetArgumentsSha256() || approval.request.GetNonceSha256() != request.GetNonceSha256() || request.GetMode() != "active" {
+		return nil, status.Error(codes.PermissionDenied, "drill Approval consumption is denied")
+	}
+	approval.consumed = true
+	f.rpcCallCount++
+	f.writeStateLocked()
+	return &agentv1.ConsumeApprovalResponse{ApprovalId: request.GetApprovalId(), Status: "consumed"}, nil
 }
 
 func (f *agentMCPRPCDrillFixture) MatchEventSubscriptions(_ context.Context, request *agentv1.MatchEventSubscriptionsRequest) (*agentv1.MatchEventSubscriptionsResponse, error) {
@@ -404,6 +513,15 @@ func drillMemoryPromotionCommitRequest() *agentv1.CommitMemoryPromotionReceiptRe
 		SchemaVersion: "dipole.agent.memory-promotion-receipt.v2", Status: "prepared", TaskId: "TASK-1", RunId: "RUN-1",
 		CandidateId: "CAND-1", CandidateSha256: strings.Repeat("b", 64), ReviewId: "REV-1", PolicyVersion: "memory-v1", TargetMemoryType: "semantic",
 		CreatedAtUnixMs: createdAt.UnixMilli(), ExpiresAtUnixMs: createdAt.Add(time.Minute).UnixMilli(),
+	}
+}
+
+func drillApprovalRequest() *agentv1.RequestApprovalRequest {
+	return &agentv1.RequestApprovalRequest{
+		TaskId: "TASK-APPROVAL-1", RunId: "RUN-APPROVAL-1", ApprovalId: "APR-APPROVAL-1", CapabilityId: "message.system.send",
+		ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "group:G1", Actions: []string{"write"}},
+		ScopeSha256:   strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64),
+		ExpiresAtUnixMs: time.Now().Add(time.Minute).UnixMilli(),
 	}
 }
 

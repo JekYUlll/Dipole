@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：补齐 Core Agent mTLS caller allowlist 对 `ResolveApprovalGrant` 与 `ConsumeApproval` 的显式授权。隔离认证测试现验证 request、approve、exact grant 与单次 consume 的闭环，并验证错误 shared secret 和非 Agent 证书拒绝。真实写投递、审批 UI、共享 Shadow 观察与 service-side commit 后不确定性 receipt 继续作为 Agent P0 门禁。
+
 - 2026-08-31：External MCP Shadow drill 已补齐干净候选 worktree 的 Node 依赖前置：仅在缺少本地 Vitest 时使用显式 Node 相邻 npm 安装 lockfile 依赖。此前 Go/mTLS fixture 成功后会因缺依赖中止，无法生成有效 Shadow evidence；修复后仍只运行 disposable 资源与只读路径。
 
 - 2026-08-31：修复后在 Remote GPU 的隔离 MySQL/Kafka/Temporal/Go Core mTLS/本地 MCP 拓扑完成 Shadow drill。EventLedger `2/2`、Tool `1`、Artifact `1`，重启重复被抑制、过期 readiness 被拒绝且 identity denial 通过；receipt 为 24 小时有效的低敏开发期证据，`production_authority=false`，共享 Shadow tenant 与 active write authority 继续开放。
