@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU Node 验证从两阶段 `npm ci` 加 `npm install` 调整为单阶段 `npm ci --include=optional`。此前第二次安装可能与 npm 目录替换发生 `ENOTEMPTY`；新路径保留 lockfile、可复现依赖和 optional package，同时减少一次网络与磁盘操作。
+
 - 2026-09-01：Remote GPU bundle 回退已修正为用 `HEAD` 生成完整、可检出的 Git bundle；目标 SHA 继续通过独立参数与远端 `rev-parse` 固定校验。裸 SHA 会被 Git 解释为空归档，修复后才进入受控远端验证。
 
 - 2026-09-01：为 Remote GPU 的 origin clone/fetch 固定可配置的 20 秒 timeout。远端 GitHub 不可达时，开发验证会转入 commit-pinned bundle 回退，不会长期占用会话或阻塞后续 Agent 同版本门禁；该 timeout 不改变任何运行中 Compose 服务。

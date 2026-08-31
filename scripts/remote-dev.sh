@@ -240,10 +240,9 @@ case "${action}" in
     }
     trap cleanup_webapp EXIT
     for app in services/agent-runtime frontend; do
-      if [[ ! -d "\$app/node_modules" ]]; then
-        npm --prefix "\$app" ci --ignore-scripts --no-audit --no-fund
-      fi
-      npm --prefix "\$app" install --include=optional --ignore-scripts --package-lock=false --no-audit --no-fund
+      # A single locked install includes optional platform packages without the
+      # second mutable install that can race npm's directory replacement.
+      npm --prefix "\$app" ci --include=optional --ignore-scripts --no-audit --no-fund
       npm --prefix "\$app" test -- --run
       npm --prefix "\$app" run typecheck
       npm --prefix "\$app" run build
