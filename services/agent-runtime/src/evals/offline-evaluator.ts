@@ -6,6 +6,7 @@ export const offlineEvalCategories = ["outcome", "trajectory", "permission", "re
 export type OfflineEvalCategory = (typeof offlineEvalCategories)[number];
 
 const identifierSchema = z.string().trim().min(2).max(128).regex(/^[a-z0-9][a-z0-9._:-]*$/);
+const resourceIdSchema = z.union([z.literal("*"), identifierSchema]);
 const candidateVersionSchema = z.string().trim().min(2).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]*$/);
 const identifierSequenceSchema = z.array(identifierSchema).max(256);
 const identifierListSchema = identifierSequenceSchema.refine(values => new Set(values).size === values.length, "identifiers must be unique");
@@ -32,7 +33,7 @@ const trajectoryCaseSchema = baseCaseSchema.extend({
 const permissionDecisionSchema = z.object({
   capabilityId: identifierSchema,
   resourceType: identifierSchema,
-  resourceId: identifierSchema,
+  resourceId: resourceIdSchema,
   action: identifierSchema,
   decision: z.enum(["allowed", "denied"])
 }).strict();

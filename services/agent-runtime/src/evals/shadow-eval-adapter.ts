@@ -5,6 +5,9 @@ import { z } from "zod";
 import { parseOfflineEvalSuite, type OfflineEvalSuite } from "./offline-evaluator.js";
 
 const identifierSchema = z.string().trim().min(2).max(128).regex(/^[a-z0-9][a-z0-9._:-]*$/);
+// Runtime policy scopes use "*" for a bounded resource class wildcard.
+// Eval manifests must preserve that scope instead of relabeling it as a concrete ID.
+const resourceIdSchema = z.union([z.literal("*"), identifierSchema]);
 const identifierListSchema = z.array(identifierSchema).max(256).refine(values => new Set(values).size === values.length, "identifiers must be unique");
 const decisionSchema = z.enum(["allowed", "denied"]);
 const metricsSchema = z.object({
@@ -23,7 +26,7 @@ const shadowEvalManifestSchema = z.object({
     trajectory: z.object({ steps: z.array(identifierSchema).max(256), forbiddenSteps: identifierListSchema }).strict(),
     permission: z.array(z.object({
       stepNo: z.number().int().positive(), capabilityId: identifierSchema, resourceType: identifierSchema,
-      resourceId: identifierSchema, action: identifierSchema, decision: decisionSchema
+      resourceId: resourceIdSchema, action: identifierSchema, decision: decisionSchema
     }).strict()).max(256).refine(items => new Set(items.map(item => item.stepNo)).size === items.length, "permission step numbers must be unique"),
     retrieval: z.object({
       relevantEvidenceIds: identifierListSchema.min(1), minimumRecall: z.number().min(0).max(1), minimumPrecision: z.number().min(0).max(1)
