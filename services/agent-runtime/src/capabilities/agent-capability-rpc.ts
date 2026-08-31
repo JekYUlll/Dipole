@@ -723,7 +723,7 @@ export class AgentCapabilityRPCClient {
         resolve({
           schemaVersion: response.schemaVersion, taskId: response.taskId, revision: response.revision,
           events: response.events.map(event => ({
-            eventSeq: event.eventSeq, eventId: event.eventId, runId: event.runId, kind: event.kind,
+            eventSeq: event.eventSeq, eventId: event.eventId, taskId: event.taskId, runId: event.runId, kind: event.kind,
             status: event.status, capabilityId: event.capabilityId, approvalId: event.approvalId,
             artifactId: event.artifactId ?? "",
             occurredAtUnixMs: event.occurredAtUnixMs

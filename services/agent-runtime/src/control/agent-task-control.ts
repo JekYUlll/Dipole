@@ -23,6 +23,7 @@ export interface AgentTaskTimeline {
   readonly events: readonly {
     readonly eventSeq: bigint;
     readonly eventId: string;
+    readonly taskId: string;
     readonly runId: string;
     readonly kind: string;
     readonly status: string;

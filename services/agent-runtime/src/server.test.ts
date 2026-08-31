@@ -75,6 +75,31 @@ describe("agent runtime Task control API", () => {
     await server.close();
   });
 
+  it("serializes Timeline bigint fields at the HTTP boundary", async () => {
+    const getTimeline = vi.fn(async () => ({
+      schemaVersion: "dipole.agent.task_timeline.v1", taskId: "TASK-1", revision: 3n, nextCursor: "4",
+      events: [{
+        eventSeq: 4n, eventId: "EVENT-4", taskId: "TASK-1", runId: "RUN-1", kind: "artifact", status: "created",
+        capabilityId: "", approvalId: "", artifactId: "a".repeat(64), occurredAtUnixMs: 1_700_000_000_000n
+      }]
+    }));
+    const server = buildServer({ isReady: () => true }, {
+      secret: "control-secret", service: { getTask: vi.fn(), getTimeline, cancelTask: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() }
+    });
+
+    const response = await server.inject({ method: "GET", url: "/internal/v1/agent/tasks/TASK-1/timeline?limit=50", headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      schemaVersion: "dipole.agent.task_timeline.v1", taskId: "TASK-1", revision: 3, nextCursor: "4",
+      events: [{
+        eventSeq: "4", eventId: "EVENT-4", taskId: "TASK-1", runId: "RUN-1", kind: "artifact", status: "created",
+        capabilityId: "", approvalId: "", artifactId: "a".repeat(64), occurredAtUnixMs: 1_700_000_000_000
+      }]
+    });
+    expect(getTimeline).toHaveBeenCalledWith({ taskId: "TASK-1", principalUserId: "U100", requestId: "R1", traceId: "T1", afterSeq: 0n, limit: 50 });
+    await server.close();
+  });
+
   it("binds cancellation, input, and approval to the authenticated principal", async () => {
     const cancelTask = vi.fn(async () => undefined);
     const resolveApproval = vi.fn(async () => undefined);

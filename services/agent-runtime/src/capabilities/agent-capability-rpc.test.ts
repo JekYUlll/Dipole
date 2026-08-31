@@ -154,7 +154,7 @@ describe("AgentCapabilityRPCClient", () => {
     const client = new AgentCapabilityRPCClient({ listAgentTaskTimeline } as unknown as IAgentCapabilityServiceClient, "secret");
 
     await expect(client.listAgentTaskTimeline("TASK-1", "U100", 3n, 20)).resolves.toMatchObject({
-      taskId: "TASK-1", nextCursor: "5", events: [{ eventSeq: 4n, artifactId: "a".repeat(64) }, { eventSeq: 5n }]
+      taskId: "TASK-1", nextCursor: "5", events: [{ eventSeq: 4n, taskId: "TASK-1", artifactId: "a".repeat(64) }, { eventSeq: 5n, taskId: "TASK-1" }]
     });
   });
 

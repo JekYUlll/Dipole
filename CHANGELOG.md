@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：修复隔离 Interactive Agent Task 的 Timeline 读取闭环。Core 现将 Timeline Store 装配到独立 Agent gRPC adapter，并允许受限 `dipole-agent` mTLS caller 调用只读 Timeline RPC；Runtime 在 HTTP 边界将 protobuf `bigint` 转为前端契约要求的序列字符串和安全数字，并保留每个事件的 Task 绑定。Remote GPU 候选验证创建 `202`、终态 `completed` 和 Timeline `200`；空会话任务只有 Task/Run 事件，不将其描述为 Artifact 产出、active authority 或写能力。
+
 - 2026-09-01：Gateway 的 Agent Task Timeline 代理现在将 URL path 与分页 query 分开解析。此前 `?limit` 和 `after` 会被编码进路径，Runtime 返回 `404`；认证、owner 授权和既有控制端点保持不变。
 
 - 2026-09-01：read-shadow Agent 在 `conversation.list` 为空时，将依赖发现结果的 `conversation.read` 记录为 `skipped/no_discovered_conversation` 并继续生成摘要。该分支不调用远端读取 Capability；伪造 ID、缺少紧邻 List 等越权输入继续被拒绝。
