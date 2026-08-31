@@ -56,6 +56,23 @@ describe("Agent offline evaluator", () => {
     expect(JSON.stringify(report)).not.toContain("sensitive conversation body");
   });
 
+  it("fails cost evaluation when token metering is unavailable without treating it as zero", async () => {
+    const suite = JSON.parse(await fixture()) as any;
+    suite.cases[4].observed = {
+      modelCalls: 1, toolCalls: 0, totalTokens: 0, totalCostMicrousd: 0, latencyMs: 91,
+      tokenMetrics: "unavailable"
+    };
+
+    const report = evaluateOfflineEvalSuite(parseOfflineEvalSuite(suite));
+
+    expect(report.cases[4]).toMatchObject({
+      passed: false,
+      reasons: ["token_metrics_unavailable"],
+      metrics: { modelCalls: 1, toolCalls: 0, totalTokens: 0, totalCostMicrousd: 0, latencyMs: 91 },
+      availability: { tokenMetrics: "unavailable" }
+    });
+  });
+
   it("rejects duplicate cases, missing categories, unknown fields, and invalid thresholds", async () => {
     const duplicate = JSON.parse(await fixture()) as any;
     duplicate.cases[1].id = duplicate.cases[0].id;

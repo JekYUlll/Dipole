@@ -184,14 +184,17 @@ function costMetrics(manifest: ShadowEvalManifest, observation: ShadowEvalObserv
   let totalTokens = 0;
   let totalCost = 0n;
   let latencyMs = 0;
+  let tokenMetrics: "complete" | "unavailable" = "complete";
   for (const call of observation.modelCalls) {
-    if (call.inputTokens === null || call.outputTokens === null || call.latencyMs === null) {
-      throw new Error(`Shadow evaluation model call on route ${call.route} has incomplete metrics`);
-    }
     const price = prices.get(call.route);
     if (price === undefined) throw new Error(`Shadow evaluation route price is missing for ${call.route}`);
-    totalTokens += call.inputTokens + call.outputTokens;
+    if (call.latencyMs === null) throw new Error(`Shadow evaluation model call on route ${call.route} has incomplete latency`);
     latencyMs += call.latencyMs;
+    if (call.inputTokens === null || call.outputTokens === null) {
+      tokenMetrics = "unavailable";
+      continue;
+    }
+    totalTokens += call.inputTokens + call.outputTokens;
     totalCost += BigInt(call.inputTokens) * BigInt(price.inputMicrousdPerMillionTokens);
     totalCost += BigInt(call.outputTokens) * BigInt(price.outputMicrousdPerMillionTokens);
   }
@@ -205,6 +208,6 @@ function costMetrics(manifest: ShadowEvalManifest, observation: ShadowEvalObserv
   return {
     modelCalls: observation.modelCalls.length,
     toolCalls: observation.steps.length + observation.toolCalls.length,
-    totalTokens, totalCostMicrousd, latencyMs
+    totalTokens, totalCostMicrousd, latencyMs, tokenMetrics
   };
 }

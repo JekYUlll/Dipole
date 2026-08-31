@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Shadow Eval 现将失败模型调用的缺失 Token 计量编码为可审计的 `availability.tokenMetrics=unavailable`，仍输出五类报告并在 Cost case 固定为 `token_metrics_unavailable` 失败；已知调用数和延迟保留，缺失 Token 不再被当作零或导致整份证据无法分类。完整计量样本的既有契约保持兼容。
+
 - 2026-09-01：Remote GPU 隔离 read-shadow 新归档受控完成子集 `N=2` 的五类 Eval
   [窗口](benchmarks/agent-shadow-eval-window-2026-09-01-n2/)，两份 Task/Run 的 Outcome、Trajectory、Permission、Retrieval、Cost 均通过。其 `100%` 仅适用于该完成子集；同一栈另有一次 Provider 空 JSON-text 失败因 token 计量缺失无法形成五类报告，整体任务成功率继续保留占位符。
 

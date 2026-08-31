@@ -38,7 +38,8 @@
           "category": {"enum": ["outcome", "trajectory", "permission", "retrieval", "cost"]},
           "passed": {"type": "boolean"},
           "reasons": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"type": "string", "minLength": 2, "maxLength": 128}},
-          "metrics": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}}
+          "metrics": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
+          "availability": {"type": "object", "additionalProperties": {"enum": ["complete", "unavailable"]}}
         }
       }
     }

@@ -33,6 +33,16 @@
         "latencyMs": {"type": "integer", "minimum": 0}
       }
     },
+    "observedCostMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelCalls", "toolCalls", "totalTokens", "totalCostMicrousd", "latencyMs"],
+      "properties": {
+        "modelCalls": {"type": "integer", "minimum": 0}, "toolCalls": {"type": "integer", "minimum": 0},
+        "totalTokens": {"type": "integer", "minimum": 0}, "totalCostMicrousd": {"type": "integer", "minimum": 0},
+        "latencyMs": {"type": "integer", "minimum": 0}, "tokenMetrics": {"enum": ["complete", "unavailable"]}
+      }
+    },
     "decision": {
       "type": "object",
       "additionalProperties": false,
@@ -80,7 +90,7 @@
       "properties": {
         "id": {"$ref": "#/$defs/id"}, "category": {"const": "cost"},
         "expected": {"type": "object", "additionalProperties": false, "required": ["maximums"], "properties": {"maximums": {"$ref": "#/$defs/costMetrics"}}},
-        "observed": {"$ref": "#/$defs/costMetrics"}
+        "observed": {"$ref": "#/$defs/observedCostMetrics"}
       }
     }
   }

@@ -67,10 +67,15 @@ const costMetricsSchema = z.object({
   latencyMs: z.number().int().nonnegative()
 }).strict();
 
+const costObservedSchema = costMetricsSchema.extend({
+  // Older suites omit this field; their recorded totals remain complete.
+  tokenMetrics: z.enum(["complete", "unavailable"]).optional().default("complete")
+}).strict();
+
 const costCaseSchema = baseCaseSchema.extend({
   category: z.literal("cost"),
   expected: z.object({ maximums: costMetricsSchema }).strict(),
-  observed: costMetricsSchema
+  observed: costObservedSchema
 }).strict();
 
 const offlineEvalCaseSchema = z.discriminatedUnion("category", [
@@ -99,6 +104,7 @@ export interface OfflineEvalCaseResult {
   passed: boolean;
   reasons: string[];
   metrics?: Record<string, number>;
+  availability?: Record<string, "complete" | "unavailable">;
 }
 
 export interface OfflineEvalReport {
@@ -130,7 +136,8 @@ const offlineEvalReportSchema = z.object({
     category: z.enum(offlineEvalCategories),
     passed: z.boolean(),
     reasons: identifierListSchema,
-    metrics: z.record(z.string().min(1).max(64), z.number().nonnegative()).optional()
+    metrics: z.record(z.string().min(1).max(64), z.number().nonnegative()).optional(),
+    availability: z.record(z.string().min(1).max(64), z.enum(["complete", "unavailable"])).optional()
   }).strict()).min(5).max(1000)
 }).strict().superRefine((report, context) => {
   if (report.cases.some(item => item.passed !== (item.reasons.length === 0))) {
@@ -180,6 +187,7 @@ export function evaluateOfflineEvalSuite(suite: OfflineEvalSuite): OfflineEvalRe
 function evaluateCase(testCase: OfflineEvalCase): OfflineEvalCaseResult {
   const reasons: string[] = [];
   let metrics: Record<string, number> | undefined;
+  let availability: Record<string, "complete" | "unavailable"> | undefined;
 
   switch (testCase.category) {
     case "outcome": {
@@ -209,9 +217,12 @@ function evaluateCase(testCase: OfflineEvalCase): OfflineEvalCaseResult {
       break;
     }
     case "cost": {
-      metrics = { ...testCase.observed };
+      const { tokenMetrics, ...reportedMetrics } = testCase.observed;
+      metrics = reportedMetrics;
+      availability = { tokenMetrics };
+      if (tokenMetrics === "unavailable") reasons.push("token_metrics_unavailable");
       for (const [metric, maximum] of Object.entries(testCase.expected.maximums)) {
-        if (testCase.observed[metric as keyof typeof testCase.observed] > maximum) reasons.push(`${camelToSnake(metric)}_exceeded`);
+        if (reportedMetrics[metric as keyof typeof reportedMetrics] > maximum) reasons.push(`${camelToSnake(metric)}_exceeded`);
       }
       break;
     }
@@ -219,7 +230,7 @@ function evaluateCase(testCase: OfflineEvalCase): OfflineEvalCaseResult {
 
   reasons.sort();
   const result: OfflineEvalCaseResult = { id: testCase.id, category: testCase.category, passed: reasons.length === 0, reasons };
-  return metrics === undefined ? result : { ...result, metrics };
+  return metrics === undefined ? result : { ...result, metrics, availability };
 }
 
 function permissionBinding(decision: z.infer<typeof permissionDecisionSchema>): string {

@@ -64,7 +64,7 @@ describe("Shadow evaluation adapter", () => {
       }, {
         id: "cost.shadow.e2d3583d196abdf176eaff43", category: "cost",
         expected: { maximums: manifest.labels.cost.maximums },
-        observed: { modelCalls: 1, toolCalls: 2, totalTokens: 150, totalCostMicrousd: 420, latencyMs: 770 }
+        observed: { modelCalls: 1, toolCalls: 2, totalTokens: 150, totalCostMicrousd: 420, latencyMs: 770, tokenMetrics: "complete" }
       }]
     });
   });
@@ -87,6 +87,33 @@ describe("Shadow evaluation adapter", () => {
 
     expect(() => buildShadowEvalSuite(manifest, { ...observed, taskId: "TASK-OTHER" })).toThrow(/Task binding/);
     expect(() => buildShadowEvalSuite(manifest, observed)).toThrow(/capability binding/);
+  });
+
+  it("emits an auditable cost failure when a failed model call has no token metering", () => {
+    const observed = {
+      ...observation(), taskStatus: "failed", runStatus: "failed", steps: [], artifacts: [], toolCalls: [],
+      modelCalls: [{ route: "gateway/primary", status: "failed", inputTokens: null, outputTokens: null, latencyMs: 91 }]
+    } satisfies ShadowEvalObservation;
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1",
+      taskId: observed.taskId, runId: observed.runId,
+      labels: {
+        outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] },
+        trajectory: { steps: ["context.compile"], forbiddenSteps: [] }, permission: [],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 1, minimumPrecision: 1 },
+        cost: {
+          maximums: { modelCalls: 1, toolCalls: 0, totalTokens: 1, totalCostMicrousd: 1, latencyMs: 100 },
+          routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 1, outputMicrousdPerMillionTokens: 1 }]
+        }
+      }
+    });
+
+    const suite = buildShadowEvalSuite(manifest, observed);
+    const cost = suite.cases.find(item => item.category === "cost");
+
+    expect(cost).toMatchObject({ observed: {
+      modelCalls: 1, toolCalls: 0, totalTokens: 0, totalCostMicrousd: 0, latencyMs: 91, tokenMetrics: "unavailable"
+    } });
   });
 
   it("uses a terminal durable Workflow when a Shadow policy Task remains running", () => {
