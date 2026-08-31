@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 已以 clean `676a6d93` 完成同版本 Core/Gateway/Message/Sync/Agent 候选 smoke。私聊写入后重启 Core，Message、Outbox 与目标 Inbox 精确均为 `1`，低敏 receipt 归档于 [`microservices-same-revision-smoke-2026-09-01`](../../benchmarks/microservices-same-revision-smoke-2026-09-01/)。该结果覆盖 atomic Inbox 的一条服务恢复路径；Agent interactive control、Cassandra 主读、Kafka/broker/in-flight 故障矩阵与 A6 Web Sync 观察继续独立验收。
+
 - 2026-09-01：Remote GPU 同版本 smoke 观察到每个 Go 微服务镜像重复传输完整 `dist` 上下文。构建脚本现只为目标二进制创建临时 Docker context，并在缺失或无执行权限时失败关闭；服务镜像模板继续只复制一个 `/app/service`。该优化不改变镜像 provenance、服务隔离或默认 authority，后续需在下一次同版本 smoke 记录实际 context 大小与总耗时。
 
 - 2026-09-01：C++ Realtime Delivery 的 `primary` 投影已与 Go body-free Timeline 主路径对齐：direct/普通 group 仅生成 `sync.item.notify.v1`，`shadow` 仍生成完整事件加 locator，冲突策略 fail closed；热群 notify + pull 保持原有处理。Ubuntu 24.04 容器门禁通过 `14/14` CTest。该修复仅收敛候选实现语义，C++ 性能晋级门槛未通过，默认 Go authority 和 C++ 灰度关闭状态不变。

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 以同一 clean revision `676a6d93` 完成隔离微服务 smoke。Gateway/Core/Message/Sync 与 Agent 镜像来自同一源码版本；私聊持久化后重启 Core，最终 Message、Outbox 和目标 Inbox 均为单条，receipt 归档于 [`microservices-same-revision-smoke-2026-09-01`](benchmarks/microservices-same-revision-smoke-2026-09-01/)。该演练不构成 Agent active authority、Cassandra 主读或 A6 浏览器观察验收。
+
 - 2026-09-01：微服务镜像构建将 Go Docker context 收敛为当前目标二进制。构建仍使用同一 `dist` 基线与版本化标签，但每个服务不再重复上传整套 `dist` 工具集，降低 Remote GPU 验收的 Docker I/O 与传输开销；缺少或不可执行的目标二进制会在 build 前失败关闭。
 
 - 2026-09-01：C++ Realtime Delivery 对齐 Timeline 主模式的无正文投递契约。显式 `primary` 只投递 `sync.item.notify.v1` locator，`shadow` 继续为完整消息追加 locator，二者同时开启会失败关闭；热群聚合语义保持不变。Ubuntu 24.04 容器门禁完成 CMake Release 构建并通过 `14/14` CTest。C++ authority 继续默认关闭，Go 仍是当前默认投递路径。
