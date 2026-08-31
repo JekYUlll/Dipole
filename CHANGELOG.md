@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 隔离 read-shadow 新归档受控完成子集 `N=2` 的五类 Eval
+  [窗口](benchmarks/agent-shadow-eval-window-2026-09-01-n2/)，两份 Task/Run 的 Outcome、Trajectory、Permission、Retrieval、Cost 均通过。其 `100%` 仅适用于该完成子集；同一栈另有一次 Provider 空 JSON-text 失败因 token 计量缺失无法形成五类报告，整体任务成功率继续保留占位符。
+
 - 2026-09-01：Shadow Eval 汇总的 `runtimeRevision` 同时接受 40 位 Git SHA-1 与 64 位内容摘要；此前 OCI 镜像的有效 Git revision 会在汇总阶段被错误拒绝，现已由回归测试覆盖。
 
 - 2026-09-01：Shadow Eval 窗口收集器改为从运行中 `agent` 容器的 OCI revision 与 clean-source

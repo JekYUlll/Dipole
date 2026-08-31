@@ -12,7 +12,9 @@
 
 ### 本轮进展
 
-- 2026-09-01：增加 reviewed Shadow Eval window collector。它只执行已评审 manifest，保存每份低敏 report、输入与去重 Trace/Suite 汇总，并保留有效失败窗口以统计失败分类；没有自动任务创建、标签生成或环境切流。收集器从运行中 `agent` 容器读取 clean OCI revision，拒绝缺失或 dirty provenance，避免脚本 checkout 与实际评测镜像漂移。当前尚无固定多样本任务集和共享环境窗口，任务成功率继续保留占位符。
+- 2026-09-01：增加 reviewed Shadow Eval window collector。它只执行已评审 manifest，保存每份低敏 report、输入与去重 Trace/Suite 汇总，并保留有效失败窗口以统计失败分类；没有自动任务创建、标签生成或环境切流。收集器从运行中 `agent` 容器读取 clean OCI revision，拒绝缺失或 dirty provenance，避免脚本 checkout 与实际评测镜像漂移。Remote GPU 已归档 [受控完成子集 N=2](../../benchmarks/agent-shadow-eval-window-2026-09-01-n2/)；五类报告全部通过，但 `100%` 仅描述该子集，当前尚无固定多样本任务集和共享环境窗口，任务成功率继续保留占位符。
+
+- 2026-09-01：同一受控栈的一条 Provider 空 JSON-text 失败事件在持久 Run 中保留 `model run budget exhausted`，但模型调用缺失 token 计量，现有五类 Eval 会因不完整 Cost observation fail closed。后续需让失败调用输出明确的计量可用性/不可用性并纳入失败分类，禁止以通过样本替代整体成功率。
 
 - 2026-09-01：Remote GPU 受控窗口暴露汇总 schema 只接受 64 位摘要、与 OCI 的 40 位 Git revision 不兼容。契约已放宽为两种有效 revision 长度并覆盖回归；窗口重跑前不产生汇总结论。
 
