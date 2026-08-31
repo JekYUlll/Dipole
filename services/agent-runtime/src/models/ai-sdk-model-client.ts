@@ -37,8 +37,34 @@ function parseJSONText(text: string): unknown {
   const trimmed = text.trim().replace(/^<think>[\s\S]*?<\/think>\s*/i, "");
   const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n```$/i.exec(trimmed);
   try {
-    return JSON.parse(fenced?.[1] ?? trimmed);
+    return JSON.parse(extractTerminalJSONObject(fenced?.[1] ?? trimmed));
   } catch {
     throw new Error("model JSON-text response is not a valid JSON object");
   }
+}
+
+function extractTerminalJSONObject(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("{")) return trimmed;
+  const start = trimmed.indexOf("{");
+  if (start < 0) return trimmed;
+  let depth = 0;
+  let quoted = false;
+  let escaped = false;
+  for (let index = start; index < trimmed.length; index += 1) {
+    const character = trimmed[index]!;
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') quoted = false;
+      continue;
+    }
+    if (character === '"') quoted = true;
+    else if (character === "{") depth += 1;
+    else if (character === "}") {
+      depth -= 1;
+      if (depth === 0 && trimmed.slice(index + 1).trim().length === 0) return trimmed.slice(start, index + 1);
+    }
+  }
+  return trimmed;
 }

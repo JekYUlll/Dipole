@@ -102,4 +102,36 @@ describe("AISDKStructuredModelClient", () => {
       route: "test/json-reasoning-prefix", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
     })).resolves.toMatchObject({ output: { summary: "observe E4", capabilityIds: [] } });
   });
+
+  it("accepts a leading label only when one complete JSON object ends the response", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "test", modelId: "json-leading-label",
+      doGenerate: {
+        content: [{ type: "text", text: "Plan:\n{\"summary\":\"observe E5\",\"capabilityIds\":[]}" }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 7, text: 7, reasoning: 0 } }, warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model, "json_text");
+
+    await expect(client.generate({
+      route: "test/json-leading-label", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
+    })).resolves.toMatchObject({ output: { summary: "observe E5", capabilityIds: [] } });
+  });
+
+  it("rejects text after an otherwise valid JSON object", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "test", modelId: "json-trailing-text",
+      doGenerate: {
+        content: [{ type: "text", text: "{\"summary\":\"observe E6\",\"capabilityIds\":[]} thanks" }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 7, text: 7, reasoning: 0 } }, warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model, "json_text");
+
+    await expect(client.generate({
+      route: "test/json-trailing-text", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
+    })).rejects.toThrow(/not a valid JSON object/);
+  });
 });
