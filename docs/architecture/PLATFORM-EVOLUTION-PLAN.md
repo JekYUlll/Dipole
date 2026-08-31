@@ -682,8 +682,8 @@ Agent Runtime 的 `npm run typecheck` 与 `npm run build` 也已通过；模型�
 | `message.read_store` | `mysql / shadow / cassandra` | Cassandra 读流量灰度 |
 | `message.mysql_write_mode` | `full / metadata_only` | A5/A6 门禁完成后的 MySQL 正文退役；初始固定为 `full` |
 | `message.inbox_write_mode` | `atomic / projector` | Inbox 写责任迁移；`atomic` 是默认回滚路径 |
-| `message.timeline_notify_mode` | `off / shadow` | Gateway 轻量 Timeline 通知；`off` 立即停止附加通知且保留完整消息投递 |
-| `VITE_TIMELINE_NOTIFY_MODE` | `off / shadow` | Web Timeline 通知验证；未设置或 `off` 时完全忽略该通知 |
+| `message.timeline_notify_mode` | `off / shadow / primary` | Gateway Timeline 通知；`shadow` 附加 locator 保留完整消息，`primary` 只向接收方投递无正文 locator，`off` 保留完整消息投递 |
+| `VITE_TIMELINE_NOTIFY_MODE` | `off / shadow / primary` | Web Timeline 通知验证与受控主路径；未设置或 `off` 时完全忽略该通知 |
 | `sync.mode` | `legacy / compare / timeline` | 客户端同步协议迁移 |
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `storage.presigned_upload_proxy_enabled` | `false / true` | OSS MinIO 预签名 Multipart 的 Gateway 同源代理；默认关闭，异常时回到 Core 中转 |

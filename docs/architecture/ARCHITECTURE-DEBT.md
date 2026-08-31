@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：审计发现 `message.timeline_notify_mode=primary` 在 Gateway Kafka 与 embedded Dispatcher 中仍同时发送完整消息和 locator，与 body-free 主路径契约冲突。primary 现只向接收方投递 `sync.item.notify.v1`，发送者保留 `chat.sent` 回执；`shadow` 继续双投递以支持观察，`off` 保留完整消息，热群聚合不变。Go direct/group/embedded 回归通过；真实 Cassandra 主读观察、自动停止和回切证据继续由 A6/AD-019 门禁约束。
+
 - 2026-09-01：Agent Runtime 本地全量门禁曾因默认关闭的 Approval mTLS drill 在 suite 注册期读取远程变量、离线 security Eval 缺少默认 token availability 以及 Temporal 只读夹具缺少授权审计 sink 而不可复现。三处测试契约已对齐，当前离线运行通过 `158` 个文件、`796` 项测试，`10` 个显式外部依赖测试跳过，并通过 TypeScript typecheck 与 production build。Remote GPU 同版本 Compose、Kafka/Temporal/Capability RPC 演练仍需独立执行，不能由本地测试替代。
 
 - 2026-09-01：Agent Shadow Runtime 将 Provider thinking 设为显式、Provider 专有的默认关闭选项，并将单次 Planner 的模型可见 Capability 收紧至 `conversation.list`。这样受限 JSON-text 预算不会被默认 reasoning 消耗，模型也不能在未获得会话发现结果前构造任意读取目标。多轮绑定、写 Capability、active authority 与 MCP 仍由 AD-009 的独立门禁约束。

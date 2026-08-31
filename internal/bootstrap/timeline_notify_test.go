@@ -56,7 +56,7 @@ func TestDeliverDirectMessageTimelineNotificationModes(t *testing.T) {
 	}{
 		{name: "off", mode: wsTransport.TimelineNotifyOff, wantTypes: []string{wsTransport.TypeChatMessage}},
 		{name: "shadow", mode: wsTransport.TimelineNotifyShadow, wantTypes: []string{wsTransport.TypeChatMessage, wsTransport.TypeSyncItemNotifyV1}},
-		{name: "primary", mode: wsTransport.TimelineNotifyPrimary, wantTypes: []string{wsTransport.TypeChatMessage, wsTransport.TypeSyncItemNotifyV1}},
+		{name: "primary", mode: wsTransport.TimelineNotifyPrimary, wantTypes: []string{wsTransport.TypeSyncItemNotifyV1}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			sender := &recordingWSEventSender{}
@@ -77,7 +77,7 @@ func TestDeliverDirectMessageTimelineNotificationModes(t *testing.T) {
 				}
 			}
 			if test.mode == wsTransport.TimelineNotifyShadow || test.mode == wsTransport.TimelineNotifyPrimary {
-				notify := sender.events[1].data.(wsTransport.SyncItemNotifyData)
+				notify := sender.events[len(sender.events)-1].data.(wsTransport.SyncItemNotifyData)
 				if notify.SchemaVersion != "v1" || notify.EventID != "E42" || notify.MessageUUID != "M42" || notify.ConversationKey != "direct:U1:U2" || notify.MessageSeq != 42 {
 					t.Fatalf("unexpected notify: %+v", notify)
 				}
@@ -99,15 +99,17 @@ func TestDeliverGroupMessageKeepsHotGroupAggregation(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		hot       bool
+		mode      string
 		wantTypes []string
 	}{
-		{name: "normal group", wantTypes: []string{wsTransport.TypeChatMessage, wsTransport.TypeSyncItemNotifyV1}},
-		{name: "hot group", hot: true, wantTypes: []string{wsTransport.TypeGroupMessageNotify, wsTransport.TypeGroupMessageNotify}},
+		{name: "normal shadow group", mode: wsTransport.TimelineNotifyShadow, wantTypes: []string{wsTransport.TypeChatMessage, wsTransport.TypeSyncItemNotifyV1}},
+		{name: "normal primary group", mode: wsTransport.TimelineNotifyPrimary, wantTypes: []string{wsTransport.TypeSyncItemNotifyV1}},
+		{name: "hot group", hot: true, mode: wsTransport.TimelineNotifyPrimary, wantTypes: []string{wsTransport.TypeGroupMessageNotify, wsTransport.TypeGroupMessageNotify}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			sender := &recordingWSEventSender{}
 			aggregator := gatewaykafka.NewNotifier(sender, time.Millisecond)
-			if err := gatewaykafka.NewGroupMessageHandler(sender, fixedGroupHeat{hot: test.hot}, aggregator, wsTransport.TimelineNotifyShadow)(context.Background(), groupCreatedEvent(t)); err != nil {
+			if err := gatewaykafka.NewGroupMessageHandler(sender, fixedGroupHeat{hot: test.hot}, aggregator, test.mode)(context.Background(), groupCreatedEvent(t)); err != nil {
 				t.Fatalf("deliver group event: %v", err)
 			}
 			if test.hot {

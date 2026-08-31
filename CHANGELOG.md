@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：修正 Timeline notify primary 的投递语义。Gateway Kafka 与 embedded Dispatcher 现在只向接收方发送无正文 `sync.item.notify.v1` locator，发送者继续收到 `chat.sent` 回执；`shadow` 保持完整消息加 locator 对照，`off` 保持完整消息投递，热群继续走聚合 notify + pull。direct/group/embedded 回归测试通过，真实 Cassandra 主读窗口和回切验收仍未开启。
+
 - 2026-09-01：Agent Runtime 的本地全量门禁恢复可复现。未显式开启的 Approval mTLS drill 不再在 suite 注册阶段读取远程环境变量；安全 Eval 与 Temporal 只读活动夹具同步当前 token availability 和授权审计契约。离线验证通过 `158` 个测试文件、`796` 项测试，另有 `10` 个显式外部依赖测试跳过，TypeScript typecheck 与生产构建通过；该结果不替代 Remote GPU 同版本 Compose smoke。
 
 - 2026-09-01：Agent Shadow Runtime 增加显式 Provider thinking 控制。`DIPOLE_AGENT_MODEL_THINKING_MODE=disabled` 仅向已选 OpenAI-compatible Provider 传递专有选项，默认继续使用 Provider 行为；单次模型规划同时收紧为 `conversation.list`，后续多轮读取必须绑定已完成的发现结果。该切片不启用写 Capability、active authority 或 MCP。

@@ -53,7 +53,9 @@ func NewGroupMessageHandler(
 			wg.Add(1)
 			go func(uuid string) {
 				defer wg.Done()
-				sendEventToUser(ctx, hub, uuid, wsTransport.TypeChatMessage, eventData)
+				if timelineNotifyMode != wsTransport.TimelineNotifyPrimary {
+					sendEventToUser(ctx, hub, uuid, wsTransport.TypeChatMessage, eventData)
+				}
 				if notify, ok := timelineNotifyData(event.Envelope, payload, timelineNotifyMode); ok {
 					sendEventToUser(ctx, hub, uuid, wsTransport.TypeSyncItemNotifyV1, notify)
 				}
