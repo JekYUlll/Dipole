@@ -1,4 +1,19 @@
 :root {
+  /* V3 is additive until Pencil's canonical variables are approved and migrated. */
+  --dp-v3-navy: #0b2a4a;
+  --dp-v3-navy-deep: #092545;
+  --dp-v3-red: #f2262a;
+  --dp-v3-red-strong: #cd1520;
+  --dp-v3-red-soft: #ffe5e2;
+  --dp-v3-gold: #f4b000;
+  --dp-v3-gold-soft: #fff1c7;
+  --dp-v3-ivory: #f8f1e4;
+  --dp-v3-paper: #fffdf8;
+  --dp-v3-ink: #092545;
+  --dp-v3-muted: #68778a;
+  --dp-v3-line: #d8d3c8;
+  --dp-v3-focus: #f2262a;
+  --dp-v3-shadow: 0 24px 70px rgba(9, 37, 69, .14);
   --dp-canvas: #f3f1ea;
   --dp-surface: #fffefb;
   --dp-surface-muted: #f4f5f2;

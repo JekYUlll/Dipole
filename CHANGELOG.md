@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：前端开始 V3 品牌兼容切片：以用户提供的双极对话标识重绘 IM/Agent SVG，新增海军蓝、信号红、轨道金和暖象牙白语义 token，并将登录入口迁移到新视觉语言。现有 Pencil canonical 变量与其余页面保持兼容；Pencil CLI 的两次安全增量调用超时且未写入画布，完整 Chat/Agent 视觉基线继续待独立设计验收。
+
 - 2026-09-01：Remote GPU 隔离环境完成受认证 Interactive Agent Task 回归：注册 `200`、创建 `202`、终态读取 `200`，只读 Shadow Workflow 收敛为 `completed`，receipt 归档于 [`agent-interactive-control-2026-09-01`](benchmarks/agent-interactive-control-2026-09-01/)。此次仅重建 Agent `c9f3f424` 验证终态读取修复；Gateway/Core 保持此前 clean candidate，因此不构成同版本发布、active authority、生产体验或成功率结论。
 
 - 2026-09-01：Agent Task control 在已授权的 Durable Workflow 终态关闭后，使用 Core 持久化的终态投影响应读取请求。此前 Temporal 不再接受关闭工作流的 Query 会使已完成任务返回 `404`；运行中任务和非“工作流不可用”错误继续失败关闭，避免旧投影掩盖执行中断。

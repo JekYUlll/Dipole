@@ -9,7 +9,7 @@
 - 已建立 canonical `design/dipole-ui.pen`、设计日志和批准预览目录。
 - Search 已完成 desktop/mobile 四态、可复用组件和 Vue 工作区；Sync 已完成状态矩阵、desktop/mobile 恢复稿、IndexedDB Sync Engine 与标题栏状态；Contact 已完成联系人管理 desktop/mobile、申请/拉黑状态矩阵、可复用组件与受认证只读 Vue 目录；Group 已完成目录 desktop/mobile、五态矩阵、复用组件和受认证只读 Vue 目录，范围由当前用户会话投影派生，详情读取失败即清空旧状态，热群仅表达 `notify + pull`；File 已完成 owner-scoped 只读目录及逐项授权下载，存储位置、校验值、上传会话和删除控制继续关闭；Device Security 已完成低敏 session projection、desktop/mobile/七态设计与认证 `/devices` 页面；Settings 已完成认证 `/settings`、Pencil desktop/mobile/四态设计、批准导出、Chromium 视觉基线与 Firefox 认证流程，复用签名、同步状态、设备安全和退出边界。WebKit 需要共享宿主系统库维护窗口；跨浏览器视觉回归保留为独立切片。Agent Workflow Repair 已完成 evidence review、六态矩阵和双人审批设计，普通 Elicitation 已完成来源披露、desktop/mobile Form、七态设计及默认关闭的 Vue 实现，Event Subscription 已完成 owner 管理、六态和 mobile 撤销设计；Login、完整 Chat 的完整设计基线仍待补齐。
 - 已建立 Vitest + Vue Test Utils + jsdom 基线，以及 Chromium/Firefox/WebKit Playwright IndexedDB 验收；页面流程与视觉回归持续补齐。Agent Task Timeline v1 已通过真实 Pencil CLI 小批次补齐 canonical desktop/mobile/state matrix 和批准导出，并新增 Chromium 受控 fixture 截图基线；完整页面与未覆盖浏览器视觉回归仍待建立。
-- Pencil CLI 已认证；2026-08-27 本地版本为 `0.3.5`，设计时使用 CLI 内置 skill 读取最新编辑约束。
+- Pencil CLI 已认证；2026-09-01 本地版本为 `0.3.5`。V3 的 Pencil 增量调用已按临时输出和原子替换规则尝试两次，但在 editor session 阶段分别于 120 秒和 360 秒超时，canonical 文件未被修改。`design/brand-v3-ui-brief.md` 是可重试的实现 brief；SVG、token 和 Login 的兼容切片可以先行，完整 Chat/Agent 画板与全局 token 迁移仍以成功的 Pencil 导出为前置条件。
 
 ## 2. 设计资产
 
