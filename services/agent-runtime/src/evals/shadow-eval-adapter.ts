@@ -46,6 +46,7 @@ export interface ShadowEvalObservation {
   readonly taskStatus: string;
   readonly runId: string;
   readonly runStatus: string;
+  readonly traceId: string;
   readonly contextManifest: {
     readonly selected: readonly { readonly id: string; readonly provenance: { readonly sourceType: string; readonly sourceId: string } }[];
     readonly omitted: readonly unknown[];
@@ -71,6 +72,7 @@ export function buildShadowEvalSuite(manifest: ShadowEvalManifest, observation: 
   const labels = shadowEvalManifestSchema.parse(manifest).labels;
   assertBinding(manifest, observation);
   assertTerminal(observation);
+  requiredTraceId(observation.traceId);
 
   const artifactIds = observation.artifacts.map(artifactId).sort();
   const outputIds = [...artifactIds, `run:${observation.runStatus}`, `task:${observation.taskStatus}`].sort();
@@ -127,6 +129,13 @@ function assertTerminal(observation: ShadowEvalObservation): void {
   if (invalidCall !== undefined) throw new Error("Shadow evaluation model calls must be terminal");
   const invalidTool = observation.toolCalls.find(item => !["completed", "failed"].includes(item.status));
   if (invalidTool !== undefined) throw new Error("Shadow evaluation Tool calls must be terminal");
+}
+
+function requiredTraceId(value: string): void {
+  value = value.trim();
+  if (value.length < 1 || value.length > 128 || !/^[A-Za-z0-9._:-]+$/.test(value)) {
+    throw new Error("Shadow evaluation Trace ID is missing or invalid");
+  }
 }
 
 function artifactId(value: ShadowEvalObservation["artifacts"][number]): string {

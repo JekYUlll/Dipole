@@ -4,6 +4,7 @@ SELECT
     t.status AS task_status,
     r.run_uuid,
     r.status AS run_status,
+    r.trace_id,
     p.context_manifest_json
 FROM agent_tasks AS t
 JOIN agent_runs AS r ON r.task_uuid = t.task_uuid AND r.run_uuid = ? AND r.mode = 'shadow'

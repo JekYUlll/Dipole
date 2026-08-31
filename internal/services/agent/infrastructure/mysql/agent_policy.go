@@ -480,7 +480,8 @@ func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.A
 	insert := func(q generated.Querier) error {
 		_, err := q.InsertAgentRun(ctx, generated.InsertAgentRunParams{
 			RunUuid: run.RunUUID, TaskUuid: run.TaskUUID, RuntimeID: run.RuntimeID,
-			CandidateVersion: sql.NullString{String: run.CandidateVersion, Valid: run.CandidateVersion != ""}, Mode: run.Mode,
+			CandidateVersion: sql.NullString{String: run.CandidateVersion, Valid: run.CandidateVersion != ""},
+			TraceID: sql.NullString{String: run.TraceID, Valid: run.TraceID != ""}, Mode: run.Mode,
 		})
 		if err == nil {
 			_, err = appendAgentTaskTimelineEvent(ctx, q, timelineEvent(run.TaskUUID, run.RunUUID, application.AgentTaskTimelineEventRun, string(application.AgentRunStatusRunning)))
@@ -504,7 +505,7 @@ func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.A
 	if lookupErr != nil {
 		return false, lookupErr
 	}
-	if existing == nil || existing.TaskUUID != run.TaskUUID || existing.RuntimeID != run.RuntimeID || existing.CandidateVersion != run.CandidateVersion || existing.Mode != run.Mode {
+	if existing == nil || existing.TaskUUID != run.TaskUUID || existing.RuntimeID != run.RuntimeID || existing.CandidateVersion != run.CandidateVersion || existing.TraceID != run.TraceID || existing.Mode != run.Mode {
 		return false, fmt.Errorf("%w: run_uuid=%s", ErrAgentPolicyConflict, run.RunUUID)
 	}
 	return false, nil
@@ -519,7 +520,7 @@ func (r *AgentPolicyRepository) GetRun(ctx context.Context, runUUID string) (*ap
 		return nil, fmt.Errorf("get Agent Run: %w", err)
 	}
 	return &application.AgentRunV1{
-		RunUUID: row.RunUuid, TaskUUID: row.TaskUuid, RuntimeID: row.RuntimeID, CandidateVersion: row.CandidateVersion.String, Mode: row.Mode,
+		RunUUID: row.RunUuid, TaskUUID: row.TaskUuid, RuntimeID: row.RuntimeID, CandidateVersion: row.CandidateVersion.String, TraceID: row.TraceID.String, Mode: row.Mode,
 		Status: application.AgentRunStatusV1(row.Status), StartedAt: row.StartedAt,
 		CompletedAt: timePointer(row.CompletedAt), LastError: row.LastError.String,
 	}, nil

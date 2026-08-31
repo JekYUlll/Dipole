@@ -15,6 +15,7 @@ interface HeaderRow extends RowDataPacket {
   task_status: string;
   run_uuid: string;
   run_status: string;
+  trace_id: string | null;
   context_manifest_json: unknown;
 }
 
@@ -74,6 +75,7 @@ export class MySQLShadowEvalObservationStore implements ShadowEvalObservationSto
 
     return {
       taskId: header.task_uuid, taskStatus: header.task_status, runId: header.run_uuid, runStatus: header.run_status,
+      traceId: required(header.trace_id ?? "", "Trace ID"),
       contextManifest,
       steps: steps.map(item => ({
         stepNo: item.step_no, capabilityId: item.capability_id, status: item.status, attemptCount: item.attempt_count,

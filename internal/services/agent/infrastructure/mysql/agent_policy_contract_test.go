@@ -144,9 +144,12 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("derive Agent Run UUID: %v", err)
 	}
-	run := application.AgentRunV1{RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning}
+	run := application.AgentRunV1{RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: "dipole-agent", TraceID: "trace:shadow-contract", Mode: "shadow", Status: application.AgentRunStatusRunning}
 	if created, err := store.CreateRun(context.Background(), run); err != nil || !created {
 		t.Fatalf("create Agent Run: created=%v err=%v", created, err)
+	}
+	if persisted, err := store.GetRun(context.Background(), runUUID); err != nil || persisted == nil || persisted.TraceID != run.TraceID {
+		t.Fatalf("persist Agent Run trace correlation: run=%+v err=%v", persisted, err)
 	}
 	projection := application.AgentTaskWorkflowProjectionV1{
 		TaskUUID: task.TaskUUID, WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",

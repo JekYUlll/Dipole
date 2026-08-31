@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { offlineEvalCategories, parseOfflineEvalReport, type OfflineEvalReport } from "./offline-evaluator.js";
+import { offlineEvalCategories, type OfflineEvalReport } from "./offline-evaluator.js";
+import { parseShadowEvalReport, type ShadowEvalReport } from "./shadow-eval-report.js";
 
 export const shadowEvalSummaryInputSchemaVersion = "dipole.agent.shadow-eval-summary-input.v1" as const;
 export const shadowEvalSummaryReportSchemaVersion = "dipole.agent.shadow-eval-summary-report.v1" as const;
@@ -22,7 +23,7 @@ const summaryInputSchema = z.object({
 export interface ShadowEvalSummaryInput {
   readonly schemaVersion: typeof shadowEvalSummaryInputSchemaVersion;
   readonly source: z.infer<typeof sourceSchema>;
-  readonly reports: readonly OfflineEvalReport[];
+  readonly reports: readonly ShadowEvalReport[];
 }
 
 export interface ShadowEvalSummaryReport {
@@ -46,6 +47,7 @@ export interface ShadowEvalSummaryReport {
     }[];
   };
   readonly evaluationSuiteSha256: readonly string[];
+  readonly traceIds: readonly string[];
   readonly limitations: readonly string[];
 }
 
@@ -56,13 +58,17 @@ export function parseShadowEvalSummaryInput(value: unknown): ShadowEvalSummaryIn
     throw new Error("Shadow evaluation summary window start must not be after window end");
   }
 
-  const reports = input.reports.map(parseOfflineEvalReport);
-  for (const report of reports) assertShadowTaskReport(report);
-  const candidateVersions = new Set(reports.map(report => report.candidateVersion));
+  const reports = input.reports.map(parseShadowEvalReport);
+  for (const report of reports) assertShadowTaskReport(report.evaluation);
+  const candidateVersions = new Set(reports.map(report => report.evaluation.candidateVersion));
   if (candidateVersions.size !== 1) throw new Error("Shadow evaluation summary reports must share one candidate version");
-  const suiteHashes = reports.map(report => report.suiteSha256);
+  const suiteHashes = reports.map(report => report.evaluation.suiteSha256);
   if (new Set(suiteHashes).size !== suiteHashes.length) {
     throw new Error("Shadow evaluation summary reports must have unique suite SHA-256 values");
+  }
+  const traceIds = reports.map(report => report.traceId);
+  if (new Set(traceIds).size !== traceIds.length) {
+    throw new Error("Shadow evaluation summary reports must have unique Trace IDs");
   }
 
   return { schemaVersion: input.schemaVersion, source: input.source, reports };
@@ -80,9 +86,9 @@ function assertShadowTaskReport(report: OfflineEvalReport): void {
 export function summarizeShadowEvalReports(input: ShadowEvalSummaryInput): ShadowEvalSummaryReport {
   const validated = parseShadowEvalSummaryInput(input);
   const reports = validated.reports;
-  const succeededTasks = reports.filter(report => report.passed).length;
+  const succeededTasks = reports.filter(report => report.evaluation.passed).length;
   const categoryPassRates = Object.fromEntries(offlineEvalCategories.map(category => {
-    const cases = reports.flatMap(report => report.cases.filter(item => item.category === category));
+    const cases = reports.flatMap(report => report.evaluation.cases.filter(item => item.category === category));
     const passed = cases.filter(item => item.passed).length;
     return [category, { total: cases.length, passed, passRatePercent: percentage(passed, cases.length) }];
   })) as ShadowEvalSummaryReport["summary"]["categoryPassRates"];
@@ -96,7 +102,7 @@ export function summarizeShadowEvalReports(input: ShadowEvalSummaryInput): Shado
   return {
     schemaVersion: shadowEvalSummaryReportSchemaVersion,
     source: validated.source,
-    candidateVersion: reports[0]!.candidateVersion,
+    candidateVersion: reports[0]!.evaluation.candidateVersion,
     summary: {
       evaluatedTasks: reports.length,
       succeededTasks,
@@ -105,7 +111,8 @@ export function summarizeShadowEvalReports(input: ShadowEvalSummaryInput): Shado
       categoryPassRates,
       failureReasons
     },
-    evaluationSuiteSha256: reports.map(report => report.suiteSha256).sort(),
+    evaluationSuiteSha256: reports.map(report => report.evaluation.suiteSha256).sort(),
+    traceIds: reports.map(report => report.traceId).sort(),
     limitations: [
       "Only reviewed terminal Shadow Task/Run reports are included.",
       "This report does not establish production authority, active-runtime quality, or user impact.",
@@ -114,10 +121,10 @@ export function summarizeShadowEvalReports(input: ShadowEvalSummaryInput): Shado
   };
 }
 
-function failureReasonCounts(reports: readonly OfflineEvalReport[]): Map<string, number> {
+function failureReasonCounts(reports: readonly ShadowEvalReport[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const report of reports) {
-    for (const item of report.cases) {
+    for (const item of report.evaluation.cases) {
       for (const reason of item.reasons) {
         const key = `${item.category}\u0000${reason}`;
         counts.set(key, (counts.get(key) ?? 0) + 1);

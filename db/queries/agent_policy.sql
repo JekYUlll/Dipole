@@ -133,8 +133,8 @@ LIMIT ?;
 
 -- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
-    run_uuid, task_uuid, runtime_id, candidate_version, mode, status, started_at
-) VALUES (?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP());
+    run_uuid, task_uuid, runtime_id, candidate_version, trace_id, mode, status, started_at
+) VALUES (?, ?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP());
 
 -- name: GetAgentRun :one
 SELECT * FROM agent_runs WHERE run_uuid = ? LIMIT 1;

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { evaluateOfflineEvalSuite } from "./offline-evaluator.js";
+import { createShadowEvalReport } from "./shadow-eval-report.js";
 import { runShadowEvalSummaryCLI } from "./shadow-eval-summary-cli.js";
 import { parseShadowEvalSummaryInput, summarizeShadowEvalReports } from "./shadow-eval-summary.js";
 
@@ -20,17 +21,22 @@ describe("Shadow evaluation summary", () => {
       }
     });
     expect(report.summary.failureReasons).toContainEqual({ category: "outcome", reason: "missing_required_output", count: 1 });
+    expect(report.traceIds).toEqual(["trace:one", "trace:two"]);
     expect(JSON.stringify(report)).not.toContain("TASK-SECRET");
     expect(JSON.stringify(report)).not.toContain("prompt body");
   });
 
   it("rejects a mixed candidate window and duplicate evaluation evidence", () => {
-    expect(() => parseShadowEvalSummaryInput(input([passingReport(), { ...passingReport(), candidateVersion: "candidate/v2" }]))).toThrow("candidate version");
+    const candidateDrift = passingReport();
+    expect(() => parseShadowEvalSummaryInput(input([passingReport(), { ...candidateDrift, evaluation: { ...candidateDrift.evaluation, candidateVersion: "candidate/v2" } }]))).toThrow("candidate version");
     expect(() => parseShadowEvalSummaryInput(input([passingReport(), passingReport()]))).toThrow("unique suite SHA-256");
     const shadowReport = passingReport();
     const malformedReport = {
       ...shadowReport,
-      cases: [{ ...shadowReport.cases[0]!, id: "outcome.offline.fixture" }, ...shadowReport.cases.slice(1)]
+      evaluation: {
+        ...shadowReport.evaluation,
+        cases: [{ ...shadowReport.evaluation.cases[0]!, id: "outcome.offline.fixture" }, ...shadowReport.evaluation.cases.slice(1)]
+      }
     };
     expect(() => parseShadowEvalSummaryInput(input([malformedReport]))).toThrow("bound Shadow case");
   });
@@ -65,7 +71,7 @@ function input(reports: readonly ReturnType<typeof passingReport>[]) {
 }
 
 function passingReport() {
-  return evaluateOfflineEvalSuite({
+  return createShadowEvalReport("trace:one", evaluateOfflineEvalSuite({
     schemaVersion: "dipole.agent.offline-eval-suite.v1", candidateVersion: "candidate/v1",
     cases: [
       { id: `outcome.shadow.${"a".repeat(24)}`, category: "outcome", expected: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] }, observed: { outputIds: ["task:completed"] } },
@@ -74,11 +80,11 @@ function passingReport() {
       { id: `retrieval.shadow.${"a".repeat(24)}`, category: "retrieval", expected: { relevantEvidenceIds: ["evidence:one"], minimumRecall: 1, minimumPrecision: 1 }, observed: { retrievedEvidenceIds: ["evidence:one"] } },
       { id: `cost.shadow.${"a".repeat(24)}`, category: "cost", expected: { maximums: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }, observed: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }
     ]
-  });
+  }));
 }
 
 function failingReport() {
-  return evaluateOfflineEvalSuite({
+  return createShadowEvalReport("trace:two", evaluateOfflineEvalSuite({
     schemaVersion: "dipole.agent.offline-eval-suite.v1", candidateVersion: "candidate/v1",
     cases: [
       { id: `outcome.shadow.${"b".repeat(24)}`, category: "outcome", expected: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] }, observed: { outputIds: [] } },
@@ -87,7 +93,7 @@ function failingReport() {
       { id: `retrieval.shadow.${"b".repeat(24)}`, category: "retrieval", expected: { relevantEvidenceIds: ["evidence:two"], minimumRecall: 1, minimumPrecision: 1 }, observed: { retrievedEvidenceIds: ["evidence:two"] } },
       { id: `cost.shadow.${"b".repeat(24)}`, category: "cost", expected: { maximums: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }, observed: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }
     ]
-  });
+  }));
 }
 
 function writer(values: string[]) {

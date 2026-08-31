@@ -378,6 +378,7 @@ type AgentRun struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	CandidateVersion sql.NullString
+	TraceID          sql.NullString
 }
 
 type AgentRuntimePromotionGrant struct {

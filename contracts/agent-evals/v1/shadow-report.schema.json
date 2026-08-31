@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/shadow-report.schema.json",
+  "title": "Dipole Agent Shadow Evaluation Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "traceId", "evaluation"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.shadow-eval-report.v1"},
+    "traceId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9._:-]+$"},
+    "evaluation": {"$ref": "offline-report.schema.json"}
+  }
+}
