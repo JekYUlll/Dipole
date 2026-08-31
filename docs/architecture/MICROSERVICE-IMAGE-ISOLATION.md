@@ -29,6 +29,19 @@ SMOKE_SEARCH_PROFILE=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-im
 SMOKE_MESSAGE_FLOW=1 GATEWAY_PORT=18080 scripts/smoke-microservice-isolated-images.sh
 ```
 
+需要验证“持久化后服务恢复 + 同一幂等键重放”的候选路径时，显式指定一个服务。脚本先确认第一条消息已落库，再重启服务、等待 readiness，并使用相同 `client_message_id` 重发；receipt 会记录 Message、Outbox 与目标用户 Inbox 的最终基数：
+
+```bash
+SMOKE_MESSAGE_FLOW=1 \
+SMOKE_MESSAGE_RESTART_SERVICE=message \
+GATEWAY_PORT=18080 \
+scripts/smoke-microservice-isolated-images.sh
+```
+
+可选服务为 `core`、`gateway`、`message`、`sync`。该演练只覆盖“首次持久化完成后”的服务恢复与幂等重放，Kafka consumer 中断、broker 故障和 in-flight commit 继续由独立故障矩阵验证。
+
+Remote GPU 已归档一次 `message` 重启的成功结果：见[消息恢复 receipt](../../benchmarks/microservices-message-recovery-2026-08-31/)。它使用隔离 Compose 项目，最终 Message、Outbox 与 Inbox 基数均为 `1`；不能外推为其他故障点的结论。
+
 需要验证候选镜像的 Kafka assignment 和 Search 依赖故障恢复时：
 
 ```bash

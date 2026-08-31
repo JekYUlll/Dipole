@@ -14,6 +14,12 @@
 
 - 2026-08-31：README 已切换到用户提供的 V3 双产品品牌板，并使用可核验的技术/许可证 badge；`docs/images/dipole-brand-v3.png` 作为后续 IM 与 Agent 产品视觉的一致性参考。页面级 UI 迁移仍在前端设计轨道中单独验收，不改变运行时或服务 authority。
 
+- 2026-08-31：Remote GPU 以 `53a4edf7` 在独立 Compose 项目完成 Message Service 的持久化后重启与同一幂等键重放。最终 Message、Outbox、目标 Inbox 均为 `1`，退出后候选容器、卷和网络均清理；receipt 归档于 [`microservices-message-recovery-2026-08-31`](../../benchmarks/microservices-message-recovery-2026-08-31/)。该证据只覆盖一个 post-persistence service restart，Kafka/broker/in-flight 故障矩阵继续开放。
+
+- 2026-08-31：候选消息恢复演练的 readiness 和首次持久化检查现在在失败时输出受限 `compose ps/logs` 与 `wscli` 尾部，避免基础服务未就绪被无上下文地归因为消息幂等缺陷。失败路径继续自动清理，只有归档的成功 receipt 才能作为恢复副作用证据。
+
+- 2026-08-31：Remote GPU 候选消息恢复演练发现停止态 `docker compose exec` 客户端会无限阻塞 readiness/计数探针。`smoke-microservice-isolated-images.sh` 已将这些调用收敛为默认 20 秒的 `SMOKE_EXEC_TIMEOUT_SECONDS`，并在 5 秒 grace 后强制结束；发生该类问题时演练失败并走隔离项目清理，干净重跑 receipt 仍待归档。
+
 - 2026-08-31：微服务 smoke 已支持只读 `read_shadow` 的 Compose overlay、受控 Compose 环境文件、事件发布后 Core 重启和模型/Artifact 绑定断言。Remote GPU 已在独立 `dipole-read-shadow-restart` 项目和专用 loopback 端口完成演练，确认 EventLedger、Task/Run、完成的模型调用与 `conversation_digest` Artifact 收敛，退出后容器数为零；默认基础 Shadow、写 Capability、MCP 与 active authority 保持关闭。
 
 - 2026-08-31：基础 Compose 的 metadata Shadow Agent 已显式屏蔽宿主 `.env` 遗留的 v2 route context profile，维持固定 v1 Context Compiler 的可启动性；AI SDK/active overlay 仍负责显式启用 v2。该隔离消除 Remote GPU 并行环境中的配置漂移，未改变默认 Shadow authority 或 active 开关。
@@ -551,6 +557,7 @@
 - **本轮进展：** 2026-08-29 扩展候选消息 smoke，按 `before_seq=0` 和 `after_seq=0` 通过 Gateway 读取同一消息，并校验返回持久化 `message_seq`；历史读取证据已覆盖，Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 在已提交 revision `fe84b7b` 上重建七个候选镜像，逐项核对同一 revision、`io.dipole.source.dirty=false` 和服务二进制标签；独立消息流程再次通过，候选供应链与 Timeline 读取证据已闭合，Kafka authority 和生产回滚仍待完成。
 - **本轮进展：** 2026-08-29 在 `SMOKE_MESSAGE_FLOW=1` 中复用同一 `client_message_id` 重发消息，数据库核对确认 Message、Outbox 和 Inbox 各保持单条，候选 Message Service 幂等路径通过；Kafka authority 深度核对和生产回滚仍待完成。
+- **本轮进展：** 2026-08-31 新增 `SMOKE_MESSAGE_RESTART_SERVICE` 持久化后恢复 receipt：首次 WebSocket 消息已写入后才重启 Core、Gateway、Message 或 Sync，随后重放相同 client ID 并重新核对 Message、Outbox、Inbox 三类基数。该演练尚待 Remote GPU 实跑归档；Kafka consumer 中断、broker 故障与 in-flight commit 仍属于独立 P0 故障矩阵。
 - **本轮进展：** 2026-08-30 在逐服务候选镜像拓扑中完成真实消息流程 smoke：注册/登录、好友关系、WebSocket 发送、Message/Outbox/Inbox 幂等，以及 `before_seq` 历史和 `after_seq` 增量读取均通过；receipt 归档于 `benchmarks/ad048-message-flow-2026-08-30/receipt.json`。共享环境 Kafka ownership、生产切换和可执行回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-30 修复 Inbox projector 隔离 smoke 的失败拓扑证书保留逻辑，并在 Message overlay 显式注入 `DIPOLE_SYNC_PROJECTOR_ENABLED=true` 以满足 fail-closed 启动校验；projector ownership 模式下的 readiness、注册/登录、好友关系、WebSocket 发送、Message/Outbox/Inbox 幂等及 `before_seq`/`after_seq` 读取均通过，receipt 归档于 `benchmarks/ad048-projector-message-flow-2026-08-30/receipt.json`。共享环境 Kafka ownership、生产切换和可执行回滚 receipt 仍待完成。
 - **本轮进展：** 2026-08-30 基于干净 revision `81730409` 重建逐服务 Go 镜像，在 `SMOKE_SEARCH_PROFILE=1` 隔离拓扑中验证 Core、Message、Sync、Gateway、Search 和 Search Indexer 均 healthy/ready；receipt 归档于 `benchmarks/ad048-independent-images-2026-08-30/receipt.json`。共享环境 Kafka ownership、生产切换和可执行回滚 receipt 仍待完成。
