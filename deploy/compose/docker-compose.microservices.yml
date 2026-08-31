@@ -563,7 +563,7 @@ services:
       DIPOLE_METRICS_ENABLED: "true"
       DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     ports:
-      - "8080:8080"
+      - "${DIPOLE_GATEWAY_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
       interval: 5s
