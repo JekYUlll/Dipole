@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 隔离交互 Shadow 候选完成公开 API 的只读 Agent Task 验收：临时用户经 JWT 创建任务后均收敛为 `completed`，Timeline 首次读取和 cursor 续页均成功。候选 Gateway 使用 `4ab924b87` 专用镜像，Core/Agent 保持兼容的既有候选版本；验收记录见 [Agent Interactive Shadow Remote Receipt](docs/agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。该结果不构成同版本发布、任务成功率、active authority、写 Capability 或公开体验入口结论。
+
 - 2026-09-01：新增 `remote-gpu-mysql-aio-compat.yml`。共享 Remote GPU 的 Linux AIO 配额接近上限时，候选 MySQL 可显式关闭 native AIO 完成隔离验证；基础 Compose 与既有 MySQL 栈保持不变。
 
 - 2026-09-01：Remote GPU Node 门禁将每个应用的双阶段 `npm ci + npm install` 收敛为一次锁文件驱动的 `npm ci --include=optional`，避免第二次安装的目录重命名冲突，同时保留 optional 平台依赖。
