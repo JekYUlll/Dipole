@@ -220,4 +220,4 @@ for _ in $(seq 1 30); do
 done
 [[ "${agent_event_ready}" == "1" ]]
 
-echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership, Agent event ledger/task/run idempotency, core_restart=${RESTART_CORE}"
+echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership, Agent event ledger/task/run idempotency, core_restart_before_event=${RESTART_CORE}, core_restart_after_event=${RESTART_CORE_AFTER_EVENT}, read_shadow=${EXPECT_READ_SHADOW}"
