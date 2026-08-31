@@ -9,8 +9,8 @@ describe("OAuth callback handoff Runtime composition", () => {
     const calls: string[] = [];
     const runtime = createOAuthCallbackHandoffRuntime(config, {
       coreSharedSecret: "s".repeat(16),
-      rpc: fakeRPC(calls),
-      keySource: { async use<T>(_id, operation) { return operation(Buffer.from("key")); } },
+      rpc: fakeRPC(calls) as never,
+      keySource: { async use<T>(_id: string, operation: (key: Buffer) => Promise<T> | T): Promise<T> { return operation(Buffer.from("key")); } },
       openEnvelope: () => "code",
       processor: { async process({ authorizationCode }) { calls.push(`process:${authorizationCode}`); return "completed"; } }
     });
@@ -22,7 +22,7 @@ describe("OAuth callback handoff Runtime composition", () => {
 
   it("rejects an unusable Core credential before creating a control service", () => {
     expect(() => createOAuthCallbackHandoffRuntime(config, {
-      coreSharedSecret: "short", rpc: fakeRPC([]), processor: { async process() { return "completed"; } }
+      coreSharedSecret: "short", rpc: fakeRPC([]) as never, processor: { async process() { return "completed"; } }
     })).toThrow(/Core credential/);
   });
 });
