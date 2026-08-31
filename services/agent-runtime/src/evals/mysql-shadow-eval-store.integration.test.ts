@@ -62,6 +62,7 @@ const migrationPaths = [
   "../../../../db/migrations/000021_agent_runs.up.sql",
   "../../../../db/migrations/000022_agent_context_manifest.up.sql",
   "../../../../db/migrations/000023_agent_model_output_replay.up.sql",
+  "../../../../db/migrations/000024_agent_task_workflow_projection.up.sql",
   "../../../../db/migrations/000026_agent_artifacts.up.sql",
   "../../../../db/migrations/000030_agent_tool_invocations.up.sql",
   "../../../../db/migrations/000032_agent_runtime_promotion_grants.up.sql",
