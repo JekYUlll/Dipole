@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：修复 Gateway 到 Agent Runtime 的 Task Timeline 请求组装。分页查询此前被作为路径文本转义，导致已创建任务的时间线读取返回 `404`；现在结构化保留 URL query，并以 `task:` 标识、cursor 和 limit 的 HTTP 回归测试锁定。
+
 - 2026-09-01：新增 `remote-gpu-mysql-aio-compat.yml`。共享 Remote GPU 的 Linux AIO 配额接近上限时，候选 MySQL 可显式关闭 native AIO 完成隔离验证；基础 Compose 与既有 MySQL 栈保持不变。
 
 - 2026-09-01：Remote GPU Node 门禁将每个应用的双阶段 `npm ci + npm install` 收敛为一次锁文件驱动的 `npm ci --include=optional`，避免第二次安装的目录重命名冲突，同时保留 optional 平台依赖。

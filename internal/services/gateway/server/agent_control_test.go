@@ -59,6 +59,30 @@ func TestAgentTaskControlClientStartsInteractiveTaskWithoutPrincipalField(t *tes
 	}
 }
 
+func TestAgentTaskControlClientPreservesTimelineQuery(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/internal/v1/agent/tasks/task:abc123/timeline" {
+			t.Fatalf("unexpected timeline path: %s", request.URL.Path)
+		}
+		if request.URL.Query().Get("limit") != "100" || request.URL.Query().Get("after") != "42" {
+			t.Fatalf("unexpected timeline query: %s", request.URL.RawQuery)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusOK)
+		_, _ = writer.Write([]byte(`{"events":[]}`))
+	}))
+	defer server.Close()
+
+	client, err := NewAgentTaskControlClient(server.URL, "secret", time.Second)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	result, err := client.GetTimeline(context.Background(), "U100", "task:abc123", "42", 100)
+	if err != nil || result.StatusCode != http.StatusOK {
+		t.Fatalf("get timeline: result=%+v err=%v", result, err)
+	}
+}
+
 func TestAgentTaskControlClientForwardsStructuredInputWithoutPrincipalField(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/internal/v1/agent/tasks/TASK-1/inputs/INPUT-1" || request.Header.Get("X-Dipole-Principal-User-ID") != "U100" {
