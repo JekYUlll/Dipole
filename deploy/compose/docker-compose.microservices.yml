@@ -149,6 +149,7 @@ services:
       DIPOLE_AGENT_MYSQL_USER: ${DIPOLE_AGENT_MYSQL_USER:-dipole_agent}
       DIPOLE_AGENT_MYSQL_PASSWORD: ${DIPOLE_AGENT_MYSQL_PASSWORD:-change-me}
       DIPOLE_AGENT_MYSQL_DATABASE: dipole
+      DIPOLE_AGENT_EVAL_MYSQL_URL: mysql://dipole_agent_eval:${DIPOLE_AGENT_EVAL_MYSQL_PASSWORD:-change-me}@mysql:3306/dipole
     healthcheck:
       test:
         - CMD
@@ -300,12 +301,14 @@ services:
         condition: service_completed_successfully
     environment:
       DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD: ${DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD:-change-me}
+      DIPOLE_AGENT_EVAL_MYSQL_PASSWORD: ${DIPOLE_AGENT_EVAL_MYSQL_PASSWORD:-change-me}
     volumes:
       - ../../configs/mysql/message-service-atomic-grants.dist.sql:/grants/message-atomic.sql:ro
       - ../../configs/mysql/message-service-projector-grants.dist.sql:/grants/message-projector.sql:ro
       - ../../configs/mysql/sync-service-grants.dist.sql:/grants/sync.sql:ro
       - ../../configs/mysql/agent-service-grants.dist.sql:/grants/agent.sql:ro
       - ../../configs/mysql/agent-timeline-repair-grants.dist.sql:/grants/agent-timeline-repair.sql:ro
+      - ../../configs/mysql/agent-eval-grants.dist.sql:/grants/agent-eval.sql:ro
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - >-
@@ -315,7 +318,9 @@ services:
         mysql -h mysql -uroot -proot123 < /grants/sync.sql &&
         mysql -h mysql -uroot -proot123 < /grants/agent.sql &&
         mysql -h mysql -uroot -proot123 < /grants/agent-timeline-repair.sql &&
-        mysql -h mysql -uroot -proot123 -e "ALTER USER 'dipole_agent_timeline_repair'@'%' IDENTIFIED BY '$$DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD'"
+        mysql -h mysql -uroot -proot123 < /grants/agent-eval.sql &&
+        mysql -h mysql -uroot -proot123 -e "ALTER USER 'dipole_agent_timeline_repair'@'%' IDENTIFIED BY '$$DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD'" &&
+        mysql -h mysql -uroot -proot123 -e "ALTER USER 'dipole_agent_eval'@'%' IDENTIFIED BY '$$DIPOLE_AGENT_EVAL_MYSQL_PASSWORD'"
 
   core:
     <<: *dipole-service

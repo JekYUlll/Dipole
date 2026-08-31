@@ -12,6 +12,9 @@
 
 ### 本轮进展
 
+- 2026-09-01：Compose 新增专用 `dipole_agent_eval` 只读账号。仍需在隔离 read-shadow 运行中以该账号生成报告并验证 DML 拒绝，当前没有自动或共享环境评测。
+- 2026-09-01：Remote GPU 隔离 Compose 已确认该账号可读 Task 投影且拒绝零行 `UPDATE`；真实五类报告与共享环境窗口仍待完成。
+
 - 2026-09-01：Shadow Eval 的 Permission evidence 已改为读取 Step lease 内持久化的 `resourceType/resourceId/action/decision`，并对 manifest 逐项核对；旧、部分、空值和非 `allowed` 记录全部拒绝。该实现修复了此前资源 scope 可由评审标签替代的证据缺口，仍需在隔离 MySQL/Runtime 拓扑重新生成五类报告，当前不恢复已撤回的成功率结论。
 
 - 2026-08-31：EventLedger lease expiry 现有 `dipole.agent.event-lease-reclaim.v1` receipt，要求过期 claim 被第二次 claim 回收、旧 token 完成失败且最终 completed 行唯一。Remote GPU 已在 loopback-only MySQL 8.4 临时容器通过真实集成 `3/3`、receipt 单测 `4/4` 和 Runtime typecheck；该结论只覆盖消费 ownership，Temporal Workflow、共享 Kafka/Temporal 与 active authority 仍需独立门禁。

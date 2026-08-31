@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-01：微服务 Compose 增加 `dipole_agent_eval` 专用 MySQL 只读账号，仅允许 Shadow Eval 查询 Task、Run、Plan、Step、Artifact、Model 与 Tool 审计投影；该配置不启用自动评测或任何运行时写入权限。
+- 2026-09-01：Remote GPU 隔离 read-shadow Compose 已用该账号完成 `SELECT`，并确认零行 `UPDATE` 仍被 MySQL 拒绝；该证据只覆盖账号权限，不代表 Eval 质量或 active authority。
+
 - 2026-09-01：Agent Shadow Step 在持有有效 lease 时持久化精确 `resourceType/resourceId/action/decision`；Shadow Eval 只接受完整且为 `allowed` 的持久授权记录，并逐项对照评审 manifest。旧、部分或无效授权记录均 fail closed，未新增 Capability、授权或默认运行路径；待在隔离真实环境重新生成五类报告。
 
 - 2026-09-01：撤回 `agent-shadow-eval-2026-09-01` 的五类通过报告。复核发现 Permission case 尚未持久化实际 resource scope，`resourceType/resourceId/action` 仍可来自评审 manifest，无法证明其与 Runtime 授权决策一致。该 JSON 已从当前证据集移除；后续将以 Step lease 内持久 scope/decision 与精确比对重新生成报告。

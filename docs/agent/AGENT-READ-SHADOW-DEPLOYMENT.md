@@ -32,6 +32,10 @@ Plan 与 `conversation_digest` Artifact 具有同一 Task/Run 绑定。只读 Sh
 失败时，先保留数据库和 Temporal evidence，再移除本 overlay；基础 Compose 会回到
 `foundation` Temporal disabled 的 Shadow Planner。
 
+## Shadow Eval 只读账号
+
+`mysql-permissions` 创建 `dipole_agent_eval`，只拥有 Eval 所需审计投影的 `SELECT` 权限。Agent 容器使用 `DIPOLE_AGENT_EVAL_MYSQL_URL` 运行 `npm run eval:shadow`；部署时应覆盖 `DIPOLE_AGENT_EVAL_MYSQL_PASSWORD`，该账号不得用于 Runtime 写入路径。
+
 ## Core 恢复演练
 
 以下命令只适用于隔离开发 Compose 项目。它在 Kafka 事件发布后重启 Core，重新验证
