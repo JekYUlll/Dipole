@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：新增受版本控制的 `agent-ai-sdk-shadow.yml` 开发 overlay，统一从受忽略 `.env` 读取 OpenAI-compatible Provider、预算、Context profile 和可选 structured-output 声明；移除该 overlay 即回退为基础 metadata Shadow Runtime。
+
 - 2026-08-31：OpenAI-compatible Agent Provider 增加显式 `DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS` 能力声明，默认关闭；声明为 `true` 时才请求 AI SDK/Zod JSON Schema structured output。该配置可由开发环境 `.env` 为已验证 Provider 启用，API key 始终只从环境读取。
 
 - 2026-08-31：standalone Core 的 Agent Capability 在 `core.message.transport=grpc` 时改用惰性 Message History RPC reader，避免 Core 未持有本地消息仓储却参与 `conversation.read` 时发生空指针崩溃；reader 复用 Core service identity，并在 Runtime 关闭时释放连接。

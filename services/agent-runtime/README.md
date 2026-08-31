@@ -176,6 +176,8 @@ Provider name 是 route 的稳定前缀，所有 route 必须使用相同前缀�
 
 `DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS` 默认 `false`。只有 Provider 已验证支持 OpenAI JSON Schema response format 时才设为 `true`；该声明决定 AI SDK 是否为 Zod plan schema 请求结构化输出，避免向通用兼容网关发送不支持的字段。
 
+开发环境使用 `deploy/microservices/agent-ai-sdk-shadow.yml` 覆盖基础微服务 Compose。该 overlay 固定 `ai_sdk` 与 `openai_compatible`，其余 Provider、预算与 Context 输入均由受忽略的 `.env` 提供；移除 overlay 即回到默认 metadata Shadow Runtime。
+
 Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
 
 `DIPOLE_AGENT_RETRIEVAL_ENABLED` 默认 `false`。仅在 `MODEL_MODE=ai_sdk` 且 Capability RPC 已启用时，Runtime 才向模型公开并注册 `conversation.search`；每次调用仍由 Core 从 Task/Run 恢复 principal，复核独立 permission、`conversation/*/read` scope、query/结果/正文上限，并将命中作为有界 `untrusted` evidence。关闭该开关时，模型、Registry 和 Shadow 执行 Context 都只包含 `conversation.list/read`。
