@@ -56,6 +56,8 @@
 
 - 2026-09-01：Context Ablation observation adapter 已将只读绑定观测与人工评审的低敏 manifest 汇编为 Eval 输入，并拒绝非终态记录、缺失授权/延迟/Token 计量、未知路由价格、Case 重复或候选版本漂移。评审任务集、共享 Shadow 窗口与可复现报告 CLI 仍待完成，当前不可外推为模型效果。
 
+- 2026-09-01：Context Ablation 报告 CLI 已复用 Agent Eval 的只读 MySQL 账户，并固定一个 manifest 对应一个 experiment 的三条件聚合。受控 Shadow 任务集、人工复核记录和窗口级效果证据仍待完成，CLI 成功不能作为模型效果或发布提升依据。
+
 - 2026-09-01：Shadow Eval 汇总 Runtime 已接受 40 位 Git revision，但发布 JSON Schema 曾仅允许 64 位摘要，导致外部 Schema 校验与 OCI provenance 不一致。Schema 已对齐并由 Runtime 测试锁定；窗口仍仅代表受控 Shadow 样本。
 
 - 2026-08-31：Remote GPU 以 `53a4edf7` 在独立 Compose 项目完成 Message Service 的持久化后重启与同一幂等键重放。最终 Message、Outbox、目标 Inbox 均为 `1`，退出后候选容器、卷和网络均清理；receipt 归档于 [`microservices-message-recovery-2026-08-31`](../../benchmarks/microservices-message-recovery-2026-08-31/)。该证据只覆盖一个 post-persistence service restart，Kafka/broker/in-flight 故障矩阵继续开放。

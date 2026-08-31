@@ -36,6 +36,15 @@ Plan 与 `conversation_digest` Artifact 具有同一 Task/Run 绑定。只读 Sh
 
 `mysql-permissions` 创建 `dipole_agent_eval`，只拥有 Eval 所需审计投影的 `SELECT` 权限。Agent 容器使用 `DIPOLE_AGENT_EVAL_MYSQL_URL` 运行 `npm run eval:shadow`；部署时应覆盖 `DIPOLE_AGENT_EVAL_MYSQL_PASSWORD`，该账号不得用于 Runtime 写入路径。
 
+Context Ablation 使用同一只读账号。评审 manifest 只包含 experiment ID、case SHA-256、稳定 Artifact/Evidence ID 与固定路由价格；执行时从 `agent_context_ablation_bindings` 读取三条件的 Task/Run 观测，再输出聚合报告：
+
+```bash
+cd services/agent-runtime
+npm run eval:context-ablation -- --manifest=/secure/reviewed-context-ablation.json
+```
+
+命令拒绝不完整条件、候选版本漂移、非终态记录或不完整的授权、延迟和 Token 计量。输出不包含消息正文、原始资源 ID 或模型正文；成功表示证据输入可复算，效果结论仍须基于受控窗口和人工评审任务集。
+
 ## Core 恢复演练
 
 以下命令只适用于隔离开发 Compose 项目。它在 Kafka 事件发布后重启 Core，重新验证
