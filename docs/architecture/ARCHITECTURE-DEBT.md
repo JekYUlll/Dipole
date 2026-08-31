@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：为 Remote GPU 的 origin clone/fetch 固定可配置的 20 秒 timeout。远端 GitHub 不可达时，开发验证会转入 commit-pinned bundle 回退，不会长期占用会话或阻塞后续 Agent 同版本门禁；该 timeout 不改变任何运行中 Compose 服务。
+
 - 2026-09-01：Remote GPU 候选源码同步曾因远端 `ssh.github.com:443` 超时而无法进入测试。`remote-dev.sh` 现为每个 clean candidate 创建 commit-pinned Git bundle 并通过既有 SSH 上传；远端 origin clone/fetch 失败时才回退至 bundle，随后验证 exact commit 并在退出清理。该改动不启用隧道、代理或共享服务，后续同版本 Compose evidence 仍需独立执行。
 
 - 2026-09-01：根 README 已从旧 PNG 品牌板切换到受版本控制的 `dipole-v3-brand-lockup.svg`，与 Web Login 的 V3 SVG 使用同一海军蓝/信号红/轨道金语言。旧 PNG 仅保留为历史评审资产；该文档改动不改变服务 authority 或前端设计验收范围。

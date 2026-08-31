@@ -76,11 +76,12 @@ sync_revision() {
   remote "${REMOTE_BRANCH}" "${commit}" "${remote_url}" "${remote_bundle}" <<'REMOTE_SYNC'
 set -euo pipefail
 root="$1"; project="$2"; branch="$3"; commit="$4"; remote_url="$5"; bundle="$6"
+git_timeout="${DIPOLE_REMOTE_GIT_TIMEOUT:-20}"
 cleanup_bundle() { rm -f "$bundle"; }
 trap cleanup_bundle EXIT
 mkdir -p "$(dirname "$root")"
 if [[ ! -d "$root/.git" ]]; then
-  if ! git clone "$remote_url" "$root"; then
+  if ! timeout "$git_timeout" git clone "$remote_url" "$root"; then
     rm -rf "$root"
     git clone "$bundle" "$root"
     git -C "$root" remote add origin "$remote_url"
@@ -94,7 +95,7 @@ if [[ "$branch" == dipole-dev/* ]]; then
 else
   fetch_ref="refs/heads/${branch}:refs/remotes/origin/${branch}"
 fi
-if ! git fetch origin "$fetch_ref"; then
+if ! timeout "$git_timeout" git fetch origin "$fetch_ref"; then
   git fetch "$bundle" "$commit"
 fi
 git rev-parse --verify "${commit}^{commit}" >/dev/null
@@ -373,6 +374,7 @@ REMOTE_RUN
 require_command git
 require_command ssh
 require_command scp
+require_command timeout
 case "${1:-}" in
   sync) sync_revision ;;
   preflight) run_remote preflight ;;
