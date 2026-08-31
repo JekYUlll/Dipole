@@ -15,6 +15,7 @@ const getAgentEvalObservationHeader = `-- name: GetAgentEvalObservationHeader :o
 SELECT
     t.task_uuid,
     t.status AS task_status,
+    t.workflow_status,
     r.run_uuid,
     r.status AS run_status,
     r.trace_id,
@@ -34,6 +35,7 @@ type GetAgentEvalObservationHeaderParams struct {
 type GetAgentEvalObservationHeaderRow struct {
 	TaskUuid            string
 	TaskStatus          string
+	WorkflowStatus      sql.NullString
 	RunUuid             string
 	RunStatus           string
 	TraceID             sql.NullString
@@ -46,6 +48,7 @@ func (q *Queries) GetAgentEvalObservationHeader(ctx context.Context, arg GetAgen
 	err := row.Scan(
 		&i.TaskUuid,
 		&i.TaskStatus,
+		&i.WorkflowStatus,
 		&i.RunUuid,
 		&i.RunStatus,
 		&i.TraceID,
@@ -143,6 +146,7 @@ func (q *Queries) ListAgentEvalObservationModelCalls(ctx context.Context, taskUu
 
 const listAgentEvalObservationSteps = `-- name: ListAgentEvalObservationSteps :many
 SELECT step_no, capability_id, status, attempt_count,
+       authorization_resource_type, authorization_resource_id, authorization_action, authorization_decision,
        TIMESTAMPDIFF(MICROSECOND, started_at, finished_at) DIV 1000 AS latency_ms
 FROM agent_shadow_steps
 WHERE task_uuid = ?
@@ -151,11 +155,15 @@ LIMIT 257
 `
 
 type ListAgentEvalObservationStepsRow struct {
-	StepNo       uint16
-	CapabilityID string
-	Status       string
-	AttemptCount uint32
-	LatencyMs    int32
+	StepNo                    uint16
+	CapabilityID              string
+	Status                    string
+	AttemptCount              uint32
+	AuthorizationResourceType sql.NullString
+	AuthorizationResourceID   sql.NullString
+	AuthorizationAction       sql.NullString
+	AuthorizationDecision     sql.NullString
+	LatencyMs                 int32
 }
 
 func (q *Queries) ListAgentEvalObservationSteps(ctx context.Context, taskUuid string) ([]ListAgentEvalObservationStepsRow, error) {
@@ -172,6 +180,10 @@ func (q *Queries) ListAgentEvalObservationSteps(ctx context.Context, taskUuid st
 			&i.CapabilityID,
 			&i.Status,
 			&i.AttemptCount,
+			&i.AuthorizationResourceType,
+			&i.AuthorizationResourceID,
+			&i.AuthorizationAction,
+			&i.AuthorizationDecision,
 			&i.LatencyMs,
 		); err != nil {
 			return nil, err

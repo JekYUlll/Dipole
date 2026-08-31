@@ -52,6 +52,8 @@
 
 - 2026-09-01：Context Ablation Eval v1 已建立 baseline/retrieval/memory 的统一低敏对照汇总。真实 Task/Context/Memory 审计查询 adapter、人工评审任务集与共享 Shadow 样本仍待完成，当前结果不能外推模型效果。
 
+- 2026-09-01：Context Ablation 实验绑定现由 migration `000056` 与 SQLC 查询持久化，固定 case SHA-256 与三种条件到独占 Task/Run。只读观测 adapter、评审任务集和运行证据尚未完成，因此该表不代表效果结论或默认 Runtime 行为。
+
 - 2026-09-01：Shadow Eval 汇总 Runtime 已接受 40 位 Git revision，但发布 JSON Schema 曾仅允许 64 位摘要，导致外部 Schema 校验与 OCI provenance 不一致。Schema 已对齐并由 Runtime 测试锁定；窗口仍仅代表受控 Shadow 样本。
 
 - 2026-08-31：Remote GPU 以 `53a4edf7` 在独立 Compose 项目完成 Message Service 的持久化后重启与同一幂等键重放。最终 Message、Outbox、目标 Inbox 均为 `1`，退出后候选容器、卷和网络均清理；receipt 归档于 [`microservices-message-recovery-2026-08-31`](../../benchmarks/microservices-message-recovery-2026-08-31/)。该证据只覆盖一个 post-persistence service restart，Kafka/broker/in-flight 故障矩阵继续开放。

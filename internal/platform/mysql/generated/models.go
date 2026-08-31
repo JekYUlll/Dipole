@@ -174,6 +174,16 @@ type AgentArtifact struct {
 	CreatedAt     time.Time
 }
 
+type AgentContextAblationBinding struct {
+	ExperimentUuid   string
+	CaseSha256       string
+	ConditionName    string
+	TaskUuid         string
+	RunUuid          string
+	CandidateVersion string
+	CreatedAt        time.Time
+}
+
 type AgentDefinitionVersion struct {
 	ID              uint64
 	DefinitionUuid  string

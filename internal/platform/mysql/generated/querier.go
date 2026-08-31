@@ -164,6 +164,7 @@ type Querier interface {
 	InsertAICallLog(ctx context.Context, arg InsertAICallLogParams) (int64, error)
 	InsertAgentApproval(ctx context.Context, arg InsertAgentApprovalParams) error
 	InsertAgentArtifact(ctx context.Context, arg InsertAgentArtifactParams) (int64, error)
+	InsertAgentContextAblationBinding(ctx context.Context, arg InsertAgentContextAblationBindingParams) error
 	InsertAgentDefinitionVersion(ctx context.Context, arg InsertAgentDefinitionVersionParams) error
 	InsertAgentEventClaim(ctx context.Context, arg InsertAgentEventClaimParams) error
 	InsertAgentEventSubscription(ctx context.Context, arg InsertAgentEventSubscriptionParams) (int64, error)
@@ -188,6 +189,7 @@ type Querier interface {
 	InsertAgentWorkflowRepairDecision(ctx context.Context, arg InsertAgentWorkflowRepairDecisionParams) (int64, error)
 	InsertAgentWorkflowRepairExecution(ctx context.Context, arg InsertAgentWorkflowRepairExecutionParams) (int64, error)
 	InsertAgentWorkflowRepairProposal(ctx context.Context, arg InsertAgentWorkflowRepairProposalParams) (int64, error)
+	ListAgentContextAblationBindings(ctx context.Context, experimentUuid string) ([]AgentContextAblationBinding, error)
 	ListAgentContextMemories(ctx context.Context, arg ListAgentContextMemoriesParams) ([]AgentMemory, error)
 	ListAgentEvalObservationArtifacts(ctx context.Context, arg ListAgentEvalObservationArtifactsParams) ([]ListAgentEvalObservationArtifactsRow, error)
 	ListAgentEvalObservationModelCalls(ctx context.Context, taskUuid string) ([]ListAgentEvalObservationModelCallsRow, error)
@@ -251,6 +253,7 @@ type Querier interface {
 	ProjectAgentTaskWorkflowState(ctx context.Context, arg ProjectAgentTaskWorkflowStateParams) (int64, error)
 	PromoteAgentMemoryCandidate(ctx context.Context, arg PromoteAgentMemoryCandidateParams) (int64, error)
 	ReclaimAgentEvent(ctx context.Context, arg ReclaimAgentEventParams) (int64, error)
+	RecordAgentShadowStepAuthorization(ctx context.Context, arg RecordAgentShadowStepAuthorizationParams) (int64, error)
 	RejectAgentRuntimePromotionProposal(ctx context.Context, arg RejectAgentRuntimePromotionProposalParams) (int64, error)
 	RejectAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
 	ReleaseAgentEvent(ctx context.Context, arg ReleaseAgentEventParams) (int64, error)

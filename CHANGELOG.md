@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：新增 Agent Context Ablation 实验绑定表与 SQLC 查询。每条记录仅绑定 experiment、case SHA-256、baseline/retrieval/memory 条件、Task/Run 与候选版本；数据库唯一约束阻止同一 case 条件重复或同一 Run 被复用，正文不进入该表。
+
 - 2026-09-01：新增低敏 Context Ablation Eval v1，固定 baseline、retrieval、memory 三种条件，并按任务输出命中、证据召回、权限安全与模型/工具/token/成本/延迟汇总对照；首版只接受脱敏 observation，尚未连接真实 Shadow 查询。
 
 - 2026-09-01：简历 Claim 验收矩阵已同步 Shadow Eval 的缺失 Token 计量语义：失败调用保留为可分类的 `token_metrics_unavailable`，固定任务集与共享环境观察窗口仍是填写任务成功率前的 P0 门禁。

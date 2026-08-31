@@ -260,3 +260,35 @@ func (q *Queries) ProbeAgentShadowPlans(ctx context.Context) ([]string, error) {
 	}
 	return items, nil
 }
+
+const recordAgentShadowStepAuthorization = `-- name: RecordAgentShadowStepAuthorization :execrows
+UPDATE agent_shadow_steps
+SET authorization_resource_type = ?, authorization_resource_id = ?, authorization_action = ?, authorization_decision = ?
+WHERE task_uuid = ? AND step_no = ? AND claim_token = ? AND status = 'running' AND lease_expires_at >= UTC_TIMESTAMP()
+`
+
+type RecordAgentShadowStepAuthorizationParams struct {
+	AuthorizationResourceType sql.NullString
+	AuthorizationResourceID   sql.NullString
+	AuthorizationAction       sql.NullString
+	AuthorizationDecision     sql.NullString
+	TaskUuid                  string
+	StepNo                    uint16
+	ClaimToken                sql.NullString
+}
+
+func (q *Queries) RecordAgentShadowStepAuthorization(ctx context.Context, arg RecordAgentShadowStepAuthorizationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, recordAgentShadowStepAuthorization,
+		arg.AuthorizationResourceType,
+		arg.AuthorizationResourceID,
+		arg.AuthorizationAction,
+		arg.AuthorizationDecision,
+		arg.TaskUuid,
+		arg.StepNo,
+		arg.ClaimToken,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
