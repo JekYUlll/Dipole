@@ -10,7 +10,7 @@ const props = withDefaults(defineProps<{
   requestId?: () => string
 }>(), {
   client: () => agentTaskClient,
-  requestId: () => () => crypto.randomUUID(),
+  requestId: () => crypto.randomUUID(),
 })
 
 const router = useRouter()

@@ -8,6 +8,14 @@ const replace = vi.fn()
 const source = readFileSync(resolve(import.meta.dirname, 'AgentTaskCreate.vue'), 'utf8')
 vi.mock('vue-router', () => ({ useRouter: () => ({ replace }) }))
 
+const client = (startTask = vi.fn()) => ({
+  startTask,
+  getTask: vi.fn(),
+  provideInput: vi.fn(),
+  resolveApproval: vi.fn(),
+  cancelTask: vi.fn(),
+})
+
 describe('AgentTaskCreate', () => {
   beforeEach(() => replace.mockReset())
 
@@ -20,15 +28,15 @@ describe('AgentTaskCreate', () => {
 
   it('rejects an empty goal without calling the API', async () => {
     const startTask = vi.fn()
-    const wrapper = mount(AgentTaskCreate, { props: { client: { startTask, getTask: vi.fn(), provideInput: vi.fn(), resolveApproval: vi.fn(), cancelTask: vi.fn() } } })
+    const wrapper = mount(AgentTaskCreate, { props: { client: client(startTask) } })
     await wrapper.get('[data-agent-task-create-form]').trigger('submit')
     expect(startTask).not.toHaveBeenCalled()
     expect(wrapper.get('[role="alert"]').text()).toContain('1 到 4000')
   })
 
-  it('submits a local idempotency key and redirects only after acceptance', async () => {
+  it('submits a supplied local idempotency key and redirects only after acceptance', async () => {
     const startTask = vi.fn().mockResolvedValue({ taskId: 'TASK-1', status: 'accepted' })
-    const wrapper = mount(AgentTaskCreate, { props: { requestId: () => 'local:001', client: { startTask, getTask: vi.fn(), provideInput: vi.fn(), resolveApproval: vi.fn(), cancelTask: vi.fn() } } })
+    const wrapper = mount(AgentTaskCreate, { props: { requestId: () => 'local:001', client: client(startTask) } })
     await wrapper.get('[data-agent-task-goal]').setValue(' Summarize unread work ')
     await wrapper.get('[data-agent-task-create-form]').trigger('submit')
     await flushPromises()
@@ -36,8 +44,24 @@ describe('AgentTaskCreate', () => {
     expect(replace).toHaveBeenCalledWith({ name: 'agent-task-timeline', params: { taskId: 'TASK-1' } })
   })
 
+  it('uses a UUID string when no request-id prop is supplied', async () => {
+    const startTask = vi.fn().mockResolvedValue({ taskId: 'TASK-1', status: 'accepted' })
+    const wrapper = mount(AgentTaskCreate, { props: { client: client(startTask) } })
+
+    await wrapper.get('[data-agent-task-goal]').setValue('Summarize my recent discussions')
+    await wrapper.get('[data-agent-task-create-form]').trigger('submit')
+    await flushPromises()
+
+    expect(startTask).toHaveBeenCalledWith({
+      clientRequestId: expect.stringMatching(/^[A-Za-z0-9._:-]{1,64}$/),
+      goal: 'Summarize my recent discussions',
+    })
+    expect(replace).toHaveBeenCalledWith({ name: 'agent-task-timeline', params: { taskId: 'TASK-1' } })
+  })
+
   it('does not expose a fallback when task creation is unavailable', async () => {
-    const wrapper = mount(AgentTaskCreate, { props: { client: { getTask: vi.fn(), provideInput: vi.fn(), resolveApproval: vi.fn(), cancelTask: vi.fn() } } })
+    const { startTask: _startTask, ...unavailableClient } = client()
+    const wrapper = mount(AgentTaskCreate, { props: { client: unavailableClient } })
     await wrapper.get('[data-agent-task-goal]').setValue('Summarize unread work')
     await wrapper.get('[data-agent-task-create-form]').trigger('submit')
     await flushPromises()
