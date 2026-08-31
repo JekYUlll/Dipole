@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：修复 Context Ablation migration `000056` 的外键字符集/排序规则兼容性。binding 表现显式使用与 Agent Task/Run 相同的 `utf8mb4_unicode_ci`，隔离 MySQL 8.4 预检不再因外键列不兼容失败。
+
 - 2026-09-01：新增 Context Ablation 隔离 MySQL 预检。它应用 migration `000056`、核对 binding 表并验证 Eval 账号可读取且没有写权限；脚本不启动完整 Compose 或 Agent 运行时，退出后清理临时容器与网络。
 
 - 2026-09-01：新增 baseline、retrieval、memory 三份默认不加载的 Context Ablation Compose overlay。它们使用独立 Temporal queue，并以开关互斥地选择只读 Context 来源；Memory 写入、消息写入、Control、MCP 和 External MCP 不因此开启。

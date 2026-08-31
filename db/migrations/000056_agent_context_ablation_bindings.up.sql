@@ -13,4 +13,4 @@ CREATE TABLE agent_context_ablation_bindings (
     CONSTRAINT fk_agent_context_ablation_run FOREIGN KEY (run_uuid) REFERENCES agent_runs(run_uuid) ON DELETE RESTRICT,
     CONSTRAINT chk_agent_context_ablation_condition CHECK (condition_name IN ('baseline', 'retrieval', 'memory')),
     CONSTRAINT chk_agent_context_ablation_case_hash CHECK (case_sha256 REGEXP '^[a-f0-9]{64}$')
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

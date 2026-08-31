@@ -18,6 +18,12 @@ class ContextAblationPreflightContractTest(unittest.TestCase):
         self.assertIn("privilege_type IN ('INSERT', 'UPDATE', 'DELETE')", source)
         self.assertNotIn("docker compose", source)
 
+    def test_binding_migration_matches_agent_identity_collation(self):
+        source = (ROOT / "db/migrations/000056_agent_context_ablation_bindings.up.sql").read_text(encoding="utf-8")
+        self.assertIn("ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci", source)
+        self.assertIn("REFERENCES agent_tasks(task_uuid)", source)
+        self.assertIn("REFERENCES agent_runs(run_uuid)", source)
+
 
 if __name__ == "__main__":
     unittest.main()
