@@ -11,7 +11,7 @@ describe('ChatView V3 design contract', () => {
     expect(source).toContain('var(--dp-v3-navy)')
     expect(source).toContain('var(--dp-v3-ivory)')
     expect(source).toContain('var(--dp-v3-red)')
-    expect(source).toContain('var(--dp-v3-gold)')
+    expect(source).toContain('var(--dp-v3-gold-soft)')
   })
 
   it('keeps synchronization and user-authorized agent entry points visible', () => {
