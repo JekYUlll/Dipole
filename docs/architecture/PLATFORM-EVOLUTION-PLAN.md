@@ -13,7 +13,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 1. **微服务改造：** 从模块化单体渐进拆出 Gateway、Message 和 Sync 服务，Core 暂时保留 User、Group、Contact、File、Auth。
 2. **架构重构：** 建立 MySQL 元数据、Kafka 事件流、Cassandra 消息存储、Elasticsearch 搜索索引和 Redis 实时状态的分层架构。
 3. **Agent 化：** 将进程内 Eino AI 模块演进为 TypeScript Agent Runtime，通过事件和受控 Capability API 参与 IM 业务。
-4. **C++ 实时数据面：** 在稳定协议和性能基线之上评估 Realtime Delivery 与 Gateway 替换，只在收益可复现时灰度切流。
+4. **C++ 实时数据面（暂缓）：** 保留已有 Realtime Delivery 合同、基准与回切资产；在 Agent Runtime 形成完整安全闭环前，不继续推进 C++ primary、灰度或 Gateway 替换。后续只有在新的可复现 workload 证明收益时恢复评估。
 
 微服务阶段内先将 GORM 渐进迁移到 sqlc；前端从当前阶段开始维护 Pencil `.pen` 设计基线，并随 IM、Agent 和数据面能力持续更新。
 
@@ -79,7 +79,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 | 会话 | Core Conversation Projection 消费 Kafka 事件 | Conversation State 仍归 Core，后续按压力独立扩展 |
 | 消息存储 | MySQL `messages` 为当前事实源，Cassandra Timeline 支持 shadow/primary 实验 | 通过 storage-neutral Store、回退和证据门禁推进迁移 |
 | 事件 | Kafka + Transactional Outbox，按服务拆分 consumer ownership | 事件版本、retry/DLQ、幂等和 readiness 门禁已建立 |
-| 实时状态 | Redis Presence / PubSub / Hot Group，Go Delivery 为当前 authority | C++ Realtime Delivery 仅作为默认关闭候选 profile |
+| 实时状态 | Redis Presence / PubSub / Hot Group，Go Delivery 为当前 authority | C++ Realtime Delivery 保留为默认关闭候选 profile，当前开发窗口暂缓 |
 | 文件 | MinIO，文件元数据归 Core，Agent Artifact 使用独立 bucket/身份 | 保持独立对象存储，不随消息库迁移 |
 | AI | Go/Eino legacy 兼容链路 + 默认受控的 TS Agent Runtime shadow/active read 能力 | 通过 promotion、Temporal、Capability 和评测门禁逐步接管 |
 
@@ -574,7 +574,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 将投递 envelope、节点批次、ACK/error、背压和热群 mode 定义为版本化 Protobuf 与跨语言 golden vectors；连接级队列、持久重试和去重在 C2 shadow 中实现。
 - [x] 明确 Gateway 与 Delivery 的进程及数据所有权边界，禁止 C++ 数据面访问业务数据库。
 
-### C2：C++ Realtime Delivery Shadow
+### C2：C++ Realtime Delivery Shadow（暂缓）
 
 - [x] 建立独立 C++20 contract-only foundation，在 build 目录生成 canonical Protobuf 类型，共用 golden vectors，并提供 fail-closed 配置与健康端点；暂不接入运行拓扑。
 - [x] 建立无网络状态的 Kafka record 到 Delivery v1 纯投影，固定 direct/group/hot/timeline/file 与 legacy-created 语义，并以稳定 ID 支持确定性重放。
@@ -585,9 +585,9 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 与 Go Delivery 并行消费 shadow 流量，按同一 workload 比较投影、节点观察与最终 lag，不重复投递客户端。
 - [x] 提供 `scripts/check-cpp-realtime-container.sh` 容器门禁，复用 Ubuntu 24.04 Dockerfile 并绑定 revision/created/dirty provenance，覆盖宿主机 gRPC C++ 依赖缺失场景。
 - [x] 在仓库自带 Ubuntu 24.04 构建镜像中复核 C++ 依赖、编译和 14 项 CTest；宿主机 gRPC C++ 缺失时保留容器构建作为可复现验证路径。
-- [ ] 通过压测证明 C++ 数据面收益；2026-08-29 projection microbenchmark 的 C++/Go ops ratio 为 `0.10`，低于 `1.0` 晋级门槛，因此保留 Go projection 并停止当前 C++ projection 替换；只有新的可复现 workload 证明收益后才重新评估。
+- [ ] 通过压测证明 C++ 数据面收益；2026-08-29 projection microbenchmark 的 C++/Go ops ratio 为 `0.10`，低于 `1.0` 晋级门槛，因此保留 Go projection 并停止当前 C++ projection 替换。该项现暂缓，只有新的可复现 workload 证明收益且 Agent Runtime 安全闭环稳定后才重新评估。
 
-### C3：灰度切换与 Gateway 评估
+### C3：灰度切换与 Gateway 评估（暂缓）
 
 - [x] 关闭 `AD-041`：建立互斥 Go/C++ 客户端投递 authority、双 group checkpoint 和可执行自动回切，禁止两个写 authority 并行 active。
   - [x] 增加默认 `go` 的本地 `go|shadow|cpp` 配置、Gateway checkpoint-only Handler 与 C++ 启动错配门禁；保留共享 fencing 和回切证据作为后续切片。
@@ -609,7 +609,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
     - [x] 用隔离真实 Kafka/Redis 与 race harness 完成 controller crash、Kafka member loss/rejoin、Redis outage/recovery 的 forward cutover 演练并归档证据。
     - [x] 完成真实 expired-freeze 自动回切，强制 source-node frozen proof 后恢复 Go active epoch 2。
     - [x] 增加持续续期调度，并完成 C++ primary authority 演练。
-- [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group；C3 的 authority、自动回切和故障注入证据已完成，灰度发布仍待独立性能收益门禁。
+- [ ] 按节点或用户灰度将投递切到 C++，保留 Go 回切开关和独立 consumer group；C3 的 authority、自动回切和故障注入证据已完成。灰度发布当前暂缓，仍需独立性能收益门禁与 Agent Runtime 安全闭环完成。
 - [x] 完成 crash isolation、重平衡、Redis 故障、慢消费者和队列溢出演练；C3 真实隔离演练覆盖 Controller/C++ 进程替换、Redis outage、Kafka member loss/rejoin、过期 freeze 自动回切和 primary 停止恢复，证据归档于 `/tmp/dipole-c3-cutover-fault-report.json` 与 `/tmp/dipole-c3-cutover-fault-report-controller.json`，报告绑定当前 revision 和依赖/二进制哈希。
 - [ ] Delivery 稳定后再评估 C++ WebSocket Gateway；cgo 仅用于接口窄、批处理明确的 native codec 实验。
 

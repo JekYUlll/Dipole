@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：C++ Realtime Delivery 后续开发暂缓。现有协议、容器构建、故障回切和基准证据保持可复核，但 Go 继续作为唯一投递 authority；当前开发窗口优先完成 TypeScript Agent Runtime 的默认关闭 OAuth handoff 执行器组合验证与安全闭环。
+
 - 2026-08-31：Remote GPU 的 `agent-temporal-read-shadow` 完成受控只读 Durable Task 演练：Kafka 事件经 Temporal 和 Core mTLS 投影后，持久 Run 完成、EventLedger 单次收敛，并生成 `conversation_digest` Artifact。开发环境将 Flash 单次输出预算设为 `1024`，用于避免推理过程耗尽正文预算；仍保持零内部重试、只读 Capability、schema 校验和默认关闭的写能力。
 
 - 2026-08-31：微服务 Compose 的独立 Agent 服务现在显式加载受忽略的根目录 `.env`。这保证重建 `agent-temporal-read-shadow` 容器时保留受托管的 Provider 路由和凭据；缺失 `.env` 时基础 `metadata` 配置仍可启动，AI SDK overlay 继续因缺 Provider 配置失败关闭。
