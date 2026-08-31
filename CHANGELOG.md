@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 在隔离项目 `dipole-message-recovery-53a4edf7` 完成 Message Service 持久化后重启演练：同一 `client_message_id` 重放后 Message、Outbox 与目标 Inbox 均为单条，候选资源自动清理。低敏 receipt 归档于 `benchmarks/microservices-message-recovery-2026-08-31/`；Kafka/broker/in-flight 故障矩阵仍待验证。
+
 - 2026-08-31：候选消息恢复 smoke 的 readiness 和首次持久化失败现输出有限服务状态、容器日志及 `wscli` 尾部。失败仍自动清理隔离 Compose 项目；诊断信息用于区分拓扑未就绪与消息链路未收敛，不能替代成功 receipt。
 
 - 2026-08-31：候选微服务 smoke 的服务内 health、数据库计数与恢复探针现统一通过有界 `SMOKE_EXEC_TIMEOUT_SECONDS` 包装。Remote GPU 出现停止态 `docker compose exec` 客户端时，演练会在默认 20 秒后发送 `TERM`，再于 5 秒后强制结束并清理隔离项目，不再无限等待。

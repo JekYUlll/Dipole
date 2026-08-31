@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Remote GPU 以 `53a4edf7` 在独立 Compose 项目完成 Message Service 的持久化后重启与同一幂等键重放。最终 Message、Outbox、目标 Inbox 均为 `1`，退出后候选容器、卷和网络均清理；receipt 归档于 [`microservices-message-recovery-2026-08-31`](../../benchmarks/microservices-message-recovery-2026-08-31/)。该证据只覆盖一个 post-persistence service restart，Kafka/broker/in-flight 故障矩阵继续开放。
+
 - 2026-08-31：候选消息恢复演练的 readiness 和首次持久化检查现在在失败时输出受限 `compose ps/logs` 与 `wscli` 尾部，避免基础服务未就绪被无上下文地归因为消息幂等缺陷。失败路径继续自动清理，只有归档的成功 receipt 才能作为恢复副作用证据。
 
 - 2026-08-31：Remote GPU 候选消息恢复演练发现停止态 `docker compose exec` 客户端会无限阻塞 readiness/计数探针。`smoke-microservice-isolated-images.sh` 已将这些调用收敛为默认 20 秒的 `SMOKE_EXEC_TIMEOUT_SECONDS`，并在 5 秒 grace 后强制结束；发生该类问题时演练失败并走隔离项目清理，干净重跑 receipt 仍待归档。
