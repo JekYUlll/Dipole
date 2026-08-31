@@ -98,6 +98,7 @@ export interface ShadowPlanStep {
 
 export interface ShadowPlanner {
   plan(event: AgentEvent, context: ExecutionContext): Promise<ShadowPlan>;
+  synthesize?(event: AgentEvent, context: ExecutionContext, plan: ShadowPlan, outputs: readonly unknown[]): Promise<string>;
 }
 
 export interface ShadowAuditRecord {
@@ -261,11 +262,14 @@ export async function executeShadowPlan(
 ): Promise<ShadowPlan> {
   const plan = await dependencies.planner.plan(event, context);
   await dependencies.audit.append({ eventId: event.eventId, taskId: context.taskId, eventType: event.eventType, plan });
-  await executeShadowPlanSteps(
+  const outputs = await executeShadowPlanSteps(
     plan, context, dependencies.registry, dependencies.trajectory,
     dependencies.stepLeaseMs, dependencies.busyStepRetry, dependencies.telemetry ?? new AgentTelemetry()
   );
-  return plan;
+  const summary = dependencies.planner.synthesize === undefined
+    ? plan.summary
+    : await dependencies.planner.synthesize(event, context, plan, outputs);
+  return summary === plan.summary ? plan : { ...plan, summary };
 }
 
 async function executeShadowPlanSteps(
@@ -276,7 +280,7 @@ async function executeShadowPlanSteps(
   stepLeaseMs: number,
   busyStepRetry?: ShadowPlanExecutionDependencies["busyStepRetry"],
   telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
-): Promise<void> {
+): Promise<readonly unknown[]> {
   const outputs: unknown[] = [];
   for (const [index, step] of plan.steps.entries()) {
     const stepNo = index + 1;
@@ -313,6 +317,7 @@ async function executeShadowPlanSteps(
       throw error;
     }
   }
+  return outputs;
 }
 
 function resolveTrustedDiscoveryStep(

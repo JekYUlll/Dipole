@@ -355,6 +355,8 @@
 
 - 2026-09-01：`000057` 将模型审计运行的唯一约束升级为 `(task_uuid, stage)`。默认 `plan` 继续使用 v1 deterministic run ID，非默认 stage 使用携带 stage 的 v2 ID，防止历史计划重放漂移；Router 对 stage 名称、预算和恢复结果均失败关闭。该层仅提供 `synthesis` 的 durable 运行隔离，读取结果编译、第二次模型调用、Artifact 替换及真实 Shadow receipt 仍待后续切片完成。
 
+- 2026-09-01：read-shadow 在已审计计划和已完成 Tool Step 后调用独立 `synthesis` stage，最终 Artifact 使用该摘要。Tool 输出在 synthesis prompt 中始终标记为 untrusted data，且空输出不会触发第二次调用；Metadata Planner 保持单阶段。当前输出截断为 12 KiB，尚未接入 ContextCompiler 的多来源结果压缩、跨会话选择或写入/approval loop，真实 Remote GPU receipt 仍待安全窗口。
+
 - 2026-08-31：Runtime bootstrap 现显式解析 OAuth callback 配置并拒绝启用状态，避免缺 Provider processor 的环境变量被静默忽略。拒绝发生在任何网络资源初始化前；后续独立 profile 需要将 processor、Core credential、key mount、运行证据和回滚开关作为同一部署契约交付。
 - 2026-08-30：长时 C++ profiling 受远端内核缺少匹配 linux-tools 阻断，未安装系统包也未将 `perf` 失败误判为热点结论；下一步可在具备匹配工具链的隔离 runner 中采集，当前仍禁止据 benchmark 切换 C++ authority。
 
