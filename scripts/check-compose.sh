@@ -282,6 +282,45 @@ jq -e '
     and .target == "/run/dipole/external-mcp/secrets" and .read_only == true)
 ' <<<"${external_mcp_shadow_config}" >/dev/null
 
+read_shadow_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
+  DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
+  DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
+  DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS=false \
+  DIPOLE_AGENT_MODEL_OUTPUT_MODE=json_text \
+  DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini \
+  DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
+  DIPOLE_AGENT_MODEL_MAX_CALLS=1 \
+  DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS=30000 \
+  DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS=512 \
+  DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2 \
+    docker compose -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/agent-ai-sdk-shadow.yml \
+      -f deploy/microservices/agent-temporal-read-shadow.yml config --format json
+})"
+jq -e '
+  .services.temporal.image == "temporalio/auto-setup:1.29.1"
+  and .services.temporal.ports == null
+  and .services.temporal.environment.DB == "postgres12"
+  and .services.temporal.depends_on["temporal-postgresql"].condition == "service_healthy"
+  and .services["temporal-postgresql"].image == "postgres:16"
+  and .services.agent.depends_on.temporal.condition == "service_healthy"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_MODE == "ai_sdk"
+  and .services.agent.environment.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION == "v2"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ADDRESS == "temporal:7233"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_NAMESPACE == "default"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE == "dipole-agent-read-shadow-v1"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "read_shadow"
+  and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED == "false"
+' <<<"${read_shadow_config}" >/dev/null
+
 if env -u DIPOLE_AGENT_EXTERNAL_MCP_PROFILES \
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_EXTERNAL_MCP_IO_MANIFEST_FILE=/tmp/dipole-agent-external-mcp-io-check.json \

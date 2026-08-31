@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：新增显式 `agent-temporal-read-shadow` 开发 overlay 与运行手册。它将 Temporal/PostgreSQL 限定在 Compose 内部网络，并把 Agent 固定为 DeepSeek 等 AI SDK Provider 可用时的 `read_shadow`、v2 Context 与独立 task queue；消息写入、Memory、检索、Control、MCP、OAuth callback 和默认基础 Compose 均保持关闭。
+
 - 2026-08-31：OAuth callback handoff 增加 Runtime 重启重复通知与 terminal completion 不可用的组合测试：进程内去重不会跨重启保留，重复请求重新交给 Core lease；完成终态不确定时不释放 lease。callback HTTP、key source、provider exchange 与默认启动配置仍保持关闭。
 
 - 2026-08-31：Remote GPU 开发环境使用 `.env` 托管的 DeepSeek V4 Flash 完成真实私聊到 Kafka、Agent Capability RPC、单次 JSON-text 模型调用、持久化 Model Run/Call 与 Shadow Plan 的只读闭环验证；该证据仅覆盖 Shadow Runtime，不代表 active authority 或写能力已开放。
