@@ -10,7 +10,9 @@
 
 ### 本轮进展
 
-- 2026-08-31：Agent Compose 启动顺序现显式等待 Core health，避免首次启动时能力 RPC 在 Core listener 就绪前失败。Core 滚动重启期间的 transport reconnect、retry 重新领取与 dead-letter 恢复尚未形成完整演练，继续跟踪。
+- 2026-08-31：Agent Capability RPC 在 `UNAVAILABLE` 后替换底层 gRPC transport，失败请求不在客户端层重放，由 Kafka/EventLedger 按原有幂等语义重新领取和尝试，避免 Core 容器重建后长期持有过期 DNS 地址。真实 Core 重建、retry 重新领取与 dead-letter 恢复的完整演练仍待完成。
+
+- 2026-08-31：Agent Compose 启动顺序现显式等待 Core health，避免首次启动时能力 RPC 在 Core listener 就绪前失败。运行中故障恢复继续由 transport reconnect 和 EventLedger 重试共同覆盖。
 
 - 2026-08-31：修复微服务 Compose 中 Core assistant identity seed 与 TS Agent UUID 的漂移。Core 以 `ai.enabled=true`、`ai.runtime_mode=remote` 维护唯一系统用户，TS Runtime 仍只消费 Shadow 事件；该组合不恢复 embedded Eino consumer。真实私聊到 Shadow plan 的远程证据继续待补。
 

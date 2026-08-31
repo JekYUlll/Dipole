@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Capability RPC transport 在收到 `UNAVAILABLE` 时会关闭并替换失效的底层 gRPC channel；失败调用不在客户端层重放，Kafka/EventLedger 保持原有幂等重试责任，使 Core 容器重建后的下一次事件尝试重新解析服务地址。
+
 - 2026-08-31：微服务 Compose 的 Agent 现等待 Core `service_healthy` 后才启动，避免首次部署时 Agent gRPC transport 在 Core listener 就绪前固定失败连接。Core 运行中重启后的 retry/reconnect 演练继续作为独立可靠性切片推进。
 
 - 2026-08-31：微服务 Compose 的 Core 现以 `ai.enabled=true` 和 `ai.runtime_mode=remote` 维护唯一 assistant identity；独立 TypeScript Agent Runtime 继续作为 Shadow consumer。Compose 门禁同时固定 Core remote mode 与 Agent UUID，避免运行时目标用户缺失。

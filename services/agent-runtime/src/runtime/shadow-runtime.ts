@@ -45,6 +45,7 @@ import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
 import type { AgentTaskActivities } from "../temporal/agent-task-activities.js";
+import { createReconnectingAgentCapabilityTransport } from "./reconnecting-agent-capability-transport.js";
 
 const shadowRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
@@ -544,9 +545,11 @@ export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client:
     "grpc.ssl_target_name_override": tls.serverName,
     "grpc.default_authority": tls.serverName
   } : {};
-  const transport = new AgentCapabilityServiceClient(config.capabilityRpc.target, credentials, options);
+  const transport = createReconnectingAgentCapabilityTransport(
+    () => new AgentCapabilityServiceClient(config.capabilityRpc.target, credentials, options)
+  );
   return {
-    client: new AgentCapabilityRPCClient(transport, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs, config.runtimeMode, config.candidateVersion),
+    client: new AgentCapabilityRPCClient(transport.client, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs, config.runtimeMode, config.candidateVersion),
     close: () => transport.close()
   };
 }
