@@ -208,7 +208,8 @@ if [[ "${CORE_OUTAGE_BEFORE_EVENT}" == "1" ]]; then
   [[ "${ledger_claimed}" == "1" ]]
   # Hold Core unavailable long enough for Temporal's first admission attempt.
   sleep 2
-  compose start core
+  # `up -d` restores a stopped Compose service reliably across Compose versions.
+  compose up -d core
   core_ready=""
   for _ in $(seq 1 30); do
     core_ready="$(compose exec -T core wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null || true)"
