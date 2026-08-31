@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 隔离交互 Shadow 候选复验了认证 Agent Task 链路：新临时用户的只读请求返回 `202`，同一 Task 随后经受限轮询收敛为 `completed`。Gateway/Core 使用 `406c3154`，Agent 使用 `thinking-4e9740a0`，该结果只证明版本兼容与 Shadow 读取路径，不构成同版本发布、active authority、写 Capability 或整体成功率结论。
+
 - 2026-09-01：个人资料弹窗新增修改密码闭环。受保护的 `/api/v1/auth/password` 校验当前密码、以 bcrypt 更新新密码并撤销当前会话；前端在成功后清除本地会话并要求重新登录，密码和哈希均不写入响应、日志或本地存储。
 
 - 2026-09-01：修复 Agent Task 创建页面的默认请求 ID。此前 Vue Function prop 默认值多包了一层函数，浏览器会在本地参数校验阶段拒绝函数对象并显示“任务创建暂不可用”；现在默认生成 UUID 字符串，回归测试覆盖无显式 request ID 的提交路径。

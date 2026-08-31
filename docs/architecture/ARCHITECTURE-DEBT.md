@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 的长驻隔离交互候选以新临时用户复验了 Agent Task 创建到终态查询：Gateway 接受只读请求并返回 `202`，Task 在有界轮询中收敛为 `completed`。候选 Gateway/Core 为 `406c3154`，Agent 镜像为 `thinking-4e9740a0`，存在受控版本偏差；它支持跨版本 Shadow 兼容性，不能替代同版本候选、可重跑 receipt、active authority、写 Capability 或任务成功率的验收。后续体验候选应将 Gateway/Core/Agent provenance 固定为同一 revision，再纳入 Claim 证据。
+
 - 2026-09-01：个人资料入口补齐了当前密码验证、bcrypt 重哈希和当前 session 撤销的密码更新闭环。当前仅撤销发起修改的会话；“修改密码后撤销全部设备令牌”需要先让 Session/Token Store 提供用户范围的可审计失效能力，作为后续安全增强，不将当前实现表述为全设备登出。
 
 - 2026-09-01：密码更新的隔离端到端验证发现资料缓存按设计脱敏 `PasswordHash`，认证中间件的 cached user 不能直接参与 bcrypt 对比。流程现经已认证主体的手机号加载权威记录并核验 UUID；用户资料缓存继续不保存密码哈希。后续认证能力需保持“敏感凭据从权威 store 获取、资料 cache 只承载脱敏投影”的边界。
