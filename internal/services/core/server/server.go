@@ -183,6 +183,7 @@ func NewWithDependencies(repos *Repositories, dependencies Dependencies) *Server
 		protected.Use(authRequired)
 		{
 			protected.POST("/auth/logout", authHandler.Logout)
+			protected.PATCH("/auth/password", authHandler.ChangePassword)
 			protected.POST("/auth/agent-mcp/token", authHandler.IssueAgentMCPGrant)
 			protected.GET("/conversations", conversationHandler.List)
 			protected.PATCH("/conversations/direct/:target_uuid/read", conversationHandler.MarkDirectRead)

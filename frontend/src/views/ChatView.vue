@@ -444,6 +444,16 @@
             {{ savingProfile ? '保存中…' : '保存资料' }}
           </button>
         </div>
+        <form class="upc-password-form" @submit.prevent="changePassword">
+          <div class="upc-password-title">账户安全</div>
+          <input v-model="currentPassword" type="password" autocomplete="current-password" placeholder="当前密码" minlength="6" maxlength="32" required />
+          <input v-model="newPassword" type="password" autocomplete="new-password" placeholder="新密码（6-32 位）" minlength="6" maxlength="32" required />
+          <input v-model="confirmPassword" type="password" autocomplete="new-password" placeholder="确认新密码" minlength="6" maxlength="32" required />
+          <p class="upc-password-hint">修改后将退出当前设备，请使用新密码重新登录。</p>
+          <button class="upc-btn danger" type="submit" :disabled="changingPassword">
+            {{ changingPassword ? '修改中…' : '修改密码' }}
+          </button>
+        </form>
       </div>
     </div>
 
@@ -657,6 +667,10 @@ const selectedAvatarName = ref('')
 const uploadingAvatar = ref(false)
 const profileSignature = ref('')
 const savingProfile = ref(false)
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const changingPassword = ref(false)
 const uuidCopied = ref(false)
 const showUserProfileModal = ref(false)
 const viewedUser = ref<PublicUser | null>(null)
@@ -1362,6 +1376,9 @@ const closeProfileModal = () => {
   showProfileModal.value = false
   selectedAvatarFile.value = null
   selectedAvatarName.value = ''
+  currentPassword.value = ''
+  newPassword.value = ''
+  confirmPassword.value = ''
   if (avatarInputRef.value) avatarInputRef.value.value = ''
 }
 
@@ -1418,6 +1435,36 @@ const saveProfile = async () => {
     toast.error(e?.message || '资料保存失败')
   } finally {
     savingProfile.value = false
+  }
+}
+
+const changePassword = async () => {
+  if (newPassword.value !== confirmPassword.value) {
+    toast.error('两次输入的新密码不一致')
+    return
+  }
+  if (currentPassword.value.length < 6 || newPassword.value.length < 6) {
+    toast.error('密码长度需要为 6 到 32 位')
+    return
+  }
+  if (currentPassword.value === newPassword.value) {
+    toast.error('新密码需与当前密码不同')
+    return
+  }
+
+  changingPassword.value = true
+  try {
+    await api.patch('/api/v1/auth/password', {
+      current_password: currentPassword.value,
+      new_password: newPassword.value,
+    })
+    ws.close()
+    closeProfileModal()
+    await auth.terminateSession(true)
+  } catch (e: any) {
+    toast.error(e?.message || '密码修改失败')
+  } finally {
+    changingPassword.value = false
   }
 }
 
@@ -2167,6 +2214,36 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0;
   position: relative;
+}
+
+.upc-password-form {
+  width: 100%;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #ececec;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upc-password-title {
+  color: #555;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.upc-password-form input {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.upc-password-hint {
+  color: #999;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .upc-close {

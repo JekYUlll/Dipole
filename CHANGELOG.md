@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：个人资料弹窗新增修改密码闭环。受保护的 `/api/v1/auth/password` 校验当前密码、以 bcrypt 更新新密码并撤销当前会话；前端在成功后清除本地会话并要求重新登录，密码和哈希均不写入响应、日志或本地存储。
+
 - 2026-09-01：修复 Agent Task 创建页面的默认请求 ID。此前 Vue Function prop 默认值多包了一层函数，浏览器会在本地参数校验阶段拒绝函数对象并显示“任务创建暂不可用”；现在默认生成 UUID 字符串，回归测试覆盖无显式 request ID 的提交路径。
 
 - 2026-09-01：微服务隔离 smoke 增加默认关闭的低敏 Agent Task/Run receipt。显式提供输出路径时，成功收敛后仅写入随机 event、Task、Run、trace 与运行状态，便于后续 Context Ablation runner 在销毁临时 Compose 项目前建立绑定；消息、模型正文和凭据均不导出。

@@ -12,6 +12,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/code"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
+	"github.com/JekYUlll/Dipole/internal/model"
 	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 )
 
@@ -29,6 +30,7 @@ type authService interface {
 	Register(input coreauth.RegisterInput) (*coreauth.AuthResult, error)
 	Login(input coreauth.LoginInput) (*coreauth.AuthResult, error)
 	Logout(token string) error
+	ChangePassword(user *model.User, token string, input coreauth.ChangePasswordInput) error
 	IssueAgentMCPGrant(input coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error)
 }
 
@@ -170,6 +172,52 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	Success(c, gin.H{
 		"message": "logout success",
 	})
+}
+
+// ChangePassword godoc
+// @Summary 修改当前用户密码
+// @Tags Auth
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body httpdto.ChangePasswordRequest true "当前密码与新密码"
+// @Success 200 {object} MessageOnlyResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /auth/password [patch]
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	user, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authenticated principal is required")
+		return
+	}
+	token, ok := middleware.CurrentToken(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	var request httpdto.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "current_password and new_password must be 6 to 32 characters")
+		return
+	}
+	if err := h.service.ChangePassword(user, token, request.ToInput()); err != nil {
+		switch {
+		case errors.Is(err, coreauth.ErrInvalidCurrentPassword):
+			ErrorWithCode(c, http.StatusBadRequest, code.AuthCurrentPasswordInvalid, "current password is invalid")
+		case errors.Is(err, coreauth.ErrPasswordUnchanged):
+			ErrorWithCode(c, http.StatusBadRequest, code.AuthPasswordUnchanged, "new password must differ from current password")
+		case errors.Is(err, coreauth.ErrInvalidPassword):
+			ErrorWithCode(c, http.StatusBadRequest, code.BadRequest, "current_password and new_password must be 6 to 32 characters")
+		default:
+			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, "password change failed")
+		}
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.Header("Pragma", "no-cache")
+	Success(c, gin.H{"message": "password changed, please sign in again"})
 }
 
 // IssueAgentMCPGrant godoc
