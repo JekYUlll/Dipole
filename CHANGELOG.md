@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：微服务隔离 smoke 增加默认关闭的低敏 Agent Task/Run receipt。显式提供输出路径时，成功收敛后仅写入随机 event、Task、Run、trace 与运行状态，便于后续 Context Ablation runner 在销毁临时 Compose 项目前建立绑定；消息、模型正文和凭据均不导出。
+
 - 2026-09-01：修正 AI SDK Shadow Planner 的会话 hydration 输入：Core `ReadConversation` 现在接收事件中的 `target_uuid`，与其按目标用户/群 UUID 的 RPC 契约一致；`conversation_key` 继续只用于 Memory 作用域。该修复为隔离 Context Ablation 的真实会话证据准备前置条件，不开启任何写能力。
 
 - 2026-09-01：修复 Context Ablation migration `000056` 的外键字符集/排序规则兼容性。binding 表现显式使用与 Agent Task/Run 相同的 `utf8mb4_unicode_ci`，隔离 MySQL 8.4 预检不再因外键列不兼容失败。

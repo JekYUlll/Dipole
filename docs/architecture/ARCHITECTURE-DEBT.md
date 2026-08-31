@@ -64,6 +64,8 @@
 
 - 2026-09-01：AI SDK Shadow Planner 的会话 hydration 已改用事件的 `target_uuid` 调用 Core `ReadConversation`，避免将 `conversation_key` 误作目标用户或群标识。隔离 fixture、三条件受控 Task/Run 与窗口级报告仍待完成，因此尚无新的模型效果结论。
 
+- 2026-09-01：隔离微服务 smoke 现可按需导出低敏 Agent Task/Run receipt，使临时栈销毁前的三条件绑定成为可能。receipt 不含消息或模型正文；同源 fixture、三次真实执行、binding 写入与聚合报告仍待完成。
+
 - 2026-09-01：Context Ablation 增加隔离 MySQL 预检，验证 migration `000056`、binding 表和 Eval 账号的只读权限。它不覆盖真实三条件运行、fixture 审阅、Task/Run binding 或窗口级效果报告；这些步骤仍须在独立 Compose 项目完成。
 
 - 2026-09-01：隔离 MySQL 8.4 预检发现 `000056` 未显式继承 Agent Task/Run 的 `utf8mb4_unicode_ci`，导致外键创建拒绝；migration 已修正并由预检静态断言覆盖。真实三条件 fixture 与运行证据仍待完成。

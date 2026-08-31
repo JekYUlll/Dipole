@@ -12,6 +12,7 @@ RESTART_CORE="${RESTART_CORE:-0}"
 RESTART_CORE_AFTER_EVENT="${RESTART_CORE_AFTER_EVENT:-0}"
 EXPECT_READ_SHADOW="${EXPECT_READ_SHADOW:-0}"
 AGENT_CORE_RESTART_EVIDENCE="${DIPOLE_AGENT_CORE_RESTART_EVIDENCE:-}"
+AGENT_SMOKE_RECEIPT="${DIPOLE_AGENT_SMOKE_RECEIPT:-}"
 
 for boolean in RESTART_CORE RESTART_CORE_AFTER_EVENT EXPECT_READ_SHADOW; do
   [[ "${!boolean}" == "0" || "${!boolean}" == "1" ]] || { echo "${boolean} must be 0 or 1" >&2; exit 2; }
@@ -225,6 +226,21 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 [[ "${agent_event_ready}" == "1" ]]
+
+if [[ -n "${AGENT_SMOKE_RECEIPT}" ]]; then
+  agent_receipt="$(compose exec -T mysql mysql -uroot -proot123 -Ddipole -N -B -e \
+    "SELECT JSON_OBJECT(
+      'schemaVersion', 'dipole.agent.smoke-receipt.v1',
+      'eventId', '${agent_event_id}',
+      'taskId', (SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}'),
+      'runId', (SELECT run_uuid FROM agent_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND mode='shadow' ORDER BY created_at DESC LIMIT 1),
+      'traceId', (SELECT trace_id FROM agent_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND mode='shadow' ORDER BY created_at DESC LIMIT 1),
+      'runStatus', (SELECT status FROM agent_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND mode='shadow' ORDER BY created_at DESC LIMIT 1)
+    );")"
+  [[ "${agent_receipt}" == \{*\} ]] || { echo "Agent smoke receipt is invalid" >&2; exit 1; }
+  mkdir -p "$(dirname "${AGENT_SMOKE_RECEIPT}")"
+  (umask 077; printf '%s\n' "${agent_receipt}" >"${AGENT_SMOKE_RECEIPT}")
+fi
 
 if [[ -n "${AGENT_CORE_RESTART_EVIDENCE}" ]]; then
   agent_counts="$(compose exec -T mysql mysql -uroot -proot123 -Ddipole -N -B -e \
