@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Agent read-shadow 现支持受信的两步 `conversation.list → conversation.read`。模型只能在紧邻的读取步骤使用固定 `$discovered.previous` 标记；Runtime 从前一 List 的实际输出提取首个有效会话键后才授权读取，模型自造 ID、缺少前置发现或空发现结果均会在读取前失败。写 Capability、active authority、MCP 写入与多会话选择策略仍未开启。
+
 - 2026-09-01：Agent OAuth callback handoff Runtime 新增跨实例恢复演练：前一 Runtime 仅在显式 `retryable_failure` 后释放 Core 条件租约，替换实例随后才能重新领取并完成。该回归只验证默认未装配执行器对 Core lease 的依赖；callback 路由、Provider 换码、token 生命周期与默认启用状态仍保持关闭。
 
 - 2026-09-01：Remote GPU 的 `node-test` 现在仅在锁文件安装明确报 `ENOTEMPTY` 时，将该候选 app 的中断 `node_modules` 原子隔离后重试一次；网络、锁文件和权限错误保持失败。该恢复路径保留旧目录，避免清理其他工作树的依赖，并继续使用单次 `npm ci --include=optional`。

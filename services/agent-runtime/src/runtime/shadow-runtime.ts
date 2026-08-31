@@ -568,9 +568,10 @@ function isLoopbackTarget(target: string): boolean {
   return host === "127.0.0.1" || host === "localhost" || host === "::1";
 }
 
-// A one-shot plan cannot bind a follow-up read to a trusted discovery result.
+// Follow-up reads must use the fixed trusted discovery marker. The execution
+// layer resolves it only from the preceding conversation.list result.
 export function singlePassModelCapabilityIDs(_config: ShadowRuntimeConfig): readonly string[] {
-  return ["conversation.list"];
+  return ["conversation.list", "conversation.read"];
 }
 
 function readCapabilityPermissions(config: ShadowRuntimeConfig): readonly string[] {

@@ -11,6 +11,7 @@ const policyVersion = "dipole.agent.policy.persistence.v1";
 const runIDVersion = "dipole.agent.run.v1";
 const lineageIdentifier = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
 const defaultReadPermissions = ["conversation.list", "conversation.read"] as const;
+const discoveredConversationMarker = "$discovered.previous";
 
 const eventLineageSchema = z.object({
   origin: z.object({
@@ -276,6 +277,7 @@ async function executeShadowPlanSteps(
   busyStepRetry?: ShadowPlanExecutionDependencies["busyStepRetry"],
   telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
 ): Promise<void> {
+  const outputs: unknown[] = [];
   for (const [index, step] of plan.steps.entries()) {
     const stepNo = index + 1;
     let claim = await trajectory.claimStep(context.taskId, stepNo, stepLeaseMs);
@@ -292,7 +294,8 @@ async function executeShadowPlanSteps(
     }
     const claimToken = claim.token;
     try {
-      const invocation = registry.prepare(step.capabilityId, step.input, context);
+      const resolvedStep = resolveTrustedDiscoveryStep(plan.steps, index, step, outputs);
+      const invocation = registry.prepare(resolvedStep.capabilityId, resolvedStep.input, context);
       if (trajectory.recordAuthorization === undefined) throw new Error("Agent shadow Step authorization audit is unavailable");
       await trajectory.recordAuthorization(context.taskId, stepNo, claimToken, invocation.resource, "allowed");
       const output = await telemetry.withSpan("agent.tool.call", {
@@ -304,11 +307,39 @@ async function executeShadowPlanSteps(
         }
       }, async () => invocation.execute());
       await trajectory.completeStep(context.taskId, stepNo, claimToken, output);
+      outputs.push(output);
     } catch (error) {
       await trajectory.failStep(context.taskId, stepNo, claimToken, error);
       throw error;
     }
   }
+}
+
+function resolveTrustedDiscoveryStep(
+  steps: readonly ShadowPlanStep[],
+  index: number,
+  step: ShadowPlanStep,
+  outputs: readonly unknown[]
+): ShadowPlanStep {
+  if (step.capabilityId !== "conversation.read" || step.input.conversationId !== discoveredConversationMarker) return step;
+  if (index === 0 || steps[index - 1]?.capabilityId !== "conversation.list") {
+    throw new Error("conversation.read requires the immediately preceding trusted conversation.list result");
+  }
+  const conversationId = firstDiscoveredConversationId(outputs.at(-1));
+  if (conversationId === undefined) throw new Error("conversation.read has no trusted conversation discovery result");
+  return { ...step, input: { ...step.input, conversationId } };
+}
+
+function firstDiscoveredConversationId(output: unknown): string | undefined {
+  if (!Array.isArray(output)) return undefined;
+  for (const item of output) {
+    if (item === null || typeof item !== "object") continue;
+    const value = (item as { conversationKey?: unknown }).conversationKey;
+    if (typeof value !== "string") continue;
+    const conversationId = value.trim();
+    if (conversationId.length > 0 && conversationId.length <= 256) return conversationId;
+  }
+  return undefined;
 }
 
 function delay(milliseconds: number): Promise<void> {

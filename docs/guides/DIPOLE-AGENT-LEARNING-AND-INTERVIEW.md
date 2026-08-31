@@ -32,6 +32,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | `promotion_active` 与 External MCP Shadow mode | 默认关闭 | [External MCP 运行手册](../agent/agent-external-mcp.md) |
 | Project Guardian 预筛评测基线 | 已验证（合成离线） | `contracts/agent-evals/v1/project-guardian-synthetic-corpus.json` |
 | OAuth callback durable handoff | 已验证的默认关闭组件链 | `contracts/agent-oauth-callback-handoff/v1/TRANSPORT.md` |
+| Trusted discovery read | `conversation.list` output binds the next `conversation.read` target | `services/agent-runtime/src/events/shadow-processor.ts` |
 
 #### OAuth Callback Durable Handoff
 

@@ -3,6 +3,7 @@ import type { Span } from "@opentelemetry/api";
 
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
+import { ConversationReadCapability } from "../capabilities/conversation-read.js";
 import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import type { ModelRouter } from "../models/model-router.js";
@@ -20,19 +21,28 @@ describe("Temporal read Step Activities", () => {
       expect(prompt).toContain("untrusted message");
       expect(prompt).toContain("conversation.list");
       return {
-        output: { summary: "list conversations", steps: [{ capabilityId: "conversation.list", input: { limit: 10 } }] },
+        output: { summary: "read newest conversation", steps: [
+          { capabilityId: "conversation.list", input: { limit: 10 } },
+          { capabilityId: "conversation.read", input: { conversationId: "$discovered.previous", limit: 10 } }
+        ] },
         route: "gateway/primary", attempts: 1, usage: { inputTokens: 20, outputTokens: 8 }
       };
     });
-    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list"]);
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list", "conversation.read"]);
     const conversation = {
       conversationKey: "group:G1", targetId: "G1", targetType: 2,
       lastMessageId: "M1", lastMessageSeq: "1", lastMessagePreview: "hello",
       lastMessageAtUnixMs: "1787817600000", readSeq: "0", unreadCount: 1
     };
     const listConversations = vi.fn(async () => [conversation]);
+    const readConversation = vi.fn(async (_context, conversationId: string, limit: number) => {
+      expect(conversationId).toBe("group:G1");
+      expect(limit).toBe(10);
+      return { found: true, reason: "", targetId: "G1", targetType: 2, messages: [] };
+    });
     const registry = new CapabilityRegistry();
     registry.register(new ConversationListCapability({ listConversations }));
+    registry.register(new ConversationReadCapability({ readConversation }));
     const trajectory = {
       append: vi.fn(async () => undefined),
       claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-1" })),
@@ -56,16 +66,17 @@ describe("Temporal read Step Activities", () => {
         tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
         triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId
       }
-    })).resolves.toEqual({ kind: "complete", output: { summary: "list conversations", stepCount: 1, artifactId: "a".repeat(64), artifactVersion: 1 } });
+    })).resolves.toEqual({ kind: "complete", output: { summary: "read newest conversation", stepCount: 2, artifactId: "a".repeat(64), artifactVersion: 1 } });
 
     expect(trajectory.append).toHaveBeenCalledOnce();
     expect(listConversations).toHaveBeenCalledOnce();
+    expect(readConversation).toHaveBeenCalledOnce();
     expect(trajectory.completeStep).toHaveBeenCalledWith(taskId, 1, "TOKEN-1", [conversation]);
     expect(artifacts.createArtifact).toHaveBeenCalledWith(expect.objectContaining({
       taskId, runId: agentRunId(taskId), artifactType: "conversation_digest", version: 1,
-      metadata: { event_id: event.eventId, event_type: event.eventType, step_count: 1 }
+      metadata: { event_id: event.eventId, event_type: event.eventType, step_count: 2 }
     }));
-    expect(spanNames).toEqual(["agent.run", "agent.tool.call", "agent.artifact.create"]);
+    expect(spanNames).toEqual(["agent.run", "agent.tool.call", "agent.tool.call", "agent.artifact.create"]);
   });
 
   it("rejects event or Run drift before planning", async () => {

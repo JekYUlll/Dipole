@@ -190,6 +190,36 @@ describe("ModelShadowPlanner", () => {
     expect(plan.model?.context).not.toHaveProperty("estimatorId");
   });
 
+  it("permits a read only when it uses the trusted preceding discovery marker", async () => {
+    const generate = vi.fn(async () => ({
+      output: {
+        summary: "inspect the newest conversation",
+        steps: [
+          { capabilityId: "conversation.list", input: { limit: 10 } },
+          { capabilityId: "conversation.read", input: { conversationId: "$discovered.previous", limit: 20 } }
+        ]
+      }, route: "gateway/primary", attempts: 1, usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list", "conversation.read"]);
+
+    await expect(planner.plan(event(), context())).resolves.toMatchObject({ steps: [
+      { capabilityId: "conversation.list" },
+      { capabilityId: "conversation.read", input: { conversationId: "$discovered.previous" } }
+    ] });
+    const request = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]?.[0];
+    expect(request?.prompt).toContain("never construct a conversation identifier");
+  });
+
+  it("rejects a model-constructed conversation read target", async () => {
+    const router = { generate: vi.fn(async () => ({
+      output: { summary: "read", steps: [{ capabilityId: "conversation.read", input: { conversationId: "group:guessed" } }] },
+      route: "gateway/primary", attempts: 1, usage: { inputTokens: 10, outputTokens: 5 }
+    })) } as unknown as ModelRouter;
+    const planner = new ModelShadowPlanner(router, ["conversation.list", "conversation.read"]);
+
+    await expect(planner.plan(event(), context())).rejects.toThrow(/trusted discovery marker/);
+  });
+
   it("compiles registered capability metadata into trusted context", async () => {
     const generate = vi.fn(async () => ({
       output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,

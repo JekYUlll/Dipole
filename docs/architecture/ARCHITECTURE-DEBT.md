@@ -349,6 +349,8 @@
 
 - 2026-08-31：OAuth callback handoff 已从分散的 claim、key source、executor、terminal 和 control adapter 收口为注入式 Runtime composition factory，并以 fake mTLS transport 验证 handoff-ID-only control 到完成路径。跨实例测试进一步固定：只有前一 Runtime 显式 release 后，替换实例才能从 Core 条件租约重新领取；进程内去重从不承担恢复权威。`index.ts`、Compose、浏览器 callback、Provider code exchange 和 token lifecycle 均未装配；后续需要先完成独立 processor 的受控实现、真实重启/过期租约演练，再评估单独的默认关闭部署 profile。
 
+- 2026-09-01：read-shadow 的单轮 Planner 允许受限两步发现读取：`conversation.read` 必须紧邻 `conversation.list` 并携带唯一 `$discovered.previous` 标记。执行层仅从已完成 List 输出提取首个合法会话键，再进入 Capability scope/permission 检查；模型构造 ID、越过前置步骤或空输出会在 Tool 调用前失败。当前未提供任意索引、多会话 fan-out 或写 Capability，后续选择策略必须以同等的服务端数据绑定与审计实现。
+
 - 2026-08-31：Runtime bootstrap 现显式解析 OAuth callback 配置并拒绝启用状态，避免缺 Provider processor 的环境变量被静默忽略。拒绝发生在任何网络资源初始化前；后续独立 profile 需要将 processor、Core credential、key mount、运行证据和回滚开关作为同一部署契约交付。
 - 2026-08-30：长时 C++ profiling 受远端内核缺少匹配 linux-tools 阻断，未安装系统包也未将 `perf` 失败误判为热点结论；下一步可在具备匹配工具链的隔离 runner 中采集，当前仍禁止据 benchmark 切换 C++ authority。
 
