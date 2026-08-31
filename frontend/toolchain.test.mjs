@@ -25,6 +25,13 @@ test('frontend exposes the documented typecheck command', async () => {
   assert.equal(packageJSON.scripts.typecheck, 'vue-tsc --noEmit')
 })
 
+test('browser shell uses the versioned V3 product title and favicon', async () => {
+  const index = await readFile(resolve(projectRoot, 'index.html'), 'utf8')
+  assert.match(index, /<title>Dipole \| IM &amp; Agent<\/title>/)
+  assert.match(index, /href="\/dipole-v3-favicon\.svg"/)
+  assert.doesNotMatch(index, /data:image\/svg\+xml/)
+})
+
 test('Vite development proxy forwards HTTP and WebSocket upgrades', async (t) => {
   let httpPath = ''
   let upgradePath = ''
@@ -81,6 +88,7 @@ test('Vite production build emits assets beneath /app/', async (t) => {
   const index = await readFile(resolve(output, 'index.html'), 'utf8')
   assert.match(index, /(?:src|href)="\/app\/assets\//)
   assert.doesNotMatch(index, /(?:src|href)="\/assets\//)
+  assert.match(index, /href="\/app\/dipole-v3-favicon\.svg"/)
 })
 
 function websocketHandshake(port, path) {

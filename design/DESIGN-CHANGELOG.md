@@ -7,6 +7,7 @@
 ### 新增
 
 - 建立 `design/brand/` V3 品牌套件：收口 IM、Agent 与产品族 lockup 的 canonical SVG、深浅背景和单色变体、favicon、批准的 PNG 基准图、调色板清单与使用规范。`docs/images/` 继续作为 Vue/README 的发布副本，`npm run test:design` 新增一致性门禁以阻止副本漂移。
+- 浏览器壳层接入受版本控制的 V3 favicon 与 `Dipole | IM & Agent` 标题，替换旧的内联绿色图标；构建测试固定 `/app/` 部署路径下的输出。
 
 - 增加 Chat Workspace v3 的 Chromium 受控视觉基线：认证 fixture 仅模拟 IM 会话、同步状态和两条消息，固定导航、会话索引、时间线与输入区层级，不触发真实 WebSocket、上传或写操作。
 

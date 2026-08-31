@@ -21,6 +21,9 @@
     "source/dipole-v3-agent.svg": "docs/images/dipole-v3-agent.svg",
     "source/dipole-v3-brand-lockup.svg": "docs/images/dipole-v3-brand-lockup.svg"
   },
+  "runtimeCopies": {
+    "variants/dipole-v3-favicon.svg": "frontend/public/dipole-v3-favicon.svg"
+  },
   "colors": {
     "navy": "#0B2A4A",
     "ink": "#092545",

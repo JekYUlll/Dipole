@@ -10,7 +10,8 @@
 | `variants/` | Approved one-color, reverse, and favicon forms for constrained surfaces. |
 | `reference/` | The approved V3 raster reference board. It is context for review, not a runtime asset. |
 | `manifest.json` | Machine-readable asset inventory, public-copy mapping, and palette. |
-| `../../docs/images/` | Published copies consumed by README and the Vue bundle. The brand asset gate requires them to match `source/`. |
+| `../../docs/images/` | Published copies consumed by README and Vue component imports. The brand asset gate requires them to match `source/`. |
+| `../../frontend/public/` | Browser-shell assets, currently the V3 favicon. The brand asset gate requires it to match the approved variant. |
 
 ## Approved Assets
 
@@ -42,7 +43,7 @@
 ## Change Procedure
 
 1. Update the canonical SVG under `source/` and any approved variants.
-2. Update the matching public file under `docs/images/` in the same change.
+2. Update every matching published or runtime file declared in `manifest.json` in the same change.
 3. Update `manifest.json`, this guide, `design/DESIGN-CHANGELOG.md`, and the relevant Pencil frame when the visual contract changes.
 4. Run `cd frontend && npm run test:design`.
 

@@ -23,21 +23,8 @@ for (const asset of assets) {
   if (asset.endsWith('.svg')) validateSvg(asset, readFileSync(file, 'utf8'))
 }
 
-if (!manifest.publishedCopies || typeof manifest.publishedCopies !== 'object') {
-  fail('manifest must define publishedCopies')
-}
-for (const [source, published] of Object.entries(manifest.publishedCopies)) {
-  if (!manifest.sourceAssets.includes(source) || typeof published !== 'string') {
-    fail(`invalid published copy mapping: ${source}`)
-  }
-  const sourceFile = insideKit(source)
-  const publishedFile = resolve(projectRoot, published)
-  if (!publishedFile.startsWith(projectRoot + '/')) fail(`published path escapes project root: ${published}`)
-  if (!isNonEmptyFile(publishedFile)) fail(`published copy is missing or empty: ${published}`)
-  if (readFileSync(sourceFile, 'utf8') !== readFileSync(publishedFile, 'utf8')) {
-    fail(`published copy drifted from canonical source: ${published}`)
-  }
-}
+checkCopyMappings('publishedCopies', manifest.sourceAssets)
+checkCopyMappings('runtimeCopies', manifest.variants)
 
 const colors = manifest.colors
 if (!colors || colors.navy !== '#0B2A4A' || colors.signalRed !== '#F2262A' || colors.orbitGold !== '#F4B000' || colors.ivory !== '#F8F1E4') {
@@ -56,6 +43,23 @@ function validateSvg(relativePath, content) {
   if (!/<svg\b[^>]*\bviewBox="[^"]+"/.test(content)) fail(`SVG must define a viewBox: ${relativePath}`)
   if (/<image\b/i.test(content)) fail(`SVG must remain vector-only: ${relativePath}`)
   if (!/<title\b/.test(content) || !/<desc\b/.test(content)) fail(`SVG must provide title and description: ${relativePath}`)
+}
+
+function checkCopyMappings(name, allowedSources) {
+  const mappings = manifest[name]
+  if (!mappings || typeof mappings !== 'object') fail(`manifest must define ${name}`)
+  for (const [source, published] of Object.entries(mappings)) {
+    if (!allowedSources.includes(source) || typeof published !== 'string') {
+      fail(`invalid ${name} mapping: ${source}`)
+    }
+    const sourceFile = insideKit(source)
+    const publishedFile = resolve(projectRoot, published)
+    if (!publishedFile.startsWith(projectRoot + '/')) fail(`${name} path escapes project root: ${published}`)
+    if (!isNonEmptyFile(publishedFile)) fail(`${name} target is missing or empty: ${published}`)
+    if (readFileSync(sourceFile, 'utf8') !== readFileSync(publishedFile, 'utf8')) {
+      fail(`${name} target drifted from canonical source: ${published}`)
+    }
+  }
 }
 
 function isNonEmptyFile(file) {

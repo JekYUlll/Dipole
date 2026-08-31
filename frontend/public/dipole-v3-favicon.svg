@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Dipole</title>
+  <desc id="desc">Compact Dipole IM application mark.</desc>
+  <rect width="64" height="64" rx="16" fill="#0B2A4A"/>
+  <path fill="#F8F1E4" d="M9 23c0-8 6-14 14-14h11v19H23c-4 0-7 3-7 7s3 7 7 7h11v13H23c-4 0-7-1-10-4l-5 3 1-8c0-3 0-5 0-8z"/>
+  <path fill="#F2262A" d="M55 41c0 8-6 14-14 14H30V42h11c4 0 7-3 7-7s-3-7-7-7H30V9h11c4 0 7 1 10 4l5-3-1 8c0 2 0 4 0 5z"/>
+  <rect x="19" y="28" width="26" height="14" rx="7" fill="#F8F1E4"/>
+</svg>
