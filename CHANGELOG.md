@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Context Ablation 现提供只读 observation adapter：经人工评审的低敏 manifest 以 case SHA-256、Artifact/Evidence ID 和固定模型价格绑定三种条件，再将已持久化的 Task/Run 审计观测编译为统一 Eval 输入。缺少终态、授权、延迟、Token 计量或候选版本一致性时拒绝生成报告；不读取或输出消息正文、模型正文或原始资源 ID。
+
 - 2026-09-01：新增 Agent Context Ablation 实验绑定表与 SQLC 查询。每条记录仅绑定 experiment、case SHA-256、baseline/retrieval/memory 条件、Task/Run 与候选版本；数据库唯一约束阻止同一 case 条件重复或同一 Run 被复用，正文不进入该表。
 
 - 2026-09-01：新增低敏 Context Ablation Eval v1，固定 baseline、retrieval、memory 三种条件，并按任务输出命中、证据召回、权限安全与模型/工具/token/成本/延迟汇总对照；首版只接受脱敏 observation，尚未连接真实 Shadow 查询。

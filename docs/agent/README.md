@@ -16,6 +16,7 @@
 | 接入 MCP 与权限控制 | [MCP 授权](agent-mcp-authorization.md)、[外部 MCP](agent-external-mcp.md) |
 | 配置 Trace 与告警 | [OpenTelemetry 运维](agent-otel-operations.md) |
 | 汇总受控 Shadow Eval | [Agent Eval 契约](../../contracts/agent-evals/v1/README.md) |
+| 复现 Context Ablation | `src/evals/context-ablation-adapter.ts`：评审 Manifest 与只读三条件观测编译为 Eval 输入 |
 
 ## 运行时边界
 
