@@ -28,7 +28,9 @@ function observation(): ContextAblationCaseObservation {
 describe("Context Ablation observation adapter", () => {
   it("compiles reviewed labels and sanitized observations without source content", () => {
     const suite = buildContextAblationEvalSuite(manifest, [observation()]);
-    expect(suite.cases[0]).toMatchObject({ caseId: `case:${sha}`, results: [{ condition: "baseline", outputIds: ["artifact:conversation_digest:v1"], evidenceIds: [evidence], allowed: true, metrics: { totalTokens: 5, totalCostMicrousd: 8, latencyMs: 12 } }] });
+    expect(suite.cases[0]?.caseId).toBe(`case:${sha}`);
+    expect(suite.cases[0]?.results).toHaveLength(3);
+    expect(suite.cases[0]?.results[0]).toMatchObject({ condition: "baseline", outputIds: ["artifact:conversation_digest:v1"], evidenceIds: [evidence], allowed: true, metrics: { totalTokens: 5, totalCostMicrousd: 8, latencyMs: 12 } });
     expect(JSON.stringify(suite)).not.toContain("source:1");
   });
 
