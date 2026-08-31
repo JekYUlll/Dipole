@@ -146,6 +146,31 @@ describe("Shadow evaluation adapter", () => {
     expect(manifest.labels.permission[0]?.resourceId).toBe("direct:U100:UAI000000000000000001");
   });
 
+  it("excludes required control-plane context from retrieval precision", () => {
+    const base = observation();
+    const observed = {
+      ...base,
+      contextManifest: {
+        ...base.contextManifest,
+        selected: [
+          ...base.contextManifest.selected,
+          { id: "policy:shadow-v1", provenance: { sourceType: "runtime_policy", sourceId: "shadow-v1" } },
+          { id: "identity:UAI", provenance: { sourceType: "execution_context", sourceId: "RUN-42" } },
+          { id: "task:TASK-42", provenance: { sourceType: "agent_task", sourceId: "TASK-42" } },
+          { id: "capabilities:shadow-v1", provenance: { sourceType: "capability_registry", sourceId: "shadow-v1" } }
+        ]
+      }
+    };
+    const suite = buildShadowEvalSuite(parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1", taskId: "TASK-42", runId: "RUN-42",
+      labels: { outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] }, trajectory: { steps: [], forbiddenSteps: [] }, permission: [],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 1, minimumPrecision: 1 },
+        cost: { maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 }, routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 1, outputMicrousdPerMillionTokens: 1 }] }
+      }
+    }), observed);
+    expect(suite.cases[3]?.observed).toEqual({ retrievedEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"] });
+  });
+
   it("rejects a running Shadow policy Task without a terminal durable Workflow", () => {
     const observed = { ...observation(), taskStatus: "running", workflowStatus: "running" };
     const manifest = parseShadowEvalManifest({

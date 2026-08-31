@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Shadow Eval 的 Retrieval 指标现排除 runtime policy、execution context、task 与 capability registry 等控制面基线，仅统计领域证据；它们仍保留在 Context/Trajectory 审计中，不影响 Capability 或运行时上下文。
+
 - 2026-09-01：微服务 Compose 增加 `dipole_agent_eval` 专用 MySQL 只读账号，仅允许 Shadow Eval 查询 Task、Run、Plan、Step、Artifact、Model 与 Tool 审计投影；该配置不启用自动评测或任何运行时写入权限。
 - 2026-09-01：Remote GPU 隔离 read-shadow Compose 已用该账号完成 `SELECT`，并确认零行 `UPDATE` 仍被 MySQL 拒绝；该证据只覆盖账号权限，不代表 Eval 质量或 active authority。
 

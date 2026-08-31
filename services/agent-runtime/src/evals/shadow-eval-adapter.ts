@@ -98,7 +98,9 @@ export function buildShadowEvalSuite(manifest: ShadowEvalManifest, observation: 
       capabilityId: observed.capabilityId, ...observed.authorization
     };
   });
-  const retrievedEvidenceIds = [...new Set(observation.contextManifest.selected.map(item => evidenceId(item.provenance)))].sort();
+  const retrievedEvidenceIds = [...new Set(observation.contextManifest.selected
+    .filter(item => isRetrievedEvidence(item.provenance.sourceType))
+    .map(item => evidenceId(item.provenance)))].sort();
   const costs = costMetrics(manifest, observation);
   const source = sourceBinding(manifest.taskId, manifest.runId);
 
@@ -167,6 +169,10 @@ function artifactId(value: ShadowEvalObservation["artifacts"][number]): string {
 export function evidenceId(provenance: { readonly sourceType: string; readonly sourceId: string }): string {
   const digest = createHash("sha256").update(`${provenance.sourceType}\u0000${provenance.sourceId}`, "utf8").digest("hex");
   return `evidence:${digest.slice(0, 32)}`;
+}
+
+function isRetrievedEvidence(sourceType: string): boolean {
+  return !new Set(["runtime_policy", "execution_context", "agent_task", "capability_registry"]).has(sourceType);
 }
 
 function sourceBinding(taskId: string, runId: string): string {

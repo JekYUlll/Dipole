@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：真实 read-shadow Eval 发现控制面基线被计入 Retrieval precision。adapter 现将其排除于 Retrieval 指标，保留领域证据用于 recall/precision；仍需复跑隔离报告，当前没有成功率结论。
+
 - 2026-09-01：Compose 新增专用 `dipole_agent_eval` 只读账号。仍需在隔离 read-shadow 运行中以该账号生成报告并验证 DML 拒绝，当前没有自动或共享环境评测。
 - 2026-09-01：Remote GPU 隔离 Compose 已确认该账号可读 Task 投影且拒绝零行 `UPDATE`；真实五类报告与共享环境窗口仍待完成。
 
