@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createOpenAICompatibleModelResolver,
   loadModelProviderConfig,
+  modelProviderCallOptions,
   modelIDForRoute
 } from "./openai-compatible-model-provider.js";
 
@@ -42,6 +43,17 @@ describe("OpenAI-compatible model provider", () => {
     expect(createOpenAICompatibleModelResolver(config)("gateway/gpt-5-mini")).toMatchObject({ supportsStructuredOutputs: false });
   });
 
+  it("only forwards a provider-specific thinking switch when explicitly disabled", () => {
+    const defaultConfig = loadModelProviderConfig(environment);
+    const disabledConfig = loadModelProviderConfig({
+      ...environment,
+      DIPOLE_AGENT_MODEL_THINKING_MODE: "disabled"
+    });
+
+    expect(modelProviderCallOptions(defaultConfig)).toBeUndefined();
+    expect(modelProviderCallOptions(disabledConfig)).toEqual({ gateway: { thinking: { type: "disabled" } } });
+  });
+
   it("rejects malformed provider configuration and cross-provider routes", () => {
     expect(() => loadModelProviderConfig({
       ...environment, DIPOLE_AGENT_MODEL_BASE_URL: "https://user:secret@models.example.test/v1"
@@ -50,6 +62,7 @@ describe("OpenAI-compatible model provider", () => {
       ...environment, DIPOLE_AGENT_MODEL_BASE_URL: "http://models.example.test/v1"
     })).toThrow(/HTTPS or loopback HTTP/);
     expect(() => loadModelProviderConfig({ ...environment, DIPOLE_AGENT_MODEL_API_KEY: "" })).toThrow(/API key/);
+    expect(() => loadModelProviderConfig({ ...environment, DIPOLE_AGENT_MODEL_THINKING_MODE: "enabled" })).toThrow(/thinkingMode/);
     expect(() => modelIDForRoute("other/gpt-5-mini", "gateway")).toThrow(/gateway/);
   });
 });

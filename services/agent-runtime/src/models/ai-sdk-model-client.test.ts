@@ -47,6 +47,27 @@ describe("AISDKStructuredModelClient", () => {
     expect(doGenerate).toHaveBeenCalledOnce();
   });
 
+  it("passes explicitly configured provider options through to the model call", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "deepseek", modelId: "deepseek-v4-flash",
+      doGenerate: {
+        content: [{ type: "text", text: JSON.stringify({ summary: "observe E0", capabilityIds: [] }) }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 5, text: 5, reasoning: 0 } },
+        warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model, "json_text", {
+      deepseek: { thinking: { type: "disabled" } }
+    });
+
+    await client.generate({
+      route: "deepseek/deepseek-v4-flash", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
+    });
+
+    expect(model.doGenerateCalls[0]).toMatchObject({ providerOptions: { deepseek: { thinking: { type: "disabled" } } } });
+  });
+
   it("validates one JSON-text response locally when the provider lacks JSON Schema response format", async () => {
     const model = new MockLanguageModelV3({
       provider: "test",

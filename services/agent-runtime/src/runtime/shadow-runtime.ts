@@ -32,6 +32,7 @@ import {
 import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
 import {
   createOpenAICompatibleModelResolver,
+  modelProviderCallOptions,
   loadModelProviderConfig,
   modelIDForRoute,
   modelProviderConfigSchema
@@ -533,7 +534,11 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
 }
 
 function createAISDKModelClient(config: ShadowRuntimeConfig): AISDKStructuredModelClient {
-  return new AISDKStructuredModelClient(createOpenAICompatibleModelResolver(config.modelProvider), config.modelProvider.outputMode);
+  return new AISDKStructuredModelClient(
+    createOpenAICompatibleModelResolver(config.modelProvider),
+    config.modelProvider.outputMode,
+    modelProviderCallOptions(config.modelProvider)
+  );
 }
 
 export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {
