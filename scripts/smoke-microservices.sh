@@ -62,7 +62,15 @@ core_ws_status="$(compose exec -T core sh -c \
 
 if [[ "${RESTART_CORE}" == "1" ]]; then
   compose restart core
-  compose exec -T core wget -q -O - http://127.0.0.1:9100/readyz | grep -qx 'ready'
+  core_ready=""
+  for _ in $(seq 1 30); do
+    core_ready="$(compose exec -T core wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null || true)"
+    if [[ "${core_ready}" == "ready" ]]; then
+      break
+    fi
+    sleep 1
+  done
+  [[ "${core_ready}" == "ready" ]]
   proxy_status="$(curl --connect-timeout 2 --max-time 5 -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts" || true)"
   [[ "${proxy_status}" == "401" ]]
 fi
