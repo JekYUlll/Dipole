@@ -46,7 +46,15 @@ compose() {
 }
 
 compose_exec() {
-  timeout --foreground "${exec_timeout_seconds}" docker compose "${compose_args[@]}" exec -T "$@"
+  local service=$1
+  shift
+  local container_id
+  container_id="$(timeout --foreground -k 5s "${exec_timeout_seconds}" docker compose "${compose_args[@]}" ps -q "${service}")"
+  [[ -n "${container_id}" ]] || {
+    printf 'service container is unavailable: %s\n' "${service}" >&2
+    return 1
+  }
+  timeout --foreground -k 5s "${exec_timeout_seconds}" docker exec "${container_id}" "$@"
 }
 
 cleanup() {
