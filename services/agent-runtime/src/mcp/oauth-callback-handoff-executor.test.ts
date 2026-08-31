@@ -20,11 +20,22 @@ describe("OAuthCallbackHandoffExecutor", () => {
     await expect(build(ambiguousCalls, async () => { throw new Error("outcome unknown"); }).execute(input)).rejects.toThrow("outcome unknown");
     expect(ambiguousCalls).not.toContain("release");
   });
+
+  it("keeps the lease when the terminal completion outcome is unavailable", async () => {
+    const calls: string[] = [];
+    const executor = build(calls, async () => "completed", { async complete() { calls.push("complete"); throw new Error("terminal unavailable"); } });
+
+    await expect(executor.execute(input)).rejects.toThrow("terminal unavailable");
+    expect(calls).not.toContain("release");
+  });
 });
 
-function build(calls: string[], process: () => Promise<"completed" | "retryable_failure">): OAuthCallbackHandoffExecutor {
+function build(
+  calls: string[], process: () => Promise<"completed" | "retryable_failure">,
+  terminalOverride?: Partial<{ complete(): Promise<void>; release(): Promise<void> }>
+): OAuthCallbackHandoffExecutor {
   const claims = { async claim() { calls.push("claim"); return handoff; } };
-  const terminal = { async complete() { calls.push("complete"); }, async release() { calls.push("release"); } };
+  const terminal = { async complete() { calls.push("complete"); }, async release() { calls.push("release"); }, ...terminalOverride };
   const keys = { async use<T>(id: string, operation: (key: Buffer) => Promise<T> | T): Promise<T> { calls.push(`key:${id}`); return operation(Buffer.from("key")); } };
   return new OAuthCallbackHandoffExecutor(claims as never, terminal as never, keys, { async process({ authorizationCode }) { calls.push(`process:${authorizationCode}`); return process(); } }, (_envelope, bound) => { calls.push(`open:${bound.ownerUserId}`); return "code"; });
 }

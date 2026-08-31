@@ -25,4 +25,27 @@ describe("OAuth callback handoff control to executor", () => {
     expect(executions).toEqual([{ handoffId: "a".repeat(22), leaseOwner: "runtime-worker-1", requestId: "REQ-1", traceId: "TRACE-1" }]);
     await server.close();
   });
+
+  it("does not retain the process-local duplicate claim after a Runtime restart", async () => {
+    const executions: unknown[] = [];
+    const executor = { async execute(input: unknown) { executions.push(input); return "completed"; } };
+    const options = {
+      secret: "control-secret",
+      service: createOAuthCallbackHandoffControlService(executor as never, "runtime-worker-1")
+    };
+    const request = {
+      method: "POST" as const,
+      url: "/internal/v1/agent/oauth/callback-handoffs",
+      headers: { "x-dipole-caller-service": "dipole-gateway", "x-dipole-service-token": "control-secret" },
+      payload: { handoff_id: "a".repeat(22) }
+    };
+    const first = buildServer({ isReady: () => true }, undefined, undefined, undefined, options);
+    expect((await first.inject(request)).statusCode).toBe(202);
+    await first.close();
+
+    const restarted = buildServer({ isReady: () => true }, undefined, undefined, undefined, options);
+    expect((await restarted.inject(request)).statusCode).toBe(202);
+    await restarted.close();
+    expect(executions).toHaveLength(2);
+  });
 });
