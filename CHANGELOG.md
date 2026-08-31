@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：微服务 smoke 现支持版本化 Compose overlay、事件发布后的可选 Core 重启，以及 Read Shadow 的模型调用和 `conversation_digest` Artifact 绑定断言。该工具用于隔离 Temporal/Capability RPC 恢复演练，默认基础 Shadow 路径和 authority 保持不变。
+
 - 2026-08-31：基础微服务 Compose 的 Agent Shadow profile 现显式清空 v2 模型 route context profile，避免宿主 `.env` 的 AI SDK/active 配置与固定的 v1 Context Compiler 冲突而导致 Agent 启动失败。专用 AI SDK 与 active overlay 继续显式启用 v2 并注入 profile。
 
 - 2026-08-31：微服务 smoke 新增可选 `RESTART_CORE=1` 隔离 Core 重启阶段。重启后重新验证 Core readiness 与 Gateway 代理，再执行既有 Agent EventLedger/Task/Run 幂等检查；Remote GPU 已以独立 Compose 项目和端口完成该演练并自动清理。默认 smoke 行为不变，Capability RPC read-shadow 恢复仍需单独演练。

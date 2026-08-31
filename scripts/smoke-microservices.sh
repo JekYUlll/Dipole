@@ -6,9 +6,14 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/deploy/compose/docker-compose.microservices.yml"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-microservices-smoke}"
 GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:8080}"
+COMPOSE_OVERLAYS="${COMPOSE_OVERLAYS:-}"
 RESTART_CORE="${RESTART_CORE:-0}"
+RESTART_CORE_AFTER_EVENT="${RESTART_CORE_AFTER_EVENT:-0}"
+EXPECT_READ_SHADOW="${EXPECT_READ_SHADOW:-0}"
 
-[[ "${RESTART_CORE}" == "0" || "${RESTART_CORE}" == "1" ]] || { echo "RESTART_CORE must be 0 or 1" >&2; exit 2; }
+for boolean in RESTART_CORE RESTART_CORE_AFTER_EVENT EXPECT_READ_SHADOW; do
+  [[ "${!boolean}" == "0" || "${!boolean}" == "1" ]] || { echo "${boolean} must be 0 or 1" >&2; exit 2; }
+done
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   "${SCRIPT_DIR}/docker-build.sh" backend
@@ -26,8 +31,18 @@ fi
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE
 export DIPOLE_SYNC_IMAGE DIPOLE_SEARCH_IMAGE DIPOLE_SEARCH_INDEXER_IMAGE DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
+compose_args=(-p "${PROJECT_NAME}" -f "${COMPOSE_FILE}")
+if [[ -n "${COMPOSE_OVERLAYS}" ]]; then
+  IFS=':' read -r -a overlay_files <<<"${COMPOSE_OVERLAYS}"
+  for overlay_file in "${overlay_files[@]}"; do
+    overlay_path="${ROOT_DIR}/${overlay_file}"
+    [[ -f "${overlay_path}" ]] || { echo "Compose overlay does not exist: ${overlay_file}" >&2; exit 2; }
+    compose_args+=(-f "${overlay_path}")
+  done
+fi
+
 compose() {
-  docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" "$@"
+  docker compose "${compose_args[@]}" "$@"
 }
 
 cleanup() {
@@ -60,7 +75,7 @@ core_ws_status="$(compose exec -T core sh -c \
   | head -n 1)"
 [[ "${core_ws_status}" == "404" ]]
 
-if [[ "${RESTART_CORE}" == "1" ]]; then
+restart_core() {
   compose restart core
   core_ready=""
   for _ in $(seq 1 30); do
@@ -73,6 +88,10 @@ if [[ "${RESTART_CORE}" == "1" ]]; then
   [[ "${core_ready}" == "ready" ]]
   proxy_status="$(curl --connect-timeout 2 --max-time 5 -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts" || true)"
   [[ "${proxy_status}" == "401" ]]
+}
+
+if [[ "${RESTART_CORE}" == "1" ]]; then
+  restart_core
 fi
 
 for service in core message sync gateway; do
@@ -163,6 +182,18 @@ try {
 }
 NODE
 
+if [[ "${RESTART_CORE_AFTER_EVENT}" == "1" ]]; then
+  restart_core
+fi
+
+read_shadow_assertions=""
+if [[ "${EXPECT_READ_SHADOW}" == "1" ]]; then
+  read_shadow_assertions="
+      AND (SELECT COUNT(*) FROM agent_model_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND status='completed') >= 1
+      AND (SELECT COUNT(*) FROM agent_model_calls WHERE run_uuid=(SELECT run_uuid FROM agent_model_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') ORDER BY created_at DESC LIMIT 1) AND status='completed') >= 1
+      AND (SELECT COUNT(*) FROM agent_artifacts WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND artifact_type='conversation_digest' AND version=1) = 1"
+fi
+
 agent_event_ready=""
 for _ in $(seq 1 30); do
   agent_event_ready="$(compose exec -T mysql mysql -uroot -proot123 -Ddipole -N -B -e \
@@ -170,7 +201,8 @@ for _ in $(seq 1 30); do
       (SELECT COUNT(*) FROM agent_event_ledger WHERE event_id='${agent_event_id}' AND status='completed') = 1
       AND (SELECT COUNT(*) FROM agent_shadow_plans WHERE event_id='${agent_event_id}') = 1
       AND (SELECT COUNT(*) FROM agent_tasks WHERE trigger_ref='${agent_message_id}' AND status='running') = 1
-      AND (SELECT COUNT(*) FROM agent_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND mode='shadow' AND status='completed') = 1,
+      AND (SELECT COUNT(*) FROM agent_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND mode='shadow' AND status='completed') = 1
+      ${read_shadow_assertions},
       1, 0
     );" \
     2>/dev/null || true)"

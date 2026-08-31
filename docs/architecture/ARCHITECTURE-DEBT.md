@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：微服务 smoke 已支持只读 `read_shadow` 的 Compose overlay、事件发布后 Core 重启和模型/Artifact 绑定断言。该演练会复核 EventLedger、Task/Run、完成的模型调用与 `conversation_digest` Artifact，专用于 Temporal/Capability RPC 恢复证据；默认基础 Shadow、写 Capability、MCP 与 active authority 保持关闭。
+
 - 2026-08-31：基础 Compose 的 metadata Shadow Agent 已显式屏蔽宿主 `.env` 遗留的 v2 route context profile，维持固定 v1 Context Compiler 的可启动性；AI SDK/active overlay 仍负责显式启用 v2。该隔离消除 Remote GPU 并行环境中的配置漂移，未改变默认 Shadow authority 或 active 开关。
 
 - 2026-08-31：微服务 smoke 支持可选 `RESTART_CORE=1` 隔离 Core 重启，在重启后复核 Core readiness、Gateway 代理与既有 Agent EventLedger/Task/Run 幂等。Remote GPU 已在独立 `dipole-core-restart-final` Compose 项目、专用 loopback 端口和独立卷中成功完成，脚本退出后确认容器数为零；默认路径保持不重启。该证据未覆盖需要 Capability RPC 的 read-shadow model 调用，后续恢复演练继续独立跟踪。

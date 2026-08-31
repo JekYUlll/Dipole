@@ -32,6 +32,25 @@ Plan 与 `conversation_digest` Artifact 具有同一 Task/Run 绑定。只读 Sh
 失败时，先保留数据库和 Temporal evidence，再移除本 overlay；基础 Compose 会回到
 `foundation` Temporal disabled 的 Shadow Planner。
 
+## Core 恢复演练
+
+以下命令只适用于隔离开发 Compose 项目。它在 Kafka 事件发布后重启 Core，重新验证
+Gateway 代理，并等待同一事件的 EventLedger、Task/Run、模型调用和
+`conversation_digest` Artifact 收敛：
+
+```bash
+COMPOSE_PROJECT_NAME=dipole-read-shadow-restart \
+DIPOLE_GATEWAY_PORT=28084 \
+GATEWAY_URL=http://127.0.0.1:28084 \
+COMPOSE_OVERLAYS=deploy/microservices/agent-ai-sdk-shadow.yml:deploy/microservices/agent-temporal-read-shadow.yml \
+EXPECT_READ_SHADOW=1 \
+RESTART_CORE_AFTER_EVENT=1 \
+scripts/smoke-microservices.sh
+```
+
+该命令要求受忽略 `.env` 已提供 AI SDK Shadow overlay 所需的 Provider 配置。它只验证
+只读路径的恢复和审计绑定，不能作为 active authority、消息写入或外部 MCP 的证据。
+
 ## 回滚
 
 停止并移除 overlay 启动的 Temporal 服务，再用基础 Compose 加 AI SDK Shadow overlay
