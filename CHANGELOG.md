@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：独立 Core runtime 现装配 SQLC `AgentTaskTimeline` store，与 embedded 路径对齐。此前允许调用后仍因 store 缺失返回 `FAILED_PRECONDITION`；缺失装配继续使启动失败而非降级为空数据。
+
 - 2026-09-01：Core 的最小权限 gRPC 策略显式允许 `dipole-agent` 调用已实现的只读 `ListAgentTaskTimeline` 能力，并以真实服务认证回归测试锁定。此前该方法漏出 allowlist，Interactive Agent 的 Timeline 因 `PERMISSION_DENIED` 无法读取；其他 Core capability 仍拒绝。
 
 - 2026-09-01：Core 的 Agent Task Timeline gRPC 查询在保持固定公共错误响应的同时，新增服务端结构化失败日志，便于隔离候选识别 SQLC 投影读取错误；日志不记录请求主体、消息正文或数据库凭据。

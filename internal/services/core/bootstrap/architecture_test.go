@@ -38,6 +38,17 @@ func TestCoreRuntimeKeepsOAuthCallbackConsumptionExplicitAndMTLSBound(t *testing
 	}
 }
 
+func TestCoreRuntimeComposesAgentTaskTimeline(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("runtime.go"))
+	if err != nil {
+		t.Fatalf("read Core runtime: %v", err)
+	}
+	text := string(source)
+	if !strings.Contains(text, "agentServer.WithTaskTimeline(agentRepos.TaskTimeline)") {
+		t.Fatal("standalone Core runtime must configure the Agent Task Timeline store")
+	}
+}
+
 func TestCoreServiceEntrypointUsesOwnedRuntime(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("entrypoint.go"))
 	if err != nil {

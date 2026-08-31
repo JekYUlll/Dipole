@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：独立 Core runtime 曾只创建 Agent RPC adapter 而未注入 SQLC `AgentTaskTimeline` store，使通过认证与 allowlist 后仍失败关闭为 `FAILED_PRECONDITION`。现已与 embedded composition 对齐，并由架构门禁固定；仍待同版本候选完成公开 Gateway Timeline receipt。
+
 - 2026-09-01：Interactive Agent Timeline 的同版本候选验收发现 Core 最小权限 allowlist 遗漏 `ListAgentTaskTimeline`，已用 Agent 身份的真实 gRPC 回归测试补齐。候选仍需完成 Gateway 创建、终态读取与分页 Timeline 的同版本端到端 receipt，才可关闭体验链路门禁。
 
 - 2026-09-01：Interactive Agent Task 的公开 Timeline 在 Remote GPU 候选返回通用依赖错误，数据库迁移、持久事件、SQLC 查询和账户认证均已单独验证。Core 现仅在服务端记录脱敏结构化查询错误，公共 gRPC/HTTP 仍不返回数据库细节；待以同版本候选取得根因并补充功能修复与端到端 receipt。
