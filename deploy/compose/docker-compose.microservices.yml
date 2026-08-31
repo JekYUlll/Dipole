@@ -126,6 +126,8 @@ services:
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/agent-key.pem
       DIPOLE_AGENT_MODEL_MODE: metadata
       DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v1
+      # Base shadow mode is v1. Route profiles belong to the explicit v2 overlays.
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: ""
       DIPOLE_AGENT_MEMORY_ENABLED: "false"
       DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
       DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"

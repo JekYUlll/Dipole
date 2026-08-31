@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：基础 Compose 的 metadata Shadow Agent 已显式屏蔽宿主 `.env` 遗留的 v2 route context profile，维持固定 v1 Context Compiler 的可启动性；AI SDK/active overlay 仍负责显式启用 v2。该隔离消除 Remote GPU 并行环境中的配置漂移，未改变默认 Shadow authority 或 active 开关。
+
 - 2026-08-31：微服务 smoke 支持可选 `RESTART_CORE=1` 隔离 Core 重启，在重启后复核 Core readiness、Gateway 代理与既有 Agent EventLedger/Task/Run 幂等。默认路径保持不重启；该证据未覆盖需要 Capability RPC 的 read-shadow model 调用，后续恢复演练继续独立跟踪。
 
 - 2026-08-31：Agent Capability RPC 的重连包装器改为在每次方法调用时解析当前 gRPC channel。Core `UNAVAILABLE` 后，即使上层缓存了方法引用，下一次事件级调用也会进入 replacement channel；transport 继续不重放失败调用，Kafka/EventLedger 仍负责幂等重试。隔离 Core 重启/Temporal 收敛演练继续待补。

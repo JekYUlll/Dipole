@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：基础微服务 Compose 的 Agent Shadow profile 现显式清空 v2 模型 route context profile，避免宿主 `.env` 的 AI SDK/active 配置与固定的 v1 Context Compiler 冲突而导致 Agent 启动失败。专用 AI SDK 与 active overlay 继续显式启用 v2 并注入 profile。
+
 - 2026-08-31：微服务 smoke 新增可选 `RESTART_CORE=1` 隔离 Core 重启阶段。重启后重新验证 Core readiness 与 Gateway 代理，再执行既有 Agent EventLedger/Task/Run 幂等检查；默认 smoke 行为不变，Capability RPC read-shadow 恢复仍需单独演练。
 
 - 2026-08-31：Agent Capability RPC 的重连包装器现在在每次方法调用时解析当前 gRPC channel。Core 返回 `UNAVAILABLE` 后，即使上层保留了旧方法引用，下一次事件级调用也会使用新 channel；失败调用仍不在 transport 层重放，Kafka/EventLedger 保持幂等重试责任。
