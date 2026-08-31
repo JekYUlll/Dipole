@@ -339,7 +339,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] Observation Session/Evidence 工具拒绝超过当前时钟 5 分钟的未来时间，并覆盖 start/status/finalize 的时间完整性测试，避免未来 Prometheus 查询伪造观察窗口。
 - [x] 增加 `package-web-sync-bundle.sh`：以干净 revision、显式模式和稳定 tar 元数据生成不可覆盖的 `web-sync-bundle.v1`，输出权限固定为 `0600`，并拒绝把归档写入源目录。
 - [x] 将 Web Sync bundle 打包接入 `scripts/remote-dev.sh web-sync-bundle`；远程入口固定生成 `shadow` 候选并使用 `/tmp` 输出，不启动 Compose、不申请 GPU、不改变生产客户端开关。
-- [ ] 使用候选 commit/bundle 哈希绑定的 Observation Session/Evidence 完成真实客户端观察窗口：match 样本达到门槛，grace 后 `legacy_only/sync_only/overflow` 持续为零，并归档 Prometheus 原始响应和对象版本后，再结束旧 Offline 兼容窗口。
+- [ ] 使用候选 commit/完整 Web 发布目录摘要绑定的 Observation Session/Evidence 完成真实客户端观察窗口：match 样本达到门槛，grace 后 `legacy_only/sync_only/overflow` 持续为零，并归档 Prometheus 原始响应和对象版本后，再结束旧 Offline 兼容窗口。
   - 此客户端窗口约束旧 Offline 协议退役和客户端 Timeline locator 主路径；它不阻塞 Cassandra 服务端历史读取或 hydration 的独立灰度证据。
 - [x] 统一显式退出、HTTP 401、WS kick 与账号切换的 Session Termination；凭据先撤销，IndexedDB 清理等待在途同步收敛，快速重登等待旧清理完成。
 - [x] 建立 IndexedDB 高低容量水位、按会话保底的最近消息安全淘汰、缓存 manifest 和 quota error 状态；淘汰与 Cursor 提交保持同一事务且不额外推进安全游标。
@@ -682,8 +682,8 @@ Agent Runtime 的 `npm run typecheck` 与 `npm run build` 也已通过；模型�
 | `message.read_store` | `mysql / shadow / cassandra` | Cassandra 读流量灰度 |
 | `message.mysql_write_mode` | `full / metadata_only` | A5/A6 门禁完成后的 MySQL 正文退役；初始固定为 `full` |
 | `message.inbox_write_mode` | `atomic / projector` | Inbox 写责任迁移；`atomic` 是默认回滚路径 |
-| `message.timeline_notify_mode` | `off / shadow` | Gateway 轻量 Timeline 通知；`off` 立即停止附加通知且保留完整消息投递 |
-| `VITE_TIMELINE_NOTIFY_MODE` | `off / shadow` | Web Timeline 通知验证；未设置或 `off` 时完全忽略该通知 |
+| `message.timeline_notify_mode` | `off / shadow / primary` | Gateway Timeline 通知；`shadow` 附加 locator 保留完整消息，`primary` 只向接收方投递无正文 locator，`off` 保留完整消息投递 |
+| `VITE_TIMELINE_NOTIFY_MODE` | `off / shadow / primary` | Web Timeline 通知验证与受控主路径；未设置或 `off` 时完全忽略该通知 |
 | `sync.mode` | `legacy / compare / timeline` | 客户端同步协议迁移 |
 | `search.enabled` | `false / true` | ES 故障隔离 |
 | `storage.presigned_upload_proxy_enabled` | `false / true` | OSS MinIO 预签名 Multipart 的 Gateway 同源代理；默认关闭，异常时回到 Core 中转 |

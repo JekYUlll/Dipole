@@ -42,15 +42,27 @@ for service_binary in "${services[@]}"; do
     *) image_variable="DIPOLE_${service^^}_IMAGE" ;;
   esac
   image=${!image_variable:-dipole-${service}:latest}
-  echo "==> building ${service} image ${image}"
-  docker build \
-    --file deploy/images/go-service.Dockerfile \
-    --tag "${image}" \
-    --build-arg "DIPOLE_BINARY=${binary}" \
-    --build-arg "DIPOLE_VCS_REVISION=${revision}" \
-    --build-arg "DIPOLE_BUILD_CREATED=${created}" \
-    --build-arg "DIPOLE_BUILD_DIRTY=${dirty}" \
-    "${context_dir}"
+  source_binary="${context_dir}/${binary}"
+  if [[ ! -x "${source_binary}" ]]; then
+    echo "Go binary is missing or not executable: ${source_binary}" >&2
+    exit 1
+  fi
+
+  # Each build receives exactly one binary; EXIT also cleans failed build contexts.
+  (
+    build_context=$(mktemp -d -t dipole-microservice-image.XXXXXX)
+    trap 'rm -rf "${build_context}"' EXIT
+    install -m 755 "${source_binary}" "${build_context}/${binary}"
+    echo "==> building ${service} image ${image}"
+    docker build \
+      --file deploy/images/go-service.Dockerfile \
+      --tag "${image}" \
+      --build-arg "DIPOLE_BINARY=${binary}" \
+      --build-arg "DIPOLE_VCS_REVISION=${revision}" \
+      --build-arg "DIPOLE_BUILD_CREATED=${created}" \
+      --build-arg "DIPOLE_BUILD_DIRTY=${dirty}" \
+      "${build_context}"
+  )
 done
 
 agent_image=${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}

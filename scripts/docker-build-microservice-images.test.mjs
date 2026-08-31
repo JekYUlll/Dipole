@@ -5,9 +5,14 @@ import test from "node:test";
 const script = fs.readFileSync(new URL("./docker-build-microservice-images.sh", import.meta.url), "utf8");
 const dockerfile = fs.readFileSync(new URL("../deploy/images/go-service.Dockerfile", import.meta.url), "utf8");
 
-test("Go microservice images use the generated dist directory as context", () => {
+test("Go microservice images stage only the target binary as the Docker context", () => {
   assert.match(script, /context_dir="\$\{root_dir\}\/dist"/);
-  assert.match(script, /--file deploy\/images\/go-service\.Dockerfile[\s\S]*?"\$\{context_dir\}"/);
+  assert.match(script, /for service_binary in "\$\{services\[@\]\}"; do[\s\S]*?\(\n    build_context=\$\(mktemp -d -t dipole-microservice-image\.XXXXXX\)/);
+  assert.match(script, /trap 'rm -rf "\$\{build_context\}"' EXIT/);
+  assert.match(script, /install -m 755 "\$\{source_binary\}" "\$\{build_context\}\/\$\{binary\}"/);
+  assert.match(script, /--file deploy\/images\/go-service\.Dockerfile[\s\S]*?"\$\{build_context\}"/);
+  assert.doesNotMatch(script, /--file deploy\/images\/go-service\.Dockerfile[\s\S]*?"\$\{context_dir\}"/);
+  assert.doesNotMatch(script, /context_dir="\$\{root_dir\}\/dist"\n\s*build_context=/);
   assert.match(dockerfile, /COPY \$\{DIPOLE_BINARY\} \/app\/service/);
   assert.doesNotMatch(dockerfile, /COPY dist\/\$\{DIPOLE_BINARY\}/);
 });

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 260" role="img" aria-labelledby="title desc">
+  <title id="title">Dipole IM and Dipole Agent</title>
+  <desc id="desc">The Dipole V3 dual-product lockup. Navy and red message poles represent IM; a gold orbit represents governed Agent workflows.</desc>
+  <rect width="920" height="260" rx="28" fill="#F8F1E4"/>
+  <g transform="translate(54 58)">
+    <path fill="#0B2A4A" d="M0 28C0 13 13 0 28 0h48c15 0 28 13 28 28v20c0 15-13 28-28 28H48L22 102V76H18C8 76 0 68 0 58z"/>
+    <path fill="#F2262A" d="M152 124c0 15-13 28-28 28H76c-15 0-28-13-28-28v-20c0-15 13-28 28-28h28l26-26v26h4c10 0 18 8 18 18z"/>
+    <rect x="42" y="40" width="68" height="72" rx="13" fill="#fff"/>
+    <circle cx="66" cy="76" r="8" fill="#0B2A4A"/>
+    <circle cx="86" cy="76" r="8" fill="#F2262A"/>
+  </g>
+  <g fill="#092545" transform="translate(234 0)">
+    <text x="0" y="112" font-family="Georgia, serif" font-size="48" font-weight="700" letter-spacing="-2">Dipole</text>
+    <text x="2" y="150" font-family="ui-monospace, SFMono-Regular, monospace" font-size="15" font-weight="700" letter-spacing="4">IM / REALTIME COLLABORATION</text>
+  </g>
+  <path d="M500 46v168" stroke="#D8D3C8" stroke-width="2"/>
+  <g transform="translate(556 58)">
+    <path fill="#0B2A4A" d="M0 28C0 13 13 0 28 0h48c15 0 28 13 28 28v20c0 15-13 28-28 28H48L22 102V76H18C8 76 0 68 0 58z"/>
+    <path fill="#F2262A" d="M152 124c0 15-13 28-28 28H76c-15 0-28-13-28-28v-20c0-15 13-28 28-28h28l26-26v26h4c10 0 18 8 18 18z"/>
+    <rect x="42" y="40" width="68" height="72" rx="13" fill="#fff"/>
+    <circle cx="66" cy="76" r="8" fill="#0B2A4A"/>
+    <circle cx="86" cy="76" r="8" fill="#F2262A"/>
+    <path d="M8 139c20 23 71 25 103 1 23-18 22-53 1-72" fill="none" stroke="#F4B000" stroke-linecap="round" stroke-width="5"/>
+    <circle cx="114" cy="69" r="8" fill="#F4B000" stroke="#F8F1E4" stroke-width="4"/>
+  </g>
+  <g fill="#092545" transform="translate(736 0)">
+    <text x="0" y="112" font-family="Georgia, serif" font-size="48" font-weight="700" letter-spacing="-2">Dipole</text>
+    <text x="2" y="150" font-family="ui-monospace, SFMono-Regular, monospace" font-size="15" font-weight="700" letter-spacing="4">AGENT / GOVERNED TASKS</text>
+  </g>
+</svg>

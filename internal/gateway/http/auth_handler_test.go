@@ -18,10 +18,11 @@ import (
 )
 
 type stubAuthService struct {
-	registerFn func(input coreauth.RegisterInput) (*coreauth.AuthResult, error)
-	loginFn    func(input coreauth.LoginInput) (*coreauth.AuthResult, error)
-	logoutFn   func(token string) error
-	mcpGrantFn func(input coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error)
+	registerFn       func(input coreauth.RegisterInput) (*coreauth.AuthResult, error)
+	loginFn          func(input coreauth.LoginInput) (*coreauth.AuthResult, error)
+	logoutFn         func(token string) error
+	changePasswordFn func(user *model.User, token string, input coreauth.ChangePasswordInput) error
+	mcpGrantFn       func(input coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error)
 }
 
 func (s *stubAuthService) IssueAgentMCPGrant(input coreauth.AgentMCPGrantInput) (*coreauth.AgentMCPGrantResult, error) {
@@ -55,6 +56,13 @@ func (s *stubAuthService) Logout(token string) error {
 		return nil
 	}
 	return s.logoutFn(token)
+}
+
+func (s *stubAuthService) ChangePassword(user *model.User, token string, input coreauth.ChangePasswordInput) error {
+	if s.changePasswordFn == nil {
+		return nil
+	}
+	return s.changePasswordFn(user, token, input)
 }
 
 func (s *stubAuthLimiter) AllowRegister(identifier string) (bool, time.Duration) {
@@ -233,6 +241,47 @@ func TestAuthHandlerLogoutFailure(t *testing.T) {
 
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("expected status 500, got %d", recorder.Code)
+	}
+}
+
+func TestAuthHandlerChangePasswordUsesAuthenticatedUserAndDisablesCaching(t *testing.T) {
+	t.Parallel()
+	handler := NewAuthHandler(&stubAuthService{changePasswordFn: func(user *model.User, token string, input coreauth.ChangePasswordInput) error {
+		if user.UUID != "U100" || token != "TOKEN123" || input.CurrentPassword != "old-secret" || input.NewPassword != "new-secret" {
+			t.Fatalf("unexpected password change input: user=%+v token=%q input=%+v", user, token, input)
+		}
+		return nil
+	}})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/auth/password", strings.NewReader(`{"current_password":"old-secret","new_password":"new-secret"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	context.Set(middleware.ContextTokenKey, "TOKEN123")
+
+	handler.ChangePassword(context)
+
+	if recorder.Code != http.StatusOK || recorder.Header().Get("Cache-Control") != "no-store" || !strings.Contains(recorder.Body.String(), "password changed") {
+		t.Fatalf("unexpected password change response: code=%d headers=%v body=%s", recorder.Code, recorder.Header(), recorder.Body.String())
+	}
+}
+
+func TestAuthHandlerChangePasswordDoesNotExposeCurrentPassword(t *testing.T) {
+	t.Parallel()
+	handler := NewAuthHandler(&stubAuthService{changePasswordFn: func(*model.User, string, coreauth.ChangePasswordInput) error {
+		return coreauth.ErrInvalidCurrentPassword
+	}})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPatch, "/api/v1/auth/password", strings.NewReader(`{"current_password":"wrong-secret","new_password":"new-secret"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	context.Set(middleware.ContextTokenKey, "TOKEN123")
+
+	handler.ChangePassword(context)
+
+	if recorder.Code != http.StatusBadRequest || strings.Contains(recorder.Body.String(), "wrong-secret") || !strings.Contains(recorder.Body.String(), "current password is invalid") {
+		t.Fatalf("unexpected invalid password response: code=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 }
 

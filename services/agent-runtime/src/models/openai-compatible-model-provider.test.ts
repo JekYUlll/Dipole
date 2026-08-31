@@ -65,4 +65,12 @@ describe("OpenAI-compatible model provider", () => {
     expect(() => loadModelProviderConfig({ ...environment, DIPOLE_AGENT_MODEL_THINKING_MODE: "enabled" })).toThrow(/thinkingMode/);
     expect(() => modelIDForRoute("other/gpt-5-mini", "gateway")).toThrow(/gateway/);
   });
+
+  it("only forwards a provider-specific thinking switch when explicitly disabled", () => {
+    const defaultConfig = loadModelProviderConfig(environment);
+    const disabledConfig = loadModelProviderConfig({ ...environment, DIPOLE_AGENT_MODEL_THINKING_MODE: "disabled" });
+
+    expect(modelProviderCallOptions(defaultConfig)).toBeUndefined();
+    expect(modelProviderCallOptions(disabledConfig)).toEqual({ gateway: { thinking: { type: "disabled" } } });
+  });
 });

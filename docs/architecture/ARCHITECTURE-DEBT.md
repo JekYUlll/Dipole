@@ -16,6 +16,50 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 的隔离交互 Shadow 候选完成两次公开 JWT Task admission 到 Timeline cursor 续页的只读验收；两条 Task 均收敛为 `completed`，每条 Timeline 的前两页各返回两条事件。Gateway 使用 `4ab924b87` 的专用候选镜像，Core/Agent 为兼容的既有候选，因此该证据只说明混合候选的开发兼容性。详细边界见 [Agent Interactive Shadow Remote Receipt](../agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。同版本镜像、可重跑低敏 receipt、受控观察窗口、active authority 与写 Capability 继续作为独立门禁。
+
+- 2026-09-01：Remote GPU 同时运行多个隔离 MySQL 时，宿主 Linux AIO 使用量达到 `55,300 / 65,536`，新候选初始化触发 `io_setup() EAGAIN`。新增只作用于候选 project 的 `remote-gpu-mysql-aio-compat.yml`，保留基础参数并增加 `--innodb-use-native-aio=0`；此兼容模式不改变已有服务，验证结束后随候选 project 回滚。
+
+- 2026-09-01：Remote GPU Node 验证从两阶段 `npm ci` 加 `npm install` 调整为单阶段 `npm ci --include=optional`。此前第二次安装可能与 npm 目录替换发生 `ENOTEMPTY`；新路径保留 lockfile、可复现依赖和 optional package，同时减少一次网络与磁盘操作。
+
+- 2026-09-01：Remote GPU bundle 回退已修正为用 `HEAD` 生成完整、可检出的 Git bundle；目标 SHA 继续通过独立参数与远端 `rev-parse` 固定校验。裸 SHA 会被 Git 解释为空归档，修复后才进入受控远端验证。
+
+- 2026-09-01：为 Remote GPU 的 origin clone/fetch 固定可配置的 20 秒 timeout。远端 GitHub 不可达时，开发验证会转入 commit-pinned bundle 回退，不会长期占用会话或阻塞后续 Agent 同版本门禁；该 timeout 不改变任何运行中 Compose 服务。
+
+- 2026-09-01：Remote GPU 候选源码同步曾因远端 `ssh.github.com:443` 超时而无法进入测试。`remote-dev.sh` 现为每个 clean candidate 创建 commit-pinned Git bundle 并通过既有 SSH 上传；远端 origin clone/fetch 失败时才回退至 bundle，随后验证 exact commit 并在退出清理。该改动不启用隧道、代理或共享服务，后续同版本 Compose evidence 仍需独立执行。
+
+- 2026-09-01：根 README 已从旧 PNG 品牌板切换到受版本控制的 `dipole-v3-brand-lockup.svg`，与 Web Login 的 V3 SVG 使用同一海军蓝/信号红/轨道金语言。旧 PNG 仅保留为历史评审资产；该文档改动不改变服务 authority 或前端设计验收范围。
+
+- 2026-09-01：修复 Go 微服务镜像构建 context 在循环中累积二进制的问题。每个服务现在创建独立临时 context，并由子 shell 的 `EXIT` trap 在成功或失败后清理；静态回归测试同时锁定单二进制 context 和清理边界。下一次 Remote GPU 同版本 smoke 仍需记录每个 context 的实际大小与总构建耗时。
+
+- 2026-09-01：V3 前端设计的 Pencil CLI 调用按临时文件/原子替换策略两次超时，未修改 canonical `.pen` 或批准导出。V3 SVG、additive token 和 Login 已可独立构建，完整 Chat/Agent 画板、全局 token 迁移和视觉回归仍依赖成功的 Pencil 增量生成；禁止将当前兼容切片表述为全站改版完成。
+
+- 2026-09-01：Remote GPU 隔离 Interactive Shadow 候选已验证认证用户从 Gateway 创建任务、异步 admission、Temporal 执行到终态读取的完整只读链路，receipt 归档于 [`agent-interactive-control-2026-09-01`](../../benchmarks/agent-interactive-control-2026-09-01/)。Provider 使用 `deepseek/deepseek-v4-flash` 且显式禁用 thinking，避免 JSON-text 输出为空；该配置目前只在候选环境采用。Gateway/Core 未重建到 Agent `c9f3f424`，同版本发布、体验 URL 验收、active authority、写 Capability、MCP 和统计成功率仍需独立门禁。
+
+- 2026-09-01：Remote GPU interactive Shadow 复验发现：任务已被 Core 所有权授权且投影为终态时，Temporal 对关闭 Workflow 的 Query 返回不可用，Gateway 随之错误映射为 `404`。Task control 现仅在该特定终态条件下返回 Core 持久投影；运行中、缺投影或任意其他依赖错误保持失败关闭。后续仍需以同版本镜像重跑完整交互 receipt，当前不构成 active authority 或用户体验验收。
+
+- 2026-09-01：Remote GPU 已以 clean `676a6d93` 完成同版本 Core/Gateway/Message/Sync/Agent 候选 smoke。私聊写入后重启 Core，Message、Outbox 与目标 Inbox 精确均为 `1`，低敏 receipt 归档于 [`microservices-same-revision-smoke-2026-09-01`](../../benchmarks/microservices-same-revision-smoke-2026-09-01/)。该结果覆盖 atomic Inbox 的一条服务恢复路径；Agent interactive control、Cassandra 主读、Kafka/broker/in-flight 故障矩阵与 A6 Web Sync 观察继续独立验收。
+
+- 2026-09-01：Remote GPU 同版本 smoke 观察到每个 Go 微服务镜像重复传输完整 `dist` 上下文。构建脚本现只为目标二进制创建临时 Docker context，并在缺失或无执行权限时失败关闭；服务镜像模板继续只复制一个 `/app/service`。该优化不改变镜像 provenance、服务隔离或默认 authority，后续需在下一次同版本 smoke 记录实际 context 大小与总耗时。
+
+- 2026-09-01：C++ Realtime Delivery 的 `primary` 投影已与 Go body-free Timeline 主路径对齐：direct/普通 group 仅生成 `sync.item.notify.v1`，`shadow` 仍生成完整事件加 locator，冲突策略 fail closed；热群 notify + pull 保持原有处理。Ubuntu 24.04 容器门禁通过 `14/14` CTest。该修复仅收敛候选实现语义，C++ 性能晋级门槛未通过，默认 Go authority 和 C++ 灰度关闭状态不变。
+
+- 2026-09-01：审计发现 `message.timeline_notify_mode=primary` 在 Gateway Kafka 与 embedded Dispatcher 中仍同时发送完整消息和 locator，与 body-free 主路径契约冲突。primary 现只向接收方投递 `sync.item.notify.v1`，发送者保留 `chat.sent` 回执；`shadow` 继续双投递以支持观察，`off` 保留完整消息，热群聚合不变。Go direct/group/embedded 回归通过；真实 Cassandra 主读观察、自动停止和回切证据继续由 A6/AD-019 门禁约束。
+
+- 2026-09-01：Agent Runtime 本地全量门禁曾因默认关闭的 Approval mTLS drill 在 suite 注册期读取远程变量、离线 security Eval 缺少默认 token availability 以及 Temporal 只读夹具缺少授权审计 sink 而不可复现。三处测试契约已对齐，当前离线运行通过 `158` 个文件、`796` 项测试，`10` 个显式外部依赖测试跳过，并通过 TypeScript typecheck 与 production build。Remote GPU 同版本 Compose、Kafka/Temporal/Capability RPC 演练仍需独立执行，不能由本地测试替代。
+
+- 2026-09-01：Agent Shadow Runtime 将 Provider thinking 设为显式、Provider 专有的默认关闭选项，并将单次 Planner 的模型可见 Capability 收紧至 `conversation.list`。这样受限 JSON-text 预算不会被默认 reasoning 消耗，模型也不能在未获得会话发现结果前构造任意读取目标。多轮绑定、写 Capability、active authority 与 MCP 仍由 AD-009 的独立门禁约束。
+
+- 2026-09-01：A6 Web Sync observation 的候选绑定已从单一 bundle 文件扩展为完整静态发布目录摘要。候选目录以稳定相对路径和内容 SHA-256 生成摘要，空目录、符号链接及任意资源集漂移均 fail closed；单文件兼容入口保留。真实浏览器 24 小时窗口、100 个 match、Prometheus 原始响应归档与责任人批准仍未完成，旧 Offline 兼容窗口和默认客户端模式保持不变。
+
+- 2026-09-01：Remote GPU 的长驻隔离交互候选以新临时用户复验了 Agent Task 创建到终态查询：Gateway 接受只读请求并返回 `202`，Task 在有界轮询中收敛为 `completed`。候选 Gateway/Core 为 `406c3154`，Agent 镜像为 `thinking-4e9740a0`，存在受控版本偏差；它支持跨版本 Shadow 兼容性，不能替代同版本候选、可重跑 receipt、active authority、写 Capability 或任务成功率的验收。后续体验候选应将 Gateway/Core/Agent provenance 固定为同一 revision，再纳入 Claim 证据。
+
+- 2026-09-01：个人资料入口补齐了当前密码验证、bcrypt 重哈希和当前 session 撤销的密码更新闭环。当前仅撤销发起修改的会话；“修改密码后撤销全部设备令牌”需要先让 Session/Token Store 提供用户范围的可审计失效能力，作为后续安全增强，不将当前实现表述为全设备登出。
+
+- 2026-09-01：密码更新的隔离端到端验证发现资料缓存按设计脱敏 `PasswordHash`，认证中间件的 cached user 不能直接参与 bcrypt 对比。流程现经已认证主体的手机号加载权威记录并核验 UUID；用户资料缓存继续不保存密码哈希。后续认证能力需保持“敏感凭据从权威 store 获取、资料 cache 只承载脱敏投影”的边界。
+
+- 2026-09-01：体验环境实测发现 Agent Task 创建页的 Function prop 默认值返回了函数而非 UUID 字符串，前端在网络请求前失败，Gateway/Temporal 控制链不会收到请求。现已修正并以组件回归测试锁定；远端隔离体验需重建 Gateway 静态资源后复验创建与时间线闭环。
+
 - 2026-09-01：增加 reviewed Shadow Eval window collector。它只执行已评审 manifest，保存每份低敏 report、输入与去重 Trace/Suite 汇总，并保留有效失败窗口以统计失败分类；没有自动任务创建、标签生成或环境切流。收集器从运行中 `agent` 容器读取 clean OCI revision，拒绝缺失或 dirty provenance，避免脚本 checkout 与实际评测镜像漂移。Remote GPU 已归档 [受控完成子集 N=2](../../benchmarks/agent-shadow-eval-window-2026-09-01-n2/)；五类报告全部通过，但 `100%` 仅描述该子集，当前尚无固定多样本任务集和共享环境窗口，任务成功率继续保留占位符。
 
 - 2026-09-01：同一受控栈的一条 Provider 空 JSON-text 失败事件在持久 Run 中保留 `model run budget exhausted`，但模型调用缺失 token 计量，现有五类 Eval 会因不完整 Cost observation fail closed。后续需让失败调用输出明确的计量可用性/不可用性并纳入失败分类，禁止以通过样本替代整体成功率。

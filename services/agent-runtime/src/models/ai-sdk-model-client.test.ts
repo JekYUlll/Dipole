@@ -171,4 +171,26 @@ describe("AISDKStructuredModelClient", () => {
       route: "test/json-multiple-objects", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
     })).rejects.toThrow(/not a valid JSON object/);
   });
+
+  it("passes explicitly configured provider options through to the model call", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "deepseek", modelId: "deepseek-v4-flash",
+      doGenerate: {
+        content: [{ type: "text", text: JSON.stringify({ summary: "observe E8", capabilityIds: [] }) }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 5, text: 5, reasoning: 0 } }, warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model, "json_text", {
+      deepseek: { thinking: { type: "disabled" } }
+    });
+
+    await client.generate({
+      route: "deepseek/deepseek-v4-flash", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
+    });
+
+    expect(model.doGenerateCalls[0]).toMatchObject({
+      providerOptions: { deepseek: { thinking: { type: "disabled" } } }
+    });
+  });
 });

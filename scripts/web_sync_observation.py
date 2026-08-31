@@ -65,8 +65,8 @@ def build_session(candidate_version, git_commit, bundle_path, prometheus_url, st
         raise ValueError("git commit must be a full 40-character SHA-1")
     prometheus_url = _prometheus_url(prometheus_url)
     bundle_path = Path(bundle_path)
-    if not bundle_path.is_file():
-        raise ValueError("candidate Web bundle is required")
+    if not bundle_path.is_file() and not bundle_path.is_dir():
+        raise ValueError("candidate Web bundle file or directory is required")
     started_at = _utc(started_at)
     _reject_future_timestamp("session start", started_at, now)
     snapshot = _query_snapshot(client, START_QUERIES, started_at)
@@ -86,7 +86,7 @@ def build_session(candidate_version, git_commit, bundle_path, prometheus_url, st
         "version": candidate_version,
         "git_commit": git_commit,
         "bundle_path": bundle_path.name,
-        "bundle_sha256": _file_sha256(bundle_path),
+        "bundle_sha256": _bundle_sha256(bundle_path),
     }
     identity = {
         "candidate": candidate,
@@ -173,7 +173,7 @@ def verify_candidate(session, git_commit, bundle_path):
     if git_commit.strip().lower() != session["candidate"]["git_commit"]:
         raise ValueError("candidate Git commit changed during observation")
     bundle_path = Path(bundle_path)
-    if not bundle_path.is_file() or _file_sha256(bundle_path) != session["candidate"]["bundle_sha256"]:
+    if (not bundle_path.is_file() and not bundle_path.is_dir()) or _bundle_sha256(bundle_path) != session["candidate"]["bundle_sha256"]:
         raise ValueError("candidate Web bundle changed during observation")
 
 
@@ -228,6 +228,33 @@ def _file_sha256(path):
     with Path(path).open("rb") as source:
         for block in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(block)
+    return digest.hexdigest()
+
+
+def _bundle_sha256(path):
+    path = Path(path)
+    if path.is_file():
+        return _file_sha256(path)
+    if not path.is_dir():
+        raise ValueError("candidate Web bundle file or directory is required")
+
+    entries = []
+    for entry in sorted(path.rglob("*")):
+        if entry.is_symlink():
+            raise ValueError("candidate Web bundle directory cannot contain symbolic links")
+        if entry.is_file():
+            entries.append((entry.relative_to(path).as_posix(), _file_sha256(entry)))
+        elif not entry.is_dir():
+            raise ValueError("candidate Web bundle directory contains an unsupported entry")
+    if not entries:
+        raise ValueError("candidate Web bundle directory cannot be empty")
+
+    digest = hashlib.sha256()
+    for relative_path, entry_sha256 in entries:
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(entry_sha256.encode("ascii"))
+        digest.update(b"\n")
     return digest.hexdigest()
 
 

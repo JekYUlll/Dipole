@@ -28,6 +28,18 @@ type LoginRequest struct {
 	Password  string `json:"password" binding:"required,min=6,max=32"`
 }
 
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required,min=6,max=32"`
+	NewPassword     string `json:"new_password" binding:"required,min=6,max=32"`
+}
+
+func (r ChangePasswordRequest) ToInput() coreauth.ChangePasswordInput {
+	return coreauth.ChangePasswordInput{
+		CurrentPassword: r.CurrentPassword,
+		NewPassword:     r.NewPassword,
+	}
+}
+
 type AgentMCPGrantRequest struct {
 	Resource string   `json:"resource" binding:"required,url"`
 	Scopes   []string `json:"scopes" binding:"required,min=1,max=1,dive,required"`

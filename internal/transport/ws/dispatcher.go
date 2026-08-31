@@ -212,8 +212,12 @@ func (d *Dispatcher) dispatchDirect(ctx context.Context, client *Client, message
 	eventData := newChatMessageData(message)
 	deliveredCount := 0
 	if d.syncDispatch {
-		deliveredCount = d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
-		d.sendTimelineNotification(message.TargetUUID, message)
+		if d.timelineNotifyMode == TimelineNotifyPrimary {
+			deliveredCount = d.sendTimelineNotification(message.TargetUUID, message)
+		} else {
+			deliveredCount = d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
+			d.sendTimelineNotification(message.TargetUUID, message)
+		}
 		if message.TargetUUID == client.sessionUser.UUID {
 			deliveredCount = max(deliveredCount-1, 0)
 		}
@@ -246,8 +250,12 @@ func (d *Dispatcher) dispatchGroup(ctx context.Context, client *Client, message 
 			if recipientUUID == client.sessionUser.UUID {
 				continue
 			}
-			deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
-			d.sendTimelineNotification(recipientUUID, message)
+			if d.timelineNotifyMode == TimelineNotifyPrimary {
+				deliveredCount += d.sendTimelineNotification(recipientUUID, message)
+			} else {
+				deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
+				d.sendTimelineNotification(recipientUUID, message)
+			}
 		}
 	}
 	ack := ChatSentData{
@@ -260,11 +268,11 @@ func (d *Dispatcher) dispatchGroup(ctx context.Context, client *Client, message 
 	}
 }
 
-func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *model.Message) {
+func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *model.Message) int {
 	if (d.timelineNotifyMode != TimelineNotifyShadow && d.timelineNotifyMode != TimelineNotifyPrimary) || message == nil || message.Seq == 0 || strings.TrimSpace(message.UUID) == "" || strings.TrimSpace(message.ConversationKey) == "" {
-		return
+		return 0
 	}
-	d.hub.SendEventToUser(recipientUUID, TypeSyncItemNotifyV1, SyncItemNotifyData{
+	return d.hub.SendEventToUser(recipientUUID, TypeSyncItemNotifyV1, SyncItemNotifyData{
 		SchemaVersion: "v1", EventID: message.UUID, MessageUUID: message.UUID,
 		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,
 		TargetType: message.TargetType, TargetUUID: message.TargetUUID,

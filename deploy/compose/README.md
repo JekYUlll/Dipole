@@ -14,6 +14,7 @@
 | `docker-compose.storage-lab.yml` | 隔离存储实验 |
 | `../microservices/agent-active.yml` | 默认不加载的 Agent user-gray 只读 overlay |
 | `../microservices/agent-memory-promotion.yml` | 基于 user-gray 的 reviewed Memory receipt 提交 overlay |
+| `../microservices/remote-gpu-mysql-aio-compat.yml` | 仅限共享 Remote GPU 候选的 MySQL native AIO 兼容 overlay |
 
 从仓库根目录执行，例如：
 
@@ -33,6 +34,17 @@ scripts/check-dev-host.sh tencent-cloud
 ```
 
 门禁只检查资源、Docker daemon 和 Compose 配置，不会创建容器或修改远程主机。共享环境部署必须额外提供真实密钥、独立 Compose project、版本绑定镜像和清理/回滚证据。
+
+当共享 Remote GPU 已运行多个 MySQL 候选且 Linux AIO 配额不足时，可在独立候选项目中追加：
+
+```bash
+docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/remote-gpu-mysql-aio-compat.yml \
+  up -d --wait
+```
+
+该 overlay 只为该候选 MySQL 关闭 native AIO，不影响基础拓扑或其他 Compose project；候选结束后通过同一 project 的 `down -v` 回滚其容器与卷。
 
 Compose 文件中的相对路径以仓库根目录为基准。脚本调用应优先复用 `scripts/` 下的入口，以获得项目名、清理和回滚保护。
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/dipole-brand-v3.png" width="720" alt="Dipole IM and Dipole Agent brand system" />
+  <img src="docs/images/dipole-v3-brand-lockup.svg" width="720" alt="Dipole IM and Dipole Agent brand system" />
 </p>
 
 <p align="center">

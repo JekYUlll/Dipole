@@ -431,12 +431,14 @@ void AddItem(DeliveryEnvelope* output, const MessageEvent& event, std::string_vi
 
 ValidationError ProjectDirect(const MessageEvent& event, const ProjectionPolicy& policy,
                               DeliveryEnvelope* output) {
-  AddItem(output, event, event.target_uuid,
-          {.suffix = "full",
-           .event_type = "chat.message",
-           .mode = DeliveryMode::DELIVERY_MODE_FULL_EVENT},
-          FullMessagePayload(event));
-  if (policy.timeline_notify_shadow) {
+  if (!policy.timeline_notify_primary) {
+    AddItem(output, event, event.target_uuid,
+            {.suffix = "full",
+             .event_type = "chat.message",
+             .mode = DeliveryMode::DELIVERY_MODE_FULL_EVENT},
+            FullMessagePayload(event));
+  }
+  if (policy.timeline_notify_shadow || policy.timeline_notify_primary) {
     if (event.message_seq == 0) {
       return "timeline projection requires message_seq";
     }
@@ -470,12 +472,14 @@ ValidationError ProjectGroup(const MessageEvent& event, const ProjectionPolicy& 
     if (recipient == event.sender_uuid) {
       continue;
     }
-    AddItem(output, event, recipient,
-            {.suffix = "full",
-             .event_type = "chat.message",
-             .mode = DeliveryMode::DELIVERY_MODE_FULL_EVENT},
-            FullMessagePayload(event));
-    if (policy.timeline_notify_shadow) {
+    if (!policy.timeline_notify_primary) {
+      AddItem(output, event, recipient,
+              {.suffix = "full",
+               .event_type = "chat.message",
+               .mode = DeliveryMode::DELIVERY_MODE_FULL_EVENT},
+              FullMessagePayload(event));
+    }
+    if (policy.timeline_notify_shadow || policy.timeline_notify_primary) {
       if (event.message_seq == 0) {
         return "timeline projection requires message_seq";
       }
@@ -500,6 +504,10 @@ ValidationError ProjectMessageEvent(const KafkaRecord& record, const ProjectionP
     return "delivery envelope destination is required";
   }
   output->Clear();
+
+  if (policy.timeline_notify_shadow && policy.timeline_notify_primary) {
+    return "timeline shadow and primary policies are mutually exclusive";
+  }
 
   MessageEvent event;
   if (auto error = DecodeEvent(record, &event); error) {

@@ -152,6 +152,37 @@ class WebSyncObservationTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verify_candidate(session, COMMIT, bundle)
 
+    def test_session_binds_every_file_in_a_deployed_bundle_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "webapp"
+            assets = bundle / "assets"
+            assets.mkdir(parents=True)
+            (bundle / "index.html").write_text("<script src='/assets/app.js'></script>", encoding="utf-8")
+            (assets / "app.js").write_bytes(b"first bundle")
+            session = build_session("web-sync-v1", COMMIT, bundle, "http://prometheus:9090", START, FakePrometheus(clean_start_values()))
+            verify_candidate(session, COMMIT, bundle)
+
+            (assets / "app.js").write_bytes(b"changed bundle")
+            with self.assertRaises(ValueError):
+                verify_candidate(session, COMMIT, bundle)
+
+            (assets / "app.js").write_bytes(b"first bundle")
+            (assets / "late.css").write_bytes(b"body{}")
+            with self.assertRaises(ValueError):
+                verify_candidate(session, COMMIT, bundle)
+
+    def test_session_rejects_empty_or_symlinked_bundle_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "webapp"
+            bundle.mkdir()
+            with self.assertRaisesRegex(ValueError, "cannot be empty"):
+                build_session("web-sync-v1", COMMIT, bundle, "http://prometheus:9090", START, FakePrometheus(clean_start_values()))
+
+            (bundle / "index.html").write_text("ok", encoding="utf-8")
+            (bundle / "linked.js").symlink_to(bundle / "index.html")
+            with self.assertRaisesRegex(ValueError, "symbolic links"):
+                build_session("web-sync-v1", COMMIT, bundle, "http://prometheus:9090", START, FakePrometheus(clean_start_values()))
+
     def test_finalize_archives_eligible_clean_window(self):
         session = self._session()
         evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()), archive=clean_archive())

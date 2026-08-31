@@ -6,6 +6,48 @@
 
 - 2026-09-01：OpenAI-compatible Agent Provider 增加显式 `DIPOLE_AGENT_MODEL_THINKING_MODE=disabled`。开关仅透传给已选择的 Provider；DeepSeek V4 Flash 的受控 Shadow 可借此关闭默认高强度思考，避免有限 JSON-text 输出预算被 `reasoning_content` 耗尽。未设置时继续使用 Provider 默认行为，active authority、写 Capability 与 MCP 均未开启。
 
+- 2026-09-01：Remote GPU 隔离交互 Shadow 候选完成公开 API 的只读 Agent Task 验收：临时用户经 JWT 创建任务后均收敛为 `completed`，Timeline 首次读取和 cursor 续页均成功。候选 Gateway 使用 `4ab924b87` 专用镜像，Core/Agent 保持兼容的既有候选版本；验收记录见 [Agent Interactive Shadow Remote Receipt](docs/agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。该结果不构成同版本发布、任务成功率、active authority、写 Capability 或公开体验入口结论。
+
+- 2026-09-01：新增 `remote-gpu-mysql-aio-compat.yml`。共享 Remote GPU 的 Linux AIO 配额接近上限时，候选 MySQL 可显式关闭 native AIO 完成隔离验证；基础 Compose 与既有 MySQL 栈保持不变。
+
+- 2026-09-01：Remote GPU Node 门禁将每个应用的双阶段 `npm ci + npm install` 收敛为一次锁文件驱动的 `npm ci --include=optional`，避免第二次安装的目录重命名冲突，同时保留 optional 平台依赖。
+
+- 2026-09-01：修正 Remote GPU bundle 生成引用：以 `HEAD` 创建可检出的完整归档，并继续将不可变 commit 单独传给远端做精确校验，避免裸 SHA 被 Git 判定为空 bundle。
+
+- 2026-09-01：Remote GPU 的 origin clone/fetch 增加可配置的 20 秒超时；GitHub 出站异常会在受限时间内转入已上传的 commit bundle，避免开发验证被网络阻塞。
+
+- 2026-09-01：Remote GPU 候选同步新增 commit-pinned Git bundle 回退。远端 GitHub clone/fetch 超时时，脚本通过既有 SSH 上传临时 bundle、校验目标 commit 后 checkout，并在退出时清理 bundle；正常网络路径仍优先使用 origin fetch。
+
+- 2026-09-01：根 README 改用版本控制的 `dipole-v3-brand-lockup.svg`。该矢量 lockup 统一 V3 的海军蓝/信号红 IM 标识与金色 Agent 轨道，替换此前粗粒度 PNG 嵌入；运行时和 Agent authority 不受影响。
+
+- 2026-09-01：微服务镜像构建改为每个 Go 服务使用独立的临时 Docker context，成功和失败路径均在子 shell 退出时清理。此前循环复用 context 会累积前序二进制并放大后续 Docker 上传；镜像内仍只复制目标服务二进制，revision 与 provenance 参数保持不变。
+
+- 2026-09-01：前端开始 V3 品牌兼容切片：以用户提供的双极对话标识重绘 IM/Agent SVG，新增海军蓝、信号红、轨道金和暖象牙白语义 token，并将登录入口迁移到新视觉语言。现有 Pencil canonical 变量与其余页面保持兼容；Pencil CLI 的两次安全增量调用超时且未写入画布，完整 Chat/Agent 视觉基线继续待独立设计验收。
+
+- 2026-09-01：Remote GPU 隔离环境完成受认证 Interactive Agent Task 回归：注册 `200`、创建 `202`、终态读取 `200`，只读 Shadow Workflow 收敛为 `completed`，receipt 归档于 [`agent-interactive-control-2026-09-01`](benchmarks/agent-interactive-control-2026-09-01/)。此次仅重建 Agent `c9f3f424` 验证终态读取修复；Gateway/Core 保持此前 clean candidate，因此不构成同版本发布、active authority、生产体验或成功率结论。
+
+- 2026-09-01：Agent Task control 在已授权的 Durable Workflow 终态关闭后，使用 Core 持久化的终态投影响应读取请求。此前 Temporal 不再接受关闭工作流的 Query 会使已完成任务返回 `404`；运行中任务和非“工作流不可用”错误继续失败关闭，避免旧投影掩盖执行中断。
+
+- 2026-09-01：Remote GPU 以同一 clean revision `676a6d93` 完成隔离微服务 smoke。Gateway/Core/Message/Sync 与 Agent 镜像来自同一源码版本；私聊持久化后重启 Core，最终 Message、Outbox 和目标 Inbox 均为单条，receipt 归档于 [`microservices-same-revision-smoke-2026-09-01`](benchmarks/microservices-same-revision-smoke-2026-09-01/)。该演练不构成 Agent active authority、Cassandra 主读或 A6 浏览器观察验收。
+
+- 2026-09-01：微服务镜像构建将 Go Docker context 收敛为当前目标二进制。构建仍使用同一 `dist` 基线与版本化标签，但每个服务不再重复上传整套 `dist` 工具集，降低 Remote GPU 验收的 Docker I/O 与传输开销；缺少或不可执行的目标二进制会在 build 前失败关闭。
+
+- 2026-09-01：C++ Realtime Delivery 对齐 Timeline 主模式的无正文投递契约。显式 `primary` 只投递 `sync.item.notify.v1` locator，`shadow` 继续为完整消息追加 locator，二者同时开启会失败关闭；热群聚合语义保持不变。Ubuntu 24.04 容器门禁完成 CMake Release 构建并通过 `14/14` CTest。C++ authority 继续默认关闭，Go 仍是当前默认投递路径。
+
+- 2026-09-01：修正 Timeline notify primary 的投递语义。Gateway Kafka 与 embedded Dispatcher 现在只向接收方发送无正文 `sync.item.notify.v1` locator，发送者继续收到 `chat.sent` 回执；`shadow` 保持完整消息加 locator 对照，`off` 保持完整消息投递，热群继续走聚合 notify + pull。direct/group/embedded 回归测试通过，真实 Cassandra 主读窗口和回切验收仍未开启。
+
+- 2026-09-01：Agent Runtime 的本地全量门禁恢复可复现。未显式开启的 Approval mTLS drill 不再在 suite 注册阶段读取远程环境变量；安全 Eval 与 Temporal 只读活动夹具同步当前 token availability 和授权审计契约。离线验证通过 `158` 个测试文件、`796` 项测试，另有 `10` 个显式外部依赖测试跳过，TypeScript typecheck 与生产构建通过；该结果不替代 Remote GPU 同版本 Compose smoke。
+
+- 2026-09-01：Agent Shadow Runtime 增加显式 Provider thinking 控制。`DIPOLE_AGENT_MODEL_THINKING_MODE=disabled` 仅向已选 OpenAI-compatible Provider 传递专有选项，默认继续使用 Provider 行为；单次模型规划同时收紧为 `conversation.list`，后续多轮读取必须绑定已完成的发现结果。该切片不启用写 Capability、active authority 或 MCP。
+
+- 2026-09-01：Web Sync Observation Session 现可绑定完整静态发布目录。目录摘要按稳定相对路径和文件 SHA-256 计算，新增、删除、改名、内容变化、空目录或符号链接都会使候选校验失败；既有单文件 bundle 调用保持兼容。该切片只强化真实浏览器观察的版本证据，未启动 24 小时窗口或改变客户端默认同步模式。
+
+- 2026-09-01：Remote GPU 隔离交互 Shadow 候选复验了认证 Agent Task 链路：新临时用户的只读请求返回 `202`，同一 Task 随后经受限轮询收敛为 `completed`。Gateway/Core 使用 `406c3154`，Agent 使用 `thinking-4e9740a0`，该结果只证明版本兼容与 Shadow 读取路径，不构成同版本发布、active authority、写 Capability 或整体成功率结论。
+
+- 2026-09-01：个人资料弹窗新增修改密码闭环。受保护的 `/api/v1/auth/password` 校验当前密码、以 bcrypt 更新新密码并撤销当前会话；前端在成功后清除本地会话并要求重新登录，密码和哈希均不写入响应、日志或本地存储。
+
+- 2026-09-01：修复 Agent Task 创建页面的默认请求 ID。此前 Vue Function prop 默认值多包了一层函数，浏览器会在本地参数校验阶段拒绝函数对象并显示“任务创建暂不可用”；现在默认生成 UUID 字符串，回归测试覆盖无显式 request ID 的提交路径。
+
 - 2026-09-01：微服务隔离 smoke 增加默认关闭的低敏 Agent Task/Run receipt。显式提供输出路径时，成功收敛后仅写入随机 event、Task、Run、trace 与运行状态，便于后续 Context Ablation runner 在销毁临时 Compose 项目前建立绑定；消息、模型正文和凭据均不导出。
 
 - 2026-09-01：修正 AI SDK Shadow Planner 的会话 hydration 输入：Core `ReadConversation` 现在接收事件中的 `target_uuid`，与其按目标用户/群 UUID 的 RPC 契约一致；`conversation_key` 继续只用于 Memory 作用域。该修复为隔离 Context Ablation 的真实会话证据准备前置条件，不开启任何写能力。

@@ -54,9 +54,19 @@ remote() {
 
 sync_revision() {
   [[ -z "$(git status --porcelain)" ]] || { echo "commit or stash local changes before remote sync" >&2; exit 2; }
-  local commit remote_url remote_tip
+  local commit remote_url remote_tip bundle_path remote_bundle
   commit="$(git rev-parse HEAD)"
   remote_url="$(git remote get-url origin)"
+  bundle_path="$(mktemp "${TMPDIR:-/tmp}/dipole-remote-sync.${commit:0:12}.XXXXXX.bundle")"
+  remote_bundle="/tmp/dipole-remote-sync-${commit}.bundle"
+  trap 'rm -f "${bundle_path}"' RETURN
+  # Keep a local, commit-pinned transport fallback for Remote GPU hosts whose
+  # outbound GitHub access is transiently unavailable.
+  # A symbolic ref keeps the bundle non-empty while the remote still verifies
+  # the immutable commit passed separately below.
+  git bundle create "${bundle_path}" HEAD
+  scp -q -o BatchMode=yes -o ConnectTimeout="${DIPOLE_REMOTE_CONNECT_TIMEOUT:-8}" \
+    "${bundle_path}" "${REMOTE_HOST}:${remote_bundle}"
   remote_tip="$(git ls-remote --heads origin "refs/heads/${REMOTE_BRANCH}" | awk 'NR == 1 { print $1 }')"
   if [[ "${REMOTE_BRANCH}" == "dipole-dev/"* && -n "${remote_tip}" ]]; then
     # Candidate refs are per-user, mutable pointers. The exact lease rejects
@@ -65,21 +75,32 @@ sync_revision() {
   else
     git push origin "${commit}:refs/heads/${REMOTE_BRANCH}"
   fi
-  remote "${REMOTE_BRANCH}" "${commit}" "${remote_url}" <<'REMOTE_SYNC'
+  remote "${REMOTE_BRANCH}" "${commit}" "${remote_url}" "${remote_bundle}" <<'REMOTE_SYNC'
 set -euo pipefail
-root="$1"; project="$2"; branch="$3"; commit="$4"; remote_url="$5"
+root="$1"; project="$2"; branch="$3"; commit="$4"; remote_url="$5"; bundle="$6"
+git_timeout="${DIPOLE_REMOTE_GIT_TIMEOUT:-20}"
+cleanup_bundle() { rm -f "$bundle"; }
+trap cleanup_bundle EXIT
 mkdir -p "$(dirname "$root")"
 if [[ ! -d "$root/.git" ]]; then
-  git clone "$remote_url" "$root"
+  if ! timeout "$git_timeout" git clone "$remote_url" "$root"; then
+    rm -rf "$root"
+    git clone "$bundle" "$root"
+    git -C "$root" remote add origin "$remote_url"
+  fi
 fi
 cd "$root"
 if [[ "$branch" == dipole-dev/* ]]; then
   # Candidate refs intentionally move after squash merges. Refresh the remote
   # tracking ref explicitly so the detached commit checkout has no stale-ref warning.
-  git fetch origin "+refs/heads/${branch}:refs/remotes/origin/${branch}"
+  fetch_ref="+refs/heads/${branch}:refs/remotes/origin/${branch}"
 else
-  git fetch origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
+  fetch_ref="refs/heads/${branch}:refs/remotes/origin/${branch}"
 fi
+if ! timeout "$git_timeout" git fetch origin "$fetch_ref"; then
+  git fetch "$bundle" "$commit"
+fi
+git rev-parse --verify "${commit}^{commit}" >/dev/null
 # Load the guard from the fetched target rather than the old checkout. This
 # keeps a reused remote candidate able to self-upgrade before checkout.
 source <(git show "${commit}:scripts/remote-sync-conflicts.sh")
@@ -219,10 +240,9 @@ case "${action}" in
     }
     trap cleanup_webapp EXIT
     for app in services/agent-runtime frontend; do
-      if [[ ! -d "\$app/node_modules" ]]; then
-        npm --prefix "\$app" ci --ignore-scripts --no-audit --no-fund
-      fi
-      npm --prefix "\$app" install --include=optional --ignore-scripts --package-lock=false --no-audit --no-fund
+      # A single locked install includes optional platform packages without the
+      # second mutable install that can race npm's directory replacement.
+      npm --prefix "\$app" ci --include=optional --ignore-scripts --no-audit --no-fund
       npm --prefix "\$app" test -- --run
       npm --prefix "\$app" run typecheck
       npm --prefix "\$app" run build
@@ -354,6 +374,8 @@ REMOTE_RUN
 
 require_command git
 require_command ssh
+require_command scp
+require_command timeout
 case "${1:-}" in
   sync) sync_revision ;;
   preflight) run_remote preflight ;;

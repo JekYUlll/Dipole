@@ -568,9 +568,7 @@ function isLoopbackTarget(target: string): boolean {
   return host === "127.0.0.1" || host === "localhost" || host === "::1";
 }
 
-// A one-shot plan has no way to turn a list result into a trusted follow-up
-// target. Keep its action surface at discovery until multi-turn orchestration
-// can bind later reads to an earlier capability result.
+// A one-shot plan cannot bind a follow-up read to a trusted discovery result.
 export function singlePassModelCapabilityIDs(_config: ShadowRuntimeConfig): readonly string[] {
   return ["conversation.list"];
 }

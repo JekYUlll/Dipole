@@ -1,11 +1,22 @@
 <template>
   <div class="login-page">
-    <div class="login-card">
+    <aside class="brand-panel" aria-label="Dipole 平台介绍">
+      <div class="orbit orbit-one" aria-hidden="true"></div>
+      <div class="orbit orbit-two" aria-hidden="true"></div>
+      <div class="brand-panel-copy">
+        <img class="brand-mark brand-mark-panel" :src="dipoleAgentMark" alt="" aria-hidden="true" />
+        <p class="brand-kicker">DIPOLE PLATFORM</p>
+        <h1>让每一段协作<br />都有可靠的连接。</h1>
+        <p class="brand-description">实时通信、可恢复任务与受控 Agent 能力，围绕同一条协作链路工作。</p>
+      </div>
+      <p class="brand-boundary">IM DATA PLANE / AGENT CONTROL PLANE</p>
+    </aside>
+    <main class="login-card" aria-labelledby="login-title">
       <header class="brand-lockup">
         <img class="brand-mark" :src="dipoleMark" alt="" aria-hidden="true" />
         <div>
-          <h1 class="brand">Dipole</h1>
-          <p class="brand-tagline">Realtime collaboration</p>
+          <p class="brand-kicker">WELCOME TO</p>
+          <h2 id="login-title" class="brand">Dipole IM</h2>
         </div>
       </header>
       <div class="tabs">
@@ -28,7 +39,7 @@
       </form>
 
       <p v-if="error" class="error">{{ error }}</p>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -36,7 +47,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import dipoleMark from '../../../docs/images/dipole-mark.svg'
+import dipoleMark from '../../../docs/images/dipole-v3-im.svg'
+import dipoleAgentMark from '../../../docs/images/dipole-v3-agent.svg'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -79,54 +91,84 @@ const handleRegister = async () => {
 <style scoped>
 .login-page {
   display: flex;
-  justify-content: center;
   align-items: center;
   width: 100vw;
-  height: 100vh;
-  background: var(--dp-canvas);
-}
-.login-card {
-  background: var(--dp-surface);
-  border: 1px solid var(--dp-line);
-  border-radius: var(--dp-radius-md);
-  padding: 40px 36px;
-  width: 320px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  color: var(--dp-ink);
+  min-height: 100vh;
+  background: var(--dp-v3-ivory);
+  color: var(--dp-v3-ink);
   font-family: var(--dp-font-body);
+}
+.brand-panel {
+  position: relative;
+  display: flex;
+  width: min(48vw, 650px);
+  align-self: stretch;
+  overflow: hidden;
+  padding: clamp(36px, 6vw, 92px);
+  color: #fff;
+  background: var(--dp-v3-navy);
+}
+.brand-panel::after {
+  position: absolute;
+  right: -64px;
+  bottom: 10%;
+  width: 150px;
+  height: 150px;
+  border: 18px solid var(--dp-v3-red);
+  border-radius: 50%;
+  content: '';
+}
+.brand-panel-copy { position: relative; z-index: 1; align-self: center; max-width: 420px; }
+.brand-mark-panel { width: 94px; height: 94px; margin-bottom: 30px; }
+.brand-panel h1 { margin: 12px 0 18px; font: 800 clamp(32px, 4vw, 56px)/1.08 var(--dp-font-display); letter-spacing: -.055em; }
+.brand-description { max-width: 360px; color: #d4dfeb; font-size: 15px; line-height: 1.8; }
+.brand-boundary { position: absolute; bottom: 34px; z-index: 1; margin: 0; color: #9eb4c9; font: 700 9px/1.4 var(--dp-font-data); letter-spacing: .12em; }
+.orbit { position: absolute; width: 640px; height: 260px; border: 1px solid rgba(244, 176, 0, .7); border-radius: 50%; transform: rotate(-33deg); }
+.orbit-one { top: -105px; right: -300px; }
+.orbit-two { top: -69px; right: -324px; width: 720px; height: 320px; opacity: .45; }
+.orbit-one::after { position: absolute; top: 48%; left: 15%; width: 12px; height: 12px; border-radius: 50%; background: var(--dp-v3-gold); content: ''; }
+.login-card {
+  width: min(100%, 475px);
+  margin: 0 auto;
+  padding: 48px 48px 44px;
+  background: var(--dp-v3-paper);
+  border: 1px solid rgba(9, 37, 69, .08);
+  border-radius: 0;
+  box-shadow: var(--dp-v3-shadow);
+  color: var(--dp-v3-ink);
 }
 .brand-lockup {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
-  margin: 0 0 24px;
+  margin: 0 0 34px;
   text-align: left;
 }
 .brand-mark {
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
 }
 .brand {
-  font-size: 28px;
+  font-size: 30px;
   line-height: 1;
   font-weight: 700;
-  color: var(--dp-accent-strong);
+  color: var(--dp-v3-navy);
   font-family: var(--dp-font-display);
   margin: 0;
 }
-.brand-tagline {
-  margin: 5px 0 0;
-  color: var(--dp-ink-faint);
-  font: 700 9px/1.2 var(--dp-font-data);
+.brand-kicker {
+  margin: 0;
+  color: var(--dp-v3-red);
+  font: 800 9px/1.2 var(--dp-font-data);
   letter-spacing: .12em;
   text-transform: uppercase;
 }
 .tabs {
   display: flex;
-  border-bottom: 1px solid var(--dp-line);
-  margin-bottom: 20px;
+  border-bottom: 1px solid var(--dp-v3-line);
+  margin-bottom: 24px;
 }
 .tab {
   flex: 1;
@@ -135,13 +177,13 @@ const handleRegister = async () => {
   border: none;
   cursor: pointer;
   font-size: 14px;
-  color: var(--dp-ink-soft);
+  color: var(--dp-v3-muted);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
 .tab.active {
-  color: var(--dp-accent-strong);
-  border-bottom-color: var(--dp-accent);
+  color: var(--dp-v3-navy);
+  border-bottom-color: var(--dp-v3-red);
   font-weight: 600;
 }
 .form {
@@ -151,31 +193,40 @@ const handleRegister = async () => {
 }
 .form input {
   padding: 10px 12px;
-  border: 1px solid var(--dp-line);
-  border-radius: var(--dp-radius-sm);
+  border: 1px solid var(--dp-v3-line);
+  border-radius: 6px;
   font-size: 14px;
-  color: var(--dp-ink);
-  background: var(--dp-surface);
+  color: var(--dp-v3-ink);
+  background: #fff;
   font-family: inherit;
   outline: none;
   transition: border-color 0.2s;
 }
-.form input:focus { border-color: var(--dp-accent); }
+.form input:focus { border-color: var(--dp-v3-focus); box-shadow: 0 0 0 3px rgba(242, 38, 42, .14); }
 .form button {
   padding: 10px;
-  background: var(--dp-accent);
+  background: var(--dp-v3-red);
   color: var(--dp-text-inverse);
   border: none;
-  border-radius: var(--dp-radius-sm);
+  border-radius: 6px;
   font-size: 15px;
   cursor: pointer;
   margin-top: 4px;
 }
+.form button:hover:not(:disabled) { background: var(--dp-v3-red-strong); }
 .form button:disabled { opacity: 0.6; cursor: not-allowed; }
 .error {
   margin-top: 12px;
-  color: var(--dp-danger);
+  color: var(--dp-v3-red-strong);
   font-size: 13px;
   text-align: center;
+}
+@media (max-width: 780px) {
+  .login-page { display: block; }
+  .brand-panel { width: 100%; min-height: 245px; padding: 32px 28px; }
+  .brand-mark-panel { width: 54px; height: 54px; margin-bottom: 16px; }
+  .brand-panel h1 { font-size: 32px; }
+  .brand-description, .brand-boundary { display: none; }
+  .login-card { width: 100%; min-height: calc(100vh - 245px); padding: 36px 28px 48px; box-shadow: none; }
 }
 </style>

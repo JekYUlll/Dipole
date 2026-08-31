@@ -54,9 +54,23 @@ test("per-user candidate refs use an exact lease while shared refs stay fast-for
 });
 
 test("remote candidate tracking refs accept only the expected mutable update", () => {
-  assert.match(source, /if \[\[ "\$branch" == dipole-dev\/\* \]\]; then[\s\S]*?git fetch origin "\+refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
-  assert.match(source, /else\n  git fetch origin "refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
+  assert.match(source, /if \[\[ "\$branch" == dipole-dev\/\* \]\]; then[\s\S]*?fetch_ref="\+refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
+  assert.match(source, /else\n  fetch_ref="refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
+  assert.match(source, /if ! timeout "\$git_timeout" git fetch origin "\$fetch_ref"; then/);
   assert.doesNotMatch(source, /git fetch origin "refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}" \|\| true/);
+});
+
+test("remote sync carries a commit-pinned bundle for outbound Git fallback", () => {
+  assert.match(source, /git bundle create "\$\{bundle_path\}" HEAD/);
+  assert.match(source, /remote "\$\{REMOTE_BRANCH\}" "\$\{commit\}" "\$\{remote_url\}" "\$\{remote_bundle\}"/);
+  assert.match(source, /scp -q -o BatchMode=yes -o ConnectTimeout=[\s\S]*?"\$\{bundle_path\}" "\$\{REMOTE_HOST\}:\$\{remote_bundle\}"/);
+  assert.match(source, /git_timeout="\$\{DIPOLE_REMOTE_GIT_TIMEOUT:-20\}"/);
+  assert.match(source, /if ! timeout "\$git_timeout" git clone "\$remote_url" "\$root"; then[\s\S]*?git clone "\$bundle" "\$root"/);
+  assert.match(source, /if ! timeout "\$git_timeout" git fetch origin "\$fetch_ref"; then[\s\S]*?git fetch "\$bundle" "\$commit"/);
+  assert.match(source, /cleanup_bundle\(\) \{ rm -f "\$bundle"; \}/);
+  assert.match(source, /git rev-parse --verify "\$\{commit\}\^\{commit\}"/);
+  assert.match(source, /require_command scp/);
+  assert.match(source, /require_command timeout/);
 });
 
 test("remote checkout prepares only verified generated conflicts before switching revisions", () => {
@@ -101,7 +115,8 @@ test("remote sync preserves divergent untracked target conflicts and tracked edi
 });
 
 test("node verification preserves package locks and cleans generated webapp output", () => {
-  assert.match(source, /node-test\)[\s\S]*?--package-lock=false/);
+  assert.match(source, /node-test\)[\s\S]*?npm --prefix "\\\$app" ci --include=optional --ignore-scripts --no-audit --no-fund/);
+  assert.doesNotMatch(source, /node-test\)[\s\S]*?npm --prefix "\\\$app" install/);
   assert.match(source, /webapp_dir="internal\/services\/core\/server\/webapp"/);
   assert.match(source, /generated webapp output is dirty/);
   assert.match(source, /trap cleanup_webapp EXIT/);

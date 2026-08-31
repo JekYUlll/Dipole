@@ -115,6 +115,30 @@ void TestDirectTimelineProjection() {
         "timeline payload matches Go WS shape");
 }
 
+void TestPrimaryTimelineProjection() {
+  dipole::delivery::v1::DeliveryEnvelope direct;
+  const dipole::realtime::ProjectionPolicy policy{.timeline_notify_primary = true};
+  const auto direct_error = dipole::realtime::ProjectMessageEvent(
+      Record(Event("message.direct.created", 0)), policy, &direct);
+  Check(!direct_error && direct.items_size() == 1, "project direct primary timeline notification");
+  if (direct.items_size() == 1) {
+    Check(direct.items(0).event_type() == "sync.item.notify.v1" &&
+              direct.items(0).mode() == dipole::delivery::v1::DELIVERY_MODE_TIMELINE_NOTIFY,
+          "direct primary omits full message");
+  }
+
+  const nlohmann::json recipients = {{"recipient_uuids", {"U1", "U2", "U3"}}};
+  dipole::delivery::v1::DeliveryEnvelope group;
+  const auto group_error = dipole::realtime::ProjectMessageEvent(
+      Record(Event("message.group.created", 1, recipients)), policy, &group);
+  Check(!group_error && group.items_size() == 2, "project group primary timeline notifications");
+  for (const auto& item : group.items()) {
+    Check(item.event_type() == "sync.item.notify.v1" &&
+              item.mode() == dipole::delivery::v1::DELIVERY_MODE_TIMELINE_NOTIFY,
+          "group primary omits full message");
+  }
+}
+
 void TestGroupProjection() {
   const nlohmann::json recipients = {{"recipient_uuids", {"U1", "U2", "U3"}}};
   dipole::delivery::v1::DeliveryEnvelope output;
@@ -250,6 +274,9 @@ void TestInvalidEvents() {
   missing_sequence["payload"]["message_seq"] = 0;
   expect_error(Record(missing_sequence.dump()), {.timeline_notify_shadow = true}, "message_seq");
 
+  expect_error(Record(Event("message.direct.created", 0)),
+               {.timeline_notify_shadow = true, .timeline_notify_primary = true}, "mutually exclusive");
+
   auto wrong_source = nlohmann::json::parse(Event("message.direct.created", 0));
   wrong_source["source"] = "foreign";
   expect_error(Record(wrong_source.dump()), {}, "source");
@@ -275,6 +302,7 @@ int main() {
   try {
     TestDirectProjection();
     TestDirectTimelineProjection();
+    TestPrimaryTimelineProjection();
     TestGroupProjection();
     TestHotGroupProjection();
     TestHotGroupProjectionFromDurableFanoutFact();

@@ -19,7 +19,9 @@ func NewDirectMessageHandler(hub EventSender, timelineNotifyMode string) platfor
 			return fmt.Errorf("decode direct message for delivery: %w", err)
 		}
 
-		sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeChatMessage, chatMessageData(payload))
+		if timelineNotifyMode != wsTransport.TimelineNotifyPrimary {
+			sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeChatMessage, chatMessageData(payload))
+		}
 		if notify, ok := timelineNotifyData(event.Envelope, payload, timelineNotifyMode); ok {
 			sendEventToUser(ctx, hub, payload.TargetUUID, wsTransport.TypeSyncItemNotifyV1, notify)
 		}

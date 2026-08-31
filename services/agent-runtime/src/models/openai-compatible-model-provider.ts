@@ -48,11 +48,7 @@ export function loadModelProviderConfig(env: NodeJS.ProcessEnv): ModelProviderCo
   });
 }
 
-/**
- * Keep provider-specific request fields out of the generic Agent contract.
- * DeepSeek V4 defaults to high-effort thinking, which can exhaust a bounded
- * JSON-text response budget before it emits the final structured answer.
- */
+/** Keeps provider-specific request fields out of the generic Agent contract. */
 export function modelProviderCallOptions(config: ModelProviderConfig): Record<string, Record<string, JSONValue>> | undefined {
   if (config.kind !== "openai_compatible" || config.thinkingMode !== "disabled") return undefined;
   return { [config.name]: { thinking: { type: "disabled" } } };

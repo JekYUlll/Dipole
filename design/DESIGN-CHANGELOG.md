@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 新增 `brand-v3-ui-brief.md`，将用户提供的 V3 双极对话标识转换为 Pencil 可执行 brief：海军蓝/信号红/轨道金/暖象牙白、Login、Chat 和 Agent Task 的 desktop/mobile 目标以及只读、审批边界。
+
 - 增加 Agent Task Create v1 的 desktop/mobile 创建页、五态 State Matrix 与 `exports/agent-task-create-v1/` 批准预览。
 - 增加 `Component/Agent Task Goal Field`、`Component/Agent Task Request Badge` 和 `Component/Agent Task Submit State`；页面固定只提交本地请求身份与目标文本，身份、权限、Agent、Capability、Memory 与 Runtime 控制不进入浏览器输入。
 - 增加 Agent Task Create 的 Chromium canonical screenshot，使用认证 fixture 固定初始空表单、只读会话访问边界和 Runtime/Tool/外部服务未启用提示；该基线只覆盖 Chromium 初始态。
@@ -27,6 +29,8 @@
 - 增加 `design/export-manifest.json` 评审导出清单；设计门禁现在同时校验批准的单文件和导出目录存在且包含非空 PNG，避免设计稿与评审资产发生静默漂移。
 
 ### 变更
+
+- V3 的两次 Pencil CLI 增量编辑均在临时输出阶段超时，安全包装器已删除临时文件，canonical `.pen` 与批准导出保持不变。Vue 先以 additive `--dp-v3-*` token 和 V3 SVG 改造 Login；完整视觉基线待 CLI 可完成增量写回后恢复。
 
 - Agent Task 审批页完成 Vue 首个实现切片：沿用既有 Agent Approval 设计基线，展示任务/请求绑定、风险提示、过期和不可用状态；入口由 `VITE_AGENT_APPROVAL_ENABLED` 默认关闭，未扩展 canonical `.pen`。
 - 将 `.pen` Foundations 的颜色、字体、间距和圆角变量映射为 `frontend/src/styles/design-tokens.css`，应用壳层与 Search 工作区复用同一组 `--dp-*` token；新增 Vitest 契约测试，后续设计稿更新需同步调整该文件。
