@@ -1,6 +1,7 @@
 import type { Pool, RowDataPacket } from "mysql2/promise";
 
-import type { ShadowEvalObservation, ShadowEvalObservationStore } from "./shadow-eval-adapter.js";
+import type { ShadowEvalObservation } from "./shadow-eval-adapter.js";
+import type { ShadowEvalObservationStore } from "./mysql-shadow-eval-store.js";
 
 const listBindings = `SELECT case_sha256, condition_name, task_uuid, run_uuid, candidate_version
 FROM agent_context_ablation_bindings WHERE experiment_uuid = ? ORDER BY case_sha256 ASC, condition_name ASC`;
