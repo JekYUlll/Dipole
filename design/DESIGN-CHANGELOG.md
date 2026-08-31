@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 完成 `Brand / V3 / Dipole IM & Agent` 的 Pencil 安全输出导入并通过结构门禁：画布包含 V3 Foundations、Login、Chat 和 Agent Task 的 desktop/mobile 评审矩阵。实现侧将共享语义 token 映射到海军蓝、信号红、轨道金和暖象牙白；页面行为和授权边界未在本次设计切片改变。
+
 - 新增 `brand-v3-ui-brief.md`，将用户提供的 V3 双极对话标识转换为 Pencil 可执行 brief：海军蓝/信号红/轨道金/暖象牙白、Login、Chat 和 Agent Task 的 desktop/mobile 目标以及只读、审批边界。
 
 - 增加 Agent Task Create v1 的 desktop/mobile 创建页、五态 State Matrix 与 `exports/agent-task-create-v1/` 批准预览。

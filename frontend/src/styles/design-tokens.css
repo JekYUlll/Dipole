@@ -1,5 +1,5 @@
 :root {
-  /* V3 is additive until Pencil's canonical variables are approved and migrated. */
+  /* V3 vocabulary is shared by Pencil, product UI, and documentation. */
   --dp-v3-navy: #0b2a4a;
   --dp-v3-navy-deep: #092545;
   --dp-v3-red: #f2262a;
@@ -14,22 +14,22 @@
   --dp-v3-line: #d8d3c8;
   --dp-v3-focus: #f2262a;
   --dp-v3-shadow: 0 24px 70px rgba(9, 37, 69, .14);
-  --dp-canvas: #f3f1ea;
-  --dp-surface: #fffefb;
-  --dp-surface-muted: #f4f5f2;
-  --dp-rail: #172126;
-  --dp-rail-soft: #243139;
-  --dp-ink: #17211d;
-  --dp-ink-soft: #66716c;
-  --dp-ink-faint: #98a19d;
-  --dp-line: #dde2dc;
-  --dp-accent: #00a86b;
-  --dp-accent-strong: #007a4e;
-  --dp-accent-soft: #ddf5e9;
-  --dp-warning: #b77818;
-  --dp-warning-soft: #fff1d8;
-  --dp-danger: #c94a43;
-  --dp-danger-soft: #fce8e5;
+  --dp-canvas: var(--dp-v3-ivory);
+  --dp-surface: var(--dp-v3-paper);
+  --dp-surface-muted: #f2eadc;
+  --dp-rail: var(--dp-v3-navy);
+  --dp-rail-soft: var(--dp-v3-navy-deep);
+  --dp-ink: var(--dp-v3-ink);
+  --dp-ink-soft: var(--dp-v3-muted);
+  --dp-ink-faint: #9aa6b5;
+  --dp-line: var(--dp-v3-line);
+  --dp-accent: var(--dp-v3-red);
+  --dp-accent-strong: var(--dp-v3-red-strong);
+  --dp-accent-soft: var(--dp-v3-red-soft);
+  --dp-warning: #a86e00;
+  --dp-warning-soft: var(--dp-v3-gold-soft);
+  --dp-danger: var(--dp-v3-red-strong);
+  --dp-danger-soft: var(--dp-v3-red-soft);
   --dp-text-inverse: #ffffff;
   --dp-font-display: "Manrope", sans-serif;
   --dp-font-body: "Noto Sans SC", sans-serif;

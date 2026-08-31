@@ -1,9 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">Dipole IM</title>
-  <desc id="desc">A navy and red pair of opposing conversation poles joined by a white capsule.</desc>
-  <path fill="#0B2A4A" d="M12 31c0-11 9-20 20-20h28c11 0 20 9 20 20v18c0 11-9 20-20 20H43L25 88V69h-1c-7 0-12-5-12-12z"/>
-  <path fill="#F2262A" d="M116 97c0 11-9 20-20 20H68c-11 0-20-9-20-20V79c0-11 9-20 20-20h17l18-19v19h1c7 0 12 5 12 12z"/>
-  <path fill="#fff" d="M39 46c0-6 5-11 11-11h28c6 0 11 5 11 11v36c0 6-5 11-11 11H50c-6 0-11-5-11-11z"/>
-  <circle cx="56" cy="64" r="6" fill="#0B2A4A"/>
-  <circle cx="72" cy="64" r="6" fill="#F2262A"/>
+  <desc id="desc">Two opposing message poles connected by a white capsule.</desc>
+  <path fill="#0B2A4A" d="M24 85c0-34 27-61 61-61h43v82H86c-18 0-32 14-32 32s14 32 32 32h42v62H85c-16 0-29-5-40-14l-20 14 4-37c-3-8-5-17-5-27z"/>
+  <path fill="#F2262A" d="M232 171c0 34-27 61-61 61h-43v-62h42c18 0 32-14 32-32s-14-32-32-32h-42V24h43c16 0 29 5 40 14l20-14-4 37c3 8 5 16 5 24z"/>
+  <path fill="#F8F1E4" d="M86 106h84c18 0 32 14 32 32s-14 32-32 32H86c-18 0-32-14-32-32s14-32 32-32zm0 22c-6 0-10 4-10 10s4 10 10 10h84c6 0 10-4 10-10s-4-10-10-10z"/>
 </svg>

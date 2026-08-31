@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：前端 V3 品牌基础层完成受控迁移：Pencil canonical 设计通过结构门禁，IM/Agent 标识按双极对话气泡与金色轨道重绘为可缩放 SVG，语义 token 默认采用海军蓝、信号红、轨道金与暖象牙白。现有登录、消息和 Agent API 交互保持不变；Chat、Agent Timeline 的页面级重构与跨浏览器视觉回归继续在独立切片推进。
+
 - 2026-09-01：新增 `remote-gpu-mysql-aio-compat.yml`。共享 Remote GPU 的 Linux AIO 配额接近上限时，候选 MySQL 可显式关闭 native AIO 完成隔离验证；基础 Compose 与既有 MySQL 栈保持不变。
 
 - 2026-09-01：Remote GPU Node 门禁将每个应用的双阶段 `npm ci + npm install` 收敛为一次锁文件驱动的 `npm ci --include=optional`，避免第二次安装的目录重命名冲突，同时保留 optional 平台依赖。

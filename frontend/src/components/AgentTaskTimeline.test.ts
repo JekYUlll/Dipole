@@ -25,6 +25,8 @@ describe('AgentTaskTimeline', () => {
     expect(source).toContain('var(--dp-surface)')
     expect(source).toContain('var(--dp-line)')
     expect(source).toContain('var(--dp-font-body)')
+    expect(source).toContain('var(--dp-v3-gold)')
+    expect(source).toContain('需要确认后执行')
     expect(source).not.toContain('#fbfaf7')
     expect(source).not.toContain('#b66a43')
   })

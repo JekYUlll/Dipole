@@ -51,7 +51,7 @@ async function submit() {
       <div>
         <p class="eyebrow">AGENT TASK / CREATE</p>
         <h1>创建 Agent 任务</h1>
-        <p class="description">任务提交后进入只读时间线。</p>
+        <p class="description">为当前账号创建一个可恢复的协作任务，并以只读时间线持续呈现进展。</p>
       </div>
       <span class="request-badge">REQUEST / {{ request || 'LOCAL' }}</span>
     </header>
@@ -63,7 +63,7 @@ async function submit() {
         <span id="agent-task-goal-help">只读取当前认证账号已授权的会话。</span>
         <span id="agent-task-goal-count">{{ characterCount }}/4000</span>
       </div>
-      <p class="boundary">提交不会启用 Runtime、Tool 或外部服务。</p>
+      <p class="boundary"><strong>只读范围</strong>：提交只使用当前认证账号已授权的会话。涉及写入的操作将保持关闭，并在未来通过“需要确认后执行”呈现。</p>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <div class="action-row">
         <span class="state-label">{{ state === 'submitting' ? 'SUBMITTING' : 'VALIDATE BEFORE SUBMIT' }}</span>
@@ -74,23 +74,26 @@ async function submit() {
 </template>
 
 <style scoped>
-.task-create { box-sizing: border-box; width: min(100%, 46rem); margin: 0 auto; padding: var(--dp-space-lg); border: 1px solid var(--dp-line); border-radius: var(--dp-radius-md); background: var(--dp-surface); color: var(--dp-ink); font-family: var(--dp-font-body); }
-.task-create-header { display: flex; justify-content: space-between; gap: var(--dp-space-md); margin-bottom: var(--dp-space-lg); }
-.eyebrow, .state-label, .request-badge { color: var(--dp-accent-strong); font: 700 .68rem/1.2 var(--dp-font-data); letter-spacing: .12em; }
+.task-create { box-sizing: border-box; width: 100%; margin: 0 auto; padding: clamp(22px, 4vw, 42px); border: 1px solid rgba(9, 37, 69, .12); border-radius: 2px; background: var(--dp-surface); box-shadow: var(--dp-v3-shadow); color: var(--dp-ink); font-family: var(--dp-font-body); }
+.task-create-header { display: flex; justify-content: space-between; gap: var(--dp-space-md); margin-bottom: 2rem; padding-bottom: 1.2rem; border-bottom: 1px solid var(--dp-line); }
+.eyebrow, .state-label, .request-badge { color: var(--dp-v3-gold); font: 800 .68rem/1.2 var(--dp-font-data); letter-spacing: .12em; }
 .eyebrow { margin: 0 0 .35rem; }
-h1 { margin: 0; font: 700 1.5rem/1.2 var(--dp-font-display); }
+h1 { margin: 0; color: var(--dp-v3-navy); font: 800 clamp(1.5rem, 3vw, 2rem)/1.1 var(--dp-font-display); letter-spacing: -.045em; }
 .description, .boundary, .field-meta { color: var(--dp-ink-soft); font-size: .85rem; }
-.description { margin: .4rem 0 0; }
-.request-badge { align-self: start; padding: .45rem .55rem; border: 1px solid var(--dp-line); border-radius: var(--dp-radius-sm); white-space: nowrap; }
-.task-create-form { display: grid; gap: .65rem; }
-label { font-weight: 700; }
-textarea { box-sizing: border-box; width: 100%; resize: vertical; border: 1px solid var(--dp-line); border-radius: var(--dp-radius-sm); padding: .8rem; background: var(--dp-canvas); color: var(--dp-ink); font: inherit; }
-textarea:focus { outline: 2px solid var(--dp-accent); outline-offset: 2px; }
+.description { max-width: 32rem; margin: .6rem 0 0; line-height: 1.65; }
+.request-badge { align-self: start; padding: .48rem .55rem; border: 1px solid var(--dp-line); color: var(--dp-v3-muted); white-space: nowrap; }
+.task-create-form { display: grid; gap: .72rem; }
+label { color: var(--dp-v3-navy); font-weight: 800; }
+textarea { box-sizing: border-box; width: 100%; min-height: 11rem; resize: vertical; border: 1px solid var(--dp-line); border-radius: 0; padding: 1rem; background: #fff; color: var(--dp-ink); font: inherit; line-height: 1.65; }
+textarea::placeholder { color: var(--dp-ink-faint); }
+textarea:focus { border-color: var(--dp-v3-red); outline: 3px solid rgba(242, 38, 42, .12); outline-offset: 0; }
 .field-meta, .action-row { display: flex; justify-content: space-between; gap: .75rem; }
-.boundary { margin: .25rem 0; padding: .65rem; border-left: 3px solid var(--dp-accent); background: var(--dp-canvas); }
+.boundary { margin: .65rem 0 .25rem; padding: .85rem 1rem; border-left: 3px solid var(--dp-v3-gold); background: var(--dp-v3-gold-soft); line-height: 1.65; }
+.boundary strong { color: var(--dp-v3-navy); }
 .form-error { margin: 0; color: var(--dp-danger); font-size: .85rem; }
-.action-row { align-items: center; margin-top: .4rem; }
-.primary-button { border: 0; border-radius: var(--dp-radius-sm); padding: .7rem 1rem; background: var(--dp-accent); color: var(--dp-canvas); cursor: pointer; font: 700 .9rem/1 var(--dp-font-body); }
+.action-row { align-items: center; margin-top: .85rem; padding-top: 1rem; border-top: 1px solid var(--dp-line); }
+.primary-button { border: 0; border-radius: 0; padding: .85rem 1.25rem; background: var(--dp-v3-red); color: #fff; cursor: pointer; font: 800 .9rem/1 var(--dp-font-body); box-shadow: 4px 4px 0 var(--dp-v3-navy); transition: transform .16s ease, box-shadow .16s ease; }
+.primary-button:hover:not(:disabled) { box-shadow: 2px 2px 0 var(--dp-v3-navy); transform: translate(2px, 2px); }
 .primary-button:disabled { cursor: wait; opacity: .65; }
-@media (max-width: 560px) { .task-create { min-height: 100vh; border: 0; border-radius: 0; padding: var(--dp-space-md); } .task-create-header { display: grid; } .request-badge { justify-self: start; } .field-meta, .action-row { align-items: start; flex-direction: column; } .primary-button { width: 100%; } }
+@media (max-width: 560px) { .task-create { min-height: 0; border-radius: 0; padding: 22px; } .task-create-header { display: grid; } .request-badge { justify-self: start; } .field-meta, .action-row { align-items: start; flex-direction: column; } .primary-button { width: 100%; } }
 </style>
