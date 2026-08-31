@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { parseOfflineEvalSuite, type OfflineEvalSuite } from "./offline-evaluator.js";
 
-const identifierSchema = z.string().trim().min(2).max(128).regex(/^[a-z0-9][a-z0-9._:-]*$/);
+const identifierSchema = z.string().trim().min(2).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
 // Runtime policy scopes use "*" for a bounded resource class wildcard.
 // Eval manifests must preserve that scope instead of relabeling it as a concrete ID.
 const resourceIdSchema = z.union([z.literal("*"), identifierSchema]);

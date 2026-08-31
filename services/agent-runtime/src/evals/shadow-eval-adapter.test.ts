@@ -134,6 +134,18 @@ describe("Shadow evaluation adapter", () => {
     });
   });
 
+  it("accepts the canonical mixed-case direct conversation identifier", () => {
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1", taskId: "TASK-42", runId: "RUN-42",
+      labels: { outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] }, trajectory: { steps: [], forbiddenSteps: [] },
+        permission: [{ stepNo: 1, capabilityId: "conversation.list", resourceType: "conversation", resourceId: "direct:U100:UAI000000000000000001", action: "read", decision: "allowed" }],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 0, minimumPrecision: 0 },
+        cost: { maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 }, routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 1, outputMicrousdPerMillionTokens: 1 }] }
+      }
+    });
+    expect(manifest.labels.permission[0]?.resourceId).toBe("direct:U100:UAI000000000000000001");
+  });
+
   it("rejects a running Shadow policy Task without a terminal durable Workflow", () => {
     const observed = { ...observation(), taskStatus: "running", workflowStatus: "running" };
     const manifest = parseShadowEvalManifest({

@@ -5,7 +5,7 @@ import { z } from "zod";
 export const offlineEvalCategories = ["outcome", "trajectory", "permission", "retrieval", "cost"] as const;
 export type OfflineEvalCategory = (typeof offlineEvalCategories)[number];
 
-const identifierSchema = z.string().trim().min(2).max(128).regex(/^[a-z0-9][a-z0-9._:-]*$/);
+const identifierSchema = z.string().trim().min(2).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
 const resourceIdSchema = z.union([z.literal("*"), identifierSchema]);
 const candidateVersionSchema = z.string().trim().min(2).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9._:@/-]*$/);
 const identifierSequenceSchema = z.array(identifierSchema).max(256);
