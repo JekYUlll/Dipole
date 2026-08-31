@@ -4,7 +4,7 @@ import { buildContextAblationEvalSuite } from "./context-ablation-adapter.js";
 import type { ContextAblationCaseObservation } from "./mysql-context-ablation-store.js";
 
 const sha = "a".repeat(64);
-const evidence = "evidence:a65b06572d9e1a55e5172e62fd8fa7b3";
+const evidence = "evidence:741f3775ecac87427a5963b4d12ea336";
 const manifest = {
   schemaVersion: "dipole.agent.context-ablation-manifest.v1",
   experimentId: "experiment:1",
