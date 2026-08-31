@@ -124,7 +124,7 @@ describe("ModelRouter", () => {
     expect(generate).not.toHaveBeenCalled();
     expect(audit.recover).toHaveBeenCalledWith("TASK-1", {
       maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
-    });
+    }, "plan");
     expect(audit.reserve).not.toHaveBeenCalled();
     expect(audit.completeRun).toHaveBeenCalledWith("RUN-1");
   });
@@ -182,7 +182,24 @@ describe("ModelRouter", () => {
       attempts: 0, exhaustedBudget: true
     });
     expect(generate).not.toHaveBeenCalled();
-    expect(audit.failTask).toHaveBeenCalledWith("TASK-1", expect.any(ModelRoutingError));
+    expect(audit.failTask).toHaveBeenCalledWith("TASK-1", expect.any(ModelRoutingError), "plan");
+  });
+
+  it("keeps synthesis recovery separate from the planning stage", async () => {
+    const generate: StructuredModelClient["generate"] = vi.fn(async () => ({
+      output: { summary: "synthesized" }, usage: { inputTokens: 6, outputTokens: 2 }
+    }));
+    const audit = auditStore();
+    vi.mocked(audit.reserve).mockResolvedValue({ runId: "RUN-SYNTHESIS", callId: "CALL-SYNTHESIS", callNo: 1, route: "primary" });
+    const router = new ModelRouter({ generate }, ["primary"], {
+      maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
+    }, () => 1000, audit);
+
+    await expect(router.generate({ prompt: "read output", schema: outputSchema, taskId: "TASK-1", stage: "synthesis" })).resolves.toMatchObject({
+      output: { summary: "synthesized" }
+    });
+    expect(audit.recover).toHaveBeenCalledWith("TASK-1", expect.any(Object), "synthesis");
+    expect(audit.reserve).toHaveBeenCalledWith("TASK-1", expect.any(Object), "primary", "synthesis");
   });
 
   it("records one ModelCall span per provider attempt", async () => {

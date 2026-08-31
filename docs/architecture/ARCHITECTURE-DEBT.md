@@ -353,6 +353,8 @@
 
 - 2026-09-01：受信发现约束同时在 Planner 与执行层实施。执行层对任何非 `$discovered.previous` 的 `conversation.read` 固定拒绝，并在拒绝路径不调用远程 Capability、不记录 allowed authorization；因此后续新增 Planner、MCP adapter 或测试夹具不能靠直接 ID 意外绕开绑定。多候选选择、用户显式选择和写能力仍需独立的可审计契约。
 
+- 2026-09-01：`000057` 将模型审计运行的唯一约束升级为 `(task_uuid, stage)`。默认 `plan` 继续使用 v1 deterministic run ID，非默认 stage 使用携带 stage 的 v2 ID，防止历史计划重放漂移；Router 对 stage 名称、预算和恢复结果均失败关闭。该层仅提供 `synthesis` 的 durable 运行隔离，读取结果编译、第二次模型调用、Artifact 替换及真实 Shadow receipt 仍待后续切片完成。
+
 - 2026-08-31：Runtime bootstrap 现显式解析 OAuth callback 配置并拒绝启用状态，避免缺 Provider processor 的环境变量被静默忽略。拒绝发生在任何网络资源初始化前；后续独立 profile 需要将 processor、Core credential、key mount、运行证据和回滚开关作为同一部署契约交付。
 - 2026-08-30：长时 C++ profiling 受远端内核缺少匹配 linux-tools 阻断，未安装系统包也未将 `perf` 失败误判为热点结论；下一步可在具备匹配工具链的隔离 runner 中采集，当前仍禁止据 benchmark 切换 C++ authority。
 

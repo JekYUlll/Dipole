@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Agent Model audit 将 durable run 按 `task_uuid + stage` 分隔，默认 `plan` 保持既有运行 ID 与重放语义，新增 `synthesis` 可拥有独立预算、调用记录和恢复结果。该迁移为读取结果后的模型综合准备基础，尚未启用第二次模型调用或改变 Shadow 默认行为。
+
 - 2026-09-01：两步 Agent 读取的执行层新增独立失败关闭门禁。即使上游 Planner 被替换或其校验被绕过，直接携带会话 ID 的 `conversation.read` 仍在授权审计和远程 Capability 调用前被拒绝；只有 `$discovered.previous` 可解析为前一步 List 输出。
 
 - 2026-09-01：Agent read-shadow 现支持受信的两步 `conversation.list → conversation.read`。模型只能在紧邻的读取步骤使用固定 `$discovered.previous` 标记；Runtime 从前一 List 的实际输出提取首个有效会话键后才授权读取，模型自造 ID、缺少前置发现或空发现结果均会在读取前失败。写 Capability、active authority、MCP 写入与多会话选择策略仍未开启。
