@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Dipole V3 mark</title><desc id="desc">Two connected conversation poles.</desc>
+  <path fill="#06254a" d="M30 48a76 76 0 0 0 0 152l18-12v-40H84v-40H48V68H30z"/>
+  <path fill="#ef2b2d" d="M226 48a76 76 0 0 1 0 152l-18-12v-40h-36v-40h36V68h18z"/>
+  <path fill="#fff8ee" d="M84 88h88a24 24 0 0 1 0 48H84a24 24 0 0 1 0-48Zm0 16a8 8 0 0 0 0 16h88a8 8 0 0 0 0-16Z"/>
+</svg>

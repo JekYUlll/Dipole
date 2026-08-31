@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 增加 V3 品牌预备 token（ivory/navy/coral/agent gold）和可缩放 `dipole-v3-mark.svg`；现有 `--dp-*` 继续映射 canonical Pencil 变量。Pencil 增量任务在安全超时前未生成可提交导出，因此全页面色彩切换仍待 canonical 设计稿和评审图同时更新。
+
 ### 新增
 
 - 增加 Agent Task Create v1 的 desktop/mobile 创建页、五态 State Matrix 与 `exports/agent-task-create-v1/` 批准预览。
