@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Agent Temporal 增加 `worker_replacement_approval_resume` fault receipt v1。隔离 Temporal Worker replacement 演练将状态修订、终态写入重试和副作用基数通过 SHA-256 绑定；状态或单次副作用漂移固定为 `ineligible`。共享环境的 Core restart、lease expiry、input resume 与归档 receipt 仍待完成，当前结论不扩张至 active authority。
+
 - 2026-08-31：README 已切换到用户提供的 V3 双产品品牌板，并使用可核验的技术/许可证 badge；`docs/images/dipole-brand-v3.png` 作为后续 IM 与 Agent 产品视觉的一致性参考。页面级 UI 迁移仍在前端设计轨道中单独验收，不改变运行时或服务 authority。
 
 - 2026-08-31：Remote GPU 以 `53a4edf7` 在独立 Compose 项目完成 Message Service 的持久化后重启与同一幂等键重放。最终 Message、Outbox、目标 Inbox 均为 `1`，退出后候选容器、卷和网络均清理；receipt 归档于 [`microservices-message-recovery-2026-08-31`](../../benchmarks/microservices-message-recovery-2026-08-31/)。该证据只覆盖一个 post-persistence service restart，Kafka/broker/in-flight 故障矩阵继续开放。

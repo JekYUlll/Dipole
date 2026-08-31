@@ -17,6 +17,7 @@ import { ConversationListCapability } from "../capabilities/conversation-list.js
 import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { ModelRouter, type ModelAuditStore, type ModelCallRecovery } from "../models/model-router.js";
+import { createTemporalFaultReceipt } from "../evals/temporal-fault-receipt.js";
 import { createTemporalReadStepActivities } from "./agent-task-read-activities.js";
 
 const integrationEnabled = process.env.DIPOLE_AGENT_TEMPORAL_INTEGRATION === "true";
@@ -37,6 +38,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     let calls = 0;
     let admissions = 0;
     let finishAttempts = 0;
+    let persistedTerminalWrites = 0;
     let approvalRequests = 0;
     let approvalResolutions = 0;
     const projections: Array<{ workflowStatus: string; workflowRevision: number; workflowId: string; workflowRunId: string }> = [];
@@ -53,6 +55,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
         if (finishAttempts === 1) {
           throw new Error("transient terminal write failure");
         }
+        persistedTerminalWrites += 1;
       },
       async projectAgentTaskState(input) {
         projections.push(input);
@@ -128,6 +131,18 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       { workflowStatus: "completed", workflowRevision: 4 }
     ]);
     expect(projections.every((projection) => projection.workflowId === first.workflowId && projection.workflowRunId === first.runId)).toBe(true);
+    expect(createTemporalFaultReceipt({
+      schemaVersion: "dipole.agent.temporal-fault-observation.v1",
+      drillId: "worker_replacement_approval_resume",
+      observedAt: "2026-08-31T12:00:00.000Z",
+      workflow: { taskId: "task-recovery-1", runId: "run-recovery-1" },
+      transitions: projections.map(({ workflowStatus, workflowRevision }) => ({ revision: workflowRevision, status: workflowStatus })),
+      faults: { workerReplacements: 1, terminalWriteRetries: finishAttempts - persistedTerminalWrites },
+      effects: {
+        admissions, stepExecutions: calls, approvalRequests, approvalResolutions,
+        terminalWriteAttempts: finishAttempts, terminalPersistedWrites: persistedTerminalWrites
+      }
+    })).toMatchObject({ outcome: "eligible", failures: [] });
 
     const report = await new AgentTaskProjectionReconciler({
       list: async () => ({ tasks: [{ taskId: "task-recovery-1", workflow: {

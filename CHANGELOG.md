@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Temporal 增加 `worker_replacement_approval_resume` fault receipt v1。它将隔离测试中的状态修订、Worker 替换、终态写入重试和副作用基数绑定为 SHA-256 receipt；任何状态或单次副作用漂移都会得到 `ineligible`。该 receipt 证明本地 Temporal 场景，不构成共享环境、Core restart、lease expiry 或 active authority 证据。
+
 - 2026-08-31：Agent Shadow Eval 现在把受信任 admission 的 `trace_id` 持久化到 `agent_runs`，并由 `eval:shadow` 输出版本化低敏 Trace envelope。窗口汇总拒绝缺失/非法 Trace、Trace 复用、混版本、合成 Suite 与重复摘要，便于将受控 Shadow 的成功率和失败分类关联到 OTel；旧 Run 因缺 Trace 不可作为该证据。
 
 - 2026-08-31：Agent Eval 新增 `reviewed_shadow` 窗口汇总契约与 CLI。它只接收同候选版本、唯一摘要且完整绑定的终态 Shadow 五类报告，输出脱敏的任务样本量、成功率、类别通过率和失败原因计数；合成 Suite、混版本、重复报告及非绑定 case 均失败关闭。报告仍不构成 active authority、生产质量或用户影响证据。

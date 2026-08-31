@@ -13,6 +13,7 @@
 | MCP | 运行时边界见 [Agent MCP 文档](../docs/agent/README.md)，协议输入由服务内 MCP adapter 校验 |
 | 发布与修复 | [Release](agent-release/v1/README.md)、[Promotion v1](agent-promotion/v1/README.md)、[Promotion v2](agent-promotion/v2/README.md)、[Workflow Repair](agent-workflow-repair/v1/README.md)、[Repair Rollout](agent-timeline-repair-rollout/v1/README.md) |
 | 评估 | [Agent Evals](agent-evals/v1/README.md) |
+| Durable fault evidence | [Temporal Fault v1](agent-temporal-fault/v1/README.md) |
 
 ## 其他平台契约
 

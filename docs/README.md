@@ -61,6 +61,7 @@ Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/agen
 - [Agent Memory Observation](agent/agent-memory-observation.md)
 - [Agent OpenTelemetry 运维](agent/agent-otel-operations.md)
 - [Agent Subscription Shadow](agent/agent-subscription-shadow.md)
+- [Agent Temporal Fault Receipts](agent/agent-temporal-fault-receipts.md)
 - [Agent Timeline Repair 运维](agent/AGENT-TIMELINE-REPAIR-OPERATIONS.md)
 - [Agent Active 部署运行手册](agent/AGENT-ACTIVE-DEPLOYMENT.md)
 - [Agent 前置能力清单](agent/ai-readiness-checklist.md)

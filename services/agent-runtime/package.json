@@ -27,6 +27,7 @@
     "eval:subscription-shadow-evidence": "tsx src/evals/subscription-shadow-evidence-cli.ts",
     "eval:shadow": "tsx src/evals/shadow-eval-cli.ts",
     "eval:shadow-summary": "tsx src/evals/shadow-eval-summary-cli.ts",
+    "receipt:temporal-fault": "tsx src/evals/temporal-fault-receipt-cli.ts",
     "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",
     "promotion:check": "tsx src/promotion/promotion-check-cli.ts",
     "promotion:publish": "tsx src/promotion/promotion-evidence-publish-cli.ts",
