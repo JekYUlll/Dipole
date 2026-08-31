@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Agent Runtime 从 gRPC Timeline 返回 `bigint` 后直接交给 Fastify，HTTP 序列化曾返回 `500`。当前控制响应在边界显式转为十进制字符串，内部排序和 cursor 继续使用 `bigint`；公开 Gateway 分页 receipt 仍待同版本候选验证。
+
 - 2026-09-01：独立 Core runtime 曾只创建 Agent RPC adapter 而未注入 SQLC `AgentTaskTimeline` store，使通过认证与 allowlist 后仍失败关闭为 `FAILED_PRECONDITION`。现已与 embedded composition 对齐，并由架构门禁固定；仍待同版本候选完成公开 Gateway Timeline receipt。
 
 - 2026-09-01：Interactive Agent Timeline 的同版本候选验收发现 Core 最小权限 allowlist 遗漏 `ListAgentTaskTimeline`，已用 Agent 身份的真实 gRPC 回归测试补齐。候选仍需完成 Gateway 创建、终态读取与分页 Timeline 的同版本端到端 receipt，才可关闭体验链路门禁。

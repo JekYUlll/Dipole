@@ -108,6 +108,27 @@ describe("agent runtime Task control API", () => {
     }));
     await server.close();
   });
+
+  it("serializes Timeline bigint fields as decimal strings", async () => {
+    const getTimeline = vi.fn(async () => ({
+      schemaVersion: "dipole.agent.task-timeline.v1", taskId: "TASK-1", revision: 4n,
+      events: [{
+        eventSeq: 4n, eventId: "EVENT-4", runId: "RUN-1", kind: "terminal", status: "completed",
+        capabilityId: "", approvalId: "", artifactId: "", occurredAtUnixMs: 1_725_000_000_123n
+      }], nextCursor: "4"
+    }));
+    const server = buildServer({ isReady: () => true }, {
+      secret: "control-secret", service: { getTask: vi.fn(), getTimeline, cancelTask: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() }
+    });
+    const response = await server.inject({ method: "GET", url: "/internal/v1/agent/tasks/TASK-1/timeline?limit=10", headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      taskId: "TASK-1", revision: "4", nextCursor: "4",
+      events: [{ eventSeq: "4", occurredAtUnixMs: "1725000000123" }]
+    });
+    expect(getTimeline).toHaveBeenCalledWith({ taskId: "TASK-1", principalUserId: "U100", requestId: "R1", traceId: "T1", afterSeq: 0n, limit: 10 });
+    await server.close();
+  });
 });
 
 describe("agent runtime MCP HTTP API", () => {

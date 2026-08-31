@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { timingSafeEqual } from "node:crypto";
 import { Readable } from "node:stream";
 
-import { AgentTaskControlError, type AgentTaskControlIdentity } from "./control/agent-task-control.js";
+import { AgentTaskControlError, type AgentTaskControlIdentity, type AgentTaskTimeline } from "./control/agent-task-control.js";
 
 export interface RuntimeReadiness {
   isReady(): boolean;
@@ -11,7 +11,7 @@ export interface RuntimeReadiness {
 export interface AgentTaskControlAPI {
   startTask?(input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }): Promise<{ taskId: string; status: "accepted" }>;
   getTask(input: AgentTaskControlIdentity): Promise<unknown>;
-  getTimeline?(input: AgentTaskControlIdentity & { afterSeq: bigint; limit: number }): Promise<unknown>;
+  getTimeline?(input: AgentTaskControlIdentity & { afterSeq: bigint; limit: number }): Promise<AgentTaskTimeline>;
   cancelTask(input: AgentTaskControlIdentity & { reason?: string }): Promise<void>;
   resolveApproval(input: AgentTaskControlIdentity & { approvalId: string; decision: "approved" | "denied" }): Promise<void>;
   provideInput(input: AgentTaskControlIdentity & { requestId: string; value: unknown }): Promise<void>;
@@ -136,7 +136,7 @@ export function buildServer(
         return reply.code(503).send({ code: 503, message: "Agent Task Timeline is unavailable" });
       }
       try {
-        return await control.service.getTimeline({ ...identity, afterSeq, limit });
+        return serializeAgentTaskTimeline(await control.service.getTimeline({ ...identity, afterSeq, limit }));
       } catch (error) {
         return sendControlError(reply, error);
       }
@@ -354,4 +354,40 @@ function sendControlError(reply: { code(statusCode: number): { send(payload: unk
     return reply.code(404).send({ code: 404, message: "Agent Task unavailable" });
   }
   return reply.code(502).send({ code: 502, message: "Agent Task control dependency unavailable" });
+}
+
+function serializeAgentTaskTimeline(timeline: AgentTaskTimeline): {
+  schemaVersion: string;
+  taskId: string;
+  revision: string;
+  events: readonly {
+    eventSeq: string;
+    eventId: string;
+    runId: string;
+    kind: string;
+    status: string;
+    capabilityId: string;
+    approvalId: string;
+    artifactId: string;
+    occurredAtUnixMs: string;
+  }[];
+  nextCursor: string;
+} {
+  return {
+    schemaVersion: timeline.schemaVersion,
+    taskId: timeline.taskId,
+    revision: timeline.revision.toString(),
+    events: timeline.events.map((event) => ({
+      eventSeq: event.eventSeq.toString(),
+      eventId: event.eventId,
+      runId: event.runId,
+      kind: event.kind,
+      status: event.status,
+      capabilityId: event.capabilityId,
+      approvalId: event.approvalId,
+      artifactId: event.artifactId,
+      occurredAtUnixMs: event.occurredAtUnixMs.toString()
+    })),
+    nextCursor: timeline.nextCursor
+  };
 }
