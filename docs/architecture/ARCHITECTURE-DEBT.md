@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：修复 Go 微服务镜像构建 context 在循环中累积二进制的问题。每个服务现在创建独立临时 context，并由子 shell 的 `EXIT` trap 在成功或失败后清理；静态回归测试同时锁定单二进制 context 和清理边界。下一次 Remote GPU 同版本 smoke 仍需记录每个 context 的实际大小与总构建耗时。
+
 - 2026-09-01：V3 前端设计的 Pencil CLI 调用按临时文件/原子替换策略两次超时，未修改 canonical `.pen` 或批准导出。V3 SVG、additive token 和 Login 已可独立构建，完整 Chat/Agent 画板、全局 token 迁移和视觉回归仍依赖成功的 Pencil 增量生成；禁止将当前兼容切片表述为全站改版完成。
 
 - 2026-09-01：Remote GPU 隔离 Interactive Shadow 候选已验证认证用户从 Gateway 创建任务、异步 admission、Temporal 执行到终态读取的完整只读链路，receipt 归档于 [`agent-interactive-control-2026-09-01`](../../benchmarks/agent-interactive-control-2026-09-01/)。Provider 使用 `deepseek/deepseek-v4-flash` 且显式禁用 thinking，避免 JSON-text 输出为空；该配置目前只在候选环境采用。Gateway/Core 未重建到 Agent `c9f3f424`，同版本发布、体验 URL 验收、active authority、写 Capability、MCP 和统计成功率仍需独立门禁。

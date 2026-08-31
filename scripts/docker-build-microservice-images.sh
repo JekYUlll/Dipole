@@ -21,8 +21,6 @@ if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
   dirty=true
 fi
 context_dir="${root_dir}/dist"
-build_context=$(mktemp -d -t dipole-microservice-image.XXXXXX)
-trap 'rm -rf "${build_context}"' EXIT
 
 declare -a services=(
   "migrate:dipole-migrate"
@@ -50,17 +48,21 @@ for service_binary in "${services[@]}"; do
     exit 1
   fi
 
-  # Docker receives only the target service binary, rather than every dist artifact.
-  install -m 755 "${source_binary}" "${build_context}/${binary}"
-  echo "==> building ${service} image ${image}"
-  docker build \
-    --file deploy/images/go-service.Dockerfile \
-    --tag "${image}" \
-    --build-arg "DIPOLE_BINARY=${binary}" \
-    --build-arg "DIPOLE_VCS_REVISION=${revision}" \
-    --build-arg "DIPOLE_BUILD_CREATED=${created}" \
-    --build-arg "DIPOLE_BUILD_DIRTY=${dirty}" \
-    "${build_context}"
+  # Each build receives exactly one binary; EXIT also cleans failed build contexts.
+  (
+    build_context=$(mktemp -d -t dipole-microservice-image.XXXXXX)
+    trap 'rm -rf "${build_context}"' EXIT
+    install -m 755 "${source_binary}" "${build_context}/${binary}"
+    echo "==> building ${service} image ${image}"
+    docker build \
+      --file deploy/images/go-service.Dockerfile \
+      --tag "${image}" \
+      --build-arg "DIPOLE_BINARY=${binary}" \
+      --build-arg "DIPOLE_VCS_REVISION=${revision}" \
+      --build-arg "DIPOLE_BUILD_CREATED=${created}" \
+      --build-arg "DIPOLE_BUILD_DIRTY=${dirty}" \
+      "${build_context}"
+  )
 done
 
 agent_image=${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}

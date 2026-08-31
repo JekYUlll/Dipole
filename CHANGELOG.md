@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：微服务镜像构建改为每个 Go 服务使用独立的临时 Docker context，成功和失败路径均在子 shell 退出时清理。此前循环复用 context 会累积前序二进制并放大后续 Docker 上传；镜像内仍只复制目标服务二进制，revision 与 provenance 参数保持不变。
+
 - 2026-09-01：前端开始 V3 品牌兼容切片：以用户提供的双极对话标识重绘 IM/Agent SVG，新增海军蓝、信号红、轨道金和暖象牙白语义 token，并将登录入口迁移到新视觉语言。现有 Pencil canonical 变量与其余页面保持兼容；Pencil CLI 的两次安全增量调用超时且未写入画布，完整 Chat/Agent 视觉基线继续待独立设计验收。
 
 - 2026-09-01：Remote GPU 隔离环境完成受认证 Interactive Agent Task 回归：注册 `200`、创建 `202`、终态读取 `200`，只读 Shadow Workflow 收敛为 `completed`，receipt 归档于 [`agent-interactive-control-2026-09-01`](benchmarks/agent-interactive-control-2026-09-01/)。此次仅重建 Agent `c9f3f424` 验证终态读取修复；Gateway/Core 保持此前 clean candidate，因此不构成同版本发布、active authority、生产体验或成功率结论。
