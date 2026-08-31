@@ -27,10 +27,15 @@ export function createReconnectingAgentCapabilityTransport(
 
   const client = new Proxy({} as IAgentCapabilityServiceClient, {
     get(_target, property) {
-      const transport = current;
-      const member = Reflect.get(transport as object, property);
-      if (typeof member !== "function") return member;
+      if (typeof Reflect.get(current as object, property) !== "function") {
+        return Reflect.get(current as object, property);
+      }
       return (...args: unknown[]) => {
+        const transport = current;
+        const member = Reflect.get(transport as object, property);
+        if (typeof member !== "function") {
+          return member;
+        }
         const callback = args.at(-1);
         if (typeof callback !== "function") {
           return Reflect.apply(member, transport, args);

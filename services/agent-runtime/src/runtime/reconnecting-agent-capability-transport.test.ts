@@ -52,4 +52,28 @@ describe("createReconnectingAgentCapabilityTransport", () => {
     expect(create).toHaveBeenCalledTimes(1);
     expect(close).not.toHaveBeenCalled();
   });
+
+  it("uses the replacement channel when a caller retained a method reference", () => {
+    const firstClose = vi.fn();
+    const firstAdmit = vi.fn((_request, _metadata, _options, callback) => {
+      callback({ code: grpc.status.UNAVAILABLE, message: "Core restarted" });
+      return {};
+    });
+    const secondAdmit = vi.fn((_request, _metadata, _options, callback) => {
+      callback(null, { taskId: "TASK-RECOVERED" });
+      return {};
+    });
+    const create = vi.fn()
+      .mockReturnValueOnce({ admitRun: firstAdmit, close: firstClose } as unknown as IAgentCapabilityServiceClient & { close(): void })
+      .mockReturnValueOnce({ admitRun: secondAdmit, close: vi.fn() } as unknown as IAgentCapabilityServiceClient & { close(): void });
+    const transport = createReconnectingAgentCapabilityTransport(create);
+    const retainedAdmit = transport.client.admitRun;
+
+    transport.client.admitRun({} as never, {} as never, {} as never, vi.fn());
+    retainedAdmit({} as never, {} as never, {} as never, vi.fn());
+
+    expect(firstClose).toHaveBeenCalledOnce();
+    expect(firstAdmit).toHaveBeenCalledOnce();
+    expect(secondAdmit).toHaveBeenCalledOnce();
+  });
 });

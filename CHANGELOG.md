@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Capability RPC 的重连包装器现在在每次方法调用时解析当前 gRPC channel。Core 返回 `UNAVAILABLE` 后，即使上层保留了旧方法引用，下一次事件级调用也会使用新 channel；失败调用仍不在 transport 层重放，Kafka/EventLedger 保持幂等重试责任。
+
 - 2026-08-31：默认关闭的 Agent OAuth callback handoff executor 现在在私钥解封前和 Provider processor 前两次复核 durable handoff 的 lease/expiry。过期检查失败属于副作用前故障并释放 lease；processor 或 completion 结果不确定时仍保留 lease。该改动不装配 callback HTTP、Provider token exchange 或 token 生命周期。
 
 - 2026-08-31：Cassandra read-rollout 新增 Prometheus 窗口转换器与 CLI。它将 Message Service 的起止快照转换为 evidence v1，并拒绝 route/verification counter 回退、未知标签、histogram bucket 漂移及未覆盖最终路由的延迟数据；`mysql_fallback` 同时归入 MySQL 最终路径和 fallback 比例。转换过程只读取快照文件，不改变 Cassandra 读比例或 MySQL 回退。
