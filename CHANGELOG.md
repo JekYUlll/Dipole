@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：新增 Cassandra read-rollout 原始 Prometheus 窗口采集脚本，严格分离不可覆盖的 `start` 与 `end` 快照，并绑定部署 revision 与配置读比例。脚本只读取 Message Service `/metrics`，为后续 evidence v1 转换与共享灰度归档提供输入，不修改流量开关。
+
 - 2026-08-31：修正 Cassandra read-rollout evidence 对运行时回退指标的计数契约：`mysql_fallback` 是 MySQL 最终路由的子集，评估器现按该关系校验。真实 Prometheus 窗口中的 Cassandra 失败回退不再被误判为无效 evidence，默认读比例与回退行为不变。
 
 - 2026-08-31：Remote GPU 使用隔离 MySQL 容器完成 Agent Task Timeline repair 进程 smoke：worker 重放单个 intent 并幂等收敛。该脚本现支持 `DIPOLE_GO_BIN`，避免远端默认 Go 版本低于模块要求时误阻断演练；不改变默认 repair profile 或生产开关。
