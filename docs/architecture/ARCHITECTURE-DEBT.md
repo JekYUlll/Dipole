@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Agent Runtime 本地全量门禁曾因默认关闭的 Approval mTLS drill 在 suite 注册期读取远程变量、离线 security Eval 缺少默认 token availability 以及 Temporal 只读夹具缺少授权审计 sink 而不可复现。三处测试契约已对齐，当前离线运行通过 `158` 个文件、`796` 项测试，`10` 个显式外部依赖测试跳过，并通过 TypeScript typecheck 与 production build。Remote GPU 同版本 Compose、Kafka/Temporal/Capability RPC 演练仍需独立执行，不能由本地测试替代。
+
 - 2026-09-01：Agent Shadow Runtime 将 Provider thinking 设为显式、Provider 专有的默认关闭选项，并将单次 Planner 的模型可见 Capability 收紧至 `conversation.list`。这样受限 JSON-text 预算不会被默认 reasoning 消耗，模型也不能在未获得会话发现结果前构造任意读取目标。多轮绑定、写 Capability、active authority 与 MCP 仍由 AD-009 的独立门禁约束。
 
 - 2026-09-01：A6 Web Sync observation 的候选绑定已从单一 bundle 文件扩展为完整静态发布目录摘要。候选目录以稳定相对路径和内容 SHA-256 生成摘要，空目录、符号链接及任意资源集漂移均 fail closed；单文件兼容入口保留。真实浏览器 24 小时窗口、100 个 match、Prometheus 原始响应归档与责任人批准仍未完成，旧 Offline 兼容窗口和默认客户端模式保持不变。

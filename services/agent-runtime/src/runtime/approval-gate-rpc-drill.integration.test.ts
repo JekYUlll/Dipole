@@ -20,9 +20,10 @@ const enabled = process.env.DIPOLE_AGENT_APPROVAL_GATE_DRILL === "true";
 const integration = describe.skipIf(!enabled);
 
 integration("Agent Approval gate mTLS drill", () => {
-  const rpc = createAgentCapabilityRPC(config());
+  // Vitest evaluates a skipped suite's definition, so defer env-dependent setup.
+  const rpc = enabled ? createAgentCapabilityRPC(config()) : undefined;
 
-  afterAll(() => rpc.close());
+  afterAll(() => rpc?.close());
 
   it("allows one exact write, denies rejected and replayed grants, and preserves consumption after failure", async () => {
     let effectCount = 0;
@@ -78,21 +79,21 @@ integration("Agent Approval gate mTLS drill", () => {
     });
     return new McpWriteApprovalGate(
       registry,
-      createMcpWriteApprovalConsumePort(rpc.client),
-      createMcpWriteApprovalGrantResolver(rpc.client)
+      createMcpWriteApprovalConsumePort(rpc!.client),
+      createMcpWriteApprovalGrantResolver(rpc!.client)
     );
   }
 
   async function approve(approvalId: string, context: ExecutionContext): Promise<void> {
     const binding = approvalBinding(approvalId);
-    await rpc.client.requestApproval(context.taskId, context.runId, binding, context);
-    await rpc.client.resolveApproval(context.taskId, context.runId, approvalId, "approved", "U100", context);
+    await rpc!.client.requestApproval(context.taskId, context.runId, binding, context);
+    await rpc!.client.resolveApproval(context.taskId, context.runId, approvalId, "approved", "U100", context);
   }
 
   async function reject(approvalId: string, context: ExecutionContext): Promise<void> {
     const binding = approvalBinding(approvalId);
-    await rpc.client.requestApproval(context.taskId, context.runId, binding, context);
-    await rpc.client.resolveApproval(context.taskId, context.runId, approvalId, "denied", "U100", context);
+    await rpc!.client.requestApproval(context.taskId, context.runId, binding, context);
+    await rpc!.client.resolveApproval(context.taskId, context.runId, approvalId, "denied", "U100", context);
   }
 });
 
