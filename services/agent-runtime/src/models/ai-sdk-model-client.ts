@@ -34,8 +34,10 @@ function jsonTextPrompt(prompt: string, schema: z.ZodType): string {
 }
 
 function parseJSONText(text: string): unknown {
+  const trimmed = text.trim();
+  const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n```$/i.exec(trimmed);
   try {
-    return JSON.parse(text.trim());
+    return JSON.parse(fenced?.[1] ?? trimmed);
   } catch {
     throw new Error("model JSON-text response is not a valid JSON object");
   }

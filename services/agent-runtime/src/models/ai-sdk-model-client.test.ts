@@ -70,4 +70,20 @@ describe("AISDKStructuredModelClient", () => {
     expect(model.doGenerateCalls).toHaveLength(1);
     expect(JSON.stringify(model.doGenerateCalls[0]?.prompt)).toContain("Return only a single JSON object");
   });
+
+  it("accepts a complete JSON code fence but still validates the contained object", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "test", modelId: "json-fence",
+      doGenerate: {
+        content: [{ type: "text", text: "```json\n{\"summary\":\"observe E3\",\"capabilityIds\":[]}\n```" }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 7, text: 7, reasoning: 0 } }, warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model, "json_text");
+
+    await expect(client.generate({
+      route: "test/json-fence", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
+    })).resolves.toMatchObject({ output: { summary: "observe E3", capabilityIds: [] } });
+  });
 });
