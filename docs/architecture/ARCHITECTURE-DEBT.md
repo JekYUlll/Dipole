@@ -16,6 +16,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 的新候选 checkout 曾因上一次中断留下的 `node_modules` 在 `npm ci` 中报 `ENOTEMPTY`。`node-test` 现只匹配该确定错误后原子隔离候选 app 的 ignored 目录并重试一次；其他安装失败仍直接退出，隔离目录保留供诊断。该修复不改变 lockfile、已运行容器或共享工作树。
+
 - 2026-09-01：Remote GPU 的隔离交互 Shadow 候选完成两次公开 JWT Task admission 到 Timeline cursor 续页的只读验收；两条 Task 均收敛为 `completed`，每条 Timeline 的前两页各返回两条事件。Gateway 使用 `4ab924b87` 的专用候选镜像，Core/Agent 为兼容的既有候选，因此该证据只说明混合候选的开发兼容性。详细边界见 [Agent Interactive Shadow Remote Receipt](../agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。同版本镜像、可重跑低敏 receipt、受控观察窗口、active authority 与写 Capability 继续作为独立门禁。
 
 - 2026-09-01：Remote GPU 同时运行多个隔离 MySQL 时，宿主 Linux AIO 使用量达到 `55,300 / 65,536`，新候选初始化触发 `io_setup() EAGAIN`。新增只作用于候选 project 的 `remote-gpu-mysql-aio-compat.yml`，保留基础参数并增加 `--innodb-use-native-aio=0`；此兼容模式不改变已有服务，验证结束后随候选 project 回滚。

@@ -115,7 +115,11 @@ test("remote sync preserves divergent untracked target conflicts and tracked edi
 });
 
 test("node verification preserves package locks and cleans generated webapp output", () => {
-  assert.match(source, /node-test\)[\s\S]*?npm --prefix "\\\$app" ci --include=optional --ignore-scripts --no-audit --no-fund/);
+  assert.match(source, /install_node_dependencies\(\)[\s\S]*?npm --prefix "\\\$app" ci --include=optional --ignore-scripts --no-audit --no-fund/);
+  assert.match(source, /grep -q "ENOTEMPTY" "\\\$install_log"/);
+  assert.match(source, /quarantine="\\\$app\/\.node_modules-interrupted-\\\$\(date \+%s\)"/);
+  assert.match(source, /mv "\\\$app\/node_modules" "\\\$quarantine"/);
+  assert.match(source, /install_node_dependencies "\\\$app"/);
   assert.doesNotMatch(source, /node-test\)[\s\S]*?npm --prefix "\\\$app" install/);
   assert.match(source, /webapp_dir="internal\/services\/core\/server\/webapp"/);
   assert.match(source, /generated webapp output is dirty/);
