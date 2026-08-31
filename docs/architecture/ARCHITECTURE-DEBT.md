@@ -1076,7 +1076,7 @@
 - **本轮进展：** Repository 合同测试在隔离 MySQL 8.4.8 中验证 v44 prepared execution 的创建、精确重放和目标哈希冲突拒绝；没有增加状态推进、Projection 写入或公开执行入口。
 - **本轮进展：** Shadow Eval observation 已区分策略 Task 与 Durable Workflow：常规 Task 仍要求 `agent_tasks.status` 终态，read-shadow 仅在 CAS `workflow_status` 和对应 Run 均终态时可生成五类报告。该收口避免将 Shadow 的运行中策略记录误判为不完整或以非终态 Workflow 伪造成功率；真实人工标注窗口与共享环境证据继续待补。
 - **本轮进展：** 真实 read-shadow 观察发现默认 policy 的 `conversation/*` scope 无法由旧 Eval manifest 表达。契约现将 `permission.resourceId` 限定为稳定标识符或唯一 `*`，保留实际授权范围供评测绑定；它不产生新授权，真实人工标注窗口与共享环境样本仍待归档。
-- **本轮进展：** Remote GPU disposable read-shadow 拓扑已通过专用只读账号生成首份真实五类 Eval 报告，[`agent-shadow-eval-2026-09-01`](../../benchmarks/agent-shadow-eval-2026-09-01/) 记录 `N=1` synthetic Task 在 outcome、trajectory、permission、retrieval、cost 的完整通过结果。成本使用明确的开发期价格上限，报告不包含正文或凭据；多样本人工标注窗口、真实 Provider 账单和共享环境结论继续开放。
+- **本轮修正：** Remote GPU disposable read-shadow 的 `N=1` 五类 Eval 报告已撤回。复核确认 Step 只持久化 capability/status，Permission 的 resource scope 尚未由数据库 observation 证明，不能将 manifest 标签视为 Runtime 授权证据。当前只保留 Kafka/Temporal/MySQL/Go Core 拓扑 smoke 结论；后续必须在 Step lease 内持久化 resolved resource 与 policy decision、由 Eval 精确比对并重跑，才可重新归档五类报告。
 - **本轮进展：** 增加受控 `prepared` 准备服务：复核已批准且未过期的 repair proposal、审批计数、Task 存在性和 proposal/task/executor 绑定，再通过 execution store 幂等创建并读取执行意图；该服务不推进状态、不修改 projection。由于 operator grant 当前没有版本字段，`executor_grant_version` 暂只保存计划绑定，运行时 grant 复核仍关闭。
 - **本轮进展：** Agent Runtime 增加 `repair:plan` dry-run 计划编译器，按 execution-plan v1 生成确定性的 plan ID、当前/目标/回滚投影 SHA-256 和 15 分钟 CAS 窗口；批准状态、双审批人、独立执行人及 grant version 均在计划生成前校验。CLI 不连接 MySQL/Temporal，不改变 projection，也没有 apply/execute/rollback 入口。单测、类型检查和构建已通过。
 - **本轮进展：** 追加 Workflow/Run 身份绑定校验，当前投影与目标投影必须属于同一运行实例，跨运行证据在 plan 编译阶段拒绝；新增回归测试并保持 v1 dry-run 与无写执行器边界。

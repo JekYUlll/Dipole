@@ -1,22 +1,18 @@
-# Read-Shadow Eval Evidence
+# Withdrawn Read-Shadow Eval
 
-`report.json` records one owner-reviewed, synthetic `read_shadow` execution
-observed on 2026-09-01 in a disposable Remote GPU Compose project. The
-execution used Kafka, Temporal, MySQL, Go Core mTLS capability RPC and the
-DeepSeek V4 Flash development route. The associated Core-restart smoke also
-confirmed one EventLedger, Task, Run, model call and `conversation_digest`
-Artifact after Core recovery.
+This directory records a withdrawn 2026-09-01 development observation. The
+disposable Remote GPU Compose smoke did establish Kafka, Temporal, MySQL, Go
+Core mTLS capability RPC, one model call and a `conversation_digest` Artifact.
+Its first Eval report was removed from the current evidence set.
 
-The report evaluates candidate `agent-runtime@b808d18c` with the corrected
-`45cb1da3` Eval adapter. It passes one case in each required category:
-outcome, trajectory, permission, retrieval and cost. The report only includes
-a synthetic trace ID, stable case digests and aggregate metrics; it contains no
-message, prompt, model output, tool parameters or credential.
+At that revision, `agent_shadow_steps` persisted capability ID and terminal
+status but did not persist the resolved resource scope. The Permission case
+could bind the capability and status while obtaining `resourceType`,
+`resourceId` and `action` from a reviewer manifest. It therefore cannot prove
+that the evaluated scope matched the Runtime authorization decision.
 
-The cost metric uses a deliberately conservative development evaluation price
-of 1,000,000 micro-USD per million input and output tokens. It is a budget
-threshold for this controlled test, not a DeepSeek bill or a production cost
-claim. This sample is `N=1`; it validates the real adapter path and must not be
-presented as an Agent success rate, shared-environment result or active
-authority evidence. A reviewed multi-sample window remains required before any
-success-rate claim.
+The next evidence version must persist the resolved resource request and policy
+decision under the Step lease, require the Eval adapter to compare every field,
+then rerun the isolated observation. This withdrawn sample must not be used for
+task success rate, permission safety, cost, shared-environment or active
+authority claims.

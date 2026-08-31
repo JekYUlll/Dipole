@@ -1,8 +1,8 @@
 # 更新日志
 
-- 2026-09-01：Agent Shadow Eval manifest 与五类离线评测现可保留 Runtime 策略中的资源类通配 scope `*`。此前评估契约只能表达具体 resource ID，会使默认 `conversation/*` read-shadow 授权无法进入权限评测；JSON Schema、TypeScript parser、通用 evaluator 与回归测试现共同限制为稳定标识符或唯一 `*`，不扩大任何 Capability 或运行时授权。
+- 2026-09-01：撤回 `agent-shadow-eval-2026-09-01` 的五类通过报告。复核发现 Permission case 尚未持久化实际 resource scope，`resourceType/resourceId/action` 仍可来自评审 manifest，无法证明其与 Runtime 授权决策一致。该 JSON 已从当前证据集移除；后续将以 Step lease 内持久 scope/decision 与精确比对重新生成报告。
 
-- 2026-09-01：Remote GPU 的 disposable Kafka/Temporal/MySQL/Go Core read-shadow 观察已由专用只读账号生成首份真实五类 Eval 报告，归档于 `benchmarks/agent-shadow-eval-2026-09-01/`。`agent-runtime@b808d18c` 的单条 synthetic 样本在 outcome、trajectory、permission、retrieval、cost 均通过；报告明确为 `N=1` 与开发期成本门限，不能外推成成功率、账单、共享环境或 active authority 结论。
+- 2026-09-01：Agent Shadow Eval manifest 与五类离线评测现可保留 Runtime 策略中的资源类通配 scope `*`。此前评估契约只能表达具体 resource ID，会使默认 `conversation/*` read-shadow 授权无法进入权限评测；JSON Schema、TypeScript parser、通用 evaluator 与回归测试现共同限制为稳定标识符或唯一 `*`，不扩大任何 Capability 或运行时授权。
 
 - 2026-08-31：Agent Shadow Eval 现区分策略 Task 状态与 Durable Workflow 状态。常规 Task 仍以 `agent_tasks.status` 判定终态；read-shadow 仅在 CAS `workflow_status` 和持久 Run 同时终态时生成五类报告，避免将运行中的 Shadow 策略记录误判为未完成，也拒绝非终态 Workflow 伪造成功率。
 
