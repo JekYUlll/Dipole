@@ -2,7 +2,9 @@ import * as grpc from "@grpc/grpc-js";
 
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 
-export type AgentCapabilityTransportFactory = () => IAgentCapabilityServiceClient;
+type ClosableAgentCapabilityServiceClient = IAgentCapabilityServiceClient & { close(): void };
+
+export type AgentCapabilityTransportFactory = () => ClosableAgentCapabilityServiceClient;
 
 export interface ReconnectingAgentCapabilityTransport {
   readonly client: IAgentCapabilityServiceClient;
@@ -14,10 +16,10 @@ export interface ReconnectingAgentCapabilityTransport {
 export function createReconnectingAgentCapabilityTransport(
   createClient: AgentCapabilityTransportFactory
 ): ReconnectingAgentCapabilityTransport {
-  let current = createClient();
+  let current: ClosableAgentCapabilityServiceClient = createClient();
   let closed = false;
 
-  const reconnect = (attempt: IAgentCapabilityServiceClient): void => {
+  const reconnect = (attempt: ClosableAgentCapabilityServiceClient): void => {
     if (closed || current !== attempt) return;
     current.close();
     current = createClient();

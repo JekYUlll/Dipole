@@ -17,8 +17,8 @@ describe("createReconnectingAgentCapabilityTransport", () => {
       return {};
     });
     const create = vi.fn()
-      .mockReturnValueOnce({ admitRun: firstAdmit, close: firstClose } as unknown as IAgentCapabilityServiceClient)
-      .mockReturnValueOnce({ admitRun: secondAdmit, close: secondClose } as unknown as IAgentCapabilityServiceClient);
+      .mockReturnValueOnce({ admitRun: firstAdmit, close: firstClose } as unknown as IAgentCapabilityServiceClient & { close(): void })
+      .mockReturnValueOnce({ admitRun: secondAdmit, close: secondClose } as unknown as IAgentCapabilityServiceClient & { close(): void });
     const transport = createReconnectingAgentCapabilityTransport(create);
     const callback = vi.fn();
 
@@ -44,7 +44,7 @@ describe("createReconnectingAgentCapabilityTransport", () => {
       callback({ code: grpc.status.PERMISSION_DENIED, message: "denied" });
       return {};
     });
-    const create = vi.fn(() => ({ admitRun, close } as unknown as IAgentCapabilityServiceClient));
+    const create = vi.fn(() => ({ admitRun, close } as unknown as IAgentCapabilityServiceClient & { close(): void }));
     const transport = createReconnectingAgentCapabilityTransport(create);
 
     transport.client.admitRun({} as never, {} as never, {} as never, vi.fn());
