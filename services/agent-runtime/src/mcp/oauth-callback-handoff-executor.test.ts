@@ -28,14 +28,34 @@ describe("OAuthCallbackHandoffExecutor", () => {
     await expect(executor.execute(input)).rejects.toThrow("terminal unavailable");
     expect(calls).not.toContain("release");
   });
+
+  it("releases without opening an expired handoff", async () => {
+    const calls: string[] = [];
+    const expired = Object.freeze({ ...handoff, leaseExpiresAt: new Date(Date.now() - 1) });
+    const executor = build(calls, async () => "completed", undefined, expired);
+
+    await expect(executor.execute(input)).rejects.toThrow("lease expired");
+    expect(calls).toEqual(["claim", "release"]);
+  });
+
+  it("releases if the lease expires while opening the envelope", async () => {
+    const calls: string[] = [];
+    const times = [new Date(Date.now()), new Date(Date.now() + 60_000)];
+    const executor = build(calls, async () => "completed", undefined, handoff, () => times.shift()!);
+
+    await expect(executor.execute(input)).rejects.toThrow("lease expired");
+    expect(calls).toEqual(["claim", "key:runtime-key-1", `open:${handoff.ownerUserId}`, "release"]);
+  });
 });
 
 function build(
   calls: string[], process: () => Promise<"completed" | "retryable_failure">,
-  terminalOverride?: Partial<{ complete(): Promise<void>; release(): Promise<void> }>
+  terminalOverride?: Partial<{ complete(): Promise<void>; release(): Promise<void> }>,
+  claimed = handoff,
+  now?: () => Date
 ): OAuthCallbackHandoffExecutor {
-  const claims = { async claim() { calls.push("claim"); return handoff; } };
+  const claims = { async claim() { calls.push("claim"); return claimed; } };
   const terminal = { async complete() { calls.push("complete"); }, async release() { calls.push("release"); }, ...terminalOverride };
   const keys = { async use<T>(id: string, operation: (key: Buffer) => Promise<T> | T): Promise<T> { calls.push(`key:${id}`); return operation(Buffer.from("key")); } };
-  return new OAuthCallbackHandoffExecutor(claims as never, terminal as never, keys, { async process({ authorizationCode }) { calls.push(`process:${authorizationCode}`); return process(); } }, (_envelope, bound) => { calls.push(`open:${bound.ownerUserId}`); return "code"; });
+  return new OAuthCallbackHandoffExecutor(claims as never, terminal as never, keys, { async process({ authorizationCode }) { calls.push(`process:${authorizationCode}`); return process(); } }, (_envelope, bound) => { calls.push(`open:${bound.ownerUserId}`); return "code"; }, now);
 }

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：默认关闭的 Agent OAuth callback handoff executor 现在在私钥解封前和 Provider processor 前两次复核 durable handoff 的 lease/expiry。过期检查失败属于副作用前故障并释放 lease；processor 或 completion 结果不确定时仍保留 lease。该改动不装配 callback HTTP、Provider token exchange 或 token 生命周期。
+
 - 2026-08-31：Cassandra read-rollout 新增 Prometheus 窗口转换器与 CLI。它将 Message Service 的起止快照转换为 evidence v1，并拒绝 route/verification counter 回退、未知标签、histogram bucket 漂移及未覆盖最终路由的延迟数据；`mysql_fallback` 同时归入 MySQL 最终路径和 fallback 比例。转换过程只读取快照文件，不改变 Cassandra 读比例或 MySQL 回退。
 
 - 2026-08-31：补齐主链路外部阻塞期间的并行治理规则。前端设计、只读体验、视觉回归、文档入口和图表可在独立分支推进；这些切片不改变服务 authority、默认 feature flag 或真实环境证据门槛。

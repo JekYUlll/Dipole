@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：默认关闭的 Agent OAuth callback handoff executor 在私钥解封前和 Provider processor 前均复核 durable handoff 的 lease/expiry。过期检查失败会在产生外部副作用前释放 lease；processor 或 completion 结果不确定时保留 lease，避免把不确定副作用重新排队。callback HTTP、Provider exchange、token 生命周期和默认运行时装配仍由 OAuth release gate 限制。
+
 - 2026-08-31：Cassandra read-rollout 已可把不可覆盖的 Message Service Prometheus 起止快照转换为 evidence v1。转换器拒绝 route/verification counter 回退、未知标签、histogram bucket 漂移和延迟覆盖缺口，`mysql_fallback` 同时归入 MySQL 最终路径与 fallback 比例。真实共享环境观察、责任人审核和读比例扩大仍由 AD-043 的运行证据门槛约束。
 
 - 2026-08-31：补齐主链路外部阻塞期间的并行治理规则。前端设计、只读体验、视觉回归、文档入口和图表可在独立分支推进，但不改变服务 authority、默认 feature flag 或真实环境证据门槛。该规则减少等待窗口造成的工程停滞；共享环境切流、负载测试和 active 能力仍按各自验收条件执行。

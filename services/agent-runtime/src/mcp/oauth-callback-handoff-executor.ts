@@ -9,6 +9,8 @@ export interface OAuthCallbackHandoffProcessor {
 
 export type OAuthCallbackHandoffEnvelopeOpener = (envelope: string, binding: OAuthCallbackEnvelopeBinding, key: Buffer) => string;
 
+export class OAuthCallbackHandoffExecutorLeaseExpiredError extends Error {}
+
 /** Default-closed Runtime composition seam; Runtime bootstrap does not construct it. */
 export class OAuthCallbackHandoffExecutor {
   constructor(
@@ -16,14 +18,17 @@ export class OAuthCallbackHandoffExecutor {
     private readonly terminal: OAuthCallbackHandoffTerminalClient,
     private readonly keys: OAuthCallbackRuntimeKeySource,
     private readonly processor: OAuthCallbackHandoffProcessor,
-    private readonly openEnvelope: OAuthCallbackHandoffEnvelopeOpener = openOAuthCallbackEnvelope
+    private readonly openEnvelope: OAuthCallbackHandoffEnvelopeOpener = openOAuthCallbackEnvelope,
+    private readonly now: () => Date = () => new Date()
   ) {}
 
   async execute(input: OAuthCallbackHandoffClaimRequest): Promise<"completed" | "released"> {
     const handoff = await this.claims.claim(input);
     let authorizationCode: string;
     try {
+		assertLeaseActive(handoff, this.now());
       authorizationCode = await this.keys.use(handoff.runtimeKeyId, (key) => this.openEnvelope(handoff.sealedAuthorizationCode, binding(handoff), key));
+		assertLeaseActive(handoff, this.now());
     } catch (error) {
       await this.terminal.release(input);
       throw error;
@@ -36,6 +41,12 @@ export class OAuthCallbackHandoffExecutor {
     await this.terminal.complete(input);
     return "completed";
   }
+}
+
+function assertLeaseActive(handoff: OAuthCallbackHandoffClaim, now: Date): void {
+	if (!Number.isFinite(now.getTime()) || handoff.leaseExpiresAt.getTime() <= now.getTime() || handoff.expiresAt.getTime() <= now.getTime()) {
+		throw new OAuthCallbackHandoffExecutorLeaseExpiredError("OAuth callback handoff lease expired before processor execution");
+	}
 }
 
 function binding(handoff: OAuthCallbackHandoffClaim): OAuthCallbackEnvelopeBinding {
