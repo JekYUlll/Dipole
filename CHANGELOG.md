@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：修正 Cassandra read-rollout evidence 对运行时回退指标的计数契约：`mysql_fallback` 是 MySQL 最终路由的子集，评估器现按该关系校验。真实 Prometheus 窗口中的 Cassandra 失败回退不再被误判为无效 evidence，默认读比例与回退行为不变。
+
 - 2026-08-31：Remote GPU 使用隔离 MySQL 容器完成 Agent Task Timeline repair 进程 smoke：worker 重放单个 intent 并幂等收敛。该脚本现支持 `DIPOLE_GO_BIN`，避免远端默认 Go 版本低于模块要求时误阻断演练；不改变默认 repair profile 或生产开关。
 
 - 2026-08-31：Agent Timeline repair Compose smoke 改为从已版本化 migration 文件动态推导 schema 基线，并轮询正常退出的 `mysql-permissions` 一次性初始化容器。Remote GPU 使用 MySQL migration v53 完成最小权限、UTC、worker readiness、pending intent 恢复和 event UUID 幂等重放；随机 Compose 项目、卷和临时工作树均已自动清理。

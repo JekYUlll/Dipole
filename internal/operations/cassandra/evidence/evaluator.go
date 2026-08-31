@@ -141,7 +141,8 @@ func validateEvidence(value Evidence) error {
 		return fmt.Errorf("configured Cassandra read percentage is invalid")
 	}
 	counts := value.Requests
-	if counts.Total == 0 || counts.Cassandra+counts.MySQL != counts.Total || counts.Fallback > counts.Cassandra || counts.VerificationMismatch+counts.VerificationErrors > counts.VerificationSamples || counts.VerificationSamples > counts.Total {
+	// The router records Cassandra failures as the final mysql_fallback route.
+	if counts.Total == 0 || counts.Cassandra+counts.MySQL != counts.Total || counts.Fallback > counts.MySQL || counts.VerificationMismatch+counts.VerificationErrors > counts.VerificationSamples || counts.VerificationSamples > counts.Total {
 		return fmt.Errorf("Cassandra read rollout route counts are inconsistent")
 	}
 	return nil
