@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 隔离交互 Shadow 以 DeepSeek V4 Flash 完成一条新用户只读 Task：Gateway 返回 `202` 后状态收敛为 `completed`，持久化审计为一条完成 Run、一次模型调用、一次 `conversation.list` Step 与一个 `conversation_digest` Artifact。该证据只覆盖隔离 read-shadow；任务策略行保持 `running`、Durable `workflow_status` 与 Run 共同表达终态，写 Capability、active authority 与多轮读取均未开启。
+
 - 2026-09-01：Agent 单轮 Temporal read-shadow 规划器收紧为仅暴露 `conversation.list`。此前模型能在未获得会话列表结果时直接生成 `conversation.read`，对新用户会构造无效目标并触发 Durable Activity 重试；读取 Capability、事件预取与 MCP 边界保持可用，后续多轮编排需要将后续读取目标绑定到已完成的发现结果。
 
 - 2026-09-01：OpenAI-compatible Agent Provider 增加显式 `DIPOLE_AGENT_MODEL_THINKING_MODE=disabled`。开关仅透传给已选择的 Provider；DeepSeek V4 Flash 的受控 Shadow 可借此关闭默认高强度思考，避免有限 JSON-text 输出预算被 `reasoning_content` 耗尽。未设置时继续使用 Provider 默认行为，active authority、写 Capability 与 MCP 均未开启。
