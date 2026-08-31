@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：候选微服务 smoke 的服务内 health、数据库计数与恢复探针现统一通过有界 `SMOKE_EXEC_TIMEOUT_SECONDS` 包装。Remote GPU 出现停止态 `docker compose exec` 客户端时，演练会失败并清理隔离项目，不再无限等待；默认超时为 20 秒。
+
 - 2026-08-31：候选微服务消息 smoke 新增显式 `SMOKE_MESSAGE_RESTART_SERVICE` 持久化后恢复演练。脚本在首次 WebSocket 消息落库后重启 Core、Gateway、Message 或 Sync，使用同一 `client_message_id` 重放，并在权限为 `0600` 的 receipt 中核对 Message、Outbox、目标 Inbox 三类副作用各为一条；默认 smoke 路径不变。
 
 - 2026-08-31：新增简历 Claim 验收矩阵，将 Dipole IM 与 Dipole Agent 的目标表述逐项绑定到实现、可重跑运行证据和剩余门禁。后续优先补齐消息/Agent 故障副作用 receipt、Sync/Cassandra/Search/热点群 P99 和 Agent Eval 成功率；无对应报告时继续保留指标占位符。

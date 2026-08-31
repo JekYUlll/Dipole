@@ -12,6 +12,12 @@ class MicroserviceMessageRecoverySmokeContractTest(unittest.TestCase):
         self.assertIn("core|gateway|message|sync", SCRIPT)
         self.assertIn("SMOKE_MESSAGE_RESTART_SERVICE requires SMOKE_MESSAGE_FLOW=1", SCRIPT)
 
+    def test_service_exec_has_a_bounded_timeout(self):
+        self.assertIn("exec_timeout_seconds=${SMOKE_EXEC_TIMEOUT_SECONDS:-20}", SCRIPT)
+        self.assertIn('compose_args=(-p "${project}")', SCRIPT)
+        self.assertIn('timeout --foreground "${exec_timeout_seconds}" docker compose "${compose_args[@]}" exec -T', SCRIPT)
+        self.assertNotIn("compose exec -T", SCRIPT)
+
     def test_restart_happens_after_first_persist_and_before_idempotent_replay(self):
         first_send = SCRIPT.index("send_message 1")
         persisted = SCRIPT.index('test "${message_count}" = "1"')

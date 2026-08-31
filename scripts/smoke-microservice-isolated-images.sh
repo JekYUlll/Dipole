@@ -7,6 +7,7 @@ project=${COMPOSE_PROJECT_NAME:-dipole-isolated-image-smoke}
 gateway_port=${GATEWAY_PORT:-18080}
 report_file=${SMOKE_REPORT_FILE:-/tmp/${project}-receipt.json}
 message_restart_service=${SMOKE_MESSAGE_RESTART_SERVICE:-}
+exec_timeout_seconds=${SMOKE_EXEC_TIMEOUT_SECONDS:-20}
 wscli_log=$(mktemp -t dipole-isolated-wscli.XXXXXX.log)
 wscli_binary=$(mktemp -t dipole-isolated-wscli.XXXXXX)
 cert_dir=${DIPOLE_INTERNAL_CERT_DIR:-$(mktemp -d -t dipole-isolated-certs.XXXXXX)}
@@ -27,21 +28,25 @@ export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
+compose_args=(-p "${project}")
+if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
+  compose_args+=(--profile search)
+fi
+compose_args+=(
+  -f "${root_dir}/deploy/compose/docker-compose.microservices.yml"
+  -f "${root_dir}/deploy/microservices/isolated-images.yml"
+)
+if [[ "${SMOKE_INBOX_PROJECTOR:-0}" == "1" ]]; then
+  compose_args+=( -f "${root_dir}/deploy/microservices/inbox-projector.yml" )
+fi
+compose_args+=( -f "${ports_file}" )
+
 compose() {
-  local -a profile_args=()
-  local -a overlay_args=()
-  if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
-    profile_args+=(--profile search)
-  fi
-  if [[ "${SMOKE_INBOX_PROJECTOR:-0}" == "1" ]]; then
-    overlay_args+=( -f "${root_dir}/deploy/microservices/inbox-projector.yml" )
-  fi
-  docker compose -p "${project}" \
-    "${profile_args[@]}" \
-    -f "${root_dir}/deploy/compose/docker-compose.microservices.yml" \
-    -f "${root_dir}/deploy/microservices/isolated-images.yml" \
-    "${overlay_args[@]}" \
-    -f "${ports_file}" "$@"
+  docker compose "${compose_args[@]}" "$@"
+}
+
+compose_exec() {
+  timeout --foreground "${exec_timeout_seconds}" docker compose "${compose_args[@]}" exec -T "$@"
 }
 
 cleanup() {
@@ -99,6 +104,11 @@ if [[ -n "${message_restart_service}" ]]; then
   fi
 fi
 
+[[ "${exec_timeout_seconds}" =~ ^[1-9][0-9]*$ ]] || {
+  printf 'SMOKE_EXEC_TIMEOUT_SECONDS must be a positive integer\n' >&2
+  exit 2
+}
+
 INTERNAL_CERT_DIR="${cert_dir}" "${script_dir}/generate-internal-certs.sh" >/dev/null
 compose config --quiet
 compose up -d
@@ -113,8 +123,8 @@ done
 
 for service in core message sync gateway; do
   for _ in $(seq 1 120); do
-    live=$(compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez 2>/dev/null || true)
-    ready=$(compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null || true)
+    live=$(compose_exec "${service}" wget -q -O - http://127.0.0.1:9100/livez 2>/dev/null || true)
+    ready=$(compose_exec "${service}" wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null || true)
     [[ "${live}" == alive && "${ready}" == ready ]] && break
     sleep 1
   done
@@ -124,8 +134,8 @@ done
 
 if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
   for service in search search-indexer; do
-    compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez | grep -qx alive
-    compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz | grep -qx ready
+    compose_exec "${service}" wget -q -O - http://127.0.0.1:9100/livez | grep -qx alive
+    compose_exec "${service}" wget -q -O - http://127.0.0.1:9100/readyz | grep -qx ready
   done
 fi
 
@@ -198,8 +208,8 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
     local service=$1
     compose restart "${service}"
     for _ in $(seq 1 60); do
-      live=$(compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez 2>/dev/null || true)
-      ready=$(compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null || true)
+      live=$(compose_exec "${service}" wget -q -O - http://127.0.0.1:9100/livez 2>/dev/null || true)
+      ready=$(compose_exec "${service}" wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null || true)
       [[ "${live}" == alive && "${ready}" == ready ]] && break
       sleep 1
     done
@@ -219,7 +229,7 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
   send_message 1
 
   for _ in $(seq 1 30); do
-    message_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
+    message_count=$(compose_exec mysql mysql -N -B -udipole -pdipole123 dipole \
       -e "SELECT COUNT(*) FROM messages WHERE content='${message_content}';")
     [[ "${message_count}" == "1" ]] && break
     sleep 1
@@ -233,11 +243,11 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
   send_message 2
 
   for _ in $(seq 1 30); do
-    message_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
+    message_count=$(compose_exec mysql mysql -N -B -udipole -pdipole123 dipole \
       -e "SELECT COUNT(*) FROM messages WHERE content='${message_content}';")
-    outbox_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
+    outbox_count=$(compose_exec mysql mysql -N -B -udipole -pdipole123 dipole \
       -e "SELECT COUNT(*) FROM outbox_events WHERE value LIKE '%${message_content}%';")
-    inbox_count=$(compose exec -T mysql mysql -N -B -udipole -pdipole123 dipole \
+    inbox_count=$(compose_exec mysql mysql -N -B -udipole -pdipole123 dipole \
       -e "SELECT COUNT(*) FROM user_sync_inbox i JOIN messages m ON m.uuid=i.message_uuid WHERE m.content='${message_content}' AND i.user_uuid='${target_uuid}';")
     [[ "${message_count}" == "1" && "${outbox_count}" == "1" && "${inbox_count}" == "1" ]] && break
     sleep 1
