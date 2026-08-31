@@ -180,11 +180,56 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Run admission: %w", composeErr)
 		}
-		agentAdapter, composeErr = agentgrpc.NewServer(capability, resolver, admission)
+		approvalService, composeErr := agentapplication.NewPersistentAgentApprovalServiceV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Approval service: %w", composeErr)
+		}
+		controlAuthorizer, composeErr := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Task control authorizer: %w", composeErr)
+		}
+		workflowProjection, composeErr := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Task Workflow projection: %w", composeErr)
+		}
+		workflowRepairAudit, composeErr := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(agentRepos.Policy, agentRepos.Repairs)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Task Workflow repair audit: %w", composeErr)
+		}
+		agentServer, composeErr := agentgrpc.NewServerWithControlAndProjection(
+			capability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit,
+		)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent capability rpc adapter: %w", composeErr)
 		}
+		storageCfg := config.StorageConfig()
+		if storageCfg.ArtifactEnabled {
+			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{
+				Enabled: storageCfg.ArtifactEnabled, Endpoint: storageCfg.ArtifactEndpoint,
+				AccessKey: storageCfg.ArtifactAccessKey, SecretKey: storageCfg.ArtifactSecretKey,
+				UseSSL: storageCfg.ArtifactUseSSL, Bucket: storageCfg.ArtifactBucket,
+				GeneralAccessKey: storageCfg.AccessKey, GeneralBucket: storageCfg.Bucket,
+			})
+			if artifactErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Artifact blob storage: %w", artifactErr)
+			}
+			artifacts, artifactErr := agentapplication.NewPersistentAgentArtifactServiceV1(agentRepos.Policy, agentRepos.Artifacts, artifactBlobs)
+			if artifactErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Artifact service: %w", artifactErr)
+			}
+			if _, artifactErr = agentServer.WithArtifacts(artifacts); artifactErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("configure standalone Agent Artifact rpc adapter: %w", artifactErr)
+			}
+		}
+		agentAdapter = agentServer
 		if rpcCfg.AgentMemoryPromotionReceiptCommitEnabled {
 			if !rpcCfg.TLSEnabled {
 				cleanup()
