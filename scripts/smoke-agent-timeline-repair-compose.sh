@@ -63,7 +63,27 @@ if [[ "${timezone_state}" != $'+00:00\t+00:00' ]]; then
   exit 1
 fi
 
-compose up -d --wait mysql-permissions
+compose up -d mysql-permissions
+for _ in $(seq 1 30); do
+  permissions_container=$(compose ps -q mysql-permissions)
+  if [[ -n "${permissions_container}" ]]; then
+    permissions_state=$(docker inspect --format '{{.State.Status}}:{{.State.ExitCode}}' "${permissions_container}")
+    if [[ "${permissions_state}" == "exited:0" ]]; then
+      break
+    fi
+    if [[ "${permissions_state}" == exited:* ]]; then
+      printf 'Compose permission initialization failed: state=%q\n' "${permissions_state}" >&2
+      compose logs mysql-permissions >&2 || true
+      exit 1
+    fi
+  fi
+  sleep 1
+done
+if [[ "${permissions_state:-}" != "exited:0" ]]; then
+  printf 'Compose permission initialization did not finish: state=%q\n' "${permissions_state:-missing}" >&2
+  compose logs mysql-permissions >&2 || true
+  exit 1
+fi
 
 compose exec -T mysql mysql -uroot -proot123 dipole <<'SQL'
 INSERT INTO agent_definition_versions (
