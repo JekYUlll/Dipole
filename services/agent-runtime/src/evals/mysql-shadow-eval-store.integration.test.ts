@@ -20,7 +20,7 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
     const parsed = new URL(adminUrl!);
     parsed.pathname = `/${database}`;
     pool = createPool({ uri: parsed.toString(), timezone: "Z", connectionLimit: 4, multipleStatements: true });
-    for (const migration of [16, 17, 19, 20, 21, 22, 23, 26, 30, 54]) {
+    for (const migration of [16, 17, 19, 20, 21, 22, 23, 26, 30, 32, 54]) {
       const prefix = migration.toString().padStart(6, "0");
       const [path] = migrationPaths.filter(item => item.includes(`/${prefix}_`));
       if (path === undefined) throw new Error(`missing Agent migration ${prefix}`);
@@ -63,6 +63,7 @@ const migrationPaths = [
   "../../../../db/migrations/000023_agent_model_output_replay.up.sql",
   "../../../../db/migrations/000026_agent_artifacts.up.sql",
   "../../../../db/migrations/000030_agent_tool_invocations.up.sql",
+  "../../../../db/migrations/000032_agent_runtime_promotion_grants.up.sql",
   "../../../../db/migrations/000054_agent_run_trace_correlation.up.sql"
 ];
 
