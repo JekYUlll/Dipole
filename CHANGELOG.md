@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Eval 新增 `reviewed_shadow` 窗口汇总契约与 CLI。它只接收同候选版本、唯一摘要且完整绑定的终态 Shadow 五类报告，输出脱敏的任务样本量、成功率、类别通过率和失败原因计数；合成 Suite、混版本、重复报告及非绑定 case 均失败关闭。报告仍不构成 active authority、生产质量或用户影响证据。
+
 - 2026-08-31：README 现采用用户提供的 Dipole V3 品牌板作为主视觉，并增加 Go、TypeScript Agent Runtime、Kafka、sqlc 与 MIT 许可证 badge。`docs/images/dipole-brand-v3.png` 成为 IM/Agent 双标识、配色和后续产品视觉调整的参考资产。
 
 - 2026-08-31：Remote GPU 在隔离项目 `dipole-message-recovery-53a4edf7` 完成 Message Service 持久化后重启演练：同一 `client_message_id` 重放后 Message、Outbox 与目标 Inbox 均为单条，候选资源自动清理。低敏 receipt 归档于 `benchmarks/microservices-message-recovery-2026-08-31/`；Kafka/broker/in-flight 故障矩阵仍待验证。
