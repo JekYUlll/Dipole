@@ -11,8 +11,9 @@ could bind the capability and status while obtaining `resourceType`,
 `resourceId` and `action` from a reviewer manifest. It therefore cannot prove
 that the evaluated scope matched the Runtime authorization decision.
 
-The next evidence version must persist the resolved resource request and policy
-decision under the Step lease, require the Eval adapter to compare every field,
-then rerun the isolated observation. This withdrawn sample must not be used for
-task success rate, permission safety, cost, shared-environment or active
-authority claims.
+The replacement observation is archived in
+[`../agent-shadow-eval-2026-09-01-rerun/`](../agent-shadow-eval-2026-09-01-rerun/).
+It persists the resolved resource request and policy decision under the Step
+lease and requires the Eval adapter to compare every field. This withdrawn
+sample remains unusable for task success rate, permission safety, cost,
+shared-environment or active-authority claims.

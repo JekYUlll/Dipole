@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 的 disposable read-shadow Compose 在候选 `agent-runtime@064568d9` 生成新的五类 Shadow Eval 报告：Outcome、Trajectory、Permission、Retrieval 和 Cost 均通过；Retrieval precision/recall 均为 `1`，单次执行记录 `1` 次模型调用、`2` 次工具调用、`1765` tokens 与 `7032 ms` 聚合延迟。报告归档于 [`agent-shadow-eval-2026-09-01-rerun`](benchmarks/agent-shadow-eval-2026-09-01-rerun/)，只表示受控隔离 `N=1` 观察，不构成生产成功率、共享 authority 或写 Capability 结论。
+
 - 2026-09-01：Shadow Eval 的 Retrieval 指标现排除 runtime policy、execution context、task 与 capability registry 等控制面基线，仅统计领域证据；它们仍保留在 Context/Trajectory 审计中，不影响 Capability 或运行时上下文。
 
 - 2026-09-01：微服务 Compose 增加 `dipole_agent_eval` 专用 MySQL 只读账号，仅允许 Shadow Eval 查询 Task、Run、Plan、Step、Artifact、Model 与 Tool 审计投影；该配置不启用自动评测或任何运行时写入权限。

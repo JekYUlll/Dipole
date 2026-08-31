@@ -12,12 +12,13 @@
 
 ### 本轮进展
 
-- 2026-09-01：真实 read-shadow Eval 发现控制面基线被计入 Retrieval precision。adapter 现将其排除于 Retrieval 指标，保留领域证据用于 recall/precision；仍需复跑隔离报告，当前没有成功率结论。
+- 2026-09-01：Remote GPU 的 disposable read-shadow Compose 已生成新的 [五类 Shadow Eval 报告](../../benchmarks/agent-shadow-eval-2026-09-01-rerun/)。候选 `agent-runtime@064568d9` 的 Outcome、Trajectory、Permission、Retrieval 和 Cost 全部通过；Retrieval precision/recall 均为 `1`，并绑定持久 Step lease 的精确授权 scope。该数据只有隔离 `N=1`，不能推导任务成功率、共享环境质量、active authority 或写 Capability 安全性；应收集版本一致、去重 Trace 的受审窗口后再填写简历指标。
 
-- 2026-09-01：Compose 新增专用 `dipole_agent_eval` 只读账号。仍需在隔离 read-shadow 运行中以该账号生成报告并验证 DML 拒绝，当前没有自动或共享环境评测。
-- 2026-09-01：Remote GPU 隔离 Compose 已确认该账号可读 Task 投影且拒绝零行 `UPDATE`；真实五类报告与共享环境窗口仍待完成。
+- 2026-09-01：真实 read-shadow Eval 发现控制面基线被计入 Retrieval precision。adapter 已将其排除于 Retrieval 指标，并在 `agent-runtime@064568d9` 的隔离复跑中取得 `1.0/1.0`；控制面基线继续保留在 Context/Trajectory 审计中，当前没有成功率结论。
 
-- 2026-09-01：Shadow Eval 的 Permission evidence 已改为读取 Step lease 内持久化的 `resourceType/resourceId/action/decision`，并对 manifest 逐项核对；旧、部分、空值和非 `allowed` 记录全部拒绝。该实现修复了此前资源 scope 可由评审标签替代的证据缺口，仍需在隔离 MySQL/Runtime 拓扑重新生成五类报告，当前不恢复已撤回的成功率结论。
+- 2026-09-01：Compose 新增专用 `dipole_agent_eval` 只读账号。Remote GPU 隔离 read-shadow 已以该账号生成五类报告，并确认零行 `UPDATE` 被 MySQL 拒绝；自动评测、共享环境窗口和 active authority 仍未启用。
+
+- 2026-09-01：Shadow Eval 的 Permission evidence 已改为读取 Step lease 内持久化的 `resourceType/resourceId/action/decision`，并对 manifest 逐项核对；旧、部分、空值和非 `allowed` 记录全部拒绝。隔离 MySQL/Runtime 拓扑的新报告已通过该校验，旧撤回样本仍不得恢复为成功率结论。
 
 - 2026-08-31：EventLedger lease expiry 现有 `dipole.agent.event-lease-reclaim.v1` receipt，要求过期 claim 被第二次 claim 回收、旧 token 完成失败且最终 completed 行唯一。Remote GPU 已在 loopback-only MySQL 8.4 临时容器通过真实集成 `3/3`、receipt 单测 `4/4` 和 Runtime typecheck；该结论只覆盖消费 ownership，Temporal Workflow、共享 Kafka/Temporal 与 active authority 仍需独立门禁。
 
