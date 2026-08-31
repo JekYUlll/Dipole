@@ -4,6 +4,8 @@
 
 `core-restart-read-shadow-evidence.schema.json` 固定一次隔离 Compose read-shadow Core restart 的低敏 receipt：Core readiness、Gateway 代理、EventLedger、Task、Run、模型调用和 `conversation_digest` Artifact 必须精确收敛。它不表示 active authority、写 Capability、lease expiry 或共享环境证据。
 
+`event-lease-reclaim-evidence.schema.json` 固定 MySQL EventLedger 的 lease-expiry reclaim receipt：过期 claim 必须由第二次 claim 回收，旧 owner 的 completion 必须被拒绝，最终 completed EventLedger 只能保留一条。它证明 Kafka 事件消费租约的 reclaim 边界；Temporal Workflow 的 Worker replacement、approval/input resume 和 active authority 继续由独立证据覆盖。
+
 首批覆盖四类评测：
 
 - `event`：只处理发给助手的 direct created Message，并按触发 Message 幂等。

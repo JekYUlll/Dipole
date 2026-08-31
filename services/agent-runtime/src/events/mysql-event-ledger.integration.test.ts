@@ -5,6 +5,10 @@ import { createPool, type Pool } from "mysql2/promise";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { MySQLEventLedger } from "./mysql-event-ledger.js";
+import {
+  createEventLeaseReclaimEvidence,
+  parseEventLeaseReclaimEvidence
+} from "../runtime/event-lease-reclaim-evidence.js";
 
 const adminUrl = process.env.DIPOLE_TEST_AGENT_MYSQL_URL;
 const integration = describe.skipIf(adminUrl === undefined);
@@ -63,11 +67,27 @@ integration("MySQLEventLedger MySQL 8.4 contract", () => {
   it("reclaims an expired lease after a worker crash", async () => {
     const ledger = new MySQLEventLedger(pool, 60_000);
     const crashed = await ledger.claim("E-CRASH", "TASK-CRASH", "message.direct.created");
+    expect(crashed).toBeDefined();
     await pool.execute("UPDATE agent_event_ledger SET lease_expires_at = DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 SECOND) WHERE event_id = ?", ["E-CRASH"]);
 
     const recovered = await ledger.claim("E-CRASH", "TASK-CRASH", "message.direct.created");
+    expect(recovered).toBeDefined();
     expect(recovered?.token).not.toBe(crashed?.token);
     await expect(ledger.complete(crashed!)).rejects.toThrow(/stale/);
     await ledger.complete(recovered!);
+
+    const [rows] = await pool.query<Array<{ attempt_count: number; status: string } & import("mysql2").RowDataPacket>>(
+      "SELECT attempt_count, status FROM agent_event_ledger WHERE event_id = 'E-CRASH'"
+    );
+    expect(rows).toEqual([{ attempt_count: 2, status: "completed" }]);
+    const evidence = createEventLeaseReclaimEvidence({
+      event_id: "E-CRASH",
+      task_id: "TASK-CRASH",
+      expired_claim_reclaimed: true,
+      stale_owner_completion_rejected: true,
+      reclaim_attempt_count: 2,
+      completed_event_count: 1
+    });
+    expect(parseEventLeaseReclaimEvidence(evidence)).toEqual(evidence);
   });
 });

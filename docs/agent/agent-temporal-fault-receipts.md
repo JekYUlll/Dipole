@@ -53,3 +53,16 @@ raw artifact 的文件 SHA-256 为
 24 小时有效期，因此不纳入版本库。该记录只证明该 revision 的 disposable Compose
 read-shadow 恢复路径；不构成共享环境、active authority、写 Capability、lease expiry
 或 Worker replacement 联合故障的证据。
+
+## EventLedger lease reclaim evidence
+
+`event-lease-reclaim-evidence.schema.json` 记录 Agent Kafka 消费侧 MySQL
+`agent_event_ledger` 的租约恢复。它要求 expired claim 被一次新 claim 回收、原 claim
+token 的完成请求被拒绝、同一 event 的最终 completed 行精确为一条，且 receipt 固定为
+24 小时、SHA-256 绑定、`production_authority=false`。该 lease 仅保护 EventLedger
+消费 ownership；Workflow 的 Worker replacement、approval/input resume 仍使用上方
+Temporal fault receipt，二者不得互相替代。
+
+Remote GPU 在候选 `5e8a213e` 的 loopback-only `mysql:8.4` 临时容器中完成真实
+集成测试 `3/3`，并通过 receipt 单测 `4/4` 与 Runtime typecheck。测试结束后容器已
+移除。该结果不表示共享 Kafka/Temporal、跨进程业务副作用或 active authority 已验收。

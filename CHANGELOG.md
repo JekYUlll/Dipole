@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent EventLedger 新增 `dipole.agent.event-lease-reclaim.v1` receipt，绑定过期 claim 回收、旧 owner completion 拒绝与最终 completed 行唯一性。Remote GPU 的 loopback-only MySQL 8.4 集成测试 `3/3`、receipt 测试 `4/4` 与 TypeScript typecheck 均通过；该证据仅覆盖消费租约，不外推至 Temporal Workflow 或 active authority。
+
 - 2026-08-31：Remote GPU 在候选 `a7bc03ef` 的隔离 Compose 项目完成 `dipole.agent.core-restart-read-shadow.v1` 实测：事件发布后 Core 重启、Gateway 代理恢复，且同一事件的 Ledger、Task、Run、模型调用和 `conversation_digest` Artifact 均精确为 `1`。新镜像内正式 CLI 已复核 24 小时低敏 receipt；该证据不外推到共享环境、写 authority 或 lease expiry。
 
 - 2026-08-31：微服务 read-shadow Core restart 演练新增 `dipole.agent.core-restart-read-shadow.v1` receipt。只有重启后的 Core/Gateway 恢复，且同一事件的 Ledger、Task、Run、模型调用与 `conversation_digest` Artifact 全部精确收敛时才生成；artifact 以 SHA-256 和 24 小时窗口绑定，明确 `production_authority=false`。
