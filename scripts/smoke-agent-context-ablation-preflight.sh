@@ -54,7 +54,8 @@ mapfile -t checks < <(docker exec "$container" mysql -N -B -uroot -pablation-roo
   SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'dipole' AND table_name = 'agent_context_ablation_bindings';
   SELECT COUNT(*) FROM information_schema.table_privileges
     WHERE table_schema = 'dipole' AND table_name = 'agent_context_ablation_bindings'
-      AND grantee = '\''dipole_agent_eval'\''@'\''%'\'' AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE');")
+      AND grantee = CONCAT(CHAR(39), 'dipole_agent_eval', CHAR(39), '@', CHAR(39), '%', CHAR(39))
+      AND privilege_type IN ('INSERT', 'UPDATE', 'DELETE');")
 [[ "${#checks[@]}" == "3" && "${checks[0]}" == "1" && "${checks[1]}" == "1" && "${checks[2]}" == "0" ]]
 
 read_count=$(docker exec "$container" mysql -N -B -udipole_agent_eval -pchange-me dipole \

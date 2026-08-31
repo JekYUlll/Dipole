@@ -16,6 +16,7 @@ class ContextAblationPreflightContractTest(unittest.TestCase):
         self.assertIn("agent_context_ablation_bindings", source)
         self.assertIn("dipole_agent_eval", source)
         self.assertIn("privilege_type IN ('INSERT', 'UPDATE', 'DELETE')", source)
+        self.assertIn("CONCAT(CHAR(39), 'dipole_agent_eval'", source)
         self.assertNotIn("docker compose", source)
 
     def test_binding_migration_matches_agent_identity_collation(self):
