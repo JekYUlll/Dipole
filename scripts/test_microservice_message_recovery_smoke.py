@@ -30,6 +30,7 @@ class MicroserviceMessageRecoverySmokeContractTest(unittest.TestCase):
 
     def test_receipt_binds_message_and_projection_side_effect_counts(self):
         self.assertIn('[[ "${message_count}" == "1" && "${outbox_count}" == "1" && "${inbox_count}" == "1" ]]', SCRIPT)
+        self.assertIn("message recovery side effects did not converge", SCRIPT)
         self.assertIn("message_recovery:{restart_service:$message_restart_service", SCRIPT)
         self.assertIn("outbox_count:($outbox_count|tonumber)", SCRIPT)
         self.assertIn("inbox_count:($inbox_count|tonumber)", SCRIPT)

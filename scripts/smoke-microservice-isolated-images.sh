@@ -260,9 +260,11 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
     [[ "${message_count}" == "1" && "${outbox_count}" == "1" && "${inbox_count}" == "1" ]] && break
     sleep 1
   done
-  test "${message_count}" = "1"
-  test "${outbox_count}" = "1"
-  test "${inbox_count}" = "1"
+  if [[ "${message_count}" != "1" || "${outbox_count}" != "1" || "${inbox_count}" != "1" ]]; then
+    printf 'message recovery side effects did not converge: message=%s outbox=%s inbox=%s\n' \
+      "${message_count}" "${outbox_count}" "${inbox_count}" >&2
+    exit 1
+  fi
   history_response=$(curl --fail --silent --show-error --connect-timeout 2 --max-time 5 \
     -H "Authorization: Bearer ${sender_token}" \
     "http://127.0.0.1:${gateway_port}/api/v1/messages/direct/${target_uuid}?before_seq=0&limit=20")
