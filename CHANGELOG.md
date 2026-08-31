@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：read-shadow Agent 将模型计划 JSON Schema 收紧为两个只读步骤：`conversation.list` 与紧随其后的 `conversation.read`；读取步骤的 `conversationId` 在 schema 层固定为 `$discovered.previous`，执行层仍独立校验并解析真实发现结果。该修复避免 Provider 生成裸会话 ID 后触发 Durable Task 重试。
+
 - 2026-09-01：read-shadow Agent 完成两阶段模型闭环：先持久化计划并执行受信只读 Tool，再将完成的 Tool 输出封装为不可信数据交给独立 `synthesis` Model stage，最终 Artifact 使用综合摘要。空 Tool 输出保留原计划摘要；写 Capability、active authority 与自动多轮选择仍关闭。
 
 - 2026-09-01：Agent Model audit 将 durable run 按 `task_uuid + stage` 分隔，默认 `plan` 保持既有运行 ID 与重放语义，新增 `synthesis` 可拥有独立预算、调用记录和恢复结果。该迁移为读取结果后的模型综合准备基础，尚未启用第二次模型调用或改变 Shadow 默认行为。

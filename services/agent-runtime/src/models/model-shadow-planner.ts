@@ -7,12 +7,23 @@ import type { AgentContextMemory, ConversationReadResult, ConversationSearchEvid
 import type { CapabilityDescriptor } from "../policy/policy-engine.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
+const discoveredConversationMarker = "$discovered.previous";
+const modelPlanStepSchema = z.discriminatedUnion("capabilityId", [
+  z.object({
+    capabilityId: z.literal("conversation.list"),
+    input: z.object({ limit: z.number().int().min(1).max(100).optional() }).strict()
+  }).strict(),
+  z.object({
+    capabilityId: z.literal("conversation.read"),
+    input: z.object({
+      conversationId: z.literal(discoveredConversationMarker),
+      limit: z.number().int().min(1).max(100).optional()
+    }).strict()
+  }).strict()
+]);
 const modelPlanSchema = z.object({
   summary: z.string().trim().min(1).max(2000),
-  steps: z.array(z.object({
-    capabilityId: z.string().trim().min(1),
-    input: z.record(z.string(), z.unknown())
-  }).strict()).max(16)
+  steps: z.array(modelPlanStepSchema).max(16)
 }).strict();
 const synthesisSchema = z.object({ summary: z.string().trim().min(1).max(4000) }).strict();
 
@@ -31,7 +42,6 @@ const maxConversationEvidenceContentCharacters = 8 * 1024;
 const maxRetrievalEvidenceResults = 8;
 const maxRetrievalQueryCharacters = 256;
 const maxRetrievalEvidenceContentCharacters = 2 * 1024;
-const discoveredConversationMarker = "$discovered.previous";
 
 export interface ContextMemoryReader {
   listContextMemories(context: Parameters<ShadowPlanner["plan"]>[1], resourceType: string, resourceId: string, limit?: number): Promise<AgentContextMemory[]>;

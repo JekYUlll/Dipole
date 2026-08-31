@@ -226,6 +226,37 @@ describe("ModelShadowPlanner", () => {
     expect(request?.prompt).toContain("never construct a conversation identifier");
   });
 
+  it("exposes only the trusted discovery marker in the model plan schema", async () => {
+    let planSchema: { safeParse(value: unknown): { success: boolean } } | undefined;
+    const generate = vi.fn(async (input: { schema: { safeParse(value: unknown): { success: boolean } } }) => {
+      planSchema = input.schema;
+      return {
+        output: {
+          summary: "inspect the newest conversation",
+          steps: [
+            { capabilityId: "conversation.list", input: { limit: 10 } },
+            { capabilityId: "conversation.read", input: { conversationId: "$discovered.previous", limit: 20 } }
+          ]
+        }, route: "gateway/primary", attempts: 1, usage: { inputTokens: 10, outputTokens: 5 }
+      };
+    });
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list", "conversation.read"]);
+
+    await planner.plan(event(), context());
+
+    expect(planSchema?.safeParse({
+      summary: "read guessed conversation",
+      steps: [{ capabilityId: "conversation.read", input: { conversationId: "group:guessed" } }]
+    }).success).toBe(false);
+    expect(planSchema?.safeParse({
+      summary: "read discovered conversation",
+      steps: [
+        { capabilityId: "conversation.list", input: {} },
+        { capabilityId: "conversation.read", input: { conversationId: "$discovered.previous" } }
+      ]
+    }).success).toBe(true);
+  });
+
   it("rejects a model-constructed conversation read target", async () => {
     const router = { generate: vi.fn(async () => ({
       output: { summary: "read", steps: [{ capabilityId: "conversation.read", input: { conversationId: "group:guessed" } }] },

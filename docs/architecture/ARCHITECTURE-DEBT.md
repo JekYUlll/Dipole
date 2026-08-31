@@ -2,6 +2,8 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：Remote GPU 真实 Provider 验收表明，自由 `record` 输入 schema 会让模型偶发构造裸 `conversation.read` target，即使 prompt 已声明 discovery 规则。计划 schema 已收紧为 `conversation.list` 和固定 `$discovered.previous` 的 `conversation.read`，并保留执行层验证。候选数据库必须先应用 `000057_agent_model_run_stages`，两阶段 plan/synthesis 环境需配置 `DIPOLE_AGENT_MODEL_MAX_CALLS>=2`；同版本迁移镜像和可重跑体验 receipt 仍待完成。
+
 - 2026-09-01：隔离交互 Task 验证显示单轮 Planner 会在缺少任何发现结果时生成 `conversation.read`，随后因无法从伪造或空的 conversation key 推导可信 target 而失败并触发 Temporal 重试。当前已将单轮模型动作面限制为 `conversation.list`，维持事件驱动的预取读取与 MCP 的受控读取；多轮 orchestrator、已验证 discovery result 到 read target 的数据流绑定和该路径的端到端评测仍是 Agent P0。
 
 - 2026-09-01：Remote GPU 隔离交互 Shadow 已在 DeepSeek V4 Flash 下验证一次新用户只读任务：HTTP 查询为 `completed`，Task `workflow_status` 与唯一 Run 为 `completed`，模型调用、Step、Artifact 均精确为 `1`。`agent_tasks.status` 仍是 Shadow 策略投影并保持 `running`，因此 API、评测与前端必须以持久 Workflow/Run 终态表达用户可见完成；共享环境、多轮 conversation read、写能力、MCP 与 active authority 仍无此证据。
