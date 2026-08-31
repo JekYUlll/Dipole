@@ -68,8 +68,6 @@ describe("AISDKStructuredModelClient", () => {
       route: "test/json-text", prompt: "plan event", schema, maxOutputTokens: 96, timeoutMs: 2000
     })).resolves.toMatchObject({ output: { summary: "observe E2", capabilityIds: ["conversation.read"] } });
     expect(model.doGenerateCalls).toHaveLength(1);
-    expect(model.doGenerateCalls[0]?.prompt).toEqual(expect.arrayContaining([
-      expect.objectContaining({ content: expect.stringContaining("Return only a single JSON object") })
-    ]));
+    expect(JSON.stringify(model.doGenerateCalls[0]?.prompt)).toContain("Return only a single JSON object");
   });
 });
