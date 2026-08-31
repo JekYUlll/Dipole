@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：前端增加 Dipole V3 SVG 标识与隔离品牌 token。既有 Pencil/Vue token 契约保持不变；完整页面改版须在 canonical `.pen` 成功更新并产生评审导出后推进。
+
 - 2026-08-30：新增 `scripts/check-doc-indexes.sh` 并接入架构文档门禁，校验项目、Agent 和跨服务契约索引中的本地相对链接，降低文档重排后的断链风险。
 
 - 2026-08-30：新增 `contracts/README.md` 契约总索引，并将 Agent Capability、Task、Memory、MCP、发布、修复和评估契约按领域归类；Agent 文档入口与项目 README 同步链接，明确版本兼容、证据哈希和 authority 边界。
