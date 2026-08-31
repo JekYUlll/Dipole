@@ -12,7 +12,6 @@ compose_env_file="${COMPOSE_ENV_FILE:-}"
 compose_overlays="${COMPOSE_OVERLAYS:-}"
 compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-runtime_revision="$(git -C "${root_dir}" rev-parse HEAD)"
 
 [[ -d "${manifest_dir}" ]] || { echo "reviewed manifest directory is missing" >&2; exit 2; }
 [[ ! -e "${output_dir}" ]] || { echo "Shadow Eval window output already exists" >&2; exit 2; }
@@ -31,6 +30,16 @@ fi
 
 compose() {
   docker compose "${compose_args[@]}" "$@"
+}
+
+# Bind the evidence window to the image that executed the evaluation.
+agent_container="$(compose ps -q agent)"
+[[ -n "${agent_container}" ]] || { echo "Agent container is not running" >&2; exit 2; }
+runtime_revision="$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "${agent_container}" 2>/dev/null || true)"
+runtime_dirty="$(docker inspect --format '{{index .Config.Labels "io.dipole.source.dirty"}}' "${agent_container}" 2>/dev/null || true)"
+[[ "${runtime_revision}" =~ ^[a-f0-9]{40}$ && "${runtime_dirty}" == "false" ]] || {
+  echo "Agent image provenance is missing or dirty" >&2
+  exit 2
 }
 
 mapfile -d '' manifests < <(find "${manifest_dir}" -maxdepth 1 -type f -name '*.json' -print0 | sort -z)

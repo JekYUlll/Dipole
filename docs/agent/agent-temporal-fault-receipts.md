@@ -101,3 +101,9 @@ Exit status `0` means every reviewed task passed; `2` preserves a valid window
 with at least one failed task; all other statuses fail closed. The generated
 window remains an isolated development observation until its task set, reviewer
 process and environment are independently approved.
+
+Before reading a manifest, the collector resolves the running `agent` container
+and records its OCI `org.opencontainers.image.revision` label. It rejects a
+missing revision or a non-clean `io.dipole.source.dirty` label. Therefore the
+summary's `runtimeRevision` identifies the evaluated image, rather than the
+checkout used to invoke the collector.

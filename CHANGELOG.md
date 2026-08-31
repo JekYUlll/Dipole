@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-01：Shadow Eval 窗口收集器改为从运行中 `agent` 容器的 OCI revision 与 clean-source
+  标签取得 Runtime provenance；缺失或 dirty 标签立即失败关闭，避免候选 checkout 与实际评测镜像漂移。
+
 - 2026-09-01：新增 `collect-agent-shadow-eval-window.sh`，可在已运行的 read-shadow Compose 中逐份执行人工评审的 Shadow Eval manifest，并生成按候选 revision、唯一 Trace 与唯一 Suite 绑定的低敏窗口汇总。脚本不创建任务、不生成评审标签、不启动服务或修改开关；全通过返回 `0`，有效失败窗口返回 `2`。
 
 - 2026-09-01：Temporal 的“模型结果后置确认丢失”集成夹具补齐 Step 授权审计依赖，并固定断言重试仅记录一次授权。Remote GPU 以 Node `22.12.0` 重跑 `test:temporal:integration`，两个测试文件共 `10` 项均通过；该演练覆盖隔离 Temporal 的模型/Step 重放，不扩大 active authority 或外部写能力。
