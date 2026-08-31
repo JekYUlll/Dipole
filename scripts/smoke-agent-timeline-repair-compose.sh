@@ -5,6 +5,12 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root_dir=$(cd "${script_dir}/.." && pwd)
 compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-timeline-repair-compose-${RANDOM}-$$}"
+expected_migration_version=$(find "${root_dir}/db/migrations" -maxdepth 1 -name '*.up.sql' -printf '%f\n' | sed -E 's/^0*([0-9]+)_.*/\1/' | sort -n | tail -1)
+expected_migration_count=$(find "${root_dir}/db/migrations" -maxdepth 1 -name '*.up.sql' -printf '%f\n' | wc -l | tr -d ' ')
+if [[ -z "${expected_migration_version}" || "${expected_migration_count}" == "0" ]]; then
+  printf 'Agent Timeline repair Compose smoke cannot derive migration baseline\n' >&2
+  exit 1
+fi
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   image_name="${IMAGE_NAME:-dipole-agent-timeline-repair}"
@@ -45,15 +51,39 @@ timeline_table=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
   -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'dipole' AND table_name = 'agent_task_timeline_events';")
 timezone_state=$(compose exec -T mysql mysql -N -uroot -proot123 dipole \
   -e 'SELECT @@global.time_zone, @@session.time_zone;')
-if [[ "${migration_state}" != $'50\t50' || "${timeline_table}" != "1" || "${timezone_state}" != $'+00:00\t+00:00' ]]; then
-  printf 'Compose migration preflight failed: state=%q timeline_table=%q (want version/count 50/50 and table=1)\n' \
-    "${migration_state}" "${timeline_table}" >&2
+if [[ "${migration_state}" != "${expected_migration_version}"$'\t'"${expected_migration_count}" || "${timeline_table}" != "1" ]]; then
+  printf 'Compose migration preflight failed: state=%q timeline_table=%q (want version/count %s/%s and table=1)\n' \
+    "${migration_state}" "${timeline_table}" "${expected_migration_version}" "${expected_migration_count}" >&2
+  compose logs migrate >&2 || true
+  exit 1
+fi
+if [[ "${timezone_state}" != $'+00:00\t+00:00' ]]; then
   printf 'Compose timezone preflight failed: timezone_state=%q (want +00:00/+00:00)\n' "${timezone_state}" >&2
   compose logs migrate >&2 || true
   exit 1
 fi
 
-compose up -d --wait mysql-permissions
+compose up -d mysql-permissions
+for _ in $(seq 1 30); do
+  permissions_container=$(compose ps -q mysql-permissions)
+  if [[ -n "${permissions_container}" ]]; then
+    permissions_state=$(docker inspect --format '{{.State.Status}}:{{.State.ExitCode}}' "${permissions_container}")
+    if [[ "${permissions_state}" == "exited:0" ]]; then
+      break
+    fi
+    if [[ "${permissions_state}" == exited:* ]]; then
+      printf 'Compose permission initialization failed: state=%q\n' "${permissions_state}" >&2
+      compose logs mysql-permissions >&2 || true
+      exit 1
+    fi
+  fi
+  sleep 1
+done
+if [[ "${permissions_state:-}" != "exited:0" ]]; then
+  printf 'Compose permission initialization did not finish: state=%q\n' "${permissions_state:-missing}" >&2
+  compose logs mysql-permissions >&2 || true
+  exit 1
+fi
 
 compose exec -T mysql mysql -uroot -proot123 dipole <<'SQL'
 INSERT INTO agent_definition_versions (

@@ -606,6 +606,7 @@
 - **本轮进展：** 新增 `agent-timeline-repair-rollout` v1 evidence/policy/report 契约与只读 CLI，按窗口、样本、错误比例、readiness、operator、告警和回滚演练输出低敏 `eligible|blocked`；CLI 不改变 worker 状态，真实共享环境采集与 operator 决策仍待完成。
 - **本轮进展：** 2026-08-29 将 repair profile 的部署前置基线统一到 v50；旧本地共享镜像按 v27 运行时被 preflight 正确拒绝，使用当前源码构建候选镜像后通过 v50、UTC、最小权限、worker readiness、pending intent 恢复和事件幂等 smoke。共享环境 operator 灰度、指标抓取和轮换/回滚演练仍待完成。
 - **本轮进展：** 2026-08-29 复跑默认镜像隔离 Compose smoke，确认 v50 migration、UTC、专用权限、worker readiness、pending intent 恢复和 event UUID 幂等均通过；临时栈已自动清理，证据不改变默认关闭状态，共享环境 operator 灰度、指标抓取和轮换/回滚仍待完成。
+- **本轮进展：** 2026-08-31 Compose smoke 动态推导 migration 版本和文件数，并将正常退出的 `mysql-permissions` 作为一次性初始化容器轮询。Remote GPU 使用 MySQL migration v53 验证 UTC、专用权限、worker readiness、pending intent 恢复和事件 UUID 幂等重放；随机 Compose 项目、卷和临时工作树均自动清理。该隔离证据不改变默认关闭状态，共享环境 operator 灰度、指标抓取和轮换/回滚演练仍待完成。
 
 ### AD-045：Agent Task Timeline 缺少完整运行时闭环
 

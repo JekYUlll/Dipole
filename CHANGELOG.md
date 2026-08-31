@@ -2,6 +2,8 @@
 
 - 2026-08-31：Remote GPU 使用隔离 MySQL 容器完成 Agent Task Timeline repair 进程 smoke：worker 重放单个 intent 并幂等收敛。该脚本现支持 `DIPOLE_GO_BIN`，避免远端默认 Go 版本低于模块要求时误阻断演练；不改变默认 repair profile 或生产开关。
 
+- 2026-08-31：Agent Timeline repair Compose smoke 改为从已版本化 migration 文件动态推导 schema 基线，并轮询正常退出的 `mysql-permissions` 一次性初始化容器。Remote GPU 使用 MySQL migration v53 完成最小权限、UTC、worker readiness、pending intent 恢复和 event UUID 幂等重放；随机 Compose 项目、卷和临时工作树均已自动清理。
+
 - 2026-08-31：Agent Runtime 现在会拒绝 `DIPOLE_AGENT_OAUTH_CALLBACK_ENABLED=true` 的未批准部署 profile。当前镜像没有 Provider code-exchange processor，启动会在创建 listener、Kafka、Temporal 或 RPC 资源前失败；未设置该开关时保持默认关闭。
 
 - 2026-08-31：Agent Runtime 新增 OAuth callback handoff 的注入式组合工厂，统一 claim、私钥解封、processor、complete/release 与 Gateway control adapter；默认启动路径仍不构造该工厂，且未实现 Provider code exchange 或 token 生命周期。组合工厂要求独立 Core 凭据，并支持仅用于受控测试的 key/envelope 注入。
