@@ -6,6 +6,9 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${ROOT_DIR}/deploy/compose/docker-compose.microservices.yml"
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-microservices-smoke}"
 GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:8080}"
+RESTART_CORE="${RESTART_CORE:-0}"
+
+[[ "${RESTART_CORE}" == "0" || "${RESTART_CORE}" == "1" ]] || { echo "RESTART_CORE must be 0 or 1" >&2; exit 2; }
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   "${SCRIPT_DIR}/docker-build.sh" backend
@@ -56,6 +59,13 @@ core_ws_status="$(compose exec -T core sh -c \
   | sed -n 's/.*HTTP\/1.1 \([0-9][0-9][0-9]\).*/\1/p' \
   | head -n 1)"
 [[ "${core_ws_status}" == "404" ]]
+
+if [[ "${RESTART_CORE}" == "1" ]]; then
+  compose restart core
+  compose exec -T core wget -q -O - http://127.0.0.1:9100/readyz | grep -qx 'ready'
+  proxy_status="$(curl --connect-timeout 2 --max-time 5 -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts" || true)"
+  [[ "${proxy_status}" == "401" ]]
+fi
 
 for service in core message sync gateway; do
   compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez | grep -qx 'alive'
@@ -163,4 +173,4 @@ for _ in $(seq 1 30); do
 done
 [[ "${agent_event_ready}" == "1" ]]
 
-echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership, Agent event ledger/task/run idempotency"
+echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership, Agent event ledger/task/run idempotency, core_restart=${RESTART_CORE}"

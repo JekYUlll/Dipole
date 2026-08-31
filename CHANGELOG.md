@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：微服务 smoke 新增可选 `RESTART_CORE=1` 隔离 Core 重启阶段。重启后重新验证 Core readiness 与 Gateway 代理，再执行既有 Agent EventLedger/Task/Run 幂等检查；默认 smoke 行为不变，Capability RPC read-shadow 恢复仍需单独演练。
+
 - 2026-08-31：Agent Capability RPC 的重连包装器现在在每次方法调用时解析当前 gRPC channel。Core 返回 `UNAVAILABLE` 后，即使上层保留了旧方法引用，下一次事件级调用也会使用新 channel；失败调用仍不在 transport 层重放，Kafka/EventLedger 保持幂等重试责任。
 
 - 2026-08-31：默认关闭的 Agent OAuth callback handoff executor 现在在私钥解封前和 Provider processor 前两次复核 durable handoff 的 lease/expiry。过期检查失败属于副作用前故障并释放 lease；processor 或 completion 结果不确定时仍保留 lease。该改动不装配 callback HTTP、Provider token exchange 或 token 生命周期。
