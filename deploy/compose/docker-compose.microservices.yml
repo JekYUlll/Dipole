@@ -351,8 +351,10 @@ services:
       DIPOLE_STORAGE_ARTIFACT_SECRET_KEY: ${DIPOLE_ARTIFACT_MINIO_SECRET_KEY:-dipoleartifactpass}
       DIPOLE_STORAGE_ARTIFACT_USE_SSL: "false"
       DIPOLE_STORAGE_ARTIFACT_BUCKET: dipole-agent-artifacts
-      DIPOLE_AI_ENABLED: "false"
-      DIPOLE_AI_RUNTIME_MODE: "off"
+      # Core owns the assistant user record. The separate TS Runtime owns the
+      # Shadow consumer, so Core remains in remote mode rather than embedding AI.
+      DIPOLE_AI_ENABLED: "true"
+      DIPOLE_AI_RUNTIME_MODE: "remote"
       DIPOLE_MYSQL_HOST: mysql
       DIPOLE_REDIS_HOST: redis
       DIPOLE_METRICS_ENABLED: "true"

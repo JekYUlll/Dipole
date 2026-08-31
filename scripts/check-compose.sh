@@ -96,6 +96,8 @@ jq -e '
   and .services.core.entrypoint == ["/app/service"]
   and .services.core.environment.DIPOLE_CORE_MESSAGE_TRANSPORT == "grpc"
   and .services.core.environment.DIPOLE_MESSAGE_TRANSPORT == "grpc"
+  and .services.core.environment.DIPOLE_AI_ENABLED == "true"
+  and .services.core.environment.DIPOLE_AI_RUNTIME_MODE == "remote"
   and .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_CONVERSATION_SEARCH_ENABLED == "false"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
@@ -107,6 +109,7 @@ jq -e '
   and (.services.agent.build.context | endswith("/services/agent-runtime"))
   and .services.agent.environment.DIPOLE_AGENT_KAFKA_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
+  and .services.agent.environment.DIPOLE_AGENT_UUID == "UAI000000000000000001"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
   and ((.services.core.depends_on // {}) | has("message") | not)

@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：修复微服务 Compose 中 Core assistant identity seed 与 TS Agent UUID 的漂移。Core 以 `ai.enabled=true`、`ai.runtime_mode=remote` 维护唯一系统用户，TS Runtime 仍只消费 Shadow 事件；该组合不恢复 embedded Eino consumer。真实私聊到 Shadow plan 的远程证据继续待补。
+
 - 2026-08-31：修复 standalone Core 将完整 Agent Capability adapter 误绑定到 Search 开关的装配缺口。内部 RPC 与 mTLS 完整时，基础只读/任务能力始终注册；Search client 仍仅在 `internal_rpc.agent_conversation_search_enabled=true` 时建立，关闭时只拒绝 `conversation.search`。Remote GPU 的 DeepSeek shadow 验证和公网体验入口仍需完成。
 
 - 2026-08-31：OAuth callback Runtime 配置契约默认关闭，启用时要求独立 secret、固定 lease owner 与非空 key mapping；`index.ts` 未读取它，因此没有新增网络 surface。后续完整装配必须复用此唯一契约并增加私钥/processor/Compose gate。
