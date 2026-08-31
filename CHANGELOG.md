@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-08-31：External MCP Shadow drill 现在在干净候选 worktree 缺少 `vitest` 时，以 `DIPOLE_NODE_BIN` 相邻的锁定 npm 执行 `npm ci --ignore-scripts`；已有依赖不重复安装。该修复使 Remote GPU 演练使用 Node 22，默认运行时 authority 不变。
+
+- 2026-08-31：Remote GPU 在 `bb1e43e8` 上重跑 External MCP Shadow drill：`2/2` EventLedger 收敛、一次 Tool 与一次 Artifact、重启重复投递被抑制、过期 readiness 被拒绝，并通过 Go internal gRPC mTLS identity denial 检查。receipt 为短时低敏隔离证据，明确 `production_authority=false`。
+
 - 2026-08-31：Temporal fault receipt v1 追加 `worker_replacement_input_resume`，将无效/过期输入拒绝、精确输入恢复、Worker 替换和终态写入基数收敛为独立可验证场景；该隔离证据不外推到 Core restart、lease expiry 或 active authority。
 
 - 2026-08-31：Agent Temporal 增加 `worker_replacement_approval_resume` fault receipt v1。它将隔离测试中的状态修订、Worker 替换、终态写入重试和副作用基数绑定为 SHA-256 receipt；任何状态或单次副作用漂移都会得到 `ineligible`。该 receipt 证明本地 Temporal 场景，不构成共享环境、Core restart、lease expiry 或 active authority 证据。

@@ -12,6 +12,10 @@
 
 ### 本轮进展
 
+- 2026-08-31：External MCP Shadow drill 已补齐干净候选 worktree 的 Node 依赖前置：仅在缺少本地 Vitest 时使用显式 Node 相邻 npm 安装 lockfile 依赖。此前 Go/mTLS fixture 成功后会因缺依赖中止，无法生成有效 Shadow evidence；修复后仍只运行 disposable 资源与只读路径。
+
+- 2026-08-31：修复后在 Remote GPU 的隔离 MySQL/Kafka/Temporal/Go Core mTLS/本地 MCP 拓扑完成 Shadow drill。EventLedger `2/2`、Tool `1`、Artifact `1`，重启重复被抑制、过期 readiness 被拒绝且 identity denial 通过；receipt 为 24 小时有效的低敏开发期证据，`production_authority=false`，共享 Shadow tenant 与 active write authority 继续开放。
+
 - 2026-08-31：Agent Temporal 增加 `worker_replacement_approval_resume` fault receipt v1。隔离 Temporal Worker replacement 演练将状态修订、终态写入重试和副作用基数通过 SHA-256 绑定；状态或单次副作用漂移固定为 `ineligible`。共享环境的 Core restart、lease expiry、input resume 与归档 receipt 仍待完成，当前结论不扩张至 active authority。
 
 - 2026-08-31：同一 Temporal fault receipt 已覆盖 Worker 替换后的 Elicitation input resume：无效值和过期 request ID 不恢复任务，精确输入只恢复一次。该证据仍为隔离 Temporal，Core restart、lease expiry 和共享环境归档保持开放。
