@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 开发环境使用 `.env` 托管的 DeepSeek V4 Flash 完成真实私聊到 Kafka、Agent Capability RPC、单次 JSON-text 模型调用、持久化 Model Run/Call 与 Shadow Plan 的只读闭环验证；该证据仅覆盖 Shadow Runtime，不代表 active authority 或写能力已开放。
+
 - 2026-08-31：`json_text` 解析支持受限的前置标签：仅提取响应末尾唯一、完整的 JSON 对象；对象后的任意文本仍拒绝。提取结果继续经过 Zod schema 与 Capability allowlist 验证。
 
 - 2026-08-31：`json_text` 兼容解析额外剥离完整、封闭的 `<think>...</think>` 前缀，再验证剩余 JSON；普通解释性文本继续拒绝，推理正文不进入审计或计划数据。
