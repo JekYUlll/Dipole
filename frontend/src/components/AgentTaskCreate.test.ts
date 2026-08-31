@@ -21,7 +21,7 @@ describe('AgentTaskCreate', () => {
 
   it('uses V3 product tokens and keeps the authorization boundary visible', () => {
     expect(source).toContain('var(--dp-surface)')
-    expect(source).toContain('var(--dp-canvas)')
+    expect(source).toContain('var(--dp-v3-navy)')
     expect(source).toContain('var(--dp-v3-red)')
     expect(source).toContain('var(--dp-v3-gold)')
     expect(source).toContain('只读范围')
