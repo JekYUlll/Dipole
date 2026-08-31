@@ -11,6 +11,7 @@ export PATH="$node_dir:$PATH"
 compose_file="$root_dir/deploy/agent/external-mcp-shadow-drill.compose.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-mcp-drill-${RANDOM}-$$}"
 evidence_path="${DIPOLE_AGENT_MCP_DRILL_EVIDENCE:-$root_dir/services/agent-runtime/.artifacts/external-mcp-shadow-drill.json}"
+approval_evidence_path="${DIPOLE_AGENT_APPROVAL_DRILL_EVIDENCE:-$root_dir/services/agent-runtime/.artifacts/approval-gate-drill.json}"
 fixture_dir="$(mktemp -d)"
 fixture_pid=""
 fixture_ready="$fixture_dir/ready.json"
@@ -48,6 +49,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$(dirname "$evidence_path")"
+mkdir -p "$(dirname "$approval_evidence_path")"
 compose up -d --wait
 sleep 5
 
@@ -101,6 +103,7 @@ export DIPOLE_TEST_AGENT_RPC_STALE_PATH="$fixture_stale"
 export DIPOLE_TEST_AGENT_RPC_IDENTITY_DENIALS_VERIFIED="true"
 export DIPOLE_AGENT_MCP_DRILL_EVIDENCE="$evidence_path"
 export DIPOLE_AGENT_APPROVAL_GATE_DRILL=true
+export DIPOLE_AGENT_APPROVAL_DRILL_EVIDENCE="$approval_evidence_path"
 npm test -- --run \
   src/runtime/external-mcp-full-stack-drill.integration.test.ts \
   src/runtime/approval-gate-rpc-drill.integration.test.ts
@@ -112,3 +115,4 @@ fi
 
 test -s "$evidence_path"
 npm run mcp:shadow-drill:check -- --evidence="$evidence_path"
+npm run approval:drill:check -- --evidence="$approval_evidence_path"
