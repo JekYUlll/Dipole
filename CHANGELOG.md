@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：修正 Remote GPU bundle 生成引用：以 `HEAD` 创建可检出的完整归档，并继续将不可变 commit 单独传给远端做精确校验，避免裸 SHA 被 Git 判定为空 bundle。
+
 - 2026-09-01：Remote GPU 的 origin clone/fetch 增加可配置的 20 秒超时；GitHub 出站异常会在受限时间内转入已上传的 commit bundle，避免开发验证被网络阻塞。
 
 - 2026-09-01：Remote GPU 候选同步新增 commit-pinned Git bundle 回退。远端 GitHub clone/fetch 超时时，脚本通过既有 SSH 上传临时 bundle、校验目标 commit 后 checkout，并在退出时清理 bundle；正常网络路径仍优先使用 origin fetch。

@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU bundle 回退已修正为用 `HEAD` 生成完整、可检出的 Git bundle；目标 SHA 继续通过独立参数与远端 `rev-parse` 固定校验。裸 SHA 会被 Git 解释为空归档，修复后才进入受控远端验证。
+
 - 2026-09-01：为 Remote GPU 的 origin clone/fetch 固定可配置的 20 秒 timeout。远端 GitHub 不可达时，开发验证会转入 commit-pinned bundle 回退，不会长期占用会话或阻塞后续 Agent 同版本门禁；该 timeout 不改变任何运行中 Compose 服务。
 
 - 2026-09-01：Remote GPU 候选源码同步曾因远端 `ssh.github.com:443` 超时而无法进入测试。`remote-dev.sh` 现为每个 clean candidate 创建 commit-pinned Git bundle 并通过既有 SSH 上传；远端 origin clone/fetch 失败时才回退至 bundle，随后验证 exact commit 并在退出清理。该改动不启用隧道、代理或共享服务，后续同版本 Compose evidence 仍需独立执行。

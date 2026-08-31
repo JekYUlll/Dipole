@@ -62,7 +62,9 @@ sync_revision() {
   trap 'rm -f "${bundle_path}"' RETURN
   # Keep a local, commit-pinned transport fallback for Remote GPU hosts whose
   # outbound GitHub access is transiently unavailable.
-  git bundle create "${bundle_path}" "${commit}"
+  # A symbolic ref keeps the bundle non-empty while the remote still verifies
+  # the immutable commit passed separately below.
+  git bundle create "${bundle_path}" HEAD
   scp -q -o BatchMode=yes -o ConnectTimeout="${DIPOLE_REMOTE_CONNECT_TIMEOUT:-8}" \
     "${bundle_path}" "${REMOTE_HOST}:${remote_bundle}"
   remote_tip="$(git ls-remote --heads origin "refs/heads/${REMOTE_BRANCH}" | awk 'NR == 1 { print $1 }')"
