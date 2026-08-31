@@ -725,6 +725,8 @@
 
 ## [Unreleased]
 
+- 新增默认关闭的 `agent-interactive-shadow` Compose overlay：仅启用经认证的 Agent Task 创建、查询、取消、输入与审批代理，固定 `shadow + read_shadow` 执行路径，并关闭 MCP、外部 MCP、Memory、检索和任何写入 authority。
+
 - 恢复 Emerald Signal Link 品牌调色：README、IM、Agent 与紧凑入口标记统一采用深青信号场、浅色画布和橙色事件脉冲，替换分支中遗留的偏蓝青渐变；本项只影响品牌呈现。
 
 ### Added

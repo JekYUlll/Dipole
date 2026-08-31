@@ -143,6 +143,7 @@ active_agent_config="$({
   DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
   DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
   DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini \
+  DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2 \
   DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
   DIPOLE_AGENT_TEMPORAL_ADDRESS=temporal:7233 \
   DIPOLE_AGENT_TEMPORAL_NAMESPACE=dipole \
@@ -177,6 +178,37 @@ jq -e '
   and any(.services.agent.volumes[]; (.source | endswith("/tmp/dipole-agent-release-manifest-check.json"))
     and .target == "/run/dipole/release/manifest.json" and .read_only == true)
 ' <<<"${active_agent_config}" >/dev/null
+
+interactive_shadow_config="$(
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
+  DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
+  DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
+  DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini \
+  DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2 \
+  DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
+  DIPOLE_AGENT_MODEL_MAX_CALLS=2 \
+  DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS=15000 \
+  DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS=512 \
+    docker compose \
+      -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/agent-ai-sdk-shadow.yml \
+      -f deploy/microservices/agent-temporal-read-shadow.yml \
+      -f deploy/microservices/agent-interactive-shadow.yml config --format json
+)"
+jq -e '
+  .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "read_shadow"
+  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
+' <<<"${interactive_shadow_config}" >/dev/null
 
 promotion_agent_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
