@@ -12,10 +12,12 @@ import (
 	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -1208,6 +1210,8 @@ func (s *Server) ListAgentTaskTimeline(ctx context.Context, request *agentv1.Lis
 	}
 	events, err := s.timeline.ListAgentTaskTimelineEvents(ctx, request.GetTaskId(), request.GetAfterSeq(), int(request.GetLimit()))
 	if err != nil {
+		// The public gRPC response stays stable; the structured error is retained only in Core logs for operators.
+		logger.Error("Agent Task Timeline query failed", zap.Error(err), zap.Int("limit", int(request.GetLimit())))
 		return nil, status.Error(codes.Internal, "Agent Task Timeline unavailable")
 	}
 	response := &agentv1.ListAgentTaskTimelineResponse{SchemaVersion: application.AgentTaskTimelineSchemaVersionV1, TaskId: authorization.TaskUUID, Revision: timelineRevision(authorization), Events: make([]*agentv1.AgentTaskTimelineEvent, 0, len(events))}

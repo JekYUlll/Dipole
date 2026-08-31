@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Core 的 Agent Task Timeline gRPC 查询在保持固定公共错误响应的同时，新增服务端结构化失败日志，便于隔离候选识别 SQLC 投影读取错误；日志不记录请求主体、消息正文或数据库凭据。
+
 - 2026-09-01：修复 Gateway 到 Agent Runtime 的 Task Timeline 请求组装。分页查询此前被作为路径文本转义，导致已创建任务的时间线读取返回 `404`；现在结构化保留 URL query，并以 `task:` 标识、cursor 和 limit 的 HTTP 回归测试锁定。
 
 - 2026-09-01：新增 `remote-gpu-mysql-aio-compat.yml`。共享 Remote GPU 的 Linux AIO 配额接近上限时，候选 MySQL 可显式关闭 native AIO 完成隔离验证；基础 Compose 与既有 MySQL 栈保持不变。

@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Interactive Agent Task 的公开 Timeline 在 Remote GPU 候选返回通用依赖错误，数据库迁移、持久事件、SQLC 查询和账户认证均已单独验证。Core 现仅在服务端记录脱敏结构化查询错误，公共 gRPC/HTTP 仍不返回数据库细节；待以同版本候选取得根因并补充功能修复与端到端 receipt。
+
 - 2026-09-01：Remote GPU 同版本 Interactive Agent Task 验收发现，Gateway 控制客户端将 Timeline 的 `limit`/`after` 查询串编码进 path，Runtime 因此返回 `404`。客户端现通过结构化 URL 解析保留 query，并覆盖真实 `task:` 标识、cursor 与 limit；仍需用同一 revision 的隔离 Compose 重跑创建、终态读取和时间线读取后，才可关闭该体验链路门禁。
 
 - 2026-09-01：Remote GPU 同时运行多个隔离 MySQL 时，宿主 Linux AIO 使用量达到 `55,300 / 65,536`，新候选初始化触发 `io_setup() EAGAIN`。新增只作用于候选 project 的 `remote-gpu-mysql-aio-compat.yml`，保留基础参数并增加 `--innodb-use-native-aio=0`；此兼容模式不改变已有服务，验证结束后随候选 project 回滚。
