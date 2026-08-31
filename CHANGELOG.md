@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 的 `agent-temporal-read-shadow` 完成受控只读 Durable Task 演练：Kafka 事件经 Temporal 和 Core mTLS 投影后，持久 Run 完成、EventLedger 单次收敛，并生成 `conversation_digest` Artifact。开发环境将 Flash 单次输出预算设为 `1024`，用于避免推理过程耗尽正文预算；仍保持零内部重试、只读 Capability、schema 校验和默认关闭的写能力。
+
 - 2026-08-31：微服务 Compose 的独立 Agent 服务现在显式加载受忽略的根目录 `.env`。这保证重建 `agent-temporal-read-shadow` 容器时保留受托管的 Provider 路由和凭据；缺失 `.env` 时基础 `metadata` 配置仍可启动，AI SDK overlay 继续因缺 Provider 配置失败关闭。
 
 - 2026-08-31：修复独立 Core 在远程 Agent Temporal 运行时遗漏 Task approval、control、Workflow projection/repair 与 Artifact RPC 装配的问题。独立 Core 现在复用 embedded 回滚基线的持久服务组合；Artifact 仍要求既有存储开关。该修复仅使 `read_shadow` Durable Task 能完整投影和产出受控 Artifact，不开放消息写入、外部 MCP 或 active authority。
