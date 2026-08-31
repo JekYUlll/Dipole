@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：补齐主链路外部阻塞期间的并行治理规则。前端设计、只读体验、视觉回归、文档入口和图表可在独立分支推进；这些切片不改变服务 authority、默认 feature flag 或真实环境证据门槛。
+
 - 2026-08-31：新增 Cassandra read-rollout 原始 Prometheus 窗口采集脚本，严格分离不可覆盖的 `start` 与 `end` 快照，并绑定部署 revision 与配置读比例。脚本只读取 Message Service `/metrics`，为后续 evidence v1 转换与共享灰度归档提供输入，不修改流量开关。
 
 - 2026-08-31：修正 Cassandra read-rollout evidence 对运行时回退指标的计数契约：`mysql_fallback` 是 MySQL 最终路由的子集，评估器现按该关系校验。真实 Prometheus 窗口中的 Cassandra 失败回退不再被误判为无效 evidence，默认读比例与回退行为不变。

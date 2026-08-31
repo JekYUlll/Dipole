@@ -58,6 +58,16 @@ design/
 
 每次首次设计运行前检查 `pen status`、本地版本与 npm 最新版本。CLI 或 skill 升级单独提交，避免与视觉变更混合。
 
+### 4.1 主链路阻塞时的前端队列
+
+当 Agent、Sync 或存储切流等待共享环境、外部服务或观察窗口时，前端可以在独立分支推进下列工作：
+
+1. 补齐已存在 API 的只读页面、loading/empty/error/offline/permission 状态和 desktop/mobile Pencil 画板。
+2. 从已批准画板提取 token 与可复用组件，并补充 Vitest、Playwright 和视觉基线。
+3. 整理页面路由、API 形状、feature flag 和后端 authority 的文档链接。
+
+这些切片不能借由静态页面宣称服务已经 active，也不能打开默认关闭的写入入口。需要后端 authority、真实数据或共享环境的体验仍留在对应主链路验收之后；默认关闭、缺依赖和权限拒绝状态必须可以演示与测试。
+
 ## 5. 里程碑
 
 ### F1：设计系统与现有页面复刻
@@ -87,6 +97,7 @@ design/
 - 每个发布检查 `.pen`、Vue token、Story/fixture 和截图基线是否同步。
 - 每个用户可见切片同步复核 [学习与面试入口](../guides/PROJECT-LEARNING-AND-INTERVIEW.md) 中对应 IM 或 Agent 材料的演示步骤、证据链接、状态标签和限制。
 - 每季度清理失效 frame 与重复组件，保留已发布版本标签。
+- 主链路阻塞时按 4.1 的队列补齐现有页面设计和治理，不以等待状态阻塞前端质量改进。
 
 ## 6. 验收标准
 

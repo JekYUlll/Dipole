@@ -70,6 +70,12 @@ Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/agen
 - [前端设计计划](frontend/FRONTEND-DESIGN-PLAN.md)
 - [Pencil 设计资产](../design/README.md)
 
+## 文档治理
+
+- [文档入口与目录约定](architecture/REPOSITORY-STRUCTURE.md)
+- [平台演进与阻塞期间并行工作队列](architecture/PLATFORM-EVOLUTION-PLAN.md#41-阻塞期间的并行工作队列)
+- [架构债务台账](architecture/ARCHITECTURE-DEBT.md)
+
 ## 性能记录
 
 - [性能基线](performance/PERFORMANCE-BASELINE.md)
