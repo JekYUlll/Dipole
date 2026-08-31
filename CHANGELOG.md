@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Agent OAuth callback handoff Runtime 新增跨实例恢复演练：前一 Runtime 仅在显式 `retryable_failure` 后释放 Core 条件租约，替换实例随后才能重新领取并完成。该回归只验证默认未装配执行器对 Core lease 的依赖；callback 路由、Provider 换码、token 生命周期与默认启用状态仍保持关闭。
+
 - 2026-09-01：Remote GPU 的 `node-test` 现在仅在锁文件安装明确报 `ENOTEMPTY` 时，将该候选 app 的中断 `node_modules` 原子隔离后重试一次；网络、锁文件和权限错误保持失败。该恢复路径保留旧目录，避免清理其他工作树的依赖，并继续使用单次 `npm ci --include=optional`。
 
 - 2026-09-01：Remote GPU 隔离交互 Shadow 以 DeepSeek V4 Flash 完成一条新用户只读 Task：Gateway 返回 `202` 后状态收敛为 `completed`，持久化审计为一条完成 Run、一次模型调用、一次 `conversation.list` Step 与一个 `conversation_digest` Artifact。该证据只覆盖隔离 read-shadow；任务策略行保持 `running`、Durable `workflow_status` 与 Run 共同表达终态，写 Capability、active authority 与多轮读取均未开启。
