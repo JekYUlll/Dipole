@@ -12,7 +12,7 @@ const status = z.enum(["running", "waiting_approval", "waiting_input", "complete
 
 const observationSchema = z.object({
   schemaVersion: z.literal(inputSchemaVersion),
-  drillId: z.literal("worker_replacement_approval_resume"),
+  drillId: z.enum(["worker_replacement_approval_resume", "worker_replacement_input_resume"]),
   observedAt: timestamp,
   workflow: z.object({ taskId: identity, runId: identity }).strict(),
   transitions: z.array(z.object({ revision: z.number().int().min(1).max(256), status }).strict()).min(1).max(16),
@@ -20,13 +20,14 @@ const observationSchema = z.object({
   effects: z.object({
     admissions: z.number().int().min(0).max(16), stepExecutions: z.number().int().min(0).max(256),
     approvalRequests: z.number().int().min(0).max(16), approvalResolutions: z.number().int().min(0).max(16),
-    terminalWriteAttempts: z.number().int().min(0).max(16), terminalPersistedWrites: z.number().int().min(0).max(16)
+    terminalWriteAttempts: z.number().int().min(0).max(16), terminalPersistedWrites: z.number().int().min(0).max(16),
+    inputSignalsRejected: z.number().int().min(0).max(16), inputResumptions: z.number().int().min(0).max(16)
   }).strict()
 }).strict();
 
 export interface TemporalFaultObservation {
   readonly schemaVersion: typeof inputSchemaVersion;
-  readonly drillId: "worker_replacement_approval_resume";
+  readonly drillId: "worker_replacement_approval_resume" | "worker_replacement_input_resume";
   readonly observedAt: string;
   readonly workflow: { readonly taskId: string; readonly runId: string };
   readonly transitions: ReadonlyArray<{ readonly revision: number; readonly status: z.infer<typeof status> }>;
@@ -34,6 +35,7 @@ export interface TemporalFaultObservation {
   readonly effects: {
     readonly admissions: number; readonly stepExecutions: number; readonly approvalRequests: number;
     readonly approvalResolutions: number; readonly terminalWriteAttempts: number; readonly terminalPersistedWrites: number;
+    readonly inputSignalsRejected: number; readonly inputResumptions: number;
   };
 }
 
@@ -53,7 +55,9 @@ export interface TemporalFaultReceipt {
 
 export function createTemporalFaultReceipt(raw: unknown): TemporalFaultReceipt {
   const observation = observationSchema.parse(raw);
-  const failures = validateWorkerReplacementApprovalResume(observation);
+  const failures = observation.drillId === "worker_replacement_approval_resume"
+    ? validateWorkerReplacementApprovalResume(observation)
+    : validateWorkerReplacementInputResume(observation);
   const body = {
     schemaVersion, drillId: observation.drillId, observedAt: observation.observedAt, workflow: observation.workflow,
     outcome: failures.length === 0 ? "eligible" as const : "ineligible" as const,
@@ -66,7 +70,7 @@ export function createTemporalFaultReceipt(raw: unknown): TemporalFaultReceipt {
 export function validateTemporalFaultReceipt(raw: unknown): TemporalFaultReceipt {
   const receipt = z.object({
     schemaVersion: z.literal(schemaVersion), receiptId: z.string().regex(/^TEMPORAL-FAULT-[a-f0-9]{64}$/), receiptSha256: z.string().regex(/^[a-f0-9]{64}$/),
-    drillId: z.literal("worker_replacement_approval_resume"), observedAt: timestamp,
+    drillId: z.enum(["worker_replacement_approval_resume", "worker_replacement_input_resume"]), observedAt: timestamp,
     workflow: z.object({ taskId: identity, runId: identity }).strict(),
     outcome: z.enum(["eligible", "ineligible"]),
     transitions: observationSchema.shape.transitions, faults: observationSchema.shape.faults, effects: observationSchema.shape.effects,
@@ -91,6 +95,20 @@ function validateWorkerReplacementApprovalResume(observation: z.infer<typeof obs
   if (effects.stepExecutions !== 4) failures.push("step_execution_count_mismatch");
   if (effects.approvalRequests !== 1 || effects.approvalResolutions !== 1) failures.push("approval_side_effect_count_mismatch");
   if (effects.terminalWriteAttempts !== 2 || effects.terminalPersistedWrites !== 1) failures.push("terminal_write_side_effect_count_mismatch");
+  if (effects.inputSignalsRejected !== 0 || effects.inputResumptions !== 0) failures.push("unexpected_input_side_effects");
+  return failures;
+}
+
+function validateWorkerReplacementInputResume(observation: z.infer<typeof observationSchema>): string[] {
+  const failures: string[] = [];
+  const transitionKey = observation.transitions.map(item => `${item.revision}:${item.status}`).join(",");
+  if (transitionKey !== "1:running,2:waiting_input,3:running,4:completed") failures.push("unexpected_state_transitions");
+  if (observation.faults.workerReplacements !== 1 || observation.faults.terminalWriteRetries !== 0) failures.push("fault_count_mismatch");
+  const effects = observation.effects;
+  if (effects.admissions !== 1 || effects.stepExecutions !== 2) failures.push("task_side_effect_count_mismatch");
+  if (effects.approvalRequests !== 0 || effects.approvalResolutions !== 0) failures.push("unexpected_approval_side_effects");
+  if (effects.inputSignalsRejected !== 2 || effects.inputResumptions !== 1) failures.push("input_side_effect_count_mismatch");
+  if (effects.terminalWriteAttempts !== 1 || effects.terminalPersistedWrites !== 1) failures.push("terminal_write_side_effect_count_mismatch");
   return failures;
 }
 

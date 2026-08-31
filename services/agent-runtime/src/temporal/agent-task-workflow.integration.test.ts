@@ -140,7 +140,8 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       faults: { workerReplacements: 1, terminalWriteRetries: finishAttempts - persistedTerminalWrites },
       effects: {
         admissions, stepExecutions: calls, approvalRequests, approvalResolutions,
-        terminalWriteAttempts: finishAttempts, terminalPersistedWrites: persistedTerminalWrites
+        terminalWriteAttempts: finishAttempts, terminalPersistedWrites: persistedTerminalWrites,
+        inputSignalsRejected: 0, inputResumptions: 0
       }
     })).toMatchObject({ outcome: "eligible", failures: [] });
 
@@ -312,10 +313,12 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
   it("keeps invalid input pending and resumes from an exact durable Elicitation Signal", async () => {
     const taskQueue = `dipole-agent-task-input-${Date.now()}`;
     let calls = 0;
+    let terminalWrites = 0;
+    const projections: Array<{ workflowStatus: string; workflowRevision: number }> = [];
     const activities: AgentTaskWorkerActivities = {
       async admitAgentTask(input) { return { taskId: input.taskId, runId: "run-input-1", runStatus: "running" }; },
-      async finishAgentTask() {},
-      async projectAgentTaskState() {},
+      async finishAgentTask() { terminalWrites += 1; },
+      async projectAgentTaskState(input) { projections.push(input); },
       async requestAgentTaskApproval() {},
       async resolveAgentTaskApproval() {},
       async executeAgentTaskStep(input) {
@@ -347,6 +350,13 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     await controls.provideInput("task-input-1", { requestId: "INPUT-1", value: { scope: "today" } });
     await expect(handle.result()).resolves.toMatchObject({ status: "completed", output: { scope: "today" } });
     expect(calls).toBe(2);
+    expect(createTemporalFaultReceipt({
+      schemaVersion: "dipole.agent.temporal-fault-observation.v1", drillId: "worker_replacement_input_resume", observedAt: "2026-08-31T12:00:00.000Z",
+      workflow: { taskId: "task-input-1", runId: "run-input-1" },
+      transitions: projections.map(({ workflowRevision, workflowStatus }) => ({ revision: workflowRevision, status: workflowStatus })),
+      faults: { workerReplacements: 1, terminalWriteRetries: 0 },
+      effects: { admissions: 1, stepExecutions: calls, approvalRequests: 0, approvalResolutions: 0, terminalWriteAttempts: terminalWrites, terminalPersistedWrites: terminalWrites, inputSignalsRejected: 2, inputResumptions: 1 }
+    })).toMatchObject({ outcome: "eligible", failures: [] });
     workerTwo.shutdown();
     await workerTwoRun;
   }, 120_000);

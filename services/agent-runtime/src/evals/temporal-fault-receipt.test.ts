@@ -16,7 +16,7 @@ const validObservation = {
     { revision: 3, status: "running" }, { revision: 4, status: "completed" }
   ],
   faults: { workerReplacements: 1, terminalWriteRetries: 1 },
-  effects: { admissions: 1, stepExecutions: 4, approvalRequests: 1, approvalResolutions: 1, terminalWriteAttempts: 2, terminalPersistedWrites: 1 }
+  effects: { admissions: 1, stepExecutions: 4, approvalRequests: 1, approvalResolutions: 1, terminalWriteAttempts: 2, terminalPersistedWrites: 1, inputSignalsRejected: 0, inputResumptions: 0 }
 } as const;
 
 describe("Temporal fault receipt", () => {
@@ -29,6 +29,12 @@ describe("Temporal fault receipt", () => {
   it("reports incompatible transition or terminal side-effect evidence without promoting the drill", () => {
     const receipt = createTemporalFaultReceipt({ ...validObservation, effects: { ...validObservation.effects, terminalPersistedWrites: 2 } });
     expect(receipt).toMatchObject({ outcome: "ineligible", failures: ["terminal_write_side_effect_count_mismatch"] });
+  });
+
+  it("accepts the exact input resume path after Worker replacement", () => {
+    expect(createTemporalFaultReceipt({ ...validObservation, drillId: "worker_replacement_input_resume", transitions: [
+      { revision: 1, status: "running" }, { revision: 2, status: "waiting_input" }, { revision: 3, status: "running" }, { revision: 4, status: "completed" }
+    ], faults: { workerReplacements: 1, terminalWriteRetries: 0 }, effects: { admissions: 1, stepExecutions: 2, approvalRequests: 0, approvalResolutions: 0, terminalWriteAttempts: 1, terminalPersistedWrites: 1, inputSignalsRejected: 2, inputResumptions: 1 } })).toMatchObject({ outcome: "eligible", failures: [] });
   });
 
   it("rejects a receipt whose bound observation has been changed", () => {

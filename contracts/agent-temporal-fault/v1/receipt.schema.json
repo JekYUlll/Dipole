@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["schemaVersion", "receiptId", "receiptSha256", "drillId", "observedAt", "workflow", "outcome", "transitions", "faults", "effects", "failures"],
   "properties": {
-    "schemaVersion": { "const": "dipole.agent.temporal-fault-receipt.v1" }, "receiptId": { "type": "string", "pattern": "^TEMPORAL-FAULT-[a-f0-9]{64}$" }, "receiptSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "drillId": { "const": "worker_replacement_approval_resume" }, "observedAt": { "type": "string", "format": "date-time" },
+    "schemaVersion": { "const": "dipole.agent.temporal-fault-receipt.v1" }, "receiptId": { "type": "string", "pattern": "^TEMPORAL-FAULT-[a-f0-9]{64}$" }, "receiptSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "drillId": { "enum": ["worker_replacement_approval_resume", "worker_replacement_input_resume"] }, "observedAt": { "type": "string", "format": "date-time" },
     "workflow": { "$ref": "observation.schema.json#/properties/workflow" }, "outcome": { "enum": ["eligible", "ineligible"] }, "transitions": { "$ref": "observation.schema.json#/properties/transitions" }, "faults": { "$ref": "observation.schema.json#/properties/faults" }, "effects": { "$ref": "observation.schema.json#/properties/effects" }, "failures": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 256 } }
   }
 }
