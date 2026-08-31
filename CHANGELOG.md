@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：`json_text` 解析支持受限的前置标签：仅提取响应末尾唯一、完整的 JSON 对象；对象后的任意文本仍拒绝。提取结果继续经过 Zod schema 与 Capability allowlist 验证。
+
 - 2026-08-31：`json_text` 兼容解析额外剥离完整、封闭的 `<think>...</think>` 前缀，再验证剩余 JSON；普通解释性文本继续拒绝，推理正文不进入审计或计划数据。
 
 - 2026-08-31：`json_text` 模式现接受完整的 `json` Markdown 代码围栏，再以同一 Zod schema 验证对象；带额外解释文字、无效 JSON 或 schema 不匹配仍会失败关闭。
