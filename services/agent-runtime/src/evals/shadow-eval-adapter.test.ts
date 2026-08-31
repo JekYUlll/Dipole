@@ -114,7 +114,7 @@ describe("Shadow evaluation adapter", () => {
 
 function observation(): ShadowEvalObservation {
   return {
-    taskId: "TASK-42", taskStatus: "completed", runId: "RUN-42", runStatus: "completed",
+    taskId: "TASK-42", taskStatus: "completed", runId: "RUN-42", runStatus: "completed", traceId: "trace:adapter-42",
     contextManifest: {
       selected: [{ id: "event:E42", provenance: { sourceType: "kafka_event", sourceId: "E42" } }], omitted: []
     },

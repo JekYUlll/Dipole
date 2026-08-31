@@ -20,7 +20,7 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
     const parsed = new URL(adminUrl!);
     parsed.pathname = `/${database}`;
     pool = createPool({ uri: parsed.toString(), timezone: "Z", connectionLimit: 4, multipleStatements: true });
-    for (const migration of [16, 17, 19, 20, 21, 22, 23, 26, 30]) {
+    for (const migration of [16, 17, 19, 20, 21, 22, 23, 26, 30, 54]) {
       const prefix = migration.toString().padStart(6, "0");
       const [path] = migrationPaths.filter(item => item.includes(`/${prefix}_`));
       if (path === undefined) throw new Error(`missing Agent migration ${prefix}`);
@@ -41,7 +41,7 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
     const store = new MySQLShadowEvalObservationStore(pool);
 
     await expect(store.load("TASK-EVAL-1", "RUN-EVAL-1")).resolves.toEqual({
-      taskId: "TASK-EVAL-1", taskStatus: "completed", runId: "RUN-EVAL-1", runStatus: "completed",
+      taskId: "TASK-EVAL-1", taskStatus: "completed", runId: "RUN-EVAL-1", runStatus: "completed", traceId: "trace:eval-1",
       contextManifest: {
         selected: [{ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } }], omitted: []
       },
@@ -62,7 +62,8 @@ const migrationPaths = [
   "../../../../db/migrations/000022_agent_context_manifest.up.sql",
   "../../../../db/migrations/000023_agent_model_output_replay.up.sql",
   "../../../../db/migrations/000026_agent_artifacts.up.sql",
-  "../../../../db/migrations/000030_agent_tool_invocations.up.sql"
+  "../../../../db/migrations/000030_agent_tool_invocations.up.sql",
+  "../../../../db/migrations/000054_agent_run_trace_correlation.up.sql"
 ];
 
 async function seed(pool: Pool): Promise<void> {
@@ -71,7 +72,7 @@ async function seed(pool: Pool): Promise<void> {
     ["TASK-EVAL-1", "DEF-EVAL-1"]
   );
   await pool.execute(
-    "INSERT INTO agent_runs (run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at) VALUES ('RUN-EVAL-1', 'TASK-EVAL-1', 'runtime-1', 'shadow', 'completed', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))"
+    "INSERT INTO agent_runs (run_uuid, task_uuid, runtime_id, trace_id, mode, status, started_at, completed_at) VALUES ('RUN-EVAL-1', 'TASK-EVAL-1', 'runtime-1', 'trace:eval-1', 'shadow', 'completed', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))"
   );
   await pool.execute(
     "INSERT INTO agent_shadow_plans (task_uuid, event_id, event_type, summary, plan_sha256, context_compiler_version, context_estimated_tokens, context_manifest_json) VALUES ('TASK-EVAL-1', 'E1', 'message.direct.created', 'summary', ?, 'v1', 10, ?)",

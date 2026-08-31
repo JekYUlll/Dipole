@@ -237,7 +237,7 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	}
 	createdRun, err := a.store.CreateRun(ctx, application.AgentRunV1{
 		RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: admission.RuntimeID, CandidateVersion: strings.TrimSpace(admission.CandidateVersion),
-		Mode: admission.Mode, Status: application.AgentRunStatusRunning,
+		TraceID: strings.TrimSpace(request.TraceID), Mode: admission.Mode, Status: application.AgentRunStatusRunning,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("admit Agent Run: %w", err)
@@ -246,7 +246,7 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	if !createdRun {
 		existingRun, lookupErr := a.store.GetRun(ctx, runUUID)
 		if lookupErr != nil || existingRun == nil ||
-			existingRun.CandidateVersion != strings.TrimSpace(admission.CandidateVersion) ||
+			existingRun.CandidateVersion != strings.TrimSpace(admission.CandidateVersion) || existingRun.TraceID != strings.TrimSpace(request.TraceID) ||
 			(existingRun.Status != application.AgentRunStatusRunning && existingRun.Status != application.AgentRunStatusCompleted) {
 			return nil, fmt.Errorf("%w: existing Agent Run is terminal", application.ErrAgentExecutionPolicyDenied)
 		}
@@ -501,7 +501,7 @@ func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request ap
 		return nil, fmt.Errorf("derive Embedded Agent Run: %w", err)
 	}
 	created, err := p.store.CreateRun(ctx, application.AgentRunV1{
-		RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: embeddedAgentRuntimeIDV1, Mode: "embedded", Status: application.AgentRunStatusRunning,
+		RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: embeddedAgentRuntimeIDV1, TraceID: strings.TrimSpace(request.TraceID), Mode: "embedded", Status: application.AgentRunStatusRunning,
 	})
 	if err != nil || !created {
 		if err == nil {
