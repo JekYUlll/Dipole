@@ -46,11 +46,13 @@ COMPOSE_ENV_FILE=.env \
 COMPOSE_OVERLAYS=deploy/microservices/agent-ai-sdk-shadow.yml:deploy/microservices/agent-temporal-read-shadow.yml \
 EXPECT_READ_SHADOW=1 \
 RESTART_CORE_AFTER_EVENT=1 \
+DIPOLE_AGENT_CORE_RESTART_EVIDENCE=services/agent-runtime/.artifacts/core-restart-read-shadow.json \
 scripts/smoke-microservices.sh
 ```
 
 该命令要求受忽略 `.env` 已提供 AI SDK Shadow overlay 所需的 Provider 配置。它只验证
-只读路径的恢复和审计绑定，不能作为 active authority、消息写入或外部 MCP 的证据。
+只读路径的恢复和审计绑定，并输出 24 小时有效的低敏 receipt。该 receipt 不能作为
+active authority、消息写入、lease expiry 或外部 MCP 的证据。
 
 ## 回滚
 

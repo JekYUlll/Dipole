@@ -37,6 +37,7 @@
     "mcp:credential-drill:check": "tsx src/runtime/external-mcp-credential-lifecycle-evidence-cli.ts",
     "mcp:shadow-drill:check": "tsx src/runtime/external-mcp-shadow-drill-evidence-cli.ts",
     "approval:drill:check": "tsx src/runtime/approval-gate-drill-evidence-cli.ts",
+    "core-restart:read-shadow:check": "tsx src/runtime/core-restart-read-shadow-evidence-cli.ts",
     "repair:propose": "tsx src/promotion/workflow-repair-proposal-cli.ts",
     "repair:plan": "tsx src/promotion/workflow-repair-execution-plan-cli.ts",
     "repair:preflight": "tsx src/promotion/workflow-repair-preflight-cli.ts",

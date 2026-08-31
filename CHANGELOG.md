@@ -1,5 +1,11 @@
 # 更新日志
 
+- 2026-08-31：Remote GPU 在候选 `a7bc03ef` 的隔离 Compose 项目完成 `dipole.agent.core-restart-read-shadow.v1` 实测：事件发布后 Core 重启、Gateway 代理恢复，且同一事件的 Ledger、Task、Run、模型调用和 `conversation_digest` Artifact 均精确为 `1`。新镜像内正式 CLI 已复核 24 小时低敏 receipt；该证据不外推到共享环境、写 authority 或 lease expiry。
+
+- 2026-08-31：微服务 read-shadow Core restart 演练新增 `dipole.agent.core-restart-read-shadow.v1` receipt。只有重启后的 Core/Gateway 恢复，且同一事件的 Ledger、Task、Run、模型调用与 `conversation_digest` Artifact 全部精确收敛时才生成；artifact 以 SHA-256 和 24 小时窗口绑定，明确 `production_authority=false`。
+
+- 2026-08-31：`BUILD_IMAGE=1` 的微服务 smoke 现同时构建 TypeScript `dipole-agent` 镜像并注入候选 revision 元数据。此前仅重建 Go 镜像，导致 Agent Runtime 可能运行旧 `latest` 代码；构建门禁已覆盖该同版本要求。
+
 - 2026-08-31：Approval gate drill 新增语言中立 `dipole.agent.approval-gate-drill.v1` receipt、canonical SHA-256 与 24 小时有效期校验。隔离 mTLS 演练输出 approved `1`、denied/replay `0`、failed `1`、failed-replay `0` 的低敏 artifact；该证据不代表 IM 消息已写入、生产 authority 或共享 Shadow。
 
 - 2026-08-31：External MCP Shadow drill 新增真实 mTLS `AgentCapabilityRPCClient` 的 Approval gate 场景：精确 approved grant 只执行一次，denied 与已消费 grant 均零执行，执行失败后审批保持已消费并拒绝自动重放。脚本同时固定 Node/npm 同源，干净 Remote GPU worktree 不会以系统 Node 误装依赖；默认写 Capability 与 production authority 继续关闭。

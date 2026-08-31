@@ -11,3 +11,10 @@ test("Go microservice images use the generated dist directory as context", () =>
   assert.match(dockerfile, /COPY \$\{DIPOLE_BINARY\} \/app\/service/);
   assert.doesNotMatch(dockerfile, /COPY dist\/\$\{DIPOLE_BINARY\}/);
 });
+
+test("microservice image builds include the TypeScript Agent Runtime at the same revision", () => {
+  assert.match(script, /agent_image=\$\{DIPOLE_AGENT_IMAGE:-dipole-agent:latest\}/);
+  assert.match(script, /--file services\/agent-runtime\/Dockerfile[\s\S]*?services\/agent-runtime/);
+  assert.match(script, /--build-arg "DIPOLE_VCS_REVISION=\$\{revision\}"/);
+  assert.match(script, /--build-arg "DIPOLE_VCS_DIRTY=\$\{dirty\}"/);
+});

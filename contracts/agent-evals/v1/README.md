@@ -2,6 +2,8 @@
 
 `go-eino-baseline.json` 固化当前 Embedded Go/Eino Agent 的可观察行为。TypeScript Runtime、Prompt、Tool Schema 或权限模型迁移时复用这些 case，并通过 adapter 产出相同的 outcome、trajectory 和 permission 结果。
 
+`core-restart-read-shadow-evidence.schema.json` 固定一次隔离 Compose read-shadow Core restart 的低敏 receipt：Core readiness、Gateway 代理、EventLedger、Task、Run、模型调用和 `conversation_digest` Artifact 必须精确收敛。它不表示 active authority、写 Capability、lease expiry 或共享环境证据。
+
 首批覆盖四类评测：
 
 - `event`：只处理发给助手的 direct created Message，并按触发 Message 幂等。

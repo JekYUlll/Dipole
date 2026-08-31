@@ -12,6 +12,10 @@
 
 ### 本轮进展
 
+- 2026-08-31：隔离 Core restart 演练暴露 `BUILD_IMAGE=1` 只构建 Go 镜像、Compose Agent 可能沿用旧 `latest` 的版本漂移。`docker-build-microservice-images.sh` 现按同一 revision 构建 `dipole-agent`，并由静态测试锁定；Remote GPU 已在候选 `a7bc03ef` 的新 Agent 镜像下重跑，Core 重启后 Gateway 与单次 Ledger/Task/Run/模型调用/Artifact 均收敛。默认 authority 不变。
+
+- 2026-08-31：read-shadow Core restart 演练现可输出 `dipole.agent.core-restart-read-shadow.v1` 低敏 receipt。脚本仅在一次隔离 Compose Core 重启后同时确认 Core readiness、Gateway 代理和同一事件的 Ledger/Task/Run/模型调用/`conversation_digest` Artifact 精确收敛时写入 SHA-256 绑定结果，且固定 `production_authority=false`。Remote GPU 已在候选 `a7bc03ef` 完成运行并由镜像内 CLI 复核；Worker replacement 与 Core restart 联合场景、lease expiry、共享 tenant 和写 authority 继续作为 Agent P0 门禁。
+
 - 2026-08-31：Approval gate 联合演练已升级为 `dipole.agent.approval-gate-drill.v1` 低敏 receipt。Remote GPU 生成的 receipt 经独立 CLI 复核 exact effect 基数、mTLS 类型、canonical SHA-256 与 24 小时窗口；artifact 为 gitignored 临时文件。该证据覆盖 fixture operation 的授权与重放边界，未覆盖 IM 持久化、service-side commit 不确定性、审批 UI 或共享 Shadow。
 
 - 2026-08-31：Remote GPU 在 disposable MySQL/Kafka/Temporal/Go Core mTLS/local MCP 拓扑完成 Approval gate drill。Runtime 使用真实 `AgentCapabilityRPCClient` 验证 approved grant 单次执行、denied/consumed 零执行与 operation failure 后不自动重放；同轮 External MCP receipt 继续通过。脚本现在将 `DIPOLE_NODE_BIN` 的目录置于 `PATH` 首位并以路径标记驱动 lockfile 重装，避免 Node 18 启动 Node 22 依赖。该 fixture operation 不写 IM，active write、审批 UI、共享 Shadow 与提交后不确定性 receipt 保持开放。

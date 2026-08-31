@@ -53,4 +53,14 @@ for service_binary in "${services[@]}"; do
     "${context_dir}"
 done
 
+agent_image=${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
+echo "==> building agent image ${agent_image}"
+docker build \
+  --file services/agent-runtime/Dockerfile \
+  --tag "${agent_image}" \
+  --build-arg "DIPOLE_VCS_REVISION=${revision}" \
+  --build-arg "DIPOLE_BUILD_CREATED=${created}" \
+  --build-arg "DIPOLE_VCS_DIRTY=${dirty}" \
+  services/agent-runtime
+
 printf 'microservice images built: revision=%s dirty=%s\n' "${revision}" "${dirty}"
