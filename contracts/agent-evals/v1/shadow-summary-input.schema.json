@@ -13,7 +13,7 @@
       "properties": {
         "kind": {"const": "reviewed_shadow"},
         "environment": {"enum": ["isolated", "shared_development"]},
-        "runtimeRevision": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "runtimeRevision": {"type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"},
         "windowStart": {"type": "string", "format": "date-time"},
         "windowEnd": {"type": "string", "format": "date-time"}
       }

@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -54,6 +54,11 @@ describe("Shadow evaluation summary", () => {
 
   it("accepts a 40-character Git revision from an OCI runtime image", () => {
     expect(parseShadowEvalSummaryInput(input([passingReport()], "a".repeat(40))).source.runtimeRevision).toHaveLength(40);
+  });
+
+  it("keeps the published JSON Schema aligned with runtime revision acceptance", async () => {
+    const schema = JSON.parse(await readFile(new URL("../../../../contracts/agent-evals/v1/shadow-summary-input.schema.json", import.meta.url), "utf8"));
+    expect(schema.properties.source.properties.runtimeRevision.pattern).toBe("^(?:[a-f0-9]{40}|[a-f0-9]{64})$");
   });
 
   it("fails closed for invalid arguments", async () => {
