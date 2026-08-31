@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Agent 单轮 Temporal read-shadow 规划器收紧为仅暴露 `conversation.list`。此前模型能在未获得会话列表结果时直接生成 `conversation.read`，对新用户会构造无效目标并触发 Durable Activity 重试；读取 Capability、事件预取与 MCP 边界保持可用，后续多轮编排需要将后续读取目标绑定到已完成的发现结果。
+
 - 2026-09-01：OpenAI-compatible Agent Provider 增加显式 `DIPOLE_AGENT_MODEL_THINKING_MODE=disabled`。开关仅透传给已选择的 Provider；DeepSeek V4 Flash 的受控 Shadow 可借此关闭默认高强度思考，避免有限 JSON-text 输出预算被 `reasoning_content` 耗尽。未设置时继续使用 Provider 默认行为，active authority、写 Capability 与 MCP 均未开启。
 
 - 2026-09-01：微服务隔离 smoke 增加默认关闭的低敏 Agent Task/Run receipt。显式提供输出路径时，成功收敛后仅写入随机 event、Task、Run、trace 与运行状态，便于后续 Context Ablation runner 在销毁临时 Compose 项目前建立绑定；消息、模型正文和凭据均不导出。

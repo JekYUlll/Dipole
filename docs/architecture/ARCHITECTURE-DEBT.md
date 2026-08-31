@@ -2,6 +2,8 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：隔离交互 Task 验证显示单轮 Planner 会在缺少任何发现结果时生成 `conversation.read`，随后因无法从伪造或空的 conversation key 推导可信 target 而失败并触发 Temporal 重试。当前已将单轮模型动作面限制为 `conversation.list`，维持事件驱动的预取读取与 MCP 的受控读取；多轮 orchestrator、已验证 discovery result 到 read target 的数据流绑定和该路径的端到端评测仍是 Agent P0。
+
 本文档记录已确认但暂缓处理的架构风险、兼容性缺口和可清理冗余，便于后续按优先级滚动治理。
 
 ## 维护约定

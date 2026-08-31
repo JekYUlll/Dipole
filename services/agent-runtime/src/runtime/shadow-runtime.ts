@@ -441,11 +441,11 @@ export function createKafkaShadowRuntime(
     if (config.retrievalEnabled) registry.register(new ConversationSearchCapability(rpcTransport!.client));
     trajectory = persistentAudit!;
   }
-  const readCapabilityIds = localReadCapabilityIDs(config);
+  const modelCapabilityIds = singlePassModelCapabilityIDs(config);
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
       createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), readCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors(), config.retrievalContextEnabled ? rpcTransport!.client : undefined)
+  ), modelCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors(), config.retrievalContextEnabled ? rpcTransport!.client : undefined)
     : new MetadataShadowPlanner();
   const consumer = buildKafkaShadowRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
@@ -504,10 +504,10 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   registry.register(new ConversationListCapability(rpc.client));
   registry.register(new ConversationReadCapability(rpc.client));
   if (config.retrievalEnabled) registry.register(new ConversationSearchCapability(rpc.client));
-  const readCapabilityIds = localReadCapabilityIDs(config);
+  const modelCapabilityIds = singlePassModelCapabilityIDs(config);
   const planner = new ModelShadowPlanner(new ModelRouter(
     createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
-  ), readCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors(), config.retrievalContextEnabled ? rpc.client : undefined);
+  ), modelCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors(), config.retrievalContextEnabled ? rpc.client : undefined);
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({
@@ -568,10 +568,11 @@ function isLoopbackTarget(target: string): boolean {
   return host === "127.0.0.1" || host === "localhost" || host === "::1";
 }
 
-function localReadCapabilityIDs(config: ShadowRuntimeConfig): readonly string[] {
-  return config.retrievalEnabled
-    ? ["conversation.list", "conversation.read", "conversation.search"]
-    : ["conversation.list", "conversation.read"];
+// A one-shot plan has no way to turn a list result into a trusted follow-up
+// target. Keep its action surface at discovery until multi-turn orchestration
+// can bind later reads to an earlier capability result.
+export function singlePassModelCapabilityIDs(_config: ShadowRuntimeConfig): readonly string[] {
+  return ["conversation.list"];
 }
 
 function readCapabilityPermissions(config: ShadowRuntimeConfig): readonly string[] {
