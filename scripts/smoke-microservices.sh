@@ -105,10 +105,6 @@ if [[ "${RESTART_CORE}" == "1" ]]; then
   restart_core
 fi
 
-if [[ "${CORE_OUTAGE_BEFORE_EVENT}" == "1" ]]; then
-  compose stop core
-fi
-
 for service in core message sync gateway; do
   compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/livez | grep -qx 'alive'
   compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/readyz | grep -qx 'ready'
@@ -126,6 +122,10 @@ Promise.all(paths.map(path => new Promise((resolve, reject) => {
   request.on("error", reject);
 }))).catch(error => { console.error(error.message); process.exit(1); });
 '
+
+if [[ "${CORE_OUTAGE_BEFORE_EVENT}" == "1" ]]; then
+  compose stop core
+fi
 
 agent_event_id="SMOKE-AGENT-EVENT-$(openssl rand -hex 8)"
 agent_message_id="SMOKE-AGENT-MESSAGE-$(openssl rand -hex 8)"
