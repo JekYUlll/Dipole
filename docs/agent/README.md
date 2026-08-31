@@ -15,6 +15,7 @@
 | 部署 user-gray Active Runtime | [Active 部署运行手册](AGENT-ACTIVE-DEPLOYMENT.md) |
 | 接入 MCP 与权限控制 | [MCP 授权](agent-mcp-authorization.md)、[外部 MCP](agent-external-mcp.md) |
 | 配置 Trace 与告警 | [OpenTelemetry 运维](agent-otel-operations.md) |
+| 汇总受控 Shadow Eval | [Agent Eval 契约](../../contracts/agent-evals/v1/README.md) |
 
 ## 运行时边界
 

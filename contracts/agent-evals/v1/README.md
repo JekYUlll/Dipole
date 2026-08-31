@@ -55,6 +55,17 @@ Adapter 从真实 `Task/Run/Plan/Step/Artifact/ModelCall/ToolCall` 生成 observ
 
 评审清单中的 `permission.stepNo` 绑定真实 Step；capability 必须与持久记录一致，decision 由 Step 终态派生。模型调用缺少 Token/延迟、Step 或 MCP Tool 调用缺少延迟、路由没有单价、Task/Run/Step 尚未终止时，命令返回 `1` 并 fail closed。成本按每百万 Token 的微美元整数单价计算并向上取整；Tool 次数统计 Shadow Step 与独立 MCP 调用，延迟为模型、Step 和 MCP 调用的记录耗时之和。当前 Step 表只保留最后一次 attempt 的区间，`attempt_count != 1` 时拒绝生成成本证据，后续逐 attempt 审计完成前不会低估重试。退出码 `0` 表示五类通过，`2` 表示有效证据未达阈值，`1` 表示清单、持久证据或连接无效。
 
+## Shadow 样本窗口汇总
+
+`shadow-summary-input.schema.json` 将多个已完成的 `eval:shadow` 报告汇总为任务级成功率、五类通过率和失败原因计数。输入只接受同一候选版本、唯一 Suite SHA-256、每类恰好一个 `*.shadow.<TaskRunDigest>` case 的终态报告；因此合成离线 Suite、重复证据和混版本样本会 fail closed。输出只保留 suite 摘要、聚合数值和固定限制语句，不回显 Task、用户、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。
+
+```bash
+cd services/agent-runtime
+npm run eval:shadow-summary -- --input=../path/to/reviewed-shadow-window.json
+```
+
+退出码 `0` 表示窗口内全部已评审 Shadow Task 通过；`2` 表示报告有效但至少一个 Task 未通过；`1` 表示窗口契约、候选版本、摘要绑定或输入大小无效。`source.kind=reviewed_shadow` 仅声明受控评审样本范围，报告不代表 production authority、active Runtime 质量或用户影响。只有将输入报告和对应的受控观察窗口一起归档后，才可以在限定 Shadow 范围内引用样本量、成功率和失败分类。
+
 ## Memory correction 离线评测
 
 `memory-correction-manifest.schema.json` 与 `memory-correction-observation.schema.json` 定义语言中立的 append-only correction 审计输入。Observation 由受控测试或审计采集器生成，必须绑定 predecessor/successor、完整 lineage、exact replay、drift conflict、owner/foreign 授权和 successor-only retrieval，并证明过程没有模型、Tool、Token 或模型成本。
