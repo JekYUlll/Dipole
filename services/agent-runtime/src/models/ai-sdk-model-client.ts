@@ -45,9 +45,10 @@ function parseJSONText(text: string): unknown {
 
 function extractTerminalJSONObject(text: string): string {
   const trimmed = text.trim();
-  if (trimmed.startsWith("{")) return trimmed;
   const start = trimmed.indexOf("{");
   if (start < 0) return trimmed;
+  const prefix = trimmed.slice(0, start).trim();
+  if (prefix.includes("}") || Buffer.byteLength(prefix, "utf8") > 1024) return trimmed;
   let depth = 0;
   let quoted = false;
   let escaped = false;
@@ -63,7 +64,16 @@ function extractTerminalJSONObject(text: string): string {
     else if (character === "{") depth += 1;
     else if (character === "}") {
       depth -= 1;
-      if (depth === 0 && trimmed.slice(index + 1).trim().length === 0) return trimmed.slice(start, index + 1);
+      if (depth === 0) {
+        const suffix = trimmed.slice(index + 1).trim();
+        // Some OpenAI-compatible providers append a short explanation after a
+        // valid JSON response. Only recover the one bounded object; a second
+        // object remains ambiguous and is rejected by the normal parse path.
+        if (!suffix.includes("{") && !suffix.includes("}") && Buffer.byteLength(suffix, "utf8") <= 1024) {
+          return trimmed.slice(start, index + 1);
+        }
+        return trimmed;
+      }
     }
   }
   return trimmed;

@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：Remote GPU 的 DeepSeek V4 Flash shadow 审计显示已完成真实 Kafka/Capability RPC/模型/Shadow Plan 链路的至少一条成功调用，但当前观察样本仍存在 Provider `response_format` 不可用、空输出与 JSON-text 包装造成的失败。Runtime 已将单一、短包装的 JSON 对象恢复为本地 Zod 校验输入，并继续拒绝多对象或不合法结构；需在 Temporal `read_shadow` 实机启动后收集新的成功率、Run 终态与 Artifact 证据，AD-009 不关闭。
+
 - 2026-08-31：真实 Shadow read 联调发现 standalone Core 将无本地 repository 的 Message application 传给 Agent Capability，`conversation.read` 会触发 nil repository panic。现已在 gRPC Message transport 下切换为惰性、可关闭的 Core-to-Message history reader；reader 保持 `dipole-core` RPC 身份，运行时缺失 Message 只返回调用错误，不再使 Core 进程退出。Core/Message 联合恢复演练仍待完成。
 
 - 2026-08-31：Agent Capability RPC 在 `UNAVAILABLE` 后替换底层 gRPC transport，失败请求不在客户端层重放，由 Kafka/EventLedger 按原有幂等语义重新领取和尝试，避免 Core 容器重建后长期持有过期 DNS 地址。真实 Core 重建、retry 重新领取与 dead-letter 恢复的完整演练仍待完成。

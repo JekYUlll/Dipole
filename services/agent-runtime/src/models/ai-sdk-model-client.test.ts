@@ -119,7 +119,7 @@ describe("AISDKStructuredModelClient", () => {
     })).resolves.toMatchObject({ output: { summary: "observe E5", capabilityIds: [] } });
   });
 
-  it("rejects text after an otherwise valid JSON object", async () => {
+  it("recovers one bounded JSON object when a provider appends a short explanation", async () => {
     const model = new MockLanguageModelV3({
       provider: "test", modelId: "json-trailing-text",
       doGenerate: {
@@ -132,6 +132,22 @@ describe("AISDKStructuredModelClient", () => {
 
     await expect(client.generate({
       route: "test/json-trailing-text", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
+    })).resolves.toMatchObject({ output: { summary: "observe E6", capabilityIds: [] } });
+  });
+
+  it("rejects multiple JSON objects even when the first object validates", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "test", modelId: "json-multiple-objects",
+      doGenerate: {
+        content: [{ type: "text", text: "{\"summary\":\"observe E7\",\"capabilityIds\":[]} {\"ignored\":true}" }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 7, text: 7, reasoning: 0 } }, warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model, "json_text");
+
+    await expect(client.generate({
+      route: "test/json-multiple-objects", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
     })).rejects.toThrow(/not a valid JSON object/);
   });
 });
