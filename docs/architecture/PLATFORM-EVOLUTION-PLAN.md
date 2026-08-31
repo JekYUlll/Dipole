@@ -562,7 +562,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [ ] 完成标准 OAuth 2.1 discovery/PKCE/客户端注册、外部 Server 凭据、生产 trace 对象存储/Alertmanager、write Tool active authority 和 Elicitation 编排接线（`AD-037`）。
 - [x] 建立 outcome、trajectory、permission、retrieval 和 cost 五类离线评测。
   - [x] 增加严格语言中立 Suite/Report、稳定 SHA-256、低敏 deterministic evaluator 与 `0|1|2` CLI；promotion v2 绑定完整五类报告，v1 保持兼容。
-  - [x] 使用 sqlc/TS 共享只读查询将真实 Shadow Task 转换为五类 observation；Task/Run 摘要绑定 Suite，缺失终态、指标、价格或逐 attempt 耗时证据时 fail closed。
+  - [x] 使用 sqlc/TS 共享只读查询将真实 Shadow Task 转换为五类 observation；Task/Run 摘要绑定 Suite，常规 Task 以策略终态、read-shadow 以 CAS Workflow 终态验证，缺失终态、指标、价格或逐 attempt 耗时证据时 fail closed。
   - [x] 增加 Project Guardian synthetic subscription corpus：四类关注项目状态、四类干扰事件、双 reviewer agreement 和共享 evaluator 回归；规则 evidence 直接复用 production `matchEventSubscriptions`，固定为低敏 fixture，不能替代真实 production corpus。
   - [ ] 扩充人工标注 corpus、retrieval relevance、reviewer agreement 与候选成本阈值后归档生产证据（`AD-038`）。
 - [x] 通过 OpenTelemetry API 记录 Task、Run、ContextCompile、ModelCall、ToolCall、Approval 和 Artifact span。

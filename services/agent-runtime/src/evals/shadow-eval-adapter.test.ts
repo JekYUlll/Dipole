@@ -89,6 +89,41 @@ describe("Shadow evaluation adapter", () => {
     expect(() => buildShadowEvalSuite(manifest, observed)).toThrow(/capability binding/);
   });
 
+  it("uses a terminal durable Workflow when a Shadow policy Task remains running", () => {
+    const observed = { ...observation(), taskStatus: "running", workflowStatus: "completed" };
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1",
+      taskId: observed.taskId, runId: observed.runId,
+      labels: {
+        outcome: { requiredOutputIds: ["task:completed", "run:completed"], forbiddenOutputIds: [] },
+        trajectory: { steps: ["context.compile", "capability:conversation.list:completed", "artifact:conversation_digest:v1"], forbiddenSteps: [] },
+        permission: [{ stepNo: 1, capabilityId: "conversation.list", resourceType: "conversation", resourceId: "user:u100", action: "read", decision: "allowed" }],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 1, minimumPrecision: 1 },
+        cost: {
+          maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 },
+          routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 2_000_000, outputMicrousdPerMillionTokens: 6_000_000 }]
+        }
+      }
+    });
+
+    expect(buildShadowEvalSuite(manifest, observed).cases[0]?.observed).toEqual({ outputIds: ["artifact:conversation_digest:v1", "run:completed", "task:completed"] });
+  });
+
+  it("rejects a running Shadow policy Task without a terminal durable Workflow", () => {
+    const observed = { ...observation(), taskStatus: "running", workflowStatus: "running" };
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1",
+      taskId: observed.taskId, runId: observed.runId,
+      labels: {
+        outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] }, trajectory: { steps: [], forbiddenSteps: [] }, permission: [],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 0, minimumPrecision: 0 },
+        cost: { maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 }, routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 2_000_000, outputMicrousdPerMillionTokens: 6_000_000 }] }
+      }
+    });
+
+    expect(() => buildShadowEvalSuite(manifest, observed)).toThrow(/Task execution and Run must be terminal/);
+  });
+
   it("rejects a query sentinel row instead of silently truncating observations", () => {
     const base = observation();
     const manifest = parseShadowEvalManifest({

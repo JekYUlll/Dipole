@@ -13,6 +13,7 @@ import {
 interface HeaderRow extends RowDataPacket {
   task_uuid: string;
   task_status: string;
+  workflow_status: string | null;
   run_uuid: string;
   run_status: string;
   trace_id: string | null;
@@ -74,7 +75,8 @@ export class MySQLShadowEvalObservationStore implements ShadowEvalObservationSto
     const contextManifest = contextManifestSchema.parse(decodedJSON(header.context_manifest_json));
 
     return {
-      taskId: header.task_uuid, taskStatus: header.task_status, runId: header.run_uuid, runStatus: header.run_status,
+      taskId: header.task_uuid, taskStatus: header.task_status, workflowStatus: header.workflow_status,
+      runId: header.run_uuid, runStatus: header.run_status,
       traceId: required(header.trace_id ?? "", "Trace ID"),
       contextManifest,
       steps: steps.map(item => ({

@@ -57,7 +57,7 @@ npm run eval:shadow -- --manifest=../path/to/reviewed-shadow-manifest.json
 
 Adapter 从真实 `Task/Run/Plan/Step/Artifact/ModelCall/ToolCall` 生成 observation。五个 case ID 携带 Task/Run SHA-256 摘要，Suite SHA-256 因此绑定候选、评审标签、派生 observation 与来源执行。`agent_runs.trace_id` 必须由受信任的 Core admission 写入；缺失或格式非法的旧 Run 会拒绝评测，避免用人工填入的 Trace 冒充执行关联。Context provenance 仅输出 `evidence:<sha256>`，报告不回显 Task/Run、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。
 
-评审清单中的 `permission.stepNo` 绑定真实 Step；capability 必须与持久记录一致，decision 由 Step 终态派生。模型调用缺少 Token/延迟、Step 或 MCP Tool 调用缺少延迟、路由没有单价、Task/Run/Step 尚未终止时，命令返回 `1` 并 fail closed。成本按每百万 Token 的微美元整数单价计算并向上取整；Tool 次数统计 Shadow Step 与独立 MCP 调用，延迟为模型、Step 和 MCP 调用的记录耗时之和。当前 Step 表只保留最后一次 attempt 的区间，`attempt_count != 1` 时拒绝生成成本证据，后续逐 attempt 审计完成前不会低估重试。退出码 `0` 表示五类通过，`2` 表示有效证据未达阈值，`1` 表示清单、持久证据或连接无效。
+评审清单中的 `permission.stepNo` 绑定真实 Step；capability 必须与持久记录一致，decision 由 Step 终态派生。模型调用缺少 Token/延迟、Step 或 MCP Tool 调用缺少延迟、路由没有单价、Run/Step 尚未终止时，命令返回 `1` 并 fail closed。常规 Task 使用 `agent_tasks.status` 作为终态；`read_shadow` 保留该策略状态时，必须同时提供受 CAS 保护的终态 `workflow_status`，两者都未终态则拒绝评测。成本按每百万 Token 的微美元整数单价计算并向上取整；Tool 次数统计 Shadow Step 与独立 MCP 调用，延迟为模型、Step 和 MCP 调用的记录耗时之和。当前 Step 表只保留最后一次 attempt 的区间，`attempt_count != 1` 时拒绝生成成本证据，后续逐 attempt 审计完成前不会低估重试。退出码 `0` 表示五类通过，`2` 表示有效证据未达阈值，`1` 表示清单、持久证据或连接无效。
 
 ## Shadow 样本窗口汇总
 

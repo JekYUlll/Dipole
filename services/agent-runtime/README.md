@@ -88,7 +88,7 @@ Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复�
 
 显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow` 后，Worker 使用既有 Agent Capability RPC 执行 Task/Run admission，并在 Workflow 终止前精确提交 completed、failed 或 cancelled Run。`wait_approval` 会先持久化 capability/scope/arguments/nonce 绑定；只有 request/approval ID 匹配且 Core 确认 actor 为 Task principal 的 Signal 才能完成 approved/revoked 并恢复 Workflow。该模式要求 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true` 及对应 target、共享密钥或 mTLS 配置。Workflow starter 和未来 Signal bridge 必须来自可信认证入口，模型无权设置 principal。当前 Kafka consumer 不启动 Workflow，模型、Capability Step 和权威 Task 状态继续由既有路径持有。
 
-显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list/read` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
+显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list/read` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。Shadow 保留 `agent_tasks.status` 的策略生命周期，受 CAS 保护的 `workflow_status` 与 Run 共同表示本次 Durable 执行终态；评测只能接受两者中的有效终态记录，不能以仍在运行的策略 Task 伪造结果。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
 
 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow` 是外部 MCP 的独占常驻模式。它要求 external Profile、Temporal、Kafka、subscription trigger 与 Capability RPC 全部显式启用，并加载受约束 I/O/deployment route manifests；入口会跳过旧 Kafka runtime 和旧 Temporal Worker，使用统一 process 按 Worker/Client/Kafka 启动、Kafka/Client/Worker/Core 停止。Compose 默认不启用该模式。回滚先关闭 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`，并将 activity mode 恢复 `foundation`；任何真实外部连接前仍要求 fresh readiness evidence。
 
@@ -131,7 +131,7 @@ npm run eval:offline -- --suite=../../contracts/agent-evals/v1/offline-suite.jso
 
 报告绑定 candidate version 与 canonical Suite SHA-256，按 outcome、trajectory、permission、retrieval、cost 输出低敏结果。合法且全部通过返回 0，合法但有失败返回 2，输入错误返回 1。新候选应把完整报告写入 `dipole.agent.shadow-promotion-evidence.v2`；`promotion:check` 自动分派 v1/v2，v2 要求五类报告全部通过。当前样例属于 synthetic Harness 证据，不能代表真实 Agent 效果。
 
-真实 Shadow Run 与 Task 均已完成，且 `promotion:check` 返回 eligible 后，可按 `contracts/agent-promotion/v2/publication.schema.json` 准备发布输入并执行：
+真实 Shadow Run 与其对应的 Durable Task 执行均已终态，且 `promotion:check` 返回 eligible 后，可按 `contracts/agent-promotion/v2/publication.schema.json` 准备发布输入并执行：
 
 ```bash
 DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true \

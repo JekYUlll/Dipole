@@ -2,6 +2,7 @@
 SELECT
     t.task_uuid,
     t.status AS task_status,
+    t.workflow_status,
     r.run_uuid,
     r.status AS run_status,
     r.trace_id,

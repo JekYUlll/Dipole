@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Shadow Eval 现区分策略 Task 状态与 Durable Workflow 状态。常规 Task 仍以 `agent_tasks.status` 判定终态；read-shadow 仅在 CAS `workflow_status` 和持久 Run 同时终态时生成五类报告，避免将运行中的 Shadow 策略记录误判为未完成，也拒绝非终态 Workflow 伪造成功率。
+
 - 2026-08-31：Agent EventLedger 新增 `dipole.agent.event-lease-reclaim.v1` receipt，绑定过期 claim 回收、旧 owner completion 拒绝与最终 completed 行唯一性。Remote GPU 的 loopback-only MySQL 8.4 集成测试 `3/3`、receipt 测试 `4/4` 与 TypeScript typecheck 均通过；该证据仅覆盖消费租约，不外推至 Temporal Workflow 或 active authority。
 
 - 2026-08-31：Remote GPU 在候选 `a7bc03ef` 的隔离 Compose 项目完成 `dipole.agent.core-restart-read-shadow.v1` 实测：事件发布后 Core 重启、Gateway 代理恢复，且同一事件的 Ledger、Task、Run、模型调用和 `conversation_digest` Artifact 均精确为 `1`。新镜像内正式 CLI 已复核 24 小时低敏 receipt；该证据不外推到共享环境、写 authority 或 lease expiry。

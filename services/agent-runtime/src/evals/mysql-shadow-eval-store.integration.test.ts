@@ -20,7 +20,7 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
     const parsed = new URL(adminUrl!);
     parsed.pathname = `/${database}`;
     pool = createPool({ uri: parsed.toString(), timezone: "Z", connectionLimit: 4, multipleStatements: true });
-    for (const migration of [16, 17, 19, 20, 21, 22, 23, 26, 30, 32, 54]) {
+    for (const migration of [16, 17, 19, 20, 21, 22, 23, 24, 26, 30, 32, 54]) {
       const prefix = migration.toString().padStart(6, "0");
       const [path] = migrationPaths.filter(item => item.includes(`/${prefix}_`));
       if (path === undefined) throw new Error(`missing Agent migration ${prefix}`);
@@ -41,7 +41,8 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
     const store = new MySQLShadowEvalObservationStore(pool);
 
     await expect(store.load("TASK-EVAL-1", "RUN-EVAL-1")).resolves.toEqual({
-      taskId: "TASK-EVAL-1", taskStatus: "completed", runId: "RUN-EVAL-1", runStatus: "completed", traceId: "trace:eval-1",
+      taskId: "TASK-EVAL-1", taskStatus: "completed", workflowStatus: "completed",
+      runId: "RUN-EVAL-1", runStatus: "completed", traceId: "trace:eval-1",
       contextManifest: {
         selected: [{ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } }], omitted: []
       },
@@ -69,7 +70,7 @@ const migrationPaths = [
 
 async function seed(pool: Pool): Promise<void> {
   await pool.execute(
-    "INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal) VALUES (?, ?, 1, 'dipole', 'U1', 'AI1', 'completed', 'event', 'E1', 'evaluate')",
+    "INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal, workflow_id, workflow_run_id, workflow_status, workflow_revision, workflow_updated_at) VALUES (?, ?, 1, 'dipole', 'U1', 'AI1', 'completed', 'event', 'E1', 'evaluate', 'dipole-agent-task/TASK-EVAL-1', 'temporal-1', 'completed', 2, UTC_TIMESTAMP(3))",
     ["TASK-EVAL-1", "DEF-EVAL-1"]
   );
   await pool.execute(

@@ -1,6 +1,6 @@
 // Code generated from db/queries/agent_eval_observation.sql; DO NOT EDIT.
 
-export const GET_AGENT_EVAL_OBSERVATION_HEADER = "SELECT\n    t.task_uuid,\n    t.status AS task_status,\n    r.run_uuid,\n    r.status AS run_status,\n    r.trace_id,\n    p.context_manifest_json\nFROM agent_tasks AS t\nJOIN agent_runs AS r ON r.task_uuid = t.task_uuid AND r.run_uuid = ? AND r.mode = 'shadow'\nJOIN agent_shadow_plans AS p ON p.task_uuid = t.task_uuid\nWHERE t.task_uuid = ? AND p.context_manifest_json IS NOT NULL\nLIMIT 1";
+export const GET_AGENT_EVAL_OBSERVATION_HEADER = "SELECT\n    t.task_uuid,\n    t.status AS task_status,\n    t.workflow_status,\n    r.run_uuid,\n    r.status AS run_status,\n    r.trace_id,\n    p.context_manifest_json\nFROM agent_tasks AS t\nJOIN agent_runs AS r ON r.task_uuid = t.task_uuid AND r.run_uuid = ? AND r.mode = 'shadow'\nJOIN agent_shadow_plans AS p ON p.task_uuid = t.task_uuid\nWHERE t.task_uuid = ? AND p.context_manifest_json IS NOT NULL\nLIMIT 1";
 
 export const LIST_AGENT_EVAL_OBSERVATION_STEPS = "SELECT step_no, capability_id, status, attempt_count,\n       TIMESTAMPDIFF(MICROSECOND, started_at, finished_at) DIV 1000 AS latency_ms\nFROM agent_shadow_steps\nWHERE task_uuid = ?\nORDER BY step_no ASC\nLIMIT 257";
 

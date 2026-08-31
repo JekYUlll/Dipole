@@ -44,6 +44,9 @@ export type ShadowEvalManifest = z.infer<typeof shadowEvalManifestSchema>;
 export interface ShadowEvalObservation {
   readonly taskId: string;
   readonly taskStatus: string;
+  // Shadow runs preserve the policy Task lifecycle; the durable Workflow is
+  // the terminal task execution record for that mode.
+  readonly workflowStatus?: string | null;
   readonly runId: string;
   readonly runStatus: string;
   readonly traceId: string;
@@ -75,7 +78,7 @@ export function buildShadowEvalSuite(manifest: ShadowEvalManifest, observation: 
   requiredTraceId(observation.traceId);
 
   const artifactIds = observation.artifacts.map(artifactId).sort();
-  const outputIds = [...artifactIds, `run:${observation.runStatus}`, `task:${observation.taskStatus}`].sort();
+  const outputIds = [...artifactIds, `run:${observation.runStatus}`, `task:${evaluationTaskStatus(observation)}`].sort();
   const steps = [
     ...(observation.contextManifest.selected.length > 0 ? ["context.compile"] : []),
     ...observation.steps.map(item => `capability:${item.capabilityId}:${item.status}`),
@@ -116,8 +119,8 @@ function assertTerminal(observation: ShadowEvalObservation): void {
   if (observation.steps.length > 256 || observation.artifacts.length > 256 || observation.toolCalls.length > 256 || observation.modelCalls.length > 64) {
     throw new Error("Shadow evaluation observation exceeds its bounded collection limits");
   }
-  if (!["completed", "failed", "cancelled"].includes(observation.taskStatus) || !["completed", "failed", "cancelled"].includes(observation.runStatus)) {
-    throw new Error("Shadow evaluation Task and Run must be terminal");
+  if (!isTerminalStatus(evaluationTaskStatus(observation)) || !isTerminalStatus(observation.runStatus)) {
+    throw new Error("Shadow evaluation Task execution and Run must be terminal");
   }
   const invalidStep = observation.steps.find(item => !["completed", "failed", "denied"].includes(item.status));
   if (invalidStep !== undefined) throw new Error(`Shadow evaluation Step ${invalidStep.stepNo} is not terminal`);
@@ -129,6 +132,19 @@ function assertTerminal(observation: ShadowEvalObservation): void {
   if (invalidCall !== undefined) throw new Error("Shadow evaluation model calls must be terminal");
   const invalidTool = observation.toolCalls.find(item => !["completed", "failed"].includes(item.status));
   if (invalidTool !== undefined) throw new Error("Shadow evaluation Tool calls must be terminal");
+}
+
+function evaluationTaskStatus(observation: ShadowEvalObservation): string {
+  if (isTerminalStatus(observation.taskStatus)) return observation.taskStatus;
+  const workflowStatus = observation.workflowStatus?.trim();
+  if (observation.taskStatus === "running" && workflowStatus !== undefined && isTerminalStatus(workflowStatus)) {
+    return workflowStatus;
+  }
+  return observation.taskStatus;
+}
+
+function isTerminalStatus(value: string): boolean {
+  return ["completed", "failed", "cancelled"].includes(value);
 }
 
 function requiredTraceId(value: string): void {
