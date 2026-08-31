@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：新增 `remote-gpu-mysql-aio-compat.yml`。共享 Remote GPU 的 Linux AIO 配额接近上限时，候选 MySQL 可显式关闭 native AIO 完成隔离验证；基础 Compose 与既有 MySQL 栈保持不变。
+
 - 2026-09-01：Remote GPU Node 门禁将每个应用的双阶段 `npm ci + npm install` 收敛为一次锁文件驱动的 `npm ci --include=optional`，避免第二次安装的目录重命名冲突，同时保留 optional 平台依赖。
 
 - 2026-09-01：修正 Remote GPU bundle 生成引用：以 `HEAD` 创建可检出的完整归档，并继续将不可变 commit 单独传给远端做精确校验，避免裸 SHA 被 Git 判定为空 bundle。

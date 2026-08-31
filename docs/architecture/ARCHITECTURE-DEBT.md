@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 同时运行多个隔离 MySQL 时，宿主 Linux AIO 使用量达到 `55,300 / 65,536`，新候选初始化触发 `io_setup() EAGAIN`。新增只作用于候选 project 的 `remote-gpu-mysql-aio-compat.yml`，保留基础参数并增加 `--innodb-use-native-aio=0`；此兼容模式不改变已有服务，验证结束后随候选 project 回滚。
+
 - 2026-09-01：Remote GPU Node 验证从两阶段 `npm ci` 加 `npm install` 调整为单阶段 `npm ci --include=optional`。此前第二次安装可能与 npm 目录替换发生 `ENOTEMPTY`；新路径保留 lockfile、可复现依赖和 optional package，同时减少一次网络与磁盘操作。
 
 - 2026-09-01：Remote GPU bundle 回退已修正为用 `HEAD` 生成完整、可检出的 Git bundle；目标 SHA 继续通过独立参数与远端 `rev-parse` 固定校验。裸 SHA 会被 Git 解释为空归档，修复后才进入受控远端验证。

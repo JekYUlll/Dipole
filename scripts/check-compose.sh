@@ -210,6 +210,21 @@ jq -e '
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_shadow_config}" >/dev/null
 
+remote_gpu_mysql_aio_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+    docker compose \
+      -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/remote-gpu-mysql-aio-compat.yml config --format json
+})"
+jq -e '
+  .services.mysql.command == [
+    "--character-set-server=utf8mb4",
+    "--collation-server=utf8mb4_unicode_ci",
+    "--default-time-zone=+00:00",
+    "--innodb-use-native-aio=0"
+  ]
+' <<<"${remote_gpu_mysql_aio_config}" >/dev/null
+
 promotion_agent_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
