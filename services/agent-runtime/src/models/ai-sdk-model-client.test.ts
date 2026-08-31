@@ -86,4 +86,20 @@ describe("AISDKStructuredModelClient", () => {
       route: "test/json-fence", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
     })).resolves.toMatchObject({ output: { summary: "observe E3", capabilityIds: [] } });
   });
+
+  it("drops a closed reasoning prefix before validating the JSON object", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "test", modelId: "json-reasoning-prefix",
+      doGenerate: {
+        content: [{ type: "text", text: "<think>produce a read-only plan</think>\n{\"summary\":\"observe E4\",\"capabilityIds\":[]}" }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 7, text: 7, reasoning: 0 } }, warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model, "json_text");
+
+    await expect(client.generate({
+      route: "test/json-reasoning-prefix", prompt: "plan event", schema: z.object({ summary: z.string(), capabilityIds: z.array(z.string()) }), maxOutputTokens: 96, timeoutMs: 2000
+    })).resolves.toMatchObject({ output: { summary: "observe E4", capabilityIds: [] } });
+  });
 });

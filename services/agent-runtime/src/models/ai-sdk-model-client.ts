@@ -34,7 +34,7 @@ function jsonTextPrompt(prompt: string, schema: z.ZodType): string {
 }
 
 function parseJSONText(text: string): unknown {
-  const trimmed = text.trim();
+  const trimmed = text.trim().replace(/^<think>[\s\S]*?<\/think>\s*/i, "");
   const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n```$/i.exec(trimmed);
   try {
     return JSON.parse(fenced?.[1] ?? trimmed);

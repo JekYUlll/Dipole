@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：`json_text` 兼容解析额外剥离完整、封闭的 `<think>...</think>` 前缀，再验证剩余 JSON；普通解释性文本继续拒绝，推理正文不进入审计或计划数据。
+
 - 2026-08-31：`json_text` 模式现接受完整的 `json` Markdown 代码围栏，再以同一 Zod schema 验证对象；带额外解释文字、无效 JSON 或 schema 不匹配仍会失败关闭。
 
 - 2026-08-31：Agent AI SDK 输出协议新增 `DIPOLE_AGENT_MODEL_OUTPUT_MODE=json_text`。对于不支持 OpenAI JSON Schema response format 的兼容 Provider，Runtime 在单次、零内部重试调用中要求纯 JSON 并以原始 Zod schema 本地复核，失败仍由既有 ModelRouter 预算与审计处理。
