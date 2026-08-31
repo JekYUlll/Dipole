@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Temporal 的“模型结果后置确认丢失”集成夹具补齐 Step 授权审计依赖，并固定断言重试仅记录一次授权。Remote GPU 以 Node `22.12.0` 重跑 `test:temporal:integration`，两个测试文件共 `10` 项均通过；该演练覆盖隔离 Temporal 的模型/Step 重放，不扩大 active authority 或外部写能力。
+
 - 2026-09-01：Remote GPU 的 disposable read-shadow Compose 在候选 `agent-runtime@064568d9` 生成新的五类 Shadow Eval 报告：Outcome、Trajectory、Permission、Retrieval 和 Cost 均通过；Retrieval precision/recall 均为 `1`，单次执行记录 `1` 次模型调用、`2` 次工具调用、`1765` tokens 与 `7032 ms` 聚合延迟。报告归档于 [`agent-shadow-eval-2026-09-01-rerun`](benchmarks/agent-shadow-eval-2026-09-01-rerun/)，只表示受控隔离 `N=1` 观察，不构成生产成功率、共享 authority 或写 Capability 结论。
 
 - 2026-09-01：Shadow Eval 的 Retrieval 指标现排除 runtime policy、execution context、task 与 capability registry 等控制面基线，仅统计领域证据；它们仍保留在 Context/Trajectory 审计中，不影响 Capability 或运行时上下文。

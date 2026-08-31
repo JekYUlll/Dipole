@@ -66,3 +66,13 @@ Temporal fault receipt，二者不得互相替代。
 Remote GPU 在候选 `5e8a213e` 的 loopback-only `mysql:8.4` 临时容器中完成真实
 集成测试 `3/3`，并通过 receipt 单测 `4/4` 与 Runtime typecheck。测试结束后容器已
 移除。该结果不表示共享 Kafka/Temporal、跨进程业务副作用或 active authority 已验收。
+
+### Remote GPU Temporal regression record: 2026-09-01
+
+候选 `cc5806fb` 使用 Node `22.12.0` 完成
+`DIPOLE_AGENT_TEMPORAL_INTEGRATION=true npm run test:temporal:integration`：两个
+测试文件、十个用例均通过。运行覆盖 approval/input resume、Worker replacement、终态
+重试和模型/Step post-effect 重放；后者同时验证 Model call、Capability 和 Step
+authorization audit 不因 Activity acknowledgement 丢失而重复。该记录来自内存
+Temporal Test Server，不包含 Core restart、Kafka EventLedger lease、共享环境或 active
+authority 结论。
