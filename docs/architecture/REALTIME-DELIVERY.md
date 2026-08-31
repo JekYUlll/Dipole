@@ -51,8 +51,8 @@ foundation 只接受 `DIPOLE_REALTIME_MODE=contract_only`。`serve` 在启动 li
 
 当前只接受 `message.direct.created` 和 `message.group.created` 的 v1/minor-additive envelope，并保持现有 Go Delivery 语义：
 
-- 私聊向 target 生成 `chat.message`，普通群按原 recipient 顺序排除 sender。
-- `timeline_notify_shadow` 为每个完整消息追加 `sync.item.notify.v1`；legacy created 缺少 Seq 时仍可投递完整消息，但拒绝生成 Timeline 通知。
+- 私聊向 target 生成 `chat.message`，普通群按原 recipient 顺序排除 sender；显式 `timeline_notify_primary` 时改为只生成无正文 `sync.item.notify.v1` locator。
+- `timeline_notify_shadow` 为每个完整消息追加 `sync.item.notify.v1`；`shadow` 与 `primary` 互斥，legacy created 缺少 Seq 时仍可投递完整消息，但拒绝生成 Timeline 通知。
 - `hot_group` 生成 `group.message.notify`，沿用包含 sender 的完整 recipient 集合，并抑制逐消息 Timeline 通知。
 - 文件消息生成与 Go `FilePayload` 一致的下载路径和可选过期时间；事件未知字段继续允许 producer-first 发布。
 - channel/target 不匹配、未知 major version、无效时间戳、重复 recipient 和空群 fanout 均 fail closed；输出返回前再次执行 Delivery v1 validator。

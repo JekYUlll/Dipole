@@ -328,7 +328,9 @@ int RunDelivery(const DeliveryRuntimeConfig& config, volatile std::sig_atomic_t&
   PresenceReader* projection_presence = config.presence_enabled ? presence_reader.get() : nullptr;
   ShadowRunner runner(consumer.get(), &sink, config.poll_timeout_ms, projection_presence, node_transport.get(),
                       transport_mode, authority_fence.get());
-  const ProjectionPolicy policy{.timeline_notify_shadow = config.timeline_notify_enabled};
+  const ProjectionPolicy policy{
+      .timeline_notify_shadow = config.timeline_notify_enabled && config.authority == DeliveryRuntimeAuthority::kShadow,
+      .timeline_notify_primary = config.timeline_notify_enabled && config.authority == DeliveryRuntimeAuthority::kPrimary};
 
   std::thread worker([&]() {
     while (running != 0) {

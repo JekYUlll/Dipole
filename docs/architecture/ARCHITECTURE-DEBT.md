@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：C++ Realtime Delivery 的 `primary` 投影已与 Go body-free Timeline 主路径对齐：direct/普通 group 仅生成 `sync.item.notify.v1`，`shadow` 仍生成完整事件加 locator，冲突策略 fail closed；热群 notify + pull 保持原有处理。Ubuntu 24.04 容器门禁通过 `14/14` CTest。该修复仅收敛候选实现语义，C++ 性能晋级门槛未通过，默认 Go authority 和 C++ 灰度关闭状态不变。
+
 - 2026-09-01：审计发现 `message.timeline_notify_mode=primary` 在 Gateway Kafka 与 embedded Dispatcher 中仍同时发送完整消息和 locator，与 body-free 主路径契约冲突。primary 现只向接收方投递 `sync.item.notify.v1`，发送者保留 `chat.sent` 回执；`shadow` 继续双投递以支持观察，`off` 保留完整消息，热群聚合不变。Go direct/group/embedded 回归通过；真实 Cassandra 主读观察、自动停止和回切证据继续由 A6/AD-019 门禁约束。
 
 - 2026-09-01：Agent Runtime 本地全量门禁曾因默认关闭的 Approval mTLS drill 在 suite 注册期读取远程变量、离线 security Eval 缺少默认 token availability 以及 Temporal 只读夹具缺少授权审计 sink 而不可复现。三处测试契约已对齐，当前离线运行通过 `158` 个文件、`796` 项测试，`10` 个显式外部依赖测试跳过，并通过 TypeScript typecheck 与 production build。Remote GPU 同版本 Compose、Kafka/Temporal/Capability RPC 演练仍需独立执行，不能由本地测试替代。

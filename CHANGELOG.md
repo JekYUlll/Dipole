@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：C++ Realtime Delivery 对齐 Timeline 主模式的无正文投递契约。显式 `primary` 只投递 `sync.item.notify.v1` locator，`shadow` 继续为完整消息追加 locator，二者同时开启会失败关闭；热群聚合语义保持不变。Ubuntu 24.04 容器门禁完成 CMake Release 构建并通过 `14/14` CTest。C++ authority 继续默认关闭，Go 仍是当前默认投递路径。
+
 - 2026-09-01：修正 Timeline notify primary 的投递语义。Gateway Kafka 与 embedded Dispatcher 现在只向接收方发送无正文 `sync.item.notify.v1` locator，发送者继续收到 `chat.sent` 回执；`shadow` 保持完整消息加 locator 对照，`off` 保持完整消息投递，热群继续走聚合 notify + pull。direct/group/embedded 回归测试通过，真实 Cassandra 主读窗口和回切验收仍未开启。
 
 - 2026-09-01：Agent Runtime 的本地全量门禁恢复可复现。未显式开启的 Approval mTLS drill 不再在 suite 注册阶段读取远程环境变量；安全 Eval 与 Temporal 只读活动夹具同步当前 token availability 和授权审计契约。离线验证通过 `158` 个测试文件、`796` 项测试，另有 `10` 个显式外部依赖测试跳过，TypeScript typecheck 与生产构建通过；该结果不替代 Remote GPU 同版本 Compose smoke。
