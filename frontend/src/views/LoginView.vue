@@ -1,7 +1,9 @@
 <template>
   <div class="login-page">
     <div class="login-card">
-      <h1 class="brand">Dipole</h1>
+      <header class="brand-lockup">
+        <img class="brand-logo" :src="dipoleLogo" alt="Dipole IM" />
+      </header>
       <div class="tabs">
         <button :class="['tab', { active: mode === 'login' }]" @click="mode = 'login'">登录</button>
         <button :class="['tab', { active: mode === 'register' }]" @click="mode = 'register'">注册</button>
@@ -30,6 +32,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import dipoleLogo from '../../../docs/images/dipole-v3-im-traced.svg'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -88,13 +91,17 @@ const handleRegister = async () => {
   color: var(--dp-ink);
   font-family: var(--dp-font-body);
 }
-.brand {
-  text-align: center;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--dp-accent-strong);
-  font-family: var(--dp-font-display);
+.brand-lockup {
+  display: block;
+  justify-content: center;
   margin: 0 0 24px;
+  text-align: center;
+}
+.brand-logo {
+  display: block;
+  width: min(100%, 270px);
+  height: auto;
+  margin: 0 auto;
 }
 .tabs {
   display: flex;

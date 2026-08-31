@@ -13,4 +13,10 @@ describe('LoginView design contract', () => {
     expect(source).not.toContain('#07c160')
     expect(source).not.toContain('#e0e0e0')
   })
+
+  it('uses the canonical Signal Link product mark', () => {
+    expect(source).toContain("import dipoleLogo from '../../../docs/images/dipole-v3-im-traced.svg'")
+    expect(source).toContain('class="brand-logo"')
+    expect(source).toContain('alt="Dipole IM"')
+  })
 })
