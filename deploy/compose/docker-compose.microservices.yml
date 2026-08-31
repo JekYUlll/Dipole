@@ -86,6 +86,9 @@ services:
       dockerfile: Dockerfile
     image: ${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
     restart: unless-stopped
+    env_file:
+      - path: ../../.env
+        required: false
     volumes:
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro

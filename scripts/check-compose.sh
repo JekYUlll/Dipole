@@ -86,6 +86,10 @@ jq -e '
 ' <<<"${cluster_config}" >/dev/null
 
 default_microservices_config="$(docker compose -f deploy/compose/docker-compose.microservices.yml config --format json)"
+if ! awk '/^  agent:/{inside=1; next} inside && /^  [^[:space:]]/{exit} inside && /path: \.\.\/\.\.\/\.env/{found=1} END{exit found ? 0 : 1}' deploy/compose/docker-compose.microservices.yml; then
+  echo "Agent service must load the optional root .env file" >&2
+  exit 1
+fi
 jq -e '
   (.services["realtime-cpp"] == null)
   and .services.gateway.environment.DIPOLE_REALTIME_DELIVERY == "go"

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：微服务 Compose 的独立 Agent 服务现在显式加载受忽略的根目录 `.env`。这保证重建 `agent-temporal-read-shadow` 容器时保留受托管的 Provider 路由和凭据；缺失 `.env` 时基础 `metadata` 配置仍可启动，AI SDK overlay 继续因缺 Provider 配置失败关闭。
+
 - 2026-08-31：修复独立 Core 在远程 Agent Temporal 运行时遗漏 Task approval、control、Workflow projection/repair 与 Artifact RPC 装配的问题。独立 Core 现在复用 embedded 回滚基线的持久服务组合；Artifact 仍要求既有存储开关。该修复仅使 `read_shadow` Durable Task 能完整投影和产出受控 Artifact，不开放消息写入、外部 MCP 或 active authority。
 
 - 2026-08-31：修复 `agent-temporal-read-shadow` 开发 overlay 在容器网络中无法通过健康检查的部署缺口：Temporal 显式监听 `0.0.0.0`，保留 loopback `7233` 探针，并由 Compose 合同检查锁定该绑定。该 overlay 仍只提供内部网络的 `read_shadow` 执行，不开放默认写能力或外部端口。
