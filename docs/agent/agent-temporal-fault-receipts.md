@@ -76,3 +76,28 @@ Remote GPU 在候选 `5e8a213e` 的 loopback-only `mysql:8.4` 临时容器中完
 authorization audit 不因 Activity acknowledgement 丢失而重复。该记录来自内存
 Temporal Test Server，不包含 Core restart、Kafka EventLedger lease、共享环境或 active
 authority 结论。
+
+## Reviewed Shadow Eval Window
+
+[`collect-agent-shadow-eval-window.sh`](../../scripts/collect-agent-shadow-eval-window.sh)
+collects an already running read-shadow Agent's reviewer-supplied manifests and
+generates one low-sensitivity summary window. It does not start Compose, publish
+events, create labels, or change any feature flag. The operator must first
+review each manifest's outcome, trajectory, persisted authorization scope,
+retrieval evidence and cost thresholds.
+
+```bash
+COMPOSE_PROJECT_NAME=dipole-agent-shadow-window \
+COMPOSE_ENV_FILE=.env \
+COMPOSE_OVERLAYS=deploy/microservices/agent-ai-sdk-shadow.yml:deploy/microservices/agent-temporal-read-shadow.yml \
+DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR=/secure/reviewed-manifests \
+DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR=/secure/shadow-window \
+scripts/collect-agent-shadow-eval-window.sh
+```
+
+The output directory must not exist before collection. It receives one report
+per manifest, the exact summary input and the `reviewed_shadow` summary report.
+Exit status `0` means every reviewed task passed; `2` preserves a valid window
+with at least one failed task; all other statuses fail closed. The generated
+window remains an isolated development observation until its task set, reviewer
+process and environment are independently approved.

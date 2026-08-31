@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：增加 reviewed Shadow Eval window collector。它只执行已评审 manifest，保存每份低敏 report、输入与去重 Trace/Suite 汇总，并保留有效失败窗口以统计失败分类；没有自动任务创建、标签生成或环境切流。当前尚无固定多样本任务集和共享环境窗口，任务成功率继续保留占位符。
+
 - 2026-09-01：Remote GPU 的 Node `22.12.0` 重跑 Temporal 集成套件时发现“模型结果后置确认丢失”夹具未随 Step 授权审计契约更新，导致本应重放的已完成 Step fail closed。夹具现提供审计 sink 并断言授权审计精确为一次；修复后两个 Temporal 集成文件 `10/10` 通过。该结果只覆盖内存 Temporal Test Server 的隔离重放，Core restart、EventLedger lease expiry、共享环境与 active authority 仍须独立 receipt。
 
 - 2026-09-01：Remote GPU 的 disposable read-shadow Compose 已生成新的 [五类 Shadow Eval 报告](../../benchmarks/agent-shadow-eval-2026-09-01-rerun/)。候选 `agent-runtime@064568d9` 的 Outcome、Trajectory、Permission、Retrieval 和 Cost 全部通过；Retrieval precision/recall 均为 `1`，并绑定持久 Step lease 的精确授权 scope。该数据只有隔离 `N=1`，不能推导任务成功率、共享环境质量、active authority 或写 Capability 安全性；应收集版本一致、去重 Trace 的受审窗口后再填写简历指标。
