@@ -19,9 +19,15 @@ class MicroserviceMessageRecoverySmokeContractTest(unittest.TestCase):
         self.assertIn('timeout --foreground -k 5s "${exec_timeout_seconds}" docker exec "${container_id}" "$@"', SCRIPT)
         self.assertNotIn('docker compose "${compose_args[@]}" exec', SCRIPT)
 
+    def test_readiness_failures_emit_bounded_service_diagnostics(self):
+        self.assertIn('service readiness did not converge: %s live=%s ready=%s', SCRIPT)
+        self.assertIn('gateway health did not converge: %s', SCRIPT)
+        self.assertIn('compose ps "${service}" >&2 || true', SCRIPT)
+        self.assertIn('compose logs --tail 80 "${service}" >&2 || true', SCRIPT)
+
     def test_restart_happens_after_first_persist_and_before_idempotent_replay(self):
         first_send = SCRIPT.index("send_message 1")
-        persisted = SCRIPT.index('test "${message_count}" = "1"')
+        persisted = SCRIPT.index('initial message persistence did not converge: message=%s')
         restart = SCRIPT.index('restart_message_service "${message_restart_service}"')
         replay = SCRIPT.index("send_message 2")
         self.assertLess(first_send, persisted)
@@ -34,6 +40,10 @@ class MicroserviceMessageRecoverySmokeContractTest(unittest.TestCase):
         self.assertIn("message_recovery:{restart_service:$message_restart_service", SCRIPT)
         self.assertIn("outbox_count:($outbox_count|tonumber)", SCRIPT)
         self.assertIn("inbox_count:($inbox_count|tonumber)", SCRIPT)
+
+    def test_initial_persistence_failure_reports_ws_client_evidence(self):
+        self.assertIn('initial message persistence did not converge: message=%s', SCRIPT)
+        self.assertIn('tail -n 80 "${wscli_log}" >&2 || true', SCRIPT)
 
 
 if __name__ == "__main__":

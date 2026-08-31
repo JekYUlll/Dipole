@@ -57,6 +57,13 @@ compose_exec() {
   timeout --foreground -k 5s "${exec_timeout_seconds}" docker exec "${container_id}" "$@"
 }
 
+print_service_diagnostics() {
+  local service=$1
+  printf 'service diagnostics: %s\n' "${service}" >&2
+  compose ps "${service}" >&2 || true
+  compose logs --tail 80 "${service}" >&2 || true
+}
+
 cleanup() {
   local exit_code=$?
   local retain_failure=0
@@ -127,7 +134,11 @@ for _ in $(seq 1 120); do
   [[ "${gateway_health}" == *'"component":"gateway"'* ]] && break
   sleep 1
 done
-[[ "${gateway_health}" == *'"component":"gateway"'* ]]
+if [[ "${gateway_health}" != *'"component":"gateway"'* ]]; then
+  printf 'gateway health did not converge: %s\n' "${gateway_health:-empty}" >&2
+  print_service_diagnostics gateway
+  exit 1
+fi
 
 for service in core message sync gateway; do
   for _ in $(seq 1 120); do
@@ -136,8 +147,12 @@ for service in core message sync gateway; do
     [[ "${live}" == alive && "${ready}" == ready ]] && break
     sleep 1
   done
-  test "${live}" = alive
-  test "${ready}" = ready
+  if [[ "${live}" != alive || "${ready}" != ready ]]; then
+    printf 'service readiness did not converge: %s live=%s ready=%s\n' \
+      "${service}" "${live:-empty}" "${ready:-empty}" >&2
+    print_service_diagnostics "${service}"
+    exit 1
+  fi
 done
 
 if [[ "${SMOKE_SEARCH_PROFILE:-0}" == "1" ]]; then
@@ -242,7 +257,11 @@ if [[ "${SMOKE_MESSAGE_FLOW:-0}" == "1" ]]; then
     [[ "${message_count}" == "1" ]] && break
     sleep 1
   done
-  test "${message_count}" = "1"
+  if [[ "${message_count}" != "1" ]]; then
+    printf 'initial message persistence did not converge: message=%s\n' "${message_count:-0}" >&2
+    tail -n 80 "${wscli_log}" >&2 || true
+    exit 1
+  fi
 
   if [[ -n "${message_restart_service}" ]]; then
     restart_message_service "${message_restart_service}"

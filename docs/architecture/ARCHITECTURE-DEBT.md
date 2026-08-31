@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：候选消息恢复演练的 readiness 和首次持久化检查现在在失败时输出受限 `compose ps/logs` 与 `wscli` 尾部，避免基础服务未就绪被无上下文地归因为消息幂等缺陷。失败路径继续自动清理，只有归档的成功 receipt 才能作为恢复副作用证据。
+
 - 2026-08-31：Remote GPU 候选消息恢复演练发现停止态 `docker compose exec` 客户端会无限阻塞 readiness/计数探针。`smoke-microservice-isolated-images.sh` 已将这些调用收敛为默认 20 秒的 `SMOKE_EXEC_TIMEOUT_SECONDS`，并在 5 秒 grace 后强制结束；发生该类问题时演练失败并走隔离项目清理，干净重跑 receipt 仍待归档。
 
 - 2026-08-31：微服务 smoke 已支持只读 `read_shadow` 的 Compose overlay、受控 Compose 环境文件、事件发布后 Core 重启和模型/Artifact 绑定断言。Remote GPU 已在独立 `dipole-read-shadow-restart` 项目和专用 loopback 端口完成演练，确认 EventLedger、Task/Run、完成的模型调用与 `conversation_digest` Artifact 收敛，退出后容器数为零；默认基础 Shadow、写 Capability、MCP 与 active authority 保持关闭。
