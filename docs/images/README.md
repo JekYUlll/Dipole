@@ -1,12 +1,12 @@
 # Dipole Brand Assets
 
-These SVG assets are the repository's source-of-truth README identity. They are intentionally dependency-free so GitHub, package registries and documentation render them consistently.
+`dipole-brand-v3.png` is the current repository brand board. It defines the Dipole IM and Dipole Agent lockups, deep navy/red/gold palette and light canvas used by the README and future product-facing design work.
 
-The historical blue PNG logo has been retired. New documentation must use one of
-the SVG assets below so the repository keeps a consistent visual identity.
+The SVG assets remain compact derivatives for product-specific documentation. New UI and documentation work should align its palette and geometry with V3 rather than reintroducing the retired blue identity.
 
 | Asset | Intended use |
 | --- | --- |
+| `dipole-brand-v3.png` | README header, brand review and the canonical IM/Agent visual direction. |
 | `dipole-wordmark.svg` | Repository header and landing pages. |
 | `dipole-mark.svg` | Square application icon, favicons and compact product entry points. |
 | `dipole-im-mark.svg` | IM-focused materials and architecture documents. |

@@ -1,9 +1,17 @@
 <p align="center">
-  <img src="docs/images/dipole-wordmark.svg" width="560" alt="Dipole: an event-driven collaboration platform" />
+  <img src="docs/images/dipole-brand-v3.png" width="720" alt="Dipole IM and Dipole Agent brand system" />
 </p>
 
 <p align="center">
   A modern, event-driven collaboration platform for real-time messaging and governed Agent workflows.
+</p>
+
+<p align="center">
+  <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white" alt="Go 1.27" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-Agent_Runtime-3178C6?logo=typescript&logoColor=white" alt="TypeScript Agent Runtime" /></a>
+  <a href="https://kafka.apache.org/"><img src="https://img.shields.io/badge/Kafka-Event_Driven-231F20?logo=apachekafka&logoColor=white" alt="Kafka event driven" /></a>
+  <a href="https://sqlc.dev/"><img src="https://img.shields.io/badge/sqlc-Explicit_SQL-2F7A84" alt="sqlc explicit SQL" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-D32F2F" alt="MIT License" /></a>
 </p>
 
 <p align="center">
@@ -16,14 +24,6 @@
 ## Overview
 
 Dipole provides a real-time IM core with a gradual path to independently deployable services. Go owns IM domain consistency, Kafka carries domain events and projections, and SQLC keeps the MySQL access layer explicit. A TypeScript Agent Runtime integrates through versioned capability contracts and remains fail-closed for privileged paths.
-
-<p align="center">
-  <img src="docs/images/dipole-im-mark.svg" width="180" alt="Dipole IM" />
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/images/dipole-agent-mark.svg" width="180" alt="Dipole Agent" />
-</p>
-
-<p align="center"><sub>One visual system for the realtime IM data plane and the governed Agent runtime.</sub></p>
 
 | Area | Current responsibility |
 | --- | --- |
