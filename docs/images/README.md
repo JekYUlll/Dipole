@@ -6,7 +6,7 @@ The SVG assets remain compact derivatives for product-specific documentation. Ne
 
 | Asset | Intended use |
 | --- | --- |
-| `dipole-brand-v3.png` | README header, brand review and the canonical IM/Agent visual direction. |
+| `dipole-v3-brand-lockup.svg` | README header and canonical V3 IM/Agent product lockup. |
 | `dipole-v3-im.svg` | Current IM application icon, login entry points and IM-focused materials. |
 | `dipole-v3-agent.svg` | Current Agent Runtime icon, durable-task entry points and Agent-focused materials. |
 | `dipole-brand-v3.png` | Earlier repository brand board retained for historical documentation only. |

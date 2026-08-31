@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：根 README 已从旧 PNG 品牌板切换到受版本控制的 `dipole-v3-brand-lockup.svg`，与 Web Login 的 V3 SVG 使用同一海军蓝/信号红/轨道金语言。旧 PNG 仅保留为历史评审资产；该文档改动不改变服务 authority 或前端设计验收范围。
+
 - 2026-09-01：修复 Go 微服务镜像构建 context 在循环中累积二进制的问题。每个服务现在创建独立临时 context，并由子 shell 的 `EXIT` trap 在成功或失败后清理；静态回归测试同时锁定单二进制 context 和清理边界。下一次 Remote GPU 同版本 smoke 仍需记录每个 context 的实际大小与总构建耗时。
 
 - 2026-09-01：V3 前端设计的 Pencil CLI 调用按临时文件/原子替换策略两次超时，未修改 canonical `.pen` 或批准导出。V3 SVG、additive token 和 Login 已可独立构建，完整 Chat/Agent 画板、全局 token 迁移和视觉回归仍依赖成功的 Pencil 增量生成；禁止将当前兼容切片表述为全站改版完成。
