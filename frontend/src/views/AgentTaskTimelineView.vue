@@ -3,6 +3,7 @@ import { useRoute } from 'vue-router'
 import AgentTaskTimeline from '@/components/AgentTaskTimeline.vue'
 
 const route = useRoute()
+const agentMark = `${import.meta.env.BASE_URL}dipole-v3-agent.svg`
 </script>
 
 <template>
@@ -10,7 +11,7 @@ const route = useRoute()
     <div class="timeline-page-orbit" aria-hidden="true"></div>
     <header class="product-bar">
       <RouterLink class="product-lockup" :to="{ name: 'chat' }">
-        <img src="../../../docs/images/dipole-v3-agent.svg" alt="Dipole Agent" />
+        <img :src="agentMark" alt="Dipole Agent" />
         <span>Dipole Agent</span>
       </RouterLink>
       <span class="product-boundary">DURABLE TASK / READ ONLY</span>

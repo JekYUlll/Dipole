@@ -16,8 +16,8 @@ describe('LoginView design contract', () => {
   })
 
   it('uses the V3 IM and Agent product marks', () => {
-    expect(source).toContain("import dipoleMark from '../../../docs/images/dipole-v3-im.svg'")
-    expect(source).toContain("import dipoleAgentMark from '../../../docs/images/dipole-v3-agent.svg'")
+    expect(source).toContain("const dipoleMark = `${import.meta.env.BASE_URL}dipole-v3-im.svg`")
+    expect(source).toContain("const dipoleAgentMark = `${import.meta.env.BASE_URL}dipole-v3-agent.svg`")
     expect(source).toContain('class="brand-mark"')
     expect(source).toContain('IM DATA PLANE / AGENT CONTROL PLANE')
     expect(source).toContain('object-fit: contain')

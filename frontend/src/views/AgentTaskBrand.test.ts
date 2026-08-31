@@ -7,7 +7,7 @@ for (const file of ['AgentTaskCreateView.vue', 'AgentTaskTimelineView.vue']) {
 
   describe(`${file} brand contract`, () => {
     it('preserves the traced Agent mark aspect ratio', () => {
-      expect(source).toContain('dipole-v3-agent.svg')
+      expect(source).toContain('const agentMark = `${import.meta.env.BASE_URL}dipole-v3-agent.svg`')
       expect(source).toContain('object-fit: contain')
     })
   })

@@ -47,11 +47,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import dipoleMark from '../../../docs/images/dipole-v3-im.svg'
-import dipoleAgentMark from '../../../docs/images/dipole-v3-agent.svg'
-
 const router = useRouter()
 const auth = useAuthStore()
+const dipoleMark = `${import.meta.env.BASE_URL}dipole-v3-im.svg`
+const dipoleAgentMark = `${import.meta.env.BASE_URL}dipole-v3-agent.svg`
 
 const mode = ref<'login' | 'register'>('login')
 const telephone = ref('')

@@ -27,6 +27,7 @@ test('keeps the default-off task creation surface aligned with the Pencil baseli
 
   await expect(page.getByRole('heading', { name: '创建 Agent 任务' })).toBeVisible()
   await expect(page.getByText('提交只使用当前认证账号已授权的会话。')).toBeVisible()
+  await expect(page.getByAltText('Dipole Agent')).toHaveJSProperty('naturalWidth', 670)
   await expect(page.locator('.task-create-page')).toHaveScreenshot('task-create-chromium.png', {
     animations: 'disabled',
   })

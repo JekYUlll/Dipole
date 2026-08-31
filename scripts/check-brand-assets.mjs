@@ -26,7 +26,7 @@ for (const asset of assets) {
 assertTraceProvenance()
 
 checkCopyMappings('publishedCopies', manifest.sourceAssets)
-checkCopyMappings('runtimeCopies', manifest.variants)
+checkCopyMappings('runtimeCopies', [...manifest.sourceAssets, ...manifest.variants])
 
 const colors = manifest.colors
 if (!colors || colors.navy !== '#0B2A4A' || colors.signalRed !== '#F2262A' || colors.orbitGold !== '#F4B000' || colors.ivory !== '#F8F1E4') {

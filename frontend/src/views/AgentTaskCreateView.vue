@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AgentTaskCreate from '@/components/AgentTaskCreate.vue'
+
+const agentMark = `${import.meta.env.BASE_URL}dipole-v3-agent.svg`
 </script>
 
 <template>
@@ -7,7 +9,7 @@ import AgentTaskCreate from '@/components/AgentTaskCreate.vue'
     <div class="task-create-orbit" aria-hidden="true"></div>
     <header class="product-bar">
       <RouterLink class="product-lockup" :to="{ name: 'chat' }">
-        <img src="../../../docs/images/dipole-v3-agent.svg" alt="Dipole Agent" />
+        <img :src="agentMark" alt="Dipole Agent" />
         <span>Dipole Agent</span>
       </RouterLink>
       <span class="product-boundary">OWNER CONTROL / SHADOW</span>

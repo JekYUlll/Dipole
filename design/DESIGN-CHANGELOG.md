@@ -6,6 +6,9 @@
 
 ### 新增
 
+- 将 VTracer 生成的 IM/Agent SVG 发布到 `frontend/public/`，Login、Chat 与 Agent Task 通过 Vite `BASE_URL` 使用同一受控资源；品牌门禁同时核对文档副本、favicon 与浏览器副本，避免设计资产在开发服务器中失效。
+- 将 Agent Task Create 的 Chromium canonical screenshot 更新为完整创建页，固定 V3 Agent 标识、表单、只读授权提示与默认关闭的提交边界。
+
 - 使用 VTracer 从用户提供的 V3 PNG 生成 IM、Agent 与产品族 lockup SVG；高精度输出保留原图的消息极、白色横向连接槽、产品字标、Agent 轨道和留白，品牌门禁校验生成器来源与发布副本一致性。
 - Login、Chat rail 与 Agent Task 的图像容器按 traced SVG 的原始比例使用 `object-fit: contain`，避免将横向 V3 标识挤压为旧的正方形图标。
 

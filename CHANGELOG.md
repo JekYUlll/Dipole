@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：V3 IM/Agent 标识的运行时副本收口至 `frontend/public/`，页面通过 Vite 的 `BASE_URL` 加载，避免开发服务器引用仓库外 `docs/images/` 时出现图像失效。品牌门禁现同时校验文档、favicon 与两类运行时副本；Agent Task Create 的 Chromium 基线升级为完整页面。
+
 - 2026-09-01：Login、Chat 导航与 Agent Task 入口改为保留 VTracer SVG 的原始纵横比，避免 V3 横向标识按旧正方形容器压缩；页面源码契约覆盖 Login 与两个 Agent Task View。
 
 - 2026-09-01：V3 Logo SVG 使用 VTracer 从用户提供的 PNG 高精度生成，保留双极对话轮廓、白色连接槽、IM/Agent 产品字标与 Agent 的金色轨道；品牌门禁校验生成器来源与发布副本一致性。

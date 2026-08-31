@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：V3 IM/Agent 资源已由 `frontend/public/` 通过 Vite `BASE_URL` 提供，避免 Vue 在开发服务器中读取仓库外文档路径而失效。Agent Task Create 的 Chromium 全页截图与图像自然尺寸断言通过；Firefox/WebKit、真实后端数据与 Remote GPU 可访问部署仍待单独验收。
+
 - 2026-09-01：VTracer 生成的 IM/Agent 资产具有横向原始比例。Login、Chat rail 和 Agent Task 入口已使用 contain 保留其比例，页面契约覆盖关键容器。完整 Chromium/Firefox/WebKit 视觉回归仍需在具备依赖的隔离候选中完成。
 
 - 2026-09-01：先前 V3 SVG 仅保留双色/轨道概念，未忠实还原用户提供的 PNG 产品设计。现已使用 VTracer 从 PNG 高精度生成 IM、Agent、产品族 lockup 和 favicon，门禁校验生成器来源与发布副本一致性；深浅背景和单色受限变体仍需在后续品牌复核中逐一对照原图。

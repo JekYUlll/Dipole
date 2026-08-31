@@ -625,11 +625,10 @@ import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
 import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPartWithRefresh } from '@/upload/multipartUpload'
 import { withMultipartUploadLease } from '@/upload/multipartLease'
-import dipoleMark from '../../../docs/images/dipole-v3-im.svg'
-
 const router = useRouter()
 const auth = useAuthStore()
 const chat = useChatStore()
+const dipoleMark = `${import.meta.env.BASE_URL}dipole-v3-im.svg`
 const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
 const agentTaskCreateEnabled = import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED === 'true' && import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
 const presignedMultipartEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_ENABLED === 'true'
