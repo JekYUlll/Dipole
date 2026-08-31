@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Core standalone 现在在内部 RPC 已启用且 mTLS 完整时始终装配基础 Agent Capability RPC，确保独立 TS Runtime 可以执行 `admit_run`、会话列表和会话读取。`conversation.search` 仍由 `internal_rpc.agent_conversation_search_enabled` 单独控制；关闭时 Core 不拨号 Search，调用搜索能力返回受控 `Unavailable`。
+
 - 2026-08-31：增加 OAuth callback Runtime 默认关闭配置契约。只有显式 `enabled=true` 时才要求独立 control secret、固定 lease owner 与 Runtime key 映射；未启用时忽略残留值并保持零 callback surface。该配置尚未由 `index.ts` 消费。
 
 - 2026-08-31：新增默认关闭的 OAuth callback Runtime control-to-executor 集成测试，覆盖 Gateway service-secret 认证、handoff-ID-only body、重复通知去重和固定 Runtime lease owner 转发。测试仅使用内存 fake executor，未构造 Runtime bootstrap、provider 或外部 callback。

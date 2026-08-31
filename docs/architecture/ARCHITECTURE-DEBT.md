@@ -10,6 +10,8 @@
 
 ### 本轮进展
 
+- 2026-08-31：修复 standalone Core 将完整 Agent Capability adapter 误绑定到 Search 开关的装配缺口。内部 RPC 与 mTLS 完整时，基础只读/任务能力始终注册；Search client 仍仅在 `internal_rpc.agent_conversation_search_enabled=true` 时建立，关闭时只拒绝 `conversation.search`。Remote GPU 的 DeepSeek shadow 验证和公网体验入口仍需完成。
+
 - 2026-08-31：OAuth callback Runtime 配置契约默认关闭，启用时要求独立 secret、固定 lease owner 与非空 key mapping；`index.ts` 未读取它，因此没有新增网络 surface。后续完整装配必须复用此唯一契约并增加私钥/processor/Compose gate。
 
 - 2026-08-31：control handler 到 executor 的内存集成测试已锁定 Gateway 认证、最小 handoff body、进程内去重和固定 Runtime lease owner；它不提供 provider、Store 或默认 bootstrap 证据，外部 callback 继续关闭。
@@ -70,7 +72,7 @@
 
 - 2026-08-31：Remote GPU 候选同步新增目标 blob SHA-256 守卫。远端有已跟踪修改时直接拒绝；只清理与待 checkout 提交逐字节一致的未跟踪路径，内容不同的文件与其他 checkout 冲突保持 fail-closed。该保护只处理可再生测试产物，不替代候选目录隔离、活动会话保护或发布审批。
 
-- 2026-08-31：Core 已具备默认关闭的 Agent Search assembly：仅在 `internal_rpc.agent_conversation_search_enabled` 与 mTLS 同时成立时，Core 才以 `dipole-core` 身份建立 Search client、装配持久 Agent invocation/admission 与 Search Capability adapter；关闭时不拨号 Search、不注册该 adapter。Search RPC allowlist 扩展为 Gateway/Core，默认 Compose 与静态门禁固定该开关为 `false`。共享 Shadow、召回质量与生产切流仍未完成。
+- 2026-08-31：Core 已具备默认关闭的 Agent Search assembly：内部 RPC 与 mTLS 完整时，基础持久 Agent adapter 已注册；仅在 `internal_rpc.agent_conversation_search_enabled=true` 时，Core 才以 `dipole-core` 身份建立 Search client 并提供 Search Capability。关闭时不拨号 Search，`conversation.search` 返回 `Unavailable`。Search RPC allowlist 扩展为 Gateway/Core，默认 Compose 与静态门禁固定该开关为 `false`。共享 Shadow、召回质量与生产切流仍未完成。
 
 - 2026-08-31：基础 Compose、active read 与 External MCP Shadow overlay 现显式固定 `DIPOLE_AGENT_RETRIEVAL_ENABLED=false` 和 `DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED=false`，静态 Compose 门禁同时复核渲染值。宿主环境无法借由未声明变量扩张默认 Capability surface；受控 Search assembly、共享 Shadow 观察和生产切流仍未完成。
 

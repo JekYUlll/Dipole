@@ -125,57 +125,59 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	rpcCfg := config.InternalRPCConfig()
 	if rpcCfg.Enabled {
 		var agentAdapter agentv1.AgentCapabilityServiceServer
+		if !rpcCfg.TLSEnabled {
+			cleanup()
+			return nil, fmt.Errorf("Agent Capability RPC requires internal RPC mTLS")
+		}
+		searches := make([]applicationPort.SearchApplication, 0, 1)
 		if rpcCfg.AgentConversationSearchEnabled {
-			if !rpcCfg.TLSEnabled {
-				cleanup()
-				return nil, fmt.Errorf("Agent conversation search requires internal RPC mTLS")
-			}
 			search, searchConnection, composeErr := dialCoreSearchApplication(ctx, rpcCfg)
 			if composeErr != nil {
 				cleanup()
 				return nil, composeErr
 			}
 			runtime.searchConn = searchConnection
-			agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
-			if composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
-			}
-			permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
-			if composeErr = agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, agentRepos.Policy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("ensure standalone Agent Definition: %w", composeErr)
-			}
-			commands, composeErr := agentapplication.NewLocalAgentCommandV1(messaging.Messages)
-			if composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("compose standalone Agent Command: %w", composeErr)
-			}
-			capability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, messaging.Messages, messaging.Conversations, commands, search)
-			if composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("compose standalone Agent Search capability: %w", composeErr)
-			}
-			authorizer, composeErr := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(agentRepos.Promotions)
-			if composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("compose standalone Agent active promotion authorizer: %w", composeErr)
-			}
-			resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy, authorizer)
-			if composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("compose standalone Agent Invocation resolver: %w", composeErr)
-			}
-			admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy, authorizer)
-			if composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("compose standalone Agent Run admission: %w", composeErr)
-			}
-			agentAdapter, composeErr = agentgrpc.NewServer(capability, resolver, admission)
-			if composeErr != nil {
-				cleanup()
-				return nil, fmt.Errorf("compose standalone Agent Search rpc adapter: %w", composeErr)
-			}
+			searches = append(searches, search)
+		}
+		agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
+		}
+		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
+		if composeErr = agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, agentRepos.Policy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("ensure standalone Agent Definition: %w", composeErr)
+		}
+		commands, composeErr := agentapplication.NewLocalAgentCommandV1(messaging.Messages)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Command: %w", composeErr)
+		}
+		capability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, messaging.Messages, messaging.Conversations, commands, searches...)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent capability: %w", composeErr)
+		}
+		authorizer, composeErr := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(agentRepos.Promotions)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent active promotion authorizer: %w", composeErr)
+		}
+		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy, authorizer)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Invocation resolver: %w", composeErr)
+		}
+		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy, authorizer)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Run admission: %w", composeErr)
+		}
+		agentAdapter, composeErr = agentgrpc.NewServer(capability, resolver, admission)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent capability rpc adapter: %w", composeErr)
 		}
 		if rpcCfg.AgentMemoryPromotionReceiptCommitEnabled {
 			if !rpcCfg.TLSEnabled {
