@@ -303,6 +303,7 @@ jq -e '
   .services.temporal.image == "temporalio/auto-setup:1.29.1"
   and .services.temporal.ports == null
   and .services.temporal.environment.DB == "postgres12"
+  and .services.temporal.environment.BIND_ON_IP == "0.0.0.0"
   and .services.temporal.depends_on["temporal-postgresql"].condition == "service_healthy"
   and .services["temporal-postgresql"].image == "postgres:16"
   and .services.agent.depends_on.temporal.condition == "service_healthy"

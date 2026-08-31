@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：修复 `agent-temporal-read-shadow` 开发 overlay 在容器网络中无法通过健康检查的部署缺口：Temporal 显式监听 `0.0.0.0`，保留 loopback `7233` 探针，并由 Compose 合同检查锁定该绑定。该 overlay 仍只提供内部网络的 `read_shadow` 执行，不开放默认写能力或外部端口。
+
 - 2026-08-31：DeepSeek V4 Flash 的 `json_text` 输出恢复支持单个、受限包装的 JSON 对象：短前后说明可被剥离，第二个 JSON 对象、超长包装、无效 JSON 和 schema 不匹配继续失败关闭。解析结果仍须通过 Zod 与只读 Capability allowlist；该修复不改变任务权限、模型预算或副作用边界。
 
 - 2026-08-31：新增显式 `agent-temporal-read-shadow` 开发 overlay 与运行手册。它将 Temporal/PostgreSQL 限定在 Compose 内部网络，并把 Agent 固定为 DeepSeek 等 AI SDK Provider 可用时的 `read_shadow`、v2 Context 与独立 task queue；消息写入、Memory、检索、Control、MCP、OAuth callback 和默认基础 Compose 均保持关闭。

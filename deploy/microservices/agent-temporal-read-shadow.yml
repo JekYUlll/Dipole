@@ -30,6 +30,8 @@ services:
       VISIBILITY_DBNAME: temporal_visibility
       DEFAULT_NAMESPACE: default
       DEFAULT_NAMESPACE_RETENTION: 24h
+      # The image otherwise selects the container IP, while the health probe is loopback.
+      BIND_ON_IP: 0.0.0.0
     expose:
       - "7233"
     healthcheck:
