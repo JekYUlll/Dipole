@@ -4,10 +4,17 @@ import type { KafkaConsumerFactoryPort, KafkaConsumerPort, KafkaInboundPayload }
 import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import type { ExecutionContext } from "./execution-context.js";
-import { buildKafkaShadowRuntime, loadShadowRuntimeConfig } from "./shadow-runtime.js";
+import { buildKafkaShadowRuntime, loadShadowRuntimeConfig, singlePassModelCapabilityIDs } from "./shadow-runtime.js";
 import { SubscriptionShadowMetrics } from "../observability/subscription-shadow-metrics.js";
 
 describe("shadow runtime composition", () => {
+  it("keeps one-shot model plans at conversation discovery", () => {
+    const config = loadShadowRuntimeConfig({});
+
+    expect(singlePassModelCapabilityIDs(config)).toEqual(["conversation.list"]);
+    expect(singlePassModelCapabilityIDs({ ...config, retrievalEnabled: true })).toEqual(["conversation.list"]);
+  });
+
   it("requires brokers only when Kafka shadow mode is enabled", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Agent Shadow Runtime 增加显式 Provider thinking 控制。`DIPOLE_AGENT_MODEL_THINKING_MODE=disabled` 仅向已选 OpenAI-compatible Provider 传递专有选项，默认继续使用 Provider 行为；单次模型规划同时收紧为 `conversation.list`，后续多轮读取必须绑定已完成的发现结果。该切片不启用写 Capability、active authority 或 MCP。
+
 - 2026-09-01：Web Sync Observation Session 现可绑定完整静态发布目录。目录摘要按稳定相对路径和文件 SHA-256 计算，新增、删除、改名、内容变化、空目录或符号链接都会使候选校验失败；既有单文件 bundle 调用保持兼容。该切片只强化真实浏览器观察的版本证据，未启动 24 小时窗口或改变客户端默认同步模式。
 
 - 2026-09-01：Remote GPU 隔离交互 Shadow 候选复验了认证 Agent Task 链路：新临时用户的只读请求返回 `202`，同一 Task 随后经受限轮询收敛为 `completed`。Gateway/Core 使用 `406c3154`，Agent 使用 `thinking-4e9740a0`，该结果只证明版本兼容与 Shadow 读取路径，不构成同版本发布、active authority、写 Capability 或整体成功率结论。

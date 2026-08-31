@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModel } from "ai";
+import type { JSONValue, LanguageModel } from "ai";
 import { z } from "zod";
 
 const providerNameSchema = z.string().trim().regex(/^[a-z][a-z0-9_-]{0,63}$/);
@@ -10,7 +10,8 @@ export const modelProviderConfigSchema = z.object({
   baseURL: z.string().trim(),
   apiKey: z.string(),
   supportsStructuredOutputs: z.boolean(),
-  outputMode: z.enum(["json_schema", "json_text"])
+  outputMode: z.enum(["json_schema", "json_text"]),
+  thinkingMode: z.enum(["provider_default", "disabled"])
 }).strict().superRefine((config, refinement) => {
   if (config.kind === "disabled") return;
   if (!providerNameSchema.safeParse(config.name).success) {
@@ -42,8 +43,15 @@ export function loadModelProviderConfig(env: NodeJS.ProcessEnv): ModelProviderCo
     baseURL: env.DIPOLE_AGENT_MODEL_BASE_URL ?? "",
     apiKey: env.DIPOLE_AGENT_MODEL_API_KEY ?? "",
     supportsStructuredOutputs: env.DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS?.trim().toLowerCase() === "true",
-    outputMode: env.DIPOLE_AGENT_MODEL_OUTPUT_MODE?.trim().toLowerCase() === "json_text" ? "json_text" : "json_schema"
+    outputMode: env.DIPOLE_AGENT_MODEL_OUTPUT_MODE?.trim().toLowerCase() === "json_text" ? "json_text" : "json_schema",
+    thinkingMode: env.DIPOLE_AGENT_MODEL_THINKING_MODE?.trim().toLowerCase() || "provider_default"
   });
+}
+
+/** Keeps provider-specific request fields out of the generic Agent contract. */
+export function modelProviderCallOptions(config: ModelProviderConfig): Record<string, Record<string, JSONValue>> | undefined {
+  if (config.kind !== "openai_compatible" || config.thinkingMode !== "disabled") return undefined;
+  return { [config.name]: { thinking: { type: "disabled" } } };
 }
 
 export function createOpenAICompatibleModelResolver(config: ModelProviderConfig): (route: string) => LanguageModel {

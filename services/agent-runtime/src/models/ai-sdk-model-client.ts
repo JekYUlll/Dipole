@@ -1,4 +1,4 @@
-import { generateText, Output, type LanguageModel } from "ai";
+import { generateText, Output, type JSONValue, type LanguageModel } from "ai";
 import { z } from "zod";
 
 import type { StructuredModelClient } from "./model-router.js";
@@ -6,7 +6,8 @@ import type { StructuredModelClient } from "./model-router.js";
 export class AISDKStructuredModelClient implements StructuredModelClient {
   constructor(
     private readonly resolveModel: (route: string) => LanguageModel,
-    private readonly outputMode: "json_schema" | "json_text" = "json_schema"
+    private readonly outputMode: "json_schema" | "json_text" = "json_schema",
+    private readonly providerOptions?: Record<string, Record<string, JSONValue>>
   ) {}
 
   async generate(input: Parameters<StructuredModelClient["generate"]>[0]): ReturnType<StructuredModelClient["generate"]> {
@@ -14,6 +15,7 @@ export class AISDKStructuredModelClient implements StructuredModelClient {
       model: this.resolveModel(input.route),
       prompt: this.outputMode === "json_text" ? jsonTextPrompt(input.prompt, input.schema) : input.prompt,
       ...(this.outputMode === "json_schema" ? { output: Output.object({ schema: input.schema }) } : {}),
+      ...(this.providerOptions === undefined ? {} : { providerOptions: this.providerOptions }),
       maxRetries: 0,
       maxOutputTokens: input.maxOutputTokens,
       timeout: input.timeoutMs

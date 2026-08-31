@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Agent Shadow Runtime 将 Provider thinking 设为显式、Provider 专有的默认关闭选项，并将单次 Planner 的模型可见 Capability 收紧至 `conversation.list`。这样受限 JSON-text 预算不会被默认 reasoning 消耗，模型也不能在未获得会话发现结果前构造任意读取目标。多轮绑定、写 Capability、active authority 与 MCP 仍由 AD-009 的独立门禁约束。
+
 - 2026-09-01：A6 Web Sync observation 的候选绑定已从单一 bundle 文件扩展为完整静态发布目录摘要。候选目录以稳定相对路径和内容 SHA-256 生成摘要，空目录、符号链接及任意资源集漂移均 fail closed；单文件兼容入口保留。真实浏览器 24 小时窗口、100 个 match、Prometheus 原始响应归档与责任人批准仍未完成，旧 Offline 兼容窗口和默认客户端模式保持不变。
 
 - 2026-09-01：Remote GPU 的长驻隔离交互候选以新临时用户复验了 Agent Task 创建到终态查询：Gateway 接受只读请求并返回 `202`，Task 在有界轮询中收敛为 `completed`。候选 Gateway/Core 为 `406c3154`，Agent 镜像为 `thinking-4e9740a0`，存在受控版本偏差；它支持跨版本 Shadow 兼容性，不能替代同版本候选、可重跑 receipt、active authority、写 Capability 或任务成功率的验收。后续体验候选应将 Gateway/Core/Agent provenance 固定为同一 revision，再纳入 Claim 证据。
