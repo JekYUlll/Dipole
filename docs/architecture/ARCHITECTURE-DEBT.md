@@ -211,6 +211,8 @@
 - 2026-08-30：完成更接近同契约的 C++/Go `DeliveryEnvelope` workload，ratio `0.247269` 仍低于门槛；C3 继续保持 Go authority，后续应针对 JSON parse、Protobuf construction 和 allocation profile 做 profiling，禁止仅凭该微基准切流。
 - 2026-08-30：5 次 Remote GPU 稳定性采样确认 C++/Go ratio 约 `0.25` 且运行抖动有限；下一步 profiling 需要定位稳定的 JSON、时间校验、Protobuf 和 allocation 成本，C++ primary/gray 继续关闭。
 - 2026-08-31：Remote GPU 在 `bed7a5d06f5f69bbccc0de4586235881e5b6d5ae` 以 Ubuntu 24.04 builder 重跑 100,000 次同契约 projection workload，C++ CTest `14/14` 通过，C++/Go ratio 为 `0.239956`，低于 `1.0` 门槛并判定 `blocked`；证据归档于 [C3 projection benchmark](../../benchmarks/c3-cpp-projection-benchmark-2026-08-31/)。因此继续保留 Go authority，当前 C++ 不进入 primary 或灰度路径。经当前开发优先级决策，C++ 轨道暂缓，资源转向 Agent Runtime 安全闭环；恢复条件为新的可复现收益证据和 Agent Runtime 里程碑完成。
+
+- 2026-08-31：OAuth callback handoff 已从分散的 claim、key source、executor、terminal 和 control adapter 收口为注入式 Runtime composition factory，并以 fake mTLS transport 验证 handoff-ID-only control 到完成路径。`index.ts`、Compose、浏览器 callback、Provider code exchange 和 token lifecycle 均未装配；后续需要先完成独立 processor 的受控实现、重复领取/租约过期/Runtime 重启演练，再评估单独的默认关闭部署 profile。
 - 2026-08-30：长时 C++ profiling 受远端内核缺少匹配 linux-tools 阻断，未安装系统包也未将 `perf` 失败误判为热点结论；下一步可在具备匹配工具链的隔离 runner 中采集，当前仍禁止据 benchmark 切换 C++ authority。
 
 - 2026-08-30：补充开发与远程资源工作流，明确 GPU 任务存在时仍可运行不申请 GPU 的 Dipole 构建、Smoke 和压力测试；要求使用隔离 Compose project、记录前后资源快照，并禁止触碰其他任务。共享环境切流和确需 GPU 的 Agent 任务仍保留独立审批与资源门禁。
