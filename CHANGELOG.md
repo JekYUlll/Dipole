@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 候选同步新增 commit-pinned Git bundle 回退。远端 GitHub clone/fetch 超时时，脚本通过既有 SSH 上传临时 bundle、校验目标 commit 后 checkout，并在退出时清理 bundle；正常网络路径仍优先使用 origin fetch。
+
 - 2026-09-01：根 README 改用版本控制的 `dipole-v3-brand-lockup.svg`。该矢量 lockup 统一 V3 的海军蓝/信号红 IM 标识与金色 Agent 轨道，替换此前粗粒度 PNG 嵌入；运行时和 Agent authority 不受影响。
 
 - 2026-09-01：微服务镜像构建改为每个 Go 服务使用独立的临时 Docker context，成功和失败路径均在子 shell 退出时清理。此前循环复用 context 会累积前序二进制并放大后续 Docker 上传；镜像内仍只复制目标服务二进制，revision 与 provenance 参数保持不变。

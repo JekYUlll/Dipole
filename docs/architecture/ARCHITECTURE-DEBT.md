@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 候选源码同步曾因远端 `ssh.github.com:443` 超时而无法进入测试。`remote-dev.sh` 现为每个 clean candidate 创建 commit-pinned Git bundle 并通过既有 SSH 上传；远端 origin clone/fetch 失败时才回退至 bundle，随后验证 exact commit 并在退出清理。该改动不启用隧道、代理或共享服务，后续同版本 Compose evidence 仍需独立执行。
+
 - 2026-09-01：根 README 已从旧 PNG 品牌板切换到受版本控制的 `dipole-v3-brand-lockup.svg`，与 Web Login 的 V3 SVG 使用同一海军蓝/信号红/轨道金语言。旧 PNG 仅保留为历史评审资产；该文档改动不改变服务 authority 或前端设计验收范围。
 
 - 2026-09-01：修复 Go 微服务镜像构建 context 在循环中累积二进制的问题。每个服务现在创建独立临时 context，并由子 shell 的 `EXIT` trap 在成功或失败后清理；静态回归测试同时锁定单二进制 context 和清理边界。下一次 Remote GPU 同版本 smoke 仍需记录每个 context 的实际大小与总构建耗时。

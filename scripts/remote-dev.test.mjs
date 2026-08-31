@@ -54,9 +54,20 @@ test("per-user candidate refs use an exact lease while shared refs stay fast-for
 });
 
 test("remote candidate tracking refs accept only the expected mutable update", () => {
-  assert.match(source, /if \[\[ "\$branch" == dipole-dev\/\* \]\]; then[\s\S]*?git fetch origin "\+refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
-  assert.match(source, /else\n  git fetch origin "refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
+  assert.match(source, /if \[\[ "\$branch" == dipole-dev\/\* \]\]; then[\s\S]*?fetch_ref="\+refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
+  assert.match(source, /else\n  fetch_ref="refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}"/);
+  assert.match(source, /if ! git fetch origin "\$fetch_ref"; then/);
   assert.doesNotMatch(source, /git fetch origin "refs\/heads\/\$\{branch\}:refs\/remotes\/origin\/\$\{branch\}" \|\| true/);
+});
+
+test("remote sync carries a commit-pinned bundle for outbound Git fallback", () => {
+  assert.match(source, /git bundle create "\$\{bundle_path\}" "\$\{commit\}"/);
+  assert.match(source, /scp -q -o BatchMode=yes -o ConnectTimeout=[\s\S]*?"\$\{bundle_path\}" "\$\{REMOTE_HOST\}:\$\{remote_bundle\}"/);
+  assert.match(source, /if ! git clone "\$remote_url" "\$root"; then[\s\S]*?git clone "\$bundle" "\$root"/);
+  assert.match(source, /if ! git fetch origin "\$fetch_ref"; then[\s\S]*?git fetch "\$bundle" "\$commit"/);
+  assert.match(source, /cleanup_bundle\(\) \{ rm -f "\$bundle"; \}/);
+  assert.match(source, /git rev-parse --verify "\$\{commit\}\^\{commit\}"/);
+  assert.match(source, /require_command scp/);
 });
 
 test("remote checkout prepares only verified generated conflicts before switching revisions", () => {
