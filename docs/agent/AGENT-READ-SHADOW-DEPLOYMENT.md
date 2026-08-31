@@ -52,6 +52,18 @@ scripts/smoke-microservices.sh
 该命令要求受忽略 `.env` 已提供 AI SDK Shadow overlay 所需的 Provider 配置。它只验证
 只读路径的恢复和审计绑定，不能作为 active authority、消息写入或外部 MCP 的证据。
 
+若需要验证 Temporal 在 Core 不可用窗口后的恢复，可将最后两行改为：
+
+```bash
+EXPECT_READ_SHADOW=1 \
+CORE_OUTAGE_BEFORE_EVENT=1 \
+AGENT_EVENT_TIMEOUT_SECONDS=90 \
+scripts/smoke-microservices.sh
+```
+
+该故障注入会先停止隔离 Core，等待 Kafka 事件写入 EventLedger 后恢复 Core，并要求
+`conversation.list` Step、模型调用和 Artifact 全部完成。它只能用于专用 Compose 项目。
+
 ## 回滚
 
 停止并移除 overlay 启动的 Temporal 服务，再用基础 Compose 加 AI SDK Shadow overlay

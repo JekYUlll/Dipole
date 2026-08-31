@@ -10,11 +10,15 @@ COMPOSE_OVERLAYS="${COMPOSE_OVERLAYS:-}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
 RESTART_CORE="${RESTART_CORE:-0}"
 RESTART_CORE_AFTER_EVENT="${RESTART_CORE_AFTER_EVENT:-0}"
+CORE_OUTAGE_BEFORE_EVENT="${CORE_OUTAGE_BEFORE_EVENT:-0}"
 EXPECT_READ_SHADOW="${EXPECT_READ_SHADOW:-0}"
+AGENT_EVENT_TIMEOUT_SECONDS="${AGENT_EVENT_TIMEOUT_SECONDS:-30}"
 
-for boolean in RESTART_CORE RESTART_CORE_AFTER_EVENT EXPECT_READ_SHADOW; do
+for boolean in RESTART_CORE RESTART_CORE_AFTER_EVENT CORE_OUTAGE_BEFORE_EVENT EXPECT_READ_SHADOW; do
   [[ "${!boolean}" == "0" || "${!boolean}" == "1" ]] || { echo "${boolean} must be 0 or 1" >&2; exit 2; }
 done
+[[ "${AGENT_EVENT_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]*$ && "${AGENT_EVENT_TIMEOUT_SECONDS}" -le 180 ]] || { echo "AGENT_EVENT_TIMEOUT_SECONDS must be an integer from 1 to 180" >&2; exit 2; }
+[[ "${CORE_OUTAGE_BEFORE_EVENT}" == "0" || "${EXPECT_READ_SHADOW}" == "1" ]] || { echo "CORE_OUTAGE_BEFORE_EVENT requires EXPECT_READ_SHADOW=1" >&2; exit 2; }
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   "${SCRIPT_DIR}/docker-build.sh" backend
@@ -99,6 +103,10 @@ restart_core() {
 
 if [[ "${RESTART_CORE}" == "1" ]]; then
   restart_core
+fi
+
+if [[ "${CORE_OUTAGE_BEFORE_EVENT}" == "1" ]]; then
+  compose stop core
 fi
 
 for service in core message sync gateway; do
@@ -189,6 +197,29 @@ try {
 }
 NODE
 
+if [[ "${CORE_OUTAGE_BEFORE_EVENT}" == "1" ]]; then
+  ledger_claimed=""
+  for _ in $(seq 1 15); do
+    ledger_claimed="$(compose exec -T mysql mysql -uroot -proot123 -Ddipole -N -B -e \
+      "SELECT COUNT(*) FROM agent_event_ledger WHERE event_id='${agent_event_id}';" 2>/dev/null || true)"
+    [[ "${ledger_claimed}" == "1" ]] && break
+    sleep 1
+  done
+  [[ "${ledger_claimed}" == "1" ]]
+  # Hold Core unavailable long enough for Temporal's first admission attempt.
+  sleep 2
+  compose start core
+  core_ready=""
+  for _ in $(seq 1 30); do
+    core_ready="$(compose exec -T core wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null || true)"
+    [[ "${core_ready}" == "ready" ]] && break
+    sleep 1
+  done
+  [[ "${core_ready}" == "ready" ]]
+  proxy_status="$(curl --connect-timeout 2 --max-time 5 -sS -o /dev/null -w '%{http_code}' "${GATEWAY_URL}/api/v1/contacts" || true)"
+  [[ "${proxy_status}" == "401" ]]
+fi
+
 if [[ "${RESTART_CORE_AFTER_EVENT}" == "1" ]]; then
   restart_core
 fi
@@ -198,11 +229,12 @@ if [[ "${EXPECT_READ_SHADOW}" == "1" ]]; then
   read_shadow_assertions="
       AND (SELECT COUNT(*) FROM agent_model_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND status='completed') >= 1
       AND (SELECT COUNT(*) FROM agent_model_calls WHERE run_uuid=(SELECT run_uuid FROM agent_model_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') ORDER BY created_at DESC LIMIT 1) AND status='completed') >= 1
+      AND (SELECT COUNT(*) FROM agent_shadow_steps WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND capability_id='conversation.list' AND status='completed') = 1
       AND (SELECT COUNT(*) FROM agent_artifacts WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND artifact_type='conversation_digest' AND version=1) = 1"
 fi
 
 agent_event_ready=""
-for _ in $(seq 1 30); do
+for _ in $(seq 1 "${AGENT_EVENT_TIMEOUT_SECONDS}"); do
   agent_event_ready="$(compose exec -T mysql mysql -uroot -proot123 -Ddipole -N -B -e \
     "SELECT IF(
       (SELECT COUNT(*) FROM agent_event_ledger WHERE event_id='${agent_event_id}' AND status='completed') = 1
@@ -220,4 +252,4 @@ for _ in $(seq 1 30); do
 done
 [[ "${agent_event_ready}" == "1" ]]
 
-echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership, Agent event ledger/task/run idempotency, core_restart_before_event=${RESTART_CORE}, core_restart_after_event=${RESTART_CORE_AFTER_EVENT}, read_shadow=${EXPECT_READ_SHADOW}"
+echo "Microservices smoke passed: readiness, metrics, Core proxy, mTLS startup, remote WS ownership, Agent event ledger/task/run idempotency, core_restart_before_event=${RESTART_CORE}, core_restart_after_event=${RESTART_CORE_AFTER_EVENT}, core_outage_before_event=${CORE_OUTAGE_BEFORE_EVENT}, read_shadow=${EXPECT_READ_SHADOW}"
