@@ -26,7 +26,7 @@ test('keeps the default-off task creation surface aligned with the Pencil baseli
   await page.goto('/app/agent/tasks/new')
 
   await expect(page.getByRole('heading', { name: '创建 Agent 任务' })).toBeVisible()
-  await expect(page.getByText('提交不会启用 Runtime、Tool 或外部服务。')).toBeVisible()
+  await expect(page.getByText('提交只使用当前认证账号已授权的会话。')).toBeVisible()
   await expect(page.locator('[data-agent-task-create-form]')).toHaveScreenshot('task-create-chromium.png', {
     animations: 'disabled',
   })

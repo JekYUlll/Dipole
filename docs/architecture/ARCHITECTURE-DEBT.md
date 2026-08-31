@@ -12,6 +12,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Chat 主工作台已完成 V3 页面级视觉迁移，并以受控 IM 数据、mock HTTP/WebSocket 的 Chromium 场景固定导航、会话索引、同步、时间线和输入区基线。Remote GPU Node 22 前端单元 `44/178`、typecheck 与 production build 通过。完整 Chromium 套件仍有 14 张既有页面基线因全局 V3 token 迁移产生预期差异，必须逐页截图复核后才可更新；该项不影响 Chat 功能验收，也不构成全站视觉验收完成。
+
 - 2026-09-01：V3 Pencil 设计合同已通过结构校验，并同步重绘产品 SVG 与全局语义 token。当前仅完成基础层；Chat、Agent Timeline、设置与目录页仍需按同一设计合同完成页面级实现和 Chromium/Firefox/WebKit 视觉回归。在这些验收完成前，禁止表述为全站前端改版完成。
 
 - 2026-09-01：Remote GPU 同时运行多个隔离 MySQL 时，宿主 Linux AIO 使用量达到 `55,300 / 65,536`，新候选初始化触发 `io_setup() EAGAIN`。新增只作用于候选 project 的 `remote-gpu-mysql-aio-compat.yml`，保留基础参数并增加 `--innodb-use-native-aio=0`；此兼容模式不改变已有服务，验证结束后随候选 project 回滚。

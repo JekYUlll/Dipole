@@ -21,7 +21,7 @@ test('renders the low-sensitive session list and confirms logout-other-devices b
     await ok(route, { message: 'other device sessions logged out' })
   })
   await page.goto('/app/devices')
-  await expect(page.getByRole('heading', { name: '设备会话' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '设备会话', exact: true })).toBeVisible()
   await expect(page.getByText('浏览器会话')).toBeVisible()
   await expect(page.getByText('桌面设备')).toBeVisible()
   await expect(page.locator('.device-security')).not.toContainText('C-current')
