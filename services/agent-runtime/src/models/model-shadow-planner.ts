@@ -68,6 +68,7 @@ export class ModelShadowPlanner implements ShadowPlanner {
 
   async plan(event: Parameters<ShadowPlanner["plan"]>[0], context: Parameters<ShadowPlanner["plan"]>[1]): ReturnType<ShadowPlanner["plan"]> {
     const resourceId = typeof event.payload.conversation_key === "string" ? event.payload.conversation_key.trim() : "";
+    const conversationTargetId = conversationTargetForEvent(event);
     const retrievalQuery = retrievalQueryForEvent(event);
     // These are independently authorized reads. Start them together so context
     // hydration is bounded by the slowest source while preserving fail-closed errors.
@@ -79,9 +80,9 @@ export class ModelShadowPlanner implements ShadowPlanner {
         this.memories === undefined || resourceId === ""
           ? Promise.resolve([])
           : this.memories.listContextMemories(context, "conversation", resourceId, 20),
-        this.conversationReader === undefined || resourceId === ""
+        this.conversationReader === undefined || conversationTargetId === undefined
           ? Promise.resolve(undefined)
-          : this.conversationReader.readConversation(context, resourceId, 20),
+          : this.conversationReader.readConversation(context, conversationTargetId, 20),
         this.searchEvidenceReader === undefined || retrievalQuery === undefined
           ? Promise.resolve([])
           : this.searchEvidenceReader.searchConversations(context, retrievalQuery, maxRetrievalEvidenceResults)
@@ -245,6 +246,13 @@ function retrievalQueryForEvent(event: Parameters<ShadowPlanner["plan"]>[0]): st
   if (typeof content !== "string") return undefined;
   const query = truncateCharacters(content.trim(), maxRetrievalQueryCharacters);
   return query.length === 0 ? undefined : query;
+}
+
+function conversationTargetForEvent(event: Parameters<ShadowPlanner["plan"]>[0]): string | undefined {
+  const target = event.payload.target_uuid;
+  if (typeof target !== "string") return undefined;
+  const normalized = target.trim();
+  return normalized === "" ? undefined : normalized;
 }
 
 function truncateCharacters(value: string, limit: number): string {

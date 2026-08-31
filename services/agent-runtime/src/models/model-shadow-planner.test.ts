@@ -24,8 +24,8 @@ describe("ModelShadowPlanner", () => {
         sentAt: { seconds: 1n, nanos: 0 }
       }]
     };
-    const readConversation = vi.fn(async (_context, conversationId: string, limit: number) => {
-      expect(conversationId).toBe("group:G1");
+    const readConversation = vi.fn(async (_context, targetId: string, limit: number) => {
+      expect(targetId).toBe("G1");
       expect(limit).toBe(20);
       return conversation;
     });
@@ -34,7 +34,7 @@ describe("ModelShadowPlanner", () => {
       undefined, undefined, undefined, { readConversation }
     );
 
-    await planner.plan({ ...event(), payload: { conversation_key: "group:G1" } }, context());
+    await planner.plan({ ...event(), payload: { conversation_key: "group:G1", target_uuid: "G1" } }, context());
 
     expect(readConversation).toHaveBeenCalledOnce();
     const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
@@ -60,7 +60,7 @@ describe("ModelShadowPlanner", () => {
       undefined, undefined, undefined, { readConversation: async () => ({ found: true, reason: "", targetId: "G1", targetType: 2, messages }) }
     );
 
-    await planner.plan({ ...event(), payload: { conversation_key: "group:G1" } }, context());
+    await planner.plan({ ...event(), payload: { conversation_key: "group:G1", target_uuid: "G1" } }, context());
 
     const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
     expect(prompt).toContain('\\"contentTruncated\\":true');
@@ -134,7 +134,7 @@ describe("ModelShadowPlanner", () => {
       }
     );
 
-    const planning = planner.plan({ ...event(), payload: { conversation_key: "group:G1", content: "migration" } }, context());
+    const planning = planner.plan({ ...event(), payload: { conversation_key: "group:G1", target_uuid: "G1", content: "migration" } }, context());
     await Promise.resolve();
     expect(started).toEqual(["memory", "conversation", "retrieval"]);
     expect(generate).not.toHaveBeenCalled();
