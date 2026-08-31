@@ -436,6 +436,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
     let providerCalls = 0;
     let capabilityCalls = 0;
+    let authorizationAudits = 0;
     let completedModel: ModelCallRecovery | undefined;
     const modelAudit: ModelAuditStore = {
       recover: async () => completedModel,
@@ -470,6 +471,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       claimStep: async () => stepCompleted
         ? { outcome: "completed" as const }
         : { outcome: "claimed" as const, token: "TOKEN-1" },
+      recordAuthorization: async () => { authorizationAudits += 1; },
       completeStep: async () => { stepCompleted = true; },
       failStep: async () => undefined
     };
@@ -512,6 +514,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(activityAttempts).toBe(2);
     expect(providerCalls).toBe(1);
     expect(capabilityCalls).toBe(1);
+    expect(authorizationAudits).toBe(1);
   }, 120_000);
 });
 
