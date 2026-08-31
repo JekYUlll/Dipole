@@ -59,6 +59,12 @@ Adapter 从真实 `Task/Run/Plan/Step/Artifact/ModelCall/ToolCall` 生成 observ
 
 评审清单中的 `permission.stepNo` 绑定真实 Step；capability、`resourceType`、`resourceId`、`action` 与 `decision` 必须逐项匹配 Step lease 内持久化的授权记录。四个字段全空表示旧证据，任一字段缺失、空值或非 `allowed` decision 都会拒绝评测。`resourceId` 支持普通稳定标识符和唯一的 `*`，后者保留 Runtime 已授权的资源类通配 scope，不能替代为具体会话。模型调用缺少延迟、Step 或 MCP Tool 调用缺少延迟、路由没有单价、Run/Step 尚未终止时，命令返回 `1` 并 fail closed。模型调用缺少 Token 时，Adapter 仍生成五类报告，但 Cost case 标记 `availability.tokenMetrics=unavailable` 并以 `token_metrics_unavailable` 失败；已知调用数和延迟保持可审计，`totalTokens` 与 `totalCostMicrousd` 只汇总已报告 Token，不能作为阈值通过或成功率证据。常规 Task 使用 `agent_tasks.status` 作为终态；`read_shadow` 保留该策略状态时，必须同时提供受 CAS 保护的终态 `workflow_status`，两者都未终态则拒绝评测。成本按每百万 Token 的微美元整数单价计算并向上取整；Tool 次数统计 Shadow Step 与独立 MCP 调用，延迟为模型、Step 和 MCP 调用的记录耗时之和。当前 Step 表只保留最后一次 attempt 的区间，`attempt_count != 1` 时拒绝生成成本证据，后续逐 attempt 审计完成前不会低估重试。退出码 `0` 表示五类通过，`2` 表示有效证据未达阈值，`1` 表示清单、持久证据或连接无效。
 
+## Context Ablation 任务集
+
+`context-ablation-manifest.schema.json` 定义 baseline、retrieval、memory 三条件共用的低敏评审清单；`context-ablation-manifest.example.json` 只展示格式，所有 SHA、Artifact/Evidence ID 与价格均为占位值。每个 Case 通过 SHA-256 对应数据库的三条独占 Task/Run binding，清单不能包含消息、Prompt、模型输出、Task ID 或原始资源 ID。
+
+运行 `npm run eval:context-ablation -- --manifest=...` 前，应用 `configs/mysql/agent-eval-grants.dist.sql`，使 `dipole_agent_eval` 只拥有评测审计表与 `agent_context_ablation_bindings` 的 `SELECT` 权限。CLI 成功表示给定的受控任务集、版本、价格和审计观测可以复算；真实样本量、人工审阅记录和窗口级效果结论必须另行归档。
+
 ## Shadow 样本窗口汇总
 
 `shadow-report.schema.json` 是 `eval:shadow` 的低敏输出 envelope，绑定持久化 Run 的 `traceId` 和标准五类报告。`shadow-summary-input.schema.json` 将多个该 envelope 汇总为任务级成功率、五类通过率和失败原因计数。输入只接受同一候选版本、唯一 Suite SHA-256、唯一 Trace ID、每类恰好一个 `*.shadow.<TaskRunDigest>` case 的终态报告；因此合成离线 Suite、重复证据、Trace 复用和混版本样本会 fail closed。输出保留 suite 摘要、Trace ID、聚合数值和固定限制语句，不回显 Task、用户、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。
