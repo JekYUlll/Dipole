@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -12,6 +13,7 @@ import {
   McpWriteApprovalGate
 } from "../mcp/mcp-write-approval-gate.js";
 import { executionContextSchema, type ExecutionContext } from "./execution-context.js";
+import { createApprovalGateDrillEvidence } from "./approval-gate-drill-evidence.js";
 import { createAgentCapabilityRPC, type ShadowRuntimeConfig } from "./shadow-runtime.js";
 
 const enabled = process.env.DIPOLE_AGENT_APPROVAL_GATE_DRILL === "true";
@@ -52,6 +54,16 @@ integration("Agent Approval gate mTLS drill", () => {
     await expect(failingGate.execute("message.system.send", input(), failureContext)).rejects.toThrow("isolated write failure");
     await expect(failingGate.execute("message.system.send", input(), failureContext)).rejects.toThrow(/Approval is unavailable/i);
     expect(failingEffectCount).toBe(1);
+
+    await writeFile(requiredEnv("DIPOLE_AGENT_APPROVAL_DRILL_EVIDENCE"), `${JSON.stringify(createApprovalGateDrillEvidence({
+      approved_effect_count: 1,
+      denied_effect_count: 0,
+      consumed_replay_effect_count: 0,
+      failed_effect_count: 1,
+      failed_replay_effect_count: 0,
+      core_rpc_type: "go_internal_grpc_mtls",
+      core_rpc_authenticated: true
+    }), null, 2)}\n`, { mode: 0o600 });
   });
 
   function gateFor(execute: () => Promise<unknown>): McpWriteApprovalGate {

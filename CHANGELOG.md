@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Approval gate drill 新增语言中立 `dipole.agent.approval-gate-drill.v1` receipt、canonical SHA-256 与 24 小时有效期校验。隔离 mTLS 演练输出 approved `1`、denied/replay `0`、failed `1`、failed-replay `0` 的低敏 artifact；该证据不代表 IM 消息已写入、生产 authority 或共享 Shadow。
+
 - 2026-08-31：External MCP Shadow drill 新增真实 mTLS `AgentCapabilityRPCClient` 的 Approval gate 场景：精确 approved grant 只执行一次，denied 与已消费 grant 均零执行，执行失败后审批保持已消费并拒绝自动重放。脚本同时固定 Node/npm 同源，干净 Remote GPU worktree 不会以系统 Node 误装依赖；默认写 Capability 与 production authority 继续关闭。
 
 - 2026-08-31：Core 的 `dipole-agent` mTLS Capability allowlist 现包含 `ResolveApprovalGrant` 与 `ConsumeApproval`。隔离认证测试覆盖审批请求、批准、精确 grant、单次消费，以及错误 service secret 和错误客户端证书拒绝；该改动不启用常驻写 Capability、外部 MCP 写入或生产 authority。
