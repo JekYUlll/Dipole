@@ -6,6 +6,8 @@ node_bin="${DIPOLE_NODE_BIN:-node}"
 node_path="$(command -v "$node_bin")"
 node_dir="$(dirname "$node_path")"
 npm_bin="${DIPOLE_NPM_BIN:-$node_dir/npm}"
+# npm's launcher resolves `node` from PATH. Keep it aligned with DIPOLE_NODE_BIN.
+export PATH="$node_dir:$PATH"
 compose_file="$root_dir/deploy/agent/external-mcp-shadow-drill.compose.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-mcp-drill-${RANDOM}-$$}"
 evidence_path="${DIPOLE_AGENT_MCP_DRILL_EVIDENCE:-$root_dir/services/agent-runtime/.artifacts/external-mcp-shadow-drill.json}"
@@ -80,8 +82,10 @@ test -s "$fixture_ready" || {
 fixture_address="$(jq -er '.address | select(type == "string" and length > 0)' "$fixture_ready")"
 
 cd "$root_dir/services/agent-runtime"
-if [[ ! -x node_modules/.bin/vitest ]]; then
+node_install_marker="node_modules/.dipole-node-path"
+if [[ ! -x node_modules/.bin/vitest ]] || [[ ! -f "$node_install_marker" ]] || [[ "$(<"$node_install_marker")" != "$node_path" ]]; then
   "$npm_bin" ci --ignore-scripts
+  printf '%s\n' "$node_path" >"$node_install_marker"
 fi
 export DIPOLE_AGENT_FULL_STACK_DRILL=true
 export DIPOLE_TEST_AGENT_MYSQL_URL="mysql://root:drill-root@127.0.0.1:${DIPOLE_AGENT_DRILL_MYSQL_PORT}/dipole"
@@ -96,7 +100,10 @@ export DIPOLE_TEST_AGENT_RPC_STATE_PATH="$fixture_state"
 export DIPOLE_TEST_AGENT_RPC_STALE_PATH="$fixture_stale"
 export DIPOLE_TEST_AGENT_RPC_IDENTITY_DENIALS_VERIFIED="true"
 export DIPOLE_AGENT_MCP_DRILL_EVIDENCE="$evidence_path"
-npm test -- --run src/runtime/external-mcp-full-stack-drill.integration.test.ts
+export DIPOLE_AGENT_APPROVAL_GATE_DRILL=true
+npm test -- --run \
+  src/runtime/external-mcp-full-stack-drill.integration.test.ts \
+  src/runtime/approval-gate-rpc-drill.integration.test.ts
 if ! kill -0 "$fixture_pid" 2>/dev/null; then
   cat "$fixture_log" >&2
   echo "Agent Core RPC drill fixture exited before evidence validation" >&2
