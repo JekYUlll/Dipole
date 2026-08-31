@@ -2,6 +2,7 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+go_bin="${DIPOLE_GO_BIN:-go}"
 project="dipole-agent-timeline-repair-${RANDOM}-$$"
 network="${project}-network"
 mysql_container="${project}-mysql"
@@ -33,8 +34,8 @@ YAML
 
 (
   cd "$root_dir"
-  CGO_ENABLED=0 go build -o "$work_dir/dipole-migrate" ./cmd/tools/migrate
-  CGO_ENABLED=0 go build -o "$work_dir/dipole-agent-task-timeline-repair" ./cmd/tools/agent-task-timeline-repair
+  CGO_ENABLED=0 "$go_bin" build -o "$work_dir/dipole-migrate" ./cmd/tools/migrate
+  CGO_ENABLED=0 "$go_bin" build -o "$work_dir/dipole-agent-task-timeline-repair" ./cmd/tools/agent-task-timeline-repair
 )
 
 DIPOLE_CONFIG_FILE="$config_file" DIPOLE_MYSQL_HOST=127.0.0.1 DIPOLE_MYSQL_PORT="$mysql_port" \
