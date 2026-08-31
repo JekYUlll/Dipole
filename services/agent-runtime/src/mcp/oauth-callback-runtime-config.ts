@@ -15,3 +15,8 @@ export function loadOAuthCallbackRuntimeConfig(env: NodeJS.ProcessEnv): OAuthCal
   if (keyPaths === null || typeof keyPaths !== "object" || Array.isArray(keyPaths) || Object.keys(keyPaths).length < 1) throw new Error("OAuth callback Runtime configuration is invalid");
   return Object.freeze({ enabled: true, controlSecret, leaseOwner, keyPaths: Object.freeze({ ...(keyPaths as Record<string, string>) }) });
 }
+
+/** This Runtime image has no approved provider exchange processor yet. */
+export function assertOAuthCallbackRuntimeUnavailable(config: OAuthCallbackRuntimeConfig): void {
+  if (config.enabled) throw new Error("OAuth callback Runtime requires an approved provider processor deployment profile");
+}

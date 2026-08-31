@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-08-31：Agent Runtime 现在会拒绝 `DIPOLE_AGENT_OAUTH_CALLBACK_ENABLED=true` 的未批准部署 profile。当前镜像没有 Provider code-exchange processor，启动会在创建 listener、Kafka、Temporal 或 RPC 资源前失败；未设置该开关时保持默认关闭。
+
 - 2026-08-31：Agent Runtime 新增 OAuth callback handoff 的注入式组合工厂，统一 claim、私钥解封、processor、complete/release 与 Gateway control adapter；默认启动路径仍不构造该工厂，且未实现 Provider code exchange 或 token 生命周期。组合工厂要求独立 Core 凭据，并支持仅用于受控测试的 key/envelope 注入。
 
 - 2026-08-31：C++ Realtime Delivery 后续开发暂缓。现有协议、容器构建、故障回切和基准证据保持可复核，但 Go 继续作为唯一投递 authority；当前开发窗口优先完成 TypeScript Agent Runtime 的默认关闭 OAuth handoff 执行器组合验证与安全闭环。

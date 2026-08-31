@@ -42,12 +42,14 @@ import { assertActiveMemoryPromotionProfile } from "./runtime/active-memory-prom
 import { readFileSync } from "node:fs";
 import { assertActivePromotionBinding } from "./promotion/agent-release-manifest.js";
 import { createAgentMemoryPromotionCommitActivities } from "./temporal/agent-memory-promotion-commit-activity.js";
+import { assertOAuthCallbackRuntimeUnavailable, loadOAuthCallbackRuntimeConfig } from "./mcp/oauth-callback-runtime-config.js";
 
 const port = Number.parseInt(process.env.DIPOLE_AGENT_PORT ?? "8091", 10);
 const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
 let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
+assertOAuthCallbackRuntimeUnavailable(loadOAuthCallbackRuntimeConfig(process.env));
 if (shadowConfig.runtimeMode === "active") {
   let releaseManifest: unknown;
   try {
