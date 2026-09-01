@@ -52,6 +52,15 @@ const router = createRouter({
         : { name: 'chat' },
     },
     {
+      path: '/agent/definitions',
+      name: 'agent-definitions',
+      component: () => import('@/views/AgentDefinitionsView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
       path: '/agent/memories',
       name: 'agent-memories',
       component: () => import('@/views/AgentMemoriesView.vue'),
