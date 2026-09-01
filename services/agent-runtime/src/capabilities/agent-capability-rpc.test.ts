@@ -48,6 +48,23 @@ describe("AgentCapabilityRPCClient", () => {
       .toThrow("candidate version");
   });
 
+  it("omits configured candidate versions from shadow admissions", async () => {
+    const admitRun = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({ runtimeId: "dipole-agent", mode: "shadow", candidateVersion: "" });
+      callback(null, { taskId: "TASK-SHADOW", runId: "RUN-SHADOW", runStatus: "running" });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient(
+      { admitRun } as unknown as IAgentCapabilityServiceClient,
+      "secret", 2_000, "shadow", "candidate-shadow-observation"
+    );
+
+    await expect(client.admitRun({
+      tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: "agent.interactive.requested",
+      triggerRef: "interactive:request-1", eventId: "E-SHADOW"
+    })).resolves.toEqual({ taskId: "TASK-SHADOW", runId: "RUN-SHADOW", runStatus: "running" });
+  });
+
   it("commits only an exact prepared receipt through an active Runtime client", async () => {
     const now = new Date("2026-08-30T02:00:00.000Z");
     const receipt = createAgentMemoryPromotionReceipt({

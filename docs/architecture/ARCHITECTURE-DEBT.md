@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：修复 Shadow Runtime 的 candidate-version admission 漂移。candidate version 只属于 active promotion binding；Shadow admission 现在固定传空值，避免 Core 在 Task 创建后拒绝无效的 Shadow Run。Remote GPU 已通过定向回归 `15/15`、typecheck、production build 和隔离 Compose 回归：认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，Run 为 `shadow / candidate_version=NULL / completed`，候选无可读会话，仅生成只读摘要 Artifact，消息写入数为零。该证据不扩大 shared 环境、active authority、写 Capability、MCP 或 Memory；这些继续由 `AD-009` 跟踪。
+
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
 - 2026-09-01：默认关闭的 Gateway Artifact 控制面已增加受限的 `conversation_digest` Markdown 正文读取。Gateway 仍通过 mTLS Core RPC 从认证 principal 重新解析 owner，并复核正文长度与 SHA-256；公开响应只包含 Artifact ID、媒体类型和正文。Remote GPU 隔离验收验证 owner metadata/content 为 `200`、foreign content 为 `404`。对象键、Metadata JSON、其他 Artifact 类型和通用下载继续关闭，前端正文展示留待独立前端里程碑。

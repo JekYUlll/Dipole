@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：修复 Interactive Agent Shadow 的持久 Run 准入版本漂移。Shadow Runtime 不再携带仅用于 active promotion 绑定的 candidate version，避免 Core 的 mode/version 约束在 Task 已创建后拒绝 Run admission 并导致任务停留在 `running`。Remote GPU 已通过定向 Vitest `15/15`、TypeScript typecheck、生产构建和隔离 Compose 回归：认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，Run 为 `shadow / candidate_version=NULL / completed`，只生成 `conversation_digest` Artifact，消息写入数为零。active authority、写 Capability、MCP、Memory 与默认部署边界保持关闭。
+
 - 2026-09-01：Gateway 现支持默认关闭、owner-scoped 的 `conversation_digest` Markdown 正文读取。`GET /api/v1/agent/artifacts/:artifact_id/content` 复用 Core Artifact owner 校验与内容哈希校验，只返回 Artifact ID、媒体类型和正文；对象键、Metadata JSON 与通用下载仍不进入公开边界。Remote GPU 隔离候选已验证同一用户的 metadata/content 均为 `200`，另一用户读取正文为 `404`。
 
 - 2026-09-01：修复 Agent Artifact Timeline 的持久化 ID 边界。Artifact 的内容寻址 ID 现直接作为 Timeline event ID，符合 MySQL `VARCHAR(64)` 契约；领域校验同步拒绝超长 event ID，避免投影写入失败后造成 Artifact 从 Timeline 缺失。Remote GPU 隔离候选已复验任务完成、Artifact metadata 与 Timeline Artifact 事件一致。
