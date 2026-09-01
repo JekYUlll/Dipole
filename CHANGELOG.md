@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：归档真实 `conversation.read` 的受控 Shadow Eval N=2 窗口。两个独立 Kafka Trace 在同一干净 `d591bc75` Runtime 上均完成可信 `conversation.list -> conversation.read`、`conversation_digest` 产出与五类 Eval；低敏汇总、manifest-set receipt 与双 review pack 不包含 Task、Run、Trace、消息或主体明文。窗口的 `2/2` 仅表示固定单会话 fixture 的功能回归，不能填写 Agent 总体任务成功率、模型质量、共享环境、写能力或 promotion claim，详见 [actual-read N=2 archive](benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/)。
+
 - 2026-09-02：归档同版本 `d591bc75` Remote GPU 的 Agent Task 终态收敛回执。隔离、loopback-only Compose 中，Kafka 事件的 EventLedger、Temporal Workflow、持久 Task 与 Run 均为 `completed`，并产生一份只读 `conversation_digest` Artifact；脱敏 review pack 同时记录了授权的 `conversation.list`、可信空发现导致的 `conversation.read` 跳过和完整模型计量。微服务 smoke 已改为等待 `agent_tasks.status=completed`，避免旧断言接受过期 `running` Task。该 N=1 回执不构成任务成功率、性能、公开体验、active 写入或候选 promotion 结论，详见 [terminal convergence receipt](benchmarks/agent-terminal-convergence-2026-09-02/)。
 
 - 2026-09-02：Core 的 Agent Run 终态提交现在同步收敛父 Task。`completed`、`failed`、`cancelled` 三种 Run 终态各自通过 Task CAS 迁移到同名状态；Run 已终态而 Task 尚未落库时，带相同证据的重放会补齐 Task，冲突终态和审批等待等非运行态继续拒绝。Agent application 全量回归与 Agent gRPC 终态契约测试通过。

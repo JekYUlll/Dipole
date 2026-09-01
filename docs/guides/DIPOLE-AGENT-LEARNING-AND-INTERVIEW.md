@@ -15,6 +15,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | 能力 | 状态 | 证据 |
 | --- | --- | --- |
 | ExecutionContext、Capability Policy、Temporal Task | 已验证 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md) |
+| Trusted discovery read Shadow Eval | 已验证（隔离 Remote GPU，固定单会话 N=2） | [actual-read N=2 archive](../../benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/) |
 | 交互式 Agent Task 创建 | 已验证的默认关闭入口 | Gateway JWT principal、确定性 Task ID、Vue 幂等提交、同版本 Remote GPU read-shadow 验收 |
 | Worker replacement 的 approval/input 恢复 | 已验证（隔离 Remote GPU） | [Temporal fault receipt](../../benchmarks/agent-temporal-fault-2026-09-01/) |
 
@@ -33,7 +34,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | `promotion_active` 与 External MCP Shadow mode | 默认关闭 | [External MCP 运行手册](../agent/agent-external-mcp.md) |
 | Project Guardian 预筛评测基线 | 已验证（合成离线） | `contracts/agent-evals/v1/project-guardian-synthetic-corpus.json` |
 | OAuth callback durable handoff | 已验证的默认关闭组件链 | `contracts/agent-oauth-callback-handoff/v1/TRANSPORT.md` |
-| Trusted discovery read | `conversation.list` output binds the next `conversation.read` target | `services/agent-runtime/src/events/shadow-processor.ts` |
+| Trusted discovery read | 已验证的 `conversation.list` output binds the next `conversation.read` target；固定单会话 N=2 完成五类 Eval | [actual-read N=2 archive](../../benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/) |
 
 #### OAuth Callback Durable Handoff
 
