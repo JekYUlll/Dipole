@@ -37,7 +37,6 @@ class BusinessTopologyContractTest(unittest.TestCase):
     def test_business_topology_lifecycle_is_isolated_and_non_destructive(self):
         script = (ROOT / "scripts/bench/business_cluster_topology.sh").read_text(encoding="utf-8")
         self.assertIn("--project-name", script)
-        self.assertIn("BUSINESS_CLUSTER_ALLOW_ACTIVE", script)
         self.assertIn("nvidia-smi", script)
         self.assertIn("config)", script)
         self.assertIn("up)", script)
@@ -45,6 +44,8 @@ class BusinessTopologyContractTest(unittest.TestCase):
         self.assertIn("down)", script)
         self.assertIn("down --remove-orphans", script)
         self.assertNotIn("down --volumes", script)
+        self.assertNotIn("BUSINESS_CLUSTER_ALLOW_ACTIVE", script)
+        self.assertNotIn("business cluster start refused", script)
 
     def test_business_cluster_can_override_gateway_host_port(self):
         compose = (ROOT / "deploy/compose/docker-compose.microservices.yml").read_text(encoding="utf-8")

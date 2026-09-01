@@ -2,7 +2,7 @@
 
 本文仅用于开发环境，不承诺生产容量，也不替代共享环境发布审批。
 
-Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链；未指定时，远程入口会在 `/home/admin1/.local/go-*/bin/go` 中自动选择最高版本，依赖源可通过 `DIPOLE_REMOTE_GOPROXY` 指向受控缓存代理，避免修改系统 Go 和远端网络配置。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
+Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链；未指定时，远程入口会在 `/home/admin1/.local/go-*/bin/go` 中自动选择最高版本。开发轨道已获授权在缺少运行依赖时使用 `sudo` 安装；安装范围限于本次所需运行库或工具，并记录在运行回执。部署不修改宿主网络、Docker daemon 或其他项目资源。
 
 ## 环境选择
 
@@ -39,7 +39,7 @@ DIPOLE_REMOTE_GO_ROOT=/home/admin1/.local/go-1.27.0 \
 scripts/remote-dev.sh build
 ```
 
-脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。默认 `dipole-dev/<user>` 是提交绑定的临时候选引用：每次同步以远端 tip 的精确 lease 更新，远端 tracking ref 使用受限强制 refspec 刷新，因此 squash 合并后的新 revision 可以复用该单一引用且不会产生陈旧 ref 警告；有并发写入时 lease 会拒绝覆盖。显式指定 `master` 或其他共享分支时保持普通快进推送与普通 tracking ref 更新，不能由该入口改写历史。`build`、`smoke-lite`、`bench` 会记录 GPU 进程快照并允许 CPU/容器型开发动作继续执行；活跃登录用户仍会默认阻断，只有取得明确维护窗口后才可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
+脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。默认 `dipole-dev/<user>` 是提交绑定的临时候选引用：每次同步以远端 tip 的精确 lease 更新，远端 tracking ref 使用受限强制 refspec 刷新，因此 squash 合并后的新 revision 可以复用该单一引用且不会产生陈旧 ref 警告；有并发写入时 lease 会拒绝覆盖。显式指定 `master` 或其他共享分支时保持普通快进推送与普通 tracking ref 更新，不能由该入口改写历史。`build`、`smoke-lite`、`bench` 会记录登录会话和 GPU 进程快照，但授权的 Dipole 开发任务直接继续执行。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
 
 重复使用候选目录时，`sync` 先拒绝任何已跟踪修改。若未跟踪文件与目标 revision 的同路径 Git blob 具有完全相同的 SHA-256，脚本仅清理这类可由目标提交恢复的生成物，以避免 Playwright 视觉快照等输出阻塞 detached checkout。内容不同的未跟踪文件、目录级冲突和所有其他 checkout 错误都会保留原文件并中止；脚本不执行 `git clean`，也不覆盖远端人工修改。
 
@@ -175,4 +175,4 @@ docker compose -p "${DIPOLE_PROJECT}" \
 
 压测记录必须包含提交和镜像摘要、配置摘要、主机资源快照、服务 readiness、P50/P95/P99、错误率、Kafka lag、磁盘和内存水位。发生 readiness 失败、数据不一致、错误率升高或资源越界时立即停止加压，回到上一提交或关闭本次 project；不要清理其他用户的容器、卷和进程。
 
-当前 Remote GPU 若存在 GPU 任务，CPU/容器型开发部署可在隔离 project 下继续；若存在活动登录会话，仍需先取得明确维护窗口或显式批准。确需 GPU 的任务必须单独声明设备、显存预算和冲突检查。TencentCloud 凭据不得写入仓库、脚本或压测报告。
+当前 Remote GPU 允许直接复用本轨道的 Dipole project 部署 CPU/容器型开发任务；登录会话和 GPU 进程只作为资源快照记录。确需 GPU 的任务必须单独声明设备、显存预算和冲突检查。TencentCloud 凭据不得写入仓库、脚本或压测报告。
