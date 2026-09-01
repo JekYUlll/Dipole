@@ -195,6 +195,10 @@ function canonicalJSON(value: unknown): string {
 }
 
 function canonicalValue(value: unknown): unknown {
+  if (typeof value === "bigint") {
+    // MySQL BIGINT fields arrive as bigint from the generated gRPC client.
+    return value.toString();
+  }
   if (Array.isArray(value)) {
     return value.map(canonicalValue);
   }

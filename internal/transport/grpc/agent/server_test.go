@@ -21,6 +21,22 @@ import (
 
 type resolverStub struct{ invocation application.AgentInvocationV1 }
 
+func TestArtifactTimelineEventUsesContentAddressedEventID(t *testing.T) {
+	artifactID := strings.Repeat("a", application.AgentTaskTimelineEventUUIDMaxLengthV1)
+	event := artifactTimelineEventV1(&application.AgentArtifactV1{
+		ArtifactUUID: artifactID,
+		TaskUUID:     "task-1",
+		RunUUID:      "run-1",
+		CreatedAt:    time.Now().UTC(),
+	})
+	if event.EventUUID != artifactID || len(event.EventUUID) > application.AgentTaskTimelineEventUUIDMaxLengthV1 {
+		t.Fatalf("timeline event ID = %q, want content-addressed Artifact ID within persisted limit", event.EventUUID)
+	}
+	if err := event.Validate(); err != nil {
+		t.Fatalf("artifact timeline event validation = %v", err)
+	}
+}
+
 func (s resolverStub) Resolve(context.Context, string, string) (application.AgentInvocationV1, error) {
 	return s.invocation, nil
 }

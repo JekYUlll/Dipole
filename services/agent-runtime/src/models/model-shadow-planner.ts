@@ -165,7 +165,7 @@ export class ModelShadowPlanner implements ShadowPlanner {
 
   async synthesize(event: Parameters<ShadowPlanner["plan"]>[0], context: Parameters<ShadowPlanner["plan"]>[1], plan: Parameters<NonNullable<ShadowPlanner["synthesize"]>>[2], outputs: readonly unknown[]): Promise<string> {
     if (outputs.length === 0) return plan.summary;
-    const evidence = JSON.stringify(outputs).slice(0, 12 * 1024);
+    const evidence = JSON.stringify(outputs, bigintJSONReplacer).slice(0, 12 * 1024);
     const result = await this.router.generate({
       schema: synthesisSchema,
       taskId: context.taskId,
@@ -174,6 +174,10 @@ export class ModelShadowPlanner implements ShadowPlanner {
     });
     return result.output.summary;
   }
+}
+
+function bigintJSONReplacer(_key: string, value: unknown): unknown {
+  return typeof value === "bigint" ? value.toString() : value;
 }
 
 function contextFragments(

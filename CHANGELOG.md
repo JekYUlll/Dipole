@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：修复 Agent Artifact Timeline 的持久化 ID 边界。Artifact 的内容寻址 ID 现直接作为 Timeline event ID，符合 MySQL `VARCHAR(64)` 契约；领域校验同步拒绝超长 event ID，避免投影写入失败后造成 Artifact 从 Timeline 缺失。Remote GPU 隔离候选已复验任务完成、Artifact metadata 与 Timeline Artifact 事件一致。
+
 - 2026-09-01：修复隔离 Interactive Agent Task 的 Timeline 读取闭环。Core 现将 Timeline Store 装配到独立 Agent gRPC adapter，并允许受限 `dipole-agent` mTLS caller 调用只读 Timeline RPC；Runtime 在 HTTP 边界将 protobuf `bigint` 转为前端契约要求的序列字符串和安全数字，并保留每个事件的 Task 绑定。Remote GPU 候选验证创建 `202`、终态 `completed` 和 Timeline `200`；空会话任务只有 Task/Run 事件，不将其描述为 Artifact 产出、active authority 或写能力。
 
 - 2026-09-01：Gateway 的 Agent Task Timeline 代理现在将 URL path 与分页 query 分开解析。此前 `?limit` 和 `after` 会被编码进路径，Runtime 返回 `404`；认证、owner 授权和既有控制端点保持不变。

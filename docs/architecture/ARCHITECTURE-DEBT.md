@@ -2,7 +2,7 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
-- 2026-09-01：全新 Remote GPU 候选已从空 MySQL 卷完成 migration v57、当前 Core 与 read-shadow Agent 启动，并写入 Task/Run/Artifact Timeline 事件。验收发现 Gateway 将 Timeline query 编码进路径，导致 owner 查询 `404`；修复已覆盖该 URL 边界。完整同版本 Gateway 重建、公开 Timeline 复验和低敏 receipt 仍待完成。
+- 2026-09-01：全新 Remote GPU 候选已从空 MySQL 卷完成 migration v57，当前 Core 与 read-shadow Agent 启动。验收发现 Artifact Timeline 的拼接 event ID 超过 MySQL `VARCHAR(64)`，写入被投影层吸收；修复改用 Artifact 的 64 位内容寻址 ID，并在领域层校验上限。重建同版本 Core 后，新受认证只读任务已完成，Artifact metadata 与 Timeline 中唯一对应 Artifact 事件均返回 `200`；该证据未扩大 active authority 或写 Capability。
 
 - 2026-09-01：Remote GPU 真实 Provider 验收表明，自由 `record` 输入 schema 会让模型偶发构造裸 `conversation.read` target，即使 prompt 已声明 discovery 规则。计划 schema 已收紧为 `conversation.list` 和固定 `$discovered.previous` 的 `conversation.read`，并保留执行层验证。候选数据库必须先应用 `000057_agent_model_run_stages`，两阶段 plan/synthesis 环境需配置 `DIPOLE_AGENT_MODEL_MAX_CALLS>=2`；同版本迁移镜像和可重跑体验 receipt 仍待完成。
 

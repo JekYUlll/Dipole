@@ -648,11 +648,16 @@ func (s *Server) CreateArtifact(ctx context.Context, request *agentv1.CreateArti
 	if err != nil {
 		return nil, mapAgentArtifactErrorV1(err)
 	}
-	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
-		EventUUID: fmt.Sprintf("artifact:%s:create", artifact.ArtifactUUID), TaskUUID: artifact.TaskUUID, RunUUID: artifact.RunUUID,
-		Kind: application.AgentTaskTimelineEventArtifact, Status: "created", ArtifactUUID: artifact.ArtifactUUID, OccurredAt: artifact.CreatedAt,
-	})
+	s.appendTimelineEvent(ctx, artifactTimelineEventV1(artifact))
 	return &agentv1.CreateArtifactResponse{Artifact: agentArtifactResponseV1(artifact)}, nil
+}
+
+// Artifact IDs are content-addressed and fit the Timeline's persisted event ID contract.
+func artifactTimelineEventV1(artifact *application.AgentArtifactV1) application.AgentTaskTimelineEventV1 {
+	return application.AgentTaskTimelineEventV1{
+		EventUUID: artifact.ArtifactUUID, TaskUUID: artifact.TaskUUID, RunUUID: artifact.RunUUID,
+		Kind: application.AgentTaskTimelineEventArtifact, Status: "created", ArtifactUUID: artifact.ArtifactUUID, OccurredAt: artifact.CreatedAt,
+	}
 }
 
 func (s *Server) GetArtifact(ctx context.Context, request *agentv1.GetArtifactRequest) (*agentv1.GetArtifactResponse, error) {

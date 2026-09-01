@@ -69,7 +69,8 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 - **叙事随证据演进：** 每个改变服务边界、默认路径、用户流程、性能结论或 Agent 权限的切片，在合并前同步更新对应的 IM 或 Agent 学习与面试材料；简历表述、演示、证据、限制和下一步必须与实现状态一致。
 - **阻塞时并行治理：** 当主链路受共享环境、外部凭据、观察窗口或发布批准阻塞时，优先推进独立的前端设计和文档治理切片。此类切片不得改变默认运行路径、不得伪造运行证据，并继续使用独立分支、测试或文档门禁、更新日志和债务台账。
 - **远程资源隔离：** Remote GPU 存在 GPU 任务时，仍可启动 Dipole 的 CPU、Docker、集成测试和压力测试任务；任务必须使用隔离的 Compose project、端口、目录和资源配额，禁止停止、重置或抢占已有 GPU 进程。
-- **交付节奏：** 当前 Agent 功能在一条连续主线中完成端到端体验后再合并；前端保持独立长期分支。提交以可体验闭环、数据迁移边界或明确回滚点为单位，普通测试、文档和小修复随主线收敛，避免产生难以审阅的碎片化分支与提交。
+- **交付节奏：** 当前 Agent 功能在一条连续主线中完成端到端体验后再合并；前端保持独立长期分支。提交以可体验闭环、数据迁移边界或明确回滚点为单位，普通测试、文档和小修复随主线收敛。只有并发冲突、已发布回归或独立交付需求才创建额外 feature 分支。
+- **最小复杂度：** 每个新增保护、配置开关或状态机必须对应已验证的权限、可靠性或回滚风险；对尚未出现的规模或故障假设，先保留观测和测试入口，后续由证据决定是否扩展实现。
 
 ## 3. 当前基线
 
@@ -527,7 +528,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
     - [x] HTTP Prometheus Collector 对响应体实施 256 KiB 流式上限，超限或解析异常固定 fail-closed；共享环境窗口仍待完成。
 - [x] 支持 `WAITING_INPUT`、`WAITING_APPROVAL` 和版本化 Artifact；产品 UI 与敏感输入隔离仍按独立门槛推进。
   - [x] `dipole.agent.elicitation.v1`、Gateway JWT API、Core Task owner 复核与 Temporal Signal 已实现持久 `WAITING_INPUT`；无效/旧 request fail closed，Worker 替换后可恢复。Pencil UI、敏感输入和 MCP adapter 由 `AD-036` 跟踪。
-  - [x] migration v26 与 `dipole.agent.artifact.v1` 已建立版本化 Artifact：Temporal `read_shadow` 经受认证 Core RPC 创建 Task/Run 绑定的不可变元数据和 MinIO 正文，Gateway 读取按 Task principal 授权；更新、删除、公开 URL 与消息发送继续关闭。
+  - [x] migration v26 与 `dipole.agent.artifact.v1` 已建立版本化 Artifact：Temporal `read_shadow` 经受认证 Core RPC 创建 Task/Run 绑定的不可变元数据和 MinIO 正文，Gateway 读取按 Task principal 授权。Artifact Timeline 复用其 64 位内容寻址 ID，匹配持久化 `event_uuid` 上限；更新、删除、公开 URL 与消息发送继续关闭。
 - [x] Message v1 Envelope 以可选 `lineage.origin/causation_event_id/agent_task_id` 传播 Agent 因果链；Kafka consumer 滚动 causation，Embedded Agent/Outbox 保留根 Agent Task，TS Runtime 在 EventLedger、Temporal 和模型调用前抑制同源 Agent 事件，legacy v1 事件继续兼容。
 
 ### G4：MCP、评估、观测与安全门禁
@@ -724,9 +725,9 @@ A5 Search → A6 Sync Service
 
 任何里程碑未通过验收时停留在当前形态，修复后再进入下一步，避免将未验证风险传递到后续阶段。
 
-Agent 与 C++ 在 A6 之后可以并行推进，但不得在同一里程碑分支中修改相同运行链路。C++ Gateway 评估必须等待 Delivery 灰度稳定。
+Agent 与 C++ 在 A6 之后可以并行推进，但不得在同一连续主线中修改相同运行链路。C++ Gateway 评估必须等待 Delivery 灰度稳定。
 
-前端 F1 可以在 M1 期间开始；F2 随现代 IM API 推进，F3 随 Agent 状态机推进。设计资产与实现按独立短分支交付。
+前端 F1 可以在 M1 期间开始；F2 随现代 IM API 推进，F3 随 Agent 状态机推进。设计资产与实现保持在独立长期主线。
 
 ## 15. 分支与合并策略
 
@@ -742,15 +743,15 @@ Agent 与 C++ 在 A6 之后可以并行推进，但不得在同一里程碑分�
 | `epic/04-cpp-realtime` | C1-C3 | 阶段二合并后的 `master` | 性能收益、故障隔离和回切门禁通过 |
 | `epic/05-frontend-experience` | F1-F4 | 最新 `master` | 设计、交互、视觉和可访问性门禁通过 |
 
-五条 Epic 分支可以提前建立远端引用，用于固定路线。后续阶段开始开发前，必须先合并最新 `master`，确保继承前一阶段的代码、迁移和事件契约。
+Epic 分支用于固定长期轨道和阶段验收。当前优先保持 Agent 与前端两条连续主线；其余轨道在有明确交付时再激活。后续阶段开始开发前，必须先合并最新 `master`，确保继承前一阶段的代码、迁移和事件契约。
 
-### 里程碑分支
+### 开发与合并节奏
 
-- 主轨道保留一个连续开发分支：当前为 Agent Runtime；前端体验轨道保留独立长期分支。只有涉及并发修改同一运行链路、独立热修复或跨团队交付时才额外创建短期分支。
-- 一个活动分支只处理一个可体验里程碑或可独立回滚的问题，禁止同时跨越微服务、存储、Agent 和 C++ 数据面多个维度。
-- 在完整闭环通过测试、diff 审查和远程候选验证后，形成一个或少量按迁移边界拆分的可审阅提交，再合并到 Epic 与 `master`；Epic 同步按里程碑批量执行。
-- 紧急修复从 `master` 创建 `fix/*`，合并后同步回所有仍活跃的 Epic 分支。
-- 禁止对已推送的共享分支执行 force push，避免破坏阶段历史和迁移证据。
+- 默认直接在当前轨道的连续 worktree 开发。当前 Agent 主线完成完整体验闭环后统一合并；前端保持独立长期分支，避免与 Agent 运行链路互相干扰。
+- 只在并发修改同一运行链路、修复已发布回归，或需要独立发布/评审时创建额外 feature 分支。测试补充、排障、文档润色和小修复随当前里程碑收敛，避免产生难以审阅的碎片化提交。
+- 一个提交对应一个可体验闭环、数据迁移边界或明确回滚点；中间验证通过工作树、远程 Compose 记录和测试输出保留，不单独形成提交。
+- 开发候选可以直接部署到 Remote GPU 的隔离 Compose project。只有性能结论、故障演练、合并前验收等需要长期证据的操作，才要求绑定已提交 revision。
+- 紧急修复从 `master` 创建 `fix/*`，合并后在下一个阶段节点批量同步仍活跃的 Epic 分支。禁止对已推送的共享分支执行 force push，避免破坏阶段历史和迁移证据。
 
 ### 持续记录
 

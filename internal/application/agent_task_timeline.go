@@ -8,7 +8,10 @@ import (
 	"time"
 )
 
-const AgentTaskTimelineSchemaVersionV1 = "dipole.agent.task_timeline.v1"
+const (
+	AgentTaskTimelineSchemaVersionV1      = "dipole.agent.task_timeline.v1"
+	AgentTaskTimelineEventUUIDMaxLengthV1 = 64
+)
 
 type AgentTaskTimelineEventKindV1 string
 
@@ -69,6 +72,9 @@ type AgentTaskTimelineRepairStoreV1 interface {
 func (e AgentTaskTimelineEventV1) Validate() error {
 	if strings.TrimSpace(e.EventUUID) == "" || strings.TrimSpace(e.TaskUUID) == "" || strings.TrimSpace(e.Status) == "" || e.OccurredAt.IsZero() {
 		return errors.New("Agent Task Timeline event identity, status and timestamp are required")
+	}
+	if len(e.EventUUID) > AgentTaskTimelineEventUUIDMaxLengthV1 {
+		return fmt.Errorf("Agent Task Timeline event ID exceeds %d characters", AgentTaskTimelineEventUUIDMaxLengthV1)
 	}
 	switch e.Kind {
 	case AgentTaskTimelineEventTask, AgentTaskTimelineEventRun, AgentTaskTimelineEventContextCompile,

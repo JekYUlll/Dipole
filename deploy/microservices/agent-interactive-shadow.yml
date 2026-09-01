@@ -16,4 +16,5 @@ services:
   gateway:
     environment:
       DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED: "true"
       DIPOLE_GATEWAY_AGENT_MCP_ENABLED: "false"

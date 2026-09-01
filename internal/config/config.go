@@ -374,6 +374,7 @@ func Load() error {
 		v.SetDefault("gateway.agent_subscription_tenant_id", "dipole")
 		v.SetDefault("gateway.agent_memory_enabled", false)
 		v.SetDefault("gateway.agent_memory_tenant_id", "dipole")
+		v.SetDefault("gateway.agent_artifact_enabled", false)
 		v.SetDefault("gateway.agent_mcp_enabled", false)
 		v.SetDefault("gateway.agent_mcp_target", "http://127.0.0.1:8091")
 		v.SetDefault("realtime.delivery", "go")
@@ -562,6 +563,7 @@ func Load() error {
 			"gateway.agent_subscription_tenant_id",
 			"gateway.agent_memory_enabled",
 			"gateway.agent_memory_tenant_id",
+			"gateway.agent_artifact_enabled",
 			"gateway.agent_mcp_enabled",
 			"gateway.agent_mcp_target",
 			"realtime.delivery",
