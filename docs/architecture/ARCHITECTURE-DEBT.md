@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Interactive active 消息写入已增加“Message 提交后 RPC 响应丢失”的定向 Temporal 故障门禁，详见 [Interactive Active Retry Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)。对 Core `UNAVAILABLE` / `DEADLINE_EXCEEDED`，同一 Task/Run/会话/内容派生稳定 Message command ID，运行中的 Tool Invocation 保留至 Activity 重试；Remote GPU Node 22 的内存 Temporal 用例证明两次调用使用同一命令标识、模型 side-effect store 仅记录一次提交，最终只写入一次 completed Tool Invocation。该证据不连接真实 Core、Message、MySQL、Kafka 或 Compose，不能代表部分副作用回滚、Worker 替换或共享环境故障恢复；这些继续由 `AD-009` 跟踪。
+
 - 2026-09-02：`interactive_active` 的干净同版本 Remote GPU 隔离 Compose 已补齐真实跨服务回执，详见 [Interactive Active Remote Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。同一 `430c9e38` 且 `dirty=false` 的镜像在 loopback-only 项目中验证 owner 并发 deny 只产生一次 `approval_denied` 且 Tool/Message 为零；并发 approve 只消费一次 approval，并产生一次完成 Tool、一次 action reference 与恰好一条 Message。开发 promotion grant 已在验证后撤销。该结果关闭此前“干净同版本、owner deny、重复 approve/deny、副作用精确计数”缺口；Shared 环境、浏览器 HITL、Worker/Core/Message 故障重试、部分副作用回滚、MCP 和指标结论继续由 `AD-009` 跟踪。
 
 - 2026-09-02：修复 Shadow Runtime 的 candidate-version admission 漂移。candidate version 只属于 active promotion binding；Shadow admission 现在固定传空值，避免 Core 在 Task 创建后拒绝无效的 Shadow Run。Remote GPU Node 22 的定向回归 `15/15`、typecheck 与 production build 已通过；干净 `70bd4c74` 镜像的隔离 Compose 回归进一步证明认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，且 Run 为 `shadow / candidate_version=NULL / completed`。候选无可读会话，仅生成只读摘要 Artifact，消息写入数为零。该证据不扩大 shared 环境、active authority、写 Capability、MCP 或 Memory；这些继续由 `AD-009` 跟踪。
