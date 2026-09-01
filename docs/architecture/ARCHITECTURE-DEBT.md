@@ -26,6 +26,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 已在候选 `3c1f3eba` 复跑 disposable External MCP/approval Shadow drill，并归档 [低敏 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01/)。本地 MCP Tool/Artifact、EventLedger 重启去重、过期 readiness 拒绝、Core mTLS identity denial 和一次 approved fixture operation 的副作用基数均通过。MySQL AIO 兼容参数仅作用于该 disposable drill；共享服务、真实外部 DNS/TLS、凭据生命周期、approval UI deny 和 active authority 继续开放。
+
 - 2026-09-01：External MCP/approval 的 disposable Shadow drill 曾因 Remote GPU Linux AIO 配额触发 MySQL `io_setup() EAGAIN`。drill Compose 现仅对自身 MySQL 增加 `--innodb-use-native-aio=0`，并由配置门禁锁定；该变更不影响基础微服务或其他候选项目。
 
 - 2026-09-01：Remote GPU 的新候选 checkout 曾因上一次中断留下的 `node_modules` 在 `npm ci` 中报 `ENOTEMPTY`。`node-test` 现只匹配该确定错误后原子隔离候选 app 的 ignored 目录并重试一次；其他安装失败仍直接退出，隔离目录保留供诊断。该修复不改变 lockfile、已运行容器或共享工作树。
