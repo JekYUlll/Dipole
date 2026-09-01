@@ -102,7 +102,7 @@ jq -n \
   --arg candidate_version "${candidate_version}" \
   --argjson manifest_count "${#manifests[@]}" \
   --argjson minimum_manifest_count "${minimum_manifest_count}" \
-  '{schemaVersion: "dipole.agent.shadow-eval-manifest-set-receipt.v1", manifestSetSha256: $sha256, candidateVersion: $candidate_version, manifestCount: $manifest_count, minimumManifestCount: $minimum_manifest_count}' \
+  '{schemaVersion: "dipole.agent.shadow-eval-manifest-set-receipt.v2", manifestSetSha256: $sha256, candidateVersion: $candidate_version, manifestCount: $manifest_count, minimumManifestCount: $minimum_manifest_count}' \
   >"${output_dir}/manifest-set.json"
 jq -s \
   --arg revision "${runtime_revision}" \

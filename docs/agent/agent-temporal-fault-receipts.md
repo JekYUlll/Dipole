@@ -117,7 +117,7 @@ scripts/collect-agent-shadow-eval-window.sh
 
 The output directory must not exist before collection. It receives one report
 per manifest, the exact summary input, the `reviewed_shadow` summary report and
-a low-sensitivity `manifest-set.json` receipt. The receipt binds the window to
+a low-sensitivity v2 `manifest-set.json` receipt. The receipt binds the window to
 the reviewed task-set digest, candidate version and sample count without
 copying Task ID, Prompt, user, message or reviewer labels. The optional
 `DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` gate defaults to `1`; set it for a

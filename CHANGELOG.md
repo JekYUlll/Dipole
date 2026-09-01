@@ -1,6 +1,6 @@
 # 更新日志
 
-- 2026-09-02：Shadow Eval 窗口收集器新增显式最低样本数门禁。`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 在采集前拒绝不足的评审 manifest 集合，并将阈值与实际样本数共同写入低敏 `manifest-set.json` 回执；默认值为 `1`，保留单样本调试能力。正式窗口可固定例如 `10` 的阈值，避免从小样本回执外推任务成功率。
+- 2026-09-02：Shadow Eval 窗口收集器新增显式最低样本数门禁。`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 在采集前拒绝不足的评审 manifest 集合，并将阈值与实际样本数共同写入低敏 v2 `manifest-set.json` 回执；默认值为 `1`，保留单样本调试能力。既有 v1 回执保持原 schema 可验证。正式窗口可固定例如 `10` 的阈值，避免从小样本回执外推任务成功率。
 
 - 2026-09-02：Agent Shadow Eval 窗口现要求评审任务集的内容摘要。采集前用独立脚本按稳定顺序计算 manifest SHA-256 集合，运行时拒绝摘要漂移或候选版本混用，并输出仅包含集合摘要、候选版本和样本数的 `manifest-set.json` 回执。Remote GPU 与本地 fixture 均验证通过，覆盖通过、有效失败和任务集漂移拒绝；真实多样本窗口和任务成功率仍待由受控运行生成。
 

@@ -57,7 +57,7 @@ export DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS=1
 jq -e '.source.runtimeRevision == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
   "${fixture_dir}/window/summary-input.json" >/dev/null
 jq -e --arg sha256 "${DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256}" \
-  '.schemaVersion == "dipole.agent.shadow-eval-manifest-set-receipt.v1" and .manifestSetSha256 == $sha256 and .manifestCount == 1 and .minimumManifestCount == 1' \
+  '.schemaVersion == "dipole.agent.shadow-eval-manifest-set-receipt.v2" and .manifestSetSha256 == $sha256 and .manifestCount == 1 and .minimumManifestCount == 1' \
   "${fixture_dir}/window/manifest-set.json" >/dev/null
 
 export DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS=2
@@ -79,7 +79,7 @@ set +e
 status=$?
 set -e
 [[ "${status}" == "2" ]]
-jq -e '.schemaVersion == "dipole.agent.shadow-eval-manifest-set-receipt.v1"' \
+jq -e '.schemaVersion == "dipole.agent.shadow-eval-manifest-set-receipt.v2"' \
   "${fixture_dir}/failed-window/manifest-set.json" >/dev/null
 unset DIPOLE_TEST_SHADOW_EVAL_FAILURE
 
