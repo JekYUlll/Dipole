@@ -11,6 +11,7 @@
     </aside>
 
     <main class="subscription-main">
+      <div class="mobile-brandbar"><img class="brand-mark" :src="agentMark" alt="" aria-hidden="true" /><span>事件订阅</span><small>DIRECT TARGET</small></div>
       <header class="page-header">
         <div>
           <p class="eyebrow">PROJECT GUARDIAN / EVENT WATCH</p>
@@ -386,4 +387,6 @@ function filterSummary(item: AgentSubscription): string {
 @media(max-width:560px){.subscription-main{padding:20px 16px 48px}.page-header h1{font-size:34px}.subtitle{font-size:12px}.shadow-notice{margin:22px 0}.content-grid{display:block}.authority-panel{display:none}.subscription-list{gap:14px}.subscription-card{padding:18px}.card-top{align-items:flex-start}.card-top h3{font-size:18px}.status-pill{padding:8px 10px}.binding{white-space:normal;line-height:1.5}.card-bottom{align-items:flex-end}.dialog-backdrop{background:rgba(11,20,17,.24)}.revoke-dialog{width:100%;border-radius:22px 22px 0 0;padding:14px 20px 24px}.dialog-actions{flex-direction:row}.create-backdrop{padding:0;align-items:flex-end}.create-dialog{width:100%;max-height:94vh;border-radius:22px 22px 0 0;padding:22px 20px}.create-filter{grid-template-columns:1fr}.terms-input{grid-column:1}.create-dialog-heading h2{font-size:24px}}
 .subscription-shell .brand-mark { width: 30px; height: 30px; object-fit: contain; }
 .subscription-shell .brand > span { width: auto; height: auto; border-radius: 0; background: transparent; }
+.subscription-shell .mobile-brandbar { display: none; }
+@media(max-width:900px){.subscription-shell .mobile-brandbar{display:flex;align-items:center;gap:10px;margin-bottom:28px;color:var(--dp-ink);font:800 16px var(--dp-font-display)}.subscription-shell .mobile-brandbar .brand-mark{width:30px;height:30px}.subscription-shell .mobile-brandbar small{margin-left:auto;color:var(--dp-ink-faint);font:800 9px var(--dp-font-data);letter-spacing:.08em}}
 </style>

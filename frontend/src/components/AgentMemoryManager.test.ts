@@ -45,6 +45,12 @@ describe('AgentMemoryManager', () => {
     expect(source).toContain('class="brand-mark"')
   })
 
+  it('provides a mobile V3 brand bar when the desktop rail collapses', () => {
+    expect(source).toContain('class="mobile-brandbar"')
+    expect(source).toContain('AUTO WRITE OFF')
+    expect(source).toContain('@media(max-width:900px)')
+  })
+
   it('renders owner-visible provenance and trust boundaries', async () => {
     const client = service()
     const wrapper = mount(AgentMemoryManager, { props: { client } })

@@ -59,6 +59,33 @@ test('keeps the memory governance surface aligned with the Pencil baseline', asy
   })
 })
 
+test('keeps the subscription mobile surface aligned with the Pencil baseline', async ({ page }) => {
+  await page.route('**/api/v1/agent/**', async route => {
+    const pathname = new URL(route.request().url()).pathname
+    if (pathname === '/api/v1/agent/subscriptions') {
+      await ok(route, { subscriptions: [subscription], nextCursor: '' })
+      return
+    }
+    await route.fulfill({ status: 404 })
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/agent/subscriptions')
+  await expect(page.getByRole('heading', { name: '事件订阅' })).toBeVisible()
+  await expect(page.locator('.subscription-shell')).toHaveScreenshot('subscriptions-mobile-chromium.png', {
+    animations: 'disabled',
+  })
+})
+
+test('keeps the memory mobile surface aligned with the Pencil baseline', async ({ page }) => {
+  await page.route('**/api/v1/agent/memories**', route => ok(route, { memories: [memory], nextCursor: '' }))
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/agent/memories')
+  await expect(page.getByRole('heading', { name: '长期记忆', exact: true })).toBeVisible()
+  await expect(page.locator('.memory-shell')).toHaveScreenshot('memories-mobile-chromium.png', {
+    animations: 'disabled',
+  })
+})
+
 async function ok(route: Route, data: unknown) {
   await route.fulfill({
     status: 200,

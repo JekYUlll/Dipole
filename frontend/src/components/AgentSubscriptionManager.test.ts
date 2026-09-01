@@ -48,6 +48,12 @@ describe('AgentSubscriptionManager', () => {
     expect(source).toContain('class="brand-mark"')
   })
 
+  it('provides a mobile V3 brand bar when the desktop rail collapses', () => {
+    expect(source).toContain('class="mobile-brandbar"')
+    expect(source).toContain('DIRECT TARGET')
+    expect(source).toContain('@media(max-width:900px)')
+  })
+
   it('renders the owner-derived list and opens creation from trusted catalogs', async () => {
     const client = service()
     const definitionClient = definitions()
