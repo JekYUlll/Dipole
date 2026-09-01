@@ -39405,11 +39405,11 @@
     },
     "brand": {
       "type": "color",
-      "value": "#07C160"
+      "value": "#EA2521"
     },
     "brand-deep": {
       "type": "color",
-      "value": "#04964A"
+      "value": "#C81E23"
     },
     "warning": {
       "type": "color",
@@ -39465,39 +39465,47 @@
     },
     "rail": {
       "type": "color",
-      "value": "#172126"
+      "value": "#0D2744"
     },
     "rail-soft": {
       "type": "color",
-      "value": "#243139"
+      "value": "#1C3E63"
     },
     "ink": {
       "type": "color",
-      "value": "#17211D"
+      "value": "#092545"
     },
     "ink-soft": {
       "type": "color",
-      "value": "#66716C"
+      "value": "#5A6B7D"
     },
     "ink-faint": {
       "type": "color",
-      "value": "#98A19D"
+      "value": "#94A3B4"
     },
     "line": {
       "type": "color",
-      "value": "#DDE2DC"
+      "value": "#E0D8C8"
     },
     "accent": {
       "type": "color",
-      "value": "#00A86B"
+      "value": "#EA2521"
     },
     "accent-soft": {
       "type": "color",
-      "value": "#DDF5E9"
+      "value": "#FDE7E4"
+    },
+    "agent": {
+      "type": "color",
+      "value": "#EFAD05"
+    },
+    "agent-soft": {
+      "type": "color",
+      "value": "#FBE7BE"
     },
     "accent-strong": {
       "type": "color",
-      "value": "#007A4E"
+      "value": "#C81E23"
     },
     "danger-soft": {
       "type": "color",

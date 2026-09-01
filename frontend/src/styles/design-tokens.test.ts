@@ -14,15 +14,21 @@ function cssToken(name: string): string {
 }
 
 describe('Pencil design token contract', () => {
-  it('keeps the pending V3 brand vocabulary explicit while the canonical Pencil variables migrate', () => {
-    expect(cssToken('v3-navy')).toBe('#0b2a4a')
-    expect(cssToken('v3-red')).toBe('#f2262a')
-    expect(cssToken('v3-gold')).toBe('#f4b000')
-    expect(cssToken('v3-ivory')).toBe('#f8f1e4')
+  it('keeps the V3 brand vocabulary aligned to the committed brand board', () => {
+    expect(cssToken('v3-navy')).toBe('#0d2744')
+    expect(cssToken('v3-red')).toBe('#ea2521')
+    expect(cssToken('v3-gold')).toBe('#efad05')
+    expect(cssToken('v3-ivory')).toBe('#fbf2e7')
+  })
+
+  it('resolves the semantic navigation and action tokens to the V3 identity', () => {
+    expect(cssToken('rail')).toBe(cssToken('v3-navy'))
+    expect(cssToken('accent')).toBe(cssToken('v3-red'))
+    expect(cssToken('agent')).toBe(cssToken('v3-gold'))
   })
 
   it('keeps canonical color and typography tokens available to Vue', () => {
-    const colors = ['canvas', 'surface', 'rail', 'accent', 'danger', 'warning']
+    const colors = ['canvas', 'surface', 'rail', 'accent', 'agent', 'danger', 'warning']
     for (const name of colors) expect(cssToken(name)).toBe(String(pen.variables[name].value).toLowerCase())
     expect(cssToken('font-display')).toContain(String(pen.variables['font-display'].value))
     expect(cssToken('font-body')).toContain(String(pen.variables['font-body'].value))
