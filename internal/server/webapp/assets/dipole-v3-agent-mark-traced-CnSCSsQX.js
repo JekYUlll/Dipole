@@ -1,0 +1,1 @@
+var e=`/app/assets/dipole-v3-agent-mark-traced-CdgJtM5g.svg`;export{e as t};

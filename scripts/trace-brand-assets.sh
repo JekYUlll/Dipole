@@ -2,6 +2,8 @@
 set -euo pipefail
 
 # Recreate the V3 lockups from the approved PNG without hand-drawing paths.
+# The source canvas is removed before tracing so the SVG remains transparent
+# while preserving the raster artwork's actual contours and color treatment.
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source_png="$root_dir/docs/images/LOGO_V3.png"
 work_dir="${TMPDIR:-/tmp}/dipole-brand-trace"
@@ -15,16 +17,19 @@ mkdir -p "$work_dir"
 trace() {
   local crop="$1"
   local output="$2"
-  magick "$source_png" -crop "$crop" +repage "$work_dir/input.png"
+  magick "$source_png" -crop "$crop" +repage \
+    -fuzz 4% -transparent '#F9F1E6' "$work_dir/input.png"
   vtracer --input "$work_dir/input.png" --output "$root_dir/docs/images/$output" \
     --preset poster --clustering color-cluster --hierarchical stacked \
-    --mode spline --color-precision 6 --gradient-step 24 \
-    --filter-speckle 16 --simplify 2.2 --path-precision 2 --optimize 2
+    --mode spline --color-precision 8 --gradient-step 16 \
+    --filter-speckle 8 --simplify 1.0 --path-precision 3 --optimize 2
 }
 
-# Crops are measured against LOGO_V3.png (1448x1086).
-trace '610x560+0+270' 'dipole-v3-im-traced.svg'
-trace '680x650+720+150' 'dipole-v3-agent-traced.svg'
-trace '680x540+720+150' 'dipole-v3-agent-mark-traced.svg'
+# Crops are measured against LOGO_V3.png (1448x1086). The bounds include the
+# complete visible lockup/mark and intentionally exclude the concept heading
+# and palette swatches.
+trace '560x490+100+295' 'dipole-v3-im-traced.svg'
+trace '680x625+720+175' 'dipole-v3-agent-traced.svg'
+trace '680x510+720+175' 'dipole-v3-agent-mark-traced.svg'
 
 echo "Traced V3 brand assets into docs/images/"
