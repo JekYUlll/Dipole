@@ -11,7 +11,7 @@ const policyVersion = "dipole.agent.policy.persistence.v1";
 const runIDVersion = "dipole.agent.run.v1";
 const lineageIdentifier = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
 const defaultReadPermissions = ["conversation.list", "conversation.read"] as const;
-const discoveredConversationMarker = "$discovered.previous";
+export const discoveredConversationMarker = "$discovered.previous";
 
 const eventLineageSchema = z.object({
   origin: z.object({
@@ -151,6 +151,28 @@ export interface ShadowPlanExecutionDependencies {
 
 export type ShadowProcessResult = { readonly outcome: "recorded" | "duplicate" | "suppressed"; readonly taskId: string };
 
+export const maxReadScopeOptions = 8;
+const maxReadScopeOptionLength = 128;
+
+export interface ShadowReadScope {
+  /** Pause for owner confirmation instead of auto-selecting when discovery offers several conversations. */
+  readonly confirmationRequired?: boolean;
+  /** Conversation key the Task owner confirmed. Callers must bind it to the offered candidates. */
+  readonly confirmedConversationId?: string;
+  /** Host-owned plan of a resumed Run. Present plans are neither re-planned nor re-audited. */
+  readonly resumedPlan?: ShadowPlan;
+}
+
+export type ShadowPlanExecution =
+  | { readonly outcome: "completed"; readonly plan: ShadowPlan }
+  | {
+    readonly outcome: "awaiting_read_scope";
+    readonly plan: ShadowPlan;
+    readonly stepNo: number;
+    readonly candidates: readonly string[];
+    readonly discoveredCount: number;
+  };
+
 export function agentTaskId(input: { tenantId: string; agentUuid: string; triggerType: string; triggerRef: string }): string {
   const canonical = [policyVersion, input.tenantId.trim(), input.agentUuid.trim(), input.triggerType.trim(), input.triggerRef.trim()].join("\n");
   return `task:${createHash("sha256").update(canonical, "utf8").digest("hex").slice(0, 59)}`;
@@ -258,18 +280,24 @@ export class ShadowEventProcessor {
 export async function executeShadowPlan(
   event: AgentEvent,
   context: ExecutionContext,
-  dependencies: ShadowPlanExecutionDependencies
-): Promise<ShadowPlan> {
-  const plan = await dependencies.planner.plan(event, context);
-  await dependencies.audit.append({ eventId: event.eventId, taskId: context.taskId, eventType: event.eventType, plan });
-  const outputs = await executeShadowPlanSteps(
+  dependencies: ShadowPlanExecutionDependencies,
+  scope?: ShadowReadScope
+): Promise<ShadowPlanExecution> {
+  const plan = scope?.resumedPlan ?? await dependencies.planner.plan(event, context);
+  if (scope?.resumedPlan === undefined) {
+    await dependencies.audit.append({ eventId: event.eventId, taskId: context.taskId, eventType: event.eventType, plan });
+  }
+  const execution = await executeShadowPlanSteps(
     plan, context, dependencies.registry, dependencies.trajectory,
-    dependencies.stepLeaseMs, dependencies.busyStepRetry, dependencies.telemetry ?? new AgentTelemetry()
+    dependencies.stepLeaseMs, dependencies.busyStepRetry, dependencies.telemetry ?? new AgentTelemetry(), scope
   );
+  if (execution.outcome === "awaiting_read_scope") {
+    return { ...execution, plan };
+  }
   const summary = dependencies.planner.synthesize === undefined
     ? plan.summary
-    : await dependencies.planner.synthesize(event, context, plan, outputs);
-  return summary === plan.summary ? plan : { ...plan, summary };
+    : await dependencies.planner.synthesize(event, context, plan, execution.outputs);
+  return { outcome: "completed", plan: summary === plan.summary ? plan : { ...plan, summary } };
 }
 
 async function executeShadowPlanSteps(
@@ -279,11 +307,27 @@ async function executeShadowPlanSteps(
   trajectory: ShadowStepTrajectory,
   stepLeaseMs: number,
   busyStepRetry?: ShadowPlanExecutionDependencies["busyStepRetry"],
-  telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
-): Promise<readonly unknown[]> {
+  telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry(),
+  scope?: ShadowReadScope
+): Promise<
+  { readonly outcome: "completed"; readonly outputs: readonly unknown[] } |
+  { readonly outcome: "awaiting_read_scope"; readonly stepNo: number; readonly candidates: readonly string[]; readonly discoveredCount: number }
+> {
   const outputs: unknown[] = [];
   for (const [index, step] of plan.steps.entries()) {
     const stepNo = index + 1;
+    // Decide before claiming so the paused read Step stays unclaimed for the confirmed resume.
+    if (scope?.confirmationRequired === true && scope.confirmedConversationId === undefined &&
+        isDiscoveryBoundRead(plan.steps, index, step)) {
+      const discovered = discoveredConversationIds(outputs.at(-1));
+      const candidates = readScopeOptions(discovered);
+      if (candidates.length > 1) {
+        if (plan.steps.length !== 2 || index !== 1) {
+          throw new Error("Owner-confirmed read scope supports a single conversation.list to conversation.read pair");
+        }
+        return { outcome: "awaiting_read_scope", stepNo, candidates, discoveredCount: discovered.length };
+      }
+    }
     let claim = await trajectory.claimStep(context.taskId, stepNo, stepLeaseMs);
     let waitedMs = 0;
     while (claim.outcome === "busy" && busyStepRetry !== undefined && waitedMs < busyStepRetry.maxWaitMs) {
@@ -298,7 +342,7 @@ async function executeShadowPlanSteps(
     }
     const claimToken = claim.token;
     try {
-      const resolvedStep = resolveTrustedDiscoveryStep(plan.steps, index, step, outputs);
+      const resolvedStep = resolveTrustedDiscoveryStep(plan.steps, index, step, outputs, scope);
       if (resolvedStep === undefined) {
         const output = { status: "skipped", reason: "no_discovered_conversation" };
         await trajectory.completeStep(context.taskId, stepNo, claimToken, output);
@@ -323,14 +367,15 @@ async function executeShadowPlanSteps(
       throw error;
     }
   }
-  return outputs;
+  return { outcome: "completed", outputs };
 }
 
 function resolveTrustedDiscoveryStep(
   steps: readonly ShadowPlanStep[],
   index: number,
   step: ShadowPlanStep,
-  outputs: readonly unknown[]
+  outputs: readonly unknown[],
+  scope?: ShadowReadScope
 ): ShadowPlanStep | undefined {
   if (step.capabilityId !== "conversation.read") return step;
   if (step.input.conversationId !== discoveredConversationMarker) {
@@ -339,23 +384,41 @@ function resolveTrustedDiscoveryStep(
   if (index === 0 || steps[index - 1]?.capabilityId !== "conversation.list") {
     throw new Error("conversation.read requires the immediately preceding trusted conversation.list result");
   }
-  const conversationId = firstDiscoveredConversationId(outputs.at(-1));
+  // A confirmed scope replaces the discovery output of a resumed Run, whose
+  // completed list Step no longer replays its own result. Core still authorises
+  // the read, and the caller binds the confirmation to the offered candidates.
+  if (scope?.confirmedConversationId !== undefined) {
+    return { ...step, input: { ...step.input, conversationId: scope.confirmedConversationId } };
+  }
+  const conversationId = discoveredConversationIds(outputs.at(-1))[0];
   // An empty list is a valid user state. Keep the skipped result in the
   // trajectory, but never turn it into a guessed or unauthorised read.
   if (conversationId === undefined) return undefined;
   return { ...step, input: { ...step.input, conversationId } };
 }
 
-function firstDiscoveredConversationId(output: unknown): string | undefined {
-  if (!Array.isArray(output)) return undefined;
+function isDiscoveryBoundRead(steps: readonly ShadowPlanStep[], index: number, step: ShadowPlanStep): boolean {
+  return step.capabilityId === "conversation.read" &&
+    step.input.conversationId === discoveredConversationMarker &&
+    index > 0 && steps[index - 1]?.capabilityId === "conversation.list";
+}
+
+function discoveredConversationIds(output: unknown): readonly string[] {
+  if (!Array.isArray(output)) return [];
+  const conversationIds: string[] = [];
   for (const item of output) {
     if (item === null || typeof item !== "object") continue;
     const value = (item as { conversationKey?: unknown }).conversationKey;
     if (typeof value !== "string") continue;
     const conversationId = value.trim();
-    if (conversationId.length > 0 && conversationId.length <= 256) return conversationId;
+    if (conversationId.length === 0 || conversationId.length > 256 || conversationIds.includes(conversationId)) continue;
+    conversationIds.push(conversationId);
   }
-  return undefined;
+  return conversationIds;
+}
+
+function readScopeOptions(discovered: readonly string[]): readonly string[] {
+  return discovered.filter((conversationId) => conversationId.length <= maxReadScopeOptionLength).slice(0, maxReadScopeOptions);
 }
 
 function delay(milliseconds: number): Promise<void> {

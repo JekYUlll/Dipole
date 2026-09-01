@@ -16,7 +16,8 @@ import type { TemporalMcpDispatchActivities } from "./mcp-dispatch-activity.js";
 import { AgentTaskProjectionReconciler } from "../reconcile/agent-task-projection-reconciler.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
-import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
+import { ConversationReadCapability } from "../capabilities/conversation-read.js";
+import { agentRunId, agentTaskId, discoveredConversationMarker, type AgentEvent } from "../events/shadow-processor.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { ModelRouter, type ModelAuditStore, type ModelCallRecovery } from "../models/model-router.js";
 import { createTemporalFaultReceipt } from "../evals/temporal-fault-receipt.js";
@@ -523,7 +524,193 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(capabilityCalls).toBe(1);
     expect(authorizationAudits).toBe(1);
   }, 120_000);
+
+  it("pauses the read path for owner confirmation and reads only the confirmed conversation", async () => {
+    const taskQueue = `dipole-agent-read-scope-resume-${Date.now()}`;
+    const drill = readScopeDrill({ suffix: "RESUME" });
+    const worker = await createWorker(env, taskQueue, drill.activities);
+    const workerRun = worker.run();
+    const controls = new TemporalTaskControlClient(env.client.workflow);
+    const started = await drill.start(new TemporalTaskClient(env.client.workflow, taskQueue));
+    const handle = env.client.workflow.getHandle(started.workflowId);
+
+    await waitForStatus(env, handle, "waiting_input");
+    const paused = await controls.query(drill.taskId) as {
+      pending?: { requestId: string; form?: { fields: ReadonlyArray<{ id: string; options?: readonly string[] }> } };
+    };
+    const requestId = paused.pending?.requestId ?? "";
+    expect(requestId).toMatch(/^input:[a-f0-9]{58}$/);
+    expect(paused.pending?.form?.fields[0]).toMatchObject({ id: "conversation", options: [...drill.candidates] });
+    expect(drill.conversationReads).toEqual([]);
+
+    await controls.provideInput(drill.taskId, { requestId: "input:forged", value: { conversation: drill.candidates[1] } });
+    await env.sleep(100);
+    await expect(controls.query(drill.taskId)).resolves.toMatchObject({ status: "waiting_input" });
+
+    await controls.provideInput(drill.taskId, { requestId, value: { conversation: drill.candidates[1] } });
+    await expect(handle.result()).resolves.toMatchObject({
+      status: "completed", output: { summary: "confirmed digest", stepCount: 2 }
+    });
+    expect(drill.conversationReads).toEqual([drill.candidates[1]]);
+    expect(drill.counters.stepExecutions).toBe(2);
+
+    const receipt = createTemporalFaultReceipt(drill.observation("read_scope_confirmation_resume", {
+      inputSignalsRejected: 1, inputResumptions: 1, confirmedConversationId: drill.candidates[1]
+    }));
+    expect(receipt).toMatchObject({ outcome: "eligible", failures: [] });
+    await archiveTemporalFaultReceipt(receipt);
+    worker.shutdown();
+    await workerRun;
+  }, 120_000);
+
+  it("leaves the read unauthorised when the owner declines the confirmation", async () => {
+    const taskQueue = `dipole-agent-read-scope-declined-${Date.now()}`;
+    const drill = readScopeDrill({ suffix: "DECLINED" });
+    const worker = await createWorker(env, taskQueue, drill.activities);
+    const workerRun = worker.run();
+    const controls = new TemporalTaskControlClient(env.client.workflow);
+    const started = await drill.start(new TemporalTaskClient(env.client.workflow, taskQueue));
+    const handle = env.client.workflow.getHandle(started.workflowId);
+
+    await waitForStatus(env, handle, "waiting_input");
+    await controls.cancel(drill.taskId, "user_cancelled");
+    await expect(handle.result()).resolves.toMatchObject({
+      status: "cancelled", cancellation: { reason: "user_cancelled" }
+    });
+    expect(drill.conversationReads).toEqual([]);
+    expect(drill.counters.stepExecutions).toBe(1);
+
+    const receipt = createTemporalFaultReceipt(drill.observation("read_scope_confirmation_declined", {
+      inputSignalsRejected: 0, inputResumptions: 0, cancellation: { reason: "user_cancelled" }
+    }));
+    expect(receipt).toMatchObject({ outcome: "eligible", failures: [] });
+    await archiveTemporalFaultReceipt(receipt);
+    worker.shutdown();
+    await workerRun;
+  }, 120_000);
+
+  it("leaves the read unauthorised when the confirmation deadline passes unanswered", async () => {
+    const taskQueue = `dipole-agent-read-scope-expired-${Date.now()}`;
+    const drill = readScopeDrill({ suffix: "EXPIRED", confirmationTtlMs: 2_000 });
+    const worker = await createWorker(env, taskQueue, drill.activities);
+    const workerRun = worker.run();
+    const started = await drill.start(new TemporalTaskClient(env.client.workflow, taskQueue));
+
+    await expect(env.client.workflow.getHandle(started.workflowId).result()).resolves.toMatchObject({
+      status: "cancelled", cancellation: { reason: "input_expired" }
+    });
+    expect(drill.conversationReads).toEqual([]);
+    expect(drill.counters.stepExecutions).toBe(1);
+
+    const receipt = createTemporalFaultReceipt(drill.observation("read_scope_confirmation_expired", {
+      inputSignalsRejected: 0, inputResumptions: 0, cancellation: { reason: "input_expired" }
+    }));
+    expect(receipt).toMatchObject({ outcome: "eligible", failures: [] });
+    await archiveTemporalFaultReceipt(receipt);
+    worker.shutdown();
+    await workerRun;
+  }, 120_000);
 });
+
+// Drives the production read Activity behind the Workflow so a drill observes the
+// real pause, the real resume binding, and every conversation the Run actually read.
+function readScopeDrill(options: { readonly suffix: string; readonly confirmationTtlMs?: number }) {
+  const event: AgentEvent = {
+    eventId: `E-READ-SCOPE-${options.suffix}`, eventType: "message.direct.created", aggregateId: `M-READ-SCOPE-${options.suffix}`,
+    occurredAt: "2026-09-01T08:00:00.000Z", payload: { content: "untrusted evidence" }
+  };
+  const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+  const candidates = ["group:G1", "direct:U100:U200", "group:G3"] as const;
+  const counters = { admissions: 0, stepExecutions: 0, terminalWrites: 0 };
+  const conversationReads: string[] = [];
+  const transitions: Array<{ revision: number; status: string }> = [];
+  const router = {
+    async generate(request: { stage?: string }) {
+      return request.stage === "synthesis"
+        ? { output: { summary: "confirmed digest" }, route: "gateway/primary", attempts: 1, usage: { inputTokens: 30, outputTokens: 10 } }
+        : {
+          output: { summary: "read newest conversation", steps: [
+            { capabilityId: "conversation.list", input: { limit: 10 } },
+            { capabilityId: "conversation.read", input: { conversationId: discoveredConversationMarker, limit: 10 } }
+          ] },
+          route: "gateway/primary", attempts: 1, usage: { inputTokens: 20, outputTokens: 8 }
+        };
+    }
+  };
+  const registry = new CapabilityRegistry();
+  registry.register(new ConversationListCapability({
+    listConversations: async () => candidates.map((conversationKey, index) => ({
+      conversationKey, targetId: `T${index}`, targetType: 2, lastMessageId: `M${index}`, lastMessageSeq: "1",
+      lastMessagePreview: "hello", lastMessageAtUnixMs: "1787817600000", readSeq: "0", unreadCount: 1
+    }))
+  }));
+  registry.register(new ConversationReadCapability({
+    readConversation: async (_context: unknown, conversationId: string) => {
+      conversationReads.push(conversationId);
+      return { found: true, reason: "", targetId: "T1", targetType: 2, messages: [] };
+    }
+  }));
+  const completedSteps = new Set<number>();
+  const trajectory = {
+    append: async () => undefined,
+    claimStep: async (_taskId: string, stepNo: number) => completedSteps.has(stepNo)
+      ? { outcome: "completed" as const }
+      : { outcome: "claimed" as const, token: `TOKEN-${stepNo}` },
+    recordAuthorization: async () => undefined,
+    completeStep: async (_taskId: string, stepNo: number) => { completedSteps.add(stepNo); },
+    failStep: async () => undefined
+  };
+  const read = createTemporalReadStepActivities({
+    planner: new ModelShadowPlanner(router as unknown as ModelRouter, ["conversation.list", "conversation.read"]),
+    audit: trajectory, registry, trajectory, stepLeaseMs: 60_000,
+    ...(options.confirmationTtlMs === undefined ? {} : { readScopeConfirmationTtlMs: options.confirmationTtlMs })
+  });
+  const activities: AgentTaskWorkerActivities = {
+    async admitAgentTask(input) {
+      counters.admissions += 1;
+      return { taskId: input.taskId, runId: agentRunId(input.taskId), runStatus: "running" };
+    },
+    async finishAgentTask() { counters.terminalWrites += 1; },
+    async projectAgentTaskState(input) { transitions.push({ revision: input.workflowRevision, status: input.workflowStatus }); },
+    async requestAgentTaskApproval() {},
+    async resolveAgentTaskApproval() {},
+    async executeAgentTaskStep(input) {
+      counters.stepExecutions += 1;
+      return read.executeAgentTaskStep(input);
+    }
+  };
+  return {
+    taskId, candidates, counters, conversationReads, transitions, activities,
+    start: async (tasks: TemporalTaskClient) => tasks.start({
+      taskId, goal: "observe", shadowEvent: event,
+      admission: {
+        tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+        triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId
+      }
+    }),
+    observation: (
+      drillId: string,
+      input: {
+        inputSignalsRejected: number; inputResumptions: number;
+        confirmedConversationId?: string; cancellation?: { reason: string };
+      }
+    ) => ({
+      schemaVersion: "dipole.agent.temporal-fault-observation.v1", drillId, observedAt: new Date().toISOString(),
+      workflow: { taskId, runId: agentRunId(taskId) },
+      transitions: transitions.map(({ revision, status }) => ({ revision, status })),
+      faults: { workerReplacements: 0, terminalWriteRetries: 0 },
+      effects: {
+        admissions: counters.admissions, stepExecutions: counters.stepExecutions,
+        approvalRequests: 0, approvalResolutions: 0,
+        terminalWriteAttempts: counters.terminalWrites, terminalPersistedWrites: counters.terminalWrites,
+        inputSignalsRejected: input.inputSignalsRejected, inputResumptions: input.inputResumptions,
+        conversationReads: conversationReads.length,
+        unconfirmedConversationReads: conversationReads.filter((id) => id !== input.confirmedConversationId).length
+      },
+      ...(input.cancellation === undefined ? {} : { cancellation: input.cancellation })
+    })
+  };
+}
 
 async function createWorker(
   env: TestWorkflowEnvironment,
