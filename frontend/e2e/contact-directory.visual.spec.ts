@@ -18,7 +18,7 @@ test.beforeEach(async ({ page, browserName }) => {
 test('keeps the Contact directory aligned with the V3 desktop baseline', async ({ page }) => {
   await page.goto('/app/contacts')
   await expect(page.getByRole('heading', { name: '联系人', exact: true })).toBeVisible()
-  await expect(page.locator('.contact-list')).toHaveScreenshot('contacts-desktop-chromium.png', { animations: 'disabled' })
+  await expect(page.locator('.contact-directory')).toHaveScreenshot('contacts-desktop-chromium.png', { animations: 'disabled' })
 })
 
 test('keeps the Contact directory aligned with the V3 mobile baseline', async ({ page }) => {

@@ -24,7 +24,7 @@ test.beforeEach(async ({ page, browserName }) => {
 test('keeps the Group directory aligned with the V3 desktop baseline', async ({ page }) => {
   await page.goto('/app/groups')
   await expect(page.getByRole('heading', { name: '协作群组', exact: true })).toBeVisible()
-  await expect(page.locator('.group-list')).toHaveScreenshot('groups-desktop-chromium.png', { animations: 'disabled' })
+  await expect(page.locator('.group-directory')).toHaveScreenshot('groups-desktop-chromium.png', { animations: 'disabled' })
 })
 
 test('keeps the Group directory aligned with the V3 mobile baseline', async ({ page }) => {
