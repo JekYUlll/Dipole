@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：clean `f72e47cf` 已在 Remote GPU 独立 Compose 中完成修复后 read-shadow 回归。低敏 receipt 与数据库聚合确认完成 EventLedger、Shadow Run、模型调用和 `conversation_digest`，消息表为零，Gateway 仅绑定 `127.0.0.1:18117`。此证据覆盖单条受控 Kafka 事件，尚未形成固定人工评审多样本集，禁止据此填写任务成功率或放开 promotion。
+
 - 2026-09-02：Remote GPU 同版本 Shadow Smoke 发现 Planner 将事件裸 `target_uuid` 传入要求 canonical conversation key 的 Runtime evidence reader，Temporal Run 因本地输入校验失败，未产生 Model Call、Shadow Step 或 Artifact。代码已改为传递事件 `conversation_key`，direct/group 定向回归与 TypeScript 构建通过。修复前的 failed Run 不计入成功率；必须以 clean revision 重建候选，重跑真实 Kafka、Capability RPC、模型调用、Artifact 和人工评审多样本窗口后，才可更新任务成功率或 promotion 结论。
 
 - 2026-09-02：Remote GPU 用 legacy Docker builder 构建多服务候选时发现，`DIPOLE_BINARY` 即使未被依赖安装命令引用，只要在该层前声明也会切分 Docker cache。镜像已将所有服务特有 build args 与 provenance 标签下移到 `ca-certificates`/`tzdata` 层之后，并用层序测试固定。该修复降低后续候选的网络和 Docker I/O，不影响现有镜像的 provenance 复核、运行验收或回滚要求。
