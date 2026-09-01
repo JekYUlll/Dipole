@@ -34,6 +34,8 @@ const references = {
   'frontend/src/components/DeviceDirectory.vue': 'dipole-v3-im-mark-traced.svg',
   'frontend/src/components/FileDirectory.vue': 'dipole-v3-im-mark-traced.svg',
   'frontend/src/views/SettingsView.vue': 'dipole-v3-im-mark-traced.svg',
+  'frontend/src/views/LoginView.vue': 'dipole-v3-im-traced.svg',
+  'frontend/src/views/AgentDefinitionsView.vue': 'dipole-v3-agent-mark-traced.svg',
   'frontend/src/components/AgentMemoryManager.vue': 'dipole-v3-agent-mark-traced.svg',
   'frontend/src/components/AgentSubscriptionManager.vue': 'dipole-v3-agent-mark-traced.svg',
 }
