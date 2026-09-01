@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { evidenceId, type ShadowEvalObservation } from "./shadow-eval-adapter.js";
+import { evidenceId, isTrustedNoDiscoverySkip, type ShadowEvalObservation } from "./shadow-eval-adapter.js";
 
 export interface ShadowEvalReviewPack {
   readonly schemaVersion: "dipole.agent.shadow-eval-review-pack.v1";
@@ -29,7 +29,7 @@ export interface ShadowEvalReviewPack {
         readonly resourceFingerprint: string;
         readonly action: string;
         readonly decision: "allowed";
-      } | { readonly status: "missing" };
+      } | { readonly status: "not_required"; readonly reason: "no_discovered_conversation" } | { readonly status: "missing" };
     }[];
     readonly retrievedEvidenceIds: readonly string[];
     readonly metering: {
@@ -58,7 +58,7 @@ export function buildShadowEvalReviewPack(candidateVersion: string, observation:
   ].sort();
   const trajectory = [
     ...(observation.contextManifest.selected.length > 0 ? ["context.compile"] : []),
-    ...observation.steps.map(step => `capability:${step.capabilityId}:${step.status}`),
+    ...observation.steps.map(step => `capability:${step.capabilityId}:${isTrustedNoDiscoverySkip(step) ? "skipped" : step.status}`),
     ...observation.artifacts.map(artifact => `artifact:${artifact.artifactType}:v${artifact.version}`)
   ];
   const retrievedEvidenceIds = [...new Set(observation.contextManifest.selected
@@ -87,7 +87,9 @@ export function buildShadowEvalReviewPack(candidateVersion: string, observation:
         stepNo: step.stepNo,
         capabilityId: step.capabilityId,
         status: step.status,
-        authorization: step.authorization === null ? { status: "missing" } : {
+        authorization: step.authorization === null && isTrustedNoDiscoverySkip(step)
+          ? { status: "not_required", reason: "no_discovered_conversation" }
+          : step.authorization === null ? { status: "missing" } : {
           status: "complete",
           resourceType: step.authorization.resourceType,
           resourceFingerprint: fingerprint("resource", step.authorization.resourceId),
@@ -133,7 +135,7 @@ function evaluatorEligibility(observation: ShadowEvalObservation): ShadowEvalRev
   for (const step of observation.steps) {
     if (!isTerminalStepStatus(step.status)) blockingReasons.push(`step_${step.stepNo}_non_terminal`);
     if (step.latencyMs === null) blockingReasons.push(`step_${step.stepNo}_missing_latency`);
-    if (step.authorization === null) blockingReasons.push(`step_${step.stepNo}_missing_authorization`);
+    if (step.authorization === null && !isTrustedNoDiscoverySkip(step)) blockingReasons.push(`step_${step.stepNo}_missing_authorization`);
     if (step.attemptCount !== 1) blockingReasons.push(`step_${step.stepNo}_attempt_evidence_incomplete`);
   }
   for (const [index, call] of observation.modelCalls.entries()) {

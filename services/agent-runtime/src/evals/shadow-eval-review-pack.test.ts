@@ -44,6 +44,21 @@ describe("Shadow evaluation review pack", () => {
     expect(pack.observed.permissions[0]?.authorization).toEqual({ status: "missing" });
   });
 
+  it("keeps a trusted empty-discovery read visible without treating it as an unrecorded authorization", () => {
+    const pack = buildShadowEvalReviewPack("agent-runtime@candidate-1", {
+      ...observation(),
+      steps: [
+        observation().steps[0]!,
+        { stepNo: 2, capabilityId: "conversation.read", status: "completed", attemptCount: 1, latencyMs: 0,
+          authorization: null, skipReason: "no_discovered_conversation" }
+      ]
+    });
+
+    expect(pack.evaluatorEligibility).toEqual({ status: "eligible", blockingReasons: [] });
+    expect(pack.observed.trajectory).toContain("capability:conversation.read:skipped");
+    expect(pack.observed.permissions[1]?.authorization).toEqual({ status: "not_required", reason: "no_discovered_conversation" });
+  });
+
   it("loads one persisted observation through the read-only CLI", async () => {
     const output: string[] = [];
     const errors: string[] = [];
