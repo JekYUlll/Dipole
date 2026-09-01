@@ -120,7 +120,7 @@ if [[ "${summary_status}" != "0" && "${summary_status}" != "2" ]]; then
   echo "Shadow Eval summary failed closed" >&2
   exit "${summary_status}"
 fi
-jq -e '.schemaVersion == "dipole.agent.shadow-eval-summary-report.v1"' "${output_dir}/summary.json" >/dev/null
+jq -e '.schemaVersion == "dipole.agent.shadow-eval-summary-report.v2" and (has("traceIds") | not)' "${output_dir}/summary.json" >/dev/null
 
 printf 'Agent Shadow Eval window collected: reports=%s output=%s status=%s\n' "${index}" "${output_dir}" "${summary_status}"
 exit "${summary_status}"

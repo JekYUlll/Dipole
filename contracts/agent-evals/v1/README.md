@@ -69,7 +69,7 @@ Adapter 从真实 `Task/Run/Plan/Step/Artifact/ModelCall/ToolCall` 生成 observ
 
 ## Shadow 样本窗口汇总
 
-`shadow-report.schema.json` 是 `eval:shadow` 的低敏输出 envelope，绑定持久化 Run 的 `traceId` 和标准五类报告。`shadow-summary-input.schema.json` 将多个该 envelope 汇总为任务级成功率、五类通过率和失败原因计数。输入只接受同一候选版本、唯一 Suite SHA-256、唯一 Trace ID、每类恰好一个 `*.shadow.<TaskRunDigest>` case 的终态报告；因此合成离线 Suite、重复证据、Trace 复用和混版本样本会 fail closed。输出保留 suite 摘要、Trace ID、聚合数值和固定限制语句，不回显 Task、用户、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。
+`shadow-report.schema.json` 是 `eval:shadow` 的低敏输出 envelope，受限评测环境使用持久化 Run 的 `traceId` 和标准五类报告建立证据关联。`shadow-summary-input.schema.json` 将多个该 envelope 汇总为任务级成功率、五类通过率和失败原因计数。输入只接受同一候选版本、唯一 Suite SHA-256、唯一 Trace ID、每类恰好一个 `*.shadow.<TaskRunDigest>` case 的终态报告；因此合成离线 Suite、重复证据、Trace 复用和混版本样本会 fail closed。公开汇总从 `shadow-summary-report.v2` 起只保留 suite 摘要、聚合数值和固定限制语句；不回显 Task、Run、Trace、用户、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。
 
 ```bash
 cd services/agent-runtime

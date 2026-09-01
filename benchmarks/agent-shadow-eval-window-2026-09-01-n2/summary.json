@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "dipole.agent.shadow-eval-summary-report.v1",
+  "schemaVersion": "dipole.agent.shadow-eval-summary-report.v2",
   "source": {
     "kind": "reviewed_shadow",
     "environment": "isolated",
@@ -45,10 +45,6 @@
   "evaluationSuiteSha256": [
     "30d1e34d8dbfd7454f3364e1e7422792bd2cb3093e5814c0e0f042222ca5293f",
     "37916c28c50c8e6215655b83aaa100c1714044f11ea84fd254c58aeb061d7db4"
-  ],
-  "traceIds": [
-    "TRACE-SMOKE-AGENT-EVENT-70f0539e621469a6",
-    "TRACE-WINDOW-AGENT-EVENT-e33ee8ce79e2feb9"
   ],
   "limitations": [
     "Only reviewed terminal Shadow Task/Run reports are included.",
