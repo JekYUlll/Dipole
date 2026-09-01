@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Agent Temporal 集成门禁新增 Runtime HTTP 审批链路：真实 Worker 与 Fastify 控制面验证 owner 读取待审批状态、跨 owner 拒绝、批准请求 `202`、Temporal Signal 以及终态 Activity 绑定。Remote GPU 在 `9217d826` 通过 `8/8`；该验证使用内存 Temporal Test Server，不代替浏览器审批回执或共享 Core 持久化演练。
+
 - 2026-09-01：开发工作流收敛为少分支、少提交的阶段性交付：Agent 主线继续在单一 Epic worktree 中推进，普通测试、文档与修复随可体验闭环合并。Remote GPU 作为授权开发靶场可直接复用本轨道 Dipole project，登录会话和 GPU 任务仅记录资源快照；缺失运行依赖可使用受控 `sudo` 安装。宿主网络、Docker daemon 和其他项目资源仍不在部署操作范围内。
 
 - 2026-09-01：Remote GPU 在 `6beab05d` 完成隔离 Temporal Worker replacement 演练并归档 [两份故障 receipt](benchmarks/agent-temporal-fault-2026-09-01/)。approval/input 恢复均在替换 Worker 上收敛为一次完成；approval 路径的注入终态重试仅持久化一次，input 路径的无效与过期 Signal 均未恢复任务。运行使用内存 Temporal Test Server，未启动 Compose，也未接入 Core、Kafka、MySQL、共享 tenant 或 active authority。

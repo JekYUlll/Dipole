@@ -2,6 +2,8 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：Agent Task 控制面已增加 Runtime HTTP 到 Temporal 的审批集成门禁。Remote GPU `9217d826` 在内存 Temporal Test Server 通过 owner-bound pending read、foreign denial、approved Signal 与 completed terminal Activity 的 `8/8` 验证。该测试未接入浏览器、Gateway、真实 Core approval persistence 或共享环境，因此真实 HITL UI receipt 继续由 `AD-009` 跟踪。
+
 - 2026-09-01：开发阶段的 Remote GPU 资源策略已收敛为直接复用本轨道 Dipole project，登录会话和 GPU 任务仅作为资源快照；运行依赖允许受控 `sudo` 安装。该调整不放宽宿主网络、Docker daemon、其他项目资源或生产切流的操作边界。
 
 - 2026-09-01：复用长驻 Agent Interactive Shadow 候选的 `.env` 单独重建 Core 时，遗漏宿主 `DIPOLE_INTERNAL_CERT_DIR` 会将缺失的 `core.pem` bind source 创建为目录，Core 因 mTLS 证书加载失败重启。已先恢复原镜像并确认健康，再以显式证书目录更新 `6d274a54` Core；Gateway、Timeline 与所有项目服务恢复健康。操作手册已固定该变量，后续将由候选部署入口统一注入，避免依赖手工环境继承。
