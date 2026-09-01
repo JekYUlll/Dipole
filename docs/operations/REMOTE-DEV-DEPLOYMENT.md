@@ -86,9 +86,9 @@ IMAGE_TAG="dev-$(git rev-parse --short HEAD)" scripts/docker-build.sh build
 完整微服务 smoke 使用独立 project，先验证配置，再启动并等待 readiness：
 
 ```bash
-docker compose -p "${DIPOLE_PROJECT}" \
+docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
   -f deploy/compose/docker-compose.microservices.yml config --quiet
-docker compose -p "${DIPOLE_PROJECT}" \
+docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
   -f deploy/compose/docker-compose.microservices.yml up -d --build --wait
 scripts/smoke-microservices.sh
 ```
@@ -105,7 +105,7 @@ export DIPOLE_PROJECT=dipole-agent-<your-id>
 export DIPOLE_AGENT_IMAGE="dipole-agent:${IMAGE_TAG}"
 export DIPOLE_INTERNAL_CERT_DIR=/home/admin1/workspaces/Dipole/certs/internal
 
-docker compose -p "${DIPOLE_PROJECT}" \
+docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
   -f deploy/compose/docker-compose.microservices.yml \
   -f deploy/microservices/remote-gpu-mysql-aio-compat.yml \
   -f deploy/microservices/agent-ai-sdk-shadow.yml \

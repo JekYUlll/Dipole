@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Interactive Agent Web profile 增加 `agent-interactive-shadow` 构建模式，仅开启任务创建、Timeline 与 Artifact 页面。Remote GPU 同 revision 候选已在独立 `18100` 端口验证前端生产构建、认证、Task 创建、Temporal 收敛与 `5` 条 Timeline 事件；公开入口为 `http://223.111.157.214:18100/app/`。该候选仍是 `shadow + read_shadow`，不开放消息写入、MCP、Memory、检索或 active authority。
+
 - 2026-09-01：新增 DeepSeek V4 Flash 的隔离 Interactive Agent Shadow overlay，固定 JSON-text 输出与关闭 reasoning，并在 Compose gate 中校验该配置仍只开放 `shadow + read_shadow` 的任务控制面。Remote GPU 同 revision 候选已验证认证、Task admission、Temporal、模型、Timeline 与 `conversation_digest` Artifact 的完整只读链路；active authority、MCP、Memory、检索和写 Capability 保持关闭。
 
 - 2026-09-01：Agent Artifact 的认证前端现可读取严格限定的 `conversation_digest` Markdown 正文。页面仅在 metadata 为该类型和 `text/markdown` 时请求受限正文接口，正文响应必须与 metadata 的内容寻址 ID 和媒体类型一致；其他 Artifact 保持 metadata-only。正文以纯文本阅读区显示，下载、对象键、Metadata JSON 与写操作继续关闭。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建及 Chromium 功能/视觉回归。
