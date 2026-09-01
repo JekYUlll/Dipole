@@ -6,7 +6,7 @@
 
 `docker compose config` 通过证明部署输入完整。它不提供 Kafka、Temporal、Capability RPC、模型 Provider、评测或权限链路的在线证据。
 
-active Runtime 当前只执行 `conversation.list/read`。Artifact、消息发送、外部 MCP 和其他写 Capability 继续保持关闭。
+active Runtime 默认只执行 `conversation.list/read`。`DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED=true` 是独立的候选开关：它只允许 owner 在直属 Agent 会话发出显式 `/send <内容>`，Task 先进入 `waiting_approval`，approved Signal 后通过既有 grant、一次性 consume、Tool Invocation 与 Core 消息命令链路执行一条 `system_message`。当前 active overlay 不设置该开关，因此 Artifact、消息发送、外部 MCP 和其他写 Capability 继续保持关闭。
 
 ## 2. 前置证据
 
@@ -49,6 +49,8 @@ overlay 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER
 同一 overlay 固定 `direct_target`、Memory、retrieval、retrieval-to-Context、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
+
+交互消息候选在共享环境启用前，还需要同一 revision 的 Core/Temporal/Compose 真实 receipt：owner approve、deny、重复 consume、Activity 重试及回滚均必须记录消息副作用计数。隔离 Temporal 测试只证明 durable 编排与端口组合，不能替代该 receipt。
 
 ## 4. Reviewed Memory 提交扩展
 

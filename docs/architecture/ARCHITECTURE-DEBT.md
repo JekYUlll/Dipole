@@ -2,6 +2,8 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：Interactive Agent 已具备默认关闭的显式直属会话消息写入编排。活动只识别 `/send <内容>`，由可信 ExecutionContext 推导 `direct:<owner>:<agent>`，并将 canonical 参数、scope、approval ID、Task/Run 写入 durable checkpoint；批准恢复后经既有 MCP approval gate、一次性消费、Tool Invocation 与 Core 消息命令执行。Remote GPU 隔离验证覆盖 activity、组合器和 Temporal `waiting_approval -> completed`，未连接共享 Core、Temporal、Kafka、MySQL 或 Compose。真实批准/拒绝/重复消费/故障回滚 receipt、active Compose overlay 和浏览器体验继续由 `AD-009` 跟踪。
+
 - 2026-09-01：品牌资产已收口为脚本生成的单一来源（`scripts/generate-brand-assets.mjs` + `scripts/generate-brand-wordmarks.mjs`），色值按 V3 品牌板实测校正，`npm run test:brand` 拦截手改 SVG 造成的漂移；favicon 与 Login 标识镜像进前端自身根目录，构建不再跨出 `frontend/` 引用 `docs/`。遗留的 4 个青绿 SVG 与 `#07c160` 占位 favicon 已退役。**仍未收口**：`frontend/src/styles/design-tokens.css` 与 `design/dipole-ui.pen` 中并存三代色板（微信绿 `#07C160`、青绿 `accent #00A86B`、V3），且 `brand-v3-ui-brief.md` 记录的是早期估读十六进制值；ChatView 等页面级 UI 仍使用旧青绿语言。页面级 V3 迁移与 token 统一在前端设计轨道中单独验收，不改变运行时或服务 authority。
 
 - 2026-09-01：多会话读取范围已改为 Task owner 确认。发现步骤产出两个及以上会话时，Run 在 claim 读取 Step 前暂停并返回 `wait_input`，因此暂停点不占用 Step lease，恢复后仍能按同一 Step 编号 claim；select Form 最多提供 8 个候选并显式披露发现总数。恢复期不重新规划：已验证的 `conversation.list` 到 `conversation.read` 结构由代码重建，避免二次模型规划改变 Step 编号与 trajectory 重放语义，代价是 plan 摘要经 Workflow history 携带，从 MySQL 不可变 plan 读回仍待独立切片。多于一对 discovery 的 plan 在需要确认时 fail closed。用户选择按不可信输入处理，必须命中 checkpoint 候选集合与确定性 request ID，Core 保持最终读取授权。真实 approve/deny/expire receipt、共享环境窗口与该路径端到端评测仍由 AD-009 跟踪。

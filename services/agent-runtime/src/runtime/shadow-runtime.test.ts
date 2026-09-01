@@ -18,7 +18,7 @@ describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
-      modelProvider: { kind: "disabled" }, contextCompilerVersion: "v1", memoryEnabled: false, retrievalEnabled: false, retrievalContextEnabled: false,
+      modelProvider: { kind: "disabled" }, contextCompilerVersion: "v1", memoryEnabled: false, retrievalEnabled: false, retrievalContextEnabled: false, interactiveMessageWritesEnabled: false,
       triggerMode: "direct_target", capabilityRpc: { enabled: false }
     });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);

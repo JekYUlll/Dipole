@@ -210,6 +210,57 @@ describe("Temporal read Step Activities", () => {
     expect(harness.readConversation).not.toHaveBeenCalled();
   });
 
+  it("waits for owner approval before executing an explicit active direct-message command", async () => {
+    const event: AgentEvent = {
+      eventId: "E-ACTIVE-WRITE", eventType: "agent.interactive.requested", aggregateId: "interactive:WRITE-1",
+      occurredAt: "2026-09-01T06:00:00.000Z", payload: { content: "/send Release approval has been recorded." }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["message.write"],
+      resourceScopes: [{ resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }],
+      approvedCapabilities: ["message.system.send"] as Array<"message.system.send">, eventId: event.eventId
+    };
+    const execute = vi.fn(async () => JSON.stringify({ resourceId: "MSG-1", commandId: "CMD-1" }));
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: vi.fn() }, audit: { append: vi.fn(async () => undefined) }, registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(), completeStep: vi.fn(), failStep: vi.fn() },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) },
+      interactiveMessage: { execute }, stepLeaseMs: 60_000
+    });
+    const input = {
+      taskId, runId, goal: "send a status update", shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    };
+
+    const requested = await activities.executeAgentTaskStep({ ...input, step: 0 });
+    expect(requested).toMatchObject({
+      kind: "wait_approval", summary: "Send one system message to your direct Agent conversation",
+      approval: {
+        capabilityId: "message.system.send",
+        resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }
+      }
+    });
+    if (requested.kind !== "wait_approval") throw new Error("expected write approval directive");
+    expect(execute).not.toHaveBeenCalled();
+
+    await expect(activities.executeAgentTaskStep({
+      ...input, step: 1, checkpoint: requested.checkpoint,
+      resume: { kind: "approval", requestId: requested.requestId, approvalId: requested.approval.approvalId, decision: "approved" }
+    })).resolves.toEqual({
+      kind: "complete",
+      output: {
+        summary: "Sent one approved system message to your direct Agent conversation",
+        action: JSON.stringify({ resourceId: "MSG-1", commandId: "CMD-1" })
+      }
+    });
+    expect(execute).toHaveBeenCalledWith({
+      conversationId: "direct:U100:UAI", content: "Release approval has been recorded."
+    }, context);
+  });
+
   it("waits for a crashed Step lease and accepts its completed replay", async () => {
     const event: AgentEvent = {
       eventId: "E-BUSY", eventType: "message.direct.created", aggregateId: "M-BUSY",

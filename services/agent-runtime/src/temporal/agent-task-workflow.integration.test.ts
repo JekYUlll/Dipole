@@ -450,6 +450,86 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     }
   }, 120_000);
 
+  it("persists an interactive message approval before its one-time durable execution", async () => {
+    const taskQueue = `dipole-agent-interactive-message-${Date.now()}`;
+    const event: AgentEvent = {
+      eventId: "E-INTERACTIVE-MESSAGE", eventType: "agent.interactive.requested", aggregateId: "interactive:MESSAGE-1",
+      occurredAt: new Date().toISOString(), payload: { content: "/send Deployment status recorded." }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const approvals: unknown[] = [];
+    const resolutions: unknown[] = [];
+    const executions: unknown[] = [];
+    const read = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "unused", steps: [] }) },
+      audit: { append: async () => undefined },
+      registry: new CapabilityRegistry(),
+      trajectory: { append: async () => undefined, claimStep: async () => ({ outcome: "claimed" as const, token: "unused" }), completeStep: async () => undefined, failStep: async () => undefined },
+      runtimeMode: "active",
+      contextResolver: {
+        resolveMcpContext: async () => ({
+          tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active",
+          permissions: ["message.write"],
+          resourceScopes: [{ resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }],
+          approvedCapabilities: ["message.system.send"], eventId: event.eventId
+        })
+      },
+      interactiveMessage: {
+        execute: async (input) => {
+          executions.push(input);
+          return JSON.stringify({ resourceId: "MSG-INTERACTIVE-1", commandId: "CMD-INTERACTIVE-1" });
+        }
+      },
+      stepLeaseMs: 60_000
+    });
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) { return { taskId: input.taskId, runId, runStatus: "running" }; },
+      async finishAgentTask() {},
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval(input) { approvals.push(input); },
+      async resolveAgentTaskApproval(input) { resolutions.push(input); },
+      executeAgentTaskStep: input => read.executeAgentTaskStep(input)
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+    const workerRun = worker.run();
+    const tasks = new TemporalTaskClient(env.client.workflow, taskQueue);
+    const controls = new TemporalTaskControlClient(env.client.workflow);
+
+    try {
+      const started = await tasks.start({
+        taskId, goal: "send status", shadowEvent: event,
+        admission: {
+          tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+          triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId
+        }
+      });
+      const handle = env.client.workflow.getHandle(started.workflowId);
+      await waitForStatus(env, handle, "waiting_approval");
+      expect(executions).toEqual([]);
+      expect(approvals).toEqual([expect.objectContaining({
+        taskId, runId, approval: expect.objectContaining({
+          capabilityId: "message.system.send",
+          resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }
+        })
+      })]);
+      const pending = await controls.query(taskId) as { pending: { requestId: string; approvalId: string } };
+      await controls.resolveApproval(taskId, {
+        requestId: pending.pending.requestId, approvalId: pending.pending.approvalId, decision: "approved", actorUserId: "U100"
+      });
+
+      await expect(handle.result()).resolves.toMatchObject({
+        status: "completed",
+        output: { summary: "Sent one approved system message to your direct Agent conversation" }
+      });
+      expect(resolutions).toEqual([expect.objectContaining({ taskId, runId, decision: "approved", actorUserId: "U100" })]);
+      expect(executions).toEqual([{ conversationId: "direct:U100:UAI", content: "Deployment status recorded." }]);
+    } finally {
+      worker.shutdown();
+      await workerRun;
+    }
+  }, 120_000);
+
   it("cancels an unanswered durable input after its recorded deadline", async () => {
     const taskQueue = `dipole-agent-task-input-timeout-${Date.now()}`;
     const finishes: AgentTaskFinishInput[] = [];

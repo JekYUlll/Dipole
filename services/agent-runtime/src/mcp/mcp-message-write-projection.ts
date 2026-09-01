@@ -1,10 +1,15 @@
 import { z } from "zod";
 
-import type { AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
+import type { AgentCapabilityRPCClient, AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
+import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import type { DipoleMcpWriteExecutor, DipoleMcpWriteToolProjection } from "./dipole-mcp-server.js";
-import type { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
-import type { McpWriteApprovalGate } from "./mcp-write-approval-gate.js";
+import { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
+import {
+  createMcpWriteApprovalConsumePort,
+  createMcpWriteApprovalGrantResolver,
+  McpWriteApprovalGate
+} from "./mcp-write-approval-gate.js";
 
 export interface McpMessageCommandPort {
   executeMessageCommand(input: {
@@ -55,6 +60,43 @@ export class McpMessageWriteProjection implements DipoleMcpWriteExecutor {
       result => messageActionReference(result, tool.commandKind)
     );
   }
+}
+
+const interactiveMessageTool: DipoleMcpWriteToolProjection = {
+  name: "dipole_message_send",
+  capabilityId: "message.system.send",
+  title: "Send message",
+  description: "Send one approved system message to the task owner's direct Agent conversation",
+  inputSchema: messageInputSchema,
+  commandKind: "system_message"
+};
+
+export function createInteractiveMessageExecutor(
+  client: Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">
+): { execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext): Promise<string> } {
+  const registry = new CapabilityRegistry();
+  registry.register({
+    descriptor: {
+      id: "message.system.send",
+      risk: "write",
+      requiredPermission: "message.write",
+      approvalRequired: true
+    },
+    inputSchema: messageInputSchema,
+    resolveResource: input => ({ resourceType: "conversation", resourceId: input.conversationId, action: "write" }),
+    execute: async () => { throw new Error("Interactive Agent message writes require an audited Tool Invocation"); }
+  });
+  const approvals = new McpWriteApprovalGate(
+    registry,
+    createMcpWriteApprovalConsumePort(client),
+    createMcpWriteApprovalGrantResolver(client)
+  );
+  const projection = new McpMessageWriteProjection(
+    approvals,
+    new McpToolInvocationRunner({ begin: input => client.begin(input), finish: input => client.finishToolInvocation(input) }),
+    { executeMessageCommand: input => client.executeMessageCommand(input) }
+  );
+  return { execute: (input, context) => projection.execute(interactiveMessageTool, input, context) };
 }
 
 function directConversationKey(first: string, second: string): string {
