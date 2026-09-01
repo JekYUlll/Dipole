@@ -15,14 +15,14 @@ test('keeps the settings center aligned with the V3 desktop baseline', async ({ 
   await page.goto('/app/settings')
   await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible()
   await expect(page.locator('textarea')).toHaveValue('Build with care')
-  await expect(page.locator('.settings-page')).toHaveScreenshot('settings-desktop-chromium.png', { animations: 'disabled' })
+  await expect(page.locator('.settings-shell')).toHaveScreenshot('settings-desktop-chromium.png', { animations: 'disabled' })
 })
 
 test('keeps the settings center aligned with the V3 mobile baseline', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/settings')
   await expect(page.getByRole('heading', { name: '设置', exact: true })).toBeVisible()
-  await expect(page.locator('.settings-page')).toHaveScreenshot('settings-mobile-chromium.png', { animations: 'disabled' })
+  await expect(page.locator('.settings-shell')).toHaveScreenshot('settings-mobile-chromium.png', { animations: 'disabled' })
 })
 
 async function ok(route: Route, data: unknown) {
