@@ -1766,7 +1766,7 @@ func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveAp
 		return nil, status.Error(codes.InvalidArgument, "Agent Approval resolution is invalid")
 	}
 	approval, err := s.approvals.Resolve(ctx, application.AgentApprovalResolutionV1{
-		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent",
 		ApprovalUUID: request.GetApprovalId(), ActorUUID: request.GetActorUserId(), Decision: application.AgentApprovalDecisionV1(request.GetDecision()),
 	})
 	if err != nil {

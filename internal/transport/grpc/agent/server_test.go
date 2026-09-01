@@ -1225,7 +1225,7 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	resolved, err := server.ResolveApproval(context.Background(), &agentv1.ResolveApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1", ActorUserId: "U100", Decision: "approved",
 	})
-	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
+	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.Mode != "" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
 		t.Fatalf("resolve Approval response=%+v resolution=%+v err=%v", resolved, approvals.resolved, err)
 	}
 	if len(timeline.events) != 2 || timeline.events[1].Kind != application.AgentTaskTimelineEventApproval || timeline.events[1].Status != "approved" {
