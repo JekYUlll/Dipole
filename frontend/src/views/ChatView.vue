@@ -1999,7 +1999,7 @@ onBeforeUnmount(() => {
   background: #fafafa;
 }
 
-.upc-remark-input:focus { border-color: #07c160; }
+.upc-remark-input:focus { border-color: var(--dp-accent); }
 
 .upc-remark-btn {
   flex-shrink: 0;
@@ -2034,8 +2034,8 @@ onBeforeUnmount(() => {
 }
 
 .upc-btn.primary {
-  background: #07c160;
-  border-color: #07c160;
+  background: var(--dp-accent);
+  border-color: var(--dp-accent);
   color: #fff;
   font-weight: 500;
 }
@@ -2083,7 +2083,7 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 
-.upc-signature-input:focus { border-color: #07c160; }
+.upc-signature-input:focus { border-color: var(--dp-accent); }
 
 .upc-uuid-copyable {
   cursor: pointer;
@@ -2101,7 +2101,7 @@ onBeforeUnmount(() => {
 
 .upc-copy-hint {
   font-size: 10px;
-  color: #07c160;
+  color: var(--dp-accent);
   opacity: 0;
   transition: opacity 0.15s;
   flex-shrink: 0;
@@ -2354,7 +2354,7 @@ onBeforeUnmount(() => {
   padding: 4px 8px;
   border-radius: 999px;
   background: #e8f7ee;
-  color: #07c160;
+  color: var(--dp-accent);
 }
 
 .status-chip.danger {
@@ -2767,7 +2767,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 5px;
   padding: 5px 16px;
-  background: #07c160;
+  background: var(--dp-accent);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -2925,7 +2925,7 @@ onBeforeUnmount(() => {
   padding: 5px 10px;
   border: none;
   border-radius: 6px;
-  background: #07c160;
+  background: var(--dp-accent);
   color: #fff;
   cursor: pointer;
   font-size: 12px;
@@ -3101,7 +3101,7 @@ onBeforeUnmount(() => {
 .panel-action-btn {
   width: 100%;
   padding: 6px 0;
-  background: #07c160;
+  background: var(--dp-accent);
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -3177,7 +3177,7 @@ onBeforeUnmount(() => {
 
 .modal-btn {
   padding: 7px 0;
-  background: #07c160;
+  background: var(--dp-accent);
   color: #fff;
   border: none;
   border-radius: 4px;
