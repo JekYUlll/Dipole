@@ -336,7 +336,9 @@ function interactiveMessageApproval(
   const resourceScope = { resourceType: "conversation", resourceId: conversationId, actions: ["write"] };
   const argumentsSha256 = digest([canonicalMcpJSON(requested)]);
   const scopeSha256 = digest(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions]);
-  const approvalId = `approval:${digest(["dipole.agent.interactive-message.v1", taskId, runId, event.eventId, argumentsSha256])}`;
+  // Agent approvals use a VARCHAR(64) primary key. Keep a deterministic prefix
+  // and reserve a bounded digest for their idempotent write key.
+  const approvalId = `approval:${digest(["dipole.agent.interactive-message.v1", taskId, runId, event.eventId, argumentsSha256]).slice(0, 48)}`;
   return {
     approvalId,
     capabilityId: "message.system.send",

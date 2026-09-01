@@ -269,6 +269,7 @@ describe("Temporal read Step Activities", () => {
       }
     });
     if (requested.kind !== "wait_approval") throw new Error("expected write approval directive");
+    expect(requested.approval.approvalId).toHaveLength(57);
     expect(execute).not.toHaveBeenCalled();
 
     await expect(activities.executeAgentTaskStep({
