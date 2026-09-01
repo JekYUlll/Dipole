@@ -68,6 +68,11 @@ function artifactRoute(event: AgentTaskTimelineEvent): { name: 'agent-artifact';
   if (event.kind !== 'artifact' || event.artifactId === undefined) return undefined
   return { name: 'agent-artifact', params: { artifactId: event.artifactId } }
 }
+
+function approvalRoute(event: AgentTaskTimelineEvent): { name: 'agent-task-approval'; params: { taskId: string } } | undefined {
+  if (event.kind !== 'approval' || event.status !== 'waiting_approval' || event.approvalId === undefined) return undefined
+  return { name: 'agent-task-approval', params: { taskId: props.taskId } }
+}
 </script>
 
 <template>
@@ -93,6 +98,7 @@ function artifactRoute(event: AgentTaskTimelineEvent): { name: 'agent-artifact';
           <p>{{ event.status }}</p>
           <small v-if="event.capabilityId">{{ event.capabilityId }}</small>
           <RouterLink v-if="artifactRoute(event)" class="artifact-link" :to="artifactRoute(event)!">查看 Artifact metadata</RouterLink>
+          <RouterLink v-if="approvalRoute(event)" class="approval-link" :to="approvalRoute(event)!">处理审批请求</RouterLink>
         </div>
       </li>
     </ol>
@@ -120,6 +126,6 @@ h2 { margin: 0; color: var(--dp-ink); font: 700 1.2rem/1.25 var(--dp-font-displa
 .timeline-meta time { color: var(--dp-ink-faint); font-size: .75rem; }
 .timeline-copy p { margin: .2rem 0 0; color: var(--dp-ink-soft); font-size: .85rem; }
 .timeline-copy small { display: block; margin-top: .3rem; color: var(--dp-accent-strong); font: .7rem/1.3 var(--dp-font-data); overflow-wrap: anywhere; }
-.artifact-link { display: inline-block; margin-top: .45rem; color: var(--dp-accent-strong); font: 600 .78rem/1.3 var(--dp-font-body); }
+.artifact-link, .approval-link { display: inline-block; margin-top: .45rem; color: var(--dp-accent-strong); font: 600 .78rem/1.3 var(--dp-font-body); }
 .load-more { display: block; margin: .75rem auto 0; }
 </style>
