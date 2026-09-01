@@ -24,7 +24,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 - **演示：** 显式启用服务端控制面与 `VITE_AGENT_TASK_CREATE_ENABLED`、`VITE_AGENT_TIMELINE_ENABLED` 后访问 `/agent/tasks/new`；提交同一 request ID 两次，验证只返回同一 Task 绑定。
 - **证据：** `internal/services/gateway/server/server.go`、`services/agent-runtime/src/control/interactive-task-start.ts`、`frontend/src/components/AgentTaskCreate.vue`、[Remote GPU receipt](../agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。
 - **追问：** “为什么页面不能传 principal 或 Agent ID？” 这些字段由认证上下文和 Runtime 配置确定；把它们暴露给浏览器会扩大跨账号或跨 Agent 访问面。
-- **限制：** Remote GPU 已完成隔离 Compose 上的两次只读 admission、终态和 Timeline 分页验证，但 Gateway 与 Core/Agent 的 provenance 存在候选版本偏差。它不能外推为同版本发布、任务成功率、active authority 或写 Capability；基础 Compose 默认仍关闭控制面。Pencil canonical 创建画板和视觉回归继续待补。
+- **限制：** Remote GPU 已完成隔离 Compose 上的两次只读 admission、终态和 Timeline 分页验证，但 Gateway 与 Core/Agent 的 provenance 存在候选版本偏差。当前正在补同修订 Core 重启 receipt；在该证据归档前，不能外推为同版本发布、任务成功率、active authority 或写 Capability。基础 Compose 默认仍关闭控制面。Pencil canonical 创建画板和视觉回归继续待补。
 - **复核条件：** 修改 admission ID 派生、Gateway 身份、Runtime control 配置、前端 feature flag 或 Timeline 路由时。
 | reviewed Memory receipt、mTLS、MySQL retry | 已验证（隔离 Remote GPU） | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh` |
 | External MCP Shadow 完整链路 | 已验证（隔离 Remote GPU） | `scripts/drill-agent-external-mcp-shadow.sh` |

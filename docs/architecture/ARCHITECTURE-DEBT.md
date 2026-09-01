@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：同修订 Core 重启 smoke 暴露 Shadow Planner 预取读取的参数语义漂移：它把事件 `target_uuid` 传给要求 canonical conversation key 的 Capability RPC，私聊在本地校验阶段失败并触发 Temporal 重试。修复后 Planner 仅传 `conversation_key`，Capability RPC 再从可信 principal 派生目标；group/direct 回归已通过。Remote GPU 的同修订重启 receipt 仍待以修复镜像复验，不能将当前故障窗口表述为恢复成功证据。
+
 - 2026-09-02：修复 Shadow Runtime 的 candidate-version admission 漂移。candidate version 只属于 active promotion binding；Shadow admission 现在固定传空值，避免 Core 在 Task 创建后拒绝无效的 Shadow Run。Remote GPU 已通过定向回归 `15/15`、typecheck、production build 和隔离 Compose 回归：认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，Run 为 `shadow / candidate_version=NULL / completed`，候选无可读会话，仅生成只读摘要 Artifact，消息写入数为零。该证据不扩大 shared 环境、active authority、写 Capability、MCP 或 Memory；这些继续由 `AD-009` 跟踪。
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
@@ -122,7 +124,7 @@
 
 - 2026-09-01：Context Ablation 的 baseline/retrieval/memory 已拆为默认不加载的独立 Compose overlay，固定互斥 Context 开关和独立 Temporal queue。隔离 fixture 预置、三次真实 Task/Run、binding 写入、只读 CLI 报告和窗口归档仍待完成；共享 read-shadow 配置没有改变。
 
-- 2026-09-01：AI SDK Shadow Planner 的会话 hydration 已改用事件的 `target_uuid` 调用 Core `ReadConversation`，避免将 `conversation_key` 误作目标用户或群标识。隔离 fixture、三条件受控 Task/Run 与窗口级报告仍待完成，因此尚无新的模型效果结论。
+- 2026-09-01：AI SDK Shadow Planner 曾以事件 `target_uuid` 执行会话 hydration；私聊 Capability RPC 要求 canonical conversation key，该假设已由 2026-09-02 修复取代。隔离 fixture、三条件受控 Task/Run 与窗口级报告仍待完成，因此尚无新的模型效果结论。
 
 - 2026-09-01：隔离微服务 smoke 现可按需导出低敏 Agent Task/Run receipt，使临时栈销毁前的三条件绑定成为可能。receipt 不含消息或模型正文；同源 fixture、三次真实执行、binding 写入与聚合报告仍待完成。
 

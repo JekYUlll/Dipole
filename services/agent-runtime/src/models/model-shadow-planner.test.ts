@@ -24,8 +24,8 @@ describe("ModelShadowPlanner", () => {
         sentAt: { seconds: 1n, nanos: 0 }
       }]
     };
-    const readConversation = vi.fn(async (_context, targetId: string, limit: number) => {
-      expect(targetId).toBe("G1");
+    const readConversation = vi.fn(async (_context, conversationId: string, limit: number) => {
+      expect(conversationId).toBe("group:G1");
       expect(limit).toBe(20);
       return conversation;
     });
@@ -34,7 +34,7 @@ describe("ModelShadowPlanner", () => {
       undefined, undefined, undefined, { readConversation }
     );
 
-    await planner.plan({ ...event(), payload: { conversation_key: "group:G1", target_uuid: "G1" } }, context());
+    await planner.plan({ ...event(), payload: { conversation_key: "group:G1" } }, context());
 
     expect(readConversation).toHaveBeenCalledOnce();
     const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
@@ -42,6 +42,24 @@ describe("ModelShadowPlanner", () => {
     expect(prompt).toContain("延期风险待确认");
     expect(prompt).toContain('\\"seconds\\":\\"1\\"');
     expect(prompt).toContain('"trust":"untrusted"');
+  });
+
+  it("uses the canonical direct conversation key for authorized evidence reads", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const readConversation = vi.fn(async () => ({ found: false, reason: "not_found", targetId: "UAI", targetType: 1, messages: [] }));
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.read"], new DeterministicContextCompiler(),
+      undefined, undefined, undefined, { readConversation }
+    );
+
+    await planner.plan({
+      ...event(), payload: { conversation_key: "direct:U100:UAI", target_uuid: "UAI" }
+    }, context());
+
+    expect(readConversation).toHaveBeenCalledWith(expect.any(Object), "direct:U100:UAI", 20);
   });
 
   it("bounds remote conversation evidence before compiling the prompt", async () => {

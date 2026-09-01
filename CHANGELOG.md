@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：修复 Shadow Planner 的事件会话 hydration 参数语义。预取 `conversation.read` 现传递事件的 canonical `conversation_key`，由 Capability RPC 在可信 `ExecutionContext` 内派生实际目标；此前传递裸 `target_uuid` 会在私聊链路的会话键校验前失败并耗尽 Temporal Activity 重试。新增 direct conversation regression；写 Capability、active authority 与默认运行模式保持关闭。
+
 - 2026-09-02：修复 Interactive Agent Shadow 的持久 Run 准入版本漂移。Shadow Runtime 不再携带仅用于 active promotion 绑定的 candidate version，避免 Core 的 mode/version 约束在 Task 已创建后拒绝 Run admission 并导致任务停留在 `running`。Remote GPU 已通过定向 Vitest `15/15`、TypeScript typecheck、生产构建和隔离 Compose 回归：认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，Run 为 `shadow / candidate_version=NULL / completed`，只生成 `conversation_digest` Artifact，消息写入数为零。active authority、写 Capability、MCP、Memory 与默认部署边界保持关闭。
 
 - 2026-09-01：Gateway 现支持默认关闭、owner-scoped 的 `conversation_digest` Markdown 正文读取。`GET /api/v1/agent/artifacts/:artifact_id/content` 复用 Core Artifact owner 校验与内容哈希校验，只返回 Artifact ID、媒体类型和正文；对象键、Metadata JSON 与通用下载仍不进入公开边界。Remote GPU 隔离候选已验证同一用户的 metadata/content 均为 `200`，另一用户读取正文为 `404`。
@@ -76,7 +78,7 @@
 
 - 2026-09-01：微服务隔离 smoke 增加默认关闭的低敏 Agent Task/Run receipt。显式提供输出路径时，成功收敛后仅写入随机 event、Task、Run、trace 与运行状态，便于后续 Context Ablation runner 在销毁临时 Compose 项目前建立绑定；消息、模型正文和凭据均不导出。
 
-- 2026-09-01：修正 AI SDK Shadow Planner 的会话 hydration 输入：Core `ReadConversation` 现在接收事件中的 `target_uuid`，与其按目标用户/群 UUID 的 RPC 契约一致；`conversation_key` 继续只用于 Memory 作用域。该修复为隔离 Context Ablation 的真实会话证据准备前置条件，不开启任何写能力。
+- 2026-09-01：AI SDK Shadow Planner 曾将事件的 `target_uuid` 传入会话 hydration；该中间实现随后在私聊 Capability 边界暴露语义漂移，已由 2026-09-02 的 canonical `conversation_key` 修复替代。该历史切片不构成读取路径验收结论。
 
 - 2026-09-01：修复 Context Ablation migration `000056` 的外键字符集/排序规则兼容性。binding 表现显式使用与 Agent Task/Run 相同的 `utf8mb4_unicode_ci`，隔离 MySQL 8.4 预检不再因外键列不兼容失败。
 
