@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Shadow Eval 窗口收集器新增显式最低样本数门禁。`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 在采集前拒绝不足的评审 manifest 集合，并将阈值与实际样本数共同写入低敏 `manifest-set.json` 回执；默认值为 `1`，保留单样本调试能力。正式窗口可固定例如 `10` 的阈值，避免从小样本回执外推任务成功率。
+
 - 2026-09-02：Agent Shadow Eval 窗口现要求评审任务集的内容摘要。采集前用独立脚本按稳定顺序计算 manifest SHA-256 集合，运行时拒绝摘要漂移或候选版本混用，并输出仅包含集合摘要、候选版本和样本数的 `manifest-set.json` 回执。Remote GPU 与本地 fixture 均验证通过，覆盖通过、有效失败和任务集漂移拒绝；真实多样本窗口和任务成功率仍待由受控运行生成。
 
 - 2026-09-02：Interactive Agent 的完成 Tool 审计增加单次、同载荷的回包丢失恢复。仅当 Core 返回 `UNAVAILABLE` 或 `DEADLINE_EXCEEDED` 时，Runtime 才重放同一 completed terminal；两次均不确定时保留原完成态，不再尝试写入冲突的 failed terminal。Remote GPU Node 22 定向 Vitest `10/10` 与 TypeScript typecheck 通过。该切片覆盖 Runtime 到审计 RPC 的短暂响应丢失，不替代 Worker 替换、跨进程故障注入或共享环境回执，详见 [Agent Active 部署运行手册](docs/agent/AGENT-ACTIVE-DEPLOYMENT.md)。

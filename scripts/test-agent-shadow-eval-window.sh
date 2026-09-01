@@ -52,12 +52,25 @@ export COMPOSE_PROJECT_NAME="agent-shadow-eval-fixture"
 export DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR="${fixture_dir}/manifests"
 export DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256="$("${root_dir}/scripts/hash-agent-shadow-eval-manifest-set.sh" "${fixture_dir}/manifests")"
 export DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR="${fixture_dir}/window"
+export DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS=1
 "${root_dir}/scripts/collect-agent-shadow-eval-window.sh" >/dev/null
 jq -e '.source.runtimeRevision == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
   "${fixture_dir}/window/summary-input.json" >/dev/null
 jq -e --arg sha256 "${DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256}" \
-  '.schemaVersion == "dipole.agent.shadow-eval-manifest-set-receipt.v1" and .manifestSetSha256 == $sha256 and .manifestCount == 1' \
+  '.schemaVersion == "dipole.agent.shadow-eval-manifest-set-receipt.v1" and .manifestSetSha256 == $sha256 and .manifestCount == 1 and .minimumManifestCount == 1' \
   "${fixture_dir}/window/manifest-set.json" >/dev/null
+
+export DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS=2
+export DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR="${fixture_dir}/minimum-window"
+set +e
+"${root_dir}/scripts/collect-agent-shadow-eval-window.sh" >/dev/null 2>"${fixture_dir}/minimum.err"
+status=$?
+set -e
+[[ "${status}" == "2" ]]
+grep -qx 'reviewed Shadow Eval manifest count is below required minimum' "${fixture_dir}/minimum.err"
+[[ ! -e "${fixture_dir}/minimum-window" ]]
+
+export DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS=1
 
 export DIPOLE_TEST_SHADOW_EVAL_FAILURE=true
 export DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR="${fixture_dir}/failed-window"

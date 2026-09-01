@@ -9,6 +9,7 @@ project_name="${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME is required}"
 manifest_dir="${DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR:?DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR is required}"
 manifest_set_sha256="${DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256:?DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256 is required}"
 output_dir="${DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR:?DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR is required}"
+minimum_manifest_count="${DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS:-1}"
 compose_env_file="${COMPOSE_ENV_FILE:-}"
 compose_overlays="${COMPOSE_OVERLAYS:-}"
 compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
@@ -17,6 +18,10 @@ started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 [[ -d "${manifest_dir}" ]] || { echo "reviewed manifest directory is missing" >&2; exit 2; }
 [[ ! -e "${output_dir}" ]] || { echo "Shadow Eval window output already exists" >&2; exit 2; }
 [[ "${manifest_set_sha256}" =~ ^[a-f0-9]{64}$ ]] || { echo "Shadow Eval manifest set SHA-256 is invalid" >&2; exit 2; }
+[[ "${minimum_manifest_count}" =~ ^[1-9][0-9]*$ ]] && (( minimum_manifest_count <= 1000 )) || {
+  echo "Shadow Eval minimum manifest count must be an integer between 1 and 1000" >&2
+  exit 2
+}
 
 compose_args=(-p "${project_name}" -f "${compose_file}")
 if [[ -n "${compose_env_file}" ]]; then
@@ -46,6 +51,10 @@ runtime_dirty="$(docker inspect --format '{{index .Config.Labels "io.dipole.sour
 
 mapfile -d '' manifests < <(find "${manifest_dir}" -maxdepth 1 -type f -name '*.json' -print0 | sort -z)
 (( ${#manifests[@]} > 0 )) || { echo "reviewed manifest directory has no JSON files" >&2; exit 2; }
+(( ${#manifests[@]} >= minimum_manifest_count )) || {
+  echo "reviewed Shadow Eval manifest count is below required minimum" >&2
+  exit 2
+}
 actual_manifest_set_sha256="$("${script_dir}/hash-agent-shadow-eval-manifest-set.sh" "${manifest_dir}")"
 [[ "${actual_manifest_set_sha256}" == "${manifest_set_sha256}" ]] || {
   echo "Shadow Eval manifest set SHA-256 does not match reviewed input" >&2
@@ -92,7 +101,8 @@ jq -n \
   --arg sha256 "${actual_manifest_set_sha256}" \
   --arg candidate_version "${candidate_version}" \
   --argjson manifest_count "${#manifests[@]}" \
-  '{schemaVersion: "dipole.agent.shadow-eval-manifest-set-receipt.v1", manifestSetSha256: $sha256, candidateVersion: $candidate_version, manifestCount: $manifest_count}' \
+  --argjson minimum_manifest_count "${minimum_manifest_count}" \
+  '{schemaVersion: "dipole.agent.shadow-eval-manifest-set-receipt.v1", manifestSetSha256: $sha256, candidateVersion: $candidate_version, manifestCount: $manifest_count, minimumManifestCount: $minimum_manifest_count}' \
   >"${output_dir}/manifest-set.json"
 jq -s \
   --arg revision "${runtime_revision}" \

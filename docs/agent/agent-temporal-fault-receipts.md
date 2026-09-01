@@ -110,6 +110,7 @@ COMPOSE_ENV_FILE=.env \
 COMPOSE_OVERLAYS=deploy/microservices/agent-ai-sdk-shadow.yml:deploy/microservices/agent-temporal-read-shadow.yml \
 DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR=/secure/reviewed-manifests \
 DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256=<reviewed-set-sha256> \
+DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS=10 \
 DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR=/secure/shadow-window \
 scripts/collect-agent-shadow-eval-window.sh
 ```
@@ -118,7 +119,10 @@ The output directory must not exist before collection. It receives one report
 per manifest, the exact summary input, the `reviewed_shadow` summary report and
 a low-sensitivity `manifest-set.json` receipt. The receipt binds the window to
 the reviewed task-set digest, candidate version and sample count without
-copying Task ID, Prompt, user, message or reviewer labels. Exit status `0`
+copying Task ID, Prompt, user, message or reviewer labels. The optional
+`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` gate defaults to `1`; set it for a
+reviewed window and the resulting receipt records the required threshold with
+the observed sample count. Exit status `0`
 means every reviewed task passed; `2` preserves a valid window with at least
 one failed task; all other statuses fail closed. The generated window remains
 an isolated development observation until its task set, reviewer process and
