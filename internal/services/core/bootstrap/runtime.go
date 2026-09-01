@@ -185,6 +185,21 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Approval service: %w", composeErr)
 		}
+		approvalGrants, composeErr := agentapplication.NewPersistentAgentApprovalGrantResolverV1(agentRepos.ApprovalGrants)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Approval grant resolver: %w", composeErr)
+		}
+		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, messaging.Messages)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Tool invocation audit: %w", composeErr)
+		}
+		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, commands)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Message Command execution: %w", composeErr)
+		}
 		controlAuthorizer, composeErr := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(agentRepos.Policy)
 		if composeErr != nil {
 			cleanup()
@@ -210,6 +225,18 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		if _, composeErr = agentServer.WithTaskTimeline(agentRepos.TaskTimeline); composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("configure standalone Agent Task Timeline rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithApprovalGrants(approvalGrants); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Approval grant rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithToolAudits(toolAudits); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Tool invocation audit rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithMessageCommands(messageCommands); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Message Command rpc adapter: %w", composeErr)
 		}
 		storageCfg := config.StorageConfig()
 		if storageCfg.ArtifactEnabled {
