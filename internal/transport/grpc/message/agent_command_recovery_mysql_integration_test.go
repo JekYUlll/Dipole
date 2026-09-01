@@ -90,7 +90,7 @@ func TestCoreAgentMessageCommandRecoversOneMySQLCommitAfterGRPCResponseLoss(t *t
 	if result == nil || result.UUID == "" || result.ClientMessageID == "" || result.MessageType != model.MessageTypeSystem {
 		t.Fatalf("unexpected recovered MySQL Message=%+v", result)
 	}
-	for _, table := range []string{"messages", "message_metadata", "user_sync_inbox"} {
+	for _, table := range []string{"messages", "message_metadata"} {
 		var count int
 		if err := db.QueryRow("SELECT COUNT(*) FROM "+table+" WHERE "+mysqlMessageRecoveryPredicate(table), result.UUID).Scan(&count); err != nil {
 			t.Fatalf("count %s rows: %v", table, err)
@@ -99,6 +99,13 @@ func TestCoreAgentMessageCommandRecoversOneMySQLCommitAfterGRPCResponseLoss(t *t
 			t.Fatalf("%s rows=%d, want one committed Message side effect", table, count)
 		}
 	}
+	var inboxRows, inboxRecipients int
+	if err := db.QueryRow("SELECT COUNT(*), COUNT(DISTINCT user_uuid) FROM user_sync_inbox WHERE message_uuid = ?", result.UUID).Scan(&inboxRows, &inboxRecipients); err != nil {
+		t.Fatalf("count Sync inbox rows: %v", err)
+	}
+	if inboxRows != 2 || inboxRecipients != 2 {
+		t.Fatalf("Sync inbox rows=%d recipients=%d, want sender and target once each", inboxRows, inboxRecipients)
+	}
 }
 
 func mysqlMessageRecoveryPredicate(table string) string {
@@ -106,8 +113,6 @@ func mysqlMessageRecoveryPredicate(table string) string {
 	case "messages":
 		return "uuid = ?"
 	case "message_metadata":
-		return "message_uuid = ?"
-	case "user_sync_inbox":
 		return "message_uuid = ?"
 	default:
 		return "1 = 0"
