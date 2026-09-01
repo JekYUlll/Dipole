@@ -11,9 +11,25 @@ const files = [
   'docs/images/dipole-v3-agent-traced.svg',
   'docs/images/dipole-v3-agent-mark-traced.svg',
 ]
+const mirrors = [
+  ['docs/images/LOGO_V3.png', 'design/assets/brand/LOGO_V3.png'],
+  ['docs/images/dipole-v3-im-traced.svg', 'design/assets/brand/dipole-v3-im-traced.svg'],
+  ['docs/images/dipole-v3-im-mark-traced.svg', 'design/assets/brand/dipole-v3-im-mark-traced.svg'],
+  ['docs/images/dipole-v3-agent-traced.svg', 'design/assets/brand/dipole-v3-agent-traced.svg'],
+  ['docs/images/dipole-v3-agent-mark-traced.svg', 'design/assets/brand/dipole-v3-agent-mark-traced.svg'],
+]
 
 for (const relativePath of files) {
   await access(new URL(relativePath, root))
+}
+for (const [sourcePath, mirrorPath] of mirrors) {
+  const [source, mirror] = await Promise.all([
+    readFile(new URL(sourcePath, root)),
+    readFile(new URL(mirrorPath, root)),
+  ])
+  if (!source.equals(mirror)) {
+    throw new Error(`design brand mirror drift: ${sourcePath} != ${mirrorPath}`)
+  }
 }
 
 for (const relativePath of files.slice(2)) {

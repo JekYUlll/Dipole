@@ -2,6 +2,12 @@
 
 `dipole-ui.pen` 是 Dipole 前端的 canonical 可编辑设计文件。产品交互、响应式状态或视觉 token 变化时，应增量修改同一文件，并同步更新 `DESIGN-CHANGELOG.md`。
 
+## 品牌资产套件
+
+`assets/brand/` 保存 Pencil 设计稿可引用的品牌资产副本，来源与 `docs/images/` 保持字节级一致。原始概念图和 VTracer 追踪参数仍以 [`docs/images/README.md`](../docs/images/README.md) 与 [`scripts/trace-brand-assets.sh`](../scripts/trace-brand-assets.sh) 为准；更新品牌时先更新源资产，再同步设计资产并运行 `npm run test:brand`。
+
+当前套件包含 `LOGO_V3.png` 以及 IM/Agent 的完整标志和紧凑标志。Pencil 外部图片填充是否可用仍需在实际画布中截图确认，棋盘格占位不得进入 canonical 设计稿。
+
 ## F1 Frame 与评审导出
 
 | Frame | 评审导出 |
