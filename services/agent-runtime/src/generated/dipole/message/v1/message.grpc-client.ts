@@ -15,6 +15,7 @@ import type { SendSystemGroupMessageRequest } from "./message.js";
 import type { SendSystemDirectMessageRequest } from "./message.js";
 import type { SendGroupFileRequest } from "./message.js";
 import type { SendDirectFileRequest } from "./message.js";
+import type { SendAssistantTextRequest } from "./message.js";
 import type { SendGroupTextRequest } from "./message.js";
 import type { SendMessageResponse } from "./message.js";
 import type { SendDirectTextRequest } from "./message.js";
@@ -37,6 +38,13 @@ export interface IMessageServiceClient {
     sendGroupText(input: SendGroupTextRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: SendMessageResponse) => void): grpc.ClientUnaryCall;
     sendGroupText(input: SendGroupTextRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: SendMessageResponse) => void): grpc.ClientUnaryCall;
     sendGroupText(input: SendGroupTextRequest, callback: (err: grpc.ServiceError | null, value?: SendMessageResponse) => void): grpc.ClientUnaryCall;
+    /**
+     * @generated from protobuf rpc: SendAssistantText
+     */
+    sendAssistantText(input: SendAssistantTextRequest, metadata: grpc.Metadata, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: SendMessageResponse) => void): grpc.ClientUnaryCall;
+    sendAssistantText(input: SendAssistantTextRequest, metadata: grpc.Metadata, callback: (err: grpc.ServiceError | null, value?: SendMessageResponse) => void): grpc.ClientUnaryCall;
+    sendAssistantText(input: SendAssistantTextRequest, options: grpc.CallOptions, callback: (err: grpc.ServiceError | null, value?: SendMessageResponse) => void): grpc.ClientUnaryCall;
+    sendAssistantText(input: SendAssistantTextRequest, callback: (err: grpc.ServiceError | null, value?: SendMessageResponse) => void): grpc.ClientUnaryCall;
     /**
      * @generated from protobuf rpc: SendDirectFile
      */
@@ -118,59 +126,66 @@ export class MessageServiceClient extends grpc.Client implements IMessageService
         return this.makeUnaryRequest<SendGroupTextRequest, SendMessageResponse>(`/${MessageService.typeName}/${method.name}`, (value: SendGroupTextRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): SendMessageResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
+     * @generated from protobuf rpc: SendAssistantText
+     */
+    sendAssistantText(input: SendAssistantTextRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void)): grpc.ClientUnaryCall {
+        const method = MessageService.methods[2];
+        return this.makeUnaryRequest<SendAssistantTextRequest, SendMessageResponse>(`/${MessageService.typeName}/${method.name}`, (value: SendAssistantTextRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): SendMessageResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
+    }
+    /**
      * @generated from protobuf rpc: SendDirectFile
      */
     sendDirectFile(input: SendDirectFileRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void)): grpc.ClientUnaryCall {
-        const method = MessageService.methods[2];
+        const method = MessageService.methods[3];
         return this.makeUnaryRequest<SendDirectFileRequest, SendMessageResponse>(`/${MessageService.typeName}/${method.name}`, (value: SendDirectFileRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): SendMessageResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: SendGroupFile
      */
     sendGroupFile(input: SendGroupFileRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void)): grpc.ClientUnaryCall {
-        const method = MessageService.methods[3];
+        const method = MessageService.methods[4];
         return this.makeUnaryRequest<SendGroupFileRequest, SendMessageResponse>(`/${MessageService.typeName}/${method.name}`, (value: SendGroupFileRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): SendMessageResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: SendSystemDirectMessage
      */
     sendSystemDirectMessage(input: SendSystemDirectMessageRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void)): grpc.ClientUnaryCall {
-        const method = MessageService.methods[4];
+        const method = MessageService.methods[5];
         return this.makeUnaryRequest<SendSystemDirectMessageRequest, SendMessageResponse>(`/${MessageService.typeName}/${method.name}`, (value: SendSystemDirectMessageRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): SendMessageResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: SendSystemGroupMessage
      */
     sendSystemGroupMessage(input: SendSystemGroupMessageRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: SendMessageResponse) => void)): grpc.ClientUnaryCall {
-        const method = MessageService.methods[5];
+        const method = MessageService.methods[6];
         return this.makeUnaryRequest<SendSystemGroupMessageRequest, SendMessageResponse>(`/${MessageService.typeName}/${method.name}`, (value: SendSystemGroupMessageRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): SendMessageResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: GetMessageCommandReceipt
      */
     getMessageCommandReceipt(input: GetMessageCommandReceiptRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetMessageCommandReceiptResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: GetMessageCommandReceiptResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: GetMessageCommandReceiptResponse) => void)): grpc.ClientUnaryCall {
-        const method = MessageService.methods[6];
+        const method = MessageService.methods[7];
         return this.makeUnaryRequest<GetMessageCommandReceiptRequest, GetMessageCommandReceiptResponse>(`/${MessageService.typeName}/${method.name}`, (value: GetMessageCommandReceiptRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): GetMessageCommandReceiptResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ListDirectHistory
      */
     listDirectHistory(input: ListDirectHistoryRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void)): grpc.ClientUnaryCall {
-        const method = MessageService.methods[7];
+        const method = MessageService.methods[8];
         return this.makeUnaryRequest<ListDirectHistoryRequest, ListMessagesResponse>(`/${MessageService.typeName}/${method.name}`, (value: ListDirectHistoryRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListMessagesResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ListGroupHistory
      */
     listGroupHistory(input: ListGroupHistoryRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void)): grpc.ClientUnaryCall {
-        const method = MessageService.methods[8];
+        const method = MessageService.methods[9];
         return this.makeUnaryRequest<ListGroupHistoryRequest, ListMessagesResponse>(`/${MessageService.typeName}/${method.name}`, (value: ListGroupHistoryRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListMessagesResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
     /**
      * @generated from protobuf rpc: ListOfflineMessages
      */
     listOfflineMessages(input: ListOfflineMessagesRequest, metadata: grpc.Metadata | grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void), options?: grpc.CallOptions | ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void), callback?: ((err: grpc.ServiceError | null, value?: ListMessagesResponse) => void)): grpc.ClientUnaryCall {
-        const method = MessageService.methods[9];
+        const method = MessageService.methods[10];
         return this.makeUnaryRequest<ListOfflineMessagesRequest, ListMessagesResponse>(`/${MessageService.typeName}/${method.name}`, (value: ListOfflineMessagesRequest): Buffer => Buffer.from(method.I.toBinary(value, this._binaryOptions)), (value: Buffer): ListMessagesResponse => method.O.fromBinary(value, this._binaryOptions), input, (metadata as any), (options as any), (callback as any));
     }
 }

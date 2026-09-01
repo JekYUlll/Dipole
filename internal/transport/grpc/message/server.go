@@ -65,6 +65,25 @@ func (s *Server) SendGroupText(ctx context.Context, request *messagev1.SendGroup
 	return sendResponse(message, recipients), nil
 }
 
+func (s *Server) SendAssistantText(ctx context.Context, request *messagev1.SendAssistantTextRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
+	if err := requireCoreSender(ctx, request.GetContext(), request.GetAssistantUserId()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetClientMessageId()) == "" {
+		return nil, rpcError(application.ErrMessageClientMessageIDInvalid)
+	}
+	sender, ok := s.application.(application.AgentMessageCommandSender)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "agent message command sender is unavailable")
+	}
+	message, err := sender.SendAssistantTextMessageContext(ctx, request.GetAssistantUserId(), request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+	if err != nil {
+		return nil, rpcError(err)
+	}
+	return sendResponse(message, nil), nil
+}
+
 func (s *Server) SendDirectFile(ctx context.Context, request *messagev1.SendDirectFileRequest) (*messagev1.SendMessageResponse, error) {
 	ctx = grpccommon.Correlation(ctx, request.GetContext())
 	principal, err := principalFrom(ctx, request.GetContext())
@@ -103,8 +122,20 @@ func (s *Server) SendGroupFile(ctx context.Context, request *messagev1.SendGroup
 }
 
 func (s *Server) SendSystemDirectMessage(ctx context.Context, request *messagev1.SendSystemDirectMessageRequest) (*messagev1.SendMessageResponse, error) {
-	if err := requireCoreCaller(ctx, request.GetContext()); err != nil {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
+	if err := requireCoreSender(ctx, request.GetContext(), request.GetSenderUserId()); err != nil {
 		return nil, err
+	}
+	if strings.TrimSpace(request.GetClientMessageId()) != "" {
+		sender, ok := s.application.(application.AgentMessageCommandSender)
+		if !ok {
+			return nil, status.Error(codes.Unimplemented, "agent message command sender is unavailable")
+		}
+		message, err := sender.SendSystemDirectMessageCommandContext(ctx, request.GetSenderUserId(), request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+		if err != nil {
+			return nil, rpcError(err)
+		}
+		return sendResponse(message, nil), nil
 	}
 	sender, ok := s.application.(application.SystemMessageSender)
 	if !ok {
@@ -139,6 +170,17 @@ func requireCoreCaller(ctx context.Context, requestContext *commonv1.RequestCont
 		return status.Error(codes.PermissionDenied, "only Core service may send system messages")
 	}
 	return nil
+}
+
+func requireCoreSender(ctx context.Context, requestContext *commonv1.RequestContext, senderUUID string) error {
+	principal, err := principalFrom(ctx, requestContext)
+	if err != nil {
+		return err
+	}
+	if principal != strings.TrimSpace(senderUUID) {
+		return status.Error(codes.PermissionDenied, "sender_user_id must match the authenticated principal")
+	}
+	return requireCoreCaller(ctx, requestContext)
 }
 
 func (s *Server) GetMessageCommandReceipt(ctx context.Context, request *messagev1.GetMessageCommandReceiptRequest) (*messagev1.GetMessageCommandReceiptResponse, error) {

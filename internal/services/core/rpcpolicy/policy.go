@@ -58,6 +58,7 @@ func isAgentServiceMethodAllowed(method string) bool {
 		agentv1.AgentCapabilityService_FinishMcpToolRound_FullMethodName,
 		agentv1.AgentCapabilityService_FinishMcpToolInvocation_FullMethodName,
 		agentv1.AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName,
+		agentv1.AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName,
 		agentv1.AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName,
 		agentv1.AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName,
 		agentv1.AgentCapabilityService_CreateArtifact_FullMethodName,

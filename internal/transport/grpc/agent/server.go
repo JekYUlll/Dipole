@@ -12,10 +12,12 @@ import (
 	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -1607,6 +1609,13 @@ func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.
 		Kind: application.AgentMessageCommandKindV1(request.GetCommandKind()), Content: request.GetContent(),
 	})
 	if err != nil {
+		logger.Error("Agent Message Command execution failed",
+			zap.String("task_id", request.GetTaskId()),
+			zap.String("run_id", request.GetRunId()),
+			zap.String("invocation_id", request.GetInvocationId()),
+			zap.String("command_kind", request.GetCommandKind()),
+			zap.Error(err),
+		)
 		switch {
 		case errors.Is(err, application.ErrAgentCommandDenied):
 			return nil, status.Error(codes.PermissionDenied, "Agent Message Command denied")

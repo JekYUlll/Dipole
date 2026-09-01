@@ -106,9 +106,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 
 	runtime := &CoreRuntime{}
 	var systemMessages applicationPort.SystemMessageSender
+	var messageReceipts applicationPort.MessageCommandReceiptQuery = messaging.Messages
 	if config.CoreMessageConfig().Transport == "grpc" {
 		runtime.messageSender = newLazyCoreMessageSender(config.InternalRPCConfig())
 		systemMessages = runtime.messageSender
+		messageReceipts = runtime.messageSender
 	}
 	cleanup := func() { runtime.Close() }
 	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
@@ -155,7 +157,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			runtime.messageReader = newLazyCoreMessageReader(rpcCfg)
 			agentMessages = runtime.messageReader
 		}
-		commands, composeErr := agentapplication.NewLocalAgentCommandV1(messaging.Messages)
+		commandMessages := agentapplication.AgentCommandMessages(messaging.Messages)
+		if config.CoreMessageConfig().Transport == "grpc" {
+			commandMessages = runtime.messageSender
+		}
+		commands, composeErr := agentapplication.NewLocalAgentCommandV1(commandMessages)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Command: %w", composeErr)
@@ -190,7 +196,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Approval grant resolver: %w", composeErr)
 		}
-		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, messaging.Messages)
+		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, messageReceipts)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Tool invocation audit: %w", composeErr)

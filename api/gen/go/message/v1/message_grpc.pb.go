@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	MessageService_SendDirectText_FullMethodName           = "/dipole.message.v1.MessageService/SendDirectText"
 	MessageService_SendGroupText_FullMethodName            = "/dipole.message.v1.MessageService/SendGroupText"
+	MessageService_SendAssistantText_FullMethodName        = "/dipole.message.v1.MessageService/SendAssistantText"
 	MessageService_SendDirectFile_FullMethodName           = "/dipole.message.v1.MessageService/SendDirectFile"
 	MessageService_SendGroupFile_FullMethodName            = "/dipole.message.v1.MessageService/SendGroupFile"
 	MessageService_SendSystemDirectMessage_FullMethodName  = "/dipole.message.v1.MessageService/SendSystemDirectMessage"
@@ -37,6 +38,7 @@ const (
 type MessageServiceClient interface {
 	SendDirectText(ctx context.Context, in *SendDirectTextRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	SendGroupText(ctx context.Context, in *SendGroupTextRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	SendAssistantText(ctx context.Context, in *SendAssistantTextRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	SendDirectFile(ctx context.Context, in *SendDirectFileRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	SendGroupFile(ctx context.Context, in *SendGroupFileRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	SendSystemDirectMessage(ctx context.Context, in *SendSystemDirectMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
@@ -69,6 +71,16 @@ func (c *messageServiceClient) SendGroupText(ctx context.Context, in *SendGroupT
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SendMessageResponse)
 	err := c.cc.Invoke(ctx, MessageService_SendGroupText_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) SendAssistantText(ctx context.Context, in *SendAssistantTextRequest, opts ...grpc.CallOption) (*SendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_SendAssistantText_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +173,7 @@ func (c *messageServiceClient) ListOfflineMessages(ctx context.Context, in *List
 type MessageServiceServer interface {
 	SendDirectText(context.Context, *SendDirectTextRequest) (*SendMessageResponse, error)
 	SendGroupText(context.Context, *SendGroupTextRequest) (*SendMessageResponse, error)
+	SendAssistantText(context.Context, *SendAssistantTextRequest) (*SendMessageResponse, error)
 	SendDirectFile(context.Context, *SendDirectFileRequest) (*SendMessageResponse, error)
 	SendGroupFile(context.Context, *SendGroupFileRequest) (*SendMessageResponse, error)
 	SendSystemDirectMessage(context.Context, *SendSystemDirectMessageRequest) (*SendMessageResponse, error)
@@ -184,6 +197,9 @@ func (UnimplementedMessageServiceServer) SendDirectText(context.Context, *SendDi
 }
 func (UnimplementedMessageServiceServer) SendGroupText(context.Context, *SendGroupTextRequest) (*SendMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendGroupText not implemented")
+}
+func (UnimplementedMessageServiceServer) SendAssistantText(context.Context, *SendAssistantTextRequest) (*SendMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendAssistantText not implemented")
 }
 func (UnimplementedMessageServiceServer) SendDirectFile(context.Context, *SendDirectFileRequest) (*SendMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendDirectFile not implemented")
@@ -262,6 +278,24 @@ func _MessageService_SendGroupText_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).SendGroupText(ctx, req.(*SendGroupTextRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_SendAssistantText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendAssistantTextRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SendAssistantText(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SendAssistantText_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SendAssistantText(ctx, req.(*SendAssistantTextRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -424,6 +458,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendGroupText",
 			Handler:    _MessageService_SendGroupText_Handler,
+		},
+		{
+			MethodName: "SendAssistantText",
+			Handler:    _MessageService_SendAssistantText_Handler,
 		},
 		{
 			MethodName: "SendDirectFile",
