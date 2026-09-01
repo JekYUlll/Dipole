@@ -327,7 +327,8 @@ export class AgentCapabilityRPCClient {
         runtimeId: callerService,
         mode: this.mode,
         subscriptionId: input.subscriptionId ?? "",
-        candidateVersion: input.candidateVersion ?? this.candidateVersion
+        // Candidate versions bind promoted active runs; shadow runs must stay outside that authority surface.
+        candidateVersion: this.mode === "active" ? (input.candidateVersion ?? this.candidateVersion) : ""
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) {
           reject(error ?? new Error("Agent Run admission returned no response"));

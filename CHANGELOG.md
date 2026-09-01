@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：修复 Interactive Agent Shadow 的持久 Run 准入版本漂移。Shadow Runtime 不再携带仅用于 active promotion 绑定的 candidate version，避免 Core 的 mode/version 约束在 Task 已创建后拒绝 Run admission 并导致任务停留在 `running`。Remote GPU Node 22 已通过定向 Vitest `15/15`、TypeScript typecheck 和生产构建；干净 `70bd4c74` 镜像的隔离 Compose 回归进一步验证认证 Task 创建 `202`、Temporal Workflow `completed`、持久 Run `shadow / candidate_version=NULL / completed` 与只读 `conversation_digest` Artifact。候选没有可读会话，消息写入数为零；active authority、写 Capability、MCP、Memory 与默认部署边界保持关闭。
+
 - 2026-09-01：修复 Interactive Agent Shadow 的 Compose 门禁。检查脚本此前断言 Gateway control secret 却未为渲染注入 `DIPOLE_GATEWAY_AGENT_CONTROL_SECRET`，导致无改动也会失败；现使用隔离的测试值，并由静态契约测试锁定正确变量名。该修复只恢复配置验证，不改变 Shadow 的只读权限边界或启动任何服务。
 
 - 2026-09-01：Interactive Agent 的 Temporal 集成门禁补充 owner `denied` 与并发重放信号路径。相同 request/approval ID 的两个拒绝 Signal 只会持久化一次拒绝决议，Task 收敛为 `cancelled/approval_denied`，且不会进入任何消息写步骤；该覆盖固定了审批被拒绝时的零副作用边界。Remote GPU 的干净 `f9634d3c` 候选以 Node 22 通过两份 Temporal 集成文件 `16/16` 与 TypeScript typecheck；真实 Core/Message/Compose 的联合 receipt 保持独立要求。
