@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "dipole.agent.read-scope-remote-receipt.v1",
+  "observedAt": "2026-09-02",
+  "candidateRevision": "d591bc7592b3974c6ec33425371f66fd9d3e29ea",
+  "topology": {
+    "environment": "Remote GPU isolated Compose",
+    "gatewayExposure": "loopback-only",
+    "runtimeMode": "shadow",
+    "temporalActivityMode": "read_shadow"
+  },
+  "fixture": {
+    "ownerAuthenticatedByGateway": true,
+    "visibleConversationCount": 2,
+    "messageWriteEnabled": false
+  },
+  "gateway": {
+    "interactiveTaskStart": 202,
+    "forgedInput": 409,
+    "forgedInputPreservedWaitingState": true,
+    "confirmedInput": 202
+  },
+  "confirmation": {
+    "initialTaskStatus": "waiting_input",
+    "candidateCount": 2,
+    "confirmedTaskStatus": "completed"
+  },
+  "effects": {
+    "completedTaskCount": 1,
+    "completedRunCount": 1,
+    "completedStepCount": 2,
+    "conversationListSteps": 1,
+    "conversationReadSteps": 1,
+    "selectedConversationReads": 1,
+    "unconfirmedConversationReads": 0,
+    "conversationDigestArtifacts": 1
+  },
+  "result": "eligible",
+  "limitations": [
+    "Controlled two-conversation fixture only.",
+    "No active write capability, MCP, Memory promotion, public exposure, latency SLO, or task-success-rate claim."
+  ]
+}

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：归档 Remote GPU 的 Interactive Agent 多会话范围确认回执。认证 owner 在两条可见会话上启动 read-shadow Task 后，Temporal 进入 `waiting_input`；伪造 request ID 被 Gateway 以 `409` 拒绝且状态保持，确认已展示选项后 Task/Run 完成。持久步骤只包含一次 `conversation.list` 和一次指向确认会话的 `conversation.read`，另一候选会话读取为零，并产出一份 `conversation_digest` Artifact。回执保持 loopback-only、只读 authority 且不含测试账号、Task、Run、消息或会话明文；它只覆盖受控两会话功能链路，不能填写成功率、模型质量、性能、MCP、Memory、active 写入或共享环境结论，详见 [read-scope receipt](benchmarks/agent-read-scope-confirmation-2026-09-02/)。
+
 - 2026-09-02：归档真实 `conversation.read` 的受控 Shadow Eval N=2 窗口。两个独立 Kafka Trace 在同一干净 `d591bc75` Runtime 上均完成可信 `conversation.list -> conversation.read`、`conversation_digest` 产出与五类 Eval；低敏汇总、manifest-set receipt 与双 review pack 不包含 Task、Run、Trace、消息或主体明文。窗口的 `2/2` 仅表示固定单会话 fixture 的功能回归，不能填写 Agent 总体任务成功率、模型质量、共享环境、写能力或 promotion claim，详见 [actual-read N=2 archive](benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/)。
 
 - 2026-09-02：归档同版本 `d591bc75` Remote GPU 的 Agent Task 终态收敛回执。隔离、loopback-only Compose 中，Kafka 事件的 EventLedger、Temporal Workflow、持久 Task 与 Run 均为 `completed`，并产生一份只读 `conversation_digest` Artifact；脱敏 review pack 同时记录了授权的 `conversation.list`、可信空发现导致的 `conversation.read` 跳过和完整模型计量。微服务 smoke 已改为等待 `agent_tasks.status=completed`，避免旧断言接受过期 `running` Task。该 N=1 回执不构成任务成功率、性能、公开体验、active 写入或候选 promotion 结论，详见 [terminal convergence receipt](benchmarks/agent-terminal-convergence-2026-09-02/)。

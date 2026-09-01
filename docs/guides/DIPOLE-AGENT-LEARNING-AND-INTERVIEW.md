@@ -16,6 +16,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | --- | --- | --- |
 | ExecutionContext、Capability Policy、Temporal Task | 已验证 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md) |
 | Trusted discovery read Shadow Eval | 已验证（隔离 Remote GPU，固定单会话 N=2） | [actual-read N=2 archive](../../benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/) |
+| 多会话 owner scope 确认与恢复 | 已验证（隔离 Remote GPU，两会话 fixture） | [read-scope receipt](../../benchmarks/agent-read-scope-confirmation-2026-09-02/) |
 | 交互式 Agent Task 创建 | 已验证的默认关闭入口 | Gateway JWT principal、确定性 Task ID、Vue 幂等提交、同版本 Remote GPU read-shadow 验收 |
 | Worker replacement 的 approval/input 恢复 | 已验证（隔离 Remote GPU） | [Temporal fault receipt](../../benchmarks/agent-temporal-fault-2026-09-01/) |
 
