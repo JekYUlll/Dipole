@@ -3391,4 +3391,47 @@ onBeforeUnmount(() => {
 .toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
 .toast-enter-from { opacity: 0; transform: translateY(-12px); }
 .toast-leave-to   { opacity: 0; transform: translateY(-8px); }
+
+/* V3 surface pass: keep the legacy interaction layout while aligning its visual layers. */
+.im-container {
+  --chat-canvas: var(--dp-canvas);
+  --chat-surface: var(--dp-surface);
+  --chat-muted-surface: var(--dp-surface-muted);
+  --chat-rail: var(--dp-rail);
+  --chat-rail-soft: var(--dp-rail-soft);
+  --chat-line: var(--dp-line);
+  --chat-ink: var(--dp-ink);
+  --chat-soft: var(--dp-ink-soft);
+  background: var(--chat-canvas);
+  color: var(--chat-ink);
+  font-family: var(--dp-font-body);
+}
+.im-container .nav-bar { width: 64px; background: var(--chat-rail); padding: var(--dp-space-md) 0; }
+.im-container .nav-avatar { background: var(--chat-rail-soft); border-radius: var(--dp-radius-sm); }
+.im-container .nav-icons { gap: var(--dp-space-sm); margin-top: var(--dp-space-lg); }
+.im-container .icon-btn { color: var(--dp-text-inverse); border-radius: var(--dp-radius-sm); }
+.im-container .icon-btn:hover, .im-container .icon-btn.active { background: color-mix(in srgb, var(--dp-text-inverse) 10%, transparent); }
+.im-container .session-panel { width: 288px; background: var(--chat-surface); border-right: 1px solid var(--chat-line); }
+.im-container .search-wrap { padding: var(--dp-space-md); background: var(--chat-muted-surface); border-bottom: 1px solid var(--chat-line); }
+.im-container .search-wrap input { min-height: 36px; padding: 8px 12px; border: 1px solid var(--chat-line); border-radius: var(--dp-radius-sm); background: var(--chat-surface); color: var(--chat-ink); }
+.im-container .conv-item { padding: 12px var(--dp-space-md); gap: var(--dp-space-sm); border-bottom: 1px solid var(--chat-line); }
+.im-container .conv-item:hover { background: var(--chat-muted-surface); }
+.im-container .conv-item.active { background: var(--dp-accent-soft); }
+.im-container .conv-avatar { border-radius: var(--dp-radius-sm); background: var(--dp-accent-soft); color: var(--dp-accent-strong); }
+.im-container .conv-time, .im-container .conv-preview, .im-container .conv-preview-sender { color: var(--chat-soft); }
+.im-container .conv-badge { background: var(--dp-accent); }
+.im-container .chat-area { background: var(--chat-canvas); }
+.im-container .chat-header { height: 64px; padding: 0 var(--dp-space-lg); background: var(--chat-surface); border-bottom: 1px solid var(--chat-line); font-family: var(--dp-font-display); }
+.im-container .msg-list { padding: var(--dp-space-lg); }
+.im-container .msg-item.other .msg-bubble { background: var(--chat-surface); border-color: var(--chat-line); }
+.im-container .msg-item.self .msg-bubble { background: var(--dp-accent-soft); border: 1px solid color-mix(in srgb, var(--dp-accent) 22%, var(--chat-line)); color: var(--chat-ink); }
+.im-container .msg-item.ai .msg-bubble { background: var(--dp-warning-soft); border-color: color-mix(in srgb, var(--dp-warning) 28%, var(--chat-line)); }
+.im-container .input-area { background: var(--chat-surface); border-top-color: var(--chat-line); }
+.im-container .input-toolbar { border-bottom-color: var(--chat-line); }
+.im-container .input-area textarea { background: var(--chat-surface); color: var(--chat-ink); }
+.im-container .empty-chat { color: var(--chat-soft); font-family: var(--dp-font-display); }
+.im-container .detail-panel { background: var(--chat-surface); border-left-color: var(--chat-line); }
+.im-container .detail-header { border-bottom-color: var(--chat-line); }
+.im-container .send-btn { background: var(--dp-accent-strong); border-radius: var(--dp-radius-sm); }
+.im-container .send-btn:hover { background: var(--dp-accent); }
 </style>
