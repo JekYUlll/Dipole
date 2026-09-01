@@ -33,6 +33,27 @@ func TestPersistentAgentTaskWorkflowProjectionServiceBindsTaskRunAndRevision(t *
 	}
 }
 
+func TestPersistentAgentTaskWorkflowProjectionServiceDerivesModeFromPersistedActiveRun(t *testing.T) {
+	store := &agentPolicyStoreStub{
+		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100", Status: application.AgentTaskStatusRunning}},
+		runs:  map[string]*application.AgentRunV1{"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "active", Status: application.AgentRunStatusRunning}},
+	}
+	service, err := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
+	if err != nil {
+		t.Fatalf("new projection service: %v", err)
+	}
+	projection, err := service.Project(context.Background(), application.AgentTaskWorkflowProjectionRequestV1{
+		Projection: application.AgentTaskWorkflowProjectionV1{
+			TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
+			Status: application.AgentTaskWorkflowStatusWaitingApproval, Revision: 2,
+		},
+		RunUUID: "RUN-1", RuntimeID: "dipole-agent",
+	})
+	if err != nil || projection.Status != application.AgentTaskWorkflowStatusWaitingApproval {
+		t.Fatalf("project active run: projection=%+v err=%v", projection, err)
+	}
+}
+
 func TestPersistentAgentTaskWorkflowProjectionServiceRejectsBindingAndTerminalDrift(t *testing.T) {
 	store := &agentPolicyStoreStub{
 		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100", Status: application.AgentTaskStatusRunning}},
@@ -51,6 +72,7 @@ func TestPersistentAgentTaskWorkflowProjectionServiceRejectsBindingAndTerminalDr
 			request.Projection.WorkflowID = "other-workflow"
 		},
 		func(request *application.AgentTaskWorkflowProjectionRequestV1) { request.RuntimeID = "forged-runtime" },
+		func(request *application.AgentTaskWorkflowProjectionRequestV1) { request.Mode = "active" },
 		func(request *application.AgentTaskWorkflowProjectionRequestV1) {
 			request.Projection.Status = application.AgentTaskWorkflowStatusRunning
 		},

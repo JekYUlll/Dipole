@@ -762,7 +762,7 @@ func TestExecuteMcpMessageCommandUsesBoundRuntimeService(t *testing.T) {
 	}
 }
 
-func TestProjectTaskWorkflowStateUsesFixedRuntimeBinding(t *testing.T) {
+func TestProjectTaskWorkflowStateUsesFixedRuntimeBindingWithoutModeDefault(t *testing.T) {
 	projection := &taskWorkflowProjectionStub{result: application.AgentTaskWorkflowProjectionV1{
 		TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
 		Status: application.AgentTaskWorkflowStatusWaitingInput, Revision: 2,
@@ -777,7 +777,7 @@ func TestProjectTaskWorkflowStateUsesFixedRuntimeBinding(t *testing.T) {
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
 		WorkflowId: "dipole-agent-task/TASK-1", WorkflowRunId: "temporal-run-1", WorkflowStatus: "waiting_input", WorkflowRevision: 2,
 	})
-	if err != nil || response.GetWorkflowRevision() != 2 || projection.request.RuntimeID != "dipole-agent" || projection.request.Mode != "shadow" || projection.request.RunUUID != "RUN-1" {
+	if err != nil || response.GetWorkflowRevision() != 2 || projection.request.RuntimeID != "dipole-agent" || projection.request.Mode != "" || projection.request.RunUUID != "RUN-1" {
 		t.Fatalf("unexpected Workflow projection: response=%+v request=%+v err=%v", response, projection.request, err)
 	}
 }

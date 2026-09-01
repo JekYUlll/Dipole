@@ -1681,7 +1681,7 @@ func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.
 			TaskUUID: request.GetTaskId(), WorkflowID: request.GetWorkflowId(), RunID: request.GetWorkflowRunId(),
 			Status: application.AgentTaskWorkflowStatusV1(request.GetWorkflowStatus()), Revision: request.GetWorkflowRevision(),
 		},
-		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent",
 	})
 	if err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
