@@ -38,6 +38,16 @@ test('keeps the chat desktop shell aligned with the V3 surface tokens', async ({
   })
 })
 
+test('keeps the chat mobile session surface aligned with the V3 layout', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/app/')
+  await expect(page.getByText('选择一个会话开始聊天')).toBeVisible()
+  await expect(page.locator('.conv-item')).toHaveCount(3)
+  await expect(page.locator('.im-container')).toHaveScreenshot('chat-mobile-chromium.png', {
+    animations: 'disabled',
+  })
+})
+
 function conversation(key: string, nickname: string, preview: string, time: string, unread: number, userType = 0) {
   const uuid = key.split(':').at(-1)!
   return {
