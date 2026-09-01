@@ -2,6 +2,8 @@
 
 - 2026-09-02：Shadow Eval 观测将严格识别“可信会话发现为空”导致的 `conversation.read` 跳过。该 Step 仍保留在 trajectory 中，审阅包明确标为 `not_required/no_discovered_conversation`，且不计为工具调用或缺失授权；识别依赖于已完成的 `conversation.read`、空授权及精确的持久化 skip 输出三项同时成立。任何其他空授权、非终态、缺失延迟或重试证据继续阻断 evaluator。此修复来自 Remote GPU review pack 暴露的真实只读样本，不构成新的成功率结论。
 
+- 2026-09-02：Remote GPU 的干净 Agent Runtime 候选已对同一终态 Shadow 样本复导 review pack：`conversation.list` 保留精确 allowed scope，空发现后的 `conversation.read` 标为 `not_required/no_discovered_conversation`，evaluator eligibility 为 `eligible`，且导出不含 Task、Run、Trace 或会话标识明文。该回执只复核已有单样本的观测解释与低敏导出，不能推导任务成功率或候选 promotion。
+
 - 2026-09-02：新增只读 Shadow Eval review-pack CLI。它对 Task、Run、Trace 和资源标识作域分隔哈希后导出终态观测元数据；对缺少授权、延迟或重试审计的样本明确标记 evaluator `blocked` 原因，保留人工失败分类，同时要求独立审核者再创建最终绑定 manifest。导出内容不能直接驱动评测或构成候选晋级、任务成功率结论。
 
 - 2026-09-02：修复后的 clean `f72e47cf` 候选已在 Remote GPU 的 loopback-only Compose 中通过真实 read-shadow Smoke。Kafka 事件、Core Capability RPC、Temporal Run、至少一次完成模型调用和一份 `conversation_digest` Artifact 均收敛，消息表保持零写入；Gateway 仅监听 `127.0.0.1:18117`。该 receipt 仅证明单样本只读链路回归，不构成任务成功率、效果提升或 promotion 结论。
