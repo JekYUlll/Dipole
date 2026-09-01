@@ -50,6 +50,23 @@ describe('AgentTaskTimeline', () => {
     expect(wrapper.find('[data-event-seq]').exists()).toBe(false)
   })
 
+  it('retries the initial Timeline read once while a newly admitted Task is projected', async () => {
+    vi.useFakeTimers()
+    const getTimeline = vi.fn()
+      .mockRejectedValueOnce(new Error('not found yet'))
+      .mockResolvedValueOnce({ schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 1, events: [], nextCursor: '' })
+    const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
+
+    await flushPromises()
+    expect(getTimeline).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+
+    expect(getTimeline).toHaveBeenCalledTimes(2)
+    expect(wrapper.attributes('data-state')).toBe('ready')
+    vi.useRealTimers()
+  })
+
   it('links only validated Artifact events to the metadata surface', async () => {
     const getTimeline = vi.fn().mockResolvedValue({ schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 2, events: [{ eventSeq: '1', eventId: 'EV-1', taskId: 'TASK-1', runId: 'RUN-1', kind: 'artifact', status: 'created', artifactId: 'a'.repeat(64), occurredAtUnixMs: 1_000 }], nextCursor: '' })
     const wrapper = mountTimeline({ ...defaultClient(), getTimeline })

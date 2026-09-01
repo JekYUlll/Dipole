@@ -9,6 +9,7 @@ const events = ref<AgentTaskTimelineEvent[]>([])
 const nextCursor = ref('')
 const revision = ref<number | undefined>()
 const loadingMore = ref(false)
+const initialProjectionRetryMs = 1_000
 
 onMounted(() => { void load() })
 
@@ -17,8 +18,16 @@ async function load() {
   events.value = []
   nextCursor.value = ''
   try {
-    if (client.value.getTimeline === undefined) throw new Error('Agent Task Timeline is unavailable')
-    const page = await client.value.getTimeline(props.taskId)
+    const getTimeline = client.value.getTimeline
+    if (getTimeline === undefined) throw new Error('Agent Task Timeline is unavailable')
+    let page: Awaited<ReturnType<NonNullable<AgentTaskClient['getTimeline']>>>
+    try {
+      page = await getTimeline(props.taskId)
+    } catch {
+      // Task admission is asynchronous, so its Timeline projection can appear shortly after the redirect.
+      await new Promise<void>(resolve => window.setTimeout(resolve, initialProjectionRetryMs))
+      page = await getTimeline(props.taskId)
+    }
     events.value = page.events
     nextCursor.value = page.nextCursor
     revision.value = page.revision

@@ -2044,6 +2044,7 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-09-01：开发工作流收敛为主轨道连续 worktree 与里程碑提交；Remote GPU 开发验证可直接更新本轨道已有 Compose project，缺失依赖可经 sudo 安装。仅在明确冲突时新建隔离项目，普通 Smoke、脚本试验和文档验证不再创建完整临时集群。
 - 2026-08-30：Remote development 新增 `web-sync-bundle` 动作，提交同步后在 Remote GPU 生成绑定 revision 的 shadow bundle；该动作不启动 Compose、不申请 GPU，归档输出位于 `/tmp` 并保持不可覆盖和 `0600` 权限。
 - 2026-08-30：A6 新增 `scripts/package-web-sync-bundle.sh`，将候选 Web 构建按完整 Git revision、显式 Sync 模式和稳定 tar 元数据打包为不可覆盖的 `web-sync-bundle.v1`；报告权限固定为 `0600`，源目录内输出会 fail-closed，便于后续观察会话复核 bundle 哈希。
 - 2026-08-30：Sync/Message Inbox ownership smoke 新增可选 `SMOKE_REPORT_FILE` 机器可读 receipt，绑定源码 revision、dirty 状态、projector/atomic 模式、非破坏性回滚动作、退出状态和临时容器清理结果；报告以 `0600` 权限原子写入，默认路径与 GPU 并行策略保持不变。
