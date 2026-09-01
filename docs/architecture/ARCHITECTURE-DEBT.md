@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Remote GPU 同版本 Shadow Smoke 发现 Planner 将事件裸 `target_uuid` 传入要求 canonical conversation key 的 Runtime evidence reader，Temporal Run 因本地输入校验失败，未产生 Model Call、Shadow Step 或 Artifact。代码已改为传递事件 `conversation_key`，direct/group 定向回归与 TypeScript 构建通过。修复前的 failed Run 不计入成功率；必须以 clean revision 重建候选，重跑真实 Kafka、Capability RPC、模型调用、Artifact 和人工评审多样本窗口后，才可更新任务成功率或 promotion 结论。
+
 - 2026-09-02：Remote GPU 用 legacy Docker builder 构建多服务候选时发现，`DIPOLE_BINARY` 即使未被依赖安装命令引用，只要在该层前声明也会切分 Docker cache。镜像已将所有服务特有 build args 与 provenance 标签下移到 `ca-certificates`/`tzdata` 层之后，并用层序测试固定。该修复降低后续候选的网络和 Docker I/O，不影响现有镜像的 provenance 复核、运行验收或回滚要求。
 
 - 2026-09-02：Shadow Eval 窗口已将最低评审样本数变为显式、回执可见的采集门禁。调用者可通过 `DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 固定本窗口阈值；低于阈值会在读取或拷贝任何 manifest 前失败，v2 `manifest-set.json` 同时保存所需与实际数量，既有 v1 回执保持原 schema 可验证。默认 `1` 仅服务单样本调试；成功率 claim 仍须使用人工复核的固定多样本窗口，且不能由该门禁单独证明。

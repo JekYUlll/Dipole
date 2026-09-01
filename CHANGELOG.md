@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Remote GPU 的同版本 Agent Shadow Smoke 暴露会话证据读取的跨服务契约漂移：Planner 曾把事件裸 `target_uuid` 交给要求 canonical conversation key 的 Runtime RPC adapter，导致 Temporal Run 在模型调用前失败。现改为使用事件 `conversation_key`，并新增 direct/group 回归锁定 `direct:<principal>:<target>` 与 `group:<id>` 两种路径。定向 Vitest `18/18` 与 TypeScript 构建通过；修复镜像、真实 Kafka/Capability RPC/模型/Artifact 成功样本及受控多样本评测窗口仍待重跑。
+
 - 2026-09-02：Remote GPU 的 legacy Docker builder 验证表明，仅后移 provenance 标签仍会因前置 `DIPOLE_BINARY` build arg 使不同 Go 服务重复安装 Alpine 依赖。镜像定义现将服务二进制、revision、构建时间和 dirty 状态全部置于共享依赖层之后，并由静态层序回归锁定；后续同机候选构建可在服务间复用 `ca-certificates` 与 `tzdata` 缓存。
 
 - 2026-09-02：Shadow Eval 窗口收集器新增显式最低样本数门禁。`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 在采集前拒绝不足的评审 manifest 集合，并将阈值与实际样本数共同写入低敏 v2 `manifest-set.json` 回执；默认值为 `1`，保留单样本调试能力。既有 v1 回执保持原 schema 可验证。正式窗口可固定例如 `10` 的阈值，避免从小样本回执外推任务成功率。
