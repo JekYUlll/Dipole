@@ -2118,6 +2118,7 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-09-02：Agent Interactive read-scope 受控 Remote GPU 回执补齐未确认输入到期：仅将 Agent 更新至 `d60ace70` 并临时设置 2 秒 TTL，Gateway start 返回 `202`，owner-scoped Task/Timeline 查询返回 `200`，Task/Run 收敛为 `cancelled/input_expired`；持久轨迹保留一次 discovery 与一次未执行 read 计划，已完成和已授权读取均为零。候选验证结束后恢复默认 15 分钟 TTL，详见 `benchmarks/agent-read-scope-confirmation-2026-09-02/`。
 - 2026-09-01：Remote GPU 长驻 Agent Shadow 体验项目已将 Core 静态资源更新到 `6d274a54`；Core、Gateway 与 Timeline 路由健康，部署前端资产包含等待审批入口。复用候选 `.env` 的单服务更新现要求显式传入 `DIPOLE_INTERNAL_CERT_DIR`，避免 mTLS 证书 bind 路径漂移。
 - 2026-09-01：Agent Task Timeline 对具有 approval ID 的 `waiting_approval` 事件提供审批页入口，使创建任务后的只读轨迹可进入既有 owner-scoped Human-in-the-loop 页面；已完成和无效事件保持无操作入口。
 - 2026-09-01：开发工作流收敛为主轨道连续 worktree 与里程碑提交；Remote GPU 开发验证可直接更新本轨道已有 Compose project，缺失依赖可经 sudo 安装。仅在明确冲突时新建隔离项目，普通 Smoke、脚本试验和文档验证不再创建完整临时集群。

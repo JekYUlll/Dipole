@@ -46,6 +46,22 @@
     "completedReadSteps": 0,
     "authorizedReadSteps": 0
   },
+  "inputExpiry": {
+    "agentRuntimeRevision": "d60ace707d77a9d1485ced7e02584fc166ffcee0",
+    "serviceTopologyRevision": "d591bc7592b3974c6ec33425371f66fd9d3e29ea",
+    "configuredConfirmationTtlMs": 2000,
+    "interactiveTaskStart": 202,
+    "waitingInputEvidence": "input_expired transition",
+    "terminalTaskStatus": "cancelled",
+    "reason": "input_expired",
+    "timelineEventCount": 5,
+    "cancelledTaskCount": 1,
+    "cancelledRunCount": 1,
+    "completedListSteps": 1,
+    "plannedReadSteps": 1,
+    "completedReadSteps": 0,
+    "authorizedReadSteps": 0
+  },
   "result": "eligible",
   "limitations": [
     "Controlled two-conversation fixture only.",

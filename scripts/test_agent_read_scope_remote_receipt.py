@@ -51,6 +51,22 @@ class AgentReadScopeRemoteReceiptTest(unittest.TestCase):
             "completedReadSteps": 0,
             "authorizedReadSteps": 0,
         })
+        self.assertEqual(receipt["inputExpiry"], {
+            "agentRuntimeRevision": "d60ace707d77a9d1485ced7e02584fc166ffcee0",
+            "serviceTopologyRevision": "d591bc7592b3974c6ec33425371f66fd9d3e29ea",
+            "configuredConfirmationTtlMs": 2_000,
+            "interactiveTaskStart": 202,
+            "waitingInputEvidence": "input_expired transition",
+            "terminalTaskStatus": "cancelled",
+            "reason": "input_expired",
+            "timelineEventCount": 5,
+            "cancelledTaskCount": 1,
+            "cancelledRunCount": 1,
+            "completedListSteps": 1,
+            "plannedReadSteps": 1,
+            "completedReadSteps": 0,
+            "authorizedReadSteps": 0,
+        })
 
     def test_receipt_has_no_fixture_identifiers(self) -> None:
         contents = RECEIPT.read_text(encoding="utf-8")
