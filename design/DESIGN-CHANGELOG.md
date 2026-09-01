@@ -4,6 +4,30 @@
 
 ## [Unreleased]
 
+- 归档 Contact Directory 与 Group Directory 的 Pencil canonical desktop/mobile 导出，补齐 `design/README.md` 页面索引；导出来自现有 canonical frame，未复制第二份 `.pen` 文件。
+
+- 增加 Device Directory authenticated desktop/mobile 页面与 Chromium canonical 基线；明确 owner-scoped 会话、设备撤销操作和服务不可用清空策略。
+
+- V3 Logo 追踪新增颜色量化与二值 alpha mask 预处理，修正原始 VTracer 结果中的栅格边缘残影；IM/Agent 完整锁定稿与紧凑标志均已重新生成并保留透明背景。
+
+- 增加 Group Directory authenticated desktop/mobile 页面与 Chromium canonical 基线；页面复用 V3 IM 紧凑 mark，固定群组只读边界、热群 `notify + pull` 状态和服务不可用清空策略。
+
+- V3 品牌套件新增由 `LOGO_V3.png` 经 VTracer 追踪生成的 IM 紧凑 mark；完整锁定稿、IM mark 与 Agent mark 均记录独立裁剪范围和可复现生成脚本，页面继续禁止使用手工重绘版本。
+
+- 增加 Contact Directory 的 authenticated desktop/mobile 页面实现与 Chromium canonical 截图基线；页面使用 V3 IM Logo，明确 server-owned、read-only 关系边界和不可用清空策略。
+
+- V3 Logo 资产改为透明背景的 PNG→SVG 追踪结果；完整锁定稿与紧凑 Agent 标志均采用原图可见边界，避免将概念标题和色板带入产品页面。
+
+- Agent Definition Catalog 已完成 authenticated owner-scoped 只读页面，补齐 desktop/mobile Chromium canonical 基线；页面不提供编辑、创建或能力授予动作。
+
+- Agent Approval 与 Elicitation 的 Mobile/Form 设计帧已获得受控 Chromium 视觉基线，固定 390x844 单列断点、安全披露和操作区顺序。
+
+- V3 品牌资产改用 VTracer 从 `docs/images/LOGO_V3.png` 的独立区域生成；完整 Agent 锁定稿保留顶部轨道节点，紧凑标志保留完整轨道构图，追踪参数统一由 `scripts/trace-brand-assets.sh` 管理。
+
+### 验证
+
+- V3 前端视觉基线已完成一次逐页复核并刷新 9 个 Chromium canonical 快照，覆盖 Agent Elicitation、Artifact、Definition Catalog、Governance、Task Timeline、Chat、File Directory 和 Settings；Chromium 40 项通过、2 项按测试设计跳过，Firefox 与 WebKit 独立验收均为 18 项通过、12 项按测试设计跳过。快照只记录当前 V3 设计实现，不替代 Pencil 源文件。
+
 - 增加本地 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该检查不修改设计文件，也不替代 Pencil 视觉评审。
 
 ### 变更
@@ -56,5 +80,24 @@
 - 同步恢复固定采用“读取安全游标 → 写入本地消息 → 提交设备游标”的可见顺序，避免界面暗示尚未持久化的消息已经安全同步。
 - 同步故障局部降级；本地消息继续可读，错误状态提供重试入口，显式退出时清理当前账号本地数据。
 - Search v1 仅展示 principal 有权访问的会话范围，并持续显示权限提示。
+
+# 2026-09-01 Brand asset trace rollout
+
+- Agent Memory 与 Event Subscription 控制台的窄侧栏改用从 `LOGO_V3.png` 经 VTracer 生成的 `dipole-v3-agent-mark-traced.svg`；完整 IM/Agent 锁定标仍按页面语义分别使用。
+- 页面测试与生产构建通过，远程候选已验证 SVG 通过 Gateway 静态资源路由返回。
+
+# 2026-09-01 Chat Desktop V3 surface pass
+
+- Chat Desktop 首轮实现已将导航 rail、会话侧栏、空状态、消息气泡、输入区和详情区映射到共享 Pencil tokens；交互与数据请求保持原有契约。
+- 新增受控 Chromium Chat screenshot baseline，页面级视觉测试通过，远程候选已验证新 CSS 资源返回 `200`。
 - Search 故障采用局部降级，不遮挡或禁用聊天主链路。
 - 结果同时展示会话身份和 `message_seq`，为后续精确定位消息保留稳定交互语义。
+
+# 2026-09-01 Pencil V3 path asset import
+
+- 在活动 Pencil canvas 中将 `LOGO_V3.png` 的 VTracer 原始四路径几何导入 Group、Contact、File 和 Device rail，保留源 viewBox、品牌颜色与比例；导入过程未使用人工重绘或外部 image fill。
+- 活动画布的 Group、Contact、File、Device 节点级截图通过，确认标志无 checkerboard、裁切、溢出或折叠；因活动 canvas 与当前分支 canonical `.pen` 存在额外未归属差异，本轮暂不直接合并整文件，canonical 持久化保留为下一次隔离编辑切片。
+
+### 验证
+
+- Pencil canonical 结构门禁待本切片提交前复跑；前端页面继续通过 `scripts/check-brand-assets.mjs` 校验页面引用与路径资产完整性。
