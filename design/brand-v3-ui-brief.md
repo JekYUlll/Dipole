@@ -6,12 +6,14 @@ Incrementally add a new isolated cluster named `Brand / V3 / Dipole IM & Agent` 
 
 ## Brand Direction
 
-Use the supplied Dipole V3 language as the source of truth:
+Use the committed V3 brand board as the source of truth — the hexes measured
+from `docs/images/` and encoded in `scripts/generate-brand-assets.mjs` and
+`frontend/src/styles/design-tokens.css`, which supersede the earlier estimates:
 
-- `Navy #0B2A4A`: trustworthy IM infrastructure and navigation.
-- `Signal red #F2262A`: message energy, unread state, and primary action.
-- `Orbit gold #F4B000`: Agent state, durable task progress, and intelligent collaboration.
-- `Ivory #F8F1E4`: warm canvas and paper-like secondary surfaces.
+- `Navy #0D2744`: trustworthy IM infrastructure and navigation.
+- `Signal red #EA2521`: message energy, unread state, and primary action.
+- `Orbit gold #EFAD05`: Agent state, durable task progress, and intelligent collaboration.
+- `Ivory #FBF2E7`: warm canvas and paper-like secondary surfaces.
 - `Ink #092545`: readable long-form text.
 
 The mark is formed from two opposing conversation poles: a navy left form and a red right form joined through a small white capsule. The Agent version adds a fine gold orbital arc and a small gold node. The visual language should be crisp, editorial, and warm. Avoid generic AI gradients, soft purple palettes, or oversized rounded blobs.
