@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import type { AgentCapabilityRPCClient, AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
@@ -91,12 +92,43 @@ export function createInteractiveMessageExecutor(
     createMcpWriteApprovalConsumePort(client),
     createMcpWriteApprovalGrantResolver(client)
   );
-  const projection = new McpMessageWriteProjection(
-    approvals,
-    new McpToolInvocationRunner({ begin: input => client.begin(input), finish: input => client.finishToolInvocation(input) }),
-    { executeMessageCommand: input => client.executeMessageCommand(input) }
-  );
-  return { execute: (input, context) => projection.execute(interactiveMessageTool, input, context) };
+  return {
+    execute: (input, context) => new McpMessageWriteProjection(
+      approvals,
+      new McpToolInvocationRunner(
+        { begin: begin => client.begin(begin), finish: finish => client.finishToolInvocation(finish) },
+        undefined,
+        () => interactiveMessageInvocationID(context, input),
+        undefined,
+        undefined,
+        isUncertainMessageCommandFailure
+      ),
+      { executeMessageCommand: command => client.executeMessageCommand(command) }
+    ).execute(interactiveMessageTool, input, context)
+  };
+}
+
+function interactiveMessageInvocationID(
+  context: ExecutionContext,
+  input: { readonly conversationId: string; readonly content: string }
+): string {
+  const material = [
+    "dipole.agent.interactive-message-invocation.v1",
+    context.taskId,
+    context.runId,
+    interactiveMessageTool.capabilityId,
+    input.conversationId,
+    input.content
+  ].join("\n");
+  return `tool:${createHash("sha256").update(material, "utf8").digest("hex").slice(0, 59)}`;
+}
+
+function isUncertainMessageCommandFailure(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) return false;
+  const code = (error as { code?: unknown }).code;
+  // gRPC DEADLINE_EXCEEDED and UNAVAILABLE can occur after the Core accepted
+  // the idempotent command, so a terminal Tool failure would block recovery.
+  return code === 4 || code === 14;
 }
 
 function directConversationKey(first: string, second: string): string {

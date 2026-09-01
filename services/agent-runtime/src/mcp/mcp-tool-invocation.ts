@@ -44,7 +44,8 @@ export class McpToolInvocationRunner {
     private readonly tracer: Tracer = trace.getTracer("dipole-agent-runtime"),
     private readonly idGenerator: () => string = randomUUID,
     private readonly now: () => number = performance.now.bind(performance),
-    private readonly timeoutMs: number = 5_000
+    private readonly timeoutMs: number = 5_000,
+    private readonly preserveOpenInvocationOnFailure: (error: unknown) => boolean = () => false
   ) {
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 60_000) {
       throw new Error("MCP Tool timeout must be between 100 and 60000 milliseconds");
@@ -94,6 +95,9 @@ export class McpToolInvocationRunner {
             toolName: tool.name,
             error: error instanceof Error ? error.message : "unknown operation error"
           });
+          // A caller can opt into retrying an uncertain transport result while
+          // retaining the durable invocation for an idempotent command replay.
+          if (this.preserveOpenInvocationOnFailure(error)) throw new ToolInvocationFailure();
           await this.finishFailed(invocationId, context, startedAt, error instanceof ToolOperationTimeout ? "tool_timeout" : "tool_execution_failed");
           throw new ToolInvocationFailure();
         }
