@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Interactive Agent 的 Temporal 集成门禁补充 owner `denied` 与并发重放信号路径。相同 request/approval ID 的两个拒绝 Signal 只会持久化一次拒绝决议，Task 收敛为 `cancelled/approval_denied`，且不会进入任何消息写步骤；该覆盖固定了审批被拒绝时的零副作用边界。Remote GPU 的干净 `f9634d3c` 候选以 Node 22 通过两份 Temporal 集成文件 `16/16` 与 TypeScript typecheck；真实 Core/Message/Compose 的联合 receipt 保持独立要求。
+
 - 2026-09-01：Interactive Agent 的 active 消息命令现通过 Message Service gRPC 执行，并由同一远程回执查询完成 Tool action reference 审计。Core 的 `dipole-agent` allowlist 精确放行 `ExecuteMcpMessageCommand`；候选回归还修复了 standalone Core 在审计阶段误用空本地 Message repository 导致的崩溃。Remote GPU loopback-only 隔离 Compose 已验证受认证 Task 创建 `202`、owner 批准 `202`、Temporal 完成、Tool completed、approval 单次 consumed，以及 action reference 对应恰好一条消息。短期开发 promotion grant 在验证后已撤销。该候选使用 dirty development images 和直接受控的开发授权续期，不构成生产发布、浏览器体验、拒绝/重复批准、故障恢复或容量结论。
 
 - 2026-09-01：新增 `agent-interactive-active.yml` 受控 overlay 与 `interactive_active` Temporal profile。该 profile 要求 active Runtime、mTLS Capability RPC、`dipole-agent-interactive-*` 专用队列、Control API 与显式消息写开关，并持续拒绝 MCP、Memory、检索和订阅扩张；基础 Compose 与 `read_active` 均不受影响。Remote GPU 已通过 profile/Temporal 定向测试和类型检查，尚未启动共享 Compose 或产生真实消息副作用。
