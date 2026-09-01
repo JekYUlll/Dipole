@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Remote GPU 的 legacy Docker builder 验证表明，仅后移 provenance 标签仍会因前置 `DIPOLE_BINARY` build arg 使不同 Go 服务重复安装 Alpine 依赖。镜像定义现将服务二进制、revision、构建时间和 dirty 状态全部置于共享依赖层之后，并由静态层序回归锁定；后续同机候选构建可在服务间复用 `ca-certificates` 与 `tzdata` 缓存。
+
 - 2026-09-02：Shadow Eval 窗口收集器新增显式最低样本数门禁。`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 在采集前拒绝不足的评审 manifest 集合，并将阈值与实际样本数共同写入低敏 v2 `manifest-set.json` 回执；默认值为 `1`，保留单样本调试能力。既有 v1 回执保持原 schema 可验证。正式窗口可固定例如 `10` 的阈值，避免从小样本回执外推任务成功率。
 
 - 2026-09-02：Agent Shadow Eval 窗口现要求评审任务集的内容摘要。采集前用独立脚本按稳定顺序计算 manifest SHA-256 集合，运行时拒绝摘要漂移或候选版本混用，并输出仅包含集合摘要、候选版本和样本数的 `manifest-set.json` 回执。Remote GPU 与本地 fixture 均验证通过，覆盖通过、有效失败和任务集漂移拒绝；真实多样本窗口和任务成功率仍待由受控运行生成。

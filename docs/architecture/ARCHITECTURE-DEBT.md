@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Remote GPU 用 legacy Docker builder 构建多服务候选时发现，`DIPOLE_BINARY` 即使未被依赖安装命令引用，只要在该层前声明也会切分 Docker cache。镜像已将所有服务特有 build args 与 provenance 标签下移到 `ca-certificates`/`tzdata` 层之后，并用层序测试固定。该修复降低后续候选的网络和 Docker I/O，不影响现有镜像的 provenance 复核、运行验收或回滚要求。
+
 - 2026-09-02：Shadow Eval 窗口已将最低评审样本数变为显式、回执可见的采集门禁。调用者可通过 `DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 固定本窗口阈值；低于阈值会在读取或拷贝任何 manifest 前失败，v2 `manifest-set.json` 同时保存所需与实际数量，既有 v1 回执保持原 schema 可验证。默认 `1` 仅服务单样本调试；成功率 claim 仍须使用人工复核的固定多样本窗口，且不能由该门禁单独证明。
 
 - 2026-09-02：`reviewed_shadow` Eval 窗口现具备固定任务集输入边界。评审者先对 manifest 目录计算内容摘要，采集器在连接运行中 Agent 前复核摘要和单一 candidate version，并生成不含 Task/Prompt/用户/消息/标签正文的 manifest-set receipt。Remote GPU shell fixture 通过正常、失败和输入漂移拒绝路径。该能力使多样本成功率窗口可复跑；当前尚无同一固定任务集的真实多样本运行，成功率 `[XX]%` 与 shared-development 结论继续保持空缺。
