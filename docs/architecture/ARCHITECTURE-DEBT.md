@@ -2,6 +2,8 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：Interactive Shadow Compose 的有效配置门禁已恢复。此前脚本检查 Gateway 的 control secret 固定值，却漏传对应的 `DIPOLE_GATEWAY_AGENT_CONTROL_SECRET`，即使 Overlay 保持默认关闭的只读边界也会在静态渲染失败。门禁现在使用隔离测试值并有变量级回归测试；该修复不启动服务、不扩大 Shadow 权限，真实 shared Compose receipt 继续由 `AD-009` 跟踪。
+
 - 2026-09-01：Interactive Agent 的隔离 Temporal 集成覆盖已增加 owner `denied` 与重复 Signal 边界：同一 pending approval 的并发重放只调用一次持久 resolution，Task 确定性收敛为 `cancelled/approval_denied`，写步骤计数保持零。Remote GPU 的干净 `f9634d3c` 候选以 Node 22 通过两份 Temporal 集成文件 `16/16` 与 TypeScript typecheck；该门禁不连接真实 Core、Message、MySQL、Kafka 或 Compose。共享环境的 owner deny、重复 approve、Activity 重试、消息副作用计数与回滚 receipt 继续由 `AD-009` 跟踪。
 
 - 2026-09-01：Remote GPU loopback-only 的 `interactive_active` 隔离 Compose 已验证一次真实受认证写闭环：Gateway Task create `202`，owner approve `202`，Temporal Task/Run、Tool Invocation 均为 `completed`，Approval 为一次 `consumed`，且通过持久 action reference 关联到恰好一条 Message。过程暴露并修复两处跨服务边界缺口：Core Agent RPC allowlist 漏掉消息命令方法，以及 standalone Core 的 Tool 审计在 remote Message transport 下仍访问空本地 repository 而 panic。候选使用 dirty development images 与短期直接续期的 developer promotion grant，结束时已 revoke 并清理临时令牌。**仍未收口：** clean same-revision image/provenance、owner deny、并发或重复 approve、Core/Message/Worker 故障重试、回滚、浏览器 HITL、外部 MCP 和可统计成功率；这些仍由 `AD-009` 跟踪，不能据此填写生产或简历指标。
