@@ -971,6 +971,16 @@ export class AgentCapabilityRPCClient {
         invocationId: input.invocationId, commandKind: input.commandKind, content
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response?.actionReference === undefined) {
+          if (error !== null) {
+            console.error("Agent Message Command RPC failed", {
+              grpcCode: error.code,
+              grpcDetails: error.details,
+              taskId: input.taskId,
+              runId: input.runId,
+              invocationId: input.invocationId,
+              commandKind: input.commandKind
+            });
+          }
           reject(error ?? new Error("Agent Message Command returned no action reference"));
           return;
         }

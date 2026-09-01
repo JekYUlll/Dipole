@@ -17,3 +17,16 @@ func TestValidateStandaloneCoreMode(t *testing.T) {
 		}
 	}
 }
+
+func TestCoreAgentToolReceiptQueryUsesRemoteSender(t *testing.T) {
+	t.Parallel()
+
+	local := &lazyCoreMessageSender{}
+	remote := &lazyCoreMessageSender{}
+	if got := coreAgentToolReceiptQuery(local, remote); got != remote {
+		t.Fatal("standalone Core Agent Tool audit must query the remote Message service")
+	}
+	if got := coreAgentToolReceiptQuery(local, nil); got != local {
+		t.Fatal("embedded Core Agent Tool audit must retain the local Message query")
+	}
+}

@@ -139,6 +139,34 @@ export interface SendGroupTextRequest {
     clientMessageId: string;
 }
 /**
+ * SendAssistantText is reserved for the trusted Core capability boundary.
+ * The Message service keeps ownership of validation, persistence and deduplication.
+ *
+ * @generated from protobuf message dipole.message.v1.SendAssistantTextRequest
+ */
+export interface SendAssistantTextRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string assistant_user_id = 2
+     */
+    assistantUserId: string;
+    /**
+     * @generated from protobuf field: string target_user_id = 3
+     */
+    targetUserId: string;
+    /**
+     * @generated from protobuf field: string content = 4
+     */
+    content: string;
+    /**
+     * @generated from protobuf field: string client_message_id = 5
+     */
+    clientMessageId: string;
+}
+/**
  * @generated from protobuf message dipole.message.v1.SendDirectFileRequest
  */
 export interface SendDirectFileRequest {
@@ -200,6 +228,10 @@ export interface SendSystemDirectMessageRequest {
      * @generated from protobuf field: string content = 4
      */
     content: string;
+    /**
+     * @generated from protobuf field: string client_message_id = 5
+     */
+    clientMessageId: string;
 }
 /**
  * @generated from protobuf message dipole.message.v1.SendSystemGroupMessageRequest
@@ -798,6 +830,84 @@ class SendGroupTextRequest$Type extends MessageType<SendGroupTextRequest> {
  */
 export const SendGroupTextRequest = new SendGroupTextRequest$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class SendAssistantTextRequest$Type extends MessageType<SendAssistantTextRequest> {
+    constructor() {
+        super("dipole.message.v1.SendAssistantTextRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "assistant_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "target_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "client_message_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SendAssistantTextRequest>): SendAssistantTextRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.assistantUserId = "";
+        message.targetUserId = "";
+        message.content = "";
+        message.clientMessageId = "";
+        if (value !== undefined)
+            reflectionMergePartial<SendAssistantTextRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SendAssistantTextRequest): SendAssistantTextRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string assistant_user_id */ 2:
+                    message.assistantUserId = reader.string();
+                    break;
+                case /* string target_user_id */ 3:
+                    message.targetUserId = reader.string();
+                    break;
+                case /* string content */ 4:
+                    message.content = reader.string();
+                    break;
+                case /* string client_message_id */ 5:
+                    message.clientMessageId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SendAssistantTextRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string assistant_user_id = 2; */
+        if (message.assistantUserId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.assistantUserId);
+        /* string target_user_id = 3; */
+        if (message.targetUserId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.targetUserId);
+        /* string content = 4; */
+        if (message.content !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.content);
+        /* string client_message_id = 5; */
+        if (message.clientMessageId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.clientMessageId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.message.v1.SendAssistantTextRequest
+ */
+export const SendAssistantTextRequest = new SendAssistantTextRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class SendDirectFileRequest$Type extends MessageType<SendDirectFileRequest> {
     constructor() {
         super("dipole.message.v1.SendDirectFileRequest", [
@@ -944,7 +1054,8 @@ class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMe
             { no: 1, name: "context", kind: "message", T: () => RequestContext },
             { no: 2, name: "sender_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 3, name: "target_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 4, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 4, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "client_message_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<SendSystemDirectMessageRequest>): SendSystemDirectMessageRequest {
@@ -952,6 +1063,7 @@ class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMe
         message.senderUserId = "";
         message.targetUserId = "";
         message.content = "";
+        message.clientMessageId = "";
         if (value !== undefined)
             reflectionMergePartial<SendSystemDirectMessageRequest>(this, message, value);
         return message;
@@ -972,6 +1084,9 @@ class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMe
                     break;
                 case /* string content */ 4:
                     message.content = reader.string();
+                    break;
+                case /* string client_message_id */ 5:
+                    message.clientMessageId = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -997,6 +1112,9 @@ class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMe
         /* string content = 4; */
         if (message.content !== "")
             writer.tag(4, WireType.LengthDelimited).string(message.content);
+        /* string client_message_id = 5; */
+        if (message.clientMessageId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.clientMessageId);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
@@ -1549,6 +1667,7 @@ export const ListMessagesResponse = new ListMessagesResponse$Type();
 export const MessageService = new ServiceType("dipole.message.v1.MessageService", [
     { name: "SendDirectText", options: {}, I: SendDirectTextRequest, O: SendMessageResponse },
     { name: "SendGroupText", options: {}, I: SendGroupTextRequest, O: SendMessageResponse },
+    { name: "SendAssistantText", options: {}, I: SendAssistantTextRequest, O: SendMessageResponse },
     { name: "SendDirectFile", options: {}, I: SendDirectFileRequest, O: SendMessageResponse },
     { name: "SendGroupFile", options: {}, I: SendGroupFileRequest, O: SendMessageResponse },
     { name: "SendSystemDirectMessage", options: {}, I: SendSystemDirectMessageRequest, O: SendMessageResponse },

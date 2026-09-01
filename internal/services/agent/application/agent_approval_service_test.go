@@ -85,6 +85,38 @@ func TestPersistentAgentApprovalServiceRejectsForgedActorAndCrossTaskApproval(t 
 	}
 }
 
+func TestPersistentAgentApprovalServiceDerivesModeFromPersistedActiveRun(t *testing.T) {
+	now := time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)
+	store := &agentPolicyStoreStub{
+		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100"}},
+		runs: map[string]*application.AgentRunV1{"RUN-1": {
+			RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "active", Status: application.AgentRunStatusRunning,
+		}},
+		approvals: map[string]*application.AgentApprovalV1{"APR-1": {
+			ApprovalUUID: "APR-1", TaskUUID: "TASK-1", CapabilityID: "message.system.send",
+			ResourceScope: application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "direct:U100:UAI", Actions: []string{"write"}},
+			ScopeSHA256:   strings.Repeat("a", 64), ArgumentsSHA256: strings.Repeat("b", 64), NonceSHA256: strings.Repeat("c", 64),
+			Status: application.AgentApprovalStatusPending, ExpiresAt: now.Add(time.Hour),
+		}},
+	}
+	service, err := agentapplication.NewPersistentAgentApprovalServiceV1WithClock(store, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("new Approval service: %v", err)
+	}
+	resolved, err := service.Resolve(context.Background(), application.AgentApprovalResolutionV1{
+		TaskUUID: "TASK-1", RunUUID: "RUN-1", RuntimeID: "dipole-agent", ApprovalUUID: "APR-1", ActorUUID: "U100", Decision: application.AgentApprovalDecisionApproved,
+	})
+	if err != nil || resolved.Status != application.AgentApprovalStatusApproved {
+		t.Fatalf("resolve persisted active mode: approval=%+v err=%v", resolved, err)
+	}
+	_, err = service.Resolve(context.Background(), application.AgentApprovalResolutionV1{
+		TaskUUID: "TASK-1", RunUUID: "RUN-1", RuntimeID: "dipole-agent", Mode: "shadow", ApprovalUUID: "APR-1", ActorUUID: "U100", Decision: application.AgentApprovalDecisionApproved,
+	})
+	if !errors.Is(err, application.ErrAgentApprovalDenied) {
+		t.Fatalf("resolve mismatched mode err=%v, want binding denial", err)
+	}
+}
+
 func TestPersistentAgentApprovalServiceConsumesExactApprovedBindingOnce(t *testing.T) {
 	now := time.Date(2026, 8, 28, 0, 0, 0, 0, time.UTC)
 	scope := application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "G1", Actions: []string{"write"}}

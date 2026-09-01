@@ -106,9 +106,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 
 	runtime := &CoreRuntime{}
 	var systemMessages applicationPort.SystemMessageSender
+	messageReceipts := coreAgentToolReceiptQuery(messaging.Messages, nil)
 	if config.CoreMessageConfig().Transport == "grpc" {
 		runtime.messageSender = newLazyCoreMessageSender(config.InternalRPCConfig())
 		systemMessages = runtime.messageSender
+		messageReceipts = coreAgentToolReceiptQuery(messaging.Messages, runtime.messageSender)
 	}
 	cleanup := func() { runtime.Close() }
 	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
@@ -155,7 +157,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			runtime.messageReader = newLazyCoreMessageReader(rpcCfg)
 			agentMessages = runtime.messageReader
 		}
-		commands, composeErr := agentapplication.NewLocalAgentCommandV1(messaging.Messages)
+		commandMessages := agentapplication.AgentCommandMessages(messaging.Messages)
+		if config.CoreMessageConfig().Transport == "grpc" {
+			commandMessages = runtime.messageSender
+		}
+		commands, composeErr := agentapplication.NewLocalAgentCommandV1(commandMessages)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Command: %w", composeErr)
@@ -185,6 +191,21 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Approval service: %w", composeErr)
 		}
+		approvalGrants, composeErr := agentapplication.NewPersistentAgentApprovalGrantResolverV1(agentRepos.ApprovalGrants)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Approval grant resolver: %w", composeErr)
+		}
+		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, messageReceipts)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Tool invocation audit: %w", composeErr)
+		}
+		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, commands)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Message Command execution: %w", composeErr)
+		}
 		controlAuthorizer, composeErr := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(agentRepos.Policy)
 		if composeErr != nil {
 			cleanup()
@@ -210,6 +231,18 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		if _, composeErr = agentServer.WithTaskTimeline(agentRepos.TaskTimeline); composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("configure standalone Agent Task Timeline rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithApprovalGrants(approvalGrants); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Approval grant rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithToolAudits(toolAudits); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Tool invocation audit rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithMessageCommands(messageCommands); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Message Command rpc adapter: %w", composeErr)
 		}
 		storageCfg := config.StorageConfig()
 		if storageCfg.ArtifactEnabled {
@@ -338,6 +371,15 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	}
 	logger.Info("standalone Core runtime initialized", zap.String("mode", gatewayMode), zap.String("rpc_addr", rpcAddress(runtime.coreRPC)))
 	return runtime, nil
+}
+
+// coreAgentToolReceiptQuery keeps action-reference verification on the
+// authoritative Message service when standalone Core delegates message writes.
+func coreAgentToolReceiptQuery(local applicationPort.MessageCommandReceiptQuery, remote *lazyCoreMessageSender) applicationPort.MessageCommandReceiptQuery {
+	if remote != nil {
+		return remote
+	}
+	return local
 }
 
 func validateStandaloneCoreMode(mode string) error {

@@ -2,6 +2,8 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：Remote GPU loopback-only 的 `interactive_active` 隔离 Compose 已验证一次真实受认证写闭环：Gateway Task create `202`，owner approve `202`，Temporal Task/Run、Tool Invocation 均为 `completed`，Approval 为一次 `consumed`，且通过持久 action reference 关联到恰好一条 Message。过程暴露并修复两处跨服务边界缺口：Core Agent RPC allowlist 漏掉消息命令方法，以及 standalone Core 的 Tool 审计在 remote Message transport 下仍访问空本地 repository 而 panic。候选使用 dirty development images 与短期直接续期的 developer promotion grant，结束时已 revoke 并清理临时令牌。**仍未收口：** clean same-revision image/provenance、owner deny、并发或重复 approve、Core/Message/Worker 故障重试、回滚、浏览器 HITL、外部 MCP 和可统计成功率；这些仍由 `AD-009` 跟踪，不能据此填写生产或简历指标。
+
 - 2026-09-01：`interactive_active` 已将交互写入与 `read_active` 隔离成独立 Runtime/Temporal/Compose 契约。它允许 Control API 和已批准的直属会话 `/send`，要求 mTLS、专用队列与显式开关，其他扩展仍被 profile 拒绝。当前只有隔离单元、类型和 Temporal 编排证据；共享 Compose 的 owner approve/deny、重复消费、Activity retry、消息副作用计数与回滚 receipt 继续由 `AD-009` 跟踪。
 
 - 2026-09-01：Interactive Agent 已具备默认关闭的显式直属会话消息写入编排。活动只识别 `/send <内容>`，由可信 ExecutionContext 推导 `direct:<owner>:<agent>`，并将 canonical 参数、scope、approval ID、Task/Run 写入 durable checkpoint；批准恢复后经既有 MCP approval gate、一次性消费、Tool Invocation 与 Core 消息命令执行。Remote GPU 隔离验证覆盖 activity、组合器和 Temporal `waiting_approval -> completed`，未连接共享 Core、Temporal、Kafka、MySQL 或 Compose。真实批准/拒绝/重复消费/故障回滚 receipt、active Compose overlay 和浏览器体验继续由 `AD-009` 跟踪。

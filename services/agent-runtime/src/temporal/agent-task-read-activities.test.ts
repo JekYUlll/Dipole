@@ -114,7 +114,7 @@ describe("Temporal read Step Activities", () => {
         tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
         permissions: ["conversation.list", "conversation.read"],
         resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
-        approvedCapabilities: [], eventId: event.eventId
+        approvedCapabilities: []
       }))
     };
     const activities = createTemporalReadStepActivities({
@@ -129,6 +129,31 @@ describe("Temporal read Step Activities", () => {
       admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
     })).resolves.toEqual({ kind: "complete", output: { summary: "active observe", stepCount: 0 } });
     expect(contextResolver.resolveMcpContext).toHaveBeenCalledWith(taskId, runId, "U100", {});
+  });
+
+  it("rejects an event ID that conflicts with the trusted active admission", async () => {
+    const event: AgentEvent = {
+      eventId: "E-ACTIVE-READ", eventType: "message.direct.created", aggregateId: "M-ACTIVE-READ",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "active read" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "should not run", steps: [] }) },
+      audit: { append: vi.fn(async () => undefined) }, registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(), completeStep: vi.fn(), failStep: vi.fn() },
+      runtimeMode: "active", stepLeaseMs: 60_000,
+      contextResolver: { resolveMcpContext: vi.fn(async () => ({
+        tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+        permissions: ["conversation.list"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["list"] }],
+        approvedCapabilities: [], eventId: "E-FORGED"
+      })) }
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "observe", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).rejects.toThrow(/Core Context binding mismatch/);
   });
 
   it("asks the Task owner to confirm the read scope when discovery offers several conversations", async () => {
@@ -244,6 +269,7 @@ describe("Temporal read Step Activities", () => {
       }
     });
     if (requested.kind !== "wait_approval") throw new Error("expected write approval directive");
+    expect(requested.approval.approvalId).toHaveLength(57);
     expect(execute).not.toHaveBeenCalled();
 
     await expect(activities.executeAgentTaskStep({

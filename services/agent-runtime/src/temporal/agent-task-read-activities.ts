@@ -91,7 +91,7 @@ export function createTemporalReadStepActivities(
       if (runtimeMode === "active" && dependencies.contextResolver === undefined) {
         throw new Error("Active Temporal read Step requires the Core Context resolver");
       }
-      const context = dependencies.contextResolver === undefined
+      const resolvedContext = dependencies.contextResolver === undefined
         ? executionContextSchema.parse({
           tenantId: admission.tenantId,
           principalUuid: admission.principalUserId,
@@ -110,9 +110,15 @@ export function createTemporalReadStepActivities(
           ...(admission.requestId === undefined ? {} : { requestId: admission.requestId }),
           ...(admission.traceId === undefined ? {} : { traceId: admission.traceId })
         });
-      if (context.mode !== runtimeMode || context.taskId !== input.taskId || context.runId !== input.runId || context.eventId !== event.eventId) {
+      if (resolvedContext.mode !== runtimeMode || resolvedContext.taskId !== input.taskId || resolvedContext.runId !== input.runId ||
+          (resolvedContext.eventId !== undefined && resolvedContext.eventId !== event.eventId)) {
         throw new Error("Core Context binding mismatch for Temporal read Step");
       }
+      // Admission binds the event before this Activity starts. The Core context
+      // API owns task/run authorization and intentionally does not echo eventId.
+      const context = resolvedContext.eventId === event.eventId
+        ? resolvedContext
+        : executionContextSchema.parse({ ...resolvedContext, eventId: event.eventId });
       const requestedMessage = requestedInteractiveMessage(event);
       const interactiveMessage = requestedMessage === undefined ? undefined : {
         conversationId: directConversationKey(context.principalUuid, context.agentUuid),
@@ -330,7 +336,9 @@ function interactiveMessageApproval(
   const resourceScope = { resourceType: "conversation", resourceId: conversationId, actions: ["write"] };
   const argumentsSha256 = digest([canonicalMcpJSON(requested)]);
   const scopeSha256 = digest(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions]);
-  const approvalId = `approval:${digest(["dipole.agent.interactive-message.v1", taskId, runId, event.eventId, argumentsSha256])}`;
+  // Agent approvals use a VARCHAR(64) primary key. Keep a deterministic prefix
+  // and reserve a bounded digest for their idempotent write key.
+  const approvalId = `approval:${digest(["dipole.agent.interactive-message.v1", taskId, runId, event.eventId, argumentsSha256]).slice(0, 48)}`;
   return {
     approvalId,
     capabilityId: "message.system.send",

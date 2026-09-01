@@ -214,7 +214,10 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	var agentTasks gateway.AgentTaskControlApplication
 	if gatewayCfg.AgentControlEnabled {
-		agentTasks, err = gateway.NewAgentTaskControlClient(gatewayCfg.AgentControlTarget, rpcCfg.SharedSecret, time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second)
+		agentTasks, err = gateway.NewAgentTaskControlClient(
+			gatewayCfg.AgentControlTarget, agentControlSecret(gatewayCfg.AgentControlSecret, rpcCfg.SharedSecret),
+			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Agent Task control client: %w", err)
@@ -402,6 +405,13 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		zap.String("realtime_delivery_authority", string(deliveryAuthority)),
 	)
 	return runtime, nil
+}
+
+func agentControlSecret(configuredSecret, internalRPCSecret string) string {
+	if configuredSecret != "" {
+		return configuredSecret
+	}
+	return internalRPCSecret
 }
 
 // A nil concrete client in an interface would register the route and panic on use.
