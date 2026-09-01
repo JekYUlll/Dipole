@@ -45,6 +45,6 @@ describe('ContactDirectory', () => {
 
   it('uses the traced V3 IM asset for the brand surface', () => {
     const source = readFileSync(resolve(import.meta.dirname, 'ContactDirectory.vue'), 'utf8')
-    expect(source).toContain("dipole-v3-im-traced.svg")
+    expect(source).toContain("dipole-v3-im-mark-traced.svg")
   })
 })

@@ -22,6 +22,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/groups',
+      name: 'groups',
+      component: () => import('@/views/GroupDirectoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/agent/tasks/:taskId/input',
       name: 'agent-task-input',
       component: () => import('@/views/AgentElicitationView.vue'),

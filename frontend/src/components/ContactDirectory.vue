@@ -42,7 +42,7 @@ import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { contactDirectoryClient, type ContactDirectoryClient } from '@/api/contacts'
 import type { Contact } from '@/types'
-import dipoleLogo from '../../../docs/images/dipole-v3-im-traced.svg'
+import dipoleLogo from '../../../docs/images/dipole-v3-im-mark-traced.svg'
 
 const props = withDefaults(defineProps<{ client?: ContactDirectoryClient }>(), { client: () => contactDirectoryClient })
 const state = ref<'loading' | 'ready' | 'unavailable'>('loading')

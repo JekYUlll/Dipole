@@ -29,6 +29,7 @@ trace() {
 # complete visible lockup/mark and intentionally exclude the concept heading
 # and palette swatches.
 trace '560x490+100+295' 'dipole-v3-im-traced.svg'
+trace '560x360+100+295' 'dipole-v3-im-mark-traced.svg'
 trace '680x625+720+175' 'dipole-v3-agent-traced.svg'
 trace '680x510+720+175' 'dipole-v3-agent-mark-traced.svg'
 

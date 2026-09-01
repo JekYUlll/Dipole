@@ -1,1 +1,0 @@
-var e=`/app/assets/dipole-v3-im-traced-Begx5ROA.svg`;export{e as t};
