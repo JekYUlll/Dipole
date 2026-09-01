@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：新增只读 `shadow-eval-review-pack-cli`，为终态观测导出 Task/Run/Trace/资源的域分隔哈希、能力轨迹、证据指纹和计量完整性。该包刻意不能生成可执行 manifest 或推导标签；审核者仍须在受控工作区独立填写 outcome、trajectory、permission、retrieval 和 cost，并用绑定 manifest 执行评测。当前 clean candidate 的多样本窗口、晋级和简历成功率结论继续保持关闭。
+
 - 2026-09-02：clean `f72e47cf` 已在 Remote GPU 独立 Compose 中完成修复后 read-shadow 回归。低敏 receipt 与数据库聚合确认完成 EventLedger、Shadow Run、模型调用和 `conversation_digest`，消息表为零，Gateway 仅绑定 `127.0.0.1:18117`。此证据覆盖单条受控 Kafka 事件，尚未形成固定人工评审多样本集，禁止据此填写任务成功率或放开 promotion。
 
 - 2026-09-02：Remote GPU 同版本 Shadow Smoke 发现 Planner 将事件裸 `target_uuid` 传入要求 canonical conversation key 的 Runtime evidence reader，Temporal Run 因本地输入校验失败，未产生 Model Call、Shadow Step 或 Artifact。代码已改为传递事件 `conversation_key`，direct/group 定向回归与 TypeScript 构建通过。修复前的 failed Run 不计入成功率；必须以 clean revision 重建候选，重跑真实 Kafka、Capability RPC、模型调用、Artifact 和人工评审多样本窗口后，才可更新任务成功率或 promotion 结论。

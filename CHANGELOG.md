@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：新增只读 Shadow Eval review-pack CLI。它对 Task、Run、Trace 和资源标识作域分隔哈希后导出终态观测元数据，并明确要求独立审核者再创建最终绑定 manifest；导出内容不能直接驱动评测或构成候选晋级、任务成功率结论。
+
 - 2026-09-02：修复后的 clean `f72e47cf` 候选已在 Remote GPU 的 loopback-only Compose 中通过真实 read-shadow Smoke。Kafka 事件、Core Capability RPC、Temporal Run、至少一次完成模型调用和一份 `conversation_digest` Artifact 均收敛，消息表保持零写入；Gateway 仅监听 `127.0.0.1:18117`。该 receipt 仅证明单样本只读链路回归，不构成任务成功率、效果提升或 promotion 结论。
 
 - 2026-09-02：Remote GPU 的同版本 Agent Shadow Smoke 暴露会话证据读取的跨服务契约漂移：Planner 曾把事件裸 `target_uuid` 交给要求 canonical conversation key 的 Runtime RPC adapter，导致 Temporal Run 在模型调用前失败。现改为使用事件 `conversation_key`，并新增 direct/group 回归锁定 `direct:<principal>:<target>` 与 `group:<id>` 两种路径。定向 Vitest `18/18` 与 TypeScript 构建通过；修复镜像、真实 Kafka/Capability RPC/模型/Artifact 成功样本及受控多样本评测窗口仍待重跑。

@@ -128,6 +128,25 @@ one failed task; all other statuses fail closed. The generated window remains
 an isolated development observation until its task set, reviewer process and
 environment are independently approved.
 
+Before a reviewer writes a manifest, a controlled terminal can export one
+low-sensitivity observation packet from the read-only evaluation account:
+
+```bash
+DIPOLE_AGENT_EVAL_MYSQL_URL='mysql://readonly:...@127.0.0.1:3306/dipole' \
+npm run eval:shadow-review-pack -- \
+  --candidate-version=agent-runtime@<clean-revision> \
+  --task-id=<task-id> \
+  --run-id=<run-id> > /secure/review-packs/sample.json
+```
+
+The packet fingerprints Task, Run, Trace and resource IDs and excludes message,
+prompt, artifact body and tool arguments. It reports terminal execution state,
+capability trajectory, authorization decisions, retrieval evidence fingerprints
+and metering completeness. It remains `review_required`: it does not emit an
+executable manifest, suggest labels or approve a candidate. The final manifest
+must be independently reviewed and bound to the original Task/Run in the
+controlled review workspace before collection.
+
 Before reading a manifest, the collector resolves the running `agent` container
 and records its OCI `org.opencontainers.image.revision` label. It rejects a
 missing revision or a non-clean `io.dipole.source.dirty` label. Therefore the
