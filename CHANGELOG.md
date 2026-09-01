@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 在 `f0dcf98a` 通过 Approval gate v2 disposable drill，并归档 [v2 receipt](benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)。denied grant、consumed replay 与 failed-operation replay 均被拒绝且不产生新增 effect；同轮 MCP 去重、过期 readiness 与 mTLS identity 检查继续通过。审批 UI、真实外部 MCP 与 active authority 保持关闭。
+
 - 2026-09-01：Approval gate drill receipt 升级为 v2，将 denied grant、consumed replay 与 failed-operation replay 的拒绝结果显式绑定到零副作用基数；v1 归档保持可读，下一次 Remote GPU disposable drill 将生成 v2 evidence。该契约不开放审批 UI、IM 写入、真实外部 MCP 或 active authority。
 
 - 2026-09-01：Remote GPU 已在 `3c1f3eba` 复跑 External MCP/approval disposable Shadow drill，并归档低敏 [MCP 与 approval receipt](benchmarks/agent-mcp-approval-shadow-2026-09-01/)。验证覆盖本地 MCP 单次 Tool/Artifact、重启去重、过期 readiness 拒绝、mTLS identity denial 与 approved fixture operation 的精确副作用基数；共享服务、审批 UI、真实外部 MCP 和 active authority 继续关闭。

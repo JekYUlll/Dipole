@@ -26,6 +26,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：Remote GPU 已在 `f0dcf98a` 运行并归档 [Approval v2 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)。denied grant、consumed grant replay 与 failed-operation replay 都被拒绝，三类路径均未产生新增 effect；同次 MCP drill 继续验证本地 Tool/Artifact、EventLedger 去重、过期 readiness 与 mTLS identity denial。审批 UI、共享服务、真实外部 MCP、凭据生命周期与 active authority 继续开放。
+
 - 2026-09-01：Approval gate drill receipt 升级为 v2，将已拒绝 grant、已消费 grant 重放和失败操作后的重放作为独立布尔断言，并继续绑定相应的零副作用计数。v1 保留为历史 evidence；v2 Remote GPU receipt、审批 UI 与共享环境验证仍待完成。
 
 - 2026-09-01：Remote GPU 已在候选 `3c1f3eba` 复跑 disposable External MCP/approval Shadow drill，并归档 [低敏 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01/)。本地 MCP Tool/Artifact、EventLedger 重启去重、过期 readiness 拒绝、Core mTLS identity denial 和一次 approved fixture operation 的副作用基数均通过。MySQL AIO 兼容参数仅作用于该 disposable drill；共享服务、真实外部 DNS/TLS、凭据生命周期、approval UI deny 和 active authority 继续开放。

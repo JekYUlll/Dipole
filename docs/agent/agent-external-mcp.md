@@ -298,6 +298,8 @@ Compose 仍保留 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`、Temporal disabled 
 
 Approval receipt v2 进一步将拒绝语义与 effect count 分开绑定：`denied_authorization_rejected`、`consumed_replay_rejected` 和 `failed_replay_rejected` 都必须为 `true`，对应的 effect count 保持零。v1 receipt 继续作为历史归档；下一次 disposable drill 会产生 v2 receipt。该版本化不会把 fixture 结论扩展到审批 UI、IM 写入、真实外部 MCP 或共享环境。
 
+2026-09-01 在候选 revision `f0dcf98a0b366031f7097cfd331318d39a9cf7a6` 完成 v2 drill。归档的 [v2 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/) 已同时验证 deny、consumed replay 和 failed-operation replay 都被拒绝且没有新增 effect；同一运行仍通过本地 MCP、EventLedger 重启去重、过期 readiness 与 mTLS identity denial。该结论保持在 disposable fixture 范围内。
+
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 
 ## 后续实现门槛

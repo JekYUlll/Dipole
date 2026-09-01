@@ -1,0 +1,19 @@
+{
+  "schema_version": "dipole.agent.approval-gate-drill.v2",
+  "outcome": "passed",
+  "isolation": "disposable_go_core_mtls_approval_gate_fixture",
+  "production_authority": false,
+  "approved_effect_count": 1,
+  "denied_effect_count": 0,
+  "denied_authorization_rejected": true,
+  "consumed_replay_effect_count": 0,
+  "consumed_replay_rejected": true,
+  "failed_effect_count": 1,
+  "failed_replay_effect_count": 0,
+  "failed_replay_rejected": true,
+  "core_rpc_type": "go_internal_grpc_mtls",
+  "core_rpc_authenticated": true,
+  "collected_at": "2026-09-01T03:58:57.956Z",
+  "expires_at": "2026-09-02T03:58:57.956Z",
+  "content_sha256": "dca009533c27cb7847f18d43f0983646aa00ccb21b768399a5d0305ec2c708f2"
+}

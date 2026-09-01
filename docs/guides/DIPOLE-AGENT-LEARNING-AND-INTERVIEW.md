@@ -71,9 +71,9 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 
 - **简历句：** 为外部 MCP 只读调用构建可释放的 Shadow 验证链，串联 Kafka、MySQL EventLedger、Temporal、mTLS Core RPC 与受限 MCP Tool，并用重启重放和过期 readiness 验证安全收敛。
 - **演示：** 运行 `scripts/drill-agent-external-mcp-shadow.sh`；查看低敏 evidence 中的事件数、Tool/Artifact 数、重启去重与 readiness 拒绝结果。
-- **证据：** [2026-09-01 隔离 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01/)、[外部 MCP 运行手册](../agent/agent-external-mcp.md)、`services/agent-runtime/src/runtime/external-mcp-full-stack-drill.integration.test.ts`、`contracts/agent-external-mcp/v2/shadow-drill-evidence.schema.json`。
+- **证据：** [2026-09-01 v2 隔离 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)、[外部 MCP 运行手册](../agent/agent-external-mcp.md)、`services/agent-runtime/src/runtime/external-mcp-full-stack-drill.integration.test.ts`、`contracts/agent-external-mcp/v2/shadow-drill-evidence.schema.json`。
 - **追问：** “为什么重发相同事件不能重复调用 Tool？” Kafka 至少一次投递和 Runtime 重启会产生重复输入，持久 EventLedger 与稳定 Task ID 共同限制只执行一次。
-- **限制：** 演练使用本地 MCP fixture、临时 CA、临时 MySQL/Kafka 与内存 Temporal；approval receipt 的零 denied effect 不代表审批 UI deny 流程。共享身份、外部 DNS/TLS、凭据轮换或生产 authority 仍未接入。
+- **限制：** 演练使用本地 MCP fixture、临时 CA、临时 MySQL/Kafka 与内存 Temporal；v2 已验证拒绝 grant 不产生副作用，审批 UI deny 流程仍待前端切片。共享身份、外部 DNS/TLS、凭据轮换或生产 authority 仍未接入。
 - **下一步：** 在独立 Shadow tenant 使用受控只读 Server，补齐真实 Provider owner、凭据吊销、网络故障和观测窗口证据。
 - **复核条件：** 修改 EventLedger、Kafka group、Temporal route、Core RPC、MCP transport 或 readiness policy 时。
 
