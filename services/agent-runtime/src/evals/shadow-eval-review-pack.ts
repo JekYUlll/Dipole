@@ -6,6 +6,10 @@ export interface ShadowEvalReviewPack {
   readonly schemaVersion: "dipole.agent.shadow-eval-review-pack.v1";
   readonly reviewStatus: "review_required";
   readonly candidateVersion: string;
+  readonly evaluatorEligibility: {
+    readonly status: "eligible" | "blocked";
+    readonly blockingReasons: readonly string[];
+  };
   readonly binding: {
     readonly taskFingerprint: string;
     readonly runFingerprint: string;
@@ -18,10 +22,14 @@ export interface ShadowEvalReviewPack {
     readonly permissions: readonly {
       readonly stepNo: number;
       readonly capabilityId: string;
-      readonly resourceType: string;
-      readonly resourceFingerprint: string;
-      readonly action: string;
-      readonly decision: "allowed";
+      readonly status: string;
+      readonly authorization: {
+        readonly status: "complete";
+        readonly resourceType: string;
+        readonly resourceFingerprint: string;
+        readonly action: string;
+        readonly decision: "allowed";
+      } | { readonly status: "missing" };
     }[];
     readonly retrievedEvidenceIds: readonly string[];
     readonly metering: {
@@ -40,7 +48,7 @@ export interface ShadowEvalReviewPack {
  */
 export function buildShadowEvalReviewPack(candidateVersion: string, observation: ShadowEvalObservation): ShadowEvalReviewPack {
   candidateVersion = requiredCandidateVersion(candidateVersion);
-  assertReviewable(observation);
+  assertExportable(observation);
 
   const terminalTaskStatus = evaluationTaskStatus(observation);
   const outputIds = [
@@ -61,6 +69,7 @@ export function buildShadowEvalReviewPack(candidateVersion: string, observation:
     schemaVersion: "dipole.agent.shadow-eval-review-pack.v1",
     reviewStatus: "review_required",
     candidateVersion,
+    evaluatorEligibility: evaluatorEligibility(observation),
     binding: {
       taskFingerprint: fingerprint("task", observation.taskId),
       runFingerprint: fingerprint("run", observation.runId),
@@ -77,10 +86,14 @@ export function buildShadowEvalReviewPack(candidateVersion: string, observation:
       permissions: observation.steps.map(step => ({
         stepNo: step.stepNo,
         capabilityId: step.capabilityId,
-        resourceType: step.authorization!.resourceType,
-        resourceFingerprint: fingerprint("resource", step.authorization!.resourceId),
-        action: step.authorization!.action,
-        decision: step.authorization!.decision
+        status: step.status,
+        authorization: step.authorization === null ? { status: "missing" } : {
+          status: "complete",
+          resourceType: step.authorization.resourceType,
+          resourceFingerprint: fingerprint("resource", step.authorization.resourceId),
+          action: step.authorization.action,
+          decision: step.authorization.decision
+        }
       })),
       retrievedEvidenceIds,
       metering: {
@@ -103,7 +116,7 @@ export function buildShadowEvalReviewPack(candidateVersion: string, observation:
   };
 }
 
-function assertReviewable(observation: ShadowEvalObservation): void {
+function assertExportable(observation: ShadowEvalObservation): void {
   if (!isTerminalStatus(evaluationTaskStatus(observation)) || !isTerminalStatus(observation.runStatus)) {
     throw new Error("Shadow evaluation review pack requires terminal Task execution and Run");
   }
@@ -113,17 +126,25 @@ function assertReviewable(observation: ShadowEvalObservation): void {
   if (observation.steps.length > 256 || observation.artifacts.length > 256 || observation.toolCalls.length > 256 || observation.modelCalls.length > 64) {
     throw new Error("Shadow evaluation review pack exceeds its bounded collection limits");
   }
+}
+
+function evaluatorEligibility(observation: ShadowEvalObservation): ShadowEvalReviewPack["evaluatorEligibility"] {
+  const blockingReasons: string[] = [];
   for (const step of observation.steps) {
-    if (!isTerminalStepStatus(step.status) || step.authorization === null) {
-      throw new Error(`Shadow evaluation review pack has incomplete Step ${step.stepNo}`);
-    }
+    if (!isTerminalStepStatus(step.status)) blockingReasons.push(`step_${step.stepNo}_non_terminal`);
+    if (step.latencyMs === null) blockingReasons.push(`step_${step.stepNo}_missing_latency`);
+    if (step.authorization === null) blockingReasons.push(`step_${step.stepNo}_missing_authorization`);
+    if (step.attemptCount !== 1) blockingReasons.push(`step_${step.stepNo}_attempt_evidence_incomplete`);
   }
-  if (observation.modelCalls.some(call => !["completed", "failed", "abandoned"].includes(call.status))) {
-    throw new Error("Shadow evaluation review pack has a non-terminal model call");
+  for (const [index, call] of observation.modelCalls.entries()) {
+    if (!["completed", "failed", "abandoned"].includes(call.status)) blockingReasons.push(`model_call_${index + 1}_non_terminal`);
+    if (call.latencyMs === null) blockingReasons.push(`model_call_${index + 1}_missing_latency`);
   }
-  if (observation.toolCalls.some(call => !["completed", "failed"].includes(call.status))) {
-    throw new Error("Shadow evaluation review pack has a non-terminal Tool call");
+  for (const [index, call] of observation.toolCalls.entries()) {
+    if (!["completed", "failed"].includes(call.status)) blockingReasons.push(`tool_call_${index + 1}_non_terminal`);
+    if (call.latencyMs === null) blockingReasons.push(`tool_call_${index + 1}_missing_latency`);
   }
+  return { status: blockingReasons.length === 0 ? "eligible" : "blocked", blockingReasons };
 }
 
 function requiredBindingValue(value: string, label: string): void {

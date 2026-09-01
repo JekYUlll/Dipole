@@ -12,15 +12,18 @@ describe("Shadow evaluation review pack", () => {
     expect(pack).toMatchObject({
       schemaVersion: "dipole.agent.shadow-eval-review-pack.v1",
       reviewStatus: "review_required",
+      evaluatorEligibility: { status: "eligible", blockingReasons: [] },
       observed: {
         outputIds: ["artifact:conversation_digest:v1", "run:completed", "task:completed"],
         trajectory: ["context.compile", "capability:conversation.list:completed", "artifact:conversation_digest:v1"],
-        permissions: [{ stepNo: 1, capabilityId: "conversation.list", resourceType: "conversation", action: "read", decision: "allowed" }],
+        permissions: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", authorization: { status: "complete", resourceType: "conversation", action: "read", decision: "allowed" } }],
         retrievedEvidenceIds: [evidenceId({ sourceType: "kafka_event", sourceId: "event:secret" })]
       }
     });
     expect(pack.binding.taskFingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
-    expect(pack.observed.permissions[0]?.resourceFingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
+    const authorization = pack.observed.permissions[0]?.authorization;
+    expect(authorization).toMatchObject({ status: "complete" });
+    if (authorization?.status === "complete") expect(authorization.resourceFingerprint).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(encoded).not.toContain("TASK-SECRET");
     expect(encoded).not.toContain("RUN-SECRET");
     expect(encoded).not.toContain("trace:secret");
@@ -28,12 +31,17 @@ describe("Shadow evaluation review pack", () => {
     expect(encoded).not.toContain("event:secret");
   });
 
-  it("rejects non-terminal observations before emitting a reviewer packet", () => {
+  it("rejects a non-terminal Task or Run, and classifies incomplete child evidence", () => {
     expect(() => buildShadowEvalReviewPack("agent-runtime@candidate-1", { ...observation(), runStatus: "running" }))
       .toThrow(/terminal Task execution and Run/);
-    expect(() => buildShadowEvalReviewPack("agent-runtime@candidate-1", {
+    expect(buildShadowEvalReviewPack("agent-runtime@candidate-1", {
       ...observation(), modelCalls: [{ ...observation().modelCalls[0]!, status: "running" }]
-    })).toThrow(/non-terminal model call/);
+    }).evaluatorEligibility).toEqual({ status: "blocked", blockingReasons: ["model_call_1_non_terminal"] });
+    const pack = buildShadowEvalReviewPack("agent-runtime@candidate-1", {
+      ...observation(), steps: [{ ...observation().steps[0]!, authorization: null }]
+    });
+    expect(pack.evaluatorEligibility).toEqual({ status: "blocked", blockingReasons: ["step_1_missing_authorization"] });
+    expect(pack.observed.permissions[0]?.authorization).toEqual({ status: "missing" });
   });
 
   it("loads one persisted observation through the read-only CLI", async () => {

@@ -1,6 +1,6 @@
 # 更新日志
 
-- 2026-09-02：新增只读 Shadow Eval review-pack CLI。它对 Task、Run、Trace 和资源标识作域分隔哈希后导出终态观测元数据，并明确要求独立审核者再创建最终绑定 manifest；导出内容不能直接驱动评测或构成候选晋级、任务成功率结论。
+- 2026-09-02：新增只读 Shadow Eval review-pack CLI。它对 Task、Run、Trace 和资源标识作域分隔哈希后导出终态观测元数据；对缺少授权、延迟或重试审计的样本明确标记 evaluator `blocked` 原因，保留人工失败分类，同时要求独立审核者再创建最终绑定 manifest。导出内容不能直接驱动评测或构成候选晋级、任务成功率结论。
 
 - 2026-09-02：修复后的 clean `f72e47cf` 候选已在 Remote GPU 的 loopback-only Compose 中通过真实 read-shadow Smoke。Kafka 事件、Core Capability RPC、Temporal Run、至少一次完成模型调用和一份 `conversation_digest` Artifact 均收敛，消息表保持零写入；Gateway 仅监听 `127.0.0.1:18117`。该 receipt 仅证明单样本只读链路回归，不构成任务成功率、效果提升或 promotion 结论。
 

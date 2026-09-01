@@ -145,7 +145,9 @@ capability trajectory, authorization decisions, retrieval evidence fingerprints
 and metering completeness. It remains `review_required`: it does not emit an
 executable manifest, suggest labels or approve a candidate. The final manifest
 must be independently reviewed and bound to the original Task/Run in the
-controlled review workspace before collection.
+controlled review workspace before collection. A terminal sample with incomplete
+Step, Tool or Model audit remains exportable for failure classification; its
+`evaluatorEligibility` is `blocked` and the final evaluator still rejects it.
 
 Before reading a manifest, the collector resolves the running `agent` container
 and records its OCI `org.opencontainers.image.revision` label. It rejects a

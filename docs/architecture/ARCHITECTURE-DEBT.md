@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-02：新增只读 `shadow-eval-review-pack-cli`，为终态观测导出 Task/Run/Trace/资源的域分隔哈希、能力轨迹、证据指纹和计量完整性。该包刻意不能生成可执行 manifest 或推导标签；审核者仍须在受控工作区独立填写 outcome、trajectory、permission、retrieval 和 cost，并用绑定 manifest 执行评测。当前 clean candidate 的多样本窗口、晋级和简历成功率结论继续保持关闭。
+- 2026-09-02：新增只读 `shadow-eval-review-pack-cli`，为终态观测导出 Task/Run/Trace/资源的域分隔哈希、能力轨迹、证据指纹和计量完整性。子记录缺少授权、延迟或单次 attempt 审计时，包仍可供人工失败分类，并以 `evaluatorEligibility=blocked` 固定原因；最终 evaluator 继续拒绝该样本。该包刻意不能生成可执行 manifest 或推导标签；审核者仍须在受控工作区独立填写 outcome、trajectory、permission、retrieval 和 cost，并用绑定 manifest 执行评测。当前 clean candidate 的多样本窗口、晋级和简历成功率结论继续保持关闭。
 
 - 2026-09-02：clean `f72e47cf` 已在 Remote GPU 独立 Compose 中完成修复后 read-shadow 回归。低敏 receipt 与数据库聚合确认完成 EventLedger、Shadow Run、模型调用和 `conversation_digest`，消息表为零，Gateway 仅绑定 `127.0.0.1:18117`。此证据覆盖单条受控 Kafka 事件，尚未形成固定人工评审多样本集，禁止据此填写任务成功率或放开 promotion。
 
