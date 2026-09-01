@@ -26,6 +26,8 @@ Pencil canonical 画布中的 File、Device 和 Settings frame 已导出到
 | File Directory | `file-desktop/frame.png` | `file-mobile/frame.png` |
 | Device Sessions | `device-desktop/frame.png` | `device-mobile/frame.png` |
 | Settings Account | `settings-desktop/frame.png` | `settings-mobile/frame.png` |
+| Contact Directory | `contact-desktop/frame.png` | `contact-mobile/frame.png` |
+| Group Directory | `group-desktop/frame.png` | `group-mobile/frame.png` |
 
 这些导出物来自当前连接的 Pencil canonical 画布；源设计文件仍按
 `dipole-ui.pen` 的单一 canonical 规则维护，不在仓库中复制第二份 `.pen`。
