@@ -21,6 +21,7 @@ import {
 interface ModelRunRow extends RowDataPacket {
   run_uuid: string;
   task_uuid: string;
+  stage: string;
   status: "running" | "completed" | "failed";
   max_calls: number;
   total_timeout_ms: number;
@@ -48,10 +49,11 @@ interface ModelRunStatusRow extends RowDataPacket {
 export class MySQLModelAuditStore implements ModelAuditStore {
   constructor(private readonly pool: Pool) {}
 
-  async recover(taskId: string, policy: ModelRunBudgetPolicy): Promise<ModelCallRecovery | undefined> {
+  async recover(taskId: string, policy: ModelRunBudgetPolicy, stage = "plan"): Promise<ModelCallRecovery | undefined> {
     taskId = required(taskId, "Task ID", 64);
+    stage = modelStage(stage);
     policy = validatePolicy(policy);
-    const [rows] = await this.pool.execute<CompletedModelCallRow[]>(GET_COMPLETED_AGENT_MODEL_CALL, [taskId]);
+    const [rows] = await this.pool.execute<CompletedModelCallRow[]>(GET_COMPLETED_AGENT_MODEL_CALL, [taskId, stage]);
     const row = rows[0];
     if (row === undefined) {
       return undefined;
@@ -72,19 +74,20 @@ export class MySQLModelAuditStore implements ModelAuditStore {
     };
   }
 
-  async reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string): Promise<ModelCallReservation | undefined> {
+  async reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string, stage = "plan"): Promise<ModelCallReservation | undefined> {
     taskId = required(taskId, "Task ID", 64);
+    stage = modelStage(stage);
     route = required(route, "model route", 255);
     policy = validatePolicy(policy);
-    const runId = agentModelRunId(taskId);
+    const runId = agentModelRunId(taskId, stage);
     await this.pool.execute(INSERT_AGENT_MODEL_RUN, [
-      runId, taskId, policy.maxCalls, policy.totalTimeoutMs, policy.maxOutputTokensPerCall
+      runId, taskId, stage, policy.maxCalls, policy.totalTimeoutMs, policy.maxOutputTokensPerCall
     ]);
     const connection = await this.pool.getConnection();
     try {
       await connection.beginTransaction();
-      const row = await lockRun(connection, taskId);
-      if (row.run_uuid !== runId || row.task_uuid !== taskId) {
+      const row = await lockRun(connection, taskId, stage);
+      if (row.run_uuid !== runId || row.task_uuid !== taskId || row.stage !== stage) {
         throw new Error(`Agent model run binding conflict for ${taskId}`);
       }
       if (!samePolicy(row, policy)) {
@@ -148,9 +151,9 @@ export class MySQLModelAuditStore implements ModelAuditStore {
     await this.finishRun(runId, "failed", errorText(error));
   }
 
-  async failTask(taskId: string, error: unknown): Promise<void> {
+  async failTask(taskId: string, error: unknown, stage = "plan"): Promise<void> {
     taskId = required(taskId, "Task ID", 64);
-    await this.pool.execute(FAIL_AGENT_MODEL_RUN_BY_TASK, [errorText(error), taskId]);
+    await this.pool.execute(FAIL_AGENT_MODEL_RUN_BY_TASK, [errorText(error), taskId, modelStage(stage)]);
   }
 
   private async finishRun(runId: string, status: "completed" | "failed", error: string | null = null): Promise<void> {
@@ -186,18 +189,25 @@ function decodedJSON(value: unknown): unknown {
   return value;
 }
 
-export function agentModelRunId(taskId: string): string {
+export function agentModelRunId(taskId: string, stage = "plan"): string {
   taskId = required(taskId, "Task ID", 64);
-  const digest = createHash("sha256").update(`dipole.agent.model.run.v1\n${taskId}`, "utf8").digest("hex");
+  stage = modelStage(stage);
+  const versioned = stage === "plan" ? `dipole.agent.model.run.v1\n${taskId}` : `dipole.agent.model.run.v2\n${taskId}\n${stage}`;
+  const digest = createHash("sha256").update(versioned, "utf8").digest("hex");
   return `run:${digest.slice(0, 59)}`;
 }
 
-async function lockRun(connection: PoolConnection, taskId: string): Promise<ModelRunRow> {
-  const [rows] = await connection.execute<ModelRunRow[]>(LOCK_AGENT_MODEL_RUN, [taskId]);
+async function lockRun(connection: PoolConnection, taskId: string, stage: string): Promise<ModelRunRow> {
+  const [rows] = await connection.execute<ModelRunRow[]>(LOCK_AGENT_MODEL_RUN, [taskId, stage]);
   if (rows.length !== 1) {
     throw new Error(`Agent model run missing or duplicated for ${taskId}`);
   }
   return rows[0]!;
+}
+
+function modelStage(value: string): string {
+  if (!/^[a-z][a-z0-9_]{0,31}$/.test(value)) throw new Error("Agent model stage is invalid");
+  return value;
 }
 
 function samePolicy(

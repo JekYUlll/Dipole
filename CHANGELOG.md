@@ -1,5 +1,37 @@
 # 更新日志
 
+- 2026-09-01：Gateway 现支持默认关闭、owner-scoped 的 `conversation_digest` Markdown 正文读取。`GET /api/v1/agent/artifacts/:artifact_id/content` 复用 Core Artifact owner 校验与内容哈希校验，只返回 Artifact ID、媒体类型和正文；对象键、Metadata JSON 与通用下载仍不进入公开边界。Remote GPU 隔离候选已验证同一用户的 metadata/content 均为 `200`，另一用户读取正文为 `404`。
+
+- 2026-09-01：修复 Agent Artifact Timeline 的持久化 ID 边界。Artifact 的内容寻址 ID 现直接作为 Timeline event ID，符合 MySQL `VARCHAR(64)` 契约；领域校验同步拒绝超长 event ID，避免投影写入失败后造成 Artifact 从 Timeline 缺失。Remote GPU 隔离候选已复验任务完成、Artifact metadata 与 Timeline Artifact 事件一致。
+
+- 2026-09-01：修复隔离 Interactive Agent Task 的 Timeline 读取闭环。Core 现将 Timeline Store 装配到独立 Agent gRPC adapter，并允许受限 `dipole-agent` mTLS caller 调用只读 Timeline RPC；Runtime 在 HTTP 边界将 protobuf `bigint` 转为前端契约要求的序列字符串和安全数字，并保留每个事件的 Task 绑定。Remote GPU 候选验证创建 `202`、终态 `completed` 和 Timeline `200`；空会话任务只有 Task/Run 事件，不将其描述为 Artifact 产出、active authority 或写能力。
+
+- 2026-09-01：Gateway 的 Agent Task Timeline 代理现在将 URL path 与分页 query 分开解析。此前 `?limit` 和 `after` 会被编码进路径，Runtime 返回 `404`；认证、owner 授权和既有控制端点保持不变。
+
+- 2026-09-01：read-shadow Agent 在 `conversation.list` 为空时，将依赖发现结果的 `conversation.read` 记录为 `skipped/no_discovered_conversation` 并继续生成摘要。该分支不调用远端读取 Capability；伪造 ID、缺少紧邻 List 等越权输入继续被拒绝。
+
+- 2026-09-01：read-shadow Agent 将模型计划 JSON Schema 收紧为两个只读步骤：`conversation.list` 与紧随其后的 `conversation.read`；读取步骤的 `conversationId` 在 schema 层固定为 `$discovered.previous`，执行层仍独立校验并解析真实发现结果。该修复避免 Provider 生成裸会话 ID 后触发 Durable Task 重试。
+
+- 2026-09-01：read-shadow Agent 完成两阶段模型闭环：先持久化计划并执行受信只读 Tool，再将完成的 Tool 输出封装为不可信数据交给独立 `synthesis` Model stage，最终 Artifact 使用综合摘要。空 Tool 输出保留原计划摘要；写 Capability、active authority 与自动多轮选择仍关闭。
+
+- 2026-09-01：Agent Model audit 将 durable run 按 `task_uuid + stage` 分隔，默认 `plan` 保持既有运行 ID 与重放语义，新增 `synthesis` 可拥有独立预算、调用记录和恢复结果。该迁移为读取结果后的模型综合准备基础，尚未启用第二次模型调用或改变 Shadow 默认行为。
+
+- 2026-09-01：两步 Agent 读取的执行层新增独立失败关闭门禁。即使上游 Planner 被替换或其校验被绕过，直接携带会话 ID 的 `conversation.read` 仍在授权审计和远程 Capability 调用前被拒绝；只有 `$discovered.previous` 可解析为前一步 List 输出。
+
+- 2026-09-01：Agent read-shadow 现支持受信的两步 `conversation.list → conversation.read`。模型只能在紧邻的读取步骤使用固定 `$discovered.previous` 标记；Runtime 从前一 List 的实际输出提取首个有效会话键后才授权读取，模型自造 ID、缺少前置发现或空发现结果均会在读取前失败。写 Capability、active authority、MCP 写入与多会话选择策略仍未开启。
+
+- 2026-09-01：Agent OAuth callback handoff Runtime 新增跨实例恢复演练：前一 Runtime 仅在显式 `retryable_failure` 后释放 Core 条件租约，替换实例随后才能重新领取并完成。该回归只验证默认未装配执行器对 Core lease 的依赖；callback 路由、Provider 换码、token 生命周期与默认启用状态仍保持关闭。
+
+- 2026-09-01：Remote GPU 的 `node-test` 现在仅在锁文件安装明确报 `ENOTEMPTY` 时，将该候选 app 的中断 `node_modules` 原子隔离后重试一次；网络、锁文件和权限错误保持失败。该恢复路径保留旧目录，避免清理其他工作树的依赖，并继续使用单次 `npm ci --include=optional`。
+
+- 2026-09-01：Remote GPU 隔离交互 Shadow 以 DeepSeek V4 Flash 完成一条新用户只读 Task：Gateway 返回 `202` 后状态收敛为 `completed`，持久化审计为一条完成 Run、一次模型调用、一次 `conversation.list` Step 与一个 `conversation_digest` Artifact。该证据只覆盖隔离 read-shadow；任务策略行保持 `running`、Durable `workflow_status` 与 Run 共同表达终态，写 Capability、active authority 与多轮读取均未开启。
+
+- 2026-09-01：Agent 单轮 Temporal read-shadow 规划器收紧为仅暴露 `conversation.list`。此前模型能在未获得会话列表结果时直接生成 `conversation.read`，对新用户会构造无效目标并触发 Durable Activity 重试；读取 Capability、事件预取与 MCP 边界保持可用，后续多轮编排需要将后续读取目标绑定到已完成的发现结果。
+
+- 2026-09-01：OpenAI-compatible Agent Provider 增加显式 `DIPOLE_AGENT_MODEL_THINKING_MODE=disabled`。开关仅透传给已选择的 Provider；DeepSeek V4 Flash 的受控 Shadow 可借此关闭默认高强度思考，避免有限 JSON-text 输出预算被 `reasoning_content` 耗尽。未设置时继续使用 Provider 默认行为，active authority、写 Capability 与 MCP 均未开启。
+
+- 2026-09-01：Remote GPU 隔离交互 Shadow 候选完成公开 API 的只读 Agent Task 验收：临时用户经 JWT 创建任务后均收敛为 `completed`，Timeline 首次读取和 cursor 续页均成功。候选 Gateway 使用 `4ab924b87` 专用镜像，Core/Agent 保持兼容的既有候选版本；验收记录见 [Agent Interactive Shadow Remote Receipt](docs/agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。该结果不构成同版本发布、任务成功率、active authority、写 Capability 或公开体验入口结论。
+
 - 2026-09-01：新增 `remote-gpu-mysql-aio-compat.yml`。共享 Remote GPU 的 Linux AIO 配额接近上限时，候选 MySQL 可显式关闭 native AIO 完成隔离验证；基础 Compose 与既有 MySQL 栈保持不变。
 
 - 2026-09-01：Remote GPU Node 门禁将每个应用的双阶段 `npm ci + npm install` 收敛为一次锁文件驱动的 `npm ci --include=optional`，避免第二次安装的目录重命名冲突，同时保留 optional 平台依赖。

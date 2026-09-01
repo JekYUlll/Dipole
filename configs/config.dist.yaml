@@ -27,7 +27,7 @@ gateway:
   # Exposes owner-visible Memory list/revoke control. Automatic Observation writes remain disabled.
   agent_memory_enabled: false
   agent_memory_tenant_id: dipole
-  # Exposes owner-scoped Artifact metadata only. Content, object keys and metadata JSON remain internal.
+  # Exposes owner-scoped digest metadata and Markdown content. Object keys and metadata JSON remain internal.
   agent_artifact_enabled: false
   # Exposes MCP only through Gateway JWT authentication and Core Task/Run authorization.
   agent_mcp_enabled: false

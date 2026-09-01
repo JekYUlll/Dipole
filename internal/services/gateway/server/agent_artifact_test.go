@@ -39,7 +39,7 @@ func artifactResponse(body []byte) *agentv1.GetArtifactResponse {
 	}, Content: body}
 }
 
-func TestAgentArtifactClientBindsPrincipalAndDropsBody(t *testing.T) {
+func TestAgentArtifactClientBindsPrincipalAndLimitsContentToConversationDigests(t *testing.T) {
 	rpc := &gatewayAgentArtifactRPCStub{response: artifactResponse([]byte("private artifact body"))}
 	client, err := NewAgentArtifactClient(rpc, time.Second)
 	if err != nil {
@@ -55,6 +55,15 @@ func TestAgentArtifactClientBindsPrincipalAndDropsBody(t *testing.T) {
 	if _, err := client.Get(context.Background(), "U100", "ART-1"); err != ErrAgentArtifactInvalid {
 		t.Fatalf("non-digest artifact ID error=%v", err)
 	}
+	content, err := client.GetContent(context.Background(), "U100", strings.Repeat("a", 64))
+	if err != nil || content.Content != "private artifact body" || content.MediaType != "text/markdown" {
+		t.Fatalf("content=%+v err=%v", content, err)
+	}
+	rpc.response.Artifact.ArtifactType = "report"
+	if _, err := client.GetContent(context.Background(), "U100", strings.Repeat("a", 64)); err != ErrAgentArtifactDenied {
+		t.Fatalf("non-digest content error=%v", err)
+	}
+	rpc.response.Artifact.ArtifactType = "conversation_digest"
 	rpc.response.Artifact.ContentSha256 = strings.Repeat("0", 64)
 	if _, err := client.Get(context.Background(), "U100", strings.Repeat("a", 64)); err != ErrAgentArtifactUnavailable {
 		t.Fatalf("forged hash error=%v", err)
@@ -70,6 +79,11 @@ type gatewayAgentArtifactStub struct {
 func (s *gatewayAgentArtifactStub) Get(_ context.Context, principalUUID, artifactID string) (*AgentArtifact, error) {
 	s.principal, s.artifact, s.calls = principalUUID, artifactID, s.calls+1
 	return &AgentArtifact{ArtifactID: artifactID, TaskID: "TASK-1", RunID: "RUN-1", ArtifactType: "conversation_digest", Version: 1, Title: "Digest", MediaType: "text/markdown", ContentSHA256: strings.Repeat("b", 64), SizeBytes: 12, CreatedAtUnixMS: 1_700_000_000_000}, nil
+}
+
+func (s *gatewayAgentArtifactStub) GetContent(_ context.Context, principalUUID, artifactID string) (*AgentArtifactContent, error) {
+	s.principal, s.artifact, s.calls = principalUUID, artifactID, s.calls+1
+	return &AgentArtifactContent{ArtifactID: artifactID, MediaType: "text/markdown", Content: "# Private digest"}, nil
 }
 
 func TestGatewayOwnsAuthenticatedAgentArtifactMetadata(t *testing.T) {
@@ -98,6 +112,37 @@ func TestGatewayOwnsAuthenticatedAgentArtifactMetadata(t *testing.T) {
 	response := httptest.NewRecorder()
 	server.Engine().ServeHTTP(response, request)
 	if response.Code != http.StatusOK || artifacts.principal != "U100" || !strings.Contains(response.Body.String(), `"artifactId"`) || strings.Contains(response.Body.String(), "private") {
+		t.Fatalf("response=%d artifact=%+v body=%s", response.Code, artifacts, response.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentArtifactDigestContent(t *testing.T) {
+	t.Chdir("../../../..")
+	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	artifacts := &gatewayAgentArtifactStub{}
+	server, err := newTestGatewayServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentArtifacts: artifacts, Limiter: gatewayLimiterStub{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifactID := strings.Repeat("a", 64)
+	unauthorized := httptest.NewRecorder()
+	server.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/artifacts/"+artifactID+"/content", nil))
+	if unauthorized.Code != http.StatusUnauthorized || artifacts.calls != 0 {
+		t.Fatalf("unauthorized code=%d calls=%d", unauthorized.Code, artifacts.calls)
+	}
+	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/agent/artifacts/"+artifactID+"/content", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+	server.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || artifacts.principal != "U100" || !strings.Contains(response.Body.String(), `"content":"# Private digest"`) || strings.Contains(response.Body.String(), "contentSha256") {
 		t.Fatalf("response=%d artifact=%+v body=%s", response.Code, artifacts, response.Body.String())
 	}
 }

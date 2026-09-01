@@ -207,6 +207,10 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent capability rpc adapter: %w", composeErr)
 		}
+		if _, composeErr = agentServer.WithTaskTimeline(agentRepos.TaskTimeline); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Task Timeline rpc adapter: %w", composeErr)
+		}
 		storageCfg := config.StorageConfig()
 		if storageCfg.ArtifactEnabled {
 			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{

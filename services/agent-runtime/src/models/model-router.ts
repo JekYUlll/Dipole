@@ -48,13 +48,13 @@ export interface ModelCallRecovery extends ModelCallReservation {
 }
 
 export interface ModelAuditStore {
-  recover(taskId: string, policy: ModelRunBudgetPolicy): Promise<ModelCallRecovery | undefined>;
-  reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string): Promise<ModelCallReservation | undefined>;
+  recover(taskId: string, policy: ModelRunBudgetPolicy, stage?: string): Promise<ModelCallRecovery | undefined>;
+  reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string, stage?: string): Promise<ModelCallReservation | undefined>;
   completeCall(reservation: ModelCallReservation, output: unknown, usage: ModelUsage, finishReason: string, latencyMs: number): Promise<void>;
   failCall(reservation: ModelCallReservation, error: unknown, latencyMs: number): Promise<void>;
   completeRun(runId: string): Promise<void>;
   failRun(runId: string, error: unknown): Promise<void>;
-  failTask(taskId: string, error: unknown): Promise<void>;
+  failTask(taskId: string, error: unknown, stage?: string): Promise<void>;
 }
 
 export interface ModelTimelineSink {
@@ -96,12 +96,14 @@ export class ModelRouter {
     readonly prompt: string;
     readonly schema: z.ZodType<T>;
     readonly taskId?: string;
+    readonly stage?: string;
   }): Promise<ModelRoutingResult<T>> {
+    const stage = modelStage(input.stage);
     if (this.audit !== undefined && !input.taskId?.trim()) {
       throw new Error("persistent model routing requires a Task ID");
     }
     if (this.audit !== undefined) {
-      const recovered = await this.audit.recover(input.taskId!, this.#policy);
+      const recovered = await this.audit.recover(input.taskId!, this.#policy, stage);
       if (recovered !== undefined) {
         const output = input.schema.parse(recovered.output);
         await this.audit.completeRun(recovered.runId);
@@ -125,7 +127,7 @@ export class ModelRouter {
       }
       const reservation = this.audit === undefined
         ? undefined
-        : await this.audit.reserve(input.taskId!, this.#policy, route);
+        : await this.audit.reserve(input.taskId!, this.#policy, route, stage);
       if (this.audit !== undefined && reservation === undefined) {
         break;
       }
@@ -193,7 +195,7 @@ export class ModelRouter {
     if (runId !== undefined) {
       await this.audit!.failRun(runId, failure);
     } else if (this.audit !== undefined) {
-      await this.audit.failTask(input.taskId!, failure);
+      await this.audit.failTask(input.taskId!, failure, stage);
     }
     throw failure;
   }
@@ -202,6 +204,12 @@ export class ModelRouter {
     if (this.timeline === undefined) return;
     try { await this.timeline.appendAgentTaskTimelineEvent(input); } catch { /* Timeline is a secondary projection. */ }
   }
+}
+
+function modelStage(value: string | undefined): string {
+  const stage = value?.trim() || "plan";
+  if (!/^[a-z][a-z0-9_]{0,31}$/.test(stage)) throw new Error("model stage is invalid");
+  return stage;
 }
 
 function elapsed(now: number, startedAt: number): number {

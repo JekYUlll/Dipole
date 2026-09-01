@@ -1,12 +1,12 @@
 -- name: InsertAgentModelRun :exec
 INSERT IGNORE INTO agent_model_runs (
-    run_uuid, task_uuid, status, max_calls, total_timeout_ms, max_output_tokens_per_call, started_at
-) VALUES (?, ?, 'running', ?, ?, ?, UTC_TIMESTAMP());
+    run_uuid, task_uuid, stage, status, max_calls, total_timeout_ms, max_output_tokens_per_call, started_at
+) VALUES (?, ?, ?, 'running', ?, ?, ?, UTC_TIMESTAMP());
 
 -- name: LockAgentModelRun :one
-SELECT run_uuid, task_uuid, status, max_calls, total_timeout_ms, max_output_tokens_per_call, calls_reserved
+SELECT run_uuid, task_uuid, stage, status, max_calls, total_timeout_ms, max_output_tokens_per_call, calls_reserved
 FROM agent_model_runs
-WHERE task_uuid = ?
+WHERE task_uuid = ? AND stage = ?
 FOR UPDATE;
 
 -- name: IncrementAgentModelRunCalls :execrows
@@ -29,7 +29,7 @@ SELECT c.run_uuid, c.call_uuid, c.call_no, c.route, c.output_json, c.input_token
        r.max_calls, r.total_timeout_ms, r.max_output_tokens_per_call
 FROM agent_model_calls c
 JOIN agent_model_runs r ON r.run_uuid = c.run_uuid
-WHERE r.task_uuid = ? AND c.status = 'completed'
+WHERE r.task_uuid = ? AND r.stage = ? AND c.status = 'completed'
 ORDER BY c.call_no DESC
 LIMIT 1;
 
@@ -62,7 +62,7 @@ WHERE run_uuid = ? AND status = 'running';
 -- name: FailAgentModelRunByTask :execrows
 UPDATE agent_model_runs
 SET status = 'failed', completed_at = UTC_TIMESTAMP(), last_error = ?
-WHERE task_uuid = ? AND status = 'running';
+WHERE task_uuid = ? AND stage = ? AND status = 'running';
 
 -- name: ProbeAgentModelRuns :many
 SELECT run_uuid FROM agent_model_runs LIMIT 1;

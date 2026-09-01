@@ -86,7 +86,7 @@ if [[ ! -d "$root/.git" ]]; then
   if ! timeout "$git_timeout" git clone "$remote_url" "$root"; then
     rm -rf "$root"
     git clone "$bundle" "$root"
-    git -C "$root" remote add origin "$remote_url"
+    git -C "$root" remote set-url origin "$remote_url"
   fi
 fi
 cd "$root"
@@ -239,10 +239,29 @@ case "${action}" in
       fi
     }
     trap cleanup_webapp EXIT
+    install_node_dependencies() {
+      local app="\$1" install_log quarantine
+      install_log="\$(mktemp)"
+      if npm --prefix "\$app" ci --include=optional --ignore-scripts --no-audit --no-fund 2>&1 | tee "\$install_log"; then
+        rm -f "\$install_log"
+        return 0
+      fi
+      if ! grep -q "ENOTEMPTY" "\$install_log" || [[ ! -d "\$app/node_modules" ]]; then
+        rm -f "\$install_log"
+        return 1
+      fi
+      quarantine="\$app/.node_modules-interrupted-\$(date +%s)"
+      mv "\$app/node_modules" "\$quarantine"
+      rm -f "\$install_log"
+      printf 'remote node-test: quarantined interrupted dependencies at %s; retrying locked install once\n' "\$quarantine" >&2
+      npm --prefix "\$app" ci --include=optional --ignore-scripts --no-audit --no-fund
+    }
     for app in services/agent-runtime frontend; do
       # A single locked install includes optional platform packages without the
-      # second mutable install that can race npm's directory replacement.
-      npm --prefix "\$app" ci --include=optional --ignore-scripts --no-audit --no-fund
+      # second mutable install that can race npm's directory replacement. An
+      # interrupted install is retried only after its ignored directory is
+      # preserved under an explicit quarantine name.
+      install_node_dependencies "\$app"
       npm --prefix "\$app" test -- --run
       npm --prefix "\$app" run typecheck
       npm --prefix "\$app" run build

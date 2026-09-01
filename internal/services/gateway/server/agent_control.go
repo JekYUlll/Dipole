@@ -92,7 +92,11 @@ func (c *AgentTaskControlClient) request(ctx context.Context, method, principalU
 		}
 		body = bytes.NewReader(encoded)
 	}
-	target := c.baseURL.ResolveReference(&url.URL{Path: path})
+	relative, err := url.Parse(path)
+	if err != nil {
+		return nil, fmt.Errorf("parse Agent Task control path: %w", err)
+	}
+	target := c.baseURL.ResolveReference(relative)
 	request, err := http.NewRequestWithContext(ctx, method, target.String(), body)
 	if err != nil {
 		return nil, fmt.Errorf("create Agent Task control request: %w", err)

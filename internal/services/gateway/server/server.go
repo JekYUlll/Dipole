@@ -147,6 +147,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 	}
 	if dependencies.AgentArtifacts != nil {
 		engine.GET("/api/v1/agent/artifacts/:artifact_id", auth, agentArtifactGetHandler(dependencies.AgentArtifacts))
+		engine.GET("/api/v1/agent/artifacts/:artifact_id/content", auth, agentArtifactContentHandler(dependencies.AgentArtifacts))
 	}
 	if dependencies.AgentMCP != nil {
 		if err := application.ValidateAgentMCPResource(application.AgentMCPResourceIdentifier(config.AuthConfig().AgentMCPResource)); err != nil {

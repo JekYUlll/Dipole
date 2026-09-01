@@ -43,6 +43,17 @@ describe("OpenAI-compatible model provider", () => {
     expect(createOpenAICompatibleModelResolver(config)("gateway/gpt-5-mini")).toMatchObject({ supportsStructuredOutputs: false });
   });
 
+  it("only forwards a provider-specific thinking switch when explicitly disabled", () => {
+    const defaultConfig = loadModelProviderConfig(environment);
+    const disabledConfig = loadModelProviderConfig({
+      ...environment,
+      DIPOLE_AGENT_MODEL_THINKING_MODE: "disabled"
+    });
+
+    expect(modelProviderCallOptions(defaultConfig)).toBeUndefined();
+    expect(modelProviderCallOptions(disabledConfig)).toEqual({ gateway: { thinking: { type: "disabled" } } });
+  });
+
   it("rejects malformed provider configuration and cross-provider routes", () => {
     expect(() => loadModelProviderConfig({
       ...environment, DIPOLE_AGENT_MODEL_BASE_URL: "https://user:secret@models.example.test/v1"

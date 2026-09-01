@@ -128,16 +128,17 @@ func (q *Queries) FailAgentModelRun(ctx context.Context, arg FailAgentModelRunPa
 const failAgentModelRunByTask = `-- name: FailAgentModelRunByTask :execrows
 UPDATE agent_model_runs
 SET status = 'failed', completed_at = UTC_TIMESTAMP(), last_error = ?
-WHERE task_uuid = ? AND status = 'running'
+WHERE task_uuid = ? AND stage = ? AND status = 'running'
 `
 
 type FailAgentModelRunByTaskParams struct {
 	LastError sql.NullString
 	TaskUuid  string
+	Stage     string
 }
 
 func (q *Queries) FailAgentModelRunByTask(ctx context.Context, arg FailAgentModelRunByTaskParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, failAgentModelRunByTask, arg.LastError, arg.TaskUuid)
+	result, err := q.db.ExecContext(ctx, failAgentModelRunByTask, arg.LastError, arg.TaskUuid, arg.Stage)
 	if err != nil {
 		return 0, err
 	}
@@ -163,10 +164,15 @@ SELECT c.run_uuid, c.call_uuid, c.call_no, c.route, c.output_json, c.input_token
        r.max_calls, r.total_timeout_ms, r.max_output_tokens_per_call
 FROM agent_model_calls c
 JOIN agent_model_runs r ON r.run_uuid = c.run_uuid
-WHERE r.task_uuid = ? AND c.status = 'completed'
+WHERE r.task_uuid = ? AND r.stage = ? AND c.status = 'completed'
 ORDER BY c.call_no DESC
 LIMIT 1
 `
+
+type GetCompletedAgentModelCallParams struct {
+	TaskUuid string
+	Stage    string
+}
 
 type GetCompletedAgentModelCallRow struct {
 	RunUuid                string
@@ -181,8 +187,8 @@ type GetCompletedAgentModelCallRow struct {
 	MaxOutputTokensPerCall uint32
 }
 
-func (q *Queries) GetCompletedAgentModelCall(ctx context.Context, taskUuid string) (GetCompletedAgentModelCallRow, error) {
-	row := q.db.QueryRowContext(ctx, getCompletedAgentModelCall, taskUuid)
+func (q *Queries) GetCompletedAgentModelCall(ctx context.Context, arg GetCompletedAgentModelCallParams) (GetCompletedAgentModelCallRow, error) {
+	row := q.db.QueryRowContext(ctx, getCompletedAgentModelCall, arg.TaskUuid, arg.Stage)
 	var i GetCompletedAgentModelCallRow
 	err := row.Scan(
 		&i.RunUuid,
@@ -238,13 +244,14 @@ func (q *Queries) InsertAgentModelCall(ctx context.Context, arg InsertAgentModel
 
 const insertAgentModelRun = `-- name: InsertAgentModelRun :exec
 INSERT IGNORE INTO agent_model_runs (
-    run_uuid, task_uuid, status, max_calls, total_timeout_ms, max_output_tokens_per_call, started_at
-) VALUES (?, ?, 'running', ?, ?, ?, UTC_TIMESTAMP())
+    run_uuid, task_uuid, stage, status, max_calls, total_timeout_ms, max_output_tokens_per_call, started_at
+) VALUES (?, ?, ?, 'running', ?, ?, ?, UTC_TIMESTAMP())
 `
 
 type InsertAgentModelRunParams struct {
 	RunUuid                string
 	TaskUuid               string
+	Stage                  string
 	MaxCalls               uint16
 	TotalTimeoutMs         uint32
 	MaxOutputTokensPerCall uint32
@@ -254,6 +261,7 @@ func (q *Queries) InsertAgentModelRun(ctx context.Context, arg InsertAgentModelR
 	_, err := q.db.ExecContext(ctx, insertAgentModelRun,
 		arg.RunUuid,
 		arg.TaskUuid,
+		arg.Stage,
 		arg.MaxCalls,
 		arg.TotalTimeoutMs,
 		arg.MaxOutputTokensPerCall,
@@ -262,15 +270,21 @@ func (q *Queries) InsertAgentModelRun(ctx context.Context, arg InsertAgentModelR
 }
 
 const lockAgentModelRun = `-- name: LockAgentModelRun :one
-SELECT run_uuid, task_uuid, status, max_calls, total_timeout_ms, max_output_tokens_per_call, calls_reserved
+SELECT run_uuid, task_uuid, stage, status, max_calls, total_timeout_ms, max_output_tokens_per_call, calls_reserved
 FROM agent_model_runs
-WHERE task_uuid = ?
+WHERE task_uuid = ? AND stage = ?
 FOR UPDATE
 `
+
+type LockAgentModelRunParams struct {
+	TaskUuid string
+	Stage    string
+}
 
 type LockAgentModelRunRow struct {
 	RunUuid                string
 	TaskUuid               string
+	Stage                  string
 	Status                 string
 	MaxCalls               uint16
 	TotalTimeoutMs         uint32
@@ -278,12 +292,13 @@ type LockAgentModelRunRow struct {
 	CallsReserved          uint16
 }
 
-func (q *Queries) LockAgentModelRun(ctx context.Context, taskUuid string) (LockAgentModelRunRow, error) {
-	row := q.db.QueryRowContext(ctx, lockAgentModelRun, taskUuid)
+func (q *Queries) LockAgentModelRun(ctx context.Context, arg LockAgentModelRunParams) (LockAgentModelRunRow, error) {
+	row := q.db.QueryRowContext(ctx, lockAgentModelRun, arg.TaskUuid, arg.Stage)
 	var i LockAgentModelRunRow
 	err := row.Scan(
 		&i.RunUuid,
 		&i.TaskUuid,
+		&i.Stage,
 		&i.Status,
 		&i.MaxCalls,
 		&i.TotalTimeoutMs,

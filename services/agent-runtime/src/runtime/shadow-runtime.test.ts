@@ -8,11 +8,11 @@ import { buildKafkaShadowRuntime, loadShadowRuntimeConfig, singlePassModelCapabi
 import { SubscriptionShadowMetrics } from "../observability/subscription-shadow-metrics.js";
 
 describe("shadow runtime composition", () => {
-  it("keeps one-shot model plans at conversation discovery", () => {
+  it("allows only discovery-bound conversation reads in a one-shot plan", () => {
     const config = loadShadowRuntimeConfig({});
 
-    expect(singlePassModelCapabilityIDs(config)).toEqual(["conversation.list"]);
-    expect(singlePassModelCapabilityIDs({ ...config, retrievalEnabled: true })).toEqual(["conversation.list"]);
+    expect(singlePassModelCapabilityIDs(config)).toEqual(["conversation.list", "conversation.read"]);
+    expect(singlePassModelCapabilityIDs({ ...config, retrievalEnabled: true })).toEqual(["conversation.list", "conversation.read"]);
   });
 
   it("requires brokers only when Kafka shadow mode is enabled", () => {

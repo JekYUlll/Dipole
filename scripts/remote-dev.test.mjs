@@ -66,6 +66,8 @@ test("remote sync carries a commit-pinned bundle for outbound Git fallback", () 
   assert.match(source, /scp -q -o BatchMode=yes -o ConnectTimeout=[\s\S]*?"\$\{bundle_path\}" "\$\{REMOTE_HOST\}:\$\{remote_bundle\}"/);
   assert.match(source, /git_timeout="\$\{DIPOLE_REMOTE_GIT_TIMEOUT:-20\}"/);
   assert.match(source, /if ! timeout "\$git_timeout" git clone "\$remote_url" "\$root"; then[\s\S]*?git clone "\$bundle" "\$root"/);
+  assert.match(source, /git clone "\$bundle" "\$root"[\s\S]*?git -C "\$root" remote set-url origin "\$remote_url"/);
+  assert.doesNotMatch(source, /git -C "\$root" remote add origin "\$remote_url"/);
   assert.match(source, /if ! timeout "\$git_timeout" git fetch origin "\$fetch_ref"; then[\s\S]*?git fetch "\$bundle" "\$commit"/);
   assert.match(source, /cleanup_bundle\(\) \{ rm -f "\$bundle"; \}/);
   assert.match(source, /git rev-parse --verify "\$\{commit\}\^\{commit\}"/);
@@ -115,7 +117,11 @@ test("remote sync preserves divergent untracked target conflicts and tracked edi
 });
 
 test("node verification preserves package locks and cleans generated webapp output", () => {
-  assert.match(source, /node-test\)[\s\S]*?npm --prefix "\\\$app" ci --include=optional --ignore-scripts --no-audit --no-fund/);
+  assert.match(source, /install_node_dependencies\(\)[\s\S]*?npm --prefix "\\\$app" ci --include=optional --ignore-scripts --no-audit --no-fund/);
+  assert.match(source, /grep -q "ENOTEMPTY" "\\\$install_log"/);
+  assert.match(source, /quarantine="\\\$app\/\.node_modules-interrupted-\\\$\(date \+%s\)"/);
+  assert.match(source, /mv "\\\$app\/node_modules" "\\\$quarantine"/);
+  assert.match(source, /install_node_dependencies "\\\$app"/);
   assert.doesNotMatch(source, /node-test\)[\s\S]*?npm --prefix "\\\$app" install/);
   assert.match(source, /webapp_dir="internal\/services\/core\/server\/webapp"/);
   assert.match(source, /generated webapp output is dirty/);

@@ -20,6 +20,7 @@ func TestAgentTaskTimelineRepairUsesSameValidatedEventContract(t *testing.T) {
 	}
 	for _, invalid := range []AgentTaskTimelineEventV1{
 		{TaskUUID: event.TaskUUID, Kind: event.Kind, Status: event.Status, OccurredAt: event.OccurredAt},
+		{EventUUID: strings.Repeat("e", AgentTaskTimelineEventUUIDMaxLengthV1+1), TaskUUID: event.TaskUUID, Kind: event.Kind, Status: event.Status, OccurredAt: event.OccurredAt},
 		{EventUUID: event.EventUUID, TaskUUID: event.TaskUUID, Kind: AgentTaskTimelineEventKindV1("unknown"), Status: event.Status, OccurredAt: event.OccurredAt},
 		{EventUUID: artifact.EventUUID, TaskUUID: artifact.TaskUUID, Kind: AgentTaskTimelineEventArtifact, Status: artifact.Status, OccurredAt: artifact.OccurredAt},
 		{EventUUID: artifact.EventUUID, TaskUUID: artifact.TaskUUID, Kind: AgentTaskTimelineEventArtifact, Status: artifact.Status, ArtifactUUID: " " + artifact.ArtifactUUID, OccurredAt: artifact.OccurredAt},

@@ -297,7 +297,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		AgentSubscriptions:     agentSubscriptions,
 		AgentDefinitions:       agentSubscriptions,
 		AgentMemories:          agentMemories,
-		AgentArtifacts:         agentArtifacts,
+		AgentArtifacts:         agentArtifactApplication(agentArtifacts),
 		AgentMCP:               agentMCP,
 		TokenResolver:          coreauth.NewTokenService(),
 		Presence:               wsTransport.NewRedisPresenceTracker(presence),
@@ -402,6 +402,14 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		zap.String("realtime_delivery_authority", string(deliveryAuthority)),
 	)
 	return runtime, nil
+}
+
+// A nil concrete client in an interface would register the route and panic on use.
+func agentArtifactApplication(client *gateway.AgentArtifactClient) gateway.AgentArtifactApplication {
+	if client == nil {
+		return nil
+	}
+	return client
 }
 
 func (r *GatewayRuntime) Server() *gateway.Server {

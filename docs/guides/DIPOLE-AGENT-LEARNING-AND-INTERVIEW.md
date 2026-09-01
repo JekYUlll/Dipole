@@ -22,9 +22,9 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 - **状态：** 已验证的默认关闭入口
 - **简历句：** 构建 IM-native Agent Task admission：Gateway 从 JWT 派生身份，浏览器只提交本地幂等键和目标文本，Runtime 以确定性 Task ID 启动 durable workflow，并在 accepted 回包后进入只读 Timeline。
 - **演示：** 显式启用服务端控制面与 `VITE_AGENT_TASK_CREATE_ENABLED`、`VITE_AGENT_TIMELINE_ENABLED` 后访问 `/agent/tasks/new`；提交同一 request ID 两次，验证只返回同一 Task 绑定。
-- **证据：** `internal/services/gateway/server/server.go`、`services/agent-runtime/src/control/interactive-task-start.ts`、`frontend/src/components/AgentTaskCreate.vue`。
+- **证据：** `internal/services/gateway/server/server.go`、`services/agent-runtime/src/control/interactive-task-start.ts`、`frontend/src/components/AgentTaskCreate.vue`、[Remote GPU receipt](../agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。
 - **追问：** “为什么页面不能传 principal 或 Agent ID？” 这些字段由认证上下文和 Runtime 配置确定；把它们暴露给浏览器会扩大跨账号或跨 Agent 访问面。
-- **限制：** Remote GPU 仅完成定向 Vitest、typecheck 和 build；基础 Compose 仍关闭 Gateway/Runtime 控制面，未启动 Kafka、Temporal 或 active authority。Pencil canonical 创建画板和视觉回归继续待补。
+- **限制：** Remote GPU 已完成隔离 Compose 上的两次只读 admission、终态和 Timeline 分页验证，但 Gateway 与 Core/Agent 的 provenance 存在候选版本偏差。它不能外推为同版本发布、任务成功率、active authority 或写 Capability；基础 Compose 默认仍关闭控制面。Pencil canonical 创建画板和视觉回归继续待补。
 - **复核条件：** 修改 admission ID 派生、Gateway 身份、Runtime control 配置、前端 feature flag 或 Timeline 路由时。
 | reviewed Memory receipt、mTLS、MySQL retry | 已验证（隔离 Remote GPU） | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh` |
 | External MCP Shadow 完整链路 | 已验证（隔离 Remote GPU） | `scripts/drill-agent-external-mcp-shadow.sh` |
@@ -32,6 +32,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | `promotion_active` 与 External MCP Shadow mode | 默认关闭 | [External MCP 运行手册](../agent/agent-external-mcp.md) |
 | Project Guardian 预筛评测基线 | 已验证（合成离线） | `contracts/agent-evals/v1/project-guardian-synthetic-corpus.json` |
 | OAuth callback durable handoff | 已验证的默认关闭组件链 | `contracts/agent-oauth-callback-handoff/v1/TRANSPORT.md` |
+| Trusted discovery read | `conversation.list` output binds the next `conversation.read` target | `services/agent-runtime/src/events/shadow-processor.ts` |
 
 #### OAuth Callback Durable Handoff
 

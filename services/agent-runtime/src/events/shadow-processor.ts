@@ -11,6 +11,7 @@ const policyVersion = "dipole.agent.policy.persistence.v1";
 const runIDVersion = "dipole.agent.run.v1";
 const lineageIdentifier = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
 const defaultReadPermissions = ["conversation.list", "conversation.read"] as const;
+const discoveredConversationMarker = "$discovered.previous";
 
 const eventLineageSchema = z.object({
   origin: z.object({
@@ -97,6 +98,7 @@ export interface ShadowPlanStep {
 
 export interface ShadowPlanner {
   plan(event: AgentEvent, context: ExecutionContext): Promise<ShadowPlan>;
+  synthesize?(event: AgentEvent, context: ExecutionContext, plan: ShadowPlan, outputs: readonly unknown[]): Promise<string>;
 }
 
 export interface ShadowAuditRecord {
@@ -260,11 +262,14 @@ export async function executeShadowPlan(
 ): Promise<ShadowPlan> {
   const plan = await dependencies.planner.plan(event, context);
   await dependencies.audit.append({ eventId: event.eventId, taskId: context.taskId, eventType: event.eventType, plan });
-  await executeShadowPlanSteps(
+  const outputs = await executeShadowPlanSteps(
     plan, context, dependencies.registry, dependencies.trajectory,
     dependencies.stepLeaseMs, dependencies.busyStepRetry, dependencies.telemetry ?? new AgentTelemetry()
   );
-  return plan;
+  const summary = dependencies.planner.synthesize === undefined
+    ? plan.summary
+    : await dependencies.planner.synthesize(event, context, plan, outputs);
+  return summary === plan.summary ? plan : { ...plan, summary };
 }
 
 async function executeShadowPlanSteps(
@@ -275,7 +280,8 @@ async function executeShadowPlanSteps(
   stepLeaseMs: number,
   busyStepRetry?: ShadowPlanExecutionDependencies["busyStepRetry"],
   telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
-): Promise<void> {
+): Promise<readonly unknown[]> {
+  const outputs: unknown[] = [];
   for (const [index, step] of plan.steps.entries()) {
     const stepNo = index + 1;
     let claim = await trajectory.claimStep(context.taskId, stepNo, stepLeaseMs);
@@ -292,7 +298,14 @@ async function executeShadowPlanSteps(
     }
     const claimToken = claim.token;
     try {
-      const invocation = registry.prepare(step.capabilityId, step.input, context);
+      const resolvedStep = resolveTrustedDiscoveryStep(plan.steps, index, step, outputs);
+      if (resolvedStep === undefined) {
+        const output = { status: "skipped", reason: "no_discovered_conversation" };
+        await trajectory.completeStep(context.taskId, stepNo, claimToken, output);
+        outputs.push(output);
+        continue;
+      }
+      const invocation = registry.prepare(resolvedStep.capabilityId, resolvedStep.input, context);
       if (trajectory.recordAuthorization === undefined) throw new Error("Agent shadow Step authorization audit is unavailable");
       await trajectory.recordAuthorization(context.taskId, stepNo, claimToken, invocation.resource, "allowed");
       const output = await telemetry.withSpan("agent.tool.call", {
@@ -304,11 +317,45 @@ async function executeShadowPlanSteps(
         }
       }, async () => invocation.execute());
       await trajectory.completeStep(context.taskId, stepNo, claimToken, output);
+      outputs.push(output);
     } catch (error) {
       await trajectory.failStep(context.taskId, stepNo, claimToken, error);
       throw error;
     }
   }
+  return outputs;
+}
+
+function resolveTrustedDiscoveryStep(
+  steps: readonly ShadowPlanStep[],
+  index: number,
+  step: ShadowPlanStep,
+  outputs: readonly unknown[]
+): ShadowPlanStep | undefined {
+  if (step.capabilityId !== "conversation.read") return step;
+  if (step.input.conversationId !== discoveredConversationMarker) {
+    throw new Error("conversation.read requires the trusted conversation discovery marker");
+  }
+  if (index === 0 || steps[index - 1]?.capabilityId !== "conversation.list") {
+    throw new Error("conversation.read requires the immediately preceding trusted conversation.list result");
+  }
+  const conversationId = firstDiscoveredConversationId(outputs.at(-1));
+  // An empty list is a valid user state. Keep the skipped result in the
+  // trajectory, but never turn it into a guessed or unauthorised read.
+  if (conversationId === undefined) return undefined;
+  return { ...step, input: { ...step.input, conversationId } };
+}
+
+function firstDiscoveredConversationId(output: unknown): string | undefined {
+  if (!Array.isArray(output)) return undefined;
+  for (const item of output) {
+    if (item === null || typeof item !== "object") continue;
+    const value = (item as { conversationKey?: unknown }).conversationKey;
+    if (typeof value !== "string") continue;
+    const conversationId = value.trim();
+    if (conversationId.length > 0 && conversationId.length <= 256) return conversationId;
+  }
+  return undefined;
 }
 
 function delay(milliseconds: number): Promise<void> {

@@ -2,6 +2,18 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：默认关闭的 Gateway Artifact 控制面已增加受限的 `conversation_digest` Markdown 正文读取。Gateway 仍通过 mTLS Core RPC 从认证 principal 重新解析 owner，并复核正文长度与 SHA-256；公开响应只包含 Artifact ID、媒体类型和正文。Remote GPU 隔离验收验证 owner metadata/content 为 `200`、foreign content 为 `404`。对象键、Metadata JSON、其他 Artifact 类型和通用下载继续关闭，前端正文展示留待独立前端里程碑。
+
+- 2026-09-01：全新 Remote GPU 候选已从空 MySQL 卷完成 migration v57，当前 Core 与 read-shadow Agent 启动。验收发现 Artifact Timeline 的拼接 event ID 超过 MySQL `VARCHAR(64)`，写入被投影层吸收；修复改用 Artifact 的 64 位内容寻址 ID，并在领域层校验上限。重建同版本 Core 后，新受认证只读任务已完成，Artifact metadata 与 Timeline 中唯一对应 Artifact 事件均返回 `200`；该证据未扩大 active authority 或写 Capability。
+
+- 2026-09-01：Remote GPU 真实 Provider 验收表明，自由 `record` 输入 schema 会让模型偶发构造裸 `conversation.read` target，即使 prompt 已声明 discovery 规则。计划 schema 已收紧为 `conversation.list` 和固定 `$discovered.previous` 的 `conversation.read`，并保留执行层验证。候选数据库必须先应用 `000057_agent_model_run_stages`，两阶段 plan/synthesis 环境需配置 `DIPOLE_AGENT_MODEL_MAX_CALLS>=2`；同版本迁移镜像和可重跑体验 receipt 仍待完成。
+
+- 2026-09-01：空会话列表属于新用户的正常状态。依赖发现的读取步骤现持久化为 `skipped/no_discovered_conversation`，不再触发 Activity 重试或远端读调用；摘要仍基于已完成的 List/skip 输出生成。多会话选择和用户确认读取范围仍待后续编排切片。
+
+- 2026-09-01：隔离交互 Task 验证显示单轮 Planner 会在缺少任何发现结果时生成 `conversation.read`，随后因无法从伪造或空的 conversation key 推导可信 target 而失败并触发 Temporal 重试。当前已将单轮模型动作面限制为 `conversation.list`，维持事件驱动的预取读取与 MCP 的受控读取；多轮 orchestrator、已验证 discovery result 到 read target 的数据流绑定和该路径的端到端评测仍是 Agent P0。
+
+- 2026-09-01：Remote GPU 隔离交互 Shadow 已在 DeepSeek V4 Flash 下验证一次新用户只读任务：HTTP 查询为 `completed`，Task `workflow_status` 与唯一 Run 为 `completed`，模型调用、Step、Artifact 均精确为 `1`。`agent_tasks.status` 仍是 Shadow 策略投影并保持 `running`，因此 API、评测与前端必须以持久 Workflow/Run 终态表达用户可见完成；共享环境、多轮 conversation read、写能力、MCP 与 active authority 仍无此证据。
+
 本文档记录已确认但暂缓处理的架构风险、兼容性缺口和可清理冗余，便于后续按优先级滚动治理。
 
 ## 维护约定
@@ -11,6 +23,10 @@
 - 新问题使用连续编号 `AD-NNN`，保留历史编号，不复用已关闭条目。
 
 ### 本轮进展
+
+- 2026-09-01：Remote GPU 的新候选 checkout 曾因上一次中断留下的 `node_modules` 在 `npm ci` 中报 `ENOTEMPTY`。`node-test` 现只匹配该确定错误后原子隔离候选 app 的 ignored 目录并重试一次；其他安装失败仍直接退出，隔离目录保留供诊断。该修复不改变 lockfile、已运行容器或共享工作树。
+
+- 2026-09-01：Remote GPU 的隔离交互 Shadow 候选完成两次公开 JWT Task admission 到 Timeline cursor 续页的只读验收；两条 Task 均收敛为 `completed`，每条 Timeline 的前两页各返回两条事件。Gateway 使用 `4ab924b87` 的专用候选镜像，Core/Agent 为兼容的既有候选，因此该证据只说明混合候选的开发兼容性。详细边界见 [Agent Interactive Shadow Remote Receipt](../agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。同版本镜像、可重跑低敏 receipt、受控观察窗口、active authority 与写 Capability 继续作为独立门禁。
 
 - 2026-09-01：Remote GPU 同时运行多个隔离 MySQL 时，宿主 Linux AIO 使用量达到 `55,300 / 65,536`，新候选初始化触发 `io_setup() EAGAIN`。新增只作用于候选 project 的 `remote-gpu-mysql-aio-compat.yml`，保留基础参数并增加 `--innodb-use-native-aio=0`；此兼容模式不改变已有服务，验证结束后随候选 project 回滚。
 
@@ -135,6 +151,7 @@
 - 2026-08-31：补齐主链路外部阻塞期间的并行治理规则。前端设计、只读体验、视觉回归、文档入口和图表可在独立分支推进，但不改变服务 authority、默认 feature flag 或真实环境证据门槛。该规则减少等待窗口造成的工程停滞；共享环境切流、负载测试和 active 能力仍按各自验收条件执行。
 
 - 2026-08-31：Remote GPU 的 DeepSeek V4 Flash shadow 审计显示已完成真实 Kafka/Capability RPC/模型/Shadow Plan 链路的至少一条成功调用，但当前观察样本仍存在 Provider `response_format` 不可用、空输出与 JSON-text 包装造成的失败。Runtime 已将单一、短包装的 JSON 对象恢复为本地 Zod 校验输入，并继续拒绝多对象或不合法结构；需在 Temporal `read_shadow` 实机启动后收集新的成功率、Run 终态与 Artifact 证据，AD-009 不关闭。
+- 2026-09-01：实机 Interactive Task 复现 DeepSeek V4 Flash 的默认 `thinking` 可在 `1024` 输出 token 内只返回 `reasoning_content`，AI SDK 可见正文为空并使 JSON-text 调用失败。Runtime 新增 Provider-scoped `DIPOLE_AGENT_MODEL_THINKING_MODE=disabled`，仅在显式选择时透传 `thinking.type=disabled`；同一大上下文探针由 `length`/空正文恢复为 `stop`/非空正文。该切片仍需以更新镜像重跑完整 Temporal Task、Timeline 与 Artifact 验收，未改变 active/write/MCP 默认关闭边界。
 
 - 2026-08-31：真实 Shadow read 联调发现 standalone Core 将无本地 repository 的 Message application 传给 Agent Capability，`conversation.read` 会触发 nil repository panic。现已在 gRPC Message transport 下切换为惰性、可关闭的 Core-to-Message history reader；reader 保持 `dipole-core` RPC 身份，运行时缺失 Message 只返回调用错误，不再使 Core 进程退出。Core/Message 联合恢复演练仍待完成。
 
@@ -338,7 +355,15 @@
 - 2026-08-30：5 次 Remote GPU 稳定性采样确认 C++/Go ratio 约 `0.25` 且运行抖动有限；下一步 profiling 需要定位稳定的 JSON、时间校验、Protobuf 和 allocation 成本，C++ primary/gray 继续关闭。
 - 2026-08-31：Remote GPU 在 `bed7a5d06f5f69bbccc0de4586235881e5b6d5ae` 以 Ubuntu 24.04 builder 重跑 100,000 次同契约 projection workload，C++ CTest `14/14` 通过，C++/Go ratio 为 `0.239956`，低于 `1.0` 门槛并判定 `blocked`；证据归档于 [C3 projection benchmark](../../benchmarks/c3-cpp-projection-benchmark-2026-08-31/)。因此继续保留 Go authority，当前 C++ 不进入 primary 或灰度路径。经当前开发优先级决策，C++ 轨道暂缓，资源转向 Agent Runtime 安全闭环；恢复条件为新的可复现收益证据和 Agent Runtime 里程碑完成。
 
-- 2026-08-31：OAuth callback handoff 已从分散的 claim、key source、executor、terminal 和 control adapter 收口为注入式 Runtime composition factory，并以 fake mTLS transport 验证 handoff-ID-only control 到完成路径。`index.ts`、Compose、浏览器 callback、Provider code exchange 和 token lifecycle 均未装配；后续需要先完成独立 processor 的受控实现、重复领取/租约过期/Runtime 重启演练，再评估单独的默认关闭部署 profile。
+- 2026-08-31：OAuth callback handoff 已从分散的 claim、key source、executor、terminal 和 control adapter 收口为注入式 Runtime composition factory，并以 fake mTLS transport 验证 handoff-ID-only control 到完成路径。跨实例测试进一步固定：只有前一 Runtime 显式 release 后，替换实例才能从 Core 条件租约重新领取；进程内去重从不承担恢复权威。`index.ts`、Compose、浏览器 callback、Provider code exchange 和 token lifecycle 均未装配；后续需要先完成独立 processor 的受控实现、真实重启/过期租约演练，再评估单独的默认关闭部署 profile。
+
+- 2026-09-01：read-shadow 的单轮 Planner 允许受限两步发现读取：`conversation.read` 必须紧邻 `conversation.list` 并携带唯一 `$discovered.previous` 标记。执行层仅从已完成 List 输出提取首个合法会话键，再进入 Capability scope/permission 检查；模型构造 ID、越过前置步骤或空输出会在 Tool 调用前失败。当前未提供任意索引、多会话 fan-out 或写 Capability，后续选择策略必须以同等的服务端数据绑定与审计实现。
+
+- 2026-09-01：受信发现约束同时在 Planner 与执行层实施。执行层对任何非 `$discovered.previous` 的 `conversation.read` 固定拒绝，并在拒绝路径不调用远程 Capability、不记录 allowed authorization；因此后续新增 Planner、MCP adapter 或测试夹具不能靠直接 ID 意外绕开绑定。多候选选择、用户显式选择和写能力仍需独立的可审计契约。
+
+- 2026-09-01：`000057` 将模型审计运行的唯一约束升级为 `(task_uuid, stage)`。默认 `plan` 继续使用 v1 deterministic run ID，非默认 stage 使用携带 stage 的 v2 ID，防止历史计划重放漂移；Router 对 stage 名称、预算和恢复结果均失败关闭。该层仅提供 `synthesis` 的 durable 运行隔离，读取结果编译、第二次模型调用、Artifact 替换及真实 Shadow receipt 仍待后续切片完成。
+
+- 2026-09-01：read-shadow 在已审计计划和已完成 Tool Step 后调用独立 `synthesis` stage，最终 Artifact 使用该摘要。Tool 输出在 synthesis prompt 中始终标记为 untrusted data，且空输出不会触发第二次调用；Metadata Planner 保持单阶段。当前输出截断为 12 KiB，尚未接入 ContextCompiler 的多来源结果压缩、跨会话选择或写入/approval loop，真实 Remote GPU receipt 仍待安全窗口。
 
 - 2026-08-31：Runtime bootstrap 现显式解析 OAuth callback 配置并拒绝启用状态，避免缺 Provider processor 的环境变量被静默忽略。拒绝发生在任何网络资源初始化前；后续独立 profile 需要将 processor、Core credential、key mount、运行证据和回滚开关作为同一部署契约交付。
 - 2026-08-30：长时 C++ profiling 受远端内核缺少匹配 linux-tools 阻断，未安装系统包也未将 `perf` 失败误判为热点结论；下一步可在具备匹配工具链的隔离 runner 中采集，当前仍禁止据 benchmark 切换 C++ authority。
@@ -744,6 +769,7 @@
 - **现状：** Task、Run、Shadow Step、Model Call、Tool Invocation、Approval 和 Artifact 已分别持久化；Gateway 当前只提供权威 Task 当前状态、输入和审批控制。已建立 `contracts/agent-task-timeline/v1/`，规定 Core principal 复核、稳定 `event_seq`、增量游标和低敏事件 DTO。
 - **风险：** 若由 Gateway 直接拼接多张 Agent 表或读取 Temporal 历史，会绕过服务 ownership、产生跨 Run 顺序歧义并泄露 prompt、参数或外部结果；当前前端不能声称展示完整执行历史。
 - **本轮进展：** migration v48 新增 append-only `agent_task_timeline_events`，以数据库生成的 `event_seq` 保存低敏 Task/Run/Capability/Approval 元数据，并通过 sqlc 提供 append/list 查询与领域校验。生产事务装配现在让 Task/Run 创建和状态迁移与 Timeline append 一起提交；Core 已提供 owner-scoped list 与仅 `dipole-agent` 可用的 append RPC，并接入生产仓储；Runtime/Gateway 已贯通认证只读代理；前端已在 `VITE_AGENT_TIMELINE_ENABLED` flag 下支持低敏展示和 cursor 分页，失败清空并回退；Tool Invocation begin/finish、Approval request/resolve、Model call begin/finish、Artifact create 已追加确定性、可幂等重放的低敏 Timeline 事件。migration v49 新增 repair ledger，投影失败会以 event UUID 幂等落账，并提供租约 claim、完成和重试状态接口；新增显式 repairer 状态机、独立 `agent-task-timeline-repair` 运维进程和可选低基数 Prometheus 观测。自动生成事件 ID 已收敛为固定 64 位摘要，兼容最大长度 Task/Run UUID；真实 MySQL 故障注入已验证 retry 到 completed 的恢复，Agent 及其余 repository contract 已完成分组验证。进程和指标默认关闭，operator 灰度、完整串行 repository 套件稳定运行、默认生产开关和视觉评审仍未开放。
+- **本轮进展：** 独立 Core 启动链现明确装配 Timeline Store，Core mTLS allowlist 允许 `dipole-agent` 调用 owner-scoped `ListAgentTaskTimeline`；Runtime HTTP 将 `bigint` revision/timestamp/sequence 映射为 Web DTO 的安全数字或字符串，并保留每个 event 的 Task ID。Remote GPU 隔离候选完成 `202 -> completed -> Timeline 200`，返回 4 个低敏 Task/Run 事件且序列、时间和 owner binding 通过检查。空会话 read-shadow 不产生 Artifact，Artifact、写 Capability、active authority 和成功率结论继续不扩大。
 - **本轮验证：** 2026-08-31 Remote GPU 以 Go `1.27.0` 在随机隔离 Docker network/MySQL 容器执行 `smoke-agent-timeline-repair.sh`，worker 成功重放一个 repair intent 并幂等收敛。脚本现允许通过 `DIPOLE_GO_BIN` 固定经验证工具链；该证据不构成 operator 灰度或默认生产开关验收。
 - **本轮进展：** Core 新增受认证 `ReadConversation` RPC，沿用 Task/Run principal 解析、Core 精确会话授权和低敏消息映射；TS Runtime 增加 `conversation.read` Capability 并接入模型可用能力集合，为 Context Compiler 补上会话证据读取边界。完整 Timeline UI 生产开关、repair operator 灰度和视觉评审仍未开放。
 - **本轮进展：** `conversation.read` 输入已统一为 canonical conversation key，Runtime 对 direct/group key 做确定性 target 解析并先执行 exact scope 检查，减少多语言 Capability 适配差异；完整上下文检索编排和生产开关仍待完成。

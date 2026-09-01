@@ -22,33 +22,7 @@ const (
 // Agent capability endpoint without depending on bootstrap lifecycle packages.
 func RestrictAgentServiceMethods(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	caller, _ := grpcauth.CallerService(ctx)
-	if caller == agentServiceName &&
-		info.FullMethod != agentv1.AgentCapabilityService_AdmitRun_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_CompleteRun_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_FinishRun_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_RequestApproval_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ResolveApproval_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ConsumeApproval_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ResolveApprovalGrant_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ReadConversation_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpContext_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_BeginMcpToolInvocation_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpToolCommand_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ClaimMcpToolRound_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolRound_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolInvocation_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_CreateArtifact_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_MatchEventSubscriptions_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ListContextMemories_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_CommitMemoryPromotionReceipt_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName &&
-		info.FullMethod != agentv1.AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName &&
-		info.FullMethod != healthv1.Health_Check_FullMethodName {
+	if caller == agentServiceName && !isAgentServiceMethodAllowed(info.FullMethod) {
 		return nil, status.Error(codes.PermissionDenied, "Agent service is not allowed to call this Core capability")
 	}
 	if caller == searchServiceName &&
@@ -62,4 +36,39 @@ func RestrictAgentServiceMethods(ctx context.Context, request any, info *grpc.Un
 		return nil, status.Error(codes.PermissionDenied, "Sync service is not allowed to call this Core capability")
 	}
 	return handler(ctx, request)
+}
+
+func isAgentServiceMethodAllowed(method string) bool {
+	switch method {
+	case agentv1.AgentCapabilityService_AdmitRun_FullMethodName,
+		agentv1.AgentCapabilityService_CompleteRun_FullMethodName,
+		agentv1.AgentCapabilityService_FinishRun_FullMethodName,
+		agentv1.AgentCapabilityService_RequestApproval_FullMethodName,
+		agentv1.AgentCapabilityService_ResolveApproval_FullMethodName,
+		agentv1.AgentCapabilityService_ConsumeApproval_FullMethodName,
+		agentv1.AgentCapabilityService_ResolveApprovalGrant_FullMethodName,
+		agentv1.AgentCapabilityService_ListConversations_FullMethodName,
+		agentv1.AgentCapabilityService_ReadConversation_FullMethodName,
+		agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName,
+		agentv1.AgentCapabilityService_ListAgentTaskTimeline_FullMethodName,
+		agentv1.AgentCapabilityService_ResolveMcpContext_FullMethodName,
+		agentv1.AgentCapabilityService_BeginMcpToolInvocation_FullMethodName,
+		agentv1.AgentCapabilityService_ResolveMcpToolCommand_FullMethodName,
+		agentv1.AgentCapabilityService_ClaimMcpToolRound_FullMethodName,
+		agentv1.AgentCapabilityService_FinishMcpToolRound_FullMethodName,
+		agentv1.AgentCapabilityService_FinishMcpToolInvocation_FullMethodName,
+		agentv1.AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName,
+		agentv1.AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName,
+		agentv1.AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName,
+		agentv1.AgentCapabilityService_CreateArtifact_FullMethodName,
+		agentv1.AgentCapabilityService_MatchEventSubscriptions_FullMethodName,
+		agentv1.AgentCapabilityService_ListContextMemories_FullMethodName,
+		agentv1.AgentCapabilityService_CommitMemoryPromotionReceipt_FullMethodName,
+		agentv1.AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName,
+		agentv1.AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName,
+		healthv1.Health_Check_FullMethodName:
+		return true
+	default:
+		return false
+	}
 }
