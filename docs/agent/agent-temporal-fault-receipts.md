@@ -14,11 +14,22 @@ v1 仅在状态序列为 `1:running,2:waiting_approval,3:running,4:completed`，
 
 ```bash
 cd services/agent-runtime
-DIPOLE_AGENT_TEMPORAL_INTEGRATION=true npm run test:temporal:integration
-npm run receipt:temporal-fault -- --observation=temporal-fault-observation.json
+receipt_dir="$(mktemp -d)"
+DIPOLE_AGENT_TEMPORAL_INTEGRATION=true \
+DIPOLE_AGENT_TEMPORAL_FAULT_EVIDENCE_DIR="$receipt_dir" \
+npm test -- --run src/temporal/agent-task-workflow.integration.test.ts
+for receipt in "$receipt_dir"/*.json; do
+  npm run receipt:temporal-fault -- --receipt="$receipt"
+done
 ```
 
-输入和输出由 [`observation.schema.json`](../../contracts/agent-temporal-fault/v1/observation.schema.json) 与 [`receipt.schema.json`](../../contracts/agent-temporal-fault/v1/receipt.schema.json) 固定。CLI 只验证和绑定已归档观察数据；它不启动 Worker、不写数据库，也不替代共享环境的 Core restart、lease expiry、input resume 或 active authority 演练。
+显式 `DIPOLE_AGENT_TEMPORAL_FAULT_EVIDENCE_DIR` 让该集成测试将两份低敏 receipt 写入预先创建的绝对目录；未设置时测试没有文件副作用。输入和输出由 [`observation.schema.json`](../../contracts/agent-temporal-fault/v1/observation.schema.json) 与 [`receipt.schema.json`](../../contracts/agent-temporal-fault/v1/receipt.schema.json) 固定。CLI 可从 observation 创建 receipt，或通过 `--receipt` 独立复核已归档 receipt；它不启动 Worker、不写数据库，也不替代共享环境的 Core restart、lease expiry 或 active authority 演练。
+
+### Remote GPU record: 2026-09-01
+
+候选 `6beab05d` 使用 Node `22.12.0` 执行集成套件 `7/7`，再由 CLI 独立复核
+[`worker_replacement_approval_resume`](../../benchmarks/agent-temporal-fault-2026-09-01/worker-replacement-approval-resume.json)
+与 [`worker_replacement_input_resume`](../../benchmarks/agent-temporal-fault-2026-09-01/worker-replacement-input-resume.json)。两份 receipt 均为 `eligible`，并固定了状态修订和精确副作用基数。该运行使用内存 Temporal Test Server；Core restart、EventLedger lease、共享 tenant 和 active authority 继续使用各自的演练与证据边界。
 
 ## Core restart read-shadow evidence
 

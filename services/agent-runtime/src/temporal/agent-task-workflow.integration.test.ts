@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { stat, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { Worker } from "@temporalio/worker";
 
@@ -35,6 +37,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
 
   it("retries Activities, converges duplicate starts, and resumes after Worker replacement", async () => {
     const taskQueue = `dipole-agent-task-test-${Date.now()}`;
+    const approvalDeadline = Date.now() + 5 * 60_000;
     let calls = 0;
     let admissions = 0;
     let finishAttempts = 0;
@@ -80,7 +83,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
               approvalId: "APR-1", capabilityId: "message.bulk.send",
               resourceScope: { resourceType: "conversation", resourceId: "G1", actions: ["write"] },
               scopeSha256: "a".repeat(64), argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64),
-              expiresAtUnixMs: Date.UTC(2026, 7, 28)
+              expiresAtUnixMs: approvalDeadline
             }
           };
         }
@@ -131,10 +134,10 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       { workflowStatus: "completed", workflowRevision: 4 }
     ]);
     expect(projections.every((projection) => projection.workflowId === first.workflowId && projection.workflowRunId === first.runId)).toBe(true);
-    expect(createTemporalFaultReceipt({
+    const receipt = createTemporalFaultReceipt({
       schemaVersion: "dipole.agent.temporal-fault-observation.v1",
       drillId: "worker_replacement_approval_resume",
-      observedAt: "2026-08-31T12:00:00.000Z",
+      observedAt: new Date().toISOString(),
       workflow: { taskId: "task-recovery-1", runId: "run-recovery-1" },
       transitions: projections.map(({ workflowStatus, workflowRevision }) => ({ revision: workflowRevision, status: workflowStatus })),
       faults: { workerReplacements: 1, terminalWriteRetries: finishAttempts - persistedTerminalWrites },
@@ -143,7 +146,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
         terminalWriteAttempts: finishAttempts, terminalPersistedWrites: persistedTerminalWrites,
         inputSignalsRejected: 0, inputResumptions: 0
       }
-    })).toMatchObject({ outcome: "eligible", failures: [] });
+    });
+    expect(receipt).toMatchObject({ outcome: "eligible", failures: [] });
+    await archiveTemporalFaultReceipt(receipt);
 
     const report = await new AgentTaskProjectionReconciler({
       list: async () => ({ tasks: [{ taskId: "task-recovery-1", workflow: {
@@ -350,13 +355,15 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     await controls.provideInput("task-input-1", { requestId: "INPUT-1", value: { scope: "today" } });
     await expect(handle.result()).resolves.toMatchObject({ status: "completed", output: { scope: "today" } });
     expect(calls).toBe(2);
-    expect(createTemporalFaultReceipt({
-      schemaVersion: "dipole.agent.temporal-fault-observation.v1", drillId: "worker_replacement_input_resume", observedAt: "2026-08-31T12:00:00.000Z",
+    const receipt = createTemporalFaultReceipt({
+      schemaVersion: "dipole.agent.temporal-fault-observation.v1", drillId: "worker_replacement_input_resume", observedAt: new Date().toISOString(),
       workflow: { taskId: "task-input-1", runId: "run-input-1" },
       transitions: projections.map(({ workflowRevision, workflowStatus }) => ({ revision: workflowRevision, status: workflowStatus })),
       faults: { workerReplacements: 1, terminalWriteRetries: 0 },
       effects: { admissions: 1, stepExecutions: calls, approvalRequests: 0, approvalResolutions: 0, terminalWriteAttempts: terminalWrites, terminalPersistedWrites: terminalWrites, inputSignalsRejected: 2, inputResumptions: 1 }
-    })).toMatchObject({ outcome: "eligible", failures: [] });
+    });
+    expect(receipt).toMatchObject({ outcome: "eligible", failures: [] });
+    await archiveTemporalFaultReceipt(receipt);
     workerTwo.shutdown();
     await workerTwoRun;
   }, 120_000);
@@ -547,4 +554,18 @@ async function waitForStatus(
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   throw new Error(`Workflow did not reach ${expected}; last status was ${lastStatus}`);
+}
+
+async function archiveTemporalFaultReceipt(receipt: ReturnType<typeof createTemporalFaultReceipt>): Promise<void> {
+  const configuredDirectory = process.env.DIPOLE_AGENT_TEMPORAL_FAULT_EVIDENCE_DIR?.trim();
+  if (!configuredDirectory) return;
+  if (!isAbsolute(configuredDirectory)) throw new Error("Temporal fault evidence directory must be absolute");
+
+  const directory = resolve(configuredDirectory);
+  const metadata = await stat(directory);
+  if (!metadata.isDirectory()) throw new Error("Temporal fault evidence directory must be a directory");
+
+  const outputPath = resolve(directory, `${receipt.drillId}.json`);
+  if (dirname(outputPath) !== directory) throw new Error("Temporal fault evidence path is invalid");
+  await writeFile(outputPath, `${JSON.stringify(receipt, null, 2)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
 }

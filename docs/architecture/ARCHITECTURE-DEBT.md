@@ -2,6 +2,8 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：Remote GPU 已在 `6beab05d` 归档隔离 Temporal Worker replacement 的 approval/input recovery receipt。两条路径均固定 `running -> waiting_* -> running -> completed` 修订序列；approval 路径包含一次注入终态重试并只有一次持久写入，input 路径拒绝两次无效/过期 Signal 后只恢复一次。CLI 可独立复核归档 receipt。运行使用内存 Temporal Test Server，未启动 Compose 或连接 Core、Kafka、MySQL、共享 tenant、active authority；联合 Worker/Core/lease 故障与 HITL UI 继续开放。
+
 - 2026-09-01：默认关闭的 Gateway Artifact 控制面已增加受限的 `conversation_digest` Markdown 正文读取。Gateway 仍通过 mTLS Core RPC 从认证 principal 重新解析 owner，并复核正文长度与 SHA-256；公开响应只包含 Artifact ID、媒体类型和正文。Remote GPU 隔离验收验证 owner metadata/content 为 `200`、foreign content 为 `404`。对象键、Metadata JSON、其他 Artifact 类型和通用下载继续关闭，前端正文展示留待独立前端里程碑。
 
 - 2026-09-01：Artifact 前端里程碑已接入 owner-scoped `conversation_digest` 阅读区。客户端仅在 metadata 精确匹配 `conversation_digest` 与 `text/markdown` 时读取正文，并复核响应的 Artifact ID/媒体类型；正文不可用时 metadata 继续保留且可重试。页面以文本阅读区呈现 Markdown 源文，未增加下载、对象键、Metadata JSON、公开 URL 或写入口。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建和 Chromium 功能/视觉回归；Pencil v2 brief 已归档，实际画布增量继续由 AD-044 跟踪。

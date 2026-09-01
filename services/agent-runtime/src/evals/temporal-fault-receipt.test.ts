@@ -56,4 +56,20 @@ describe("Temporal fault receipt", () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it("independently verifies one complete archived receipt", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "dipole-temporal-fault-"));
+    const path = join(directory, "receipt.json");
+    const output: string[] = [];
+    const errors: string[] = [];
+    const expected = createTemporalFaultReceipt(validObservation);
+    try {
+      await writeFile(path, JSON.stringify(expected), "utf8");
+      await expect(runTemporalFaultReceiptCLI([`--receipt=${path}`], { write: value => output.push(value) }, { write: value => errors.push(value) })).resolves.toBe(0);
+      expect(JSON.parse(output.join(""))).toEqual(expected);
+      expect(errors).toEqual([]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });

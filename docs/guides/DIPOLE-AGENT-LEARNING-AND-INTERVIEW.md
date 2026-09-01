@@ -16,6 +16,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | --- | --- | --- |
 | ExecutionContext、Capability Policy、Temporal Task | 已验证 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md) |
 | 交互式 Agent Task 创建 | 已验证的默认关闭入口 | Gateway JWT principal、确定性 Task ID、Vue 幂等提交、Remote GPU 定向回归 |
+| Worker replacement 的 approval/input 恢复 | 已验证（隔离 Remote GPU） | [Temporal fault receipt](../../benchmarks/agent-temporal-fault-2026-09-01/) |
 
 #### Interactive Agent Task Admission
 
@@ -54,6 +55,16 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 - **追问：** “为什么仍然不启用 subscription Runtime？” 当前是低敏 synthetic baseline，只说明评测协议、回归数据与门禁可重复；真实用户语料、候选模型效果、成本阈值和共享 shadow 观察需单独取证。
 - **限制：** 不含真实消息、身份、任务执行、模型输出或在线流量，不能作为 production accuracy、成本或 active authority 的表述依据。
 - **下一步：** 通过受控 owner approval 归档真实 Project Guardian corpus 和 retrieval relevance，再依次完成离线候选、shadow 观察及灰度回滚证据。
+
+#### Durable Task Fault Recovery
+
+- **状态：** 已验证（隔离 Remote GPU）
+- **简历句：** 基于 Temporal 构建可恢复 Agent Task；Worker 替换后 approval 与 Elicitation input 均能按持久状态恢复，注入终态写入重试仍收敛为一次持久副作用。
+- **演示：** 在 Node 22 环境执行 `DIPOLE_AGENT_TEMPORAL_INTEGRATION=true npm test -- --run src/temporal/agent-task-workflow.integration.test.ts`，再用 `receipt:temporal-fault -- --receipt=<path>` 复核状态修订和 effect 基数。
+- **证据：** [2026-09-01 fault receipt](../../benchmarks/agent-temporal-fault-2026-09-01/)、`services/agent-runtime/src/temporal/agent-task-workflow.integration.test.ts`、`services/agent-runtime/src/evals/temporal-fault-receipt.ts`。
+- **追问：** “为何终态需要单独计数？” Activity acknowledgement 可能在持久化后丢失；计数将可重试尝试与最终持久副作用区分开，避免把重试误报为重复写入。
+- **限制：** 此演练使用内存 Temporal Test Server，不涉及 Core、Kafka、MySQL、共享 tenant 或 active authority；联合故障与审批 UI 仍待独立验收。
+- **复核条件：** 修改 Workflow 状态、Signal、Activity retry policy、终态投影或 receipt canonicalization 时。
 
 #### Durable Memory Promotion
 
