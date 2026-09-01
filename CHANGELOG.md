@@ -1,6 +1,6 @@
 # 更新日志
 
-- 2026-09-02：归档 Remote GPU 的 Interactive Agent 多会话范围确认回执。认证 owner 在两条可见会话上启动 read-shadow Task 后，Temporal 进入 `waiting_input`；伪造 request ID 被 Gateway 以 `409` 拒绝且状态保持，确认已展示选项后 Task/Run 完成。持久步骤只包含一次 `conversation.list` 和一次指向确认会话的 `conversation.read`，另一候选会话读取为零，并产出一份 `conversation_digest` Artifact。回执保持 loopback-only、只读 authority 且不含测试账号、Task、Run、消息或会话明文；它只覆盖受控两会话功能链路，不能填写成功率、模型质量、性能、MCP、Memory、active 写入或共享环境结论，详见 [read-scope receipt](benchmarks/agent-read-scope-confirmation-2026-09-02/)。
+- 2026-09-02：归档 Remote GPU 的 Interactive Agent 多会话范围确认与取消回执。认证 owner 在两条可见会话上启动 read-shadow Task 后，Temporal 进入 `waiting_input`；伪造 request ID 被 Gateway 以 `409` 拒绝且状态保持，确认已展示选项后 Task/Run 完成。持久步骤只包含一次 `conversation.list` 和一次指向确认会话的 `conversation.read`，另一候选会话读取为零，并产出一份 `conversation_digest` Artifact。同一受控 fixture 还验证 owner `user_cancelled`：Gateway 返回 `202`，Task/Run 收敛为 `cancelled`，未完成的 read 计划行没有授权或执行。回执保持 loopback-only、只读 authority 且不含测试账号、Task、Run、消息或会话明文；它只覆盖受控两会话功能链路，不能填写成功率、模型质量、性能、MCP、Memory、active 写入或共享环境结论，详见 [read-scope receipt](benchmarks/agent-read-scope-confirmation-2026-09-02/)。
 
 - 2026-09-02：归档真实 `conversation.read` 的受控 Shadow Eval N=2 窗口。两个独立 Kafka Trace 在同一干净 `d591bc75` Runtime 上均完成可信 `conversation.list -> conversation.read`、`conversation_digest` 产出与五类 Eval；低敏汇总、manifest-set receipt 与双 review pack 不包含 Task、Run、Trace、消息或主体明文。窗口的 `2/2` 仅表示固定单会话 fixture 的功能回归，不能填写 Agent 总体任务成功率、模型质量、共享环境、写能力或 promotion claim，详见 [actual-read N=2 archive](benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/)。
 

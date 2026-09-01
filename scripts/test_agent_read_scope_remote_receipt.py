@@ -39,6 +39,18 @@ class AgentReadScopeRemoteReceiptTest(unittest.TestCase):
             "unconfirmedConversationReads": 0,
             "conversationDigestArtifacts": 1,
         })
+        self.assertEqual(receipt["cancellation"], {
+            "initialTaskStatus": "waiting_input",
+            "ownerCancel": 202,
+            "terminalTaskStatus": "cancelled",
+            "reason": "user_cancelled",
+            "completedTaskCount": 1,
+            "completedRunCount": 1,
+            "completedListSteps": 1,
+            "plannedReadSteps": 1,
+            "completedReadSteps": 0,
+            "authorizedReadSteps": 0,
+        })
 
     def test_receipt_has_no_fixture_identifiers(self) -> None:
         contents = RECEIPT.read_text(encoding="utf-8")

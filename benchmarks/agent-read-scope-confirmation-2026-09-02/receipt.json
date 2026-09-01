@@ -34,6 +34,18 @@
     "unconfirmedConversationReads": 0,
     "conversationDigestArtifacts": 1
   },
+  "cancellation": {
+    "initialTaskStatus": "waiting_input",
+    "ownerCancel": 202,
+    "terminalTaskStatus": "cancelled",
+    "reason": "user_cancelled",
+    "completedTaskCount": 1,
+    "completedRunCount": 1,
+    "completedListSteps": 1,
+    "plannedReadSteps": 1,
+    "completedReadSteps": 0,
+    "authorizedReadSteps": 0
+  },
   "result": "eligible",
   "limitations": [
     "Controlled two-conversation fixture only.",

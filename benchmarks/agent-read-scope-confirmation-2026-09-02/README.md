@@ -38,6 +38,12 @@ Task and Run then completed. Persistent trajectory checks show exactly one
 conversation, zero reads for the other discovered conversation, and one
 `conversation_digest` Artifact. See [`receipt.json`](receipt.json).
 
+The same isolated fixture also exercised owner cancellation from
+`waiting_input`. Gateway accepted `user_cancelled` (`202`), and both Task and
+Run converged to `cancelled`. The pending read remains a planned trajectory
+row for replay consistency, while its completed and authorized read counts
+are both zero; only the discovery step completed.
+
 ## Boundary
 
 This is a controlled two-conversation functional receipt, not an independent
