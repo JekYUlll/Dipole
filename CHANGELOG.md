@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Interactive Agent Message command 的回包丢失恢复已扩展到隔离 MySQL 8.4。受认证 Core-to-Message gRPC 调用在服务端提交后收到 `UNAVAILABLE`，Core 以同一 `client_message_id` 查询 SQLC Message receipt 并恢复结果；数据库断言 message、metadata 各一条，发送者和接收者各一条 Sync Timeline 项。新增自动清理的 `smoke-agent-message-command-recovery.sh`，Remote GPU Go 1.27 已通过。该 smoke 不启动 Compose、Kafka、Temporal 或 shared tenant，见 [Interactive Message MySQL Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-MYSQL-RECEIPT.md)。
+
 - 2026-09-02：补齐 Interactive Agent Message command 的 Core-to-Message gRPC 回包丢失回归。受认证的 Message 服务先持久化 system message，测试代理随后返回 `UNAVAILABLE`；Core `LocalAgentCommandV1` 通过同一 `client_message_id` 的 Message receipt 恢复结果，提交次数保持为一。Remote GPU Go 1.27 已通过 Agent application 与 Message gRPC 相关包回归。该验证使用 bufconn 和内存持久化模型，Compose、MySQL、跨进程网络中断、Worker 替换及部分副作用回滚继续独立受控；详见 [Interactive Message Transport Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)。
 
 - 2026-09-02：Interactive Agent active 消息写入为“消息已提交但响应丢失”的短暂 RPC 故障固定了重试身份。仅对 Core `UNAVAILABLE` / `DEADLINE_EXCEEDED`，Runtime 保持同一 running Tool Invocation，并从 Task、Run、会话和内容推导稳定 Message command ID；Temporal Activity 重试因此由 Message Service 的既有幂等键收敛。Remote GPU Node 22 的定向单测 `5/5`、Temporal 故障用例 `1/1`、typecheck 和生产构建通过。该用例使用内存 Temporal 与受控 Core port stub，未替代真实 Core/Message/Compose 的部分副作用、Worker 替换、共享环境或回滚回执；详见 [Interactive Active Retry Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)。
