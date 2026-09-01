@@ -2,6 +2,10 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：品牌资产已收口为脚本生成的单一来源（`scripts/generate-brand-assets.mjs` + `scripts/generate-brand-wordmarks.mjs`），色值按 V3 品牌板实测校正，`npm run test:brand` 拦截手改 SVG 造成的漂移；favicon 与 Login 标识镜像进前端自身根目录，构建不再跨出 `frontend/` 引用 `docs/`。遗留的 4 个青绿 SVG 与 `#07c160` 占位 favicon 已退役。**仍未收口**：`frontend/src/styles/design-tokens.css` 与 `design/dipole-ui.pen` 中并存三代色板（微信绿 `#07C160`、青绿 `accent #00A86B`、V3），且 `brand-v3-ui-brief.md` 记录的是早期估读十六进制值；ChatView 等页面级 UI 仍使用旧青绿语言。页面级 V3 迁移与 token 统一在前端设计轨道中单独验收，不改变运行时或服务 authority。
+
+- 2026-09-01：多会话读取范围已改为 Task owner 确认。发现步骤产出两个及以上会话时，Run 在 claim 读取 Step 前暂停并返回 `wait_input`，因此暂停点不占用 Step lease，恢复后仍能按同一 Step 编号 claim；select Form 最多提供 8 个候选并显式披露发现总数。恢复期不重新规划：已验证的 `conversation.list` 到 `conversation.read` 结构由代码重建，避免二次模型规划改变 Step 编号与 trajectory 重放语义，代价是 plan 摘要经 Workflow history 携带，从 MySQL 不可变 plan 读回仍待独立切片。多于一对 discovery 的 plan 在需要确认时 fail closed。用户选择按不可信输入处理，必须命中 checkpoint 候选集合与确定性 request ID，Core 保持最终读取授权。真实 approve/deny/expire receipt、共享环境窗口与该路径端到端评测仍由 AD-009 跟踪。
+
 - 2026-09-01：修复 active Approval 的跨服务模式漂移。此前 `RequestApproval` 在 Core adapter 中固定为 shadow，而 MCP grant/consume 与消息命令只接受 active，导致审批通过后仍无法进入真实受控写链路。RPC 已显式传递 Runtime mode，空值兼容映射为 shadow；Core allowlist 仅增加 `ResolveApprovalGrant`、`ConsumeApproval` 和 `ExecuteMcpMessageCommand` 三项既有 Agent RPC。Go/TypeScript 定向回归与生成契约检查通过。真实浏览器审批、active Compose、消息副作用 receipt 与回滚演练仍由 `AD-009` 跟踪。
 
 - 2026-09-01：Remote GPU 仅安装 pinned protobuf 工具链时，TypeScript 生成器会因标准库 timestamp 文件未处于声明的 proto path 而失败。生成脚本现复用已解析的 include 目录作为第二个 `--proto_path`；该修复只改善跨语言契约生成，不改变任何 Runtime authority。
@@ -959,6 +963,7 @@
 - **风险：** 浏览器闭环只能恢复已进入 `waiting_input` 的 Task；MCP Server 仍无法在 durable input 完成后恢复原 Tool 调用。将密码、Token 或 OAuth 信息放入普通 Form 会进入 HTTP、日志或 Workflow history，扩大敏感数据暴露面；未来生产接线仍需处理连接丢失、用户取消和 Server 无恢复能力等差异。
 - **建议方向：** 保持普通 Form 的字段白名单和默认关闭灰度，后续补充 Pencil 视觉回归与产品入口编排。Activity-safe runner 已能跨实例重开现代 Client、校验 tenant-owned Profile 并关闭失败资源；下一步将其接入独立默认关闭的 Worker mode，并固定持久 Tool invocation、progress/cancel 和审计映射。第三方授权继续采用独立 URL mode、短期 challenge 与回调绑定。
 - **处理门槛：** Project Guardian 的普通 Form UI 已完成并保持默认关闭；任何凭据、支付、OAuth 或外部 MCP Elicitation 上线前完成独立敏感输入隔离、continuation 和威胁建模。
+- **本轮进展：** 第一方 Form Elicitation 已首次由生产 read Activity 产出：多会话发现在 claim 读取 Step 前返回 `wait_input`，Form 只含单个 select 字段与不可信会话候选，恢复时按确定性 request ID 与 checkpoint 候选集合双重校验。该路径不涉及 MCP continuation、URL mode 或凭据字段，敏感授权隔离与外部 Server 恢复仍未开放。
 
 ### AD-035：Memory foundation 缺少受控写入、版本纠正与压缩治理
 
@@ -1225,6 +1230,7 @@
 - **本轮进展：** Executor 在 claim 前进一步要求 Execute 请求携带与 execution ledger 一致的 rollback projection；缺失、非法、Task 不匹配或 SHA-256 漂移均 fail closed，避免准备记录与实际可回滚载荷分离。
 - **本轮进展：** 增加 Gateway-only 的 Execute/Rollback gRPC 契约与可选执行器注入点；未配置执行器时明确返回 `Unavailable`，公开控制面保持默认关闭，先完成协议和认证回归再推进生产启动接线。
 - **本轮进展：** 已核实 operator grant 版本化与 CAS executor 实现：migration v50 增加 `grant_version`/`can_execute`，执行器和事务 commit/rollback 均复核 fresh grant、执行绑定与 projection hash；Go 执行器、Repository 和 Agent Runtime 相关测试通过。公开控制面、生产启动链和共享环境故障演练仍为 AD-009 未完成门禁。
+- **本轮进展：** read Activity 已从单步扩展为「发现 + owner 确认读取」两步，首次让持久 `waiting_input` 出现在真实读取路径上：暂停发生在 claim 读取 Step 之前，恢复由确定性 request ID、checkpoint 候选集合与 Core 授权三重约束。到期沿用既有 `input_expired` 定时器，无新增状态。Remote GPU 候选 `aec1b867` 已归档由生产 read Activity 驱动的 approve/deny/expire 三份 receipt：确认路径在伪造 request 被拒绝后只读取被确认的会话，拒绝与到期路径的会话读取计数为零。共享环境窗口、该路径的 outcome/trajectory/permission 评测和多于一对 discovery 的编排仍未完成。
 - **风险：** v24 projection 保持 shadow 观察属性，尚未接管原 `agent_tasks.status`；当前 `read_shadow` 只允许 `conversation.list`，也没有 Memory 或真实任务终态 outcome Eval。v25 的 `approved` 只保存审计结论；execution plan v1 仍只允许带 CAS/回滚证据的 dry-run，应用 Executor 已具备 commit/rollback 语义但尚未接入公开控制面、生产启动链和共享环境。操作员授权仍需要受控 SQL 配置，Temporal Worker 停止时 Query 会归类为 unavailable。eligible 决策不能自动切换 active。
 - **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复、单调 revision 投影、取消投影、完成态 Query/Describe 对账和 Activity 丢失完成 ACK 后的模型/Step 重放；真实 MySQL 8.4 已验证 v25 全链升降级、16 路同审批人重放仅一票、两位独立审批后批准，以及原 projection 并发与 shadow cohort keyset 契约。TypeScript/Go canonical evidence SHA-256 使用黄金向量对齐；gRPC 测试验证 Gateway principal 绑定和 Agent 最小权限拒绝。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
 - **建议方向：** canonical Pencil 已维护 Repair evidence review、六态审计矩阵和 desktop/mobile 双人审批边界；下一步为 Executor 增加公开控制面前的 operator 再授权、共享环境故障注入和审计 receipt，再按该契约实现 Vue 恢复界面。完成真实 outcome/trajectory/permission Eval 证据后才评审权威 Task 与回复流量迁移。

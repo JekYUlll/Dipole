@@ -497,6 +497,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] legacy Eino 测试共享的 `AgentCapabilityV1` stub 已实现 `conversation.search` 并以编译期接口断言锁定，避免 Capability 扩展仅在全量门禁时暴露测试桩漂移。
   - [x] 增加受认证 `conversation.read` Core RPC 与 TS Capability，统一 canonical `conversationId`，完成 direct/group target 解析、Task/Run 身份解析、Core 资源复核、消息映射和 Runtime exact scope 门禁；ModelShadowPlanner/Temporal read activity 已接入最多 20 条 `untrusted` 会话 evidence 的 full/compact 编译。默认关闭的 `DIPOLE_AGENT_RETRIEVAL_ENABLED` 已将受限 `conversation.search` 注册到 AI SDK Shadow/Temporal read allowlist；检索命中编排、route-specific tokenizer 和生产上下文灰度仍待完成。
   - [x] 增加 TS Capability RPC 客户端跨语言契约测试，固定 direct/group target 解析、可信 principal 请求边界、非法 scope 拒绝和响应 target 冲突 fail-closed；分页/检索语义与生产上下文灰度继续按证据推进。
+  - [x] read 路径的多会话读取范围改为 owner 确认：发现两个及以上会话时在 claim 读取 Step 前返回 `wait_input`，select Form 最多 8 个候选并披露发现总数，恢复由确定性 request ID、checkpoint 候选集合与 Core 授权三重约束；恢复期按已验证结构由代码重建 plan，不做二次模型规划，多于一对 discovery 的 plan 在需要确认时 fail closed。单会话与零会话行为不变。Remote GPU 候选 `aec1b867` 已归档 approve/deny/expire 三份 receipt，由生产 read Activity 驱动并记录实际读取的会话数。共享环境窗口、该路径端到端评测和从 MySQL 不可变 plan 读回仍待完成。
   - [x] Context Compiler v2 接入 route-aware 最大输入窗口，按最小候选 route window 扣除最大输出预算，超出请求在编译前 fail closed；旧 v1 构造保持兼容。
   - [x] 在 RPC 边界拒绝超过请求 `limit` 的消息响应，并对 `found=false` 统一执行 target 一致性校验；Planner 保留独立的 20 条/8 KiB context 预算上限。
   - [x] Context Compiler capability section 接入 Registry descriptor 的 `id/risk/requiredPermission` 低敏元数据，按允许集合和 ID 稳定排序；输入 schema 与 route-specific tokenizer 继续保留为后续门禁。

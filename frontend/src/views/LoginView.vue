@@ -47,8 +47,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import dipoleMark from '../../../docs/images/dipole-v3-im.svg'
-import dipoleAgentMark from '../../../docs/images/dipole-v3-agent.svg'
+import dipoleMark from '@/assets/brand/dipole-v3-im.svg'
+import dipoleAgentMark from '@/assets/brand/dipole-v3-agent.svg'
 
 const router = useRouter()
 const auth = useAuthStore()

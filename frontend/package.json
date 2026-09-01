@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:toolchain": "node --test toolchain.test.mjs",
     "test:design": "node --test ../scripts/check-pencil-design.test.mjs && node ../scripts/check-pencil-design.mjs ../design/dipole-ui.pen",
+    "test:brand": "node ../scripts/generate-brand-assets.mjs --check",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium firefox webkit",
     "test:watch": "vitest",

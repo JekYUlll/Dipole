@@ -29,7 +29,21 @@ scripts/check-architecture-docs.sh
 scripts/check-service-layout.sh
 ```
 
-Frontend changes also require the checks in [`frontend/`](frontend/). Integration and load tests must run in an isolated Compose project; follow the [remote development guide](docs/operations/REMOTE-DEV-DEPLOYMENT.md) for shared hosts.
+Frontend changes also require the checks in [`frontend/`](frontend/):
+
+```bash
+cd frontend
+npm run typecheck
+npm run test
+npm run test:design   # Pencil design source stays in sync with the UI
+npm run test:brand    # brand SVGs stay in sync with their generator
+```
+
+Brand assets under `docs/images/` are generated. Change
+`scripts/generate-brand-assets.mjs` and regenerate rather than editing an SVG by
+hand; see [`docs/images/README.md`](docs/images/README.md).
+
+Integration and load tests must run in an isolated Compose project; follow the [remote development guide](docs/operations/REMOTE-DEV-DEPLOYMENT.md) for shared hosts.
 
 ## Pull Requests
 

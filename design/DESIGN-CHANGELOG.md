@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### 变更
+
+- V3 品牌资产改为脚本生成的单一来源，色值按 V3 品牌板实测校正（海军蓝 `#0D2744`、信号红 `#EA2521`、轨道金 `#EFAD05`、象牙白 `#FBF2E7`），与 `brand-v3-ui-brief.md` 中早期估读的十六进制值不同，后续画板与 Vue 实现以生成器为准。
+- 字标由 Poppins Bold 换为 Goldman Bold：宽体方块字形、方正字腔与均匀粗字干提供硬朗的机加工硬件感，与标识的圆盘形成刻意反差；先后试过的 Space Grotesk（偏几何柔和）与 Tomorrow（方形但硬度不足）均已否决。字标以 cap-height 归一化的 path 内联（生成脚本 `scripts/generate-brand-wordmarks.mjs`），画板与前端按目标 cap 高度直接缩放。辅助标签保持系统等宽体、大写加字距，作为系统的数据面语态。
+- Agent 变体的科技感统一由金色层承载：均匀描边、带明暗渐变的星环与镂空节点；主色块保持平涂，禁止在色块上叠加渐变。
+
 ### 新增
 
 - 新增 `agent-artifact-digest-v2-brief.md`，定义 owner-scoped `conversation_digest` Markdown 阅读区、desktop/mobile 画板、正文状态矩阵及两个复用组件；对象键、Metadata JSON、通用下载和写控制保持关闭。
