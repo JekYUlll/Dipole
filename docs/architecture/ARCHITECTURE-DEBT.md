@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：修复 Shadow Runtime 的 candidate-version admission 漂移。candidate version 只属于 active promotion binding；Shadow admission 现在固定传空值，避免 Core 在 Task 创建后拒绝无效的 Shadow Run。Remote GPU Node 22 的定向回归 `15/15`、typecheck 与 production build 已通过；隔离 Compose 的真实 Task/Run/Temporal 收敛仍在复测，shared 环境、active authority 与写入副作用证据继续由 `AD-009` 跟踪。
+
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
 - 2026-09-01：Interactive Shadow Compose 的有效配置门禁已恢复。此前脚本检查 Gateway 的 control secret 固定值，却漏传对应的 `DIPOLE_GATEWAY_AGENT_CONTROL_SECRET`，即使 Overlay 保持默认关闭的只读边界也会在静态渲染失败。门禁现在使用隔离测试值并有变量级回归测试；该修复不启动服务、不扩大 Shadow 权限，真实 shared Compose receipt 继续由 `AD-009` 跟踪。
