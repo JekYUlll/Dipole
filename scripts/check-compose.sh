@@ -494,9 +494,18 @@ jq -e '
   and .services.gateway.environment.DIPOLE_INTERNAL_RPC_DELIVERY_PRIMARY_ENABLED == "true"
 ' <<<"${cpp_microservices_config}" >/dev/null
 
-DIPOLE_AGENT_DRILL_MYSQL_PORT=23306 \
-DIPOLE_AGENT_DRILL_KAFKA_PORT=29092 \
-  docker compose -f deploy/agent/external-mcp-shadow-drill.compose.yml config --quiet
+agent_mcp_drill_config="$(
+  DIPOLE_AGENT_DRILL_MYSQL_PORT=23306 \
+  DIPOLE_AGENT_DRILL_KAFKA_PORT=29092 \
+    docker compose -f deploy/agent/external-mcp-shadow-drill.compose.yml config --format json
+)"
+jq -e '
+  .services.mysql.command == [
+    "--character-set-server=utf8mb4",
+    "--collation-server=utf8mb4_unicode_ci",
+    "--innodb-use-native-aio=0"
+  ]
+' <<<"${agent_mcp_drill_config}" >/dev/null
 
 candidate_config="$({
   DIPOLE_CONTAINER_PREFIX=candidate-compose-validation-only \

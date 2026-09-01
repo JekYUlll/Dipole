@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：External MCP/approval Shadow drill 的一次性 MySQL 追加关闭 native AIO 的启动参数，并由 Compose gate 固定。该兼容项仅覆盖共享 Remote GPU 上的 disposable drill，避免宿主 AIO 配额不足导致初始化失败；基础微服务拓扑保持不变。
+
 - 2026-09-01：Remote GPU 的正常 Git 同步不再依赖 bundle 上传成功；`scp` 上传失败仅禁用离线回退并给出明确提示，远端仍可通过正式 Git remote 获取候选 revision。
 
 - 2026-09-01：修复 Remote GPU 候选在 Git bundle 回退 clone 后仍指向临时 bundle `origin` 的问题；现在会恢复正式 Git remote，后续候选同步可继续 fetch。回归测试覆盖 fallback clone 的 remote 重绑定。

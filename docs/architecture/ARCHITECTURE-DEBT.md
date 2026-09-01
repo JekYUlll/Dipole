@@ -26,6 +26,8 @@
 
 ### 本轮进展
 
+- 2026-09-01：External MCP/approval 的 disposable Shadow drill 曾因 Remote GPU Linux AIO 配额触发 MySQL `io_setup() EAGAIN`。drill Compose 现仅对自身 MySQL 增加 `--innodb-use-native-aio=0`，并由配置门禁锁定；该变更不影响基础微服务或其他候选项目。
+
 - 2026-09-01：Remote GPU 的新候选 checkout 曾因上一次中断留下的 `node_modules` 在 `npm ci` 中报 `ENOTEMPTY`。`node-test` 现只匹配该确定错误后原子隔离候选 app 的 ignored 目录并重试一次；其他安装失败仍直接退出，隔离目录保留供诊断。该修复不改变 lockfile、已运行容器或共享工作树。
 
 - 2026-09-01：Remote GPU 的隔离交互 Shadow 候选完成两次公开 JWT Task admission 到 Timeline cursor 续页的只读验收；两条 Task 均收敛为 `completed`，每条 Timeline 的前两页各返回两条事件。Gateway 使用 `4ab924b87` 的专用候选镜像，Core/Agent 为兼容的既有候选，因此该证据只说明混合候选的开发兼容性。详细边界见 [Agent Interactive Shadow Remote Receipt](../agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。同版本镜像、可重跑低敏 receipt、受控观察窗口、active authority 与写 Capability 继续作为独立门禁。
