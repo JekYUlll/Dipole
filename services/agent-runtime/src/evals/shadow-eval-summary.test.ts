@@ -13,7 +13,7 @@ describe("Shadow evaluation summary", () => {
     const report = summarizeShadowEvalReports(parseShadowEvalSummaryInput(input([passingReport(), failingReport()])));
 
     expect(report).toMatchObject({
-      schemaVersion: "dipole.agent.shadow-eval-summary-report.v1",
+      schemaVersion: "dipole.agent.shadow-eval-summary-report.v2",
       candidateVersion: "candidate/v1",
       summary: {
         evaluatedTasks: 2, succeededTasks: 1, failedTasks: 1, taskSuccessRatePercent: 50,
@@ -21,9 +21,10 @@ describe("Shadow evaluation summary", () => {
       }
     });
     expect(report.summary.failureReasons).toContainEqual({ category: "outcome", reason: "missing_required_output", count: 1 });
-    expect(report.traceIds).toEqual(["trace:one", "trace:two"]);
     expect(JSON.stringify(report)).not.toContain("TASK-SECRET");
     expect(JSON.stringify(report)).not.toContain("prompt body");
+    expect(JSON.stringify(report)).not.toContain("trace:one");
+    expect(JSON.stringify(report)).not.toContain("trace:two");
   });
 
   it("rejects a mixed candidate window and duplicate evaluation evidence", () => {

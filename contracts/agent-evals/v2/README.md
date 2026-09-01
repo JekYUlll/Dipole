@@ -1,5 +1,9 @@
 # Agent Evaluation Contract v2
 
+`shadow-summary-report.schema.json` defines the public v2 aggregation envelope.
+It omits Task, Run, and Trace identifiers; the evaluator retains Trace IDs only
+inside protected summary input while validating uniqueness.
+
 `shadow-manifest-set-receipt.schema.json` extends the v1 low-sensitivity
 reviewed Shadow Eval window receipt with `minimumManifestCount`. The collector
 records both the reviewer-required threshold and the observed manifest count,

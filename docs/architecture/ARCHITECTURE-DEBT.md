@@ -141,6 +141,8 @@
 
 - 2026-09-01：增加 reviewed Shadow Eval window collector。它只执行已评审 manifest，保存每份低敏 report、输入与去重 Trace/Suite 汇总，并保留有效失败窗口以统计失败分类；没有自动任务创建、标签生成或环境切流。收集器从运行中 `agent` 容器读取 clean OCI revision，拒绝缺失或 dirty provenance，避免脚本 checkout 与实际评测镜像漂移。Remote GPU 已归档 [受控完成子集 N=2](../../benchmarks/agent-shadow-eval-window-2026-09-01-n2/)；五类报告全部通过，但 `100%` 仅描述该子集，当前尚无固定多样本任务集和共享环境窗口，任务成功率继续保留占位符。
 
+- 2026-09-02：Shadow Eval 对外汇总升级为 `shadow-summary-report.v2`，移除原始 Trace ID。运行时仍在受限输入中以 Trace 去重并关联审计，归档只保留 suite 哈希和聚合统计；历史 N=2 样例已按同一限制语义转换。后续共享观察窗口也必须遵循该边界。
+
 - 2026-09-01：同一受控栈的一条 Provider 空 JSON-text 失败事件在持久 Run 中保留 `model run budget exhausted`，但模型调用缺失 token 计量，现有五类 Eval 会因不完整 Cost observation fail closed。后续需让失败调用输出明确的计量可用性/不可用性并纳入失败分类，禁止以通过样本替代整体成功率。
 
 - 2026-09-01：Remote GPU 受控窗口暴露汇总 schema 只接受 64 位摘要、与 OCI 的 40 位 Git revision 不兼容。契约已放宽为两种有效 revision 长度并覆盖回归；窗口重跑前不产生汇总结论。
@@ -919,7 +921,7 @@
 - **补充：** 失败模型调用的 Token 字段为 `NULL` 时，Shadow Eval 现输出完整五类报告并将 Cost 的 `availability.tokenMetrics` 记为 `unavailable`，稳定失败原因为 `token_metrics_unavailable`。已知调用数和延迟可以审计，Token/成本仅作为已报告值的下界，不能通过成本门槛或外推成功率。
 - **风险：** 当前证据可证明 Harness、结构性门禁、评审一致性合同和真实持久执行转换语义。缺少实际归档的 Project Guardian outcome/evidence 与 review 报告、模型语义攻击 corpus、检索相关性集合和按模型/场景校准的成本分位阈值时，`eligible` 仍无法证明产品效果或生产成本满足目标。Step 表仅保存最后一次 attempt 的时间，真实 adapter 会拒绝 `attempt_count != 1`，逐 attempt 成本审计仍待补充。
 - **本轮进展：** 新增 `reviewed_shadow` 窗口汇总契约与 CLI。它只接收同一候选版本、唯一 Suite SHA-256 且五类均为 Task/Run 摘要绑定的终态 Shadow 报告，输出脱敏的样本量、任务成功率、类别通过率与失败原因计数；混入合成 Suite、混版本或重复证据均 fail closed。该汇总仍只声明人工评审 Shadow 样本范围，真实固定任务集、trace 链接、共享观察窗口和用户灰度继续待完成。
-- **本轮进展：** `agent_runs` 现持久化 Core admission 传入的受信任 `trace_id`，SQLC 读取、Shadow adapter 和 `shadow-report.v1` 将其绑定到每个五类报告；缺失/非法 Trace、Trace 复用、重放 Trace 漂移均 fail closed。汇总输出只保留 Trace ID，不回显 Task/Run 或模型正文。旧 Run 未回填 Trace，真实固定任务集和共享观察窗口仍待归档。
+- **本轮进展：** `agent_runs` 现持久化 Core admission 传入的受信任 `trace_id`，SQLC 读取、Shadow adapter 和 `shadow-report.v1` 将其绑定到每个五类报告；缺失/非法 Trace、Trace 复用、重放 Trace 漂移均 fail closed。`shadow-summary-report.v2` 仅在受限输入中使用 Trace 去重，对外汇总不回显 Task、Run、Trace 或模型正文。旧 Run 未回填 Trace，真实固定任务集和共享观察窗口仍待归档。
 - **建议方向：** 建立版本化 Project Guardian corpus 和双评审 agreement，使用真实 adapter 按场景统计 precision/recall、trajectory 差异和成本分位数；报告仅引用受控 evidence ID。候选模型、Prompt、Tool Schema 和 Memory Policy 必须先离线，再 shadow，最后灰度。
 - **处理门槛：** 任何 Agent active authority、自动 Memory 写入、语义检索切流或面向用户的主动消息发送前，至少归档一份真实候选五类报告及对应 Suite hash；当前 promotion v2 只可作为 Harness/Shadow 工程门禁。
 - **本轮进展：** 新增 `dipole.agent.release-manifest.v1`，把 candidate、模型、Prompt、Capability Schema、Memory Policy 和 offline Eval Suite SHA-256 绑定，并要求 promotion 仅使用 `shadow` 阶段清单；真实 Project Guardian 语料、共享观察窗口和用户灰度仍未完成。

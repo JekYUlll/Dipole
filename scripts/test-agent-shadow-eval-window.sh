@@ -30,7 +30,7 @@ if [[ "$1" == "compose" ]]; then
     fi
     if [[ "${argument}" == "exec" ]]; then
       if [[ "$*" == *"shadow-eval-summary-cli.js"* ]]; then
-        printf '%s\n' '{"schemaVersion":"dipole.agent.shadow-eval-summary-report.v1","decision":"eligible"}'
+        printf '%s\n' '{"schemaVersion":"dipole.agent.shadow-eval-summary-report.v2","decision":"eligible"}'
       else
         printf '%s\n' '{"schemaVersion":"dipole.agent.shadow-eval-report.v1","decision":"eligible"}'
       fi
