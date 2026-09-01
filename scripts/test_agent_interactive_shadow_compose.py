@@ -14,6 +14,7 @@ class InteractiveAgentShadowComposeTest(unittest.TestCase):
         self.assertIn("DIPOLE_AGENT_RUNTIME_MODE: shadow", overlay)
         self.assertIn("DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: read_shadow", overlay)
         self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED: "true"', overlay)
+        self.assertIn("DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: ${DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS:-900000}", overlay)
         self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"', overlay)
         self.assertIn('DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"', overlay)
         self.assertIn('DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"', overlay)
