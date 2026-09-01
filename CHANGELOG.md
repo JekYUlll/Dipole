@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Interactive Agent active 消息写入为“消息已提交但响应丢失”的短暂 RPC 故障固定了重试身份。仅对 Core `UNAVAILABLE` / `DEADLINE_EXCEEDED`，Runtime 保持同一 running Tool Invocation，并从 Task、Run、会话和内容推导稳定 Message command ID；Temporal Activity 重试因此由 Message Service 的既有幂等键收敛。Remote GPU Node 22 的定向单测 `5/5`、Temporal 故障用例 `1/1`、typecheck 和生产构建通过。该用例使用内存 Temporal 与受控 Core port stub，未替代真实 Core/Message/Compose 的部分副作用、Worker 替换、共享环境或回滚回执；详见 [Interactive Active Retry Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)。
+
 - 2026-09-02：归档 Interactive Agent active 写入的干净同版本 Remote GPU 回执。隔离、loopback-only 的 `430c9e38` Compose 同时覆盖 owner 并发 `denied` 重放与并发 `approved` 重放：拒绝路径持久化一次 `approval_denied` 且 Tool/Message 均为零；批准路径以一次 approval consume、一次完成的 Tool Invocation、一次 action reference 和恰好一条 Message 收敛。验证后的开发 promotion grant 已撤销。详细范围、fixture 前置条件及未覆盖的 shared/HITL/故障/性能边界见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
 
 - 2026-09-02：修复 Interactive Agent Shadow 的持久 Run 准入版本漂移。Shadow Runtime 不再携带仅用于 active promotion 绑定的 candidate version，避免 Core 的 mode/version 约束在 Task 已创建后拒绝 Run admission 并导致任务停留在 `running`。Remote GPU Node 22 已通过定向 Vitest `15/15`、TypeScript typecheck 和生产构建；干净 `70bd4c74` 镜像的隔离 Compose 回归进一步验证认证 Task 创建 `202`、Temporal Workflow `completed`、持久 Run `shadow / candidate_version=NULL / completed` 与只读 `conversation_digest` Artifact。候选没有可读会话，消息写入数为零；active authority、写 Capability、MCP、Memory 与默认部署边界保持关闭。
