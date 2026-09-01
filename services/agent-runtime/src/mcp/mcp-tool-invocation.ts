@@ -108,15 +108,16 @@ export class McpToolInvocationRunner {
           throw new ToolInvocationFailure("result_too_large");
         }
         const reference = actionReference?.(rawResult);
-        await this.audit.finish({
+        const finish: McpToolInvocationFinish = {
           invocationId, taskId: context.taskId, runId: context.runId, status: "completed",
           resultSha256: sha256(result), resultBytes, latencyMs: elapsedMilliseconds(startedAt, this.now()),
           ...(reference === undefined ? {} : { actionReference: reference })
-        });
+        };
+        await this.finishCompleted(finish);
         span.setStatus({ code: SpanStatusCode.OK });
         return result;
       } catch (error) {
-        if (!(error instanceof ToolInvocationFailure)) {
+        if (!(error instanceof ToolInvocationFailure) && !(error instanceof ToolInvocationTerminalUncertainFailure)) {
           // The command may already be committed when its terminal audit fails.
           // Keep the RPC details in the service log so recovery can distinguish
           // a receipt mismatch from a transport failure without logging content.
@@ -149,6 +150,22 @@ export class McpToolInvocationRunner {
     });
   }
 
+  private async finishCompleted(finish: McpToolInvocationFinish): Promise<void> {
+    try {
+      await this.audit.finish(finish);
+    } catch (error) {
+      if (!isUncertainGrpcFailure(error)) throw error;
+      try {
+        // Core accepts an identical terminal replay. Retrying once recovers a
+        // response lost after Core commits without widening the write scope.
+        await this.audit.finish(finish);
+      } catch (retryError) {
+        if (isUncertainGrpcFailure(retryError)) throw new ToolInvocationTerminalUncertainFailure();
+        throw retryError;
+      }
+    }
+  }
+
   private decorateSpan(span: Span, invocationId: string, tool: { name: string; capabilityId: string }, context: ExecutionContext): void {
     span.setAttribute("dipole.agent.tool.invocation_id", invocationId);
     span.setAttribute("dipole.agent.tool.name", tool.name);
@@ -164,6 +181,7 @@ export class McpToolInvocationRunner {
 }
 
 class ToolInvocationFailure extends Error {}
+class ToolInvocationTerminalUncertainFailure extends Error {}
 class ToolOperationTimeout extends Error {}
 
 function grpcErrorCode(error: unknown): number | undefined {
@@ -176,6 +194,11 @@ function grpcErrorDetails(error: unknown): string | undefined {
   if (typeof error !== "object" || error === null || !("details" in error)) return undefined;
   const details = (error as { details?: unknown }).details;
   return typeof details === "string" && details.trim() ? details : undefined;
+}
+
+function isUncertainGrpcFailure(error: unknown): boolean {
+  const code = grpcErrorCode(error);
+  return code === 4 || code === 14;
 }
 
 function operationWithTimeout(operation: (signal: AbortSignal) => Promise<unknown>, timeoutMs: number): Promise<unknown> {

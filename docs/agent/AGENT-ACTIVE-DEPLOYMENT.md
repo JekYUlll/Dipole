@@ -73,9 +73,12 @@ Sync Timeline 项。Message command 通过 Kafka 持久化时，Core 只会对�
 `absent` receipt 在 `2s` 内确认，避免在已提交消息尚未投影前固化冲突；读取
 错误、nil receipt 和超时后的 `absent` 均保持失败关闭。`KEEP_STACK=1` 仅用于
 隔离排障，保留 stack 后仍必须确认 promotion grant 已撤销。该 smoke 覆盖干净
-Compose 的审批重放与异步 receipt 确认，不覆盖 Core/Message 响应丢失、Worker
-替换、部分副作用 rollback、浏览器 HITL、共享 tenant 或容量结论；这些继续由
-`AD-009` 管理。
+Compose 的审批重放与异步 receipt 确认。Runtime 对 completed Tool terminal 的
+`UNAVAILABLE` / `DEADLINE_EXCEEDED` 会立即重放一次完全相同的载荷；第二次仍不确定
+时保留原完成态，避免把可能已提交的审计改写为 failed。该恢复已由定向 Node 22
+单测覆盖，但本 smoke 不注入该 RPC 故障，因此真实 Core/Message 响应丢失、Worker
+替换、部分副作用 rollback、浏览器 HITL、共享 tenant 和容量结论继续由 `AD-009`
+管理。
 
 ## 4. Reviewed Memory 提交扩展
 
