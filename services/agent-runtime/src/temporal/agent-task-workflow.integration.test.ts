@@ -21,6 +21,8 @@ import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { ModelRouter, type ModelAuditStore, type ModelCallRecovery } from "../models/model-router.js";
 import { createTemporalFaultReceipt } from "../evals/temporal-fault-receipt.js";
 import { createTemporalReadStepActivities } from "./agent-task-read-activities.js";
+import { AgentTaskControlError, AgentTaskControlService } from "../control/agent-task-control.js";
+import { buildServer } from "../server.js";
 
 const integrationEnabled = process.env.DIPOLE_AGENT_TEMPORAL_INTEGRATION === "true";
 
@@ -366,6 +368,85 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     await archiveTemporalFaultReceipt(receipt);
     workerTwo.shutdown();
     await workerTwoRun;
+  }, 120_000);
+
+  it("resolves an owner-bound approval through the Runtime HTTP control surface", async () => {
+    const taskQueue = `dipole-agent-task-http-approval-${Date.now()}`;
+    const taskId = "task-http-approval-1";
+    const approval = {
+      approvalId: "APR-HTTP-1", capabilityId: "message.bulk.send",
+      resourceScope: { resourceType: "conversation", resourceId: "G1", actions: ["write"] },
+      scopeSha256: "a".repeat(64), argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64),
+      expiresAtUnixMs: Date.now() + 60_000
+    };
+    const resolutions: unknown[] = [];
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "run-http-approval-1", runStatus: "running" };
+      },
+      async finishAgentTask() {},
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval(input) { resolutions.push(input); },
+      async executeAgentTaskStep(input) {
+        if (input.resume?.kind === "approval") return { kind: "complete", output: { action: "approved" } };
+        return { kind: "wait_approval", requestId: "REQ-HTTP-1", summary: "Send the prepared digest", approval };
+      }
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+    const workerRun = worker.run();
+    const tasks = new TemporalTaskClient(env.client.workflow, taskQueue);
+    const control = new AgentTaskControlService({
+      async authorizeTaskControl(requestedTaskId, principalUserId) {
+        if (requestedTaskId !== taskId || principalUserId !== "U100") {
+          throw new AgentTaskControlError("not_found", "Agent Task control policy unavailable");
+        }
+        return { taskId, taskStatus: "waiting_approval" };
+      }
+    }, new TemporalTaskControlClient(env.client.workflow));
+    const server = buildServer({ isReady: () => true }, { secret: "control-secret", service: control });
+    const headers = {
+      "x-dipole-caller-service": "dipole-gateway",
+      "x-dipole-service-token": "control-secret",
+      "x-dipole-principal-user-id": "U100",
+      "x-request-id": "REQ-HTTP-1",
+      "x-trace-id": "TRACE-HTTP-1"
+    };
+
+    try {
+      const started = await tasks.start({ taskId, goal: "send prepared digest" });
+      const handle = env.client.workflow.getHandle(started.workflowId);
+      await waitForStatus(env, handle, "waiting_approval");
+
+      const pending = await server.inject({ method: "GET", url: `/internal/v1/agent/tasks/${taskId}`, headers });
+      expect(pending.statusCode).toBe(200);
+      expect(pending.json()).toMatchObject({
+        taskId, status: "waiting_approval", persistentStatus: "waiting_approval",
+        pending: { kind: "approval", requestId: "REQ-HTTP-1", approvalId: approval.approvalId }
+      });
+
+      const foreign = await server.inject({
+        method: "POST", url: `/internal/v1/agent/tasks/${taskId}/approvals/${approval.approvalId}`,
+        headers: { ...headers, "x-dipole-principal-user-id": "U200" }, payload: { decision: "approved" }
+      });
+      expect(foreign.statusCode).toBe(404);
+
+      const resolved = await server.inject({
+        method: "POST", url: `/internal/v1/agent/tasks/${taskId}/approvals/${approval.approvalId}`,
+        headers, payload: { decision: "approved" }
+      });
+      expect(resolved.statusCode).toBe(202);
+      expect(resolved.json()).toEqual({ taskId, approvalId: approval.approvalId, status: "resolution_requested" });
+
+      await expect(handle.result()).resolves.toMatchObject({ taskId, status: "completed", output: { action: "approved" } });
+      expect(resolutions).toEqual([expect.objectContaining({
+        taskId, approvalId: approval.approvalId, decision: "approved", actorUserId: "U100"
+      })]);
+    } finally {
+      await server.close();
+      worker.shutdown();
+      await workerRun;
+    }
   }, 120_000);
 
   it("cancels an unanswered durable input after its recorded deadline", async () => {
