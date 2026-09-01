@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-02：Remote GPU 的 Trace 绑定 read-shadow 样本暴露 Core Run/Task 终态投影缺口：`agent_runs` 已为 `completed`，父 `agent_tasks` 仍为 `running`。本地修复已让 `PersistentAgentRunAdmissionV1.Finish` 在每条 Run 终态路径以 CAS 收敛同名 Task 状态，并允许相同终态重放补齐此前部分提交；Task 处于 `waiting_approval` 等中间态或出现冲突终态仍 fail closed。Agent application 全量与 Agent gRPC 终态回归通过。现有远程样本由旧镜像生成，必须部署该提交并重跑 Trace 绑定路径、导出 review pack 后，才能关闭此债或将其计入评测窗口。
+- 2026-09-02：Remote GPU 的 Trace 绑定 read-shadow 样本暴露 Core Run/Task 终态投影缺口：`agent_runs` 已为 `completed`，父 `agent_tasks` 仍为 `running`。`PersistentAgentRunAdmissionV1.Finish` 现已在每条 Run 终态路径以 CAS 收敛同名 Task 状态，并允许相同终态重放补齐此前部分提交；Task 处于 `waiting_approval` 等中间态或出现冲突终态仍 fail closed。Agent application、Agent gRPC 回归和同版本 Remote GPU [N=1 terminal convergence receipt](../../benchmarks/agent-terminal-convergence-2026-09-02/) 均通过，故代码与单样本部署缺口已解决。仍待固定人工评审的多样本窗口覆盖真实 `conversation.read`、失败/重试与 shared-development 情形；在此之前禁止将该回执外推为成功率或 promotion 结论。
 
 - 2026-09-02：新增只读 `shadow-eval-review-pack-cli`，为终态观测导出 Task/Run/Trace/资源的域分隔哈希、能力轨迹、证据指纹和计量完整性。子记录缺少授权、延迟或单次 attempt 审计时，包仍可供人工失败分类，并以 `evaluatorEligibility=blocked` 固定原因；最终 evaluator 继续拒绝该样本。该包刻意不能生成可执行 manifest 或推导标签；审核者仍须在受控工作区独立填写 outcome、trajectory、permission、retrieval 和 cost，并用绑定 manifest 执行评测。当前 clean candidate 的多样本窗口、晋级和简历成功率结论继续保持关闭。
 

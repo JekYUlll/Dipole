@@ -31,10 +31,13 @@ persisted approval state serialized the duplicate requests. The approved
 scenario used the active Message Service path and persisted the action
 reference before the resulting message was counted.
 
-`agent_tasks.status` remains `running` because it is the policy lifecycle
-projection for this Runtime mode. The user-visible terminal state is recorded
-by `workflow_status` and the associated Run; this receipt observed
-`workflow_status=completed` and a completed Run for the approved scenario.
+At the time of this historical `430c9e38` receipt, `agent_tasks.status`
+remained `running` as a policy lifecycle projection. Later revision
+`d591bc75` converged a parent Task to the same terminal state as its Run; see
+the [terminal convergence receipt](../../benchmarks/agent-terminal-convergence-2026-09-02/).
+This historical acceptance therefore records `workflow_status=completed` and
+a completed Run, without claiming that its earlier Task projection had already
+used the newer terminal contract.
 
 ## Fixture And Security Boundaries
 

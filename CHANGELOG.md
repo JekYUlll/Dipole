@@ -1,6 +1,8 @@
 # 更新日志
 
-- 2026-09-02：Core 的 Agent Run 终态提交现在同步收敛父 Task。`completed`、`failed`、`cancelled` 三种 Run 终态各自通过 Task CAS 迁移到同名状态；Run 已终态而 Task 尚未落库时，带相同证据的重放会补齐 Task，冲突终态和审批等待等非运行态继续拒绝。Agent application 全量回归与 Agent gRPC 终态契约测试通过。Remote GPU 已运行的旧候选仍需以同版本镜像复跑后，才可作为 Eval 或体验链路证据。
+- 2026-09-02：归档同版本 `d591bc75` Remote GPU 的 Agent Task 终态收敛回执。隔离、loopback-only Compose 中，Kafka 事件的 EventLedger、Temporal Workflow、持久 Task 与 Run 均为 `completed`，并产生一份只读 `conversation_digest` Artifact；脱敏 review pack 同时记录了授权的 `conversation.list`、可信空发现导致的 `conversation.read` 跳过和完整模型计量。微服务 smoke 已改为等待 `agent_tasks.status=completed`，避免旧断言接受过期 `running` Task。该 N=1 回执不构成任务成功率、性能、公开体验、active 写入或候选 promotion 结论，详见 [terminal convergence receipt](benchmarks/agent-terminal-convergence-2026-09-02/)。
+
+- 2026-09-02：Core 的 Agent Run 终态提交现在同步收敛父 Task。`completed`、`failed`、`cancelled` 三种 Run 终态各自通过 Task CAS 迁移到同名状态；Run 已终态而 Task 尚未落库时，带相同证据的重放会补齐 Task，冲突终态和审批等待等非运行态继续拒绝。Agent application 全量回归与 Agent gRPC 终态契约测试通过。
 
 - 2026-09-02：统一聊天自发消息气泡配色，收口设计源与前端最后一处分歧。`design/dipole-ui.pen` 的 Outgoing Message Bubble 由信号红（`$brand`）改为海军蓝（`$rail`）+ 反白字，对齐前端应用早已落地的海军蓝气泡；信号红回归 V3 职责（主操作/未读/注意），不再兼作消息底色。仅改此一处复用组件，`check-pencil-design`（107 帧完好）与 `pen-v3-recolor --check` 幂等断言通过。
 

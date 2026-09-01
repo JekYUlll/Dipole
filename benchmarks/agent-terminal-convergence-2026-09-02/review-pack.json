@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "dipole.agent.shadow-eval-review-pack.v1",
+  "reviewStatus": "review_required",
+  "candidateVersion": "agent-runtime@d591bc7592b3974c6ec33425371f66fd9d3e29ea",
+  "evaluatorEligibility": {
+    "status": "eligible",
+    "blockingReasons": []
+  },
+  "binding": {
+    "taskFingerprint": "sha256:61027dcf2b4735f9c3fb7ce9e961c2a553f4ab3574f21199841d7d1dbd1ca98e",
+    "runFingerprint": "sha256:54d419679aa1f943ce9a8ddd8f0f10835d48a295899b19d4c4dc22fdcd1f4c76",
+    "traceFingerprint": "sha256:7dd57813227f5a71cbcb16a69022b8d9cec12d32b5bf1e85c14fa53f27476d0a"
+  },
+  "observed": {
+    "execution": {
+      "taskStatus": "completed",
+      "workflowStatus": "completed",
+      "runStatus": "completed"
+    },
+    "outputIds": [
+      "artifact:conversation_digest:v1",
+      "run:completed",
+      "task:completed"
+    ],
+    "trajectory": [
+      "context.compile",
+      "capability:conversation.list:completed",
+      "capability:conversation.read:skipped",
+      "artifact:conversation_digest:v1"
+    ],
+    "permissions": [
+      {
+        "stepNo": 1,
+        "capabilityId": "conversation.list",
+        "status": "completed",
+        "authorization": {
+          "status": "complete",
+          "resourceType": "conversation",
+          "resourceFingerprint": "sha256:b3e1dda57eee01aede72e75b7fa1dee8a7215326fb12b534fa2c0f8440656b56",
+          "action": "list",
+          "decision": "allowed"
+        }
+      },
+      {
+        "stepNo": 2,
+        "capabilityId": "conversation.read",
+        "status": "completed",
+        "authorization": {
+          "status": "not_required",
+          "reason": "no_discovered_conversation"
+        }
+      }
+    ],
+    "retrievedEvidenceIds": [
+      "evidence:5b73571e3f295d978d199f39317b6317"
+    ],
+    "metering": {
+      "modelCalls": [
+        {
+          "route": "deepseek/deepseek-v4-flash",
+          "status": "completed",
+          "tokenMetering": "complete",
+          "latencyMetering": "complete"
+        },
+        {
+          "route": "deepseek/deepseek-v4-flash",
+          "status": "completed",
+          "tokenMetering": "complete",
+          "latencyMetering": "complete"
+        }
+      ],
+      "toolCallCount": 0,
+      "stepCount": 2
+    }
+  },
+  "reviewerChecklist": [
+    "Create a separate manifest bound to the original Task and Run in a controlled review workspace.",
+    "Independently set expected outcome, trajectory, authorization, retrieval and cost labels.",
+    "Record route prices and metric ceilings from the reviewed candidate policy; this packet never proposes them.",
+    "Treat this packet as observation only. It does not approve a candidate or establish an Agent success rate."
+  ]
+}
