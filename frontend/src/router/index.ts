@@ -28,6 +28,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/devices',
+      name: 'devices',
+      component: () => import('@/views/DeviceDirectoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/agent/tasks/:taskId/input',
       name: 'agent-task-input',
       component: () => import('@/views/AgentElicitationView.vue'),
