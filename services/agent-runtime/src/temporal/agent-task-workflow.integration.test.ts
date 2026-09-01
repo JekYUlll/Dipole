@@ -24,6 +24,9 @@ import { createTemporalFaultReceipt } from "../evals/temporal-fault-receipt.js";
 import { createTemporalReadStepActivities } from "./agent-task-read-activities.js";
 import { AgentTaskControlError, AgentTaskControlService } from "../control/agent-task-control.js";
 import { buildServer } from "../server.js";
+import { createInteractiveMessageExecutor } from "../mcp/mcp-message-write-projection.js";
+import type { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
+import * as grpc from "@grpc/grpc-js";
 
 const integrationEnabled = process.env.DIPOLE_AGENT_TEMPORAL_INTEGRATION === "true";
 
@@ -524,6 +527,96 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       });
       expect(resolutions).toEqual([expect.objectContaining({ taskId, runId, decision: "approved", actorUserId: "U100" })]);
       expect(executions).toEqual([{ conversationId: "direct:U100:UAI", content: "Deployment status recorded." }]);
+    } finally {
+      worker.shutdown();
+      await workerRun;
+    }
+  }, 120_000);
+
+  it("retries an uncertain interactive message response with one command identity", async () => {
+    const taskQueue = `dipole-agent-interactive-retry-${Date.now()}`;
+    const event: AgentEvent = {
+      eventId: "E-INTERACTIVE-RETRY", eventType: "agent.interactive.requested", aggregateId: "interactive:RETRY-1",
+      occurredAt: new Date().toISOString(), payload: { content: "/send Retry-safe deployment status." }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const commandCalls: Array<{ invocationId: string }> = [];
+    const persistedCommandIds = new Set<string>();
+    const finishToolInvocation = vi.fn(async () => undefined);
+    const client: Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand"> = {
+      begin: async () => undefined,
+      finishToolInvocation,
+      consumeApproval: async () => undefined,
+      resolveApprovalGrant: async (_taskId, _runId, capabilityId, resourceScope, argumentsSha256) => ({
+        approvalId: "APR-INTERACTIVE-RETRY", capabilityId, resourceScope,
+        scopeSha256: "fda03fe9202766c3e59c11b4b069749a400e50041a44d1d200ff41c64aefa8a5",
+        argumentsSha256, nonceSha256: "e".repeat(64), expiresAtUnixMs: Date.now() + 60_000
+      }),
+      executeMessageCommand: async input => {
+        commandCalls.push({ invocationId: input.invocationId });
+        persistedCommandIds.add(input.invocationId);
+        if (commandCalls.length === 1) {
+          throw Object.assign(new Error("response lost after Message commit"), { code: grpc.status.UNAVAILABLE });
+        }
+        return {
+          resourceType: "message", resourceId: "MSG-INTERACTIVE-RETRY-1",
+          commandKind: "system_message", commandId: `tool:${input.invocationId}`
+        };
+      }
+    };
+    const read = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "unused", steps: [] }) },
+      audit: { append: async () => undefined },
+      registry: new CapabilityRegistry(),
+      trajectory: { append: async () => undefined, claimStep: async () => ({ outcome: "claimed" as const, token: "unused" }), completeStep: async () => undefined, failStep: async () => undefined },
+      runtimeMode: "active",
+      contextResolver: {
+        resolveMcpContext: async () => ({
+          tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active",
+          permissions: ["message.write"],
+          resourceScopes: [{ resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }],
+          approvedCapabilities: ["message.system.send"], eventId: event.eventId
+        })
+      },
+      interactiveMessage: createInteractiveMessageExecutor(client),
+      stepLeaseMs: 60_000
+    });
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) { return { taskId: input.taskId, runId, runStatus: "running" }; },
+      async finishAgentTask() {},
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      executeAgentTaskStep: input => read.executeAgentTaskStep(input)
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+    const workerRun = worker.run();
+    const tasks = new TemporalTaskClient(env.client.workflow, taskQueue);
+    const controls = new TemporalTaskControlClient(env.client.workflow);
+
+    try {
+      const started = await tasks.start({
+        taskId, goal: "send retry-safe status", shadowEvent: event,
+        admission: {
+          tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+          triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId
+        }
+      });
+      const handle = env.client.workflow.getHandle(started.workflowId);
+      await waitForStatus(env, handle, "waiting_approval");
+      const pending = await controls.query(taskId) as { pending: { requestId: string; approvalId: string } };
+      await controls.resolveApproval(taskId, {
+        requestId: pending.pending.requestId, approvalId: pending.pending.approvalId,
+        decision: "approved", actorUserId: "U100"
+      });
+
+      await expect(handle.result()).resolves.toMatchObject({ status: "completed" });
+      expect(commandCalls).toHaveLength(2);
+      expect(commandCalls[0]!.invocationId).toBe(commandCalls[1]!.invocationId);
+      expect(persistedCommandIds).toEqual(new Set([commandCalls[0]!.invocationId]));
+      expect(finishToolInvocation).toHaveBeenCalledOnce();
+      expect(finishToolInvocation).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
     } finally {
       worker.shutdown();
       await workerRun;
