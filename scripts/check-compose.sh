@@ -211,6 +211,7 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_MODEL_OUTPUT_MODE == "json_text"
   and .services.agent.environment.DIPOLE_AGENT_MODEL_THINKING_MODE == "disabled"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_SECRET == "compose-check-control-secret"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_shadow_config}" >/dev/null
 

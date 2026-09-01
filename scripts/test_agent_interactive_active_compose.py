@@ -15,6 +15,7 @@ class InteractiveAgentActiveComposeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED: "true"', overlay)
         self.assertIn('DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED: "true"', overlay)
         self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"', overlay)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_SECRET: ${DIPOLE_AGENT_CONTROL_SECRET:', overlay)
         self.assertIn('DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED: "false"', overlay)
         self.assertIn('DIPOLE_GATEWAY_AGENT_MCP_ENABLED: "false"', overlay)
 
