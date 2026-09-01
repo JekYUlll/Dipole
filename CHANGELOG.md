@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：归档 Interactive Agent active 写入的干净同版本 Remote GPU 回执。隔离、loopback-only 的 `430c9e38` Compose 同时覆盖 owner 并发 `denied` 重放与并发 `approved` 重放：拒绝路径持久化一次 `approval_denied` 且 Tool/Message 均为零；批准路径以一次 approval consume、一次完成的 Tool Invocation、一次 action reference 和恰好一条 Message 收敛。验证后的开发 promotion grant 已撤销。详细范围、fixture 前置条件及未覆盖的 shared/HITL/故障/性能边界见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
+
 - 2026-09-02：修复 Interactive Agent Shadow 的持久 Run 准入版本漂移。Shadow Runtime 不再携带仅用于 active promotion 绑定的 candidate version，避免 Core 的 mode/version 约束在 Task 已创建后拒绝 Run admission 并导致任务停留在 `running`。Remote GPU Node 22 已通过定向 Vitest `15/15`、TypeScript typecheck 和生产构建；干净 `70bd4c74` 镜像的隔离 Compose 回归进一步验证认证 Task 创建 `202`、Temporal Workflow `completed`、持久 Run `shadow / candidate_version=NULL / completed` 与只读 `conversation_digest` Artifact。候选没有可读会话，消息写入数为零；active authority、写 Capability、MCP、Memory 与默认部署边界保持关闭。
 
 - 2026-09-01：修复 Interactive Agent Shadow 的 Compose 门禁。检查脚本此前断言 Gateway control secret 却未为渲染注入 `DIPOLE_GATEWAY_AGENT_CONTROL_SECRET`，导致无改动也会失败；现使用隔离的测试值，并由静态契约测试锁定正确变量名。该修复只恢复配置验证，不改变 Shadow 的只读权限边界或启动任何服务。
