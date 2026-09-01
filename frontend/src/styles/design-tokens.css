@@ -38,6 +38,10 @@
   --dp-warning-soft: #fff1d8;
   --dp-danger: #c94a43;
   --dp-danger-soft: #fce8e5;
+  /* Functional status only (online, synced, success) — a muted BI green kept
+     deliberately distinct from the retired WeChat brand green. */
+  --dp-success: #1f8a54;
+  --dp-success-soft: #e6f4ec;
   --dp-text-inverse: #ffffff;
   --dp-font-display: "Manrope", sans-serif;
   --dp-font-body: "Noto Sans SC", sans-serif;
