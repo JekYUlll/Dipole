@@ -14,17 +14,14 @@ function cssToken(name: string): string {
 }
 
 describe('Pencil design token contract', () => {
-  it('keeps the V3 brand vocabulary aligned to the committed brand board', () => {
-    expect(cssToken('v3-navy')).toBe('#0d2744')
-    expect(cssToken('v3-red')).toBe('#ea2521')
-    expect(cssToken('v3-gold')).toBe('#efad05')
-    expect(cssToken('v3-ivory')).toBe('#fbf2e7')
+  it('resolves the semantic identity tokens to the committed V3 brand board', () => {
+    expect(cssToken('rail')).toBe('#0d2744')
+    expect(cssToken('accent')).toBe('#ea2521')
+    expect(cssToken('agent')).toBe('#efad05')
   })
 
-  it('resolves the semantic navigation and action tokens to the V3 identity', () => {
-    expect(cssToken('rail')).toBe(cssToken('v3-navy'))
-    expect(cssToken('accent')).toBe(cssToken('v3-red'))
-    expect(cssToken('agent')).toBe(cssToken('v3-gold'))
+  it('has retired the duplicated --dp-v3-* vocabulary', () => {
+    expect(tokenFile).not.toContain('--dp-v3-')
   })
 
   it('keeps canonical color and typography tokens available to Vue', () => {
