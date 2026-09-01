@@ -76,7 +76,7 @@ async function submit() {
 <style scoped>
 .task-create { box-sizing: border-box; width: min(100%, 46rem); margin: 0 auto; padding: var(--dp-space-lg); border: 1px solid var(--dp-line); border-radius: var(--dp-radius-md); background: var(--dp-surface); color: var(--dp-ink); font-family: var(--dp-font-body); }
 .task-create-header { display: flex; justify-content: space-between; gap: var(--dp-space-md); margin-bottom: var(--dp-space-lg); }
-.eyebrow, .state-label, .request-badge { color: var(--dp-accent-strong); font: 700 .68rem/1.2 var(--dp-font-data); letter-spacing: .12em; }
+.eyebrow, .state-label, .request-badge { color: var(--dp-rail); font: 700 .68rem/1.2 var(--dp-font-data); letter-spacing: .12em; }
 .eyebrow { margin: 0 0 .35rem; }
 h1 { margin: 0; font: 700 1.5rem/1.2 var(--dp-font-display); }
 .description, .boundary, .field-meta { color: var(--dp-ink-soft); font-size: .85rem; }
@@ -87,7 +87,7 @@ label { font-weight: 700; }
 textarea { box-sizing: border-box; width: 100%; resize: vertical; border: 1px solid var(--dp-line); border-radius: var(--dp-radius-sm); padding: .8rem; background: var(--dp-canvas); color: var(--dp-ink); font: inherit; }
 textarea:focus { outline: 2px solid var(--dp-accent); outline-offset: 2px; }
 .field-meta, .action-row { display: flex; justify-content: space-between; gap: .75rem; }
-.boundary { margin: .25rem 0; padding: .65rem; border-left: 3px solid var(--dp-accent); background: var(--dp-canvas); }
+.boundary { margin: .25rem 0; padding: .65rem; border-left: 3px solid var(--dp-agent); background: var(--dp-canvas); }
 .form-error { margin: 0; color: var(--dp-danger); font-size: .85rem; }
 .action-row { align-items: center; margin-top: .4rem; }
 .primary-button { border: 0; border-radius: var(--dp-radius-sm); padding: .7rem 1rem; background: var(--dp-accent); color: var(--dp-canvas); cursor: pointer; font: 700 .9rem/1 var(--dp-font-body); }
