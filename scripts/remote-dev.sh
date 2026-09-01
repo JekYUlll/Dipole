@@ -10,6 +10,7 @@ REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose
 REMOTE_GO_ROOT="${DIPOLE_REMOTE_GO_ROOT:-}"
 REMOTE_GOPROXY="${DIPOLE_REMOTE_GOPROXY:-}"
 REMOTE_NODE_ROOT="${DIPOLE_REMOTE_NODE_ROOT:-/home/admin1/.local/node-22.12.0}"
+REMOTE_FRONTEND_PROFILE="${DIPOLE_REMOTE_FRONTEND_PROFILE:-}"
 REMOTE_K6_IMAGE="${DIPOLE_REMOTE_K6_IMAGE:-grafana/k6:0.57.0}"
 REMOTE_BUILD_CANDIDATE="${DIPOLE_REMOTE_BUILD_CANDIDATE:-0}"
 BENCH_SCENARIO_FILTER="${DIPOLE_BENCH_SCENARIO_FILTER:-}"
@@ -31,7 +32,9 @@ Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|web
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
-  DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT, DIPOLE_REMOTE_BUILD_CANDIDATE.
+  DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT, DIPOLE_REMOTE_BUILD_CANDIDATE,
+  DIPOLE_REMOTE_FRONTEND_PROFILE.
+  Frontend profiles: agent-interactive-shadow.
   Benchmark overrides: DIPOLE_BENCH_SCENARIO_FILTER, DIPOLE_BENCH_GROUP_MAX_DURATION,
   DIPOLE_BENCH_USER_COUNT, DIPOLE_BENCH_GROUP_SIZE, DIPOLE_BENCH_RUN_ID.
   DIPOLE_BENCH_HOT_GROUP_WARMUP_MESSAGES, DIPOLE_BENCH_HOT_GROUP_ACTIVATION_WAIT_MS.
@@ -132,6 +135,7 @@ run_remote() {
   local action="$1"
   local remote_k6_image="${REMOTE_K6_IMAGE:-$REMOTE_EMPTY_ARG}"
   local remote_node_root="${REMOTE_NODE_ROOT:-$REMOTE_EMPTY_ARG}"
+  local remote_frontend_profile="${REMOTE_FRONTEND_PROFILE:-$REMOTE_EMPTY_ARG}"
   local remote_go_root="${REMOTE_GO_ROOT:-$REMOTE_EMPTY_ARG}"
   local remote_go_proxy="${REMOTE_GOPROXY:-$REMOTE_EMPTY_ARG}"
   local bench_scenario_filter="${BENCH_SCENARIO_FILTER:-$REMOTE_EMPTY_ARG}"
@@ -148,7 +152,7 @@ run_remote() {
   remote "${remote_k6_image}" "${action}" "${remote_node_root}" "${remote_go_root}" "${remote_go_proxy}" \
     "${bench_scenario_filter}" "${bench_group_max_duration}" "${bench_user_count}" "${bench_group_size}" "${bench_run_id}" \
     "${bench_hot_group_warmup_messages}" "${bench_hot_group_activation_wait_ms}" "${bench_script}" "${bench_phone_prefix}" \
-    "${bench_hot_group_member_count_threshold}" "${bench_hot_group_message_threshold}" <<REMOTE_RUN
+    "${bench_hot_group_member_count_threshold}" "${bench_hot_group_message_threshold}" "${remote_frontend_profile}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
 k6_image="\${3:-}"
@@ -166,7 +170,8 @@ bench_script="\${15:-}"
 bench_phone_prefix="\${16:-}"
 bench_hot_group_member_count_threshold="\${17:-}"
 bench_hot_group_message_threshold="\${18:-}"
-for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id bench_hot_group_warmup_messages bench_hot_group_activation_wait_ms bench_script bench_phone_prefix bench_hot_group_member_count_threshold bench_hot_group_message_threshold; do
+frontend_profile="\${19:-}"
+for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id bench_hot_group_warmup_messages bench_hot_group_activation_wait_ms bench_script bench_phone_prefix bench_hot_group_member_count_threshold bench_hot_group_message_threshold frontend_profile; do
   [[ "\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]] && printf -v "\$bench_arg" '%s' ''
 done
 if [[ -z "\$go_root" ]]; then
@@ -268,6 +273,16 @@ case "${action}" in
     done
     ;;
   build)
+    case "\$frontend_profile" in
+      "") scripts/docker-build.sh frontend ;;
+      agent-interactive-shadow)
+        DIPOLE_FRONTEND_BUILD_MODE=agent-interactive-shadow scripts/docker-build.sh frontend
+        ;;
+      *)
+        echo "unsupported remote frontend profile: \$frontend_profile" >&2
+        exit 4
+        ;;
+    esac
     scripts/docker-build.sh backend
     scripts/docker-build-microservice-images.sh
     if [[ "${REMOTE_BUILD_CANDIDATE}" == "1" ]]; then

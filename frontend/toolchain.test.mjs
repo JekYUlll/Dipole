@@ -25,6 +25,20 @@ test('frontend exposes the documented typecheck command', async () => {
   assert.equal(packageJSON.scripts.typecheck, 'vue-tsc --noEmit')
 })
 
+test('interactive Agent build profile exposes only the read-only demo surface', async () => {
+  const profile = await readFile(resolve(projectRoot, '.env.agent-interactive-shadow'), 'utf8')
+  const values = Object.fromEntries(profile
+    .split(/\r?\n/)
+    .filter((line) => line.includes('='))
+    .map((line) => line.split('=', 2)))
+
+  assert.deepEqual(values, {
+    VITE_AGENT_TASK_CREATE_ENABLED: 'true',
+    VITE_AGENT_TIMELINE_ENABLED: 'true',
+    VITE_AGENT_ARTIFACTS_ENABLED: 'true',
+  })
+})
+
 test('Vite development proxy forwards HTTP and WebSocket upgrades', async (t) => {
   let httpPath = ''
   let upgradePath = ''

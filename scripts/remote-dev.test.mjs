@@ -187,7 +187,10 @@ test("direct multipart smoke scripts honor an explicit remote Go toolchain", () 
 });
 
 test("remote image builds compile committed backend binaries first", () => {
-  assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh backend[\s\S]*?scripts\/docker-build-microservice-images\.sh/);
+  assert.ok(source.includes('REMOTE_FRONTEND_PROFILE="${DIPOLE_REMOTE_FRONTEND_PROFILE:-}"'));
+  assert.ok(source.includes('local remote_frontend_profile="${REMOTE_FRONTEND_PROFILE:-$REMOTE_EMPTY_ARG}"'));
+  assert.match(source, /agent-interactive-shadow\)[\s\S]*?DIPOLE_FRONTEND_BUILD_MODE=agent-interactive-shadow scripts\/docker-build\.sh frontend/);
+  assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh frontend[\s\S]*?scripts\/docker-build\.sh backend[\s\S]*?scripts\/docker-build-microservice-images\.sh/);
 });
 
 test("benchmark uses an explicit k6 binary and has a Docker fallback on remote hosts", () => {
