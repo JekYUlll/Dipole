@@ -1214,7 +1214,7 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	response, err := server.RequestApproval(context.Background(), &agentv1.RequestApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1",
 		CapabilityId: "message.bulk.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "G1", Actions: []string{"write"}},
-		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(),
+		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(), Mode: "shadow",
 	})
 	if err != nil || response.GetStatus() != "pending" || approvals.requested.RuntimeID != "dipole-agent" || approvals.requested.Mode != "shadow" {
 		t.Fatalf("request Approval response=%+v request=%+v err=%v", response, approvals.requested, err)
@@ -1230,6 +1230,19 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	}
 	if len(timeline.events) != 2 || timeline.events[1].Kind != application.AgentTaskTimelineEventApproval || timeline.events[1].Status != "approved" {
 		t.Fatalf("unexpected Approval timeline resolution: %+v", timeline.events)
+	}
+}
+
+func TestApprovalRPCPropagatesActiveRuntimeMode(t *testing.T) {
+	approvals := &approvalServiceStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{}, approvals)
+	response, err := server.RequestApproval(context.Background(), &agentv1.RequestApprovalRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-ACTIVE",
+		CapabilityId: "message.system.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "direct:U100:UAI", Actions: []string{"write"}},
+		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(), Mode: "active",
+	})
+	if err != nil || response.GetStatus() != "pending" || approvals.requested.Mode != "active" {
+		t.Fatalf("request active Approval response=%+v request=%+v err=%v", response, approvals.requested, err)
 	}
 }
 

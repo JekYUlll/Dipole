@@ -535,6 +535,7 @@ type RequestApprovalRequest struct {
 	ArgumentsSha256 string                 `protobuf:"bytes,8,opt,name=arguments_sha256,json=argumentsSha256,proto3" json:"arguments_sha256,omitempty"`
 	NonceSha256     string                 `protobuf:"bytes,9,opt,name=nonce_sha256,json=nonceSha256,proto3" json:"nonce_sha256,omitempty"`
 	ExpiresAtUnixMs int64                  `protobuf:"varint,10,opt,name=expires_at_unix_ms,json=expiresAtUnixMs,proto3" json:"expires_at_unix_ms,omitempty"`
+	Mode            string                 `protobuf:"bytes,11,opt,name=mode,proto3" json:"mode,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -637,6 +638,13 @@ func (x *RequestApprovalRequest) GetExpiresAtUnixMs() int64 {
 		return x.ExpiresAtUnixMs
 	}
 	return 0
+}
+
+func (x *RequestApprovalRequest) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
 }
 
 type ResolveApprovalRequest struct {
@@ -9023,7 +9031,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\rresource_type\x18\x01 \x01(\tR\fresourceType\x12\x1f\n" +
 	"\vresource_id\x18\x02 \x01(\tR\n" +
 	"resourceId\x12\x18\n" +
-	"\aactions\x18\x03 \x03(\tR\aactions\"\xb4\x03\n" +
+	"\aactions\x18\x03 \x03(\tR\aactions\"\xc8\x03\n" +
 	"\x16RequestApprovalRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +
@@ -9036,7 +9044,8 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x10arguments_sha256\x18\b \x01(\tR\x0fargumentsSha256\x12!\n" +
 	"\fnonce_sha256\x18\t \x01(\tR\vnonceSha256\x12+\n" +
 	"\x12expires_at_unix_ms\x18\n" +
-	" \x01(\x03R\x0fexpiresAtUnixMs\"\xe5\x01\n" +
+	" \x01(\x03R\x0fexpiresAtUnixMs\x12\x12\n" +
+	"\x04mode\x18\v \x01(\tR\x04mode\"\xe5\x01\n" +
 	"\x16ResolveApprovalRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x15\n" +

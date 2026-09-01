@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-01：Agent Approval 的跨服务契约现携带 Runtime `mode`。显式 active Runtime 创建的 Approval 会以 active Task/Run 绑定持久化，后续授权解析和一次性消费可与 MCP 消息命令保持同一权限域；未提供字段的既有调用继续按 shadow 处理。Core 对 `dipole-agent` 的最小权限 allowlist 同步放行精确的 grant、consume 和消息命令 RPC。Remote GPU 已通过 Go/TypeScript 定向回归、类型检查和生成契约校验；默认 Interactive profile 仍为 `shadow + read_shadow`，未部署 active 写入。
+
+- 2026-09-01：TypeScript Agent protobuf 生成器现在将已解析的 protobuf 标准库目录同时作为 `--proto_path`。仅安装 pinned `protoc` 的 Remote GPU worktree 可直接生成并校验契约，无需依赖系统 `/usr/include`；生成输出保持不变。
+
 - 2026-09-01：Agent Temporal 集成门禁新增 Runtime HTTP 审批链路：真实 Worker 与 Fastify 控制面验证 owner 读取待审批状态、跨 owner 拒绝、批准请求 `202`、Temporal Signal 以及终态 Activity 绑定。Remote GPU 在 `9217d826` 通过 `8/8`；该验证使用内存 Temporal Test Server，不代替浏览器审批回执或共享 Core 持久化演练。
 
 - 2026-09-01：开发工作流收敛为少分支、少提交的阶段性交付：Agent 主线继续在单一 Epic worktree 中推进，普通测试、文档与修复随可体验闭环合并。Remote GPU 作为授权开发靶场可直接复用本轨道 Dipole project，登录会话和 GPU 任务仅记录资源快照；缺失运行依赖可使用受控 `sudo` 安装。宿主网络、Docker daemon 和其他项目资源仍不在部署操作范围内。

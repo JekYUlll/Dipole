@@ -2,6 +2,10 @@
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
+- 2026-09-01：修复 active Approval 的跨服务模式漂移。此前 `RequestApproval` 在 Core adapter 中固定为 shadow，而 MCP grant/consume 与消息命令只接受 active，导致审批通过后仍无法进入真实受控写链路。RPC 已显式传递 Runtime mode，空值兼容映射为 shadow；Core allowlist 仅增加 `ResolveApprovalGrant`、`ConsumeApproval` 和 `ExecuteMcpMessageCommand` 三项既有 Agent RPC。Go/TypeScript 定向回归与生成契约检查通过。真实浏览器审批、active Compose、消息副作用 receipt 与回滚演练仍由 `AD-009` 跟踪。
+
+- 2026-09-01：Remote GPU 仅安装 pinned protobuf 工具链时，TypeScript 生成器会因标准库 timestamp 文件未处于声明的 proto path 而失败。生成脚本现复用已解析的 include 目录作为第二个 `--proto_path`；该修复只改善跨语言契约生成，不改变任何 Runtime authority。
+
 - 2026-09-01：Agent Task 控制面已增加 Runtime HTTP 到 Temporal 的审批集成门禁。Remote GPU `9217d826` 在内存 Temporal Test Server 通过 owner-bound pending read、foreign denial、approved Signal 与 completed terminal Activity 的 `8/8` 验证。该测试未接入浏览器、Gateway、真实 Core approval persistence 或共享环境，因此真实 HITL UI receipt 继续由 `AD-009` 跟踪。
 
 - 2026-09-01：开发阶段的 Remote GPU 资源策略已收敛为直接复用本轨道 Dipole project，登录会话和 GPU 任务仅作为资源快照；运行依赖允许受控 `sudo` 安装。该调整不放宽宿主网络、Docker daemon、其他项目资源或生产切流的操作边界。

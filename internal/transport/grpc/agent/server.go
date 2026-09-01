@@ -1731,11 +1731,15 @@ func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestAp
 	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
-	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetResourceScope() == nil {
+	mode := request.GetMode()
+	if mode == "" {
+		mode = "shadow"
+	}
+	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetResourceScope() == nil || (mode != "shadow" && mode != "active") {
 		return nil, status.Error(codes.InvalidArgument, "Agent Approval request is invalid")
 	}
 	approval, err := s.approvals.Request(ctx, application.AgentApprovalRequestV1{
-		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: mode,
 		Approval: application.AgentApprovalV1{
 			ApprovalUUID: request.GetApprovalId(), TaskUUID: request.GetTaskId(), CapabilityID: request.GetCapabilityId(),
 			ResourceScope: application.AgentResourceScopeV1{ResourceType: request.GetResourceScope().GetResourceType(), ResourceID: request.GetResourceScope().GetResourceId(), Actions: request.GetResourceScope().GetActions()},
