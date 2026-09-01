@@ -93,6 +93,33 @@ docker compose -p "${DIPOLE_PROJECT}" \
 scripts/smoke-microservices.sh
 ```
 
+### Agent Interactive Shadow 候选
+
+DeepSeek V4 Flash 的交互体验候选使用同一 revision 的镜像和下列只读
+overlay。模型凭据继续仅由候选 `.env` 托管；不要将其写入命令历史、回执
+或仓库文件。`DIPOLE_AGENT_IMAGE` 必须显式绑定本次构建的 Agent 镜像，
+避免 Compose 回退到旧的 `latest`。
+
+```bash
+export DIPOLE_PROJECT=dipole-agent-<your-id>
+export DIPOLE_AGENT_IMAGE="dipole-agent:${IMAGE_TAG}"
+export DIPOLE_INTERNAL_CERT_DIR=/home/admin1/workspaces/Dipole/certs/internal
+
+docker compose -p "${DIPOLE_PROJECT}" \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/remote-gpu-mysql-aio-compat.yml \
+  -f deploy/microservices/agent-ai-sdk-shadow.yml \
+  -f deploy/microservices/agent-temporal-read-shadow.yml \
+  -f deploy/microservices/agent-interactive-shadow.yml \
+  -f deploy/microservices/agent-deepseek-v4-flash-shadow.yml \
+  config --quiet
+```
+
+这组 overlay 只开放认证后的 Task 控制面，保持 `shadow + read_shadow`。
+Memory、检索、MCP、外部 MCP、active authority 和写 Capability 均关闭。
+DeepSeek overlay 固定 `json_text` 与 `thinking=disabled`，避免不支持 JSON
+Schema response format 或仅返回 reasoning 的兼容性失败。
+
 实时数据面候选压测沿用 `scripts/bench/candidate_topology.sh`；Agent 默认保持 shadow 或 off，避免外部模型成本和延迟污染 IM 基线。完整 `k6` 基准和 Docker 构建固定在 Remote GPU 执行；本机仅保留脚本静态检查。
 
 迁移任务确认已在远端可执行后，可先预览再停止本机 Dipole 负载：

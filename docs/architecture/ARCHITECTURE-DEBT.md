@@ -153,7 +153,7 @@
 - 2026-08-31：补齐主链路外部阻塞期间的并行治理规则。前端设计、只读体验、视觉回归、文档入口和图表可在独立分支推进，但不改变服务 authority、默认 feature flag 或真实环境证据门槛。该规则减少等待窗口造成的工程停滞；共享环境切流、负载测试和 active 能力仍按各自验收条件执行。
 
 - 2026-08-31：Remote GPU 的 DeepSeek V4 Flash shadow 审计显示已完成真实 Kafka/Capability RPC/模型/Shadow Plan 链路的至少一条成功调用，但当前观察样本仍存在 Provider `response_format` 不可用、空输出与 JSON-text 包装造成的失败。Runtime 已将单一、短包装的 JSON 对象恢复为本地 Zod 校验输入，并继续拒绝多对象或不合法结构；需在 Temporal `read_shadow` 实机启动后收集新的成功率、Run 终态与 Artifact 证据，AD-009 不关闭。
-- 2026-09-01：实机 Interactive Task 复现 DeepSeek V4 Flash 的默认 `thinking` 可在 `1024` 输出 token 内只返回 `reasoning_content`，AI SDK 可见正文为空并使 JSON-text 调用失败。Runtime 新增 Provider-scoped `DIPOLE_AGENT_MODEL_THINKING_MODE=disabled`，仅在显式选择时透传 `thinking.type=disabled`；同一大上下文探针由 `length`/空正文恢复为 `stop`/非空正文。该切片仍需以更新镜像重跑完整 Temporal Task、Timeline 与 Artifact 验收，未改变 active/write/MCP 默认关闭边界。
+- 2026-09-01：实机 Interactive Task 复现 DeepSeek V4 Flash 的默认 `thinking` 可在 `1024` 输出 token 内只返回 `reasoning_content`，AI SDK 可见正文为空并使 JSON-text 调用失败。Runtime 新增 Provider-scoped `DIPOLE_AGENT_MODEL_THINKING_MODE=disabled`，仅在显式选择时透传 `thinking.type=disabled`；同一大上下文探针由 `length`/空正文恢复为 `stop`/非空正文。现已通过 `agent-deepseek-v4-flash-shadow.yml` 固定 JSON-text/disabled 兼容组合，并以同 revision Remote GPU 候选重跑 Task、Timeline 与 Artifact 验收。active/write/MCP 默认关闭边界不变；任务成功率和受控观察窗口仍待补。
 
 - 2026-08-31：真实 Shadow read 联调发现 standalone Core 将无本地 repository 的 Message application 传给 Agent Capability，`conversation.read` 会触发 nil repository panic。现已在 gRPC Message transport 下切换为惰性、可关闭的 Core-to-Message history reader；reader 保持 `dipole-core` RPC 身份，运行时缺失 Message 只返回调用错误，不再使 Core 进程退出。Core/Message 联合恢复演练仍待完成。
 

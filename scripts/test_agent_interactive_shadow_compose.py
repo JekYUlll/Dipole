@@ -19,6 +19,13 @@ class InteractiveAgentShadowComposeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"', overlay)
         self.assertIn('DIPOLE_AGENT_MEMORY_ENABLED: "false"', overlay)
 
+    def test_deepseek_overlay_keeps_the_interactive_profile_read_only(self) -> None:
+        overlay = (ROOT / "deploy/microservices/agent-deepseek-v4-flash-shadow.yml").read_text(encoding="utf-8")
+        self.assertIn('DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS: "false"', overlay)
+        self.assertIn("DIPOLE_AGENT_MODEL_OUTPUT_MODE: json_text", overlay)
+        self.assertIn("DIPOLE_AGENT_MODEL_THINKING_MODE: disabled", overlay)
+        self.assertNotIn("gateway:", overlay)
+
     def test_compose_gate_checks_the_effective_profile(self) -> None:
         checker = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")
         self.assertIn("agent-interactive-shadow.yml", checker)

@@ -194,7 +194,8 @@ interactive_shadow_config="$(
       -f deploy/compose/docker-compose.microservices.yml \
       -f deploy/microservices/agent-ai-sdk-shadow.yml \
       -f deploy/microservices/agent-temporal-read-shadow.yml \
-      -f deploy/microservices/agent-interactive-shadow.yml config --format json
+      -f deploy/microservices/agent-interactive-shadow.yml \
+      -f deploy/microservices/agent-deepseek-v4-flash-shadow.yml config --format json
 )"
 jq -e '
   .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
@@ -206,6 +207,9 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_OUTPUT_MODE == "json_text"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_THINKING_MODE == "disabled"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_shadow_config}" >/dev/null
