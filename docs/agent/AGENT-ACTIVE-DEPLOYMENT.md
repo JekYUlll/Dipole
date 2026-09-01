@@ -50,7 +50,7 @@ overlay 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER
 
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 
-交互消息候选在共享环境启用前，还需要同一 revision 的 Core/Temporal/Compose 真实 receipt：owner approve、deny、重复 consume、Activity 重试及回滚均必须记录消息副作用计数。隔离 Temporal 已验证提交后 `UNAVAILABLE` / `DEADLINE_EXCEEDED` 的稳定命令标识与重试收敛，见 [Interactive Active Retry Receipt](AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)；该内存用例不能替代真实服务、部分副作用回滚或共享环境 receipt。
+交互消息候选在共享环境启用前，还需要同一 revision 的 Core/Temporal/Compose 真实 receipt：owner approve、deny、重复 consume、Activity 重试及回滚均必须记录消息副作用计数。隔离 Temporal 已验证提交后 `UNAVAILABLE` / `DEADLINE_EXCEEDED` 的稳定命令标识与重试收敛，见 [Interactive Active Retry Receipt](AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)；受认证的 Core-to-Message gRPC 回包丢失恢复见 [Interactive Message Transport Receipt](AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)。两者都不能替代真实 Compose、部分副作用回滚或共享环境 receipt。
 
 `deploy/microservices/agent-interactive-active.yml` 是 `agent-active.yml` 之上的独立 overlay。它将 Activity 切换到 `interactive_active`，开启 Agent Control API、Gateway 的任务控制转发与 `/send` 执行器，并要求 `DIPOLE_AGENT_INTERACTIVE_TASK_QUEUE` 使用 `dipole-agent-interactive-` 前缀及独立的 `DIPOLE_AGENT_CONTROL_SECRET`。Artifact 与 MCP 入口在该 overlay 中保持关闭。只有归档本节要求的共享环境 receipt 后才允许加载该 overlay。
 

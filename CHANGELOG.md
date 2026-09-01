@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：补齐 Interactive Agent Message command 的 Core-to-Message gRPC 回包丢失回归。受认证的 Message 服务先持久化 system message，测试代理随后返回 `UNAVAILABLE`；Core `LocalAgentCommandV1` 通过同一 `client_message_id` 的 Message receipt 恢复结果，提交次数保持为一。Remote GPU Go 1.27 已通过 Agent application 与 Message gRPC 相关包回归。该验证使用 bufconn 和内存持久化模型，Compose、MySQL、跨进程网络中断、Worker 替换及部分副作用回滚继续独立受控；详见 [Interactive Message Transport Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)。
+
 - 2026-09-02：Interactive Agent active 消息写入为“消息已提交但响应丢失”的短暂 RPC 故障固定了重试身份。仅对 Core `UNAVAILABLE` / `DEADLINE_EXCEEDED`，Runtime 保持同一 running Tool Invocation，并从 Task、Run、会话和内容推导稳定 Message command ID；Temporal Activity 重试因此由 Message Service 的既有幂等键收敛。Remote GPU Node 22 的定向单测 `5/5`、Temporal 故障用例 `1/1`、typecheck 和生产构建通过。该用例使用内存 Temporal 与受控 Core port stub，未替代真实 Core/Message/Compose 的部分副作用、Worker 替换、共享环境或回滚回执；详见 [Interactive Active Retry Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)。
 
 - 2026-09-02：归档 Interactive Agent active 写入的干净同版本 Remote GPU 回执。隔离、loopback-only 的 `430c9e38` Compose 同时覆盖 owner 并发 `denied` 重放与并发 `approved` 重放：拒绝路径持久化一次 `approval_denied` 且 Tool/Message 均为零；批准路径以一次 approval consume、一次完成的 Tool Invocation、一次 action reference 和恰好一条 Message 收敛。验证后的开发 promotion grant 已撤销。详细范围、fixture 前置条件及未覆盖的 shared/HITL/故障/性能边界见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。

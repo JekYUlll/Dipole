@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Agent Message command 的 Core-to-Message gRPC 回包丢失恢复已增加受认证 transport 回归，详见 [Interactive Message Transport Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)。服务端先提交受控 system message，代理在 response 前返回 `UNAVAILABLE`；Core 使用稳定 `client_message_id` 查询 receipt 并恢复同一条 Message，精确提交计数为一。Remote GPU Go 1.27 已通过 Agent application 与 Message gRPC 包回归。该测试使用 bufconn 与内存模型，不能代表 MySQL、Compose、跨进程网络、Worker 替换、部分副作用回滚或共享环境恢复；这些继续由 `AD-009` 跟踪。
+
 - 2026-09-02：Interactive active 消息写入已增加“Message 提交后 RPC 响应丢失”的定向 Temporal 故障门禁，详见 [Interactive Active Retry Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)。对 Core `UNAVAILABLE` / `DEADLINE_EXCEEDED`，同一 Task/Run/会话/内容派生稳定 Message command ID，运行中的 Tool Invocation 保留至 Activity 重试；Remote GPU Node 22 的内存 Temporal 用例证明两次调用使用同一命令标识、模型 side-effect store 仅记录一次提交，最终只写入一次 completed Tool Invocation。该证据不连接真实 Core、Message、MySQL、Kafka 或 Compose，不能代表部分副作用回滚、Worker 替换或共享环境故障恢复；这些继续由 `AD-009` 跟踪。
 
 - 2026-09-02：`interactive_active` 的干净同版本 Remote GPU 隔离 Compose 已补齐真实跨服务回执，详见 [Interactive Active Remote Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。同一 `430c9e38` 且 `dirty=false` 的镜像在 loopback-only 项目中验证 owner 并发 deny 只产生一次 `approval_denied` 且 Tool/Message 为零；并发 approve 只消费一次 approval，并产生一次完成 Tool、一次 action reference 与恰好一条 Message。开发 promotion grant 已在验证后撤销。该结果关闭此前“干净同版本、owner deny、重复 approve/deny、副作用精确计数”缺口；Shared 环境、浏览器 HITL、Worker/Core/Message 故障重试、部分副作用回滚、MCP 和指标结论继续由 `AD-009` 跟踪。
