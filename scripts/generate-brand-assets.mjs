@@ -349,10 +349,9 @@ function lockup() {
   const W = 1040;
   const H = 224;
   const margin = 48;
-  const markScale = 0.3;
-  const capHeight = 30;
-  const wordScale = capHeight / WORD_CAP;
+  const markScale = 0.26;
   const gap = 26; // between a mark and its wordmark
+  const gutter = 44; // minimum clearance each side of the divider
   const axis = 94; // shared centre line for marks and wordmarks
   const cols = [
     { id: 'im', orbit: false, word: WORDMARK.im, width: WORD_WIDTH.im, tag: 'IM DATA PLANE' },
@@ -361,6 +360,17 @@ function lockup() {
   for (const col of cols) {
     col.box = col.orbit ? AGENT_BOX : { x: 0, y: 0, w: M.boxW, h: M.boxH };
     col.markW = col.box.w * markScale;
+  }
+  // Marks are fixed width, the logotype is not, so the panel fits the logotype:
+  // take the largest cap height that still clears the gutters, capped at the
+  // size that reads well next to a 30-unit mark. A wide face therefore sets
+  // smaller rather than colliding with the divider.
+  const fixed = cols.reduce((sum, col) => sum + col.markW + gap, 0);
+  const budget = W - margin * 2 - gutter * 2 - fixed;
+  const advance = cols.reduce((sum, col) => sum + col.width, 0);
+  const capHeight = round(Math.min(30, (WORD_CAP * budget) / advance));
+  const wordScale = capHeight / WORD_CAP;
+  for (const col of cols) {
     col.wordW = col.width * wordScale;
     col.w = col.markW + gap + col.wordW;
   }

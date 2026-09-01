@@ -46,18 +46,22 @@ what distinguishes V3 from the retired identity.
 
 ## Typography
 
-The logotype is **Tomorrow Bold**, a squared grotesque whose flat sides and blunt
-shoulders read as industrial telemetry and deliberately contrast the mark's
-discs. Softer geometric faces made the lockup look generic, so do not substitute
-one.
+The logotype is **Goldman Bold**, a wide blocky face whose squared counters and
+heavy uniform stems read as machined hardware and deliberately contrast the
+mark's discs. Softer geometric faces made the lockup look generic, so do not
+substitute one.
 
 It ships as SVG outlines, not a `font-family` reference, so the assets render
 identically on GitHub, in the product and in exported images. Regenerate the
 outlines with `scripts/generate-brand-wordmarks.mjs`; that script documents the
 one-off tooling install and normalises every logotype to cap-height 100 with the
-baseline on `y = 0`. The lockup then positions columns from the measured mark
-bounds and logotype advance widths, so a typeface change cannot push artwork past
-the panel edge.
+baseline on `y = 0`.
+
+The lockup then fits itself to that logotype. Marks are fixed width, so the
+panel takes the largest cap height that still clears its gutters, capped at the
+size that reads well beside a mark. Goldman is roughly 40% wider than a normal
+grotesque and therefore sets smaller rather than colliding with the divider; a
+typeface change can never push artwork past the panel edge.
 
 Supporting labels stay in a system monospace stack, letterspaced and uppercase.
 They are the data-plane voice of the system and need no embedded font.

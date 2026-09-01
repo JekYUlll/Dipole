@@ -4,9 +4,11 @@
 // Outlines rather than a font-family reference keep the brand SVGs self-contained,
 // so they render identically in GitHub, in the product and in exported images.
 //
-// The logotype is Tomorrow Bold: a squared grotesque whose flat sides and blunt
-// shoulders read as industrial telemetry, deliberately contrasting the mark's
-// discs. Softer geometric faces made the lockup look generic.
+// The logotype is Goldman Bold: a wide, blocky, hard-edged face whose squared
+// counters and heavy uniform stems read as machined hardware, deliberately
+// contrasting the mark's discs. Softer geometric faces made the lockup look
+// generic. It is markedly wider than a normal grotesque, so the lockup fits its
+// logotype by measurement rather than assuming a cap height.
 //
 // Paths are normalised to cap-height 100 with the baseline on y = 0, so callers
 // scale by (target cap height / 100) and never need the source font's metrics.
@@ -14,7 +16,7 @@
 // The type tooling is not a repository dependency; the logotype changes rarely.
 // Install it on demand and run this from the repository root:
 //
-//   npm i --no-save @fontsource/tomorrow opentype.js wawoff2
+//   npm i --no-save @fontsource/goldman opentype.js wawoff2
 //   node scripts/generate-brand-wordmarks.mjs
 //   node scripts/generate-brand-assets.mjs
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -24,12 +26,12 @@ import opentype from 'opentype.js';
 import wawoff2 from 'wawoff2';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const FONT = 'tomorrow/files/tomorrow-latin-700-normal.woff2';
-const LABEL = 'Tomorrow Bold (@fontsource/tomorrow 700)';
+const FONT = 'goldman/files/goldman-latin-700-normal.woff2';
+const LABEL = 'Goldman Bold (@fontsource/goldman 700)';
 const CAP_HEIGHT = 100;
-// Tomorrow sets slightly loose by default; a touch of negative tracking tightens
-// the logotype without letting the squared sidewalls collide.
-const TRACKING = -1;
+// Goldman is already wide and blocky; leave its rhythm alone rather than
+// tightening it, which would crowd the squared counters.
+const TRACKING = 0;
 const TEXTS = { im: 'Dipole IM', agent: 'Dipole Agent', plain: 'Dipole' };
 
 function resolveFont() {
@@ -40,7 +42,7 @@ function resolveFont() {
       /* try the next location */
     }
   }
-  throw new Error(`Cannot find @fontsource/${FONT}. Run: npm i --no-save @fontsource/tomorrow opentype.js wawoff2`);
+  throw new Error(`Cannot find @fontsource/${FONT}. Run: npm i --no-save @fontsource/goldman opentype.js wawoff2`);
 }
 
 const font = opentype.parse(new Uint8Array(await wawoff2.decompress(resolveFont())).buffer);
