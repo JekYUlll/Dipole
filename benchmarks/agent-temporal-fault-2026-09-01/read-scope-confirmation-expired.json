@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "dipole.agent.temporal-fault-receipt.v1",
+  "drillId": "read_scope_confirmation_expired",
+  "observedAt": "2026-09-01T08:21:51.645Z",
+  "workflow": {
+    "taskId": "task:d998def9728ec54cc9f5ef3cf5a80839bf3f2bff0420b371bf8a0b880a9",
+    "runId": "run:371e2ae0f402c59474544a06d56129c68276c169d5306adbaa06d7465dc5"
+  },
+  "outcome": "eligible",
+  "transitions": [
+    {
+      "revision": 1,
+      "status": "running"
+    },
+    {
+      "revision": 2,
+      "status": "waiting_input"
+    },
+    {
+      "revision": 3,
+      "status": "cancelled"
+    }
+  ],
+  "faults": {
+    "workerReplacements": 0,
+    "terminalWriteRetries": 0
+  },
+  "effects": {
+    "admissions": 1,
+    "stepExecutions": 1,
+    "approvalRequests": 0,
+    "approvalResolutions": 0,
+    "terminalWriteAttempts": 1,
+    "terminalPersistedWrites": 1,
+    "inputSignalsRejected": 0,
+    "inputResumptions": 0,
+    "conversationReads": 0,
+    "unconfirmedConversationReads": 0
+  },
+  "cancellation": {
+    "reason": "input_expired"
+  },
+  "failures": [],
+  "receiptSha256": "f44c039af56e45da2eba3a52ec28cc37b240dd18f533ee18b5ffd4505613b489",
+  "receiptId": "TEMPORAL-FAULT-ba6a9bfafc182b0fe6281120409e487a97e588f73ba9f1030a9a422fecf6bf67"
+}

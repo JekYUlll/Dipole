@@ -2,6 +2,8 @@
 
 - 2026-09-01：read 路径的多会话读取范围改为由 Task owner 确认。`conversation.list` 发现两个及以上会话时，Run 在 claim 读取 Step 前暂停并返回 `wait_input`，用 `dipole.agent.elicitation.v1` 的 select Form 提供最多 8 个会话候选并显式披露截断数量；恢复后只读取被确认的会话。用户提交同样按不可信输入处理，必须命中 checkpoint 中的候选集合与确定性 request ID，越界选择、伪造 request、缺失 checkpoint 均 fail closed，Core 仍是最终读取授权。恢复期不重新规划：暂停前已验证的 `conversation.list` 到 `conversation.read` 结构由代码重建，避免二次模型规划改变 Step 编号与 trajectory 重放语义；多于一对 discovery 的 plan 在需要确认时 fail closed。单会话与零会话行为不变，Kafka Shadow 主路径不受影响。写 Capability、active authority 和外部 MCP 保持关闭。
 
+- 2026-09-01：Remote GPU 在候选 `aec1b867` 归档读取范围确认的 [approve/deny/expire 三份 receipt](benchmarks/agent-temporal-fault-2026-09-01/)，集成套件 `10/10` 并经 CLI 独立复核。三条演练由生产 read Activity 驱动，receipt 直接记录 Run 实际读取的会话数：确认路径在伪造 request 被拒绝后只读取被确认的会话并收敛为 completed；owner 取消与确认到期均收敛为 `cancelled`（`user_cancelled` / `input_expired`），会话读取计数为零。故障 receipt 契约同步加入这三个 drill 与 `conversationReads`、`unconfirmedConversationReads` 计数，出现未确认读取直接判定 `ineligible`。运行仍使用内存 Temporal Test Server，不接入 Kafka、Core、MySQL、共享 tenant 或 active authority。
+
 - 2026-09-01：Remote GPU 在 `6beab05d` 完成隔离 Temporal Worker replacement 演练并归档 [两份故障 receipt](benchmarks/agent-temporal-fault-2026-09-01/)。approval/input 恢复均在替换 Worker 上收敛为一次完成；approval 路径的注入终态重试仅持久化一次，input 路径的无效与过期 Signal 均未恢复任务。运行使用内存 Temporal Test Server，未启动 Compose，也未接入 Core、Kafka、MySQL、共享 tenant 或 active authority。
 
 - 2026-09-01：Remote GPU 在 `f0dcf98a` 通过 Approval gate v2 disposable drill，并归档 [v2 receipt](benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)。denied grant、consumed replay 与 failed-operation replay 均被拒绝且不产生新增 effect；同轮 MCP 去重、过期 readiness 与 mTLS identity 检查继续通过。审批 UI、真实外部 MCP 与 active authority 保持关闭。

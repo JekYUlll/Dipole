@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "dipole.agent.temporal-fault-receipt.v1",
+  "drillId": "read_scope_confirmation_resume",
+  "observedAt": "2026-09-01T08:21:47.658Z",
+  "workflow": {
+    "taskId": "task:406ffc5df2ba7d94bbb44c425c1318161eb435f739ef45b683f4899cc23",
+    "runId": "run:48d221ed4339dd9403e63d426b38d524199efc25a2f597a00d46f3cf8f61"
+  },
+  "outcome": "eligible",
+  "transitions": [
+    {
+      "revision": 1,
+      "status": "running"
+    },
+    {
+      "revision": 2,
+      "status": "waiting_input"
+    },
+    {
+      "revision": 3,
+      "status": "running"
+    },
+    {
+      "revision": 4,
+      "status": "completed"
+    }
+  ],
+  "faults": {
+    "workerReplacements": 0,
+    "terminalWriteRetries": 0
+  },
+  "effects": {
+    "admissions": 1,
+    "stepExecutions": 2,
+    "approvalRequests": 0,
+    "approvalResolutions": 0,
+    "terminalWriteAttempts": 1,
+    "terminalPersistedWrites": 1,
+    "inputSignalsRejected": 1,
+    "inputResumptions": 1,
+    "conversationReads": 1,
+    "unconfirmedConversationReads": 0
+  },
+  "failures": [],
+  "receiptSha256": "9ded3355128f5b053bc720c3c74dd462fe9bdec5f9eb14e3218c09b1170ba24c",
+  "receiptId": "TEMPORAL-FAULT-906a626f32a66380e6132b210e2661ab6ee2c91dc55c215e6ad7dd74a156023c"
+}
