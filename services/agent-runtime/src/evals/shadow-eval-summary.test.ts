@@ -57,9 +57,12 @@ describe("Shadow evaluation summary", () => {
     expect(parseShadowEvalSummaryInput(input([passingReport()], "a".repeat(40))).source.runtimeRevision).toHaveLength(40);
   });
 
-  it("keeps the published JSON Schema aligned with runtime revision acceptance", async () => {
-    const schema = JSON.parse(await readFile(new URL("../../../../contracts/agent-evals/v1/shadow-summary-input.schema.json", import.meta.url), "utf8"));
-    expect(schema.properties.source.properties.runtimeRevision.pattern).toBe("^(?:[a-f0-9]{40}|[a-f0-9]{64})$");
+  it("keeps published schemas aligned with runtime revision acceptance and Trace redaction", async () => {
+    const inputSchema = JSON.parse(await readFile(new URL("../../../../contracts/agent-evals/v1/shadow-summary-input.schema.json", import.meta.url), "utf8"));
+    const reportSchema = JSON.parse(await readFile(new URL("../../../../contracts/agent-evals/v2/shadow-summary-report.schema.json", import.meta.url), "utf8"));
+    expect(inputSchema.properties.source.properties.runtimeRevision.pattern).toBe("^(?:[a-f0-9]{40}|[a-f0-9]{64})$");
+    expect(reportSchema.properties.schemaVersion.const).toBe("dipole.agent.shadow-eval-summary-report.v2");
+    expect(reportSchema.properties).not.toHaveProperty("traceIds");
   });
 
   it("fails closed for invalid arguments", async () => {

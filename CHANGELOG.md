@@ -2,6 +2,8 @@
 
 - 2026-09-02：Agent Shadow Eval 的公开汇总升级为 `shadow-summary-report.v2`，移除原始 Trace ID。Trace 唯一性继续在受限 evaluator 输入中校验，仓库归档仅保留 Suite 哈希和聚合统计。
 
+- 2026-09-02：Remote GPU 已归档受控 Shadow Eval N=4 安全跳过窗口，四个固定 `no_discovered_conversation` 样本的五类结构性检查均通过。该窗口只证明空会话发现路径的回归稳定性，不能外推 Agent 总体任务成功率、主动写入或共享环境表现。
+
 - 2026-09-02：Shadow Eval 观测将严格识别“可信会话发现为空”导致的 `conversation.read` 跳过。该 Step 仍保留在 trajectory 中，审阅包明确标为 `not_required/no_discovered_conversation`，且不计为工具调用或缺失授权；识别依赖于已完成的 `conversation.read`、空授权及精确的持久化 skip 输出三项同时成立。任何其他空授权、非终态、缺失延迟或重试证据继续阻断 evaluator。此修复来自 Remote GPU review pack 暴露的真实只读样本，不构成新的成功率结论。
 
 - 2026-09-02：Remote GPU 的干净 Agent Runtime 候选已对同一终态 Shadow 样本复导 review pack：`conversation.list` 保留精确 allowed scope，空发现后的 `conversation.read` 标为 `not_required/no_discovered_conversation`，evaluator eligibility 为 `eligible`，且导出不含 Task、Run、Trace 或会话标识明文。该回执只复核已有单样本的观测解释与低敏导出，不能推导任务成功率或候选 promotion。

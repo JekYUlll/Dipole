@@ -143,6 +143,8 @@
 
 - 2026-09-02：Shadow Eval 对外汇总升级为 `shadow-summary-report.v2`，移除原始 Trace ID。运行时仍在受限输入中以 Trace 去重并关联审计，归档只保留 suite 哈希和聚合统计；历史 N=2 样例已按同一限制语义转换。后续共享观察窗口也必须遵循该边界。
 
+- 2026-09-02：Remote GPU 已归档 [N=4 安全跳过窗口](../../benchmarks/agent-shadow-eval-window-2026-09-02-n4/)。它只覆盖 `conversation.list` 成功、随后可信空发现使 `conversation.read` 成为 `not_required/no_discovered_conversation` 的受控路径；四例均通过五类结构性 Eval。固定单路径 cohort 不能填写总体任务成功率，也不能替代恢复、多轮检索、写能力或共享环境证据。
+
 - 2026-09-01：同一受控栈的一条 Provider 空 JSON-text 失败事件在持久 Run 中保留 `model run budget exhausted`，但模型调用缺失 token 计量，现有五类 Eval 会因不完整 Cost observation fail closed。后续需让失败调用输出明确的计量可用性/不可用性并纳入失败分类，禁止以通过样本替代整体成功率。
 
 - 2026-09-01：Remote GPU 受控窗口暴露汇总 schema 只接受 64 位摘要、与 OCI 的 40 位 Git revision 不兼容。契约已放宽为两种有效 revision 长度并覆盖回归；窗口重跑前不产生汇总结论。
