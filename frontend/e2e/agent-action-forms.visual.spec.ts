@@ -23,7 +23,7 @@ test('keeps the approval surface aligned with the Pencil baseline', async ({ pag
 
   await page.goto('/app/agent/tasks/TASK-1/approval')
   await expect(page.getByRole('heading', { name: '确认 Agent 操作' })).toBeVisible()
-  await expect(page.locator('.approval-grid')).toHaveScreenshot('approval-chromium.png', {
+  await expect(page.locator('.approval-shell')).toHaveScreenshot('approval-chromium.png', {
     animations: 'disabled',
     mask: [page.locator('.deadline strong')],
   })
@@ -41,7 +41,7 @@ test('keeps the approval mobile surface aligned with the Pencil baseline', async
   }))
 
   await page.goto('/app/agent/tasks/TASK-1/approval')
-  await expect(page.locator('.approval-grid')).toHaveScreenshot('approval-mobile-chromium.png', {
+  await expect(page.locator('.approval-shell')).toHaveScreenshot('approval-mobile-chromium.png', {
     animations: 'disabled',
     mask: [page.locator('.deadline strong')],
   })
@@ -64,7 +64,7 @@ test('keeps the elicitation surface aligned with the Pencil baseline', async ({ 
 
   await page.goto('/app/agent/tasks/TASK-1/input')
   await expect(page.getByRole('heading', { name: '补充任务信息' })).toBeVisible()
-  await expect(page.locator('.elicitation-grid')).toHaveScreenshot('elicitation-chromium.png', {
+  await expect(page.locator('.elicitation-shell')).toHaveScreenshot('elicitation-chromium.png', {
     animations: 'disabled',
     mask: [page.locator('.deadline strong')],
   })
@@ -87,7 +87,7 @@ test('keeps the elicitation mobile surface aligned with the Pencil baseline', as
   }))
 
   await page.goto('/app/agent/tasks/TASK-1/input')
-  await expect(page.locator('.elicitation-grid')).toHaveScreenshot('elicitation-mobile-chromium.png', {
+  await expect(page.locator('.elicitation-shell')).toHaveScreenshot('elicitation-mobile-chromium.png', {
     animations: 'disabled',
     mask: [page.locator('.deadline strong')],
   })

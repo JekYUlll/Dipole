@@ -22,14 +22,14 @@ test('keeps the owner-scoped File Directory aligned with the V3 disclosure bound
   await expect(browserPage.locator('[data-file-state="ready"]')).toBeVisible()
   await expect(browserPage.getByText('platform-handoff.md')).toBeVisible()
   await expect(browserPage.getByText('存储 URL、校验值或未完成上传会话')).toBeVisible()
-  await expect(browserPage.locator('[data-file-state="ready"]')).toHaveScreenshot('file-directory-desktop-chromium.png', { animations: 'disabled' })
+  await expect(browserPage.locator('.file-directory')).toHaveScreenshot('file-directory-desktop-chromium.png', { animations: 'disabled' })
 })
 
 test('keeps the File Directory readable on the V3 mobile baseline', async ({ page: browserPage }) => {
   await browserPage.setViewportSize({ width: 390, height: 844 })
   await browserPage.goto('/app/files')
   await expect(browserPage.locator('[data-file-state="ready"]')).toBeVisible()
-  await expect(browserPage.locator('[data-file-state="ready"]')).toHaveScreenshot('file-directory-mobile-chromium.png', { animations: 'disabled' })
+  await expect(browserPage.locator('.file-directory')).toHaveScreenshot('file-directory-mobile-chromium.png', { animations: 'disabled' })
 })
 
 async function ok(route: Route, data: unknown) {

@@ -15,7 +15,7 @@ test('keeps the device directory aligned with the V3 desktop baseline', async ({
   await page.goto('/app/devices')
   await expect(page.getByRole('heading', { name: '设备会话', exact: true })).toBeVisible()
   await expect(page.locator('.device-directory')).toContainText('Chrome on Linux')
-  await expect(page.locator('.session-list')).toHaveScreenshot('devices-desktop-chromium.png', { animations: 'disabled' })
+  await expect(page.locator('.device-directory')).toHaveScreenshot('devices-desktop-chromium.png', { animations: 'disabled' })
 })
 
 test('keeps the device directory aligned with the V3 mobile baseline', async ({ page }) => {

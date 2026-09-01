@@ -17,13 +17,13 @@ test.beforeEach(async ({ page, browserName }) => {
 test('keeps the Definition catalog aligned with the V3 desktop baseline', async ({ page }) => {
   await page.goto('/app/agent/definitions')
   await expect(page.getByRole('heading', { name: 'Agent 定义' })).toBeVisible()
-  await expect(page.locator('.definition-list')).toHaveScreenshot('definitions-desktop-chromium.png', { animations: 'disabled' })
+  await expect(page.locator('.definition-shell')).toHaveScreenshot('definitions-desktop-chromium.png', { animations: 'disabled' })
 })
 
 test('keeps the Definition catalog aligned with the V3 mobile baseline', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/app/agent/definitions')
-  await expect(page.locator('.definition-list')).toHaveScreenshot('definitions-mobile-chromium.png', { animations: 'disabled' })
+  await expect(page.locator('.definition-shell')).toHaveScreenshot('definitions-mobile-chromium.png', { animations: 'disabled' })
 })
 
 async function ok(route: Route, data: unknown) {
