@@ -190,6 +190,7 @@ interactive_shadow_config="$(
   DIPOLE_AGENT_MODEL_MAX_CALLS=2 \
   DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS=15000 \
   DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS=512 \
+  DIPOLE_GATEWAY_AGENT_CONTROL_SECRET=compose-check-control-secret \
     docker compose \
       -f deploy/compose/docker-compose.microservices.yml \
       -f deploy/microservices/agent-ai-sdk-shadow.yml \
