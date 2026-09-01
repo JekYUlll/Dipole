@@ -2044,6 +2044,7 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-09-01：Remote GPU 长驻 Agent Shadow 体验项目已将 Core 静态资源更新到 `6d274a54`；Core、Gateway 与 Timeline 路由健康，部署前端资产包含等待审批入口。复用候选 `.env` 的单服务更新现要求显式传入 `DIPOLE_INTERNAL_CERT_DIR`，避免 mTLS 证书 bind 路径漂移。
 - 2026-09-01：Agent Task Timeline 对具有 approval ID 的 `waiting_approval` 事件提供审批页入口，使创建任务后的只读轨迹可进入既有 owner-scoped Human-in-the-loop 页面；已完成和无效事件保持无操作入口。
 - 2026-09-01：开发工作流收敛为主轨道连续 worktree 与里程碑提交；Remote GPU 开发验证可直接更新本轨道已有 Compose project，缺失依赖可经 sudo 安装。仅在明确冲突时新建隔离项目，普通 Smoke、脚本试验和文档验证不再创建完整临时集群。
 - 2026-08-30：Remote development 新增 `web-sync-bundle` 动作，提交同步后在 Remote GPU 生成绑定 revision 的 shadow bundle；该动作不启动 Compose、不申请 GPU，归档输出位于 `/tmp` 并保持不可覆盖和 `0600` 权限。

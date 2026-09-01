@@ -120,6 +120,11 @@ Memory、检索、MCP、外部 MCP、active authority 和写 Capability 均关�
 DeepSeek overlay 固定 `json_text` 与 `thinking=disabled`，避免不支持 JSON
 Schema response format 或仅返回 reasoning 的兼容性失败。
 
+复用长驻候选并单独重建 Core 或 Gateway 时，必须显式保留
+`DIPOLE_INTERNAL_CERT_DIR`，且该目录需要包含对应服务的 `.pem` 与 `-key.pem`
+文件。候选 `.env` 仅托管其配置与模型凭据，不能替代该宿主证书目录；缺失变量
+会使 Compose 将不存在的证书文件路径创建为目录，导致服务无法通过 mTLS 启动。
+
 实时数据面候选压测沿用 `scripts/bench/candidate_topology.sh`；Agent 默认保持 shadow 或 off，避免外部模型成本和延迟污染 IM 基线。完整 `k6` 基准和 Docker 构建固定在 Remote GPU 执行；本机仅保留脚本静态检查。
 
 迁移任务确认已在远端可执行后，可先预览再停止本机 Dipole 负载：
