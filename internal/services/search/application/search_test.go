@@ -27,6 +27,9 @@ func (*searchCoreStub) GetGroupByUUID(string) (*model.Group, error)             
 func (*searchCoreStub) GetGroupMember(string, string) (*model.GroupMember, error) { return nil, nil }
 func (*searchCoreStub) ListGroupMembers(string) ([]*model.GroupMember, error)     { return nil, nil }
 func (*searchCoreStub) GetOwnedFile(string, string) (*model.UploadedFile, error)  { return nil, nil }
+func (*searchCoreStub) ListOwnedFiles(string, string, int) (*application.OwnedFilePage, error) {
+	return &application.OwnedFilePage{}, nil
+}
 
 type searchIndexStub struct {
 	query model.MessageSearchQuery

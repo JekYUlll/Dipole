@@ -2,20 +2,26 @@ import { createHash } from "node:crypto";
 
 import { z } from "zod";
 
+import { observationalCandidateTypeSchema } from "./memory-type-policy.js";
+
 const identifier = z.string().trim().min(1).max(128).regex(/^[A-Za-z0-9][A-Za-z0-9_.:/-]*$/);
 const isoDate = z.iso.datetime();
 const contentLimit = 16 * 1024;
+const safeCandidateContent = (max: number, label: string) => z.string().trim().min(1).max(max).refine(
+  (value) => !/(?:password|passwd|token|secret|authorization|bearer|api[_ -]?key)\s*[:=]/i.test(value),
+  { message: `memory candidate ${label} contains a credential pattern` },
+);
 const candidateSchema = z.object({
   schemaVersion: z.literal("dipole.agent.memory-candidate.v1"),
   memoryId: z.string().regex(/^(?:OBS|REF)-[a-f0-9]{64}$/),
   tenantId: identifier,
   principalId: identifier,
   agentId: identifier,
-  memoryType: z.literal("observational"),
+  memoryType: observationalCandidateTypeSchema,
   resourceType: identifier,
   resourceId: identifier,
-  content: z.string().trim().min(1).max(contentLimit),
-  compactContent: z.string().trim().min(1).max(4096),
+  content: safeCandidateContent(contentLimit, "content"),
+  compactContent: safeCandidateContent(4096, "summary"),
   priority: z.number().int().min(0).max(1000),
   provenance: z.object({
     sourceType: z.enum(["message", "reflection"]),

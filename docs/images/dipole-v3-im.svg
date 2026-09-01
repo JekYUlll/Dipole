@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 354" role="img" aria-labelledby="dp-im-title dp-im-desc">
+  <title id="dp-im-title">Dipole IM</title>
+  <desc id="dp-im-desc">Two facing conversation bubbles, navy and signal red, joined by a two-tone link bar.</desc>
+  <defs>
+    <mask id="dp-slot-im" maskUnits="userSpaceOnUse" x="-10" y="-10" width="540" height="374">
+      <rect x="-10" y="-10" width="540" height="374" fill="#fff"/>
+      <rect x="110" y="104" width="300" height="128" rx="64" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#dp-slot-im)">
+    <path fill="#0D2744" d="M220 27.74a13 13 0 0 0 -9.11 -12.4A160 160 0 1 0 210.89 320.66a13 13 0 0 0 9.11 -12.4Z"/>
+    <path fill="#0D2744" d="M55 286L59 346L118 321.5Z"/>
+    <path fill="#EA2521" d="M300 27.74a13 13 0 0 1 9.11 -12.4A160 160 0 1 1 309.11 320.66a13 13 0 0 1 -9.11 -12.4Z"/>
+    <path fill="#EA2521" d="M465 286L461 346L402 321.5Z"/>
+  </g>
+  <g>
+    <path fill="#0D2744" d="M260 142H174a26 26 0 0 0 0 52H260Z"/>
+    <path fill="#EA2521" d="M260 142H346a26 26 0 0 1 0 52H260Z"/>
+  </g>
+</svg>

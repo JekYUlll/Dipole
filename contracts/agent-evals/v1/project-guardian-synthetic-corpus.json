@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "dipole.agent.subscription-prefilter-corpus.v1",
+  "corpusId": "project-guardian-synthetic",
+  "revision": "project-guardian-synthetic@v1",
+  "thresholds": {
+    "minimumPrecisionBps": 10000,
+    "minimumRecallBps": 10000,
+    "maximumP95LatencyMicros": 1000,
+    "maximumMeanCostMicrousd": 0
+  },
+  "cases": [
+    {
+      "id": "guardian.commitment-deadline",
+      "expectedRelevant": true,
+      "event": {
+        "eventId": "fixture:guardian:001",
+        "eventType": "message.group.created",
+        "aggregateId": "fixture-message:001",
+        "occurredAt": "2026-08-30T09:00:00.000Z",
+        "payload": {"conversation_key": "group:fixture-project", "content": "FIXTURE: owner commitment with a deadline"}
+      }
+    },
+    {
+      "id": "guardian.decision-recorded",
+      "expectedRelevant": true,
+      "event": {
+        "eventId": "fixture:guardian:002",
+        "eventType": "message.group.created",
+        "aggregateId": "fixture-message:002",
+        "occurredAt": "2026-08-30T09:01:00.000Z",
+        "payload": {"conversation_key": "group:fixture-project", "content": "FIXTURE: architecture decision recorded"}
+      }
+    },
+    {
+      "id": "guardian.delivery-risk",
+      "expectedRelevant": true,
+      "event": {
+        "eventId": "fixture:guardian:003",
+        "eventType": "message.group.created",
+        "aggregateId": "fixture-message:003",
+        "occurredAt": "2026-08-30T09:02:00.000Z",
+        "payload": {"conversation_key": "group:fixture-project", "content": "FIXTURE: delivery risk reported"}
+      }
+    },
+    {
+      "id": "guardian.owner-missing",
+      "expectedRelevant": true,
+      "event": {
+        "eventId": "fixture:guardian:004",
+        "eventType": "message.group.created",
+        "aggregateId": "fixture-message:004",
+        "occurredAt": "2026-08-30T09:03:00.000Z",
+        "payload": {"conversation_key": "group:fixture-project", "content": "FIXTURE: task has no confirmed owner"}
+      }
+    },
+    {
+      "id": "guardian.acknowledgement",
+      "expectedRelevant": false,
+      "event": {
+        "eventId": "fixture:guardian:005",
+        "eventType": "message.group.created",
+        "aggregateId": "fixture-message:005",
+        "occurredAt": "2026-08-30T09:04:00.000Z",
+        "payload": {"conversation_key": "group:fixture-project", "content": "FIXTURE: acknowledgement only"}
+      }
+    },
+    {
+      "id": "guardian.social-message",
+      "expectedRelevant": false,
+      "event": {
+        "eventId": "fixture:guardian:006",
+        "eventType": "message.group.created",
+        "aggregateId": "fixture-message:006",
+        "occurredAt": "2026-08-30T09:05:00.000Z",
+        "payload": {"conversation_key": "group:fixture-project", "content": "FIXTURE: social message without project state"}
+      }
+    },
+    {
+      "id": "guardian.unrelated-group",
+      "expectedRelevant": false,
+      "event": {
+        "eventId": "fixture:guardian:007",
+        "eventType": "message.group.created",
+        "aggregateId": "fixture-message:007",
+        "occurredAt": "2026-08-30T09:06:00.000Z",
+        "payload": {"conversation_key": "group:fixture-other", "content": "FIXTURE: project-like content outside subscription scope"}
+      }
+    },
+    {
+      "id": "guardian.file-upload",
+      "expectedRelevant": false,
+      "event": {
+        "eventId": "fixture:guardian:008",
+        "eventType": "file.created",
+        "aggregateId": "fixture-file:008",
+        "occurredAt": "2026-08-30T09:07:00.000Z",
+        "payload": {"conversation_key": "group:fixture-project", "content": "FIXTURE: file upload without project state"}
+      }
+    }
+  ]
+}

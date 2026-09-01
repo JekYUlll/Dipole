@@ -20,6 +20,7 @@ struct KafkaRecord {
 // is introduced. This keeps event projection deterministic and testable.
 struct ProjectionPolicy {
   bool timeline_notify_shadow = false;
+  bool timeline_notify_primary = false;
   bool hot_group = false;
   int recent_message_count = 0;
 };

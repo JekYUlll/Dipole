@@ -1,0 +1,20 @@
+services:
+  agent:
+    environment:
+      # This profile exposes durable task controls while preserving the read-only
+      # shadow execution path used for the demo environment.
+      DIPOLE_AGENT_RUNTIME_MODE: shadow
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true"
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: read_shadow
+      DIPOLE_AGENT_CONTROL_ENABLED: "true"
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
+      DIPOLE_AGENT_MEMORY_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"
+
+  gateway:
+    environment:
+      DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_MCP_ENABLED: "false"

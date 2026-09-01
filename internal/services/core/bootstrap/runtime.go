@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	"github.com/JekYUlll/Dipole/db/migrations"
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	platformBloom "github.com/JekYUlll/Dipole/internal/platform/bloom"
@@ -19,11 +19,16 @@ import (
 	platformObservability "github.com/JekYUlll/Dipole/internal/platform/observability"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
-	"github.com/JekYUlll/Dipole/internal/server"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
+	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
+	"github.com/JekYUlll/Dipole/internal/services/core/server"
+	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 // CoreRuntime owns only Core repositories, Core projections and the Core
@@ -34,6 +39,8 @@ type CoreRuntime struct {
 	coreRPC       *InternalRPCServer
 	metrics       *platformObservability.MetricsServer
 	messageSender *lazyCoreMessageSender
+	messageReader *lazyCoreMessageReader
+	searchConn    *grpc.ClientConn
 }
 
 func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
@@ -80,8 +87,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	if config.KafkaConfig().Enabled {
 		events = platformKafka.Client
 	}
-	processRepos := &appComposition.Repositories{
-		CoreProcess:   coreRepos,
+	processRepos := &server.Repositories{
 		Users:         coreRepos.Users,
 		Files:         coreRepos.Files,
 		Conversations: coreRepos.Conversations,
@@ -89,22 +95,22 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		Groups:        coreRepos.Groups,
 		Admin:         coreRepos.Admin,
 	}
-	messaging := appComposition.NewMessagingServicesFromProcesses(
+	messaging := newCoreMessagingServices(
 		coreRepos,
-		&appComposition.MessageProcessRepositories{},
-		&appComposition.SyncProcessRepositories{},
-		appComposition.MessagingDependencies{
-			Events:    events,
-			HotGroups: platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB),
-			Storage:   platformStorage.Client,
-		},
+		events,
+		platformHotGroup.NewDetectorWithClient(config.HotGroupConfig(), cache.RDB),
+		platformStorage.Client,
 	)
+	multipartMetrics := corefile.NewMultipartMetrics()
+	messaging.Files.WithMultipartMetrics(multipartMetrics)
 
 	runtime := &CoreRuntime{}
 	var systemMessages applicationPort.SystemMessageSender
+	messageReceipts := coreAgentToolReceiptQuery(messaging.Messages, nil)
 	if config.CoreMessageConfig().Transport == "grpc" {
 		runtime.messageSender = newLazyCoreMessageSender(config.InternalRPCConfig())
 		systemMessages = runtime.messageSender
+		messageReceipts = coreAgentToolReceiptQuery(messaging.Messages, runtime.messageSender)
 	}
 	cleanup := func() { runtime.Close() }
 	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
@@ -121,13 +127,229 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 
 	rpcCfg := config.InternalRPCConfig()
 	if rpcCfg.Enabled {
-		runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core)
+		var agentAdapter agentv1.AgentCapabilityServiceServer
+		if !rpcCfg.TLSEnabled {
+			cleanup()
+			return nil, fmt.Errorf("Agent Capability RPC requires internal RPC mTLS")
+		}
+		searches := make([]applicationPort.SearchApplication, 0, 1)
+		if rpcCfg.AgentConversationSearchEnabled {
+			search, searchConnection, composeErr := dialCoreSearchApplication(ctx, rpcCfg)
+			if composeErr != nil {
+				cleanup()
+				return nil, composeErr
+			}
+			runtime.searchConn = searchConnection
+			searches = append(searches, search)
+		}
+		agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
+		}
+		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
+		if composeErr = agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, agentRepos.Policy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("ensure standalone Agent Definition: %w", composeErr)
+		}
+		agentMessages := agentapplication.AgentCapabilityMessages(messaging.Messages)
+		if config.CoreMessageConfig().Transport == "grpc" {
+			runtime.messageReader = newLazyCoreMessageReader(rpcCfg)
+			agentMessages = runtime.messageReader
+		}
+		commandMessages := agentapplication.AgentCommandMessages(messaging.Messages)
+		if config.CoreMessageConfig().Transport == "grpc" {
+			commandMessages = runtime.messageSender
+		}
+		commands, composeErr := agentapplication.NewLocalAgentCommandV1(commandMessages)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Command: %w", composeErr)
+		}
+		capability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, agentMessages, messaging.Conversations, commands, searches...)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent capability: %w", composeErr)
+		}
+		authorizer, composeErr := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(agentRepos.Promotions)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent active promotion authorizer: %w", composeErr)
+		}
+		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy, authorizer)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Invocation resolver: %w", composeErr)
+		}
+		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy, authorizer)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Run admission: %w", composeErr)
+		}
+		approvalService, composeErr := agentapplication.NewPersistentAgentApprovalServiceV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Approval service: %w", composeErr)
+		}
+		approvalGrants, composeErr := agentapplication.NewPersistentAgentApprovalGrantResolverV1(agentRepos.ApprovalGrants)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Approval grant resolver: %w", composeErr)
+		}
+		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, messageReceipts)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Tool invocation audit: %w", composeErr)
+		}
+		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, commands)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Message Command execution: %w", composeErr)
+		}
+		controlAuthorizer, composeErr := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Task control authorizer: %w", composeErr)
+		}
+		workflowProjection, composeErr := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Task Workflow projection: %w", composeErr)
+		}
+		workflowRepairAudit, composeErr := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(agentRepos.Policy, agentRepos.Repairs)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Task Workflow repair audit: %w", composeErr)
+		}
+		agentServer, composeErr := agentgrpc.NewServerWithControlAndProjection(
+			capability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit,
+		)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent capability rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithTaskTimeline(agentRepos.TaskTimeline); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Task Timeline rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithApprovalGrants(approvalGrants); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Approval grant rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithToolAudits(toolAudits); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Tool invocation audit rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithMessageCommands(messageCommands); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Message Command rpc adapter: %w", composeErr)
+		}
+		storageCfg := config.StorageConfig()
+		if storageCfg.ArtifactEnabled {
+			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{
+				Enabled: storageCfg.ArtifactEnabled, Endpoint: storageCfg.ArtifactEndpoint,
+				AccessKey: storageCfg.ArtifactAccessKey, SecretKey: storageCfg.ArtifactSecretKey,
+				UseSSL: storageCfg.ArtifactUseSSL, Bucket: storageCfg.ArtifactBucket,
+				GeneralAccessKey: storageCfg.AccessKey, GeneralBucket: storageCfg.Bucket,
+			})
+			if artifactErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Artifact blob storage: %w", artifactErr)
+			}
+			artifacts, artifactErr := agentapplication.NewPersistentAgentArtifactServiceV1(agentRepos.Policy, agentRepos.Artifacts, artifactBlobs)
+			if artifactErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Artifact service: %w", artifactErr)
+			}
+			if _, artifactErr = agentServer.WithArtifacts(artifacts); artifactErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("configure standalone Agent Artifact rpc adapter: %w", artifactErr)
+			}
+		}
+		agentAdapter = agentServer
+		if rpcCfg.AgentMemoryPromotionReceiptCommitEnabled {
+			if !rpcCfg.TLSEnabled {
+				cleanup()
+				return nil, fmt.Errorf("Agent Memory promotion receipt commit requires internal RPC mTLS")
+			}
+			agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
+			}
+			authorizer, composeErr := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(agentRepos.Promotions)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent active promotion authorizer: %w", composeErr)
+			}
+			resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy, authorizer)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Invocation resolver: %w", composeErr)
+			}
+			promotions, composeErr := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(agentRepos.MemoryPromotions, time.Now)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Memory promotion service: %w", composeErr)
+			}
+			commits, composeErr := agentapplication.NewPersistentAgentMemoryPromotionReceiptCommitServiceV1(resolver, promotions, time.Now)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Memory receipt commit service: %w", composeErr)
+			}
+			if searchAdapter, ok := agentAdapter.(*agentgrpc.Server); ok {
+				if _, composeErr = searchAdapter.WithMemoryPromotionReceiptCommits(commits); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent Memory receipt rpc adapter: %w", composeErr)
+				}
+			} else if restrictedAdapter, ok := agentAdapter.(*agentgrpc.RestrictedServer); ok {
+				if _, composeErr = restrictedAdapter.WithMemoryPromotionReceiptCommits(commits); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent Memory receipt rpc adapter: %w", composeErr)
+				}
+			} else {
+				agentAdapter, composeErr = agentgrpc.NewMemoryPromotionReceiptServer(commits)
+				if composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("compose standalone Agent Memory receipt rpc adapter: %w", composeErr)
+				}
+			}
+		}
+		if rpcCfg.AgentOAuthAuthorizationTransactionConsumeEnabled {
+			if !rpcCfg.TLSEnabled {
+				cleanup()
+				return nil, fmt.Errorf("Agent OAuth authorization transaction consumption requires internal RPC mTLS")
+			}
+			agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
+			}
+			if searchAdapter, ok := agentAdapter.(*agentgrpc.Server); ok {
+				if _, composeErr = searchAdapter.WithOAuthAuthorizationTransactions(agentRepos.OAuthTransactions); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth authorization transaction rpc adapter: %w", composeErr)
+				}
+			} else if restrictedAdapter, ok := agentAdapter.(*agentgrpc.RestrictedServer); ok {
+				if _, composeErr = restrictedAdapter.WithOAuthAuthorizationTransactions(agentRepos.OAuthTransactions); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth authorization transaction rpc adapter: %w", composeErr)
+				}
+			} else {
+				agentAdapter, composeErr = agentgrpc.NewOAuthAuthorizationTransactionServer(agentRepos.OAuthTransactions)
+				if composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("compose standalone Agent OAuth authorization transaction rpc adapter: %w", composeErr)
+				}
+			}
+		}
+		runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core, agentAdapter)
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Core capability RPC: %w", err)
 		}
 	}
-	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber)
+	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), coreServiceName, platformKafka.Subscriber, multipartMetrics)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start Core metrics: %w", err)
@@ -149,6 +371,15 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	}
 	logger.Info("standalone Core runtime initialized", zap.String("mode", gatewayMode), zap.String("rpc_addr", rpcAddress(runtime.coreRPC)))
 	return runtime, nil
+}
+
+// coreAgentToolReceiptQuery keeps action-reference verification on the
+// authoritative Message service when standalone Core delegates message writes.
+func coreAgentToolReceiptQuery(local applicationPort.MessageCommandReceiptQuery, remote *lazyCoreMessageSender) applicationPort.MessageCommandReceiptQuery {
+	if remote != nil {
+		return remote
+	}
+	return local
 }
 
 func validateStandaloneCoreMode(mode string) error {
@@ -174,6 +405,18 @@ func (r *CoreRuntime) Close() {
 			logger.Warn("Core Message sender close failed", zap.Error(err))
 		}
 		r.messageSender = nil
+	}
+	if r.messageReader != nil {
+		if err := r.messageReader.Close(); err != nil {
+			logger.Warn("Core Message reader close failed", zap.Error(err))
+		}
+		r.messageReader = nil
+	}
+	if r.searchConn != nil {
+		if err := r.searchConn.Close(); err != nil {
+			logger.Warn("Core Search connection close failed", zap.Error(err))
+		}
+		r.searchConn = nil
 	}
 	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("Core metrics close failed", zap.Error(err))

@@ -1,5 +1,21 @@
 basePath: /api/v1
 definitions:
+  gateway.ErrorEnvelope:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+    type: object
+  gateway.SearchMessageListResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/httpdto.SearchMessageResponse'
+        type: array
+    type: object
   http.AdminOverviewResponseEnvelope:
     properties:
       code:
@@ -138,6 +154,13 @@ definitions:
       data:
         $ref: '#/definitions/httpdto.FileMultipartInitiateResponse'
     type: object
+  http.FileMultipartStatusResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.FileMultipartStatusResponse'
+    type: object
   http.GroupMemberListResponseEnvelope:
     properties:
       code:
@@ -232,6 +255,20 @@ definitions:
       data:
         $ref: '#/definitions/http.MultipartPartResponse'
     type: object
+  http.MultipartPresignResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.FileMultipartPresignResponse'
+    type: object
+  http.OwnedFileDirectoryResponseEnvelope:
+    properties:
+      code:
+        type: integer
+      data:
+        $ref: '#/definitions/httpdto.OwnedFileDirectoryResponse'
+    type: object
   http.PrivateUserListResponseEnvelope:
     properties:
       code:
@@ -263,15 +300,6 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/httpdto.PublicUserResponse'
-    type: object
-  http.SearchMessageListResponseEnvelope:
-    properties:
-      code:
-        type: integer
-      data:
-        items:
-          $ref: '#/definitions/httpdto.SearchMessageResponse'
-        type: array
     type: object
   http.SuccessEnvelope:
     properties:
@@ -345,6 +373,23 @@ definitions:
     properties:
       sync_seq:
         type: integer
+    type: object
+  httpdto.AgentMCPGrantRequest:
+    properties:
+      consent:
+        type: boolean
+      resource:
+        type: string
+      scopes:
+        items:
+          type: string
+        maxItems: 1
+        minItems: 1
+        type: array
+    required:
+    - consent
+    - resource
+    - scopes
     type: object
   httpdto.ApplyContactRequest:
     properties:
@@ -484,12 +529,6 @@ definitions:
         type: string
       last_seen_at:
         type: string
-      node_id:
-        type: string
-      remote_addr:
-        type: string
-      user_agent:
-        type: string
     type: object
   httpdto.DeviceSyncCheckpointResponse:
     properties:
@@ -519,6 +558,8 @@ definitions:
         type: string
       file_name:
         type: string
+      file_sha256:
+        type: string
       file_size:
         type: integer
     type: object
@@ -530,6 +571,69 @@ definitions:
         type: string
       total_parts:
         type: integer
+    type: object
+  httpdto.FileMultipartPartRegisterRequest:
+    properties:
+      etag:
+        type: string
+      size:
+        minimum: 1
+        type: integer
+    required:
+    - etag
+    - size
+    type: object
+  httpdto.FileMultipartPartStatus:
+    properties:
+      etag:
+        type: string
+      part_number:
+        type: integer
+      size:
+        type: integer
+    type: object
+  httpdto.FileMultipartPresignPart:
+    properties:
+      expires_at:
+        type: string
+      part_number:
+        type: integer
+      url:
+        type: string
+    type: object
+  httpdto.FileMultipartPresignRequest:
+    properties:
+      part_numbers:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - part_numbers
+    type: object
+  httpdto.FileMultipartPresignResponse:
+    properties:
+      parts:
+        items:
+          $ref: '#/definitions/httpdto.FileMultipartPresignPart'
+        type: array
+    type: object
+  httpdto.FileMultipartStatusResponse:
+    properties:
+      chunk_size:
+        type: integer
+      file_name:
+        type: string
+      file_size:
+        type: integer
+      session_id:
+        type: string
+      total_parts:
+        type: integer
+      uploaded_parts:
+        items:
+          $ref: '#/definitions/httpdto.FileMultipartPartStatus'
+        type: array
     type: object
   httpdto.GroupMemberResponse:
     properties:
@@ -635,6 +739,32 @@ definitions:
       target_type:
         type: integer
       target_uuid:
+        type: string
+    type: object
+  httpdto.OwnedFileDirectoryItem:
+    properties:
+      content_type:
+        type: string
+      created_at:
+        type: string
+      download_path:
+        type: string
+      file_id:
+        type: string
+      file_name:
+        type: string
+      file_size:
+        type: integer
+    type: object
+  httpdto.OwnedFileDirectoryResponse:
+    properties:
+      files:
+        items:
+          $ref: '#/definitions/httpdto.OwnedFileDirectoryItem'
+        type: array
+      has_more:
+        type: boolean
+      next_cursor:
         type: string
     type: object
   httpdto.PrivateUserResponse:
@@ -935,6 +1065,41 @@ paths:
       summary: 管理员修改用户状态
       tags:
       - Admin
+  /auth/agent-mcp/token:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: MCP resource、scope 与显式授权
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.AgentMCPGrantRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SuccessEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 签发第一方 Agent MCP 短期访问令牌
+      tags:
+      - Auth
   /auth/login:
     post:
       consumes:
@@ -1454,6 +1619,40 @@ paths:
       tags:
       - Conversation
   /files:
+    get:
+      parameters:
+      - description: 上一页最后一个文件 ID
+        in: query
+        name: cursor
+        type: string
+      - description: 每页数量，1-50
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.OwnedFileDirectoryResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 列出当前用户上传的文件
+      tags:
+      - File
     post:
       consumes:
       - multipart/form-data
@@ -1615,6 +1814,45 @@ paths:
       summary: 取消分片上传
       tags:
       - File
+    get:
+      parameters:
+      - description: 上传会话 ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.FileMultipartStatusResponseEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 查询分片上传状态
+      tags:
+      - File
   /files/uploads/{session_id}/complete:
     post:
       parameters:
@@ -1670,6 +1908,10 @@ paths:
         name: part_number
         required: true
         type: integer
+      - description: 分片 SHA-256（十六进制）
+        in: header
+        name: X-Part-SHA256
+        type: string
       produces:
       - application/json
       responses:
@@ -1704,6 +1946,115 @@ paths:
       security:
       - BearerAuth: []
       summary: 上传分片
+      tags:
+      - File
+  /files/uploads/{session_id}/parts/{part_number}/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 上传会话 ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      - description: 分片编号
+        in: path
+        name: part_number
+        required: true
+        type: integer
+      - description: 分片 ETag 和尺寸
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.FileMultipartPartRegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MultipartPartResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 登记已直传分片
+      tags:
+      - File
+  /files/uploads/{session_id}/parts/presign:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 上传会话 ID
+        in: path
+        name: session_id
+        required: true
+        type: string
+      - description: 分片编号
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/httpdto.FileMultipartPresignRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.MultipartPresignResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 签发分片直传 URL
       tags:
       - File
   /files/uploads/initiate:
@@ -1747,6 +2098,28 @@ paths:
       security:
       - BearerAuth: []
       summary: 初始化分片上传
+      tags:
+      - File
+  /files/uploads/policy:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SuccessEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 获取分片上传策略
       tags:
       - File
   /groups:
@@ -2344,19 +2717,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.SearchMessageListResponseEnvelope'
+            $ref: '#/definitions/gateway.SearchMessageListResponseEnvelope'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/http.ErrorEnvelope'
+            $ref: '#/definitions/gateway.ErrorEnvelope'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.ErrorEnvelope'
+            $ref: '#/definitions/gateway.ErrorEnvelope'
         "502":
           description: Bad Gateway
           schema:
-            $ref: '#/definitions/http.ErrorEnvelope'
+            $ref: '#/definitions/gateway.ErrorEnvelope'
       security:
       - BearerAuth: []
       summary: 搜索当前用户可访问的消息
@@ -2869,6 +3242,38 @@ paths:
       security:
       - BearerAuth: []
       summary: 下线当前用户所有设备
+      tags:
+      - Session
+  /users/me/devices/logout-others:
+    post:
+      parameters:
+      - description: 当前稳定设备 ID
+        in: header
+        name: X-Device-ID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.DeviceLogoutResponseEnvelope'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: 下线当前用户的其他设备
       tags:
       - Session
 schemes:

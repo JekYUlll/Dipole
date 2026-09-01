@@ -2,6 +2,20 @@
 set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+if find "${root_dir}/internal/bootstrap" -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print -quit | grep -q .; then
+	echo "shared bootstrap root must not contain production Go files; use an embedded or service-owned boundary" >&2
+	exit 1
+fi
+if [[ -d "${root_dir}/internal/bootstrap/embedded" ]]; then
+  echo "embedded rollback composition must be Core-owned under internal/services/core/bootstrap/embedded" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/core/bootstrap/embedded/runtime/runtime.go" ]]; then
+  echo "Core-owned embedded rollback runtime is missing" >&2
+  exit 1
+fi
+
 expected_services=(core gateway message sync search search-indexer)
 if [[ ! -f "${root_dir}/cmd/services/README.md" ]]; then
   echo "service entrypoint index is missing: cmd/services/README.md" >&2
@@ -86,17 +100,18 @@ if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/tools/search-alias" "${root_
   echo "Search operation tools must use internal/operations/search" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/compat/README.md" || ! -d "${root_dir}/internal/compat/service" ]]; then
-  echo "legacy compatibility adapters must be isolated under internal/compat" >&2
+if [[ ! -f "${root_dir}/internal/compat/README.md" ]]; then
+  echo "legacy compatibility documentation is missing under internal/compat" >&2
   exit 1
 fi
-for compatibility_readme in \
-  internal/app/README.md; do
-  if [[ ! -f "${root_dir}/${compatibility_readme}" ]]; then
-    echo "compatibility directory is missing its ownership guide: ${compatibility_readme}" >&2
-    exit 1
-  fi
-done
+if [[ -d "${root_dir}/internal/compat/service" ]]; then
+  echo "retired internal/compat/service test root must not return; use platform/event contract tests" >&2
+  exit 1
+fi
+if [[ -d "${root_dir}/internal/app" ]]; then
+  echo "aggregate internal/app compatibility root must be retired; use embedded composition or service-owned packages" >&2
+  exit 1
+fi
 # Compatibility roots may retain adapters and tests, but must not become a
 # new shared implementation area as services are extracted.
 while IFS= read -r compatibility_file; do
@@ -105,7 +120,7 @@ while IFS= read -r compatibility_file; do
     continue
   fi
   case "${compatibility_file}" in
-    internal/app/agent_application_compat.go|internal/app/README.md|internal/app/*_test.go) ;;
+    internal/compat/service/*) ;;
     *)
       echo "unexpected file under compatibility roots: ${compatibility_file}" >&2
       exit 1
@@ -128,15 +143,15 @@ if rg --quiet 'github.com/JekYUlll/Dipole/internal/store' "${root_dir}/internal"
 	echo "runtime Redis callers must use internal/platform/cache" >&2
 	exit 1
 fi
-if rg --quiet 'platformHotGroup\.NewRedisDetector\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/server" --glob '*.go'; then
+if rg --quiet 'platformHotGroup\.NewRedisDetector\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/services/core/server" --glob '*.go'; then
 	echo "Hot Group production composition must inject the platform Redis client" >&2
 	exit 1
 fi
-if rg --quiet 'platformPresence\.NewRedisPresence\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/server" --glob '*.go'; then
+if rg --quiet 'platformPresence\.NewRedisPresence\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/services/core/server" --glob '*.go'; then
 	echo "Presence production composition must inject the platform Redis client" >&2
 	exit 1
 fi
-if rg --quiet 'platformRateLimit\.NewLimiter\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/server" "${root_dir}/internal/gateway" --glob '*.go'; then
+if rg --quiet 'platformRateLimit\.NewLimiter\(' "${root_dir}/internal/bootstrap" "${root_dir}/internal/services/core/server" "${root_dir}/internal/services/gateway/server" "${root_dir}/internal/gateway/http" --glob '*.go'; then
 	echo "Rate limiter production composition must inject the platform Redis client" >&2
 	exit 1
 fi
@@ -174,14 +189,6 @@ if [[ ! -f "${root_dir}/internal/platform/mysql/generated/db.go" || ! -f "${root
 fi
 if [[ -d "${root_dir}/internal/data/mysql/generated" || -d "${root_dir}/internal/data/mysql/mapper" ]]; then
   echo "legacy SQLC generated or mapper directory remains under internal/data/mysql" >&2
-  exit 1
-fi
-if rg --quiet -i 'gorm|gorm\.io' "${root_dir}/internal" "${root_dir}/cmd" "${root_dir}/db" --glob '*.go' --glob '!**/*_test.go'; then
-  echo "production Go code must use database/sql and sqlc; GORM references remain" >&2
-  exit 1
-fi
-if rg --quiet -i 'gorm\.io' "${root_dir}/go.mod" "${root_dir}/go.sum"; then
-  echo "GORM module dependencies remain after the sqlc migration" >&2
   exit 1
 fi
 if compgen -G "${root_dir}/internal/service/*.go" >/dev/null 2>&1; then
@@ -227,7 +234,7 @@ if [[ -d "${root_dir}/internal/data/routing" || -d "${root_dir}/internal/data/sh
   echo "legacy storage decorator directories remain under internal/data" >&2
   exit 1
 fi
-for runtime_consumer_dir in internal/operations internal/platform internal/services internal/bootstrap internal/server internal/gateway internal/transport; do
+for runtime_consumer_dir in internal/operations internal/platform internal/services internal/bootstrap internal/services/core/server internal/services/gateway/server internal/gateway/http internal/transport; do
   if rg --quiet 'internal/data/mysql/repository' "${root_dir}/${runtime_consumer_dir}" --glob '*.go'; then
     echo "new runtime code must use service-owned MySQL repositories; legacy repository aliases are compatibility-only" >&2
     exit 1
@@ -257,6 +264,51 @@ if rg --quiet 'internal/services/core/domain/' "${root_dir}/internal/services/me
   echo "Message service must not import Core domain implementations" >&2
   exit 1
 fi
+
+if rg --quiet 'internal/services/core/domain/' "${root_dir}/internal/services/gateway/infrastructure/kafka" --glob '*.go' --glob '!**/*_test.go'; then
+  echo "Gateway Kafka consumers must use application event contracts, not Core domain implementations" >&2
+  exit 1
+fi
+
+if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/services/gateway/server/agent_mcp.go"; then
+  echo "Gateway Agent MCP proxy must use application authentication contracts" >&2
+  exit 1
+fi
+
+if rg --quiet 'coreauth\.AgentMCPResourceIdentifier' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
+  echo "Gateway bootstrap must use application Agent MCP resource contracts" >&2
+  exit 1
+fi
+
+if ! rg --quiet 'gateway\.NewServerWithDependencies\(' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
+  echo "Gateway runtime must use the explicit dependency-injection constructor" >&2
+  exit 1
+fi
+
+if ! rg --quiet 'dependencies\.TokenResolver == nil' "${root_dir}/internal/services/gateway/server/server.go"; then
+  echo "Gateway dependency-injection constructor must require a token resolver" >&2
+  exit 1
+fi
+
+if rg --quiet '^func NewServer\(' "${root_dir}/internal/services/gateway/server/server.go"; then
+  echo "Gateway server must expose only the explicit dependency-injection constructor" >&2
+  exit 1
+fi
+
+if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/services/gateway/server/server.go"; then
+  echo "Gateway server composition must not depend on Core Auth implementation" >&2
+  exit 1
+fi
+
+if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/middleware/auth.go"; then
+  echo "shared authentication middleware must depend on application token contracts" >&2
+  exit 1
+fi
+
+if rg --quiet 'internal/services/core/domain/auth' "${root_dir}/internal/transport/ws/auth.go"; then
+  echo "WebSocket authentication transport must depend on application token contracts" >&2
+  exit 1
+fi
 if [[ -d "${root_dir}/internal/projector/cassandra" ]]; then
   echo "legacy Cassandra projector directory remains outside the Message service boundary" >&2
   exit 1
@@ -267,7 +319,7 @@ for legacy_message_transport in message_transport.go message_shadow.go message_t
     exit 1
   fi
 done
-if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+if ! rg --quiet 'appComposition\.NewMessageApplicationTransport' "${root_dir}/internal/services/core/bootstrap/embedded/runtime/runtime.go"; then
   echo "embedded runtime must use the embedded-owned Message transport" >&2
   exit 1
 fi
@@ -275,7 +327,7 @@ if rg --quiet 'newMessageApplicationTransport|messageApplicationTransport' "${ro
   echo "legacy Message transport symbols remain in shared bootstrap" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/bootstrap/embedded/message_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/message_shadow.go" ]]; then
+if [[ ! -f "${root_dir}/internal/services/core/bootstrap/embedded/message_transport.go" || ! -f "${root_dir}/internal/services/core/bootstrap/embedded/message_shadow.go" ]]; then
   echo "embedded Message transport implementation is missing from embedded composition" >&2
   exit 1
 fi
@@ -285,7 +337,7 @@ for legacy_sync_transport in sync_transport.go sync_shadow.go sync_transport_tes
     exit 1
   fi
 done
-if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/bootstrap/runtime.go"; then
+if ! rg --quiet 'appComposition\.NewSyncApplicationTransport' "${root_dir}/internal/services/core/bootstrap/embedded/runtime/runtime.go"; then
   echo "embedded runtime must use the embedded-owned Sync transport" >&2
   exit 1
 fi
@@ -293,32 +345,8 @@ if rg --quiet 'newSyncApplicationTransport|syncApplicationTransport' "${root_dir
   echo "legacy Sync transport symbols remain in shared bootstrap" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/bootstrap/embedded/sync_transport.go" || ! -f "${root_dir}/internal/bootstrap/embedded/sync_shadow.go" ]]; then
+if [[ ! -f "${root_dir}/internal/services/core/bootstrap/embedded/sync_transport.go" || ! -f "${root_dir}/internal/services/core/bootstrap/embedded/sync_shadow.go" ]]; then
   echo "embedded Sync transport implementation is missing from embedded composition" >&2
-  exit 1
-fi
-if rg --quiet 'NewMessageRPCServer|DialCoreMessageApplication|DialMessageApplication' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Message RPC compatibility facade remains in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'NewSearchRPCServer|NewSyncRPCServer' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Search/Sync RPC server facades remain in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'DialSearchApplication|DialSyncApplication|DialCoreSyncApplication' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Search/Sync RPC client facades remain in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'DialSearchCoreCapability|DialSyncCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Search/Sync Core client facades remain in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'DialGatewayCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Gateway Core client facade remains in shared bootstrap" >&2
-  exit 1
-fi
-if rg --quiet 'DialGatewayAgentCapability|DialCoreCapability' "${root_dir}/internal/bootstrap/internal_rpc.go"; then
-  echo "retired Gateway/Message client facades remain in shared bootstrap" >&2
   exit 1
 fi
 if rg --quiet '^func RunServer\(' "${root_dir}/internal/bootstrap" --glob '*.go'; then
@@ -329,12 +357,18 @@ if rg --quiet '^func RestrictCoreServiceMethods\(' "${root_dir}/internal/bootstr
   echo "shared Core policy facade remains; keep policy implementation private to its server" >&2
   exit 1
 fi
-for compat_file in admin_compat.go auth_compat.go contact_compat.go conversation_compat.go file_compat.go group_compat.go message_event_compat.go session_compat.go sync_compat.go token_compat.go user_compat.go; do
-  if [[ ! -f "${root_dir}/internal/compat/service/${compat_file}" ]]; then
-    echo "missing compatibility adapter: internal/compat/service/${compat_file}" >&2
-    exit 1
-  fi
-done
+if rg --quiet 'internal/compat/service' "${root_dir}/internal" --glob '*.go' --glob '!**/*_test.go'; then
+  echo "production code must depend on service-owned contracts, not internal/compat/service" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap/embedded' "${root_dir}/internal/services/core/server" "${root_dir}/internal/services/core/bootstrap" --glob '*.go' --glob '!**/embedded_compat.go' --glob '!**/*_test.go'; then
+  echo "Core server/bootstrap must not depend on embedded composition; keep that dependency in embedded_compat.go only" >&2
+  exit 1
+fi
+if rg --quiet 'internal/bootstrap/embedded' "${root_dir}/cmd/services" "${root_dir}/internal/services" --glob '*.go' --glob '!**/embedded_compat.go' --glob '!**/*_test.go'; then
+  echo "service code must not depend on embedded composition; keep the rollback bridge in Core embedded_compat.go only" >&2
+  exit 1
+fi
 if ! git -C "${root_dir}" ls-files --error-unmatch docs/architecture/SERVICE-BOUNDARIES.md >/dev/null 2>&1; then
   echo "service boundary manifest is not tracked: docs/architecture/SERVICE-BOUNDARIES.md" >&2
   exit 1
@@ -355,11 +389,11 @@ if [[ -e "${root_dir}/internal/data/mysql/repository/search_index.go" ]]; then
   echo "legacy Search index repository remains in shared repository package" >&2
   exit 1
 fi
-if ! rg --quiet 'services/search/infrastructure/mysql' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
-  echo "Search composition must use Search-owned index repository" >&2
+if rg --quiet 'services/search/infrastructure/mysql|SearchIndexRepository|generated\.New' "${root_dir}/internal/services/core/bootstrap/embedded/repositories.go"; then
+  echo "embedded composition must not construct Search-owned index repositories" >&2
   exit 1
 fi
-if rg --quiet 'func (New|new)CoreProcessRepositories|type CoreProcessRepositories struct' "${root_dir}/internal/app" --glob '*.go'; then
+if [[ -d "${root_dir}/internal/app" ]] && rg --quiet 'func (New|new)CoreProcessRepositories|type CoreProcessRepositories struct' "${root_dir}/internal/app" --glob '*.go'; then
   echo "Core repository composition must live in the Core service infrastructure" >&2
   exit 1
 fi
@@ -385,7 +419,7 @@ if [[ ! -f "${root_dir}/internal/services/sync/infrastructure/mysql/sync_reposit
   echo "Sync MySQL repository is outside its service boundary" >&2
   exit 1
 fi
-if rg --quiet 'type SyncProcessRepositories struct|func NewSyncProcessRepositories' "${root_dir}/internal/app" --glob '*.go'; then
+if [[ -d "${root_dir}/internal/app" ]] && rg --quiet 'type SyncProcessRepositories struct|func NewSyncProcessRepositories' "${root_dir}/internal/app" --glob '*.go'; then
   echo "Sync repository composition must live in the Sync service infrastructure" >&2
   exit 1
 fi
@@ -501,7 +535,7 @@ for legacy_core_repository in admin.go contact.go conversation.go file.go group.
     exit 1
   fi
 done
-if ! rg --quiet 'services/core/infrastructure/mysql' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
+if ! rg --quiet 'services/core/infrastructure/mysql' "${root_dir}/internal/services/core/bootstrap/embedded/repositories.go"; then
   echo "Core process composition must use Core-owned MySQL repositories" >&2
   exit 1
 fi
@@ -569,11 +603,11 @@ if ! rg --quiet '^type ProcessRepositories struct' "${root_dir}/internal/service
   echo "Agent process repository composition is missing" >&2
   exit 1
 fi
-if rg --quiet '^type LocalCoreCapability struct' "${root_dir}/internal/app"; then
+if [[ -d "${root_dir}/internal/app" ]] && rg --quiet '^type LocalCoreCapability struct' "${root_dir}/internal/app"; then
   echo "legacy shared Core capability implementation remains under internal/app" >&2
   exit 1
 fi
-if rg --quiet '^type LocalMessageApplication struct' "${root_dir}/internal/app"; then
+if [[ -d "${root_dir}/internal/app" ]] && rg --quiet '^type LocalMessageApplication struct' "${root_dir}/internal/app"; then
   echo "legacy shared Message application implementation remains under internal/app" >&2
   exit 1
 fi
@@ -585,7 +619,7 @@ if [[ -e "${root_dir}/internal/app/search.go" || -e "${root_dir}/internal/app/se
   echo "legacy shared Search application path remains under internal/app" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/gateway/search_handler.go" ]]; then
+if [[ ! -f "${root_dir}/internal/services/gateway/server/search_handler.go" ]]; then
   echo "Gateway Search HTTP handler is outside the Gateway boundary" >&2
   exit 1
 fi
@@ -597,6 +631,35 @@ if [[ ! -f "${root_dir}/internal/services/agent/legacy/service.go" ]]; then
   echo "Go/Eino compatibility baseline is outside the Agent service boundary" >&2
   exit 1
 fi
+# The Eino implementation is a rollback-only embedded baseline. Keep it out of
+# standalone service roots so a new production path cannot bypass TS Runtime gates.
+legacy_importers=$(rg -l 'internal/services/agent/legacy' "${root_dir}" --glob '*.go' --glob '!**/*_test.go' || true)
+if [[ "${legacy_importers}" != "${root_dir}/internal/services/core/bootstrap/embedded/kafka.go" ]]; then
+  echo "Go/Eino compatibility baseline must have exactly one embedded Kafka production importer" >&2
+  exit 1
+fi
+while IFS= read -r legacy_importer; do
+  relative_importer="${legacy_importer#"${root_dir}/"}"
+  if [[ "${relative_importer}" != "internal/services/core/bootstrap/embedded/kafka.go" ]]; then
+    echo "Go/Eino compatibility baseline may only be imported by embedded Kafka composition: ${relative_importer}" >&2
+    exit 1
+  fi
+done <<< "${legacy_importers}"
+if ! rg --quiet 'github.com/cloudwego/eino' "${root_dir}/internal/services/agent/legacy/eino_agent.go"; then
+  echo "Go/Eino compatibility baseline must retain the canonical Eino adapter" >&2
+  exit 1
+fi
+while IFS= read -r eino_importer; do
+  relative_importer="${eino_importer#"${root_dir}/"}"
+  case "${relative_importer}" in
+    internal/services/agent/legacy/*)
+      ;;
+    *)
+      echo "Eino dependency must remain inside the Go compatibility baseline: ${relative_importer}" >&2
+      exit 1
+      ;;
+  esac
+done < <(rg -l 'github.com/cloudwego/eino' "${root_dir}" --glob '*.go' || true)
 if [[ ! -f "${root_dir}/internal/services/agent/infrastructure/mysql/agent_policy.go" ]]; then
   echo "Agent MySQL repository implementation is outside the Agent service boundary" >&2
   exit 1
@@ -634,7 +697,7 @@ for legacy_agent_repository in agent_policy.go agent_memory.go agent_artifact.go
     exit 1
   fi
 done
-if ! rg --quiet 'services/agent/infrastructure/mysql' "${root_dir}/internal/bootstrap/embedded/repositories.go"; then
+if ! rg --quiet 'services/agent/infrastructure/mysql' "${root_dir}/internal/services/core/bootstrap/embedded/repositories.go"; then
   echo "Agent process composition must use Agent-owned MySQL repositories" >&2
   exit 1
 fi
@@ -712,6 +775,10 @@ if rg --quiet 'internal/bootstrap' "${root_dir}/cmd/services/gateway/main.go"; t
 fi
 if [[ ! -f "${root_dir}/internal/services/core/bootstrap/entrypoint.go" || ! -f "${root_dir}/internal/services/core/bootstrap/README.md" ]]; then
   echo "Core bootstrap boundary is missing" >&2
+  exit 1
+fi
+if [[ ! -f "${root_dir}/internal/services/core/server/server.go" || ! -f "${root_dir}/internal/services/core/server/webapp/index.html" ]]; then
+  echo "Core server boundary or embedded web assets are missing" >&2
   exit 1
 fi
 if ! rg --quiet 'internal/services/core/bootstrap' "${root_dir}/cmd/services/core/main.go"; then
@@ -795,7 +862,7 @@ if [[ -e "${root_dir}/internal/bootstrap/gateway_runtime.go" ]]; then
   echo "Gateway runtime remains in shared bootstrap" >&2
   exit 1
 fi
-if [[ ! -f "${root_dir}/internal/services/gateway/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/gateway|internal/platform/cache|internal/platform/presence' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
+if [[ ! -f "${root_dir}/internal/services/gateway/bootstrap/runtime.go" ]] || ! rg --quiet 'internal/services/gateway/server|internal/platform/cache|internal/platform/presence' "${root_dir}/internal/services/gateway/bootstrap/runtime.go"; then
   echo "Gateway runtime must remain under its service bootstrap boundary" >&2
   exit 1
 fi

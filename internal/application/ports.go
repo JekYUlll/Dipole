@@ -45,6 +45,14 @@ type SystemMessageSender interface {
 	SendSystemGroupMessage(groupUUID, content string) error
 }
 
+// AgentMessageCommandSender is the trusted Message write boundary used after
+// Core has authorized an Agent capability invocation. Implementations preserve
+// the caller-provided client message ID for retries and receipt recovery.
+type AgentMessageCommandSender interface {
+	SendAssistantTextMessageContext(ctx context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+}
+
 type SyncPage struct {
 	Items   []*model.SyncMessage
 	NextSeq uint64
@@ -74,7 +82,16 @@ type CoreCapability interface {
 	GetGroupMember(groupUUID, userUUID string) (*model.GroupMember, error)
 	ListGroupMembers(groupUUID string) ([]*model.GroupMember, error)
 	GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error)
+	ListOwnedFiles(uploaderUUID, beforeFileUUID string, limit int) (*OwnedFilePage, error)
 	ListSearchConversationKeys(userUUID string) ([]string, error)
+}
+
+// OwnedFilePage is the low-sensitivity projection used by the owner file
+// directory. The cursor is a public file UUID, never an internal row ID.
+type OwnedFilePage struct {
+	Files      []*model.UploadedFile
+	NextCursor string
+	HasMore    bool
 }
 
 type AICallLogStore interface {
@@ -102,6 +119,7 @@ type AdminOverviewStore interface {
 type FileMetadataStore interface {
 	Create(file *model.UploadedFile) error
 	GetByUUID(uuid string) (*model.UploadedFile, error)
+	ListByUploaderBeforeID(uploaderUUID string, beforeID uint, limit int) ([]*model.UploadedFile, error)
 }
 
 type MessageOutboxBuilder func(message *model.Message) (*model.OutboxEvent, error)

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/agent-evals/v1/event-lease-reclaim-evidence.schema.json",
+  "title": "Dipole Agent Event Lease Reclaim Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "outcome", "isolation", "event_id", "task_id", "expired_claim_reclaimed", "stale_owner_completion_rejected", "reclaim_attempt_count", "completed_event_count", "collected_at", "expires_at", "production_authority", "content_sha256"],
+  "properties": {
+    "schema_version": { "const": "dipole.agent.event-lease-reclaim.v1" },
+    "outcome": { "const": "passed" },
+    "isolation": { "const": "disposable_mysql_agent_event_ledger_lease_reclaim" },
+    "event_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "task_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "expired_claim_reclaimed": { "const": true },
+    "stale_owner_completion_rejected": { "const": true },
+    "reclaim_attempt_count": { "const": 2 },
+    "completed_event_count": { "const": 1 },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "production_authority": { "const": false },
+    "content_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

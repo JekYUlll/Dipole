@@ -88,11 +88,11 @@ Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复�
 
 显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow` 后，Worker 使用既有 Agent Capability RPC 执行 Task/Run admission，并在 Workflow 终止前精确提交 completed、failed 或 cancelled Run。`wait_approval` 会先持久化 capability/scope/arguments/nonce 绑定；只有 request/approval ID 匹配且 Core 确认 actor 为 Task principal 的 Signal 才能完成 approved/revoked 并恢复 Workflow。该模式要求 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true` 及对应 target、共享密钥或 mTLS 配置。Workflow starter 和未来 Signal bridge 必须来自可信认证入口，模型无权设置 principal。当前 Kafka consumer 不启动 Workflow，模型、Capability Step 和权威 Task 状态继续由既有路径持有。
 
-显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
+显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list/read` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。Shadow 保留 `agent_tasks.status` 的策略生命周期，受 CAS 保护的 `workflow_status` 与 Run 共同表示本次 Durable 执行终态；评测只能接受两者中的有效终态记录，不能以仍在运行的策略 Task 伪造结果。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
 
 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow` 是外部 MCP 的独占常驻模式。它要求 external Profile、Temporal、Kafka、subscription trigger 与 Capability RPC 全部显式启用，并加载受约束 I/O/deployment route manifests；入口会跳过旧 Kafka runtime 和旧 Temporal Worker，使用统一 process 按 Worker/Client/Kafka 启动、Kafka/Client/Worker/Core 停止。Compose 默认不启用该模式。回滚先关闭 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`，并将 activity mode 恢复 `foundation`；任何真实外部连接前仍要求 fresh readiness evidence。
 
-Active Runtime 还要求 `DIPOLE_AGENT_RUNTIME_MODE=remote`、`DIPOLE_AGENT_CANDIDATE_VERSION` 和 `DIPOLE_AGENT_RELEASE_MANIFEST`。启动时会读取 release manifest，只有 candidate 一致且 manifest 已推进到 `user_gray` 才允许进入 `read_active`；`offline`/`shadow` 清单会 fail closed。回滚时先将 Runtime mode 恢复为 shadow 并关闭 active 依赖，release manifest 不会被启动过程改写。
+Active Runtime 还要求 `DIPOLE_AGENT_RUNTIME_MODE=remote`、`DIPOLE_AGENT_CANDIDATE_VERSION` 和 `DIPOLE_AGENT_RELEASE_MANIFEST`。微服务 Compose 默认使用 `shadow`，active 部署应额外加载 `deploy/microservices/agent-active.yml`，并提供只读 manifest、独立 `DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID`、OpenAI-compatible Provider 的 name/base URL/API key/routes、v2 Context profile，以及 Temporal address/namespace/task queue。overlay 会强制 `ai_sdk` 与 `read_active`，任一输入缺失都会在 Compose 渲染时拒绝，避免继承 shadow group 或本地 Temporal 默认值。启动时会读取 release manifest，只有 candidate 一致且 manifest 已推进到 `user_gray` 才允许进入 `read_active`；`offline`/`shadow` 清单会 fail closed。回滚时先移除 overlay，将 Runtime mode 恢复为 shadow 并关闭 active 依赖，release manifest 不会被启动过程改写。
 
 Agent 镜像使用 Node 22 Bookworm slim。Temporal Native Core 发布为 GNU libc 二进制，Alpine/musl 镜像无法启用 Worker。
 
@@ -131,7 +131,7 @@ npm run eval:offline -- --suite=../../contracts/agent-evals/v1/offline-suite.jso
 
 报告绑定 candidate version 与 canonical Suite SHA-256，按 outcome、trajectory、permission、retrieval、cost 输出低敏结果。合法且全部通过返回 0，合法但有失败返回 2，输入错误返回 1。新候选应把完整报告写入 `dipole.agent.shadow-promotion-evidence.v2`；`promotion:check` 自动分派 v1/v2，v2 要求五类报告全部通过。当前样例属于 synthetic Harness 证据，不能代表真实 Agent 效果。
 
-真实 Shadow Run 与 Task 均已完成，且 `promotion:check` 返回 eligible 后，可按 `contracts/agent-promotion/v2/publication.schema.json` 准备发布输入并执行：
+真实 Shadow Run 与其对应的 Durable Task 执行均已终态，且 `promotion:check` 返回 eligible 后，可按 `contracts/agent-promotion/v2/publication.schema.json` 准备发布输入并执行：
 
 ```bash
 DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true \
@@ -154,21 +154,38 @@ npm run repair:propose -- --input=/path/to/repair-input.json
 
 Shadow 模式仅生成并审计 plan，Policy Engine 拒绝 write/destructive capability。微服务默认使用 MySQL EventLedger，通过 Event ID/Task ID 唯一约束、claim token 与 lease 收敛重启和多副本重复投递；`memory` 只用于显式本地回滚。无效事件直接进入 dead，瞬时处理错误按 `retry_attempt` 有界重试；转移发布失败会让 handler 拒绝完成。migration v20 将 Plan 保存为不可变 Task 快照，并按顺序保存处于 `planned` 状态的结构化 capability Step；远程只读执行与 Step 终态将在 Agent Capability RPC 接入后启用。
 
-模型调用默认关闭。显式开启 AI SDK shadow planner 时配置有序 route 与预算，并通过 `AI_GATEWAY_API_KEY` 提供 Gateway 凭据：
+模型调用默认关闭。显式开启 AI SDK shadow planner 时，必须配置单一 OpenAI-compatible Provider、有序 route 与预算：
 
 ```bash
 DIPOLE_AGENT_MODEL_MODE=ai_sdk \
-DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini,anthropic/claude-sonnet-4.5 \
+DIPOLE_AGENT_MODEL_PROVIDER=openai_compatible \
+DIPOLE_AGENT_MODEL_PROVIDER_NAME=openai \
+DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.com/v1 \
+DIPOLE_AGENT_MODEL_API_KEY=... \
+DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS=false \
+DIPOLE_AGENT_MODEL_OUTPUT_MODE=json_schema \
+DIPOLE_AGENT_MODEL_ROUTES=openai/gpt-5-mini,openai/gpt-5-nano \
 DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2 \
 DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
 DIPOLE_AGENT_MODEL_MAX_CALLS=2 \
 DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS=15000 \
 DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS=512 \
-AI_GATEWAY_API_KEY=... \
 npm start
 ```
 
+Provider name 是 route 的稳定前缀，所有 route 必须使用相同前缀，例如 `openai/<model-id>`；Runtime 拒绝跨 Provider route、空密钥、无效 Provider name 和包含凭据/query/fragment 的 base URL，HTTP 仅允许 loopback 开发端点。密钥只从进程环境或部署 Secret 注入，不写入 Compose、Artifact、审计或日志。
+
+`DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS` 默认 `false`。只有 Provider 已验证支持 OpenAI JSON Schema response format 时才设为 `true`；该声明决定 AI SDK 是否为 Zod plan schema 请求结构化输出，避免向通用兼容网关发送不支持的字段。
+
+`DIPOLE_AGENT_MODEL_OUTPUT_MODE` 默认 `json_schema`。Provider 不支持该 response format 时可显式设置 `json_text`：Runtime 在同一次、无内部重试的调用中要求纯 JSON，再用同一份 Zod schema 在本地验证。无效 JSON 或 schema 不匹配照常使该次调用失败并由既有 ModelRouter 记录与预算控制。
+
+开发环境使用 `deploy/microservices/agent-ai-sdk-shadow.yml` 覆盖基础微服务 Compose。该 overlay 固定 `ai_sdk` 与 `openai_compatible`，其余 Provider、预算与 Context 输入均由受忽略的 `.env` 提供；移除 overlay 即回到默认 metadata Shadow Runtime。
+
 Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
+
+`DIPOLE_AGENT_RETRIEVAL_ENABLED` 默认 `false`。仅在 `MODEL_MODE=ai_sdk` 且 Capability RPC 已启用时，Runtime 才向模型公开并注册 `conversation.search`；每次调用仍由 Core 从 Task/Run 恢复 principal，复核独立 permission、`conversation/*/read` scope、query/结果/正文上限，并将命中作为有界 `untrusted` evidence。关闭该开关时，模型、Registry 和 Shadow 执行 Context 都只包含 `conversation.list/read`。
+
+`DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED` 也默认 `false`，且要求先开启 retrieval。启用后 Planner 仅从当前事件的 `payload.content` 提取最多 256 个 Unicode 字符作为查询，经 Core 受权检索最多 8 条结果，并在模型调用前按 Context budget 编译为带 `messageId`、conversation、sequence 和 query hash provenance 的 `untrusted` evidence。检索失败会阻断本次模型调用；缺少正文、关闭开关或预算不足时保持既有路径。该配置不启用 Elasticsearch、跨会话检索、共享环境流量或生产默认路径。
 
 `CONTEXT_COMPILER_VERSION` 默认并在 Compose 中固定为 `v1`，从而保持已有不可变 Plan 的 prompt 与 manifest 哈希。新候选可显式设置 `v2`；切换前应等待旧候选 Task 收敛或使用新的 Task cohort，回滚只需恢复 `v1`。
 

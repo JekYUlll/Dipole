@@ -57,6 +57,8 @@ function expectSharedDeviceCleanup(result: Awaited<ReturnType<typeof inspectShar
 }
 
 test('HTTP 401 clears only the current account on a shared browser profile', async ({ page }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', error => pageErrors.push(error.message))
   await prepareSharedDevice(page)
   await mockHTTP(page, true)
 
@@ -64,6 +66,7 @@ test('HTTP 401 clears only the current account on a shared browser profile', asy
   await expect(page).toHaveURL(/\/app\/login$/)
 
   expectSharedDeviceCleanup(await inspectSharedDevice(page))
+  expect(pageErrors).toEqual([])
 })
 
 test('WS session.kicked clears only the current account on a shared browser profile', async ({ page }) => {

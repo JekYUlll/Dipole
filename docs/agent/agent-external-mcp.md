@@ -1,6 +1,6 @@
 # Agent 外部 MCP 连接边界
 
-本文记录 Agent G4 外部 MCP Client 的配置、凭据和网络边界。当前已交付默认关闭的 Profile、Credential Catalog、Transport Factory 与可注入网络策略，生产 Runtime 仍不会创建外部连接。
+本文记录 Agent G4 外部 MCP Client 的配置、凭据和网络边界。当前已交付默认关闭的 Profile、Credential Catalog、Transport Factory、受控 Shadow Worker 装配与可注入网络策略；基础 Compose 不会创建外部连接，独立 Shadow overlay 仍需显式完整输入和共享环境证据。
 
 ## 信任边界
 
@@ -36,13 +36,26 @@ Compose 固定：
 DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false
 ```
 
-关闭时忽略残留 Profile 和 I/O manifest 配置，不解析凭据引用，也不创建连接。当前若显式开启，Runtime 仍在启动阶段返回错误；production I/O manifest loader 与 composition 已实现，但尚未注册到 `index.ts`。这一行为用于避免配置人员把独立构件误认为已具备灰度上线条件。
+关闭时忽略残留 Profile 和 I/O manifest 配置，不解析凭据引用，也不创建连接。`external_mcp_shadow` 已作为独占 Temporal activity mode 接入 Runtime 入口：只有 external Profile、Temporal、Kafka subscription trigger 和 Capability RPC 全部对齐时才会构造统一 process，任何部分启用或 mode 漂移都会在资源创建前拒绝。基础 Compose 继续固定关闭，避免配置人员把独立构件误认为已具备灰度上线条件。
+
+## 受控 Shadow 部署
+
+`deploy/microservices/agent-external-mcp-shadow.yml` 是唯一的 Compose 启用 overlay。它要求显式提供 Profile JSON、I/O manifest、route manifest、只读 secrets 目录、Kafka broker/独立 consumer group 与 Temporal address/namespace/task queue；渲染时会把 manifests 固定挂载到 `/run/dipole/external-mcp/`，并强制 `runtime_mode=shadow`、`trigger_mode=subscription`、`external_mcp_shadow`、metadata model、Memory/Control/first-party MCP server 关闭。
+
+```bash
+docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-external-mcp-shadow.yml \
+  config --quiet
+```
+
+`scripts/check-compose.sh` 会验证完整 overlay 的渲染语义，并确认缺少 Profile 时直接拒绝。该检查只证明部署契约，不能替代 Manifest owner/mode、fresh readiness、Core mTLS、Kafka/Temporal、真实公网 DNS/TLS、凭据 owner 或外部 Server 的联合演练。回滚仅需移除 overlay；基础 Compose 会恢复 `foundation` 与 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`。
 
 ## 轮换与吊销
 
 Catalog 以 `(tenant_id, credential_ref, version)` 作为唯一 binding。轮换顺序为：Secret Provider 创建新 secret version，Catalog 发布新的 active binding，Profile 切换到新 version，验证新建连，关闭旧轮次，最后把旧 binding 标记 revoked。每次建连重新解析 Catalog，因此后续旧版本调用会在 Transport 构造前被阻断。Activity 每个 Tool round 都使用 fresh Client/Transport，并在完成、取消或失败后关闭；Catalog 吊销不具备中断已发出远端请求的 authority，在途窗口由 100 ms 至 60 秒 request timeout、取消传播和下游 Server 端吊销共同约束。
 
-Catalog 提供受约束 file source，但尚未装配到 Runtime 启动链。路径必须为规范绝对路径，父目录不得经过 symlink，且由 root 或 Runtime UID 拥有、group/other 不可写；目标文件需要相同 owner/mode 边界，并且是 single-link regular file。默认上限 256 KiB，可在 32 B 至 1 MiB 间收紧。每次 resolve 都重新 `O_NOFOLLOW` 打开并有界读取，因此同目录原子 rename 后立即生效，读取或解析失败时不会回退旧内容。
+Catalog 提供受约束 file source，并由 `external_mcp_shadow` 的 deployment plan 在启用时装配到 Runtime 启动链。路径必须为规范绝对路径，父目录不得经过 symlink，且由 root 或 Runtime UID 拥有、group/other 不可写；目标文件需要相同 owner/mode 边界，并且是 single-link regular file。默认上限 256 KiB，可在 32 B 至 1 MiB 间收紧。每次 resolve 都重新 `O_NOFOLLOW` 打开并有界读取，因此同目录原子 rename 后立即生效，读取或解析失败时不会回退旧内容。
 
 默认 Kubernetes ConfigMap/Secret projected volume 依赖 symlink，会被该 source 拒绝。可以使用输出 regular file 的 CSI provider，或由受信 init/sidecar 把 lifecycle metadata 写入私有 tmpfs，并以同目录原子 rename 更新。Catalog 只含 opaque reference，仍需要部署层完整性、rollback revision 和可用性告警；不要降低 symlink、owner 或 mode 校验来适配挂载。
 
@@ -62,7 +75,7 @@ envelope 固定为 `DPMCP01 | 12-byte nonce | 1..8192-byte ciphertext | 16-byte 
 
 key 文件必须是 root/Runtime UID 拥有的 single-link regular file，禁止 group/other 任意权限和执行位；密文文件允许 group/other 只读，但禁止写入和执行。两者父目录都必须 canonical、owner 正确且不可被 group/world 写，并通过 `O_NOFOLLOW` 打开。推荐把 key 放在独立 tmpfs/受控 CSI/KMS 解封目录，密文放在另一只读挂载；把 key 与密文放在同一持久卷只能抵御密文单独泄露，无法抵御完整主机或卷快照泄露。
 
-凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接且旧轮次关闭后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或在途连接主动吊销，encrypted-file Provider 也尚未装配到启动链。
+凭据轮换应创建新的 key ref、secret ref、credential version 和文件，再按 Catalog 流程切换 Profile；确认新连接且旧轮次关闭后 revoke 旧 binding，并在后续配置发布中移除旧映射。原地替换同 key 的密文适合短期 token 更新，key 与密文的双文件原地更新缺少原子性，不用于 key rotation。当前没有 Vault/KMS/Secret Manager adapter、key lease 或在途连接主动吊销；encrypted-file Provider 只会在受控 `external_mcp_shadow` deployment plan 启用后构造。
 
 ## Production I/O 组合
 
@@ -78,11 +91,11 @@ loader 输出的 typed `io/options` 可直接传给 composition，并把同一 e
 
 `createExternalMcpReadCapabilityDefinitions` 提供代码拥有的外部只读 authority。当前唯一 definition 为 `repository.issue.read`：输入只接受 `owner`、`repo`、`issue_number`，仓库坐标规范化为小写，resource scope 固定为 `repository_issue/{owner}/{repo}#{issue_number}:read`，权限同 Capability ID，风险固定为 read。代码 egress ceiling 为 1 KiB 且只允许上述三个参数；route manifest 只能缩小字段集合或字节上限，无法改写 descriptor、schema 与 resource resolver。
 
-factory 每次返回独立 Registry，并在注册后 seal；descriptor、ceiling 及参数名 snapshot 同时冻结。调用方不能在 deployment load 前后追加 write/destructive 或其他外部 definition。factory 本身没有环境、manifest、RPC、凭据或网络依赖；生产 startup 尚未调用它，真实 Shadow route 仍需显式受控 manifest 与 Profile。
+factory 每次返回独立 Registry，并在注册后 seal；descriptor、ceiling 及参数名 snapshot 同时冻结。调用方不能在 deployment load 前后追加 write/destructive 或其他外部 definition。factory 本身没有环境、manifest、RPC、凭据或网络依赖；`external_mcp_shadow` 启用时由 production Worker bootstrap 调用，真实 Shadow route 仍需显式受控 manifest 与 Profile。
 
 `loadExternalMcpDeploymentPlan` 在启动接线之前提供唯一的 default-off 部署组合边界。它先解析一次 Profile，再以同一 owner UID 和 AbortSignal 顺序加载 production I/O 与 deployment route manifest；两者全部通过后才构造 production I/O runtime。返回值只包含 exact config、route Registry/routes、production runtime、Worker external-MCP 依赖和低敏 Runtime binding。readiness collector 与 gated Worker 因而共享同一 I/O snapshot、raw Registry 和有效上限，装配调用方无需重复拼接 binding options。
 
-deployment plan 构造不会打开 Catalog/key/envelope/CA，不执行 preflight、DNS、TLS、MCP discovery 或 RPC，也不创建 Temporal Worker；任一 manifest、Profile join、owner 或取消失败都会返回固定低敏错误且不暴露部分计划。external Profile disabled 时连 Profile JSON、I/O/route manifest 路径都不读取。该 plan 当前未注册到 `index.ts`、Compose 或任何自动启动路径。
+deployment plan 构造不会打开 Catalog/key/envelope/CA，不执行 preflight、DNS、TLS、MCP discovery 或 RPC，也不创建 Temporal Worker；任一 manifest、Profile join、owner 或取消失败都会返回固定低敏错误且不暴露部分计划。external Profile disabled 时连 Profile JSON、I/O/route manifest 路径都不读取。该 plan 由 `external_mcp_shadow` Runtime mode 的 Worker bootstrap 调用，基础 Compose 仍不选择该 mode。
 
 `runtime.preflight(signal?)` 在一次固定逻辑时间内解析所有 enabled Profile 的 Catalog binding，精确核对 tenant/ref/version，再按完整 binding 与 CA ref 去重。它通过正式 AuthProvider 验证 fresh encrypted Secret、Bearer 编码和源 buffer 擦除，并通过正式 CA Provider 验证文件证据及 PEM/X509 内容。成功收据只包含 schema version、enabled、checked-at 和 Profile/Credential/CA 聚合计数；路径、tenant、Profile、opaque ref、证书和 token 都不会进入收据。任何 revoke、binding 漂移、key/AAD/envelope/CA 损坏统一返回固定低敏错误，取消在依赖边界传播。
 
@@ -90,7 +103,7 @@ preflight 不调用 Registry、Transport Factory、DNS Resolver 或 TLS Dispatch
 
 `runtime.shadowConnectivityDrill({ profileId, tenantId }, signal?)` 是独立的只读在线证据边界。它重新通过 Registry 解析 exact Profile/Catalog，创建正式 guarded Transport 和 modern allowlisted Client，只执行协议 discovery/list；Server identity 必须匹配，全部 configured Tool 必须被发现。演练器不暴露 Client 的 Tool 调用方法，成功或失败都会收敛关闭连接。成功收据只保存 schema、checked-at 与 Tool 数量；Profile、tenant、Server、Tool、地址和证书信息留在受控运维输入/网络审计中。
 
-本地组合测试覆盖 exact binding、Tool 缺失、连接/握手/时钟失败、取消和清理；官方 HTTP handler 协议测试确认 modern discovery 完成且 `tools/call` 次数为零。public-only Guard 会拒绝 loopback/private 地址，所以真实 DNS/TLS 成功证据必须来自隔离 Shadow 环境，不能用本地私网绕过策略模拟。当前 loader、composition、preflight 与 drill 均未注册到 `index.ts` 或 Temporal Worker；上线接线仍需 provider owner 授权、只读 Shadow tenant allowlist、真实公网故障演练和回滚证据。
+本地组合测试覆盖 exact binding、Tool 缺失、连接/握手/时钟失败、取消和清理；官方 HTTP handler 协议测试确认 modern discovery 完成且 `tools/call` 次数为零。public-only Guard 会拒绝 loopback/private 地址，所以真实 DNS/TLS 成功证据必须来自隔离 Shadow 环境，不能用本地私网绕过策略模拟。loader、composition、preflight 与 drill 已通过 `external_mcp_shadow` Runtime mode 接入 Worker；上线前仍需 provider owner 授权、只读 Shadow tenant allowlist、真实公网故障演练和回滚证据。
 
 `runtime.readinessEvidence({ profileId, tenantId }, signal?)` 串行执行 preflight 和 drill，默认要求 5 分钟内完成，并校验 preflight 覆盖当前全部 Profile、Credential/CA 计数有界、在线 Tool 数等于目标 Profile allowlist、四个时间单调且均落在 collection window。任何收据重放、旧时间、计数漂移、取消或 cleanup 失败都不会生成 bundle；使用测试注入 `transportBuilder` 的 runtime 也固定拒绝出证。
 
@@ -137,7 +150,7 @@ npm --prefix agent-runtime run mcp:readiness:publish -- \
 
 ## Write Approval 边界
 
-Core `ResolveApprovalGrant` 与 `ConsumeApproval` RPC 只接受认证的 `dipole-agent` 和 active Run。Resolve 使用 Task、Capability、Core 计算的 Resource Scope SHA-256 与 canonical Arguments SHA-256 查询最多两条 approved、未消费、未撤销且未过期记录，只在唯一 exact binding 时返回；查询不改变状态。Consume 随后通过 MySQL/sqlc 原子条件更新完成一次性消费，重放、吊销、过期和任一字段漂移都无法成功。
+Core `ResolveApprovalGrant` 与 `ConsumeApproval` RPC 只接受认证的 `dipole-agent` 和 active Run。Core mTLS allowlist 显式包含这两个方法；其他 service identity、缺失或错误 shared secret 会在业务 handler 前拒绝。Resolve 使用 Task、Capability、Core 计算的 Resource Scope SHA-256 与 canonical Arguments SHA-256 查询最多两条 approved、未消费、未撤销且未过期记录，只在唯一 exact binding 时返回；查询不改变状态。Consume 随后通过 MySQL/sqlc 原子条件更新完成一次性消费，重放、吊销、过期和任一字段漂移都无法成功。
 
 Approval 创建时保存 `nonce_sha256`，Temporal durable binding 也只携带该摘要。它用于区分重复 Approval 并绑定原子 claim，不承担可恢复 Secret 的职责。Runtime 不再要求原始 nonce；认证 grant RPC 返回持久摘要，TS 仍会复核格式并在消费时原样提交。敏感凭据继续使用独立 Secret Provider 边界，不能借用 Approval nonce 字段。
 
@@ -209,7 +222,7 @@ factory 的公开结果只有 `routeBinding` 与 `activities.executeMcpDispatch`
 
 通用 `agentTaskWorkflow` 对 envelope 采用 additive 分支。首次执行从持久 admission 和 Core admission 结果派生 Task、Run、principal、request/trace，再调用唯一 `executeMcpDispatch`；`wait_input` 后只用 Activity 返回的完整 checkpoint 和状态机验证过的 Signal value 构造 resume。没有 envelope 的现有任务继续调用 `executeAgentTaskStep`，`TemporalTaskClient` 的普通输入类型不包含 execution authority。直接构造缺少 admission 或带附加 authority 字段的 envelope 会 fail closed，route-local Activity 仍会重新验证完整 binding 与参数。
 
-本地 Temporal Server 已验证 MCP begin、durable Elicitation、Worker replacement 和 resume，并回归现有 retry、approval、cancel、input expiry、step budget 与 read-shadow recovery。当前生产 `AgentTaskWorkerActivities` 未注册 `executeMcpDispatch`，专用 MCP client 也未装配到 `index.ts`；只有测试 Worker 显式提供 Activity。下一步仍需受控 Capability definition、真实 route manifest 和独立启动/回滚门禁。
+本地 Temporal Server 已验证 MCP begin、durable Elicitation、Worker replacement 和 resume，并回归现有 retry、approval、cancel、input expiry、step budget 与 read-shadow recovery。`external_mcp_shadow` 已通过受控启动 root 将 `executeMcpDispatch`、专用 MCP Workflow client 和统一 Kafka/Temporal process 接入 `index.ts`；只有 Profile、Temporal、Kafka subscription trigger 与 Capability RPC 同时显式启用时才会构造资源。基础配置仍选择 `foundation`，因此默认不注册 MCP Activity、不消费 Kafka 且不建立外部连接。共享 Shadow tenant、真实公网 DNS/TLS、凭据和回滚证据继续独立受控。
 
 `createExternalMcpTemporalWorkerComposition` 进一步把 deployment plan、multi-route runtime、普通 lifecycle Activities 与 Workflow execution catalog 收敛成一个 default-off bundle。plan 为 undefined 时函数在检查 base Activities 或解析依赖前直接返回；enabled 时先复算 Profile/I/O/readiness options 的 Runtime binding，验证 route binding、Capability egress policy、重复 route 与 `executeMcpDispatch` 名称冲突，然后才调用一次 Core/Artifact 端口 provider。该 provider 只交付端口，composition 不拥有或创建 gRPC resource。
 
@@ -225,11 +238,11 @@ startup 的第一次 validation 使用 host base Activities，保证 disabled/�
 
 resource 还从该 client 派生 persistent `admitAgentTask`、`finishAgentTask`、Workflow projection 与 Approval Activities，并与 host 的 `executeAgentTaskStep` 合成冻结 `workerActivities` snapshot。这样 MCP Workflow 的 Run admission、Context resolve、Invocation、readiness 与 Artifact 都观察同一认证 Core transport；未来 `index.ts` 接线无需为 lifecycle 另建 `temporalRPC`。host 若提供 read-shadow Step Activity，该 Step 仍保持原实现，五个 lifecycle Activity 则始终由 resource client 覆盖。
 
-RPC 构造后若 AbortSignal 已取消，factory 会先关闭 transport 再传播取消；构造错误固定为 unavailable，回滚或显式 close 错误固定为 cleanup failed。成功 resource 的 dependencies snapshot 冻结，close Promise 对成功和失败都只执行一次。该 adapter 没有修改 Proto，也不加载 deployment、启动 Worker、执行 readiness 或访问外部 MCP 网络；生产 `index.ts` 尚未调用它。
+RPC 构造后若 AbortSignal 已取消，factory 会先关闭 transport 再传播取消；构造错误固定为 unavailable，回滚或显式 close 错误固定为 cleanup failed。成功 resource 的 dependencies snapshot 冻结，close Promise 对成功和失败都只执行一次。该 adapter 没有修改 Proto，也不自行加载 deployment、启动 Worker、执行 readiness 或访问外部 MCP 网络；`external_mcp_shadow` 启用时由受控启动 root 按同一 deployment snapshot 调用它。
 
 resource 创建后若取消、composition 抛错或返回空结果，startup plan 会先调用一次 rollback close。清理成功时取消保留原 Abort reason，其他构造错误固定为低敏 unavailable；清理本身失败统一报告固定 cleanup failure，避免隐藏潜在资源泄漏或暴露 RPC target。成功返回的 `close()` 缓存首次 Promise，重复关闭以及首次关闭失败后的重试都不会再次触达底层 resource。
 
-成功结果同时保存 exact `deployment` 与 `worker` composition，后续 preflight、Worker registration 和专用 Workflow client 可以基于同一 snapshot 编排停止顺序。该层没有创建 Temporal Worker/Client、启动轮询、执行 readiness preflight/drill 或访问 raw Registry；生产 `index.ts` 和 Compose 尚未调用它。下一步接线仍需代码拥有的真实 read-only Capability definitions、受控 Shadow route manifest、RPC resource factory，以及“先停 Worker/Client、后关 resource”的集成测试。
+成功结果同时保存 exact `deployment` 与 `worker` composition，受控 Shadow 启动链以同一 snapshot 编排 Worker、专用 Workflow client 和停止顺序。该层本身不创建 Temporal Worker/Client、启动轮询、执行 readiness preflight/drill 或访问 raw Registry；只有 `external_mcp_shadow` mode 的启动 root 消费其结果。代码拥有的只读 Capability definition、受控 route manifest、RPC resource factory 与“先停 Worker/Client、后关 resource”的集成测试均已纳入该链路；共享环境的真实 manifest、readiness 和回滚演练仍待完成。
 
 `startExternalMcpTemporalWorkerLifecycle` 将 managed startup snapshot 与现有 `TemporalWorkerRuntime` 收敛为一个 owner。undefined snapshot 在读取 Temporal config 状态或创建 Worker 前返回；enabled snapshot 要求 Temporal config 同时 enabled，并把 composition 的 exact Activities 交给 Runtime。Runtime factory 同步失败、Worker 未进入 RUNNING 或后续启动失败都会先停止已创建的 Runtime，再关闭 startup resource；若 Runtime 尚未构造，则直接归还 resource。
 
@@ -237,11 +250,11 @@ resource 创建后若取消、composition 抛错或返回空结果，startup pla
 
 `startExternalMcpShadowWorkerBootstrap` 是当前完整但默认关闭的 Worker startup root。它先创建 seal 的 `repository.issue.read` definition Registry，再把 environment、base Activities 与 lazy RPC resource callback 交给 managed startup plan；只有 enabled deployment 通过 Profile/I/O/route/static composition 校验后，callback 才构造 RPC factory 和 transport。随后 exact startup snapshot 只交给 Temporal lifecycle 一次，成功结果直接公开同一 deployment、Worker composition、host Workflow route catalog 与 stop handle。
 
-bootstrap 在 lifecycle 调用前拥有 startup：load 完成后的取消会先关闭 RPC resource，再传播 Abort reason；关闭失败返回固定 cleanup error。调用 lifecycle 后 ownership 完全转移，bootstrap 不捕获并二次关闭，启动失败由 lifecycle 按 Worker/connection/resource 顺序回滚。disabled deployment 不构造 RPC factory、RPC transport 或 Worker。该 root 当前没有进入 `index.ts`/Compose，不创建 `TemporalMcpTaskClient`，也不自动发布 readiness；未来受控 Shadow 启用后，无 fresh evidence 的外部 egress 仍逐请求 fail closed。
+bootstrap 在 lifecycle 调用前拥有 startup：load 完成后的取消会先关闭 RPC resource，再传播 Abort reason；关闭失败返回固定 cleanup error。调用 lifecycle 后 ownership 完全转移，bootstrap 不捕获并二次关闭，启动失败由 lifecycle 按 Worker/connection/resource 顺序回滚。disabled deployment 不构造 RPC factory、RPC transport 或 Worker。该 root 由 `external_mcp_shadow` 的 process owner 调用，并会组合 `TemporalMcpTaskClient`；基础 Compose 不启用该 mode，也不自动发布共享环境 readiness。受控 Shadow 启用后，无 fresh evidence 的外部 egress 仍逐请求 fail closed。
 
 `TemporalMcpShadowTaskDispatcher` 提供事件驱动路径的可信 Workflow start boundary。它重新解析 `AgentEvent` 与 `AgentIdentity`，按 tenant、Agent、event type 和 aggregate 复算确定性 Task ID；不匹配会在 route selector 与 Temporal Client 前拒绝。admission 与固定 goal 在 selector 调用前由 Runtime 固化，事件和身份快照也会冻结，因此 selector 只能根据受信宿主逻辑返回 strict `{routeId, arguments}`，不能覆盖 tenant、principal、Agent、trigger、request/trace 或 goal。
 
-dispatcher 随后调用专用 `TemporalMcpTaskClient`，由 matching host catalog 注入 route version 与 manifest digest，再写入 `external_mcp_v1` history。业务参数仍会经过 16 KiB canonical JSON、route-local Capability schema、egress policy、Core Context 与资源权限复核。当前该类仅是可测试原语，没有创建 Temporal connection，也没有进入 `index.ts`、Compose 或 Shadow bootstrap。在受管 Client 生命周期和固定 route registration 接线前，不得直接以消息正文、模型输出或事件 payload 选择 route。
+dispatcher 随后调用专用 `TemporalMcpTaskClient`，由 matching host catalog 注入 route version 与 manifest digest，再写入 `external_mcp_v1` history。业务参数仍会经过 16 KiB canonical JSON、route-local Capability schema、egress policy、Core Context 与资源权限复核。该类由 `external_mcp_shadow` process 在受管 Client 生命周期内使用；它自身不创建 Temporal connection，基础 Compose 也不会选择该 mode。即使 mode 已接线，也不得直接以消息正文、模型输出或事件 payload 选择 route。
 
 subscription mode 现在将 Core 返回且经本地 filter 选中的 subscription 固化为 `subscriptionBinding`：其中只含 subscription ID、definition ID/version、tenant 与 Agent。事件 schema 要求 binding 的 subscription ID 与 admission 使用的顶层 ID 一致；旧 direct-target 和只有顶层 ID 的事件仍可解析。`TemporalMcpSubscriptionRouteSelector` 进一步把 exact definition ID/version 映射到代码注册的 route 和参数 resolver，并在 resolver 前核对 tenant/Agent。definition 版本升级不会沿用旧映射，重复 binding、未知版本和非对象参数均固定拒绝。
 
@@ -251,11 +264,11 @@ Worker composition 在资源创建前再次验证全部 trigger route 属于 exa
 
 `startExternalMcpTemporalClientLifecycle` 提供受管 Workflow start connection。它只接受已启动的 `ExternalMcpTemporalWorkerLifecycle`，因此直接复用 Worker owner 冻结的 address、namespace、task queue 和 `workflowExecutions`；调用方没有第二份 Temporal config 或 route catalog 输入。Worker disabled 时 selector factory 与 Client resource factory 均不会调用；enabled 时先构造无网络 selector，再连接 Temporal。连接期间取消或后续构造失败会回滚 resource，错误只暴露固定 startup/cleanup 分类。
 
-Client lifecycle 只实现受信 `ShadowTaskDispatcher` 与 `stop()`。stop 立即关闭新 dispatch admission，等待已接受的 Workflow start 全部收敛后关闭独立 Client connection，并对成功或失败缓存同一 Promise。它不停止 Worker，也不关闭 Worker 持有的 Core/Artifact RPC；未来进程 owner 应先停止 Kafka consumer，再停止该 Client，最后停止 Worker lifecycle。当前该 owner 没有进入 bootstrap 或 `index.ts`，没有生产 route registration，也不会建立外部 MCP 网络连接。
+Client lifecycle 只实现受信 `ShadowTaskDispatcher` 与 `stop()`。stop 立即关闭新 dispatch admission，等待已接受的 Workflow start 全部收敛后关闭独立 Client connection，并对成功或失败缓存同一 Promise。它不停止 Worker，也不关闭 Worker 持有的 Core/Artifact RPC；process owner 先停止 Kafka consumer，再停止该 Client，最后停止 Worker lifecycle。该 owner 已由 `external_mcp_shadow` mode 组合到 Runtime 入口，但只在完整显式配置下启动；默认配置没有生产 route registration，也不会建立外部 MCP 网络连接。
 
 `startExternalMcpShadowTemporalRuntime` 是 Worker 与 Client 的单一 Temporal process owner。它先调用完整 Shadow Worker bootstrap，disabled deployment 直接返回；enabled 时把同一 Worker owner、route selector factory 和 AbortSignal 交给 managed Client。Client 构造失败会停止 Worker，Client 已交接后的取消会依次停止 Client 与 Worker。任何 rollback 阶段失败统一报告 cleanup failure，避免把半关闭状态误报为普通 startup failure。
 
-成功结果只公开 exact deployment、Worker composition、冻结 Temporal config、可信 `dispatch` 与幂等 `stop`。stop 固定先让 Client 拒绝新请求并 drain 已接受 Workflow start，再停止 Worker polling、Temporal connections 和同一 RPC resource；Client 或 Worker 失败都不会阻断后续清理。该 owner 不创建 Kafka consumer，也没有进入 `index.ts`/Compose；未来进程接线仍须把 Kafka 停止放在 owner.stop 之前，并提供受控 production route/resolver 与真实 readiness/Shadow 证据。
+成功结果只公开 exact deployment、Worker composition、冻结 Temporal config、可信 `dispatch` 与幂等 `stop`。stop 固定先让 Client 拒绝新请求并 drain 已接受 Workflow start，再停止 Worker polling、Temporal connections 和同一 RPC resource；Client 或 Worker 失败都不会阻断后续清理。上层 process owner 负责 Kafka consumer，并已由 `external_mcp_shadow` mode 接入 `index.ts`；基础 Compose 继续关闭。受控 production route/resolver 与真实 readiness/Shadow 证据仍是启用前置条件。
 
 `startExternalMcpShadowProcess` 进一步拥有 Kafka consumer 与上述 Temporal process。它只接受已启用的 subscription trigger：先启动 Temporal Worker/Client，再创建并启动 Kafka；disabled Kafka 或 Temporal deployment 保持零 Kafka 副作用。Kafka 构造、启动或交接后取消会先回收任何已创建的 Kafka runtime，再回收 Temporal owner。正常 stop 同样先停止 Kafka 接收新事件，再 drain Workflow Client 并关闭 Worker/Core resource，成功或失败均幂等。
 
@@ -271,9 +284,21 @@ Compose 仍保留 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED=false`、Temporal disabled 
 
 演练加载 mode `0600` 的 production route manifest，并复用正式 Capability definition、route/egress policy、Kafka consumer、MySQL EventLedger、Temporal Workflow、MCP Client 与 Artifact projector。Core fixture 仅在 Go test binary 中编译，通过生产 `newInternalRPCServer` 强制 TLS 1.3、客户端证书验证、metadata secret、caller allowlist 及证书 CN 一致性，并实现受信 subscription、Run/Invocation/Round/readiness/Artifact 隔离状态；TS 侧统一使用正式 `AgentCapabilityRPCClient`。MCP 传输仍通过显式本地测试边界注入，因此不会降低 production `public_only DNS + pinned TLS + encrypted secret` 防线，也不会获得 production authority。
 
+同一入口也执行 Approval gate 场景。它经 mTLS RPC 创建并批准 exact binding，验证一次受限 write operation；随后验证 denied binding、已消费 binding 与首次 operation failure 都不会触发第二次 operation。该测试只调用内存 fixture 的受控 operation，不发送 IM 消息，也不构成 active write、共享 Shadow 或 service-side commit 后不确定性证据。
+
+成功后，`approval:drill:check` 会验证 `contracts/agent-approval/v1/approval-gate-drill-evidence.schema.json` 对应的短期 receipt。它只记录固定 effect 基数、认证类型、时间窗、`production_authority=false` 与 canonical SHA-256；artifact 写入 gitignored `.artifacts/` 且默认 24 小时过期。它与 External MCP read receipt 独立，不能用于推断真实消息写入、共享环境状态或提交后的回滚语义。
+
 成功路径发送一个 subscription event，要求 exactly one allowlisted `read_issue` Tool 调用及一个 untrusted Artifact。随后以同 consumer group 和持久 ledger 重启 Runtime并重发同 Event ID，确认不启动第二个 Workflow或 Tool；最后让 readiness receipt 过期后发送新事件，要求 Workflow 收敛为 failed 且 Tool count 不增加。fresh gate 现在使用 Worker 当前时钟要求 `expiresAt > now`，因此历史回执会在 raw Registry、Catalog 与 Transport 之前拒绝。
 
 证据默认写入 gitignored 的 `services/agent-runtime/.artifacts/external-mcp-shadow-drill.json`，文件 mode 为 `0600`，只包含 schema、通过状态、隔离类型、采集/失效时间、聚合计数、Core RPC 类型/认证门禁、布尔结果和 canonical `content_sha256`，不包含 tenant、Profile、Task、Event、Tool、路径、端口、消息正文、Token 或底层错误。v1 Schema 保留用于历史解释，`contracts/agent-external-mcp/v2/shadow-drill-evidence.schema.json` 固定当前语言中立结构；Runtime Zod parser 校验 canonical hash、最多 24 小时有效期及当前时钟，脚本末尾通过 `npm run mcp:shadow-drill:check -- --evidence=<path>` 复核完整证据。可用 `DIPOLE_AGENT_MCP_DRILL_EVIDENCE` 指向受控归档路径。内容 hash 用于发现文件漂移，没有签名身份或 production authority；当前 mTLS 证据覆盖隔离 Core composition，真实共享 Core 身份、公共 DNS/证书链/peer pinning、凭据轮换/吊销和 provider owner 仍需独立 Shadow tenant 演练。
+
+2026-08-30 已在 Remote GPU 一次性 worktree 上复核运行该脚本：隔离 MySQL、Kafka、Temporal、Go Core mTLS fixture 与本地 MCP 共同通过。证据为 `outcome=passed`、`event_count=2`、`ledger_completed_event_count=2`、`tool_call_count=1`、`artifact_count=1`；同 consumer group 重启重放被抑制，过期 readiness 被拒绝，Core RPC 的 mTLS 身份拒绝检查通过。该运行使用 disposable 资源并明确返回 `production_authority=false`，没有连接共享 Core、Kafka、Temporal、Provider 或外部 MCP Server。
+
+2026-09-01 在候选 revision `3c1f3eba87921419ff7186b1ea7ff09d1a7206f9` 复跑通过。该 Remote GPU 的 disposable 环境受宿主 Linux AIO 配额影响，drill 专用 MySQL 已显式关闭 native AIO；基础微服务 Compose 未改动。低敏 MCP 和 approval receipt 已归档于 [agent-mcp-approval-shadow-2026-09-01](../../benchmarks/agent-mcp-approval-shadow-2026-09-01/)，确认单次本地 Tool/Artifact、重启去重、过期 readiness 拒绝、mTLS identity denial，以及一次已批准 fixture operation 的精确副作用基数。该证据继续限定为本地 fixture；approval 的 `denied_effect_count=0` 只表示零拒绝副作用，尚未覆盖审批 UI 或共享环境的 deny 流程。
+
+Approval receipt v2 进一步将拒绝语义与 effect count 分开绑定：`denied_authorization_rejected`、`consumed_replay_rejected` 和 `failed_replay_rejected` 都必须为 `true`，对应的 effect count 保持零。v1 receipt 继续作为历史归档；下一次 disposable drill 会产生 v2 receipt。该版本化不会把 fixture 结论扩展到审批 UI、IM 写入、真实外部 MCP 或共享环境。
+
+2026-09-01 在候选 revision `f0dcf98a0b366031f7097cfd331318d39a9cf7a6` 完成 v2 drill。归档的 [v2 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/) 已同时验证 deny、consumed replay 和 failed-operation replay 都被拒绝且没有新增 effect；同一运行仍通过本地 MCP、EventLedger 重启去重、过期 readiness 与 mTLS identity denial。该结论保持在 disposable fixture 范围内。
 
 该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
 

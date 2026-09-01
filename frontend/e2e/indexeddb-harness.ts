@@ -1,6 +1,6 @@
 import { BrowserSessionTerminator } from '../src/session/sessionTermination'
 import { IndexedDBSyncStore, isLocalSyncCapacityError } from '../src/sync/indexedDBSyncStore'
-import type { SyncPage } from '../src/sync/syncEngine'
+import { MessageSyncEngine, type SyncPage } from '../src/sync/syncEngine'
 import type { Message } from '../src/types'
 
 function message(id: number, conversation: string, content = `message-${id}`): Message {
@@ -91,6 +91,47 @@ const acceptance = {
       otherUserIDs: otherUser.messages.map(item => item.message_id),
       otherUserSyncSeq: otherUser.syncSeq,
     }
+  },
+
+  async syncRecovery(databaseName: string) {
+    await deleteDatabase(databaseName)
+    const firstStore = new IndexedDBSyncStore(indexedDB, IDBKeyRange, databaseName)
+    const firstRequests: number[] = []
+    const firstAcks: number[] = []
+    const firstEngine = new MessageSyncEngine(firstStore, {
+      list: async afterSeq => {
+        firstRequests.push(afterSeq)
+        return page([
+          { id: 1, conversation: 'direct:U1:U2' },
+          { id: 2, conversation: 'direct:U1:U2' },
+        ], 2)
+      },
+      acknowledge: async syncSeq => { firstAcks.push(syncSeq) },
+    })
+    await firstEngine.recover('U1', () => {})
+    firstStore.close()
+
+    const reopenedStore = new IndexedDBSyncStore(indexedDB, IDBKeyRange, databaseName)
+    const secondRequests: number[] = []
+    const secondAcks: number[] = []
+    const secondEngine = new MessageSyncEngine(reopenedStore, {
+      list: async afterSeq => {
+        secondRequests.push(afterSeq)
+        return page([
+          { id: 3, conversation: 'direct:U1:U2' },
+          { id: 4, conversation: 'direct:U1:U2' },
+        ], 4)
+      },
+      acknowledge: async syncSeq => { secondAcks.push(syncSeq) },
+    })
+    const delivered: string[] = []
+    const result = await secondEngine.recover('U1', messages => {
+      delivered.push(...messages.map(item => item.message_id))
+    })
+    const snapshot = await reopenedStore.load('U1')
+    reopenedStore.close()
+    await deleteDatabase(databaseName)
+    return { firstRequests, firstAcks, secondRequests, secondAcks, delivered, result, snapshot }
   },
 
   async sessionTermination(databaseName: string) {

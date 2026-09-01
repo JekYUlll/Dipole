@@ -6,6 +6,7 @@ import { createPool, type Pool } from "mysql2/promise";
 import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
+import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
@@ -29,6 +30,13 @@ import {
   type ShadowTaskDispatcher
 } from "../events/shadow-processor.js";
 import { AISDKStructuredModelClient } from "../models/ai-sdk-model-client.js";
+import {
+  createOpenAICompatibleModelResolver,
+  modelProviderCallOptions,
+  loadModelProviderConfig,
+  modelIDForRoute,
+  modelProviderConfigSchema
+} from "../models/openai-compatible-model-provider.js";
 import { ModelRouter } from "../models/model-router.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { MySQLModelAuditStore } from "../models/mysql-model-audit-store.js";
@@ -38,6 +46,8 @@ import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
 import type { AgentTaskActivities } from "../temporal/agent-task-activities.js";
+import { createInteractiveMessageExecutor } from "../mcp/mcp-message-write-projection.js";
+import { createReconnectingAgentCapabilityTransport } from "./reconnecting-agent-capability-transport.js";
 
 const shadowRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
@@ -59,9 +69,13 @@ const shadowRuntimeConfigSchema = z.object({
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
   modelMode: z.enum(["metadata", "ai_sdk"]),
+  modelProvider: modelProviderConfigSchema,
   modelRoutes: z.array(z.string().trim().min(1)),
   contextCompilerVersion: z.enum(["v1", "v2"]),
   memoryEnabled: z.boolean(),
+  retrievalEnabled: z.boolean(),
+  retrievalContextEnabled: z.boolean(),
+  interactiveMessageWritesEnabled: z.boolean(),
   modelContextProfiles: z.array(routeContextProfileSchema),
   modelBudget: z.object({
     maxCalls: z.number().int().min(1).max(10),
@@ -104,6 +118,13 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.runtimeMode === "active" && config.releaseManifestPath.length === 0) {
     refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires a release manifest", path: ["releaseManifestPath"] });
   }
+  if (config.enabled && !config.groupId.startsWith(`dipole-agent-${config.runtimeMode}-`)) {
+    refinement.addIssue({
+      code: "custom",
+      message: `Kafka ${config.runtimeMode} runtime requires an isolated dipole-agent-${config.runtimeMode}-* group`,
+      path: ["groupId"]
+    });
+  }
   if (config.enabled && config.brokers.length === 0) {
     refinement.addIssue({ code: "custom", message: "Kafka brokers are required when shadow runtime is enabled", path: ["brokers"] });
   }
@@ -112,6 +133,22 @@ const shadowRuntimeConfigSchema = z.object({
   }
   if (config.modelMode === "ai_sdk" && config.modelRoutes.length === 0) {
     refinement.addIssue({ code: "custom", message: "Agent model routes are required in AI SDK mode", path: ["modelRoutes"] });
+  }
+  if (config.modelMode === "ai_sdk" && config.modelProvider.kind !== "openai_compatible") {
+    refinement.addIssue({ code: "custom", message: "AI SDK model mode requires an OpenAI-compatible model provider", path: ["modelProvider"] });
+  }
+  if (config.modelMode === "ai_sdk" && config.modelProvider.kind === "openai_compatible") {
+    for (const route of config.modelRoutes) {
+      try {
+        modelIDForRoute(route, config.modelProvider.name);
+      } catch (error) {
+        refinement.addIssue({
+          code: "custom",
+          message: error instanceof Error ? error.message : "Model route does not match the configured provider",
+          path: ["modelRoutes"]
+        });
+      }
+    }
   }
   if (config.contextCompilerVersion === "v1" && config.modelContextProfiles.length > 0) {
     refinement.addIssue({
@@ -165,6 +202,15 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.memoryEnabled && config.modelMode !== "ai_sdk") {
     refinement.addIssue({ code: "custom", message: "Agent Memory requires AI SDK model mode", path: ["memoryEnabled"] });
   }
+  if (config.retrievalEnabled && config.modelMode !== "ai_sdk") {
+    refinement.addIssue({ code: "custom", message: "Agent retrieval requires AI SDK model mode", path: ["retrievalEnabled"] });
+  }
+  if (config.retrievalEnabled && !config.capabilityRpc.enabled) {
+    refinement.addIssue({ code: "custom", message: "Agent retrieval requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
+  }
+  if (config.retrievalContextEnabled && !config.retrievalEnabled) {
+    refinement.addIssue({ code: "custom", message: "Agent retrieval Context requires retrieval to be enabled", path: ["retrievalContextEnabled"] });
+  }
   if (config.capabilityRpc.enabled && config.capabilityRpc.tls.enabled &&
       (!config.capabilityRpc.tls.caFile || !config.capabilityRpc.tls.certFile || !config.capabilityRpc.tls.keyFile || !config.capabilityRpc.tls.serverName)) {
     refinement.addIssue({ code: "custom", message: "Agent Capability RPC mTLS files and server name are required", path: ["capabilityRpc", "tls"] });
@@ -177,9 +223,13 @@ const shadowRuntimeConfigSchema = z.object({
 export type ShadowRuntimeConfig = z.infer<typeof shadowRuntimeConfigSchema>;
 
 export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeConfig {
+  const configuredRuntimeMode = env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase();
+  if (configuredRuntimeMode !== undefined && configuredRuntimeMode !== "" && configuredRuntimeMode !== "shadow" && configuredRuntimeMode !== "remote") {
+    throw new Error("DIPOLE_AGENT_RUNTIME_MODE must be shadow or remote");
+  }
   return shadowRuntimeConfigSchema.parse({
     enabled: env.DIPOLE_AGENT_KAFKA_ENABLED?.trim().toLowerCase() === "true",
-    runtimeMode: env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase() === "remote" ? "active" : "shadow",
+    runtimeMode: configuredRuntimeMode === "remote" ? "active" : "shadow",
     candidateVersion: env.DIPOLE_AGENT_CANDIDATE_VERSION ?? "",
     releaseManifestPath: env.DIPOLE_AGENT_RELEASE_MANIFEST ?? "",
     brokers: (env.DIPOLE_AGENT_KAFKA_BROKERS ?? "").split(",").map((broker) => broker.trim()).filter(Boolean),
@@ -197,9 +247,13 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
     modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
+    modelProvider: loadModelProviderConfig(env),
     modelRoutes: (env.DIPOLE_AGENT_MODEL_ROUTES ?? "").split(",").map((route) => route.trim()).filter(Boolean),
     contextCompilerVersion: env.DIPOLE_AGENT_CONTEXT_COMPILER_VERSION?.trim().toLowerCase() || "v1",
     memoryEnabled: env.DIPOLE_AGENT_MEMORY_ENABLED?.trim().toLowerCase() === "true",
+    retrievalEnabled: env.DIPOLE_AGENT_RETRIEVAL_ENABLED?.trim().toLowerCase() === "true",
+    retrievalContextEnabled: env.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED?.trim().toLowerCase() === "true",
+    interactiveMessageWritesEnabled: env.DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED?.trim().toLowerCase() === "true",
     modelContextProfiles: parseRouteContextProfiles(env.DIPOLE_AGENT_MODEL_CONTEXT_PROFILES ?? ""),
     modelBudget: {
       maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
@@ -279,10 +333,17 @@ export function buildKafkaShadowRuntime(
   dispatcher?: ShadowTaskDispatcher,
   subscriptionMatcher?: ShadowSubscriptionMatcher,
   subscriptionShadowObserver?: SubscriptionShadowObserver,
-  subscriptionRuntimeGate?: SubscriptionRuntimeGate
+  subscriptionRuntimeGate?: SubscriptionRuntimeGate,
+  readPermissions?: readonly string[]
 ): KafkaShadowConsumer {
-  const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher);
-  return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
+  const processor = new ShadowEventProcessor(
+    planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher, undefined, readPermissions
+  );
+  return new KafkaShadowConsumer(factory, {
+    groupId: config.groupId,
+    topic: physicalTopic(config),
+    runtimeMode: config.runtimeMode
+  }, async (raw) => {
     let decoded;
     try {
       decoded = decodeMessageCreatedEvent(raw);
@@ -380,16 +441,19 @@ export function createKafkaShadowRuntime(
     registry = new CapabilityRegistry();
     registry.register(new ConversationListCapability(rpcTransport!.client));
     registry.register(new ConversationReadCapability(rpcTransport!.client));
+    if (config.retrievalEnabled) registry.register(new ConversationSearchCapability(rpcTransport!.client));
     trajectory = persistentAudit!;
   }
+  const modelCapabilityIds = singlePassModelCapabilityIDs(config);
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
-      new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
+      createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
+  ), modelCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors(), config.retrievalContextEnabled ? rpcTransport!.client : undefined)
     : new MetadataShadowPlanner();
   const consumer = buildKafkaShadowRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
-    dispatcher, subscriptionMatcher ?? (config.subscriptionShadowEnabled ? rpcTransport?.client : undefined), subscriptionShadowObserver
+    dispatcher, subscriptionMatcher ?? (config.subscriptionShadowEnabled ? rpcTransport?.client : undefined), subscriptionShadowObserver,
+    undefined, readCapabilityPermissions(config)
   );
   const mainTopic = physicalTopic(config);
   return {
@@ -442,9 +506,11 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   const registry = new CapabilityRegistry();
   registry.register(new ConversationListCapability(rpc.client));
   registry.register(new ConversationReadCapability(rpc.client));
+  if (config.retrievalEnabled) registry.register(new ConversationSearchCapability(rpc.client));
+  const modelCapabilityIds = singlePassModelCapabilityIDs(config);
   const planner = new ModelShadowPlanner(new ModelRouter(
-    new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
-  ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
+    createAISDKModelClient(config), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
+  ), modelCapabilityIds, routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors(), config.retrievalContextEnabled ? rpc.client : undefined);
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({
@@ -452,7 +518,11 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
       runtimeMode: config.runtimeMode,
       busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 },
       ...(config.runtimeMode === "shadow" ? { artifacts: rpc.client } : {}),
-      ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {})
+      ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {}),
+      ...(config.runtimeMode === "active" && config.interactiveMessageWritesEnabled
+        ? { interactiveMessage: createInteractiveMessageExecutor(rpc.client) }
+        : {}),
+      readPermissions: readCapabilityPermissions(config)
     }),
     client: rpc.client,
     start: async () => {
@@ -469,6 +539,14 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   };
 }
 
+function createAISDKModelClient(config: ShadowRuntimeConfig): AISDKStructuredModelClient {
+  return new AISDKStructuredModelClient(
+    createOpenAICompatibleModelResolver(config.modelProvider),
+    config.modelProvider.outputMode,
+    modelProviderCallOptions(config.modelProvider)
+  );
+}
+
 export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {
   const tls = config.capabilityRpc.tls;
   const credentials = tls.enabled
@@ -478,9 +556,11 @@ export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client:
     "grpc.ssl_target_name_override": tls.serverName,
     "grpc.default_authority": tls.serverName
   } : {};
-  const transport = new AgentCapabilityServiceClient(config.capabilityRpc.target, credentials, options);
+  const transport = createReconnectingAgentCapabilityTransport(
+    () => new AgentCapabilityServiceClient(config.capabilityRpc.target, credentials, options)
+  );
   return {
-    client: new AgentCapabilityRPCClient(transport, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs, config.runtimeMode, config.candidateVersion),
+    client: new AgentCapabilityRPCClient(transport.client, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs, config.runtimeMode, config.candidateVersion),
     close: () => transport.close()
   };
 }
@@ -492,6 +572,18 @@ function isLoopbackTarget(target: string): boolean {
     ? endpoint.slice(1, endpoint.indexOf("]"))
     : endpoint.slice(0, endpoint.lastIndexOf(":"));
   return host === "127.0.0.1" || host === "localhost" || host === "::1";
+}
+
+// Follow-up reads must use the fixed trusted discovery marker. The execution
+// layer resolves it only from the preceding conversation.list result.
+export function singlePassModelCapabilityIDs(_config: ShadowRuntimeConfig): readonly string[] {
+  return ["conversation.list", "conversation.read"];
+}
+
+function readCapabilityPermissions(config: ShadowRuntimeConfig): readonly string[] {
+  return config.retrievalEnabled
+    ? ["conversation.list", "conversation.read", "conversation.search"]
+    : ["conversation.list", "conversation.read"];
 }
 
 function physicalTopic(config: ShadowRuntimeConfig): string {

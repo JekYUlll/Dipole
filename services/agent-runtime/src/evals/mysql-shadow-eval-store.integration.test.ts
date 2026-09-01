@@ -20,7 +20,7 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
     const parsed = new URL(adminUrl!);
     parsed.pathname = `/${database}`;
     pool = createPool({ uri: parsed.toString(), timezone: "Z", connectionLimit: 4, multipleStatements: true });
-    for (const migration of [16, 17, 19, 20, 21, 22, 23, 26, 30]) {
+    for (const migration of [16, 17, 19, 20, 21, 22, 23, 24, 26, 30, 32, 54, 55]) {
       const prefix = migration.toString().padStart(6, "0");
       const [path] = migrationPaths.filter(item => item.includes(`/${prefix}_`));
       if (path === undefined) throw new Error(`missing Agent migration ${prefix}`);
@@ -41,11 +41,12 @@ integration("MySQL Shadow evaluation observation MySQL 8.4 contract", () => {
     const store = new MySQLShadowEvalObservationStore(pool);
 
     await expect(store.load("TASK-EVAL-1", "RUN-EVAL-1")).resolves.toEqual({
-      taskId: "TASK-EVAL-1", taskStatus: "completed", runId: "RUN-EVAL-1", runStatus: "completed",
+      taskId: "TASK-EVAL-1", taskStatus: "completed", workflowStatus: "completed",
+      runId: "RUN-EVAL-1", runStatus: "completed", traceId: "trace:eval-1",
       contextManifest: {
         selected: [{ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } }], omitted: []
       },
-      steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 20 }],
+      steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 20, authorization: { resourceType: "conversation", resourceId: "*", action: "list", decision: "allowed" } }],
       artifacts: [{ artifactType: "conversation_digest", version: 1 }],
       modelCalls: [{ route: "gateway/primary", status: "completed", inputTokens: 12, outputTokens: 3, latencyMs: 40 }],
       toolCalls: [{ status: "completed", latencyMs: 5 }]
@@ -61,24 +62,28 @@ const migrationPaths = [
   "../../../../db/migrations/000021_agent_runs.up.sql",
   "../../../../db/migrations/000022_agent_context_manifest.up.sql",
   "../../../../db/migrations/000023_agent_model_output_replay.up.sql",
+  "../../../../db/migrations/000024_agent_task_workflow_projection.up.sql",
   "../../../../db/migrations/000026_agent_artifacts.up.sql",
-  "../../../../db/migrations/000030_agent_tool_invocations.up.sql"
+  "../../../../db/migrations/000030_agent_tool_invocations.up.sql",
+  "../../../../db/migrations/000032_agent_runtime_promotion_grants.up.sql",
+  "../../../../db/migrations/000054_agent_run_trace_correlation.up.sql",
+  "../../../../db/migrations/000055_agent_shadow_step_authorization.up.sql"
 ];
 
 async function seed(pool: Pool): Promise<void> {
   await pool.execute(
-    "INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal) VALUES (?, ?, 1, 'dipole', 'U1', 'AI1', 'completed', 'event', 'E1', 'evaluate')",
+    "INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal, workflow_id, workflow_run_id, workflow_status, workflow_revision, workflow_updated_at) VALUES (?, ?, 1, 'dipole', 'U1', 'AI1', 'completed', 'event', 'E1', 'evaluate', 'dipole-agent-task/TASK-EVAL-1', 'temporal-1', 'completed', 2, UTC_TIMESTAMP(3))",
     ["TASK-EVAL-1", "DEF-EVAL-1"]
   );
   await pool.execute(
-    "INSERT INTO agent_runs (run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at) VALUES ('RUN-EVAL-1', 'TASK-EVAL-1', 'runtime-1', 'shadow', 'completed', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))"
+    "INSERT INTO agent_runs (run_uuid, task_uuid, runtime_id, trace_id, mode, status, started_at, completed_at) VALUES ('RUN-EVAL-1', 'TASK-EVAL-1', 'runtime-1', 'trace:eval-1', 'shadow', 'completed', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))"
   );
   await pool.execute(
     "INSERT INTO agent_shadow_plans (task_uuid, event_id, event_type, summary, plan_sha256, context_compiler_version, context_estimated_tokens, context_manifest_json) VALUES ('TASK-EVAL-1', 'E1', 'message.direct.created', 'summary', ?, 'v1', 10, ?)",
     ["a".repeat(64), JSON.stringify({ selected: [{ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } }], omitted: [] })]
   );
   await pool.execute(
-    "INSERT INTO agent_shadow_steps (task_uuid, step_no, capability_id, status, input_json, output_json, attempt_count, started_at, finished_at) VALUES ('TASK-EVAL-1', 1, 'conversation.list', 'completed', JSON_OBJECT(), JSON_OBJECT(), 1, '2026-08-27 00:00:00.000', '2026-08-27 00:00:00.020')"
+    "INSERT INTO agent_shadow_steps (task_uuid, step_no, capability_id, authorization_resource_type, authorization_resource_id, authorization_action, authorization_decision, status, input_json, output_json, attempt_count, started_at, finished_at) VALUES ('TASK-EVAL-1', 1, 'conversation.list', 'conversation', '*', 'list', 'allowed', 'completed', JSON_OBJECT(), JSON_OBJECT(), 1, '2026-08-27 00:00:00.000', '2026-08-27 00:00:00.020')"
   );
   await pool.execute(
     "INSERT INTO agent_model_runs (run_uuid, task_uuid, status, max_calls, total_timeout_ms, max_output_tokens_per_call, calls_reserved, started_at, completed_at) VALUES ('MODEL-RUN-1', 'TASK-EVAL-1', 'completed', 1, 1000, 100, 1, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))"

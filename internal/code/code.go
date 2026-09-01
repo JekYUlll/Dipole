@@ -11,14 +11,16 @@ const (
 )
 
 const (
-	AuthInvalidTelephone   int = 100100
-	AuthUserAlreadyExists  int = 100101
-	AuthInvalidCredentials int = 100102
-	AuthUserDisabled       int = 100103
-	AuthTokenRequired      int = 100104
-	AuthTokenInvalid       int = 100105
-	AuthLogoutFailed       int = 100106
-	AuthLoginRateLimited   int = 100107
+	AuthInvalidTelephone       int = 100100
+	AuthUserAlreadyExists      int = 100101
+	AuthInvalidCredentials     int = 100102
+	AuthUserDisabled           int = 100103
+	AuthTokenRequired          int = 100104
+	AuthTokenInvalid           int = 100105
+	AuthLogoutFailed           int = 100106
+	AuthLoginRateLimited       int = 100107
+	AuthCurrentPasswordInvalid int = 100108
+	AuthPasswordUnchanged      int = 100109
 )
 
 const (
@@ -96,6 +98,7 @@ const (
 	FileMultipartSessionNotFound int = 100707
 	FileMultipartSessionInvalid  int = 100708
 	FileMultipartPartInvalid     int = 100709
+	FileDirectoryQueryInvalid    int = 100710
 )
 
 const (

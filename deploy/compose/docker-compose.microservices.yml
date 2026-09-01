@@ -86,11 +86,16 @@ services:
       dockerfile: Dockerfile
     image: ${DIPOLE_AGENT_IMAGE:-dipole-agent:latest}
     restart: unless-stopped
+    env_file:
+      - path: ../../.env
+        required: false
     volumes:
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
     depends_on:
+      core:
+        condition: service_healthy
       kafka:
         condition: service_healthy
       mysql-permissions:
@@ -100,6 +105,7 @@ services:
       DIPOLE_AGENT_HOST: 0.0.0.0
       DIPOLE_AGENT_PORT: "8091"
       DIPOLE_AGENT_KAFKA_ENABLED: "true"
+      DIPOLE_AGENT_RUNTIME_MODE: shadow
       DIPOLE_AGENT_KAFKA_BROKERS: kafka:9092
       DIPOLE_AGENT_KAFKA_CLIENT_ID: dipole-agent
       DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-shadow-v1
@@ -120,7 +126,11 @@ services:
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/agent-key.pem
       DIPOLE_AGENT_MODEL_MODE: metadata
       DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v1
+      # Base shadow mode is v1. Route profiles belong to the explicit v2 overlays.
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: ""
       DIPOLE_AGENT_MEMORY_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"
       DIPOLE_AGENT_OTEL_ENABLED: ${DIPOLE_AGENT_OTEL_ENABLED:-false}
       OTEL_SERVICE_NAME: dipole-agent
       OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
@@ -139,6 +149,7 @@ services:
       DIPOLE_AGENT_MYSQL_USER: ${DIPOLE_AGENT_MYSQL_USER:-dipole_agent}
       DIPOLE_AGENT_MYSQL_PASSWORD: ${DIPOLE_AGENT_MYSQL_PASSWORD:-change-me}
       DIPOLE_AGENT_MYSQL_DATABASE: dipole
+      DIPOLE_AGENT_EVAL_MYSQL_URL: mysql://dipole_agent_eval:${DIPOLE_AGENT_EVAL_MYSQL_PASSWORD:-change-me}@mysql:3306/dipole
     healthcheck:
       test:
         - CMD
@@ -290,12 +301,14 @@ services:
         condition: service_completed_successfully
     environment:
       DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD: ${DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD:-change-me}
+      DIPOLE_AGENT_EVAL_MYSQL_PASSWORD: ${DIPOLE_AGENT_EVAL_MYSQL_PASSWORD:-change-me}
     volumes:
       - ../../configs/mysql/message-service-atomic-grants.dist.sql:/grants/message-atomic.sql:ro
       - ../../configs/mysql/message-service-projector-grants.dist.sql:/grants/message-projector.sql:ro
       - ../../configs/mysql/sync-service-grants.dist.sql:/grants/sync.sql:ro
       - ../../configs/mysql/agent-service-grants.dist.sql:/grants/agent.sql:ro
       - ../../configs/mysql/agent-timeline-repair-grants.dist.sql:/grants/agent-timeline-repair.sql:ro
+      - ../../configs/mysql/agent-eval-grants.dist.sql:/grants/agent-eval.sql:ro
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - >-
@@ -305,7 +318,9 @@ services:
         mysql -h mysql -uroot -proot123 < /grants/sync.sql &&
         mysql -h mysql -uroot -proot123 < /grants/agent.sql &&
         mysql -h mysql -uroot -proot123 < /grants/agent-timeline-repair.sql &&
-        mysql -h mysql -uroot -proot123 -e "ALTER USER 'dipole_agent_timeline_repair'@'%' IDENTIFIED BY '$$DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD'"
+        mysql -h mysql -uroot -proot123 < /grants/agent-eval.sql &&
+        mysql -h mysql -uroot -proot123 -e "ALTER USER 'dipole_agent_timeline_repair'@'%' IDENTIFIED BY '$$DIPOLE_AGENT_TIMELINE_REPAIR_MYSQL_PASSWORD'" &&
+        mysql -h mysql -uroot -proot123 -e "ALTER USER 'dipole_agent_eval'@'%' IDENTIFIED BY '$$DIPOLE_AGENT_EVAL_MYSQL_PASSWORD'"
 
   core:
     <<: *dipole-service
@@ -335,6 +350,8 @@ services:
       DIPOLE_INTERNAL_RPC_CORE_LISTEN_ADDRESS: 0.0.0.0:9091
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/core.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/core-key.pem
+      DIPOLE_INTERNAL_RPC_AGENT_CONVERSATION_SEARCH_ENABLED: "false"
+      DIPOLE_INTERNAL_RPC_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED: ${DIPOLE_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED:-false}
       DIPOLE_KAFKA_CLIENT_ID: dipole-core
       DIPOLE_PRESENCE_NODE_ID: core
       DIPOLE_STORAGE_ENDPOINT: minio:9000
@@ -346,8 +363,10 @@ services:
       DIPOLE_STORAGE_ARTIFACT_SECRET_KEY: ${DIPOLE_ARTIFACT_MINIO_SECRET_KEY:-dipoleartifactpass}
       DIPOLE_STORAGE_ARTIFACT_USE_SSL: "false"
       DIPOLE_STORAGE_ARTIFACT_BUCKET: dipole-agent-artifacts
-      DIPOLE_AI_ENABLED: "false"
-      DIPOLE_AI_RUNTIME_MODE: "off"
+      # Core owns the assistant user record. The separate TS Runtime owns the
+      # Shadow consumer, so Core remains in remote mode rather than embedding AI.
+      DIPOLE_AI_ENABLED: "true"
+      DIPOLE_AI_RUNTIME_MODE: "remote"
       DIPOLE_MYSQL_HOST: mysql
       DIPOLE_REDIS_HOST: redis
       DIPOLE_METRICS_ENABLED: "true"
@@ -541,6 +560,8 @@ services:
       DIPOLE_GATEWAY_CORE_HTTP_TARGET: http://core:8081
       DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: ${DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED:-false}
       DIPOLE_GATEWAY_AGENT_CONTROL_TARGET: http://agent:8091
+      DIPOLE_GATEWAY_AGENT_CONTROL_SECRET: ${DIPOLE_GATEWAY_AGENT_CONTROL_SECRET:-}
+      DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED: ${DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED:-false}
       DIPOLE_GATEWAY_AGENT_MCP_ENABLED: ${DIPOLE_GATEWAY_AGENT_MCP_ENABLED:-false}
       DIPOLE_GATEWAY_AGENT_MCP_TARGET: http://agent:8091
       DIPOLE_AUTH_AGENT_MCP_RESOURCE: ${DIPOLE_AGENT_MCP_RESOURCE:-https://dipole.local/api/v1/agent/mcp}
@@ -563,7 +584,7 @@ services:
       DIPOLE_METRICS_ENABLED: "true"
       DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
     ports:
-      - "8080:8080"
+      - "${DIPOLE_GATEWAY_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_GATEWAY_PORT:-8080}:8080"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
       interval: 5s
@@ -578,7 +599,20 @@ services:
     volumes:
       - ../../deploy/observability:/etc/prometheus:ro
     ports:
-      - "9090:9090"
+      - "${DIPOLE_PROMETHEUS_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_PROMETHEUS_PORT:-9090}:9090"
+
+  alertmanager:
+    profiles: ["observability"]
+    image: quay.io/prometheus/alertmanager:v0.28.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ../../deploy/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "${DIPOLE_ALERTMANAGER_BIND_ADDRESS:-127.0.0.1}:${DIPOLE_ALERTMANAGER_PORT:-9093}:9093"
 
   tempo:
     profiles: ["observability"]
@@ -613,4 +647,5 @@ volumes:
   minio_microservices_data:
   elasticsearch_microservices_data:
   tempo_trace_data:
+  alertmanager_data:
   realtime_cpp_evidence:

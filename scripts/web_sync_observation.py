@@ -15,6 +15,7 @@ from pathlib import Path
 SESSION_SCHEMA = "dipole.web-sync.observation-session.v1"
 EVIDENCE_SCHEMA = "dipole.web-sync.observation-evidence.v1"
 MINIMUM_WINDOW = timedelta(hours=24)
+MAX_FUTURE_SKEW = timedelta(minutes=5)
 MINIMUM_MATCHES = 100
 ALERT_QUERY = 'count(ALERTS{alertname=~"DipoleSyncProjector(Lag|Retry|DeadLetter)|DipoleWebSync(ShadowDivergence|ShadowOverflow|StorageFull|ClientErrors)",alertstate="firing"})'
 START_QUERIES = {
@@ -55,7 +56,7 @@ class PrometheusClient:
         return document
 
 
-def build_session(candidate_version, git_commit, bundle_path, prometheus_url, started_at, client):
+def build_session(candidate_version, git_commit, bundle_path, prometheus_url, started_at, client, now=None):
     candidate_version = candidate_version.strip()
     git_commit = git_commit.strip().lower()
     if not candidate_version:
@@ -64,9 +65,10 @@ def build_session(candidate_version, git_commit, bundle_path, prometheus_url, st
         raise ValueError("git commit must be a full 40-character SHA-1")
     prometheus_url = _prometheus_url(prometheus_url)
     bundle_path = Path(bundle_path)
-    if not bundle_path.is_file():
-        raise ValueError("candidate Web bundle is required")
+    if not bundle_path.is_file() and not bundle_path.is_dir():
+        raise ValueError("candidate Web bundle file or directory is required")
     started_at = _utc(started_at)
+    _reject_future_timestamp("session start", started_at, now)
     snapshot = _query_snapshot(client, START_QUERIES, started_at)
     values = snapshot["values"]
     issues = []
@@ -84,7 +86,7 @@ def build_session(candidate_version, git_commit, bundle_path, prometheus_url, st
         "version": candidate_version,
         "git_commit": git_commit,
         "bundle_path": bundle_path.name,
-        "bundle_sha256": _file_sha256(bundle_path),
+        "bundle_sha256": _bundle_sha256(bundle_path),
     }
     identity = {
         "candidate": candidate,
@@ -103,10 +105,11 @@ def build_session(candidate_version, git_commit, bundle_path, prometheus_url, st
     }
 
 
-def build_final_evidence(session, ended_at, client):
+def build_final_evidence(session, ended_at, client, now=None, archive=None):
     _validate_session(session)
     started_at = _parse_time(session["started_at"])
     ended_at = _utc(ended_at)
+    _reject_future_timestamp("observation end", ended_at, now)
     if ended_at - started_at < MINIMUM_WINDOW:
         raise ValueError("Web Sync observation requires a complete 24-hour window")
     snapshot = _query_snapshot(client, FINAL_QUERIES, ended_at)
@@ -124,6 +127,9 @@ def build_final_evidence(session, ended_at, client):
         issues.append("promotion recording rule is not ready")
     if (values["firing_alerts"] or 0) != 0:
         issues.append("Sync observation alerts are firing")
+    archive = _normalize_archive(archive, now=now)
+    if archive is None:
+        issues.append("evidence archive receipt is required")
     snapshot_hash = _sha256_json(snapshot)
     evidence = {
         "schema_version": EVIDENCE_SCHEMA,
@@ -138,15 +144,19 @@ def build_final_evidence(session, ended_at, client):
         "issues": issues,
         "final_snapshot": snapshot,
         "snapshot_sha256": snapshot_hash,
+        "archive": archive,
     }
     evidence["evidence_sha256"] = _sha256_json(evidence)
     return evidence
 
 
-def build_status(session, captured_at, client):
+def build_status(session, captured_at, client, now=None):
     _validate_session(session)
     captured_at = _utc(captured_at)
     started_at = _parse_time(session["started_at"])
+    if captured_at < started_at:
+        raise ValueError("Web Sync observation status cannot precede session start")
+    _reject_future_timestamp("status capture", captured_at, now)
     snapshot = _query_snapshot(client, FINAL_QUERIES, captured_at)
     return {
         "session_id": session["session_id"],
@@ -163,7 +173,7 @@ def verify_candidate(session, git_commit, bundle_path):
     if git_commit.strip().lower() != session["candidate"]["git_commit"]:
         raise ValueError("candidate Git commit changed during observation")
     bundle_path = Path(bundle_path)
-    if not bundle_path.is_file() or _file_sha256(bundle_path) != session["candidate"]["bundle_sha256"]:
+    if (not bundle_path.is_file() and not bundle_path.is_dir()) or _bundle_sha256(bundle_path) != session["candidate"]["bundle_sha256"]:
         raise ValueError("candidate Web bundle changed during observation")
 
 
@@ -221,6 +231,33 @@ def _file_sha256(path):
     return digest.hexdigest()
 
 
+def _bundle_sha256(path):
+    path = Path(path)
+    if path.is_file():
+        return _file_sha256(path)
+    if not path.is_dir():
+        raise ValueError("candidate Web bundle file or directory is required")
+
+    entries = []
+    for entry in sorted(path.rglob("*")):
+        if entry.is_symlink():
+            raise ValueError("candidate Web bundle directory cannot contain symbolic links")
+        if entry.is_file():
+            entries.append((entry.relative_to(path).as_posix(), _file_sha256(entry)))
+        elif not entry.is_dir():
+            raise ValueError("candidate Web bundle directory contains an unsupported entry")
+    if not entries:
+        raise ValueError("candidate Web bundle directory cannot be empty")
+
+    digest = hashlib.sha256()
+    for relative_path, entry_sha256 in entries:
+        digest.update(relative_path.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(entry_sha256.encode("ascii"))
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
 def _sha256_json(document):
     payload = json.dumps(document, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
@@ -230,6 +267,12 @@ def _utc(value):
     if value.tzinfo is None:
         raise ValueError("timestamp must include a timezone")
     return value.astimezone(timezone.utc)
+
+
+def _reject_future_timestamp(label, value, now=None):
+    reference = datetime.now(timezone.utc) if now is None else _utc(now)
+    if value > reference + MAX_FUTURE_SKEW:
+        raise ValueError(f"{label} cannot be more than {int(MAX_FUTURE_SKEW.total_seconds() / 60)} minutes in the future")
 
 
 def _iso(value):
@@ -247,6 +290,36 @@ def _prometheus_url(value):
     if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
         raise ValueError("Prometheus evidence URL cannot contain credentials, query, or fragment")
     return value.rstrip("/")
+
+
+def _normalize_archive(archive, now=None):
+    if archive is None:
+        return None
+    if not isinstance(archive, dict):
+        raise ValueError("evidence archive receipt must be an object")
+    required = ("uri", "object_version", "etag", "retention_until")
+    if any(not isinstance(archive.get(key), str) or not archive[key].strip() for key in required):
+        raise ValueError("evidence archive receipt is incomplete")
+    uri = archive["uri"].strip()
+    parsed = urllib.parse.urlparse(uri)
+    if parsed.scheme not in ("s3", "minio") or not parsed.netloc or parsed.query or parsed.fragment or parsed.username or parsed.password:
+        raise ValueError("evidence archive URI must be an opaque s3 or minio URI")
+    etag = archive["etag"].strip().strip('"')
+    if not re.fullmatch(r"[a-fA-F0-9]{32,64}", etag):
+        raise ValueError("evidence archive ETag must be a hexadecimal value")
+    try:
+        retention_until = _parse_time(archive["retention_until"].strip())
+    except (TypeError, ValueError) as error:
+        raise ValueError("evidence archive retention_until must include a timezone") from error
+    current = datetime.now(timezone.utc) if now is None else _utc(now)
+    if retention_until <= current:
+        raise ValueError("evidence archive retention_until must be in the future")
+    return {
+        "uri": uri,
+        "object_version": archive["object_version"].strip(),
+        "etag": etag.lower(),
+        "retention_until": _iso(retention_until),
+    }
 
 
 def _load_json(path):
@@ -275,6 +348,10 @@ def main(argv=None):
     finalize.add_argument("--git-commit", required=True)
     finalize.add_argument("--bundle", type=Path, required=True)
     finalize.add_argument("--output", type=Path, required=True)
+    finalize.add_argument("--archive-uri", required=True)
+    finalize.add_argument("--archive-object-version", required=True)
+    finalize.add_argument("--archive-etag", required=True)
+    finalize.add_argument("--archive-retain-until", required=True)
     finalize.add_argument("--at")
     args = parser.parse_args(argv)
     try:
@@ -289,7 +366,17 @@ def main(argv=None):
                 result = build_status(session, _at(args.at), client)
             else:
                 verify_candidate(session, args.git_commit, args.bundle)
-                result = build_final_evidence(session, _at(args.at), client)
+                result = build_final_evidence(
+                    session,
+                    _at(args.at),
+                    client,
+                    archive={
+                        "uri": args.archive_uri,
+                        "object_version": args.archive_object_version,
+                        "etag": args.archive_etag,
+                        "retention_until": args.archive_retain_until,
+                    },
+                )
                 write_immutable_json(args.output, result)
         print(json.dumps(result, ensure_ascii=True, sort_keys=True, indent=2))
         return 2 if result.get("decision") == "blocked" else 0

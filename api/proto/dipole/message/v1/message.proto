@@ -60,6 +60,16 @@ message SendGroupTextRequest {
   string client_message_id = 4;
 }
 
+// SendAssistantText is reserved for the trusted Core capability boundary.
+// The Message service keeps ownership of validation, persistence and deduplication.
+message SendAssistantTextRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string assistant_user_id = 2;
+  string target_user_id = 3;
+  string content = 4;
+  string client_message_id = 5;
+}
+
 message SendDirectFileRequest {
   dipole.common.v1.RequestContext context = 1;
   string target_user_id = 2;
@@ -79,6 +89,7 @@ message SendSystemDirectMessageRequest {
   string sender_user_id = 2;
   string target_user_id = 3;
   string content = 4;
+  string client_message_id = 5;
 }
 
 message SendSystemGroupMessageRequest {
@@ -144,6 +155,7 @@ message ListMessagesResponse {
 service MessageService {
   rpc SendDirectText(SendDirectTextRequest) returns (SendMessageResponse);
   rpc SendGroupText(SendGroupTextRequest) returns (SendMessageResponse);
+  rpc SendAssistantText(SendAssistantTextRequest) returns (SendMessageResponse);
   rpc SendDirectFile(SendDirectFileRequest) returns (SendMessageResponse);
   rpc SendGroupFile(SendGroupFileRequest) returns (SendMessageResponse);
   rpc SendSystemDirectMessage(SendSystemDirectMessageRequest) returns (SendMessageResponse);

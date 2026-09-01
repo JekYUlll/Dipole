@@ -12,6 +12,8 @@ export const CLAIM_AGENT_SHADOW_STEP = "UPDATE agent_shadow_steps\nSET status = 
 
 export const GET_AGENT_SHADOW_STEP = "SELECT status, claim_token FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = ? LIMIT 1";
 
+export const RECORD_AGENT_SHADOW_STEP_AUTHORIZATION = "UPDATE agent_shadow_steps\nSET authorization_resource_type = ?, authorization_resource_id = ?, authorization_action = ?, authorization_decision = ?\nWHERE task_uuid = ? AND step_no = ? AND claim_token = ? AND status = 'running' AND lease_expires_at >= UTC_TIMESTAMP()";
+
 export const COMPLETE_AGENT_SHADOW_STEP = "UPDATE agent_shadow_steps\nSET status = 'completed', output_json = ?, finished_at = UTC_TIMESTAMP(), lease_expires_at = UTC_TIMESTAMP(), last_error = NULL\nWHERE task_uuid = ? AND step_no = ? AND claim_token = ? AND status = 'running' AND lease_expires_at >= UTC_TIMESTAMP()";
 
 export const FAIL_AGENT_SHADOW_STEP = "UPDATE agent_shadow_steps\nSET status = 'failed', finished_at = UTC_TIMESTAMP(), lease_expires_at = UTC_TIMESTAMP(), last_error = ?\nWHERE task_uuid = ? AND step_no = ? AND claim_token = ? AND status = 'running'";

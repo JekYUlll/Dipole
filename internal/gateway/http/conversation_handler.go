@@ -7,15 +7,15 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coreconversation "github.com/JekYUlll/Dipole/internal/services/core/domain/conversation"
 )
 
 type conversationService interface {
-	ListForUser(userUUID string, limit int) ([]*service.ConversationView, error)
-	MarkDirectConversationRead(userUUID, targetUUID string) (*service.ConversationReadReceipt, error)
+	ListForUser(userUUID string, limit int) ([]*coreconversation.ConversationView, error)
+	MarkDirectConversationRead(userUUID, targetUUID string) (*coreconversation.ConversationReadReceipt, error)
 	MarkGroupConversationRead(userUUID, groupUUID string) error
 	UpdateGroupRemark(userUUID, groupUUID, remark string) (*model.Conversation, error)
 }
@@ -75,9 +75,9 @@ func (h *ConversationHandler) MarkDirectRead(c *gin.Context) {
 
 	if _, err := h.service.MarkDirectConversationRead(currentUser.UUID, c.Param("target_uuid")); err != nil {
 		switch {
-		case errors.Is(err, service.ErrConversationTargetRequired):
+		case errors.Is(err, coreconversation.ErrConversationTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ConversationTargetRequired, "target_uuid is required")
-		case errors.Is(err, service.ErrConversationTargetNotFound):
+		case errors.Is(err, coreconversation.ErrConversationTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.ConversationTargetNotFound, "target user not found")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -112,11 +112,11 @@ func (h *ConversationHandler) MarkGroupRead(c *gin.Context) {
 
 	if err := h.service.MarkGroupConversationRead(currentUser.UUID, c.Param("group_uuid")); err != nil {
 		switch {
-		case errors.Is(err, service.ErrConversationTargetRequired):
+		case errors.Is(err, coreconversation.ErrConversationTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ConversationTargetRequired, "group_uuid is required")
-		case errors.Is(err, service.ErrConversationTargetNotFound):
+		case errors.Is(err, coreconversation.ErrConversationTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.GroupNotFound, "group not found")
-		case errors.Is(err, service.ErrConversationPermissionDenied):
+		case errors.Is(err, coreconversation.ErrConversationPermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.GroupPermissionDenied, "group permission denied")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -160,13 +160,13 @@ func (h *ConversationHandler) UpdateGroupRemark(c *gin.Context) {
 	conversation, err := h.service.UpdateGroupRemark(currentUser.UUID, c.Param("group_uuid"), req.Remark)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrConversationTargetRequired):
+		case errors.Is(err, coreconversation.ErrConversationTargetRequired):
 			ErrorWithCode(c, http.StatusBadRequest, code.ConversationTargetRequired, "group_uuid is required")
-		case errors.Is(err, service.ErrConversationTargetNotFound):
+		case errors.Is(err, coreconversation.ErrConversationTargetNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.GroupNotFound, "group not found")
-		case errors.Is(err, service.ErrConversationPermissionDenied):
+		case errors.Is(err, coreconversation.ErrConversationPermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.GroupPermissionDenied, "group permission denied")
-		case errors.Is(err, service.ErrConversationRemarkTooLong):
+		case errors.Is(err, coreconversation.ErrConversationRemarkTooLong):
 			ErrorWithCode(c, http.StatusBadRequest, code.ConversationRemarkTooLong, "remark is too long")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())

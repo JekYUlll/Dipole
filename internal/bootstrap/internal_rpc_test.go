@@ -21,13 +21,16 @@ import (
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
-	appComposition "github.com/JekYUlll/Dipole/internal/bootstrap/embedded"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
+	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
+	appComposition "github.com/JekYUlll/Dipole/internal/services/core/bootstrap/embedded"
+	corerpc "github.com/JekYUlll/Dipole/internal/services/core/rpc"
 	gatewaybootstrap "github.com/JekYUlll/Dipole/internal/services/gateway/bootstrap"
 	messagebootstrap "github.com/JekYUlll/Dipole/internal/services/message/bootstrap"
 	searchbootstrap "github.com/JekYUlll/Dipole/internal/services/search/bootstrap"
 	syncbootstrap "github.com/JekYUlll/Dipole/internal/services/sync/bootstrap"
+	agentgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/agent"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	"google.golang.org/grpc"
@@ -75,9 +78,19 @@ type rpcAgentWorkflowProjectionStub struct{}
 type rpcAgentWorkflowRepairStub struct{ operator string }
 type rpcAgentSubscriptionStub struct{}
 type rpcAgentMemoryStub struct{}
+type rpcAgentMemoryPromotionCommitStub struct{ called bool }
 type rpcAgentArtifactStub struct {
 	artifact *application.AgentArtifactV1
 	body     []byte
+}
+
+func (s *rpcAgentMemoryPromotionCommitStub) CommitMemoryPromotionReceipt(_ context.Context, request application.AgentMemoryPromotionReceiptCommitRequestV1) (*application.AgentMemoryV1, error) {
+	s.called = true
+	return &application.AgentMemoryV1{
+		MemoryUUID: "MEM-COMMIT-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: request.CandidateUUID, Sequence: request.ReviewUUID},
+	}, nil
 }
 
 func (rpcAgentSubscriptionStub) MatchEventSubscriptions(_ context.Context, request application.AgentEventSubscriptionMatchRequestV1) ([]application.AgentEventSubscriptionV1, error) {
@@ -220,6 +233,9 @@ func (rpcCoreStub) ListGroupMembers(groupUUID string) ([]*model.GroupMember, err
 func (rpcCoreStub) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
 	return &model.UploadedFile{UUID: fileUUID, UploaderUUID: uploaderUUID, FileName: "rpc-file"}, nil
 }
+func (rpcCoreStub) ListOwnedFiles(string, string, int) (*application.OwnedFilePage, error) {
+	return &application.OwnedFilePage{}, nil
+}
 
 func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 	cfg := config.InternalRPC{
@@ -228,7 +244,7 @@ func TestCoreRPCServerAndClientUseAuthenticatedNetworkChannel(t *testing.T) {
 		CoreListenAddress:  "127.0.0.1:0",
 		DialTimeoutSeconds: 2,
 	}
-	server, err := NewCoreRPCServer(cfg, rpcCoreStub{})
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start core rpc server: %v", err)
 	}
@@ -271,7 +287,7 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 		Enabled: true, SharedSecret: "test-secret", DeliveryObservationListenAddress: "127.0.0.1:0",
 		DialTimeoutSeconds: 2,
 	}
-	server, err := NewDeliveryObservationRPCServer(cfg, receiver)
+	server, err := gatewaybootstrap.NewDeliveryObservationRPCServer(cfg, receiver)
 	if err != nil {
 		t.Fatalf("start delivery observation rpc: %v", err)
 	}
@@ -281,8 +297,8 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 		server.Close(ctx)
 	})
 
-	connection, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
-		Service: realtimeServiceName, Secret: cfg.SharedSecret,
+	connection, err := platformrpc.Dial(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+		Service: "dipole-realtime", Secret: cfg.SharedSecret,
 	})
 	if err != nil {
 		t.Fatalf("dial delivery observation as Realtime: %v", err)
@@ -293,7 +309,7 @@ func TestDeliveryObservationRPCUsesRealtimeIdentity(t *testing.T) {
 		t.Fatalf("delivery observation=%+v err=%v", observation, err)
 	}
 
-	if _, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+	if _, err := platformrpc.Dial(context.Background(), cfg, server.Address(), grpcauth.Credentials{
 		Service: messageServiceName, Secret: cfg.SharedSecret,
 	}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected Message caller rejection, got %v", err)
@@ -312,13 +328,13 @@ func TestDeliveryObservationRPCReportsBackpressureOverTCP(t *testing.T) {
 		Enabled: true, SharedSecret: "test-secret", DeliveryObservationListenAddress: "127.0.0.1:0",
 		DialTimeoutSeconds: 2,
 	}
-	server, err := NewDeliveryObservationRPCServer(cfg, receiver)
+	server, err := gatewaybootstrap.NewDeliveryObservationRPCServer(cfg, receiver)
 	if err != nil {
 		t.Fatalf("start delivery observation rpc: %v", err)
 	}
 	t.Cleanup(func() { server.Close(context.Background()) })
-	connection, err := dialInternalRPC(context.Background(), cfg, server.Address(), grpcauth.Credentials{
-		Service: realtimeServiceName, Secret: cfg.SharedSecret,
+	connection, err := platformrpc.Dial(context.Background(), cfg, server.Address(), grpcauth.Credentials{
+		Service: "dipole-realtime", Secret: cfg.SharedSecret,
 	})
 	if err != nil {
 		t.Fatalf("dial delivery observation: %v", err)
@@ -363,7 +379,11 @@ func rpcObservationBatch(batchID string) *deliveryv1.NodeDeliveryBatch {
 
 func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-	server, err := NewCoreRPCServerWithAgent(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{})
+	agentAdapter, err := agentgrpc.NewServer(rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{})
+	if err != nil {
+		t.Fatalf("create Agent rpc adapter: %v", err)
+	}
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, agentAdapter)
 	if err != nil {
 		t.Fatalf("start Agent rpc server: %v", err)
 	}
@@ -416,7 +436,7 @@ func TestAgentRPCUsesAuthenticatedLeastPrivilegeChannel(t *testing.T) {
 
 func TestAgentRPCControlAuthorizationUsesLeastPrivilegeChannel(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
-	server, err := NewCoreRPCServerWithAgentControlAndProjection(
+	server, err := corerpc.NewWithAgentControlAndProjection(
 		cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{},
 	)
 	if err != nil {
@@ -466,7 +486,7 @@ func TestGatewayUsesItsOwnAuthenticatedCoreIdentity(t *testing.T) {
 		CoreListenAddress:  "127.0.0.1:0",
 		DialTimeoutSeconds: 2,
 	}
-	server, err := NewCoreRPCServer(cfg, rpcCoreStub{})
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start core rpc server: %v", err)
 	}
@@ -490,7 +510,7 @@ func TestGatewayUsesItsOwnAuthenticatedCoreIdentity(t *testing.T) {
 func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	repairs := &rpcAgentWorkflowRepairStub{}
-	server, err := NewCoreRPCServerWithAgentControlAndProjection(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, repairs)
+	server, err := corerpc.NewWithAgentControlAndProjection(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, repairs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -520,7 +540,7 @@ func TestWorkflowRepairRPCRequiresAuthenticatedGatewayIdentity(t *testing.T) {
 func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
 	artifacts := &rpcAgentArtifactStub{}
-	server, err := NewCoreRPCServerWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, nil, nil, artifacts, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, rpcAgentMemoryStub{})
+	server, err := corerpc.NewWithAgentArtifacts(cfg, rpcCoreStub{}, rpcAgentCapabilityStub{}, rpcAgentResolverStub{}, rpcAgentAdmissionStub{}, rpcAgentApprovalStub{}, rpcAgentTaskControlStub{}, rpcAgentWorkflowProjectionStub{}, &rpcAgentWorkflowRepairStub{}, rpcAgentSubscriptionStub{}, nil, nil, artifacts, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, rpcAgentMemoryStub{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,12 +593,47 @@ func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	}
 }
 
+func TestCoreAgentMemoryPromotionReceiptCommitRequiresExplicitComposition(t *testing.T) {
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2}
+	commit := &rpcAgentMemoryPromotionCommitStub{}
+	agentAdapter, err := agentgrpc.NewMemoryPromotionReceiptServer(commit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, agentAdapter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { server.Close(context.Background()) })
+
+	interceptor, _ := grpcauth.NewUnaryClientInterceptor(grpcauth.Credentials{Service: agentServiceName, Secret: cfg.SharedSecret})
+	connection, err := grpc.NewClient(server.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithUnaryInterceptor(interceptor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	client := agentv1.NewAgentCapabilityServiceClient(connection)
+	response, err := client.CommitMemoryPromotionReceipt(context.Background(), &agentv1.CommitMemoryPromotionReceiptRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName}, ReceiptId: "MEM-PROMOTE-" + strings.Repeat("a", 64), ReceiptSha256: strings.Repeat("a", 64),
+		SchemaVersion: application.AgentMemoryPromotionReceiptSchemaV2, Status: application.AgentMemoryPromotionReceiptPrepared,
+		TaskId: "TASK-1", RunId: "RUN-1", CandidateId: "CAND-1", CandidateSha256: strings.Repeat("b", 64), ReviewId: "REV-1", PolicyVersion: "memory-v1", TargetMemoryType: "semantic",
+		CreatedAtUnixMs: now.UnixMilli(), ExpiresAtUnixMs: now.Add(time.Minute).UnixMilli(),
+	})
+	if err != nil || !commit.called || response.GetMemoryId() != "MEM-COMMIT-1" || response.GetReceiptSha256() != strings.Repeat("a", 64) {
+		t.Fatalf("Agent receipt commit response=%+v called=%v err=%v", response, commit.called, err)
+	}
+	if _, err := client.ListConversations(context.Background(), &agentv1.ListConversationsRequest{Context: &commonv1.RequestContext{CallerService: agentServiceName}, TaskId: "TASK-1", RunId: "RUN-1"}); status.Code(err) != codes.Unimplemented {
+		t.Fatalf("standalone receipt adapter must not expose general Agent capability, code=%s", status.Code(err))
+	}
+}
+
 func TestSearchServiceUsesAuthenticatedCoreAndGatewayChannels(t *testing.T) {
 	cfg := config.InternalRPC{
 		Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0",
 		SearchListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2,
 	}
-	coreServer, err := NewCoreRPCServer(cfg, rpcCoreStub{})
+	coreServer, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start Core rpc server: %v", err)
 	}
@@ -627,7 +682,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 		Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "127.0.0.1:0",
 		SyncListenAddress: "127.0.0.1:0", DialTimeoutSeconds: 2,
 	}
-	coreServer, err := NewCoreRPCServer(cfg, rpcCoreStub{})
+	coreServer, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start Core rpc server: %v", err)
 	}
@@ -676,7 +731,7 @@ func TestSyncServiceUsesAuthenticatedCoreAndCoreChannels(t *testing.T) {
 }
 
 func TestInternalRPCRejectsMissingRuntimeCredentials(t *testing.T) {
-	if _, err := NewCoreRPCServer(config.InternalRPC{Enabled: true, CoreListenAddress: "127.0.0.1:0"}, rpcCoreStub{}); err == nil {
+	if _, err := corerpc.NewServer(config.InternalRPC{Enabled: true, CoreListenAddress: "127.0.0.1:0"}, rpcCoreStub{}, nil); err == nil {
 		t.Fatal("expected core rpc server without shared secret to fail")
 	}
 	if _, _, err := messagebootstrap.DialCoreCapability(context.Background(), config.InternalRPC{Enabled: true, CoreTarget: "127.0.0.1:1"}); err == nil {
@@ -697,7 +752,7 @@ func TestCoreRPCServerAndClientUseMutualTLS(t *testing.T) {
 		TLSCAFile:          caFile,
 		TLSServerName:      "localhost",
 	}
-	server, err := NewCoreRPCServer(cfg, rpcCoreStub{})
+	server, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil)
 	if err != nil {
 		t.Fatalf("start mtls core rpc server: %v", err)
 	}
@@ -719,7 +774,7 @@ func TestCoreRPCServerAndClientUseMutualTLS(t *testing.T) {
 
 func TestInternalRPCRejectsPlaintextOutsideLoopback(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", CoreListenAddress: "0.0.0.0:0"}
-	if _, err := NewCoreRPCServer(cfg, rpcCoreStub{}); err == nil {
+	if _, err := corerpc.NewServer(cfg, rpcCoreStub{}, nil); err == nil {
 		t.Fatal("expected non-loopback plaintext listener to fail")
 	}
 	cfg.CoreTarget = "10.0.0.1:9091"

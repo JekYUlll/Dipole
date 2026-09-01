@@ -9,13 +9,17 @@ import {
 } from "./mcp-workflow-envelope.js";
 import type { AgentMemoryPromotionIntent } from "../memory/agent-memory-promotion-receipt.js";
 
+export interface AgentMemoryPromotionWorkflowInput extends AgentMemoryPromotionIntent {
+  readonly commit?: boolean;
+}
+
 export interface AgentTaskWorkflowInput {
   taskId: string;
   goal: string;
   maxSteps?: number;
   admission?: AgentTaskAdmissionInput;
   shadowEvent?: AgentEvent;
-  memoryPromotion?: AgentMemoryPromotionIntent;
+  memoryPromotion?: AgentMemoryPromotionWorkflowInput;
   execution?: never;
 }
 

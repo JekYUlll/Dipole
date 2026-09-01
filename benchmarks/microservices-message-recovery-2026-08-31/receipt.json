@@ -1,0 +1,23 @@
+{
+  "schema_version": "dipole.microservices.smoke-receipt.v1",
+  "compose_project": "dipole-message-recovery-53a4edf7",
+  "source": {
+    "revision": "53a4edf7c169e6bb184160b21b1b0375668eed50",
+    "dirty": false
+  },
+  "validation": {
+    "gateway_port": 18453,
+    "inbox_projector": true,
+    "message_flow": true,
+    "message_recovery": {
+      "restart_service": "message",
+      "message_count": 1,
+      "outbox_count": 1,
+      "inbox_count": 1
+    }
+  },
+  "rollback": {
+    "action": "remove deploy/microservices/inbox-projector.yml and restore DIPOLE_MESSAGE_INBOX_WRITE_MODE=atomic",
+    "destructive_data_migration": false
+  }
+}

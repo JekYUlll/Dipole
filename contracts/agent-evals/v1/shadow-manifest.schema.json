@@ -33,7 +33,7 @@
             "required": ["stepNo", "capabilityId", "resourceType", "resourceId", "action", "decision"],
             "properties": {
               "stepNo": {"type": "integer", "minimum": 1}, "capabilityId": {"$ref": "#/$defs/id"},
-              "resourceType": {"$ref": "#/$defs/id"}, "resourceId": {"$ref": "#/$defs/id"},
+              "resourceType": {"$ref": "#/$defs/id"}, "resourceId": {"$ref": "#/$defs/resourceId"},
               "action": {"$ref": "#/$defs/id"}, "decision": {"enum": ["allowed", "denied"]}
             }
           }
@@ -69,7 +69,8 @@
     }
   },
   "$defs": {
-    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._:-]*$"},
+    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "resourceId": {"anyOf": [{"const": "*"}, {"$ref": "#/$defs/id"}]},
     "idSequence": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/id"}},
     "ids": {"allOf": [{"$ref": "#/$defs/idSequence"}, {"uniqueItems": true}]},
     "costMetrics": {

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
+import { createAgentMemoryPromotionReceipt } from "../memory/agent-memory-promotion-receipt.js";
 import { AgentCapabilityRPCClient } from "./agent-capability-rpc.js";
 
 const conversationReadContext = (overrides: Partial<ExecutionContext> = {}): ExecutionContext => ({
@@ -29,8 +30,15 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { runStatus: "failed" });
       return {};
     });
+    const requestApproval = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({
+        taskId: "TASK-1", runId: "RUN-1", approvalId: "APR-1", capabilityId: "message.system.send", mode: "active"
+      });
+      callback(null, { approvalId: input.approvalId, status: "pending" });
+      return {};
+    });
     const client = new AgentCapabilityRPCClient(
-      { admitRun, completeRun, finishRun } as unknown as IAgentCapabilityServiceClient,
+      { admitRun, completeRun, finishRun, requestApproval } as unknown as IAgentCapabilityServiceClient,
       "secret", 2_000, "active", "candidate-v1"
     );
 
@@ -40,11 +48,40 @@ describe("AgentCapabilityRPCClient", () => {
     })).resolves.toEqual({ taskId: "TASK-1", runId: "RUN-1", runStatus: "running" });
     await expect(client.complete("TASK-1", "RUN-1")).resolves.toBeUndefined();
     await expect(client.finish("TASK-1", "RUN-1", "failed", "failure")).resolves.toBeUndefined();
+    await expect(client.requestApproval("TASK-1", "RUN-1", {
+      approvalId: "APR-1", capabilityId: "message.system.send",
+      resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+      scopeSha256: "a".repeat(64), argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64), expiresAtUnixMs: Date.UTC(2026, 7, 28)
+    })).resolves.toBeUndefined();
   });
 
   it("requires a candidate version for active RPC clients", () => {
     expect(() => new AgentCapabilityRPCClient({} as IAgentCapabilityServiceClient, "secret", 2_000, "active"))
       .toThrow("candidate version");
+  });
+
+  it("commits only an exact prepared receipt through an active Runtime client", async () => {
+    const now = new Date("2026-08-30T02:00:00.000Z");
+    const receipt = createAgentMemoryPromotionReceipt({
+      tenantId: "dipole", principalUserId: "U100", agentId: "UAI", taskId: "TASK-1", runId: "RUN-1",
+      candidateId: "CAND-1", candidateSha256: "a".repeat(64), reviewId: "REV-1", policyVersion: "memory-v1",
+      candidateMemoryType: "observational", targetMemoryType: "semantic", expiresAt: "2026-08-30T02:10:00.000Z"
+    }, now);
+    const commitMemoryPromotionReceipt = vi.fn((input, metadata, _options, callback) => {
+      expect(input.context?.principalUserId).toBe("");
+      expect(input).toMatchObject({ receiptId: receipt.receiptId, taskId: "TASK-1", runId: "RUN-1", targetMemoryType: "semantic" });
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { memoryId: "MEM-CAND-1", memoryType: "semantic", status: "active", receiptSha256: receipt.receiptSha256,
+        provenance: { sourceType: "memory_candidate", sourceId: "CAND-1", sequence: "REV-1" } });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ commitMemoryPromotionReceipt } as unknown as IAgentCapabilityServiceClient, "secret", 2_000, "active", "candidate-v1");
+    await expect(client.commitMemoryPromotionReceipt(receipt, { requestId: "REQ-1", traceId: "TRACE-1" })).resolves.toEqual({
+      memoryId: "MEM-CAND-1", memoryType: "semantic", status: "active", receiptSha256: receipt.receiptSha256,
+      provenance: { sourceType: "memory_candidate", sourceId: "CAND-1", sequence: "REV-1" }
+    });
+    const shadow = new AgentCapabilityRPCClient({ commitMemoryPromotionReceipt } as unknown as IAgentCapabilityServiceClient, "secret");
+    await expect(shadow.commitMemoryPromotionReceipt(receipt)).rejects.toThrow(/active Runtime mode/i);
   });
 
   it("maps canonical group conversation ids to trusted RPC targets", async () => {
@@ -91,6 +128,63 @@ describe("AgentCapabilityRPCClient", () => {
       return {};
     });
     await expect(client.readConversation(context, "direct:U100:U200", 1)).rejects.toThrow("too many messages");
+  });
+
+  it("binds search to Task/Run context and rejects conflicting evidence", async () => {
+    const searchConversations = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", query: "migration", limit: 10 });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { evidence: [{
+        messageId: "M1", conversationKey: "group:G1", messageSeq: 9n, revision: 1n, senderId: "U200", messageType: 1,
+        content: "migration evidence", sentAtUnixMs: 1_000n,
+        querySha256: createHash("sha256").update("migration", "utf8").digest("hex")
+      }] });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ searchConversations } as unknown as IAgentCapabilityServiceClient, "secret");
+    const context = conversationReadContext({ permissions: ["conversation.search"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read"] }] });
+    await expect(client.searchConversations(context, "migration", 10)).resolves.toEqual([{
+      messageId: "M1", conversationKey: "group:G1", messageSeq: "9", revision: "1", senderId: "U200", messageType: 1,
+      content: "migration evidence", sentAtUnixMs: "1000", querySha256: createHash("sha256").update("migration", "utf8").digest("hex")
+    }]);
+
+    await expect(client.searchConversations(conversationReadContext(), "migration", 10)).rejects.toThrow("request is invalid");
+  });
+
+  it("accepts only ordered timeline events bound to the requested task", async () => {
+    const listAgentTaskTimeline = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, {
+        schemaVersion: "dipole.agent.task.timeline.v1", taskId: "TASK-1", revision: 3n,
+        events: [
+          { eventSeq: 4n, eventId: "EV-4", taskId: "TASK-1", runId: "RUN-1", kind: "artifact", status: "created", capabilityId: "", approvalId: "", artifactId: "a".repeat(64), occurredAtUnixMs: 4_000n },
+          { eventSeq: 5n, eventId: "EV-5", taskId: "TASK-1", runId: "RUN-1", kind: "terminal", status: "completed", capabilityId: "", approvalId: "", occurredAtUnixMs: 5_000n }
+        ], nextCursor: "5"
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ listAgentTaskTimeline } as unknown as IAgentCapabilityServiceClient, "secret");
+
+    await expect(client.listAgentTaskTimeline("TASK-1", "U100", 3n, 20)).resolves.toMatchObject({
+      taskId: "TASK-1", nextCursor: "5", events: [{ eventSeq: 4n, taskId: "TASK-1", artifactId: "a".repeat(64) }, { eventSeq: 5n, taskId: "TASK-1" }]
+    });
+  });
+
+  it("rejects foreign, duplicate, and out-of-order timeline events", async () => {
+    const listAgentTaskTimeline = vi.fn((_input, _metadata, _options, callback) => {
+      callback(null, {
+        schemaVersion: "dipole.agent.task.timeline.v1", taskId: "TASK-1", revision: 3n,
+        events: [
+          { eventSeq: 4n, eventId: "EV-4", taskId: "TASK-2", runId: "RUN-2", kind: "run", status: "running", capabilityId: "", approvalId: "", occurredAtUnixMs: 4_000n },
+          { eventSeq: 4n, eventId: "EV-4B", taskId: "TASK-1", runId: "RUN-1", kind: "run", status: "running", capabilityId: "", approvalId: "", occurredAtUnixMs: 4_000n }
+        ], nextCursor: "4"
+      });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ listAgentTaskTimeline } as unknown as IAgentCapabilityServiceClient, "secret");
+
+    await expect(client.listAgentTaskTimeline("TASK-1", "U100", 3n, 20))
+      .rejects.toThrow("invalid event ordering or task binding");
   });
 
   it("resolves only an exact low-sensitive fresh readiness receipt", async () => {

@@ -14,16 +14,17 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type stubTokenResolver struct {
-	resolveSessionFn func(token string) (*service.TokenSession, error)
+	resolveSessionFn func(token string) (*coreauth.TokenSession, error)
 }
 
-func (s *stubTokenResolver) ResolveSession(token string) (*service.TokenSession, error) {
+func (s *stubTokenResolver) ResolveSession(token string) (*coreauth.TokenSession, error) {
 	if s.resolveSessionFn == nil {
 		return nil, errors.New("unexpected resolve session call")
 	}
@@ -206,11 +207,11 @@ func TestHandlerConnectsAndRegistersClient(t *testing.T) {
 	hub := NewHub()
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveSessionFn: func(token string) (*service.TokenSession, error) {
+			resolveSessionFn: func(token string) (*coreauth.TokenSession, error) {
 				if token != "valid-token" {
 					t.Fatalf("unexpected token: %s", token)
 				}
-				return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
+				return &coreauth.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 			},
 		},
 		&stubUserFinder{
@@ -296,12 +297,12 @@ func TestHandlerRoutesTextMessageBetweenClients(t *testing.T) {
 	}
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveSessionFn: func(token string) (*service.TokenSession, error) {
+			resolveSessionFn: func(token string) (*coreauth.TokenSession, error) {
 				switch token {
 				case "token-a":
-					return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
+					return &coreauth.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 				case "token-b":
-					return &service.TokenSession{UserUUID: "U200", TokenID: "T200", ExpiresAt: time.Now().Add(time.Hour)}, nil
+					return &coreauth.TokenSession{UserUUID: "U200", TokenID: "T200", ExpiresAt: time.Now().Add(time.Hour)}, nil
 				default:
 					return nil, errors.New("unexpected token")
 				}
@@ -447,12 +448,12 @@ func TestHandlerRoutesGroupMessageBetweenClients(t *testing.T) {
 	}
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveSessionFn: func(token string) (*service.TokenSession, error) {
+			resolveSessionFn: func(token string) (*coreauth.TokenSession, error) {
 				switch token {
 				case "token-a":
-					return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
+					return &coreauth.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 				case "token-b":
-					return &service.TokenSession{UserUUID: "U200", TokenID: "T200", ExpiresAt: time.Now().Add(time.Hour)}, nil
+					return &coreauth.TokenSession{UserUUID: "U200", TokenID: "T200", ExpiresAt: time.Now().Add(time.Hour)}, nil
 				default:
 					return nil, errors.New("unexpected token")
 				}
@@ -544,11 +545,11 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 	}
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveSessionFn: func(token string) (*service.TokenSession, error) {
+			resolveSessionFn: func(token string) (*coreauth.TokenSession, error) {
 				if token != "token-a" {
 					return nil, errors.New("unexpected token")
 				}
-				return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
+				return &coreauth.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 			},
 		},
 		&stubUserFinder{
@@ -559,7 +560,7 @@ func TestHandlerRejectsDirectMessageWithoutFriendship(t *testing.T) {
 	)
 	dispatcher := NewDispatcher(hub, &stubDirectMessageService{
 		sendDirectMessageFn: func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
-			return nil, service.ErrMessageFriendRequired
+			return nil, messagedomain.ErrMessageFriendRequired
 		},
 	}, &stubConversationUpdater{}, true)
 
@@ -606,11 +607,11 @@ func TestHandlerRejectsMessageWhenRateLimited(t *testing.T) {
 	hub := NewHub()
 	authenticator := NewAuthenticator(
 		&stubTokenResolver{
-			resolveSessionFn: func(token string) (*service.TokenSession, error) {
+			resolveSessionFn: func(token string) (*coreauth.TokenSession, error) {
 				if token != "token-a" {
 					return nil, errors.New("unexpected token")
 				}
-				return &service.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
+				return &coreauth.TokenSession{UserUUID: "U100", TokenID: "T100", ExpiresAt: time.Now().Add(time.Hour)}, nil
 			},
 		},
 		&stubUserFinder{

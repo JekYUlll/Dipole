@@ -61,6 +61,13 @@ describe("ObservationWorker", () => {
     expect(worker.observe(input("token=secret password=hunter2"))).toEqual([]);
     expect(worker.observe(input("决定：" + "x".repeat(20_000)))).toEqual([]);
   });
+
+  it("rejects credential patterns at the candidate parsing boundary", () => {
+    const [candidate] = new ObservationWorker().observe(input("决定：API v2 周五完成。"));
+    expect(candidate).toBeDefined();
+    expect(() => parseMemoryCandidate({ ...candidate, content: "决定：token=secret" })).toThrow("credential pattern");
+    expect(() => parseMemoryCandidate({ ...candidate, compactContent: "password=hunter2" })).toThrow("credential pattern");
+  });
 });
 
 describe("ReflectionWorker", () => {

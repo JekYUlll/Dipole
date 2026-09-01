@@ -38,10 +38,17 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("io.dipole.source.dirty", script)
         self.assertIn('DIPOLE_IMAGE="${image_id}"', script)
         self.assertIn("DIPOLE_AI_RUNTIME_MODE=off", script)
+        self.assertIn('C1_ENABLE_OPTIONAL_SERVICES="${C1_ENABLE_OPTIONAL_SERVICES:-0}"', script)
+        self.assertIn('if [[ "${C1_ENABLE_OPTIONAL_SERVICES}" == "1" ]]', script)
+        self.assertIn("compose up -d dipole-node1 dipole-node2 dipole-node3", script)
         self.assertIn("/app/dipole-migrate", script)
         self.assertIn("--wait-timeout", script)
         self.assertLess(script.index("/app/dipole-migrate"), script.index("dipole-node1 dipole-node2"))
         self.assertIn("docker compose", script)
+        self.assertNotIn('--project-directory "${ROOT_DIR}"', script)
+        self.assertIn("prepare_certs", script)
+        self.assertIn("dipole-local-key.pem", script)
+        self.assertIn("require_command openssl", script)
         self.assertNotIn("down --volumes", script)
 
     def test_isolated_message_flow_checks_timeline_reads(self):
@@ -51,6 +58,12 @@ class CandidateTopologyContractTest(unittest.TestCase):
         self.assertIn("after_seq=0&limit=20", script)
         self.assertIn("message_seq", script)
         self.assertIn("user_sync_inbox", script)
+
+    def test_inbox_projector_overlay_enables_projector_validation_in_message_service(self):
+        overlay = (ROOT / "deploy/microservices/inbox-projector.yml").read_text(encoding="utf-8")
+
+        self.assertIn("DIPOLE_MESSAGE_INBOX_WRITE_MODE: projector", overlay)
+        self.assertIn('DIPOLE_SYNC_PROJECTOR_ENABLED: "true"', overlay)
 
     def test_canonical_compose_gate_renders_candidate_overrides(self):
         script = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")

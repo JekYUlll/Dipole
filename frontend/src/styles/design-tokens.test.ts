@@ -14,8 +14,18 @@ function cssToken(name: string): string {
 }
 
 describe('Pencil design token contract', () => {
+  it('resolves the semantic identity tokens to the committed V3 brand board', () => {
+    expect(cssToken('rail')).toBe('#0d2744')
+    expect(cssToken('accent')).toBe('#ea2521')
+    expect(cssToken('agent')).toBe('#efad05')
+  })
+
+  it('has retired the duplicated --dp-v3-* vocabulary', () => {
+    expect(tokenFile).not.toContain('--dp-v3-')
+  })
+
   it('keeps canonical color and typography tokens available to Vue', () => {
-    const colors = ['canvas', 'surface', 'rail', 'accent', 'danger', 'warning']
+    const colors = ['canvas', 'surface', 'rail', 'accent', 'agent', 'danger', 'warning']
     for (const name of colors) expect(cssToken(name)).toBe(String(pen.variables[name].value).toLowerCase())
     expect(cssToken('font-display')).toContain(String(pen.variables['font-display'].value))
     expect(cssToken('font-body')).toContain(String(pen.variables['font-body'].value))

@@ -62,7 +62,7 @@ for document in "${legacy_docs[@]}"; do
   fi
 done
 
-allowed_root_docs=(README.md CHANGELOG.md AGENTS.md CLAUDE.md)
+allowed_root_docs=(README.md CHANGELOG.md CONTRIBUTING.md AGENTS.md CLAUDE.md)
 while IFS= read -r document; do
   case " ${allowed_root_docs[*]} " in
     *" ${document} "*) ;;
@@ -84,4 +84,7 @@ while IFS= read -r directory; do
   esac
 done < <(git ls-files | awk -F/ 'NF > 1 {print $1}' | sort -u)
 
+bash scripts/check-doc-indexes.sh
+bash scripts/check-learning-interview-doc.sh
+bash scripts/check-agent-external-mcp-docs.sh
 echo "architecture documentation gate passed"

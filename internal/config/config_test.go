@@ -37,6 +37,12 @@ func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
 	if v.GetBool("internal_rpc.delivery_observation_enabled") {
 		t.Fatal("C2 delivery observation receiver must remain opt-in")
 	}
+	if v.GetBool("internal_rpc.agent_memory_promotion_receipt_commit_enabled") {
+		t.Fatal("Agent Memory promotion receipt commit must remain opt-in")
+	}
+	if v.GetBool("internal_rpc.agent_oauth_authorization_transaction_consume_enabled") {
+		t.Fatal("Agent OAuth authorization transaction consumption must remain opt-in")
+	}
 	if got := v.GetString("internal_rpc.delivery_observation_listen_address"); got != "127.0.0.1:9095" {
 		t.Fatalf("delivery observation listener = %q", got)
 	}
@@ -344,6 +350,9 @@ func TestConfigDistKeepsAgentTaskControlsDefaultOff(t *testing.T) {
 	}
 	if v.GetBool("gateway.agent_subscription_enabled") {
 		t.Fatal("Gateway Agent Subscription control must remain default off")
+	}
+	if v.GetBool("gateway.agent_artifact_enabled") {
+		t.Fatal("Gateway Agent Artifact metadata must remain default off")
 	}
 	if v.GetString("gateway.agent_subscription_tenant_id") != "dipole" {
 		t.Fatal("Gateway Agent Subscription tenant default is missing")

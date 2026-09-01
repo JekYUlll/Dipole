@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
+	"github.com/JekYUlll/Dipole/internal/application"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 )
 
@@ -30,7 +30,7 @@ func (c *sessionKickController) DisconnectAllConnections(userUUID string, reason
 
 func TestNewSessionKickHandlerDisconnectsSelectedConnections(t *testing.T) {
 	controller := &sessionKickController{}
-	payload, err := json.Marshal(service.SessionKickEventPayload{
+	payload, err := json.Marshal(application.SessionKickEventPayload{
 		UserUUID: "U1", ConnectionIDs: []string{"C1", "C2"}, Reason: "security",
 	})
 	if err != nil {
@@ -50,7 +50,7 @@ func TestNewSessionKickHandlerDisconnectsSelectedConnections(t *testing.T) {
 
 func TestNewSessionKickHandlerDisconnectsAllConnections(t *testing.T) {
 	controller := &sessionKickController{}
-	payload, err := json.Marshal(service.SessionKickEventPayload{UserUUID: "U1", All: true, Reason: "logout_all"})
+	payload, err := json.Marshal(application.SessionKickEventPayload{UserUUID: "U1", All: true, Reason: "logout_all"})
 	if err != nil {
 		t.Fatal(err)
 	}

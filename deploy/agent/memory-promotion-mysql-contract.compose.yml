@@ -1,0 +1,13 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: contract-root
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=+00:00"]
+    ports:
+      - "127.0.0.1:${DIPOLE_AGENT_PROMOTION_MYSQL_PORT:-23316}:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pcontract-root"]
+      interval: 2s
+      timeout: 2s
+      retries: 40

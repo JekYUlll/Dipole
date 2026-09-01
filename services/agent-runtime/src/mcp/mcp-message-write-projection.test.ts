@@ -5,7 +5,7 @@ import { z } from "zod";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { createDipoleMcpServer } from "./dipole-mcp-server.js";
-import { McpMessageWriteProjection } from "./mcp-message-write-projection.js";
+import { createInteractiveMessageExecutor, McpMessageWriteProjection } from "./mcp-message-write-projection.js";
 import { AllowlistedMcpToolClient } from "./mcp-tool-client.js";
 import { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
 import { McpWriteApprovalGate } from "./mcp-write-approval-gate.js";
@@ -117,6 +117,34 @@ describe("MCP Message write projection", () => {
     }, { conversationId: "direct:U100:UAI", content: "notice" }, context)).rejects.toThrow(/Tool invocation failed/);
     expect(finish).toHaveBeenCalledWith(expect.objectContaining({ status: "failed", errorCode: "tool_execution_failed" }));
     expect(finish).not.toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
+  });
+
+  it("composes the interactive executor from the approval, audit, and Core command ports", async () => {
+    const order: string[] = [];
+    const client = {
+      consumeApproval: vi.fn(async () => { order.push("consume"); }),
+      resolveApprovalGrant: vi.fn(async () => ({
+        approvalId: "APR-1", capabilityId: "message.system.send",
+        resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+        scopeSha256: "fda03fe9202766c3e59c11b4b069749a400e50041a44d1d200ff41c64aefa8a5",
+        argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
+        nonceSha256: "d".repeat(64), expiresAtUnixMs: Date.now() + 60_000
+      })),
+      begin: vi.fn(async () => { order.push("begin"); }),
+      finishToolInvocation: vi.fn(async () => { order.push("finish"); }),
+      executeMessageCommand: vi.fn(async () => {
+        order.push("command");
+        return { resourceType: "message" as const, resourceId: "MSG-INTERACTIVE-1", commandKind: "system_message" as const, commandId: "tool:interactive-1" };
+      })
+    };
+    const result = await createInteractiveMessageExecutor(client).execute({
+      conversationId: "direct:U100:UAI", content: "notice"
+    }, context);
+
+    expect(order).toEqual(["consume", "begin", "command", "finish"]);
+    expect(result).toBe(JSON.stringify({
+      commandId: "tool:interactive-1", commandKind: "system_message", resourceId: "MSG-INTERACTIVE-1", resourceType: "message"
+    }));
   });
 });
 

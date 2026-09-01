@@ -48,7 +48,21 @@ else()
   add_library(RDKAFKA::rdkafka ALIAS PkgConfig::RDKAFKA)
 endif()
 
-set(DIPOLE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set(DIPOLE_ROOT "" CACHE PATH "Repository root containing api/proto and contracts")
+if(NOT DIPOLE_ROOT)
+  foreach(candidate
+      "${CMAKE_CURRENT_SOURCE_DIR}/.."
+      "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+    if(EXISTS "${candidate}/api/proto/dipole/delivery/v1/delivery.proto"
+       AND EXISTS "${candidate}/contracts/realtime-delivery-fence/v1/testdata/authority.v1.json")
+      set(DIPOLE_ROOT "${candidate}")
+      break()
+    endif()
+  endforeach()
+endif()
+if(NOT DIPOLE_ROOT)
+  message(FATAL_ERROR "Unable to locate repository root with delivery proto and fence testdata")
+endif()
 set(PROTO_ROOT "${DIPOLE_ROOT}/api/proto")
 set(DELIVERY_PROTO "${PROTO_ROOT}/dipole/delivery/v1/delivery.proto")
 set(GENERATED_ROOT "${CMAKE_CURRENT_BINARY_DIR}/generated")

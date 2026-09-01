@@ -2,13 +2,26 @@ import * as grpc from "@grpc/grpc-js";
 
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
-import type { AppendAgentTaskTimelineEventResponse, ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
+import type {
+  AgentContextMemory as AgentContextMemoryProto,
+  AgentEventSubscription as AgentEventSubscriptionProto,
+  AgentResourceScope,
+  AppendAgentTaskTimelineEventResponse,
+  ConversationSearchEvidence,
+  ConversationSnapshot,
+  ListAgentTaskTimelineResponse,
+  TaskWorkflowProjectionSnapshot
+} from "../generated/dipole/agent/v1/agent.js";
 import type { Message as AgentMessage } from "../generated/dipole/message/v1/message.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import { createHash } from "node:crypto";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 import type { ExternalMcpReadinessEvidence } from "../mcp/external-mcp-readiness-evidence.js";
+import {
+  validateAgentMemoryPromotionReceipt,
+  type AgentMemoryPromotionReceiptV2
+} from "../memory/agent-memory-promotion-receipt.js";
 
 const callerService = "dipole-agent";
 const errorCodePattern = /^[a-z][a-z0-9_]{0,63}$/;
@@ -136,6 +149,18 @@ export interface ConversationReadResult {
   readonly messages: readonly AgentMessage[];
 }
 
+export interface ConversationSearchEvidenceResult {
+  readonly messageId: string;
+  readonly conversationKey: string;
+  readonly messageSeq: string;
+  readonly revision: string;
+  readonly senderId: string;
+  readonly messageType: number;
+  readonly content: string;
+  readonly sentAtUnixMs: string;
+  readonly querySha256: string;
+}
+
 export interface AgentTaskControlAuthorization {
   readonly taskId: string;
   readonly taskStatus: string;
@@ -209,6 +234,14 @@ export interface AgentContextMemory {
   readonly compactContent?: string;
   readonly priority: number;
   readonly provenance: { readonly sourceType: string; readonly sourceId: string; readonly uri?: string; readonly sequence?: string };
+}
+
+export interface AgentMemoryPromotionReceiptCommitResult {
+  readonly memoryId: string;
+  readonly memoryType: "episodic" | "semantic" | "procedural" | "observational";
+  readonly status: "active";
+  readonly receiptSha256: string;
+  readonly provenance: { readonly sourceType: "memory_candidate"; readonly sourceId: string; readonly sequence: string };
 }
 
 export interface AgentToolInvocationBegin {
@@ -324,7 +357,7 @@ export class AgentCapabilityRPCClient {
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Event Subscription lookup returned no response"));
         try {
-          resolve(response.subscriptions.map((item) => ({
+          resolve(response.subscriptions.map((item: AgentEventSubscriptionProto) => ({
             subscriptionId: item.subscriptionId,
             definitionId: item.definitionId,
             definitionVersion: Number(item.definitionVersion),
@@ -352,7 +385,7 @@ export class AgentCapabilityRPCClient {
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Memory lookup returned no response"));
         try {
-          resolve(response.memories.map((item) => {
+          resolve(response.memories.map((item: AgentContextMemoryProto) => {
             if (item.provenance === undefined) throw new Error(`Agent Memory ${item.memoryId} has no provenance`);
             if (!["working", "episodic", "semantic", "procedural", "observational"].includes(item.memoryType)) {
               throw new Error(`Agent Memory ${item.memoryId} has unsupported type ${item.memoryType}`);
@@ -434,7 +467,7 @@ export class AgentCapabilityRPCClient {
         approvalId: approval.approvalId, capabilityId: approval.capabilityId,
         resourceScope: { ...approval.resourceScope, actions: [...approval.resourceScope.actions] },
         scopeSha256: approval.scopeSha256, argumentsSha256: approval.argumentsSha256,
-        nonceSha256: approval.nonceSha256, expiresAtUnixMs: BigInt(approval.expiresAtUnixMs)
+        nonceSha256: approval.nonceSha256, expiresAtUnixMs: BigInt(approval.expiresAtUnixMs), mode: this.mode
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Approval request returned no response"));
         if (response.approvalId !== approval.approvalId || (response.status !== "pending" && response.status !== "approved")) return reject(new Error("Agent Approval request returned a conflicting binding"));
@@ -592,6 +625,51 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async searchConversations(context: ExecutionContext, query: string, limit: number): Promise<readonly ConversationSearchEvidenceResult[]> {
+    const normalizedQuery = query.trim();
+    const hasSearchPermission = context.permissions.includes("conversation.search");
+    const hasWildcardReadScope = context.resourceScopes.some((scope) =>
+      scope.resourceType === "conversation" && scope.resourceId === "*" && scope.actions.includes("read")
+    );
+    if (!normalizedQuery || Array.from(normalizedQuery).length > 256 || !Number.isInteger(limit) || limit < 1 || limit > 20 ||
+        !hasSearchPermission || !hasWildcardReadScope) {
+      throw new Error("Agent conversation search request is invalid");
+    }
+    const querySha256 = createHash("sha256").update(normalizedQuery, "utf8").digest("hex");
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.searchConversations({
+        context: this.requestContext(context.requestId, context.traceId), taskId: context.taskId, runId: context.runId,
+        query: normalizedQuery, limit
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent conversation search returned no response"));
+          return;
+        }
+        if (response.evidence.length > limit) {
+          reject(new Error("Agent conversation search returned too many results"));
+          return;
+        }
+        const results: ConversationSearchEvidenceResult[] = [];
+        for (const item of response.evidence as ConversationSearchEvidence[]) {
+          const contentLength = Array.from(item.content).length;
+          if (!validBoundedIdentifier(item.messageId, 128) || !validBoundedIdentifier(item.conversationKey, 256) ||
+              item.messageSeq < 1n || item.revision < 1n || !validBoundedIdentifier(item.senderId, 128) ||
+              !Number.isInteger(item.messageType) || contentLength > 2_000 || item.sentAtUnixMs < 0n || item.querySha256 !== querySha256) {
+            reject(new Error("Agent conversation search returned invalid evidence"));
+            return;
+          }
+          results.push({
+            messageId: item.messageId, conversationKey: item.conversationKey, messageSeq: item.messageSeq.toString(),
+            revision: item.revision.toString(), senderId: item.senderId, messageType: item.messageType,
+            content: item.content, sentAtUnixMs: item.sentAtUnixMs.toString(), querySha256: item.querySha256
+          });
+        }
+        resolve(results);
+      });
+    });
+  }
+
   async authorizeTaskControl(taskId: string, principalUserId: string, context?: { requestId?: string; traceId?: string }): Promise<AgentTaskControlAuthorization> {
     const metadata = this.metadata(context?.requestId, context?.traceId);
     return new Promise((resolve, reject) => {
@@ -632,11 +710,22 @@ export class AgentCapabilityRPCClient {
           reject(new Error("Agent Task Timeline returned a conflicting binding"));
           return;
         }
+        let previousEventSeq = afterSeq;
+        for (const event of response.events) {
+          const artifactId = event.artifactId ?? "";
+          if (event.taskId !== taskId || event.eventId.trim().length === 0 || event.eventSeq <= previousEventSeq ||
+              (artifactId !== "" && (event.kind !== "artifact" || !/^[a-f0-9]{64}$/.test(artifactId)))) {
+            reject(new Error("Agent Task Timeline returned invalid event ordering or task binding"));
+            return;
+          }
+          previousEventSeq = event.eventSeq;
+        }
         resolve({
           schemaVersion: response.schemaVersion, taskId: response.taskId, revision: response.revision,
           events: response.events.map(event => ({
-            eventSeq: event.eventSeq, eventId: event.eventId, runId: event.runId, kind: event.kind,
+            eventSeq: event.eventSeq, eventId: event.eventId, taskId: event.taskId, runId: event.runId, kind: event.kind,
             status: event.status, capabilityId: event.capabilityId, approvalId: event.approvalId,
+            artifactId: event.artifactId ?? "",
             occurredAtUnixMs: event.occurredAtUnixMs
           })),
           nextCursor: response.nextCursor
@@ -647,14 +736,14 @@ export class AgentCapabilityRPCClient {
 
   async appendAgentTaskTimelineEvent(input: {
     readonly eventId: string; readonly taskId: string; readonly runId: string; readonly kind: string; readonly status: string;
-    readonly capabilityId?: string; readonly approvalId?: string; readonly occurredAtUnixMs: number;
+    readonly capabilityId?: string; readonly approvalId?: string; readonly artifactId?: string; readonly occurredAtUnixMs: number;
     readonly requestId?: string; readonly traceId?: string;
   }): Promise<{ readonly eventSeq: bigint; readonly eventId: string }> {
     const metadata = this.metadata(input.requestId, input.traceId);
     return new Promise((resolve, reject) => {
       this.rpc.appendAgentTaskTimelineEvent({
         context: this.requestContext(input.requestId, input.traceId), eventId: input.eventId, taskId: input.taskId, runId: input.runId,
-        kind: input.kind, status: input.status, capabilityId: input.capabilityId ?? "", approvalId: input.approvalId ?? "",
+        kind: input.kind, status: input.status, capabilityId: input.capabilityId ?? "", approvalId: input.approvalId ?? "", artifactId: input.artifactId ?? "",
         occurredAtUnixMs: BigInt(input.occurredAtUnixMs)
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response: AppendAgentTaskTimelineEventResponse | undefined) => {
         if (error !== null || response === undefined) {
@@ -688,7 +777,7 @@ export class AgentCapabilityRPCClient {
             tenantId: response.tenantId, principalUuid: response.principalUserId, agentUuid: response.agentId,
             ...(response.delegatedByUserId.trim() === "" ? {} : { delegatedByUuid: response.delegatedByUserId }),
             taskId, runId, mode: response.mode, permissions: response.permissions,
-            resourceScopes: response.resourceScopes.map((scope) => ({
+            resourceScopes: response.resourceScopes.map((scope: AgentResourceScope) => ({
               resourceType: scope.resourceType, resourceId: scope.resourceId, actions: scope.actions
             })),
             approvedCapabilities: response.approvedCapabilities,
@@ -882,6 +971,16 @@ export class AgentCapabilityRPCClient {
         invocationId: input.invocationId, commandKind: input.commandKind, content
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response?.actionReference === undefined) {
+          if (error !== null) {
+            console.error("Agent Message Command RPC failed", {
+              grpcCode: error.code,
+              grpcDetails: error.details,
+              taskId: input.taskId,
+              runId: input.runId,
+              invocationId: input.invocationId,
+              commandKind: input.commandKind
+            });
+          }
           reject(error ?? new Error("Agent Message Command returned no action reference"));
           return;
         }
@@ -942,7 +1041,7 @@ export class AgentCapabilityRPCClient {
           return;
         }
         resolve({
-          tasks: response.tasks.map((task) => ({
+          tasks: response.tasks.map((task: TaskWorkflowProjectionSnapshot) => ({
             taskId: task.taskId,
             ...(task.hasWorkflow ? { workflow: {
               workflowId: task.workflowId,
@@ -1009,6 +1108,56 @@ export class AgentCapabilityRPCClient {
           runId: artifact.runId, artifactType: artifact.artifactType, version: artifact.version,
           title: artifact.title, mediaType: artifact.mediaType, contentSha256: artifact.contentSha256,
           sizeBytes, metadata: parsedMetadata as Record<string, unknown>
+        });
+      });
+    });
+  }
+
+  async commitMemoryPromotionReceipt(
+    rawReceipt: unknown,
+    context: { readonly requestId?: string; readonly traceId?: string } = {}
+  ): Promise<AgentMemoryPromotionReceiptCommitResult> {
+    if (this.mode !== "active") throw new Error("Agent Memory promotion receipt commit requires active Runtime mode");
+    const receipt = validateAgentMemoryPromotionReceipt(rawReceipt);
+    if (receipt.schemaVersion !== "dipole.agent.memory-promotion-receipt.v2" || receipt.status !== "prepared") {
+      throw new Error("Agent Memory promotion receipt is not commit-ready");
+    }
+    return this.commitPreparedMemoryPromotionReceipt(receipt, context);
+  }
+
+  private async commitPreparedMemoryPromotionReceipt(
+    receipt: AgentMemoryPromotionReceiptV2,
+    context: { readonly requestId?: string; readonly traceId?: string }
+  ): Promise<AgentMemoryPromotionReceiptCommitResult> {
+    const createdAtUnixMs = Date.parse(receipt.createdAt);
+    const expiresAtUnixMs = Date.parse(receipt.expiresAt);
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.commitMemoryPromotionReceipt({
+        context: this.requestContext(context.requestId, context.traceId), receiptId: receipt.receiptId, receiptSha256: receipt.receiptSha256,
+        schemaVersion: receipt.schemaVersion, status: receipt.status, taskId: receipt.taskId, runId: receipt.runId,
+        candidateId: receipt.candidateId, candidateSha256: receipt.candidateSha256, reviewId: receipt.reviewId,
+        policyVersion: receipt.policyVersion, targetMemoryType: receipt.targetMemoryType,
+        createdAtUnixMs: BigInt(createdAtUnixMs), expiresAtUnixMs: BigInt(expiresAtUnixMs)
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent Memory promotion receipt commit returned no response"));
+          return;
+        }
+        const memoryType = response.memoryType;
+        const provenance = response.provenance;
+        if (!/^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$/.test(response.memoryId) || response.receiptSha256 !== receipt.receiptSha256 ||
+            response.status !== "active" || memoryType !== receipt.targetMemoryType || provenance === undefined ||
+            provenance.sourceType !== "memory_candidate" || provenance.sourceId !== receipt.candidateId || provenance.sequence !== receipt.reviewId ||
+            !["episodic", "semantic", "procedural", "observational"].includes(memoryType)) {
+          reject(new Error("Agent Memory promotion receipt commit returned conflicting evidence"));
+          return;
+        }
+        resolve({
+          memoryId: response.memoryId,
+          memoryType: memoryType as AgentMemoryPromotionReceiptCommitResult["memoryType"],
+          status: "active", receiptSha256: response.receiptSha256,
+          provenance: { sourceType: "memory_candidate", sourceId: provenance.sourceId, sequence: provenance.sequence }
         });
       });
     });

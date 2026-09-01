@@ -1,0 +1,318 @@
+import { describe, expect, it, vi } from 'vitest'
+import { PresignedPartUploadError, sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPart, uploadPresignedPartWithRefresh } from './multipartUpload'
+import { withMultipartUploadLease, type MultipartLockManager } from './multipartLease'
+
+describe('same-origin presigned upload URL', () => {
+  it('rewrites only the origin when the Gateway proxy is enabled', () => {
+    expect(toSameOriginPresignedURL(
+      'http://minio:9000/dipole-files/object?partNumber=1&X-Amz-Signature=sig',
+      true,
+      'https://chat.example.test',
+    )).toBe('https://chat.example.test/dipole-files/object?partNumber=1&X-Amz-Signature=sig')
+  })
+
+  it('keeps the storage URL when the proxy is disabled', () => {
+    const value = 'http://minio:9000/dipole-files/object?partNumber=1'
+    expect(toSameOriginPresignedURL(value, false, 'https://chat.example.test')).toBe(value)
+  })
+})
+
+describe('uploadMultipartParts', () => {
+  it('uploads a presigned part without sending it through the application API', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, {
+      status: 200,
+      headers: { ETag: '"etag-1"' },
+    }))
+
+    const etag = await uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl)
+
+    expect(etag).toBe('"etag-1"')
+    expect(fetchImpl).toHaveBeenCalledWith('https://minio.test/part-1', expect.objectContaining({ method: 'PUT' }))
+  })
+
+  it('forwards an abort signal to a presigned part request', async () => {
+    const controller = new AbortController()
+    const fetchImpl = vi.fn(async () => new Response(null, {
+      status: 200,
+      headers: { ETag: '"etag-1"' },
+    }))
+
+    await uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl, controller.signal)
+
+    expect(fetchImpl).toHaveBeenCalledWith('https://minio.test/part-1', expect.objectContaining({ signal: controller.signal }))
+  })
+
+  it('rejects a successful direct upload without an ETag', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 200 }))
+    await expect(uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl)).rejects.toThrow('ETag')
+  })
+
+  it('preserves the HTTP status when a presigned URL expires', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 403 }))
+    await expect(uploadPresignedPart('https://minio.test/part-1', new Blob(['data']), fetchImpl))
+      .rejects.toMatchObject({ name: 'PresignedPartUploadError', status: 403 })
+  })
+
+  it('refreshes an expired presigned URL before retrying the part', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200, headers: { ETag: '"fresh-etag"' } }))
+    const refreshURL = vi.fn(async () => 'https://minio.test/fresh-part-1')
+
+    await expect(uploadPresignedPartWithRefresh('https://minio.test/stale-part-1', new Blob(['data']), refreshURL, fetchImpl))
+      .resolves.toBe('"fresh-etag"')
+    expect(refreshURL).toHaveBeenCalledOnce()
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, 'https://minio.test/fresh-part-1', expect.objectContaining({ method: 'PUT' }))
+  })
+
+  it('surfaces a presign service outage without repeating the part upload', async () => {
+    const fetchImpl = vi.fn(async () => new Response(null, { status: 403 }))
+    const refreshURL = vi.fn(async () => { throw new Error('presign service unavailable') })
+
+    await expect(uploadPresignedPartWithRefresh('https://minio.test/stale-part-1', new Blob(['data']), refreshURL, fetchImpl))
+      .rejects.toThrow('presign service unavailable')
+    expect(refreshURL).toHaveBeenCalledOnce()
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it('computes a stable SHA-256 checksum when Web Crypto is available', async () => {
+    const checksum = await sha256Hex(new Blob(['data']))
+    if (checksum === undefined) return
+    expect(checksum).toBe('3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7')
+  })
+
+  it('uploads parts with bounded concurrency and reports completion', async () => {
+    const file = new Blob(['0123456789'])
+    const uploaded: Array<{ partNumber: number; size: number }> = []
+    const progress: Array<[number, number]> = []
+    let active = 0
+    let maximumActive = 0
+
+    await uploadMultipartParts(file, 2, 5, async (partNumber, chunk) => {
+      active += 1
+      maximumActive = Math.max(maximumActive, active)
+      await new Promise(resolve => setTimeout(resolve, 1))
+      uploaded.push({ partNumber, size: chunk.size })
+      active -= 1
+    }, {
+      concurrency: 2,
+      onPartComplete: (completed, total) => progress.push([completed, total]),
+    })
+
+    expect(maximumActive).toBe(2)
+    expect(uploaded.sort((a, b) => a.partNumber - b.partNumber)).toEqual([
+      { partNumber: 1, size: 2 },
+      { partNumber: 2, size: 2 },
+      { partNumber: 3, size: 2 },
+      { partNumber: 4, size: 2 },
+      { partNumber: 5, size: 2 },
+    ])
+    expect(progress).toHaveLength(6)
+    expect(progress[0]).toEqual([0, 5])
+    expect(progress.every(([, total]) => total === 5)).toBe(true)
+  })
+
+  it('skips parts already confirmed by the server when resuming', async () => {
+    const file = new Blob(['0123456789'])
+    const uploaded: number[] = []
+    const progress: Array<[number, number]> = []
+
+    await uploadMultipartParts(file, 2, 5, async partNumber => {
+      uploaded.push(partNumber)
+    }, {
+      concurrency: 2,
+      skipParts: new Set([1, 3]),
+      onPartComplete: (completed, total) => progress.push([completed, total]),
+    })
+
+    expect(uploaded.sort((a, b) => a - b)).toEqual([2, 4, 5])
+    expect(progress[0]).toEqual([2, 5])
+    expect(progress.at(-1)).toEqual([5, 5])
+  })
+
+  it('pauses scheduling without discarding the resumable session', async () => {
+    const file = new Blob(['0123456789'])
+    const uploaded: number[] = []
+    let paused = true
+    let releaseResume!: () => void
+    const resumed = new Promise<void>(resolve => { releaseResume = resolve })
+    const run = uploadMultipartParts(file, 2, 5, async partNumber => {
+      uploaded.push(partNumber)
+    }, {
+      concurrency: 2,
+      isPaused: () => paused,
+      waitUntilResumed: () => resumed,
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(uploaded).toEqual([])
+    paused = false
+    releaseResume()
+    await run
+    expect(uploaded).toHaveLength(5)
+  })
+
+  it('retries a failed part with exponential backoff', async () => {
+    const file = new Blob(['abcd'])
+    const attempts = vi.fn()
+    const sleeps: number[] = []
+
+    await uploadMultipartParts(file, 4, 1, async () => {
+      attempts()
+      if (attempts.mock.calls.length < 3) throw new Error('temporary failure')
+    }, {
+      maxRetries: 2,
+      retryDelayMs: 10,
+      sleep: async delayMs => { sleeps.push(delayMs) },
+    })
+
+    expect(attempts).toHaveBeenCalledTimes(3)
+    expect(sleeps).toEqual([10, 20])
+  })
+
+  it.each([408, 429, 500, 503])('retries transient presigned HTTP status %i', async status => {
+    const attempts = vi.fn()
+    const sleeps: number[] = []
+
+    await uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      if (attempts.mock.calls.length === 1) throw new PresignedPartUploadError(status)
+    }, {
+      maxRetries: 2,
+      retryDelayMs: 10,
+      sleep: async delayMs => { sleeps.push(delayMs) },
+    })
+
+    expect(attempts).toHaveBeenCalledTimes(2)
+    expect(sleeps).toEqual([10])
+  })
+
+  it.each([400, 404, 409, 413])('does not retry a permanent presigned HTTP status %i', async status => {
+    const attempts = vi.fn()
+    const sleeps = vi.fn(async () => undefined)
+
+    await expect(uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      throw new PresignedPartUploadError(status)
+    }, {
+      maxRetries: 2,
+      sleep: sleeps,
+    })).rejects.toMatchObject({ status })
+
+    expect(attempts).toHaveBeenCalledOnce()
+    expect(sleeps).not.toHaveBeenCalled()
+  })
+
+  it('retries a browser network disconnect because it has no HTTP status', async () => {
+    const attempts = vi.fn()
+
+    await uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      if (attempts.mock.calls.length === 1) throw new TypeError('Failed to fetch')
+    }, {
+      maxRetries: 1,
+      sleep: async () => undefined,
+    })
+
+    expect(attempts).toHaveBeenCalledTimes(2)
+  })
+
+  it('stops before retrying when the upload signal is aborted', async () => {
+    const controller = new AbortController()
+    const attempts = vi.fn()
+
+    await expect(uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      throw new Error('temporary failure')
+    }, {
+      maxRetries: 2,
+      retryDelayMs: 10,
+      sleep: async () => controller.abort(),
+      signal: controller.signal,
+    })).rejects.toMatchObject({ name: 'AbortError' })
+
+    expect(attempts).toHaveBeenCalledOnce()
+  })
+
+  it('interrupts a pending retry delay when the upload signal is aborted', async () => {
+    const controller = new AbortController()
+    const attempts = vi.fn()
+
+    const upload = uploadMultipartParts(new Blob(['abcd']), 4, 1, async () => {
+      attempts()
+      throw new Error('temporary failure')
+    }, {
+      maxRetries: 1,
+      retryDelayMs: 1000,
+      sleep: () => new Promise<void>(() => {}),
+      signal: controller.signal,
+    })
+    setTimeout(() => controller.abort(), 0)
+
+    await expect(upload).rejects.toMatchObject({ name: 'AbortError' })
+    expect(attempts).toHaveBeenCalledOnce()
+  })
+
+  it('fails before scheduling a part when the upload signal is already aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const uploadPart = vi.fn(async () => undefined)
+
+    await expect(uploadMultipartParts(new Blob(['abcd']), 4, 1, uploadPart, {
+      signal: controller.signal,
+    })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(uploadPart).not.toHaveBeenCalled()
+  })
+
+  it('stops scheduling new parts after a permanent failure', async () => {
+    const file = new Blob(['0123456789'])
+    const attempted: number[] = []
+
+    await expect(uploadMultipartParts(file, 2, 5, async partNumber => {
+      attempted.push(partNumber)
+      if (partNumber === 1) throw new Error('permanent failure')
+    }, { concurrency: 1, maxRetries: 0 })).rejects.toThrow('permanent failure')
+
+    expect(attempted).toEqual([1])
+  })
+})
+
+describe('multipart upload lease', () => {
+  it('serializes same-session work across browser tabs', async () => {
+    let releaseFirst!: () => void
+    const firstFinished = new Promise<void>(resolve => { releaseFirst = resolve })
+    let active = 0
+    let maximumActive = 0
+    let tail: Promise<void> = Promise.resolve()
+    const locks: MultipartLockManager = {
+      request: async (_name, _options, callback) => {
+        const previous = tail
+        let release!: () => void
+        tail = new Promise<void>(resolve => { release = resolve })
+        await previous
+        try {
+          active += 1
+          maximumActive = Math.max(maximumActive, active)
+          return await callback({})
+        } finally {
+          active -= 1
+          release()
+        }
+      },
+    }
+
+    const first = withMultipartUploadLease('dipole:multipart:file', async () => {
+      await firstFinished
+    }, locks)
+    const second = withMultipartUploadLease('dipole:multipart:file', async () => undefined, locks)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(maximumActive).toBe(1)
+    releaseFirst()
+    await Promise.all([first, second])
+  })
+
+  it('falls back to direct execution when Web Locks are unavailable', async () => {
+    const result = await withMultipartUploadLease('dipole:multipart:file', async () => 'uploaded', undefined)
+    expect(result).toBe('uploaded')
+  })
+})

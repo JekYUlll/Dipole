@@ -413,7 +413,7 @@ docs/
 
 #### Eino 版本与能力采用策略
 
-- 当前基线：`Eino v0.9.15`、OpenAI 组件 `v0.1.13`、Ollama 组件 `v0.1.9`。
+- 当前基线：`Eino v0.9.17`、OpenAI 组件 `v0.1.13`、Ollama 组件 `v0.1.9`；alpha 评估结果见 `docs/architecture/EINO-V010-ALPHA-SPIKE.md`。
 - 近期优先：在配置支持多个模型后接入 `ModelRetryConfig` 与 `ModelFailoverConfig`，提高限流、超时和供应方故障下的回复成功率。
 - 中期评估：当客户端支持流式回复、取消生成或新消息抢占旧任务时，再以会话为粒度评估 `TurnLoop`。
 - 按需引入：`AgenticMessage` 适合需要供应方原生工具、缓存或 MCP 语义的模型；`DeepAgents` 适合复杂任务规划和子 Agent 委派。当前单聊助手继续使用 `ChatModelAgent + schema.Message`，保持链路简单。
@@ -529,3 +529,11 @@ docs/
 - Gateway 在提交时重新派生 event/resource，Core 在 Store 写入前再次执行同一 authority 校验；模型与浏览器不能提供 principal、tenant、event type 或 resource。
 - `all|message_contains_any` 保持确定性规范化；关键词最多 32 项、单项最多 64 个 Unicode 字符，前端不得静默截断用户意图。
 - list/create/revoke、Definition 目录和 conversation chooser 共享默认关闭的 Gateway/Frontend 开关。控制记录 active 只表示持久授权有效，Runtime 与 Compose 继续固定 `direct_target`。
+
+## 21. Agent 检索 Context 边界（2026-08-30）
+
+- `dipole-agent` 不得直接调用 Search Service。Search 的服务认证与用户 principal 只适用于 Gateway；给 Agent 增加同等服务身份会使其可以构造未绑定 Task/Run 的查询。
+- 后续检索通过 Core 的 `AgentCapability` surface 调解：RPC caller 必须是 `dipole-agent` 且公开 request 不含 principal；Core 从权威 Task/Run 恢复 principal、tenant、runtime mode、permission 与 resource scope 后才允许查询。
+- 新 capability 固定为 `conversation.search`，要求独立 permission 与 `conversation/*/read` scope。query、页大小、返回条数、单条正文和总正文均须有硬上限；空 query、超限、scope 漂移、Task/Run 不匹配和 Search 不可用一律 fail closed。
+- Search 结果只以不可执行的 `trust=untrusted` evidence fragment 进入 Context Compiler，记录 Search document 的 message ID、conversation key、sequence、revision 与 query provenance；不得把命中内容提升为 policy、identity、task 或 memory，也不得将原始 Elasticsearch hit、索引名、内部 ID 或请求凭据写入 Task/Run 审计。
+- 首个切片已交付 Core/Proto/TypeScript 契约和 deterministic test，且默认 composition 不注入 Search port、Runtime 不注册该 capability。生产 Elasticsearch 连接、跨会话全局检索灰度、向量检索、Context Compiler retrieval orchestration 及任何 write capability 均保持关闭，待 owner-reviewed evidence 后单独灰度。

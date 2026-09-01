@@ -48,11 +48,22 @@ export interface AgentTaskState {
 export type AgentElicitationValue = Record<string, string | boolean | string[]>
 
 export interface AgentTaskClient {
+  startTask?(request: AgentTaskStartRequest): Promise<AgentTaskStartResult>
   getTask(taskId: string): Promise<AgentTaskState>
   getTimeline?(taskId: string, after?: string, limit?: number): Promise<AgentTaskTimelinePage>
   provideInput(taskId: string, requestId: string, value: AgentElicitationValue): Promise<void>
   resolveApproval(taskId: string, approvalId: string, decision: 'approved' | 'denied'): Promise<void>
   cancelTask(taskId: string): Promise<void>
+}
+
+export interface AgentTaskStartRequest {
+  clientRequestId: string
+  goal: string
+}
+
+export interface AgentTaskStartResult {
+  taskId: string
+  status: 'accepted'
 }
 
 export interface AgentTaskTimelineEvent {
@@ -64,6 +75,7 @@ export interface AgentTaskTimelineEvent {
   status: string
   capabilityId?: string
   approvalId?: string
+  artifactId?: string
   occurredAtUnixMs: number
 }
 
@@ -105,6 +117,13 @@ export function parseAgentTaskResponse(raw: unknown): AgentTaskState {
 }
 
 export const agentTaskClient: AgentTaskClient = {
+  async startTask(request) {
+    const input = validateAgentTaskStartRequest(request.clientRequestId, request.goal)
+    return parseAgentTaskStartResponse(await api.post('/api/v1/agent/tasks', {
+      client_request_id: input.clientRequestId,
+      goal: input.goal,
+    }))
+  },
   async getTask(taskId) {
     requireIdentity(taskId, 'Task')
     return parseAgentTaskResponse(await api.get(`/api/v1/agent/tasks/${encodeURIComponent(taskId)}`))
@@ -134,6 +153,22 @@ export const agentTaskClient: AgentTaskClient = {
   },
 }
 
+export function parseAgentTaskStartResponse(raw: unknown): AgentTaskStartResult {
+  if (!isRecord(raw) || !validIdentity(raw.taskId) || raw.status !== 'accepted') {
+    throw new Error('Agent Task start response is invalid')
+  }
+  return { taskId: raw.taskId as string, status: 'accepted' }
+}
+
+function validateAgentTaskStartRequest(clientRequestId: string, goal: string): AgentTaskStartRequest {
+  const normalizedRequestId = clientRequestId.trim()
+  const normalizedGoal = goal.trim()
+  if (!/^[A-Za-z0-9._:-]{1,64}$/.test(normalizedRequestId) || normalizedGoal.length === 0 || Array.from(normalizedGoal).length > 4000) {
+    throw new Error('Agent Task start request is invalid')
+  }
+  return { clientRequestId: normalizedRequestId, goal: normalizedGoal }
+}
+
 function parseAgentTaskTimelineResponse(raw: unknown): AgentTaskTimelinePage {
   if (!isRecord(raw) || raw.schemaVersion !== 'dipole.agent.task_timeline.v1' || !validIdentity(raw.taskId) ||
       !Number.isSafeInteger(raw.revision) || (raw.revision as number) < 0 || !Array.isArray(raw.events) ||
@@ -157,11 +192,13 @@ function parseAgentTaskTimelineEvent(raw: unknown): AgentTaskTimelineEvent {
       (raw.occurredAtUnixMs as number) <= 0) throw new Error('Agent Task Timeline event is invalid')
   if (raw.capabilityId !== undefined && !validIdentity(raw.capabilityId)) throw new Error('Agent Task Timeline capability is invalid')
   if (raw.approvalId !== undefined && !validIdentity(raw.approvalId)) throw new Error('Agent Task Timeline approval is invalid')
+  if (raw.artifactId !== undefined && (typeof raw.artifactId !== 'string' || raw.kind !== 'artifact' || !/^[a-f0-9]{64}$/.test(raw.artifactId))) throw new Error('Agent Task Timeline Artifact is invalid')
   return {
     eventSeq: raw.eventSeq as string, eventId: raw.eventId as string, taskId: raw.taskId as string, runId: raw.runId as string,
     kind: raw.kind as string, status: raw.status as string,
     ...(raw.capabilityId === undefined ? {} : { capabilityId: raw.capabilityId as string }),
     ...(raw.approvalId === undefined ? {} : { approvalId: raw.approvalId as string }),
+    ...(raw.artifactId === undefined ? {} : { artifactId: raw.artifactId as string }),
     occurredAtUnixMs: raw.occurredAtUnixMs as number,
   }
 }

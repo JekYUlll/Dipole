@@ -22,6 +22,7 @@ import type {
   AgentTaskRunBinding
 } from "./agent-task-activities.js";
 import type { AgentMemoryPromotionActivities } from "./agent-task-activities.js";
+import type { AgentMemoryPromotionReceiptCommitResult } from "../capabilities/agent-capability-rpc.js";
 import type { AgentMemoryPromotionReceipt } from "../memory/agent-memory-promotion-receipt.js";
 import type { AgentTaskWorkflowHistoryInput } from "./temporal-task-client.js";
 import type { TemporalMcpDispatchActivities } from "./mcp-dispatch-activity.js";
@@ -67,7 +68,7 @@ const { admitAgentTask, finishAgentTask, projectAgentTaskState, requestAgentTask
     maximumAttempts: 3
   }
 });
-const { prepareAgentMemoryPromotion } = proxyActivities<AgentMemoryPromotionActivities>({
+const { prepareAgentMemoryPromotion, commitPreparedAgentMemoryPromotion } = proxyActivities<AgentMemoryPromotionActivities>({
   startToCloseTimeout: "30 seconds",
   retry: { initialInterval: "1 second", backoffCoefficient: 2, maximumInterval: "10 seconds", maximumAttempts: 3 }
 });
@@ -88,6 +89,8 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
   const projectionEnabled = patched("agent-task-workflow-projection-v1");
   const workflow = workflowInfo();
   let promotionReceipt: AgentMemoryPromotionReceipt | undefined;
+  let promotionCommit: AgentMemoryPromotionReceiptCommitResult | undefined;
+  let shouldCommitMemoryPromotion = false;
 
   setHandler(taskStateQuery, () => state);
   setHandler(provideTaskInputSignal, (signal) => {
@@ -115,10 +118,12 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
   const binding = await admitAgentTask(input);
   assertRunBinding(input.taskId, binding);
   if (input.memoryPromotion !== undefined) {
+    const { commit: commitMemoryPromotion, ...memoryPromotion } = input.memoryPromotion;
     promotionReceipt = await prepareAgentMemoryPromotion({
-      ...input.memoryPromotion,
+      ...memoryPromotion,
       createdAt: new Date().toISOString()
     });
+    shouldCommitMemoryPromotion = commitMemoryPromotion === true;
   }
   if (binding.runStatus === "completed") {
     const replayed: AgentTaskState = {
@@ -214,7 +219,19 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
         ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
       });
     }
-    state = applyDirective(state, directive, promotionReceipt);
+    if (directive.kind === "complete" && shouldCommitMemoryPromotion && promotionReceipt !== undefined) {
+      try {
+        promotionCommit = await commitPreparedAgentMemoryPromotion({
+          receipt: promotionReceipt,
+          ...(input.admission?.requestId === undefined ? {} : { requestId: input.admission.requestId }),
+          ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
+        });
+      } catch (error) {
+        state = transitionAgentTask(state, { type: "fail", message: activityFailureMessage(error) });
+        break;
+      }
+    }
+    state = applyDirective(state, directive, promotionReceipt, promotionCommit);
   }
   if (projectionEnabled && projectedRevision !== state.revision) {
     await projectAgentTaskState(projectionActivityInput(input, binding, state, workflow));
@@ -241,7 +258,12 @@ function projectionActivityInput(
   };
 }
 
-function applyDirective(state: AgentTaskState, directive: AgentTaskDirective, promotionReceipt?: AgentMemoryPromotionReceipt): AgentTaskState {
+function applyDirective(
+  state: AgentTaskState,
+  directive: AgentTaskDirective,
+  promotionReceipt?: AgentMemoryPromotionReceipt,
+  promotionCommit?: AgentMemoryPromotionReceiptCommitResult
+): AgentTaskState {
   switch (directive.kind) {
     case "continue":
       return state.resume === undefined
@@ -261,7 +283,11 @@ function applyDirective(state: AgentTaskState, directive: AgentTaskDirective, pr
     case "complete":
       return transitionAgentTask(state, {
         type: "complete",
-        output: promotionReceipt === undefined ? directive.output : { result: directive.output, promotionReceipt }
+        output: promotionReceipt === undefined ? directive.output : {
+          result: directive.output,
+          promotionReceipt,
+          ...(promotionCommit === undefined ? {} : { promotionCommit })
+        }
       });
     case "failed":
       return transitionAgentTask(state, { type: "fail", message: directive.message });

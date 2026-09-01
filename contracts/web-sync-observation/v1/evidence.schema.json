@@ -7,7 +7,7 @@
   "required": [
     "schema_version", "session_id", "session_sha256", "candidate", "prometheus_url",
     "started_at", "ended_at", "duration_seconds", "decision", "issues",
-    "final_snapshot", "snapshot_sha256", "evidence_sha256"
+    "final_snapshot", "snapshot_sha256", "archive", "evidence_sha256"
   ],
   "properties": {
     "schema_version": { "const": "dipole.web-sync.observation-evidence.v1" },
@@ -22,9 +22,21 @@
     "issues": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "final_snapshot": { "$ref": "session.schema.json#/$defs/snapshot" },
     "snapshot_sha256": { "$ref": "#/$defs/sha256" },
+    "archive": { "$ref": "#/$defs/archive" },
     "evidence_sha256": { "$ref": "#/$defs/sha256" }
   },
   "$defs": {
-    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "object_version", "etag", "retention_until"],
+      "properties": {
+        "uri": { "type": "string", "pattern": "^(s3|minio)://[^?#]+$" },
+        "object_version": { "type": "string", "minLength": 1 },
+        "etag": { "type": "string", "pattern": "^[a-f0-9]{32,64}$" },
+        "retention_until": { "type": "string", "format": "date-time" }
+      }
+    }
   }
 }

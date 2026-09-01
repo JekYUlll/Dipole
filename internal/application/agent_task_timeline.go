@@ -8,7 +8,10 @@ import (
 	"time"
 )
 
-const AgentTaskTimelineSchemaVersionV1 = "dipole.agent.task_timeline.v1"
+const (
+	AgentTaskTimelineSchemaVersionV1      = "dipole.agent.task_timeline.v1"
+	AgentTaskTimelineEventUUIDMaxLengthV1 = 64
+)
 
 type AgentTaskTimelineEventKindV1 string
 
@@ -33,6 +36,7 @@ type AgentTaskTimelineEventV1 struct {
 	Status       string
 	CapabilityID string
 	ApprovalUUID string
+	ArtifactUUID string
 	OccurredAt   time.Time
 }
 
@@ -49,6 +53,7 @@ type AgentTaskTimelineRepairV1 struct {
 	Status       string
 	CapabilityID string
 	ApprovalUUID string
+	ArtifactUUID string
 	OccurredAt   time.Time
 	RepairStatus string
 	RetryCount   uint32
@@ -68,12 +73,25 @@ func (e AgentTaskTimelineEventV1) Validate() error {
 	if strings.TrimSpace(e.EventUUID) == "" || strings.TrimSpace(e.TaskUUID) == "" || strings.TrimSpace(e.Status) == "" || e.OccurredAt.IsZero() {
 		return errors.New("Agent Task Timeline event identity, status and timestamp are required")
 	}
+	if len(e.EventUUID) > AgentTaskTimelineEventUUIDMaxLengthV1 {
+		return fmt.Errorf("Agent Task Timeline event ID exceeds %d characters", AgentTaskTimelineEventUUIDMaxLengthV1)
+	}
 	switch e.Kind {
 	case AgentTaskTimelineEventTask, AgentTaskTimelineEventRun, AgentTaskTimelineEventContextCompile,
 		AgentTaskTimelineEventModelCall, AgentTaskTimelineEventToolInvocation, AgentTaskTimelineEventApproval,
 		AgentTaskTimelineEventInputRequest, AgentTaskTimelineEventArtifact, AgentTaskTimelineEventTerminal:
-		return nil
 	default:
 		return fmt.Errorf("unsupported Agent Task Timeline event kind %q", e.Kind)
 	}
+	artifactUUID := strings.TrimSpace(e.ArtifactUUID)
+	if artifactUUID == "" {
+		if e.Kind == AgentTaskTimelineEventArtifact {
+			return errors.New("Agent Task Timeline artifact event requires an Artifact ID")
+		}
+		return nil
+	}
+	if artifactUUID != e.ArtifactUUID || e.Kind != AgentTaskTimelineEventArtifact || !validSHA256V1(artifactUUID) {
+		return errors.New("Agent Task Timeline Artifact ID is invalid")
+	}
+	return nil
 }

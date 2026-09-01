@@ -34,10 +34,12 @@ type Gateway struct {
 	CoreHTTPTarget            string `mapstructure:"core_http_target"`
 	AgentControlEnabled       bool   `mapstructure:"agent_control_enabled"`
 	AgentControlTarget        string `mapstructure:"agent_control_target"`
+	AgentControlSecret        string `mapstructure:"agent_control_secret"`
 	AgentSubscriptionEnabled  bool   `mapstructure:"agent_subscription_enabled"`
 	AgentSubscriptionTenantID string `mapstructure:"agent_subscription_tenant_id"`
 	AgentMemoryEnabled        bool   `mapstructure:"agent_memory_enabled"`
 	AgentMemoryTenantID       string `mapstructure:"agent_memory_tenant_id"`
+	AgentArtifactEnabled      bool   `mapstructure:"agent_artifact_enabled"`
 	AgentMCPEnabled           bool   `mapstructure:"agent_mcp_enabled"`
 	AgentMCPTarget            string `mapstructure:"agent_mcp_target"`
 }
@@ -159,59 +161,72 @@ type Sync struct {
 }
 
 type InternalRPC struct {
-	Enabled                          bool   `mapstructure:"enabled"`
-	SharedSecret                     string `mapstructure:"shared_secret"`
-	CoreListenAddress                string `mapstructure:"core_listen_address"`
-	CoreTarget                       string `mapstructure:"core_target"`
-	MessageListenAddress             string `mapstructure:"message_listen_address"`
-	MessageTarget                    string `mapstructure:"message_target"`
-	SearchListenAddress              string `mapstructure:"search_listen_address"`
-	SearchTarget                     string `mapstructure:"search_target"`
-	SyncListenAddress                string `mapstructure:"sync_listen_address"`
-	SyncTarget                       string `mapstructure:"sync_target"`
-	DeliveryObservationEnabled       bool   `mapstructure:"delivery_observation_enabled"`
-	DeliveryObservationListenAddress string `mapstructure:"delivery_observation_listen_address"`
-	DeliveryObservationCapacity      int    `mapstructure:"delivery_observation_capacity"`
-	DeliveryObservationRetryAfterMS  int    `mapstructure:"delivery_observation_retry_after_ms"`
-	DeliveryPrimaryEnabled           bool   `mapstructure:"delivery_primary_enabled"`
-	DeliveryPrimaryReplayCapacity    int    `mapstructure:"delivery_primary_replay_capacity"`
-	DialTimeoutSeconds               int    `mapstructure:"dial_timeout_seconds"`
-	ShutdownTimeoutSeconds           int    `mapstructure:"shutdown_timeout_seconds"`
-	TLSEnabled                       bool   `mapstructure:"tls_enabled"`
-	TLSCertFile                      string `mapstructure:"tls_cert_file"`
-	TLSKeyFile                       string `mapstructure:"tls_key_file"`
-	TLSCAFile                        string `mapstructure:"tls_ca_file"`
-	TLSServerName                    string `mapstructure:"tls_server_name"`
+	Enabled                                          bool   `mapstructure:"enabled"`
+	SharedSecret                                     string `mapstructure:"shared_secret"`
+	CoreListenAddress                                string `mapstructure:"core_listen_address"`
+	CoreTarget                                       string `mapstructure:"core_target"`
+	MessageListenAddress                             string `mapstructure:"message_listen_address"`
+	MessageTarget                                    string `mapstructure:"message_target"`
+	SearchListenAddress                              string `mapstructure:"search_listen_address"`
+	SearchTarget                                     string `mapstructure:"search_target"`
+	SyncListenAddress                                string `mapstructure:"sync_listen_address"`
+	SyncTarget                                       string `mapstructure:"sync_target"`
+	AgentConversationSearchEnabled                   bool   `mapstructure:"agent_conversation_search_enabled"`
+	AgentMemoryPromotionReceiptCommitEnabled         bool   `mapstructure:"agent_memory_promotion_receipt_commit_enabled"`
+	AgentOAuthAuthorizationTransactionConsumeEnabled bool   `mapstructure:"agent_oauth_authorization_transaction_consume_enabled"`
+	DeliveryObservationEnabled                       bool   `mapstructure:"delivery_observation_enabled"`
+	DeliveryObservationListenAddress                 string `mapstructure:"delivery_observation_listen_address"`
+	DeliveryObservationCapacity                      int    `mapstructure:"delivery_observation_capacity"`
+	DeliveryObservationRetryAfterMS                  int    `mapstructure:"delivery_observation_retry_after_ms"`
+	DeliveryPrimaryEnabled                           bool   `mapstructure:"delivery_primary_enabled"`
+	DeliveryPrimaryReplayCapacity                    int    `mapstructure:"delivery_primary_replay_capacity"`
+	DialTimeoutSeconds                               int    `mapstructure:"dial_timeout_seconds"`
+	ShutdownTimeoutSeconds                           int    `mapstructure:"shutdown_timeout_seconds"`
+	TLSEnabled                                       bool   `mapstructure:"tls_enabled"`
+	TLSCertFile                                      string `mapstructure:"tls_cert_file"`
+	TLSKeyFile                                       string `mapstructure:"tls_key_file"`
+	TLSCAFile                                        string `mapstructure:"tls_ca_file"`
+	TLSServerName                                    string `mapstructure:"tls_server_name"`
 }
 
 type Storage struct {
-	Enabled                      bool   `mapstructure:"enabled"`
-	Provider                     string `mapstructure:"provider"`
-	Endpoint                     string `mapstructure:"endpoint"`
-	PresignEndpoint              string `mapstructure:"presign_endpoint"`
-	AccessKey                    string `mapstructure:"access_key"`
-	SecretKey                    string `mapstructure:"secret_key"`
-	UseSSL                       bool   `mapstructure:"use_ssl"`
-	Bucket                       string `mapstructure:"bucket"`
-	SearchArchiveBucket          string `mapstructure:"search_archive_bucket"`
-	SearchArchiveRetentionDays   int    `mapstructure:"search_archive_retention_days"`
-	MessageArchiveBucket         string `mapstructure:"message_archive_bucket"`
-	MessageArchiveRetentionDays  int    `mapstructure:"message_archive_retention_days"`
-	ArtifactEnabled              bool   `mapstructure:"artifact_enabled"`
-	ArtifactEndpoint             string `mapstructure:"artifact_endpoint"`
-	ArtifactAccessKey            string `mapstructure:"artifact_access_key"`
-	ArtifactSecretKey            string `mapstructure:"artifact_secret_key"`
-	ArtifactUseSSL               bool   `mapstructure:"artifact_use_ssl"`
-	ArtifactBucket               string `mapstructure:"artifact_bucket"`
-	ArtifactAuditAccessKey       string `mapstructure:"artifact_audit_access_key"`
-	ArtifactAuditSecretKey       string `mapstructure:"artifact_audit_secret_key"`
-	ArtifactMaintenanceAccessKey string `mapstructure:"artifact_maintenance_access_key"`
-	ArtifactMaintenanceSecretKey string `mapstructure:"artifact_maintenance_secret_key"`
-	PublicBaseURL                string `mapstructure:"public_base_url"`
-	FileMaxSizeMB                int64  `mapstructure:"file_max_size_mb"`
-	MultipartChunkSizeMB         int64  `mapstructure:"multipart_chunk_size_mb"`
-	MultipartSessionTTLMin       int    `mapstructure:"multipart_session_ttl_minutes"`
-	DownloadURLTTLMinutes        int    `mapstructure:"download_url_ttl_minutes"`
+	Enabled                            bool   `mapstructure:"enabled"`
+	Provider                           string `mapstructure:"provider"`
+	Endpoint                           string `mapstructure:"endpoint"`
+	PresignEndpoint                    string `mapstructure:"presign_endpoint"`
+	PresignedUploadProxyEnabled        bool   `mapstructure:"presigned_upload_proxy_enabled"`
+	PresignedUploadProxyTimeoutSeconds int    `mapstructure:"presigned_upload_proxy_timeout_seconds"`
+	MultipartPolicyVersion             string `mapstructure:"multipart_policy_version"`
+	MultipartMode                      string `mapstructure:"multipart_mode"`
+	MultipartRequireChecksum           bool   `mapstructure:"multipart_require_checksum"`
+	AccessKey                          string `mapstructure:"access_key"`
+	SecretKey                          string `mapstructure:"secret_key"`
+	UseSSL                             bool   `mapstructure:"use_ssl"`
+	Bucket                             string `mapstructure:"bucket"`
+	SearchArchiveBucket                string `mapstructure:"search_archive_bucket"`
+	SearchArchiveRetentionDays         int    `mapstructure:"search_archive_retention_days"`
+	MessageArchiveBucket               string `mapstructure:"message_archive_bucket"`
+	MessageArchiveRetentionDays        int    `mapstructure:"message_archive_retention_days"`
+	ArtifactEnabled                    bool   `mapstructure:"artifact_enabled"`
+	ArtifactEndpoint                   string `mapstructure:"artifact_endpoint"`
+	ArtifactAccessKey                  string `mapstructure:"artifact_access_key"`
+	ArtifactSecretKey                  string `mapstructure:"artifact_secret_key"`
+	ArtifactUseSSL                     bool   `mapstructure:"artifact_use_ssl"`
+	ArtifactBucket                     string `mapstructure:"artifact_bucket"`
+	ArtifactAuditAccessKey             string `mapstructure:"artifact_audit_access_key"`
+	ArtifactAuditSecretKey             string `mapstructure:"artifact_audit_secret_key"`
+	ArtifactMaintenanceAccessKey       string `mapstructure:"artifact_maintenance_access_key"`
+	ArtifactMaintenanceSecretKey       string `mapstructure:"artifact_maintenance_secret_key"`
+	PublicBaseURL                      string `mapstructure:"public_base_url"`
+	FileMaxSizeMB                      int64  `mapstructure:"file_max_size_mb"`
+	MultipartChunkSizeMB               int64  `mapstructure:"multipart_chunk_size_mb"`
+	MultipartSessionTTLMin             int    `mapstructure:"multipart_session_ttl_minutes"`
+	MultipartDirectThresholdMB         int64  `mapstructure:"multipart_direct_threshold_mb"`
+	MultipartMaxConcurrency            int    `mapstructure:"multipart_max_concurrency"`
+	MultipartMaxRetries                int    `mapstructure:"multipart_max_retries"`
+	MultipartRetryDelayMS              int    `mapstructure:"multipart_retry_delay_ms"`
+	MultipartPresignURLTTLSeconds      int    `mapstructure:"multipart_presign_url_ttl_seconds"`
+	DownloadURLTTLMinutes              int    `mapstructure:"download_url_ttl_minutes"`
 }
 
 type RateLimit struct {
@@ -356,10 +371,12 @@ func Load() error {
 		v.SetDefault("gateway.core_http_target", "http://127.0.0.1:8081")
 		v.SetDefault("gateway.agent_control_enabled", false)
 		v.SetDefault("gateway.agent_control_target", "http://127.0.0.1:8091")
+		v.SetDefault("gateway.agent_control_secret", "")
 		v.SetDefault("gateway.agent_subscription_enabled", false)
 		v.SetDefault("gateway.agent_subscription_tenant_id", "dipole")
 		v.SetDefault("gateway.agent_memory_enabled", false)
 		v.SetDefault("gateway.agent_memory_tenant_id", "dipole")
+		v.SetDefault("gateway.agent_artifact_enabled", false)
 		v.SetDefault("gateway.agent_mcp_enabled", false)
 		v.SetDefault("gateway.agent_mcp_target", "http://127.0.0.1:8091")
 		v.SetDefault("realtime.delivery", "go")
@@ -445,6 +462,7 @@ func Load() error {
 		v.SetDefault("internal_rpc.search_target", "127.0.0.1:9093")
 		v.SetDefault("internal_rpc.sync_listen_address", "127.0.0.1:9094")
 		v.SetDefault("internal_rpc.sync_target", "127.0.0.1:9094")
+		v.SetDefault("internal_rpc.agent_memory_promotion_receipt_commit_enabled", false)
 		v.SetDefault("internal_rpc.delivery_observation_enabled", false)
 		v.SetDefault("internal_rpc.delivery_observation_listen_address", "127.0.0.1:9095")
 		v.SetDefault("internal_rpc.delivery_observation_capacity", 1024)
@@ -462,6 +480,11 @@ func Load() error {
 		v.SetDefault("storage.provider", "minio")
 		v.SetDefault("storage.endpoint", "127.0.0.1:9000")
 		v.SetDefault("storage.presign_endpoint", "")
+		v.SetDefault("storage.presigned_upload_proxy_enabled", false)
+		v.SetDefault("storage.presigned_upload_proxy_timeout_seconds", 30)
+		v.SetDefault("storage.multipart_policy_version", "v1")
+		v.SetDefault("storage.multipart_mode", "relay")
+		v.SetDefault("storage.multipart_require_checksum", false)
 		v.SetDefault("storage.access_key", "dipoleplatform")
 		v.SetDefault("storage.secret_key", "dipoleplatformpass")
 		v.SetDefault("storage.use_ssl", false)
@@ -484,6 +507,11 @@ func Load() error {
 		v.SetDefault("storage.file_max_size_mb", 50)
 		v.SetDefault("storage.multipart_chunk_size_mb", 5)
 		v.SetDefault("storage.multipart_session_ttl_minutes", 60)
+		v.SetDefault("storage.multipart_direct_threshold_mb", 4)
+		v.SetDefault("storage.multipart_max_concurrency", 3)
+		v.SetDefault("storage.multipart_max_retries", 2)
+		v.SetDefault("storage.multipart_retry_delay_ms", 250)
+		v.SetDefault("storage.multipart_presign_url_ttl_seconds", 900)
 		v.SetDefault("storage.download_url_ttl_minutes", 10)
 		v.SetDefault("rate_limit.enabled", true)
 		v.SetDefault("rate_limit.register_limit", 5)
@@ -537,6 +565,7 @@ func Load() error {
 			"gateway.agent_subscription_tenant_id",
 			"gateway.agent_memory_enabled",
 			"gateway.agent_memory_tenant_id",
+			"gateway.agent_artifact_enabled",
 			"gateway.agent_mcp_enabled",
 			"gateway.agent_mcp_target",
 			"realtime.delivery",
@@ -627,6 +656,7 @@ func Load() error {
 			"internal_rpc.search_target",
 			"internal_rpc.sync_listen_address",
 			"internal_rpc.sync_target",
+			"internal_rpc.agent_memory_promotion_receipt_commit_enabled",
 			"internal_rpc.delivery_observation_enabled",
 			"internal_rpc.delivery_observation_listen_address",
 			"internal_rpc.delivery_observation_capacity",
@@ -644,6 +674,10 @@ func Load() error {
 			"storage.provider",
 			"storage.endpoint",
 			"storage.presign_endpoint",
+			"storage.presigned_upload_proxy_enabled",
+			"storage.presigned_upload_proxy_timeout_seconds",
+			"storage.multipart_policy_version",
+			"storage.multipart_mode",
 			"storage.access_key",
 			"storage.secret_key",
 			"storage.use_ssl",
@@ -664,6 +698,14 @@ func Load() error {
 			"storage.artifact_maintenance_secret_key",
 			"storage.public_base_url",
 			"storage.file_max_size_mb",
+			"storage.multipart_chunk_size_mb",
+			"storage.multipart_session_ttl_minutes",
+			"storage.multipart_direct_threshold_mb",
+			"storage.multipart_max_concurrency",
+			"storage.multipart_max_retries",
+			"storage.multipart_retry_delay_ms",
+			"storage.multipart_presign_url_ttl_seconds",
+			"storage.multipart_require_checksum",
 			"storage.download_url_ttl_minutes",
 			"rate_limit.enabled",
 			"rate_limit.register_limit",
@@ -765,10 +807,12 @@ func GatewayConfig() Gateway {
 		CoreHTTPTarget:            strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
 		AgentControlEnabled:       cfg.GetBool("gateway.agent_control_enabled"),
 		AgentControlTarget:        strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
+		AgentControlSecret:        strings.TrimSpace(cfg.GetString("gateway.agent_control_secret")),
 		AgentSubscriptionEnabled:  cfg.GetBool("gateway.agent_subscription_enabled"),
 		AgentSubscriptionTenantID: strings.TrimSpace(cfg.GetString("gateway.agent_subscription_tenant_id")),
 		AgentMemoryEnabled:        cfg.GetBool("gateway.agent_memory_enabled"),
 		AgentMemoryTenantID:       strings.TrimSpace(cfg.GetString("gateway.agent_memory_tenant_id")),
+		AgentArtifactEnabled:      cfg.GetBool("gateway.agent_artifact_enabled"),
 		AgentMCPEnabled:           cfg.GetBool("gateway.agent_mcp_enabled"),
 		AgentMCPTarget:            strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
 	}
@@ -1014,6 +1058,9 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.SearchTarget = strings.TrimSpace(cfg.GetString("internal_rpc.search_target"))
 	internalRPC.SyncListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.sync_listen_address"))
 	internalRPC.SyncTarget = strings.TrimSpace(cfg.GetString("internal_rpc.sync_target"))
+	internalRPC.AgentConversationSearchEnabled = cfg.GetBool("internal_rpc.agent_conversation_search_enabled")
+	internalRPC.AgentMemoryPromotionReceiptCommitEnabled = cfg.GetBool("internal_rpc.agent_memory_promotion_receipt_commit_enabled")
+	internalRPC.AgentOAuthAuthorizationTransactionConsumeEnabled = cfg.GetBool("internal_rpc.agent_oauth_authorization_transaction_consume_enabled")
 	internalRPC.DeliveryObservationEnabled = cfg.GetBool("internal_rpc.delivery_observation_enabled")
 	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))
 	internalRPC.DeliveryObservationCapacity = cfg.GetInt("internal_rpc.delivery_observation_capacity")
@@ -1042,6 +1089,10 @@ func StorageConfig() Storage {
 	storageConfig.Provider = cfg.GetString("storage.provider")
 	storageConfig.Endpoint = cfg.GetString("storage.endpoint")
 	storageConfig.PresignEndpoint = cfg.GetString("storage.presign_endpoint")
+	storageConfig.PresignedUploadProxyEnabled = cfg.GetBool("storage.presigned_upload_proxy_enabled")
+	storageConfig.PresignedUploadProxyTimeoutSeconds = cfg.GetInt("storage.presigned_upload_proxy_timeout_seconds")
+	storageConfig.MultipartPolicyVersion = cfg.GetString("storage.multipart_policy_version")
+	storageConfig.MultipartMode = cfg.GetString("storage.multipart_mode")
 	storageConfig.AccessKey = cfg.GetString("storage.access_key")
 	storageConfig.SecretKey = cfg.GetString("storage.secret_key")
 	storageConfig.UseSSL = cfg.GetBool("storage.use_ssl")
@@ -1062,6 +1113,13 @@ func StorageConfig() Storage {
 	storageConfig.ArtifactMaintenanceSecretKey = cfg.GetString("storage.artifact_maintenance_secret_key")
 	storageConfig.PublicBaseURL = cfg.GetString("storage.public_base_url")
 	storageConfig.FileMaxSizeMB = cfg.GetInt64("storage.file_max_size_mb")
+	storageConfig.MultipartChunkSizeMB = cfg.GetInt64("storage.multipart_chunk_size_mb")
+	storageConfig.MultipartSessionTTLMin = cfg.GetInt("storage.multipart_session_ttl_minutes")
+	storageConfig.MultipartDirectThresholdMB = cfg.GetInt64("storage.multipart_direct_threshold_mb")
+	storageConfig.MultipartMaxConcurrency = cfg.GetInt("storage.multipart_max_concurrency")
+	storageConfig.MultipartMaxRetries = cfg.GetInt("storage.multipart_max_retries")
+	storageConfig.MultipartRetryDelayMS = cfg.GetInt("storage.multipart_retry_delay_ms")
+	storageConfig.MultipartPresignURLTTLSeconds = cfg.GetInt("storage.multipart_presign_url_ttl_seconds")
 	storageConfig.DownloadURLTTLMinutes = cfg.GetInt("storage.download_url_ttl_minutes")
 
 	return storageConfig

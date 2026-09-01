@@ -4,6 +4,8 @@ import type { Span } from "@opentelemetry/api";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
+import { ConversationReadCapability } from "../capabilities/conversation-read.js";
+import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
 import { InMemoryEventLedger } from "./event-ledger.js";
 import { ShadowEventProcessor, agentRunId, agentTaskId, type AgentEvent } from "./shadow-processor.js";
 import type { AgentTelemetry } from "../observability/agent-telemetry.js";
@@ -99,6 +101,7 @@ describe("ShadowEventProcessor", () => {
     const trajectory = {
       append: vi.fn(async () => undefined),
       claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-1" })),
+      recordAuthorization: vi.fn(async () => undefined),
       completeStep: vi.fn(async () => undefined),
       failStep: vi.fn(async () => undefined)
     };
@@ -122,6 +125,96 @@ describe("ShadowEventProcessor", () => {
     expect(trajectory.completeStep).toHaveBeenCalledWith(expect.stringMatching(/^task:/), 1, "TOKEN-1", [conversation]);
     expect(trajectory.failStep).not.toHaveBeenCalled();
     expect(completeRun).toHaveBeenCalledWith(expect.stringMatching(/^task:/), expect.stringMatching(/^run:/), expect.objectContaining({ mode: "shadow" }));
+  });
+
+  it("rejects a direct conversation read before invoking the remote capability", async () => {
+    const registry = new CapabilityRegistry();
+    const readConversation = vi.fn(async () => ({ found: true, reason: "", targetId: "G1", targetType: 2, messages: [] }));
+    registry.register(new ConversationReadCapability({ readConversation }));
+    const trajectory = {
+      append: vi.fn(async () => undefined),
+      claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-DIRECT" })),
+      recordAuthorization: vi.fn(async () => undefined),
+      completeStep: vi.fn(async () => undefined),
+      failStep: vi.fn(async () => undefined)
+    };
+    const processor = new ShadowEventProcessor(
+      { plan: async () => ({ summary: "unsafe", steps: [{ capabilityId: "conversation.read", input: { conversationId: "group:G1" } }] }) },
+      trajectory, new InMemoryEventLedger(), undefined, registry, trajectory
+    );
+
+    await expect(processor.process({
+      eventId: "E-DIRECT", eventType: "message.direct.created", aggregateId: "M-DIRECT",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: {}
+    }, { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI" })).rejects.toThrow(/trusted conversation discovery marker/);
+    expect(readConversation).not.toHaveBeenCalled();
+    expect(trajectory.recordAuthorization).not.toHaveBeenCalled();
+    expect(trajectory.failStep).toHaveBeenCalledOnce();
+  });
+
+  it("records an empty discovery and skips its dependent read", async () => {
+    const registry = new CapabilityRegistry();
+    const listConversations = vi.fn(async () => []);
+    const readConversation = vi.fn(async () => ({ found: true, reason: "", targetId: "G1", targetType: 2, messages: [] }));
+    registry.register(new ConversationListCapability({ listConversations }));
+    registry.register(new ConversationReadCapability({ readConversation }));
+    let claimCount = 0;
+    const trajectory = {
+      append: vi.fn(async () => undefined),
+      claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: `TOKEN-${++claimCount}` })),
+      recordAuthorization: vi.fn(async () => undefined),
+      completeStep: vi.fn(async () => undefined),
+      failStep: vi.fn(async () => undefined)
+    };
+    const processor = new ShadowEventProcessor(
+      { plan: async () => ({ summary: "read newest", steps: [
+        { capabilityId: "conversation.list", input: { limit: 20 } },
+        { capabilityId: "conversation.read", input: { conversationId: "$discovered.previous" } }
+      ] }) },
+      trajectory, new InMemoryEventLedger(), undefined, registry, trajectory
+    );
+
+    await expect(processor.process({
+      eventId: "E-EMPTY-DISCOVERY", eventType: "message.direct.created", aggregateId: "M-EMPTY-DISCOVERY",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: {}
+    }, { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI" })).resolves.toMatchObject({ outcome: "recorded" });
+
+    expect(listConversations).toHaveBeenCalledOnce();
+    expect(readConversation).not.toHaveBeenCalled();
+    expect(trajectory.recordAuthorization).toHaveBeenCalledOnce();
+    expect(trajectory.completeStep).toHaveBeenNthCalledWith(1, expect.any(String), 1, "TOKEN-1", []);
+    expect(trajectory.completeStep).toHaveBeenNthCalledWith(2, expect.any(String), 2, "TOKEN-2", {
+      status: "skipped", reason: "no_discovered_conversation"
+    });
+    expect(trajectory.failStep).not.toHaveBeenCalled();
+  });
+
+  it("executes a retrieval Step only when the composed context grants search", async () => {
+    const registry = new CapabilityRegistry();
+    const searchConversations = vi.fn(async () => []);
+    registry.register(new ConversationSearchCapability({ searchConversations }));
+    const trajectory = {
+      append: vi.fn(async () => undefined),
+      claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-SEARCH" })),
+      recordAuthorization: vi.fn(async () => undefined),
+      completeStep: vi.fn(async () => undefined),
+      failStep: vi.fn(async () => undefined)
+    };
+    const processor = new ShadowEventProcessor(
+      { plan: async () => ({ summary: "search", steps: [{ capabilityId: "conversation.search", input: { query: "migration", limit: 5 } }] }) },
+      trajectory, new InMemoryEventLedger(), undefined, registry, trajectory,
+      60_000, undefined, undefined, ["conversation.list", "conversation.read", "conversation.search"]
+    );
+
+    await processor.process({
+      eventId: "E-SEARCH", eventType: "message.direct.created", aggregateId: "M-SEARCH",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: {}
+    }, { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI" });
+
+    expect(searchConversations).toHaveBeenCalledWith(expect.objectContaining({
+      permissions: ["conversation.list", "conversation.read", "conversation.search"]
+    }), "migration", 5);
+    expect(trajectory.completeStep).toHaveBeenCalledWith(expect.stringMatching(/^task:/), 1, "TOKEN-SEARCH", []);
   });
 
   it("releases its claim when planning fails so Kafka retry can resume", async () => {

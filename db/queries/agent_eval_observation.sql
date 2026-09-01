@@ -2,8 +2,10 @@
 SELECT
     t.task_uuid,
     t.status AS task_status,
+    t.workflow_status,
     r.run_uuid,
     r.status AS run_status,
+    r.trace_id,
     p.context_manifest_json
 FROM agent_tasks AS t
 JOIN agent_runs AS r ON r.task_uuid = t.task_uuid AND r.run_uuid = ? AND r.mode = 'shadow'
@@ -13,6 +15,7 @@ LIMIT 1;
 
 -- name: ListAgentEvalObservationSteps :many
 SELECT step_no, capability_id, status, attempt_count,
+       authorization_resource_type, authorization_resource_id, authorization_action, authorization_decision,
        TIMESTAMPDIFF(MICROSECOND, started_at, finished_at) DIV 1000 AS latency_ms
 FROM agent_shadow_steps
 WHERE task_uuid = ?

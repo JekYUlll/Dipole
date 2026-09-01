@@ -19,7 +19,8 @@
     }
   },
   "$defs": {
-    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._:-]*$"},
+    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "resourceId": {"anyOf": [{"const": "*"}, {"$ref": "#/$defs/id"}]},
     "idSequence": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/id"}},
     "ids": {"allOf": [{"$ref": "#/$defs/idSequence"}, {"uniqueItems": true}]},
     "costMetrics": {
@@ -32,13 +33,23 @@
         "latencyMs": {"type": "integer", "minimum": 0}
       }
     },
+    "observedCostMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelCalls", "toolCalls", "totalTokens", "totalCostMicrousd", "latencyMs"],
+      "properties": {
+        "modelCalls": {"type": "integer", "minimum": 0}, "toolCalls": {"type": "integer", "minimum": 0},
+        "totalTokens": {"type": "integer", "minimum": 0}, "totalCostMicrousd": {"type": "integer", "minimum": 0},
+        "latencyMs": {"type": "integer", "minimum": 0}, "tokenMetrics": {"enum": ["complete", "unavailable"]}
+      }
+    },
     "decision": {
       "type": "object",
       "additionalProperties": false,
       "required": ["capabilityId", "resourceType", "resourceId", "action", "decision"],
       "properties": {
         "capabilityId": {"$ref": "#/$defs/id"}, "resourceType": {"$ref": "#/$defs/id"},
-        "resourceId": {"$ref": "#/$defs/id"}, "action": {"$ref": "#/$defs/id"},
+        "resourceId": {"$ref": "#/$defs/resourceId"}, "action": {"$ref": "#/$defs/id"},
         "decision": {"enum": ["allowed", "denied"]}
       }
     },
@@ -79,7 +90,7 @@
       "properties": {
         "id": {"$ref": "#/$defs/id"}, "category": {"const": "cost"},
         "expected": {"type": "object", "additionalProperties": false, "required": ["maximums"], "properties": {"maximums": {"$ref": "#/$defs/costMetrics"}}},
-        "observed": {"$ref": "#/$defs/costMetrics"}
+        "observed": {"$ref": "#/$defs/observedCostMetrics"}
       }
     }
   }

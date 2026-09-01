@@ -104,6 +104,9 @@ func (messageCoreCapabilityStub) ListGroupMembers(groupUUID string) ([]*model.Gr
 func (messageCoreCapabilityStub) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
 	return &model.UploadedFile{UUID: fileUUID, UploaderUUID: uploaderUUID, FileName: "rpc-file"}, nil
 }
+func (messageCoreCapabilityStub) ListOwnedFiles(string, string, int) (*application.OwnedFilePage, error) {
+	return &application.OwnedFilePage{}, nil
+}
 
 func (messageCoreCapabilityStub) ListSearchConversationKeys(string) ([]string, error) {
 	return nil, nil

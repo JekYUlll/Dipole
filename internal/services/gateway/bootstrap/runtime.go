@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	deliveryv1 "github.com/JekYUlll/Dipole/api/gen/go/delivery/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
-	"github.com/JekYUlll/Dipole/internal/gateway"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
@@ -22,7 +23,9 @@ import (
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	realtimeDelivery "github.com/JekYUlll/Dipole/internal/realtime/delivery"
+	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
 	gatewaykafka "github.com/JekYUlll/Dipole/internal/services/gateway/infrastructure/kafka"
+	"github.com/JekYUlll/Dipole/internal/services/gateway/server"
 	deliverygrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/delivery"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"github.com/prometheus/client_golang/prometheus"
@@ -211,7 +214,10 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	var agentTasks gateway.AgentTaskControlApplication
 	if gatewayCfg.AgentControlEnabled {
-		agentTasks, err = gateway.NewAgentTaskControlClient(gatewayCfg.AgentControlTarget, rpcCfg.SharedSecret, time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second)
+		agentTasks, err = gateway.NewAgentTaskControlClient(
+			gatewayCfg.AgentControlTarget, agentControlSecret(gatewayCfg.AgentControlSecret, rpcCfg.SharedSecret),
+			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Agent Task control client: %w", err)
@@ -219,7 +225,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	var agentMCP gateway.AgentMCPApplication
 	if gatewayCfg.AgentMCPEnabled {
-		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret, service.AgentMCPResourceIdentifier())
+		agentMCP, err = gateway.NewAgentMCPProxy(gatewayCfg.AgentMCPTarget, rpcCfg.SharedSecret, application.AgentMCPResourceIdentifier(config.AuthConfig().AgentMCPResource))
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Agent MCP proxy: %w", err)
@@ -247,20 +253,62 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 			return nil, fmt.Errorf("initialize Agent Memory control client: %w", err)
 		}
 	}
+	var agentArtifacts *gateway.AgentArtifactClient
+	if gatewayCfg.AgentArtifactEnabled {
+		agentArtifacts, err = gateway.NewAgentArtifactClient(
+			agentv1.NewAgentCapabilityServiceClient(coreConn), time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent Artifact client: %w", err)
+		}
+	}
+	var presignedUploadProxy http.Handler
+	var presignedUploadBucket string
+	storageCfg := config.StorageConfig()
+	if storageCfg.PresignedUploadProxyEnabled {
+		scheme := "http"
+		if storageCfg.UseSSL {
+			scheme = "https"
+		}
+		proxyTarget := scheme + "://" + strings.TrimSpace(storageCfg.Endpoint)
+		signedEndpoint := strings.TrimSpace(storageCfg.PresignEndpoint)
+		if parsed, parseErr := url.Parse("//" + signedEndpoint); parseErr == nil && parsed.Host != "" {
+			signedEndpoint = parsed.Host
+		}
+		chunkBytes := storageCfg.MultipartChunkSizeMB * 1024 * 1024
+		presignedUploadProxy, err = gateway.NewPresignedUploadProxyWithTimeout(
+			proxyTarget,
+			signedEndpoint,
+			chunkBytes,
+			time.Duration(storageCfg.PresignedUploadProxyTimeoutSeconds)*time.Second,
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize presigned upload proxy: %w", err)
+		}
+		presignedUploadBucket = storageCfg.Bucket
+	}
 
-	srv, err := gateway.NewServer(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
-		Messages:           messages,
-		Sync:               syncApplication,
-		Core:               core,
-		Search:             search,
-		AgentTasks:         agentTasks,
-		AgentSubscriptions: agentSubscriptions,
-		AgentDefinitions:   agentSubscriptions,
-		AgentMemories:      agentMemories,
-		AgentMCP:           agentMCP,
-		Presence:           wsTransport.NewRedisPresenceTracker(presence),
-		Limiter:            platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
-		AgentMCPLimiter:    platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
+	gatewayLimiter := platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB)
+	srv, err := gateway.NewServerWithDependencies(gatewayCfg.CoreHTTPTarget, gateway.Dependencies{
+		Messages:               messages,
+		Sync:                   syncApplication,
+		Core:                   core,
+		Search:                 search,
+		AgentTasks:             agentTasks,
+		AgentSubscriptions:     agentSubscriptions,
+		AgentDefinitions:       agentSubscriptions,
+		AgentMemories:          agentMemories,
+		AgentArtifacts:         agentArtifactApplication(agentArtifacts),
+		AgentMCP:               agentMCP,
+		TokenResolver:          coreauth.NewTokenService(),
+		Presence:               wsTransport.NewRedisPresenceTracker(presence),
+		Limiter:                gatewayLimiter,
+		AgentMCPLimiter:        platformRateLimit.NewLimiterWithClient(config.RateLimitConfig(), cache.RDB),
+		PresignedUploadProxy:   presignedUploadProxy,
+		PresignedUploadBucket:  presignedUploadBucket,
+		PresignedUploadLimiter: gatewayLimiter,
 	})
 	if err != nil {
 		cleanup()
@@ -357,6 +405,21 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		zap.String("realtime_delivery_authority", string(deliveryAuthority)),
 	)
 	return runtime, nil
+}
+
+func agentControlSecret(configuredSecret, internalRPCSecret string) string {
+	if configuredSecret != "" {
+		return configuredSecret
+	}
+	return internalRPCSecret
+}
+
+// A nil concrete client in an interface would register the route and panic on use.
+func agentArtifactApplication(client *gateway.AgentArtifactClient) gateway.AgentArtifactApplication {
+	if client == nil {
+		return nil
+	}
+	return client
 }
 
 func (r *GatewayRuntime) Server() *gateway.Server {

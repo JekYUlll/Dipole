@@ -144,7 +144,9 @@ func sameAgentMemoryCandidateReviewV1(left, right application.AgentMemoryCandida
 }
 
 func samePromotedAgentMemoryV1(left, right application.AgentMemoryV1) bool {
-	return left.MemoryUUID == right.MemoryUUID && left.TenantID == right.TenantID && left.PrincipalUUID == right.PrincipalUUID && left.AgentUUID == right.AgentUUID && left.MemoryType == right.MemoryType && left.Status == right.Status && left.ResourceType == right.ResourceType && left.ResourceID == right.ResourceID && left.Content == right.Content && left.CompactContent == right.CompactContent && left.Priority == right.Priority && left.Provenance == right.Provenance && left.ValidFrom.Equal(right.ValidFrom)
+	// ValidFrom is assigned by the first durable commit. A retry can have a later
+	// wall-clock value while still representing the same candidate promotion.
+	return left.MemoryUUID == right.MemoryUUID && left.TenantID == right.TenantID && left.PrincipalUUID == right.PrincipalUUID && left.AgentUUID == right.AgentUUID && left.MemoryType == right.MemoryType && left.Status == right.Status && left.ResourceType == right.ResourceType && left.ResourceID == right.ResourceID && left.Content == right.Content && left.CompactContent == right.CompactContent && left.Priority == right.Priority && left.Provenance == right.Provenance
 }
 
 func isExactAgentMemoryDuplicate(ctx context.Context, queries *generated.Queries, memory application.AgentMemoryV1, err error) bool {

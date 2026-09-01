@@ -3,13 +3,13 @@ package bootstrap
 import (
 	"context"
 
-	legacybootstrap "github.com/JekYUlll/Dipole/internal/bootstrap"
+	embeddedbootstrap "github.com/JekYUlll/Dipole/internal/services/core/bootstrap/embedded/runtime"
 )
 
 // EmbeddedRuntime aliases the compatibility aggregate runtime.
-type EmbeddedRuntime = legacybootstrap.Runtime
+type EmbeddedRuntime = embeddedbootstrap.Runtime
 
 // InitializeEmbedded preserves the local aggregate runtime as a rollback path.
 func InitializeEmbedded(ctx context.Context) (*EmbeddedRuntime, error) {
-	return legacybootstrap.Initialize(ctx)
+	return embeddedbootstrap.Initialize(ctx)
 }

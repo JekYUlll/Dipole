@@ -42,6 +42,16 @@ compose() {
   docker compose -p "${project_name}" "${compose_files[@]}" --profile search "$@"
 }
 
+compose_exec_with_timeout() {
+  local service=$1
+  shift
+  local -a compose_files=(-f "${compose_file}")
+  if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then
+    compose_files+=(-f "${isolated_images_file}")
+  fi
+  timeout --kill-after=2s 10s docker compose -p "${project_name}" "${compose_files[@]}" --profile search exec -T "${service}" "$@"
+}
+
 cleanup() {
   local exit_code=$?
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
@@ -58,7 +68,7 @@ trap cleanup EXIT INT TERM
 
 readiness_body() {
   local service=$1
-  compose exec -T "${service}" sh -ec \
+  compose_exec_with_timeout "${service}" sh -ec \
     'wget -q -O - http://127.0.0.1:9100/metrics 2>/dev/null | awk '\''/^dipole_service_ready\{/ {print ($2 == 1 ? "ready" : "not ready"); exit}'\''' \
     2>/dev/null | tr -d '\r' || true
 }

@@ -26,7 +26,6 @@ recovery_required=false
 
 compose() {
   docker compose \
-    --project-directory "${ROOT_DIR}" \
     --project-name "${COMPOSE_PROJECT_NAME}" \
     -f "${ROOT_DIR}/${COMPOSE_FILE}" \
     "$@"

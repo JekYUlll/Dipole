@@ -11,9 +11,9 @@ import (
 	"go.uber.org/zap"
 
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
 
 type inboundHandler interface {
@@ -212,8 +212,12 @@ func (d *Dispatcher) dispatchDirect(ctx context.Context, client *Client, message
 	eventData := newChatMessageData(message)
 	deliveredCount := 0
 	if d.syncDispatch {
-		deliveredCount = d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
-		d.sendTimelineNotification(message.TargetUUID, message)
+		if d.timelineNotifyMode == TimelineNotifyPrimary {
+			deliveredCount = d.sendTimelineNotification(message.TargetUUID, message)
+		} else {
+			deliveredCount = d.hub.SendEventToUser(message.TargetUUID, TypeChatMessage, eventData)
+			d.sendTimelineNotification(message.TargetUUID, message)
+		}
 		if message.TargetUUID == client.sessionUser.UUID {
 			deliveredCount = max(deliveredCount-1, 0)
 		}
@@ -246,8 +250,12 @@ func (d *Dispatcher) dispatchGroup(ctx context.Context, client *Client, message 
 			if recipientUUID == client.sessionUser.UUID {
 				continue
 			}
-			deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
-			d.sendTimelineNotification(recipientUUID, message)
+			if d.timelineNotifyMode == TimelineNotifyPrimary {
+				deliveredCount += d.sendTimelineNotification(recipientUUID, message)
+			} else {
+				deliveredCount += d.hub.SendEventToUser(recipientUUID, TypeChatMessage, eventData)
+				d.sendTimelineNotification(recipientUUID, message)
+			}
 		}
 	}
 	ack := ChatSentData{
@@ -260,11 +268,11 @@ func (d *Dispatcher) dispatchGroup(ctx context.Context, client *Client, message 
 	}
 }
 
-func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *model.Message) {
+func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *model.Message) int {
 	if (d.timelineNotifyMode != TimelineNotifyShadow && d.timelineNotifyMode != TimelineNotifyPrimary) || message == nil || message.Seq == 0 || strings.TrimSpace(message.UUID) == "" || strings.TrimSpace(message.ConversationKey) == "" {
-		return
+		return 0
 	}
-	d.hub.SendEventToUser(recipientUUID, TypeSyncItemNotifyV1, SyncItemNotifyData{
+	return d.hub.SendEventToUser(recipientUUID, TypeSyncItemNotifyV1, SyncItemNotifyData{
 		SchemaVersion: "v1", EventID: message.UUID, MessageUUID: message.UUID,
 		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,
 		TargetType: message.TargetType, TargetUUID: message.TargetUUID,
@@ -273,19 +281,19 @@ func (d *Dispatcher) sendTimelineNotification(recipientUUID string, message *mod
 
 func (d *Dispatcher) handleChatSendError(client *Client, err error, unavailableMessage string, requestType string, clientMessageID string) {
 	switch {
-	case errors.Is(err, service.ErrMessageTargetRequired):
+	case errors.Is(err, messagedomain.ErrMessageTargetRequired):
 		_ = client.SendError(ErrorBadRequest, "target_uuid is required", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageContentRequired):
+	case errors.Is(err, messagedomain.ErrMessageContentRequired):
 		_ = client.SendError(ErrorBadRequest, "content is required", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageContentTooLong):
+	case errors.Is(err, messagedomain.ErrMessageContentTooLong):
 		_ = client.SendError(ErrorBadRequest, "content is too long", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageFileRequired):
+	case errors.Is(err, messagedomain.ErrMessageFileRequired):
 		_ = client.SendError(ErrorBadRequest, "file_id is required", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageFriendRequired), errors.Is(err, service.ErrMessageGroupForbidden):
+	case errors.Is(err, messagedomain.ErrMessageFriendRequired), errors.Is(err, messagedomain.ErrMessageGroupForbidden):
 		_ = client.SendError(ErrorPermissionDenied, "message send permission denied", requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageTargetUnavailable), errors.Is(err, service.ErrMessageTargetNotFound):
+	case errors.Is(err, messagedomain.ErrMessageTargetUnavailable), errors.Is(err, messagedomain.ErrMessageTargetNotFound):
 		_ = client.SendError(ErrorTargetUnavailable, unavailableMessage, requestType, clientMessageID)
-	case errors.Is(err, service.ErrMessageFileUnavailable):
+	case errors.Is(err, messagedomain.ErrMessageFileUnavailable):
 		_ = client.SendError(ErrorBadRequest, "file is unavailable", requestType, clientMessageID)
 	default:
 		client.log.Warn("persist websocket message failed", zap.Error(err))

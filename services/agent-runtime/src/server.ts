@@ -2,15 +2,16 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { timingSafeEqual } from "node:crypto";
 import { Readable } from "node:stream";
 
-import { AgentTaskControlError, type AgentTaskControlIdentity } from "./control/agent-task-control.js";
+import { AgentTaskControlError, type AgentTaskControlIdentity, type AgentTaskTimeline } from "./control/agent-task-control.js";
 
 export interface RuntimeReadiness {
   isReady(): boolean;
 }
 
 export interface AgentTaskControlAPI {
+  startTask?(input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }): Promise<{ taskId: string; status: "accepted" }>;
   getTask(input: AgentTaskControlIdentity): Promise<unknown>;
-  getTimeline?(input: AgentTaskControlIdentity & { afterSeq: bigint; limit: number }): Promise<unknown>;
+  getTimeline?(input: AgentTaskControlIdentity & { afterSeq: bigint; limit: number }): Promise<AgentTaskTimeline>;
   cancelTask(input: AgentTaskControlIdentity & { reason?: string }): Promise<void>;
   resolveApproval(input: AgentTaskControlIdentity & { approvalId: string; decision: "approved" | "denied" }): Promise<void>;
   provideInput(input: AgentTaskControlIdentity & { requestId: string; value: unknown }): Promise<void>;
@@ -31,6 +32,46 @@ export interface AgentMcpHTTPOptions {
   handler: AgentMcpHttpHandler;
 }
 
+export interface OAuthCallbackHandoffNotification {
+  readonly handoffId: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}
+
+export interface OAuthCallbackHandoffControlAPI {
+  notifyHandoff(notification: OAuthCallbackHandoffNotification): Promise<void>;
+}
+
+export interface OAuthCallbackHandoffNotificationDeduplicator {
+  claim(handoffId: string): boolean;
+  release(handoffId: string): void;
+}
+
+export interface OAuthCallbackHandoffHTTPOptions {
+  secret: string;
+  service: OAuthCallbackHandoffControlAPI;
+  deduplicator?: OAuthCallbackHandoffNotificationDeduplicator;
+}
+
+export class BoundedOAuthCallbackHandoffNotificationDeduplicator implements OAuthCallbackHandoffNotificationDeduplicator {
+  private readonly handoffs = new Map<string, true>();
+
+  constructor(private readonly capacity = 1_024) {
+    if (!Number.isSafeInteger(capacity) || capacity < 1 || capacity > 10_000) throw new Error("OAuth callback handoff deduplicator capacity is invalid");
+  }
+
+  claim(handoffId: string): boolean {
+    if (this.handoffs.has(handoffId)) return false;
+    if (this.handoffs.size >= this.capacity) this.handoffs.delete(this.handoffs.keys().next().value!);
+    this.handoffs.set(handoffId, true);
+    return true;
+  }
+
+  release(handoffId: string): void {
+    this.handoffs.delete(handoffId);
+  }
+}
+
 export interface AgentMetrics {
   render(): string;
 }
@@ -39,7 +80,8 @@ export function buildServer(
   readiness: RuntimeReadiness,
   control?: AgentTaskControlHTTPOptions,
   mcp?: AgentMcpHTTPOptions,
-  metrics?: AgentMetrics
+  metrics?: AgentMetrics,
+  oauthCallbackHandoff?: OAuthCallbackHandoffHTTPOptions
 ): FastifyInstance {
   const server = Fastify({ logger: false });
 
@@ -57,6 +99,19 @@ export function buildServer(
   if (control !== undefined) {
     if (control.secret.trim().length === 0) {
       throw new Error("Agent Task control HTTP secret is required");
+    }
+    const startTask = control.service.startTask;
+    if (startTask !== undefined) {
+      server.post<{ Body?: unknown }>("/internal/v1/agent/tasks", async (request, reply) => {
+        const identity = trustedControlRequestIdentity(request.headers, control.secret);
+        if (identity === undefined) return reply.code(401).send({ code: 401, message: "Agent Task control authentication failed" });
+        try {
+          const result = await startTask({ ...identity, body: request.body });
+          return reply.code(202).send({ taskId: result.taskId, status: result.status });
+        } catch (error) {
+          return sendControlError(reply, error);
+        }
+      });
     }
     server.get<{ Params: { taskId: string } }>("/internal/v1/agent/tasks/:taskId", async (request, reply) => {
       const identity = trustedControlIdentity(request.headers, request.params.taskId, control.secret);
@@ -81,7 +136,7 @@ export function buildServer(
         return reply.code(503).send({ code: 503, message: "Agent Task Timeline is unavailable" });
       }
       try {
-        return await control.service.getTimeline({ ...identity, afterSeq, limit });
+        return serializeAgentTaskTimeline(await control.service.getTimeline({ ...identity, afterSeq, limit }));
       } catch (error) {
         return sendControlError(reply, error);
       }
@@ -178,7 +233,56 @@ export function buildServer(
     });
   }
 
+  if (oauthCallbackHandoff !== undefined) {
+    if (oauthCallbackHandoff.secret.trim().length === 0) {
+      throw new Error("OAuth callback handoff HTTP secret is required");
+    }
+    const deduplicator = oauthCallbackHandoff.deduplicator ?? new BoundedOAuthCallbackHandoffNotificationDeduplicator();
+    server.post<{ Body?: unknown }>("/internal/v1/agent/oauth/callback-handoffs", async (request, reply) => {
+      const correlation = trustedOAuthCallbackHandoffCorrelation(request.headers, oauthCallbackHandoff.secret);
+      if (correlation === undefined) return reply.code(401).send({ code: 401, message: "OAuth callback handoff authentication failed" });
+      const handoffId = oauthCallbackHandoffID(request.body);
+      if (handoffId === undefined) return reply.code(400).send({ code: 400, message: "OAuth callback handoff is invalid" });
+      if (!deduplicator.claim(handoffId)) return reply.code(202).send();
+      try {
+        await oauthCallbackHandoff.service.notifyHandoff({ handoffId, ...correlation });
+        return reply.code(202).send();
+      } catch {
+        deduplicator.release(handoffId);
+        return reply.code(503).send({ code: 503, message: "OAuth callback handoff is unavailable" });
+      }
+    });
+  }
+
   return server;
+}
+
+function serializeAgentTaskTimeline(timeline: AgentTaskTimeline) {
+  return {
+    schemaVersion: timeline.schemaVersion,
+    taskId: timeline.taskId,
+    revision: safeTimelineNumber(timeline.revision, "revision"),
+    events: timeline.events.map((event) => ({
+      eventSeq: event.eventSeq.toString(),
+      eventId: event.eventId,
+      taskId: event.taskId,
+      runId: event.runId,
+      kind: event.kind,
+      status: event.status,
+      capabilityId: event.capabilityId,
+      approvalId: event.approvalId,
+      artifactId: event.artifactId,
+      occurredAtUnixMs: safeTimelineNumber(event.occurredAtUnixMs, "event timestamp")
+    })),
+    nextCursor: timeline.nextCursor
+  };
+}
+
+function safeTimelineNumber(value: bigint, field: string): number {
+  if (value < 0n || value > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new Error(`Agent Task Timeline ${field} exceeds the HTTP number range`);
+  }
+  return Number(value);
 }
 
 interface TrustedMcpIdentity extends AgentTaskControlIdentity {
@@ -213,17 +317,22 @@ function privateForwardHeader(name: string): boolean {
 }
 
 function trustedControlIdentity(headers: Record<string, string | string[] | undefined>, taskId: string, secret: string): AgentTaskControlIdentity | undefined {
+  const requestIdentity = trustedControlRequestIdentity(headers, secret);
+  const normalizedTaskId = taskId.trim();
+  if (requestIdentity === undefined || !validIdentifier(normalizedTaskId)) return undefined;
+  return { taskId: normalizedTaskId, ...requestIdentity };
+}
+
+function trustedControlRequestIdentity(headers: Record<string, string | string[] | undefined>, secret: string): Omit<AgentTaskControlIdentity, "taskId"> | undefined {
   const caller = header(headers, "x-dipole-caller-service");
   const providedSecret = header(headers, "x-dipole-service-token");
   const principalUserId = header(headers, "x-dipole-principal-user-id");
-  const normalizedTaskId = taskId.trim();
-  if (caller !== "dipole-gateway" || !safeEqual(providedSecret, secret) || !validIdentifier(normalizedTaskId) || !validIdentifier(principalUserId)) {
+  if (caller !== "dipole-gateway" || !safeEqual(providedSecret, secret) || !validIdentifier(principalUserId)) {
     return undefined;
   }
   const requestId = header(headers, "x-request-id");
   const traceId = header(headers, "x-trace-id");
   return {
-    taskId: normalizedTaskId,
     principalUserId,
     ...(requestId === "" ? {} : { requestId: requestId.slice(0, 128) }),
     ...(traceId === "" ? {} : { traceId: traceId.slice(0, 128) })
@@ -243,6 +352,23 @@ function safeEqual(left: string, right: string): boolean {
 
 function validIdentifier(value: string): boolean {
   return value.length > 0 && value.length <= 128 && /^[A-Za-z0-9._:-]+$/.test(value);
+}
+
+function trustedOAuthCallbackHandoffCorrelation(headers: Record<string, string | string[] | undefined>, secret: string): { requestId?: string; traceId?: string } | undefined {
+  if (header(headers, "x-dipole-caller-service") !== "dipole-gateway" || !safeEqual(header(headers, "x-dipole-service-token"), secret) ||
+      header(headers, "x-dipole-principal-user-id") !== "") return undefined;
+  const requestId = header(headers, "x-request-id");
+  const traceId = header(headers, "x-trace-id");
+  if ((requestId !== "" && !validIdentifier(requestId)) || (traceId !== "" && !validIdentifier(traceId))) return undefined;
+  return { ...(requestId === "" ? {} : { requestId }), ...(traceId === "" ? {} : { traceId }) };
+}
+
+function oauthCallbackHandoffID(body: unknown): string | undefined {
+  if (body === null || typeof body !== "object" || Array.isArray(body)) return undefined;
+  const fields = Object.keys(body);
+  if (fields.length !== 1 || fields[0] !== "handoff_id") return undefined;
+  const handoffId = (body as { handoff_id?: unknown }).handoff_id;
+  return typeof handoffId === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(handoffId) ? handoffId : undefined;
 }
 
 function sendControlError(reply: { code(statusCode: number): { send(payload: unknown): unknown } }, error: unknown): unknown {

@@ -54,6 +54,19 @@ scripts/bench/run_bench.sh
 
 连接梯度必须保持同一机器、Compose 文件、镜像、CPU/内存限制、采样周期和消息参数。每个报告至少保留 operations、baseline JSON/Markdown、k6 summary、Kafka lag、Conversation Prometheus 快照、process samples/resources 和 runtime provenance。
 
+## Small-host read probe
+
+TencentCloud_01 只运行低并发、只读 HTTP 探针，不把探针结果解释为系统容量。探针只接受 `http(s)` URL，固定使用 `GET`，默认 100 次请求、4 并发和 5 秒超时；支持 `EXPECTED_STATUS` 与 `REPORT_FILE`，报告不包含响应正文或认证信息：
+
+```bash
+LOAD_URL=http://127.0.0.1:18080/health \
+REQUESTS=100 CONCURRENCY=2 TIMEOUT_SECONDS=5 EXPECTED_STATUS=200 \
+REPORT_FILE=/tmp/dipole-tencent-health-load.txt \
+scripts/bench/http-read-load.sh
+```
+
+该探针适合 Gateway health、认证失败的只读边界和低资源回归。业务写入、WebSocket、Kafka lag、成员 fan-out 和故障注入仍必须使用完整 `run_bench.sh` 或对应 smoke；出现非预期状态码或网络错误时命令返回非零。
+
 ## Recovery drill
 
 节点恢复使用独立证据契约，不放宽 steady-state baseline v4 对 PID 变化的拒绝规则。候选拓扑和同 revision 镜像就绪后执行：

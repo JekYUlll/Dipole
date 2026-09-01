@@ -2,40 +2,40 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
+	searchv1 "github.com/JekYUlll/Dipole/api/gen/go/search/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	platformrpc "github.com/JekYUlll/Dipole/internal/platform/rpc"
+	corerpc "github.com/JekYUlll/Dipole/internal/services/core/rpc"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
-	coregrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/core"
 	messagegrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/message"
+	searchgrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/search"
 	"google.golang.org/grpc"
 )
 
-const coreServiceName = "dipole-core"
+const (
+	coreServiceName = "dipole-core"
+)
 
 type InternalRPCServer = platformrpc.Server
 
 // NewCoreRPCServer owns the standalone Core RPC adapter and its platform
 // transport. The legacy bootstrap keeps a compatibility constructor for the
 // embedded runtime and existing migration tests.
-func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability) (*platformrpc.Server, error) {
-	adapter, err := coregrpc.NewServer(capability)
-	if err != nil {
-		return nil, fmt.Errorf("create core rpc adapter: %w", err)
+func NewCoreRPCServer(cfg config.InternalRPC, capability application.CoreCapability, adapters ...agentv1.AgentCapabilityServiceServer) (*platformrpc.Server, error) {
+	if len(adapters) > 1 {
+		return nil, errors.New("at most one Agent Capability RPC adapter may be configured")
 	}
-	return platformrpc.NewServer(
-		cfg,
-		cfg.CoreListenAddress,
-		[]string{"dipole-message", "dipole-gateway", "dipole-search", "dipole-sync"},
-		func(server *grpc.Server) {
-			corev1.RegisterCoreCapabilityServiceServer(server, adapter)
-		},
-		coregrpc.RestrictServiceMethods,
-	)
+	var adapter agentv1.AgentCapabilityServiceServer
+	if len(adapters) == 1 {
+		adapter = adapters[0]
+	}
+	return corerpc.NewServer(cfg, capability, adapter)
 }
 
 func dialCoreMessageApplication(ctx context.Context, cfg config.InternalRPC) (*messagegrpc.Client, *grpc.ClientConn, error) {
@@ -50,6 +50,22 @@ func dialCoreMessageApplication(ctx context.Context, cfg config.InternalRPC) (*m
 	if err != nil {
 		_ = connection.Close()
 		return nil, nil, err
+	}
+	return client, connection, nil
+}
+
+func dialCoreSearchApplication(ctx context.Context, cfg config.InternalRPC) (*searchgrpc.Client, *grpc.ClientConn, error) {
+	connection, err := platformrpc.Dial(ctx, cfg, cfg.SearchTarget, grpcauth.Credentials{
+		Service: coreServiceName,
+		Secret:  cfg.SharedSecret,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial Search rpc: %w", err)
+	}
+	client, err := searchgrpc.NewClientForService(searchv1.NewSearchServiceClient(connection), coreServiceName)
+	if err != nil {
+		_ = connection.Close()
+		return nil, nil, fmt.Errorf("create Search application client: %w", err)
 	}
 	return client, connection, nil
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
+	"github.com/JekYUlll/Dipole/internal/application"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 )
@@ -18,7 +18,7 @@ func NewContactFriendDeletedHandler(hub EventSender) platformKafka.Handler {
 			return fmt.Errorf("decode contact friend deleted envelope: %w", err)
 		}
 
-		payload, err := service.DecodeContactFriendDeletedPayload(envelope.EventType, envelope.Payload)
+		payload, err := application.DecodeContactFriendDeletedPayload(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return fmt.Errorf("decode contact friend deleted payload: %w", err)
 		}

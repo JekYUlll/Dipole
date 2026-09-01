@@ -12,41 +12,64 @@ import (
 	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type Server struct {
 	agentv1.UnimplementedAgentCapabilityServiceServer
-	capability           application.AgentCapabilityV1
-	resolver             application.AgentInvocationResolverV1
-	admission            application.AgentRunAdmissionServiceV1
-	approvals            application.AgentApprovalServiceV1
-	approvalGrants       application.AgentApprovalGrantResolverV1
-	controls             application.AgentTaskControlAuthorizerV1
-	timeline             application.AgentTaskTimelineStoreV1
-	projections          application.AgentTaskWorkflowProjectionServiceV1
-	repairs              application.AgentWorkflowRepairAuditServiceV1
-	repairExecutor       application.AgentWorkflowRepairExecutorV1
-	promotionControls    application.AgentRuntimePromotionControlServiceV1
-	promotionEvidence    application.AgentRuntimePromotionEvidenceReviewServiceV1
-	readinessPublisher   application.AgentMCPReadinessEvidencePublisherV1
-	readinessResolver    application.AgentMCPReadinessEvidenceResolverV1
-	artifacts            application.AgentArtifactServiceV1
-	subscriptions        application.AgentEventSubscriptionResolverV1
-	subscriptionControls application.AgentEventSubscriptionControlServiceV1
-	definitionCatalog    application.AgentDefinitionCatalogServiceV1
-	memories             application.AgentMemoryContextResolverV1
-	memoryControls       application.AgentMemoryOwnerControlServiceV1
-	memoryPromotions     application.AgentMemoryCandidatePromotionServiceV1
-	toolAudits           application.AgentToolInvocationAuditServiceV1
-	toolRounds           application.AgentMCPToolRoundServiceV1
-	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
-	messageCommands      application.AgentMessageCommandExecutionV1
+	capability             application.AgentCapabilityV1
+	resolver               application.AgentInvocationResolverV1
+	admission              application.AgentRunAdmissionServiceV1
+	approvals              application.AgentApprovalServiceV1
+	approvalGrants         application.AgentApprovalGrantResolverV1
+	controls               application.AgentTaskControlAuthorizerV1
+	timeline               application.AgentTaskTimelineStoreV1
+	projections            application.AgentTaskWorkflowProjectionServiceV1
+	repairs                application.AgentWorkflowRepairAuditServiceV1
+	repairExecutor         application.AgentWorkflowRepairExecutorV1
+	promotionControls      application.AgentRuntimePromotionControlServiceV1
+	promotionEvidence      application.AgentRuntimePromotionEvidenceReviewServiceV1
+	readinessPublisher     application.AgentMCPReadinessEvidencePublisherV1
+	readinessResolver      application.AgentMCPReadinessEvidenceResolverV1
+	artifacts              application.AgentArtifactServiceV1
+	subscriptions          application.AgentEventSubscriptionResolverV1
+	subscriptionControls   application.AgentEventSubscriptionControlServiceV1
+	definitionCatalog      application.AgentDefinitionCatalogServiceV1
+	memories               application.AgentMemoryContextResolverV1
+	memoryControls         application.AgentMemoryOwnerControlServiceV1
+	memoryPromotions       application.AgentMemoryCandidatePromotionServiceV1
+	memoryPromotionCommits application.AgentMemoryPromotionReceiptCommitServiceV1
+	toolAudits             application.AgentToolInvocationAuditServiceV1
+	toolRounds             application.AgentMCPToolRoundServiceV1
+	toolTerminals          application.AgentMCPToolInvocationTerminalServiceV1
+	messageCommands        application.AgentMessageCommandExecutionV1
+	oauthTransactions      application.AgentOAuthAuthorizationTransactionStoreV1
+	oauthCallbackHandoffs  application.AgentOAuthCallbackHandoffStoreV1
+}
+
+const oauthCallbackHandoffLeaseDurationV1 = 30 * time.Second
+
+func (s *Server) WithOAuthAuthorizationTransactions(store application.AgentOAuthAuthorizationTransactionStoreV1) (*Server, error) {
+	if s == nil || store == nil {
+		return nil, errors.New("Agent OAuth authorization transaction store is required")
+	}
+	s.oauthTransactions = store
+	return s, nil
+}
+
+func (s *Server) WithOAuthCallbackHandoffs(store application.AgentOAuthCallbackHandoffStoreV1) (*Server, error) {
+	if s == nil || store == nil {
+		return nil, errors.New("Agent OAuth callback handoff store is required")
+	}
+	s.oauthCallbackHandoffs = store
+	return s, nil
 }
 
 func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMCPReadinessEvidencePublisherV1) (*Server, error) {
@@ -169,6 +192,14 @@ func (s *Server) WithMemoryCandidatePromotions(promotions application.AgentMemor
 	return s, nil
 }
 
+func (s *Server) WithMemoryPromotionReceiptCommits(commits application.AgentMemoryPromotionReceiptCommitServiceV1) (*Server, error) {
+	if s == nil || commits == nil {
+		return nil, errors.New("Agent Memory promotion receipt commit service is required")
+	}
+	s.memoryPromotionCommits = commits
+	return s, nil
+}
+
 func (s *Server) ListOwnedMemories(ctx context.Context, request *agentv1.ListOwnedMemoriesRequest) (*agentv1.ListOwnedMemoriesResponse, error) {
 	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
 	if err != nil {
@@ -248,12 +279,38 @@ func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.Pr
 	}
 	item, err := s.memoryPromotions.Promote(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryCandidatePromotionRequestV1{
 		TenantID: request.GetTenantId(), PrincipalUUID: principal, CandidateUUID: request.GetCandidateId(),
-		CandidateSHA256: request.GetCandidateSha256(), ReviewUUID: request.GetReviewId(),
+		CandidateSHA256: request.GetCandidateSha256(), ReviewUUID: request.GetReviewId(), TargetMemoryType: application.AgentMemoryTypeV1(request.GetTargetMemoryType()),
 	})
 	if err != nil {
 		return nil, agentMemoryCandidatePromotionErrorV1(err)
 	}
 	return agentOwnedMemoryResponseV1(*item), nil
+}
+
+func (s *Server) CommitMemoryPromotionReceipt(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
+	return commitMemoryPromotionReceiptV1(ctx, request, s.memoryPromotionCommits)
+}
+
+func commitMemoryPromotionReceiptV1(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest, commits application.AgentMemoryPromotionReceiptCommitServiceV1) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
+	if err := agentMemoryReceiptCommitCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if commits == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory promotion receipt commit is unavailable")
+	}
+	item, err := commits.CommitMemoryPromotionReceipt(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryPromotionReceiptCommitRequestV1{
+		ReceiptID: request.GetReceiptId(), ReceiptSHA256: request.GetReceiptSha256(), SchemaVersion: request.GetSchemaVersion(), Status: request.GetStatus(),
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), CandidateUUID: request.GetCandidateId(), CandidateSHA256: request.GetCandidateSha256(),
+		ReviewUUID: request.GetReviewId(), PolicyVersion: request.GetPolicyVersion(), TargetMemoryType: application.AgentMemoryTypeV1(request.GetTargetMemoryType()),
+		CreatedAt: time.UnixMilli(request.GetCreatedAtUnixMs()).UTC(), ExpiresAt: time.UnixMilli(request.GetExpiresAtUnixMs()).UTC(),
+	})
+	if err != nil {
+		return nil, agentMemoryPromotionReceiptCommitErrorV1(err)
+	}
+	return &agentv1.CommitMemoryPromotionReceiptResponse{
+		MemoryId: item.MemoryUUID, MemoryType: string(item.MemoryType), Status: string(item.Status), ReceiptSha256: request.GetReceiptSha256(),
+		Provenance: &agentv1.AgentMemoryProvenance{SourceType: item.Provenance.SourceType, SourceId: item.Provenance.SourceID, Sequence: item.Provenance.Sequence},
+	}, nil
 }
 
 func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
@@ -265,6 +322,15 @@ func agentMemoryOwnerV1(ctx context.Context, requestContext *commonv1.RequestCon
 		return "", err
 	}
 	return grpccommon.Principal(requestContext)
+}
+
+func agentMemoryReceiptCommitCallerV1(ctx context.Context, requestContext *commonv1.RequestContext) error {
+	authenticated, ok := grpcauth.CallerService(ctx)
+	if !ok || authenticated != "dipole-agent" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
+		return status.Error(codes.PermissionDenied, "only the authenticated Agent Runtime may commit Agent Memory receipts")
+	}
+	_, err := grpccommon.Caller(ctx, requestContext)
+	return err
 }
 
 func agentMemoryOwnerErrorV1(err error) error {
@@ -288,6 +354,19 @@ func agentMemoryCandidatePromotionErrorV1(err error) error {
 		return status.Error(codes.Aborted, err.Error())
 	default:
 		return status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
+	}
+}
+
+func agentMemoryPromotionReceiptCommitErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentExecutionPolicyDenied):
+		return status.Error(codes.PermissionDenied, "Agent Memory promotion receipt execution is denied")
+	case errors.Is(err, application.ErrAgentMemoryCandidateInvalid):
+		return status.Error(codes.InvalidArgument, err.Error())
+	case errors.Is(err, application.ErrAgentMemoryCandidateConflict):
+		return status.Error(codes.Aborted, err.Error())
+	default:
+		return status.Error(codes.Unavailable, "Agent Memory promotion receipt commit is unavailable")
 	}
 }
 
@@ -571,11 +650,16 @@ func (s *Server) CreateArtifact(ctx context.Context, request *agentv1.CreateArti
 	if err != nil {
 		return nil, mapAgentArtifactErrorV1(err)
 	}
-	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
-		EventUUID: fmt.Sprintf("artifact:%s:create", artifact.ArtifactUUID), TaskUUID: artifact.TaskUUID, RunUUID: artifact.RunUUID,
-		Kind: application.AgentTaskTimelineEventArtifact, Status: "created", OccurredAt: artifact.CreatedAt,
-	})
+	s.appendTimelineEvent(ctx, artifactTimelineEventV1(artifact))
 	return &agentv1.CreateArtifactResponse{Artifact: agentArtifactResponseV1(artifact)}, nil
+}
+
+// Artifact IDs are content-addressed and fit the Timeline's persisted event ID contract.
+func artifactTimelineEventV1(artifact *application.AgentArtifactV1) application.AgentTaskTimelineEventV1 {
+	return application.AgentTaskTimelineEventV1{
+		EventUUID: artifact.ArtifactUUID, TaskUUID: artifact.TaskUUID, RunUUID: artifact.RunUUID,
+		Kind: application.AgentTaskTimelineEventArtifact, Status: "created", ArtifactUUID: artifact.ArtifactUUID, OccurredAt: artifact.CreatedAt,
+	}
 }
 
 func (s *Server) GetArtifact(ctx context.Context, request *agentv1.GetArtifactRequest) (*agentv1.GetArtifactResponse, error) {
@@ -1138,7 +1222,7 @@ func (s *Server) ListAgentTaskTimeline(ctx context.Context, request *agentv1.Lis
 		response.Events = append(response.Events, &agentv1.AgentTaskTimelineEvent{
 			EventSeq: event.EventSeq, EventId: event.EventUUID, TaskId: event.TaskUUID, RunId: event.RunUUID,
 			Kind: string(event.Kind), Status: event.Status, CapabilityId: event.CapabilityID, ApprovalId: event.ApprovalUUID,
-			OccurredAtUnixMs: event.OccurredAt.UnixMilli(),
+			ArtifactId: event.ArtifactUUID, OccurredAtUnixMs: event.OccurredAt.UnixMilli(),
 		})
 	}
 	if len(events) == int(request.GetLimit()) {
@@ -1164,7 +1248,7 @@ func (s *Server) AppendAgentTaskTimelineEvent(ctx context.Context, request *agen
 	event := application.AgentTaskTimelineEventV1{
 		EventUUID: request.GetEventId(), TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(),
 		Kind: application.AgentTaskTimelineEventKindV1(request.GetKind()), Status: request.GetStatus(),
-		CapabilityID: request.GetCapabilityId(), ApprovalUUID: request.GetApprovalId(), OccurredAt: time.UnixMilli(request.GetOccurredAtUnixMs()).UTC(),
+		CapabilityID: request.GetCapabilityId(), ApprovalUUID: request.GetApprovalId(), ArtifactUUID: request.GetArtifactId(), OccurredAt: time.UnixMilli(request.GetOccurredAtUnixMs()).UTC(),
 	}
 	if err := event.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "Agent Task Timeline event is invalid")
@@ -1220,6 +1304,161 @@ func (s *Server) ResolveMcpContext(ctx context.Context, request *agentv1.Resolve
 		})
 	}
 	return response, nil
+}
+
+func (s *Server) ConsumeOAuthAuthorizationTransaction(ctx context.Context, request *agentv1.ConsumeOAuthAuthorizationTransactionRequest) (*agentv1.ConsumeOAuthAuthorizationTransactionResponse, error) {
+	return consumeOAuthAuthorizationTransactionV1(ctx, request, s.oauthTransactions)
+}
+
+func consumeOAuthAuthorizationTransactionV1(ctx context.Context, request *agentv1.ConsumeOAuthAuthorizationTransactionRequest, transactions application.AgentOAuthAuthorizationTransactionStoreV1) (*agentv1.ConsumeOAuthAuthorizationTransactionResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	owner, err := grpccommon.Principal(request.GetContext())
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "OAuth callback principal is required")
+	}
+	if caller != "dipole-gateway" {
+		return nil, status.Error(codes.PermissionDenied, "only Gateway may consume OAuth authorization transactions")
+	}
+	if transactions == nil {
+		return nil, status.Error(codes.Unavailable, "OAuth authorization callback is unavailable")
+	}
+	transactionID, stateSHA256 := strings.TrimSpace(request.GetTransactionId()), strings.TrimSpace(request.GetStateSha256())
+	if transactionID == "" || stateSHA256 == "" {
+		return nil, status.Error(codes.InvalidArgument, "OAuth authorization callback is invalid")
+	}
+	record, err := transactions.GetAgentOAuthAuthorizationTransaction(grpccommon.Correlation(ctx, request.GetContext()), transactionID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "OAuth authorization transaction lookup failed")
+	}
+	if record == nil || record.OwnerUserUUID != owner || record.StateSHA256 != stateSHA256 {
+		return nil, status.Error(codes.NotFound, "OAuth authorization transaction unavailable")
+	}
+	consumed, err := transactions.ConsumeAgentOAuthAuthorizationTransaction(grpccommon.Correlation(ctx, request.GetContext()), transactionID, owner, stateSHA256, time.Now().UTC())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthAuthorizationTransactionInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth authorization callback is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth authorization transaction consume failed")
+	}
+	if !consumed {
+		return nil, status.Error(codes.NotFound, "OAuth authorization transaction unavailable")
+	}
+	return &agentv1.ConsumeOAuthAuthorizationTransactionResponse{
+		TransactionId: record.TransactionUUID, Issuer: record.Issuer, RedirectUri: record.RedirectURI,
+		SealedCodeVerifier: record.SealedCodeVerifier, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(),
+	}, nil
+}
+
+func (s *Server) ClaimOAuthCallbackHandoff(ctx context.Context, request *agentv1.ClaimOAuthCallbackHandoffRequest) (*agentv1.ClaimOAuthCallbackHandoffResponse, error) {
+	return claimOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func claimOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.ClaimOAuthCallbackHandoffRequest, handoffs application.AgentOAuthCallbackHandoffStoreV1) (*agentv1.ClaimOAuthCallbackHandoffResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" {
+		return nil, status.Error(codes.PermissionDenied, "only Agent Runtime may claim OAuth callback handoffs")
+	}
+	if handoffs == nil {
+		return nil, status.Error(codes.Unavailable, "OAuth callback handoff is unavailable")
+	}
+	handoffID, leaseOwner := strings.TrimSpace(request.GetHandoffId()), strings.TrimSpace(request.GetLeaseOwner())
+	if handoffID == "" || handoffID != request.GetHandoffId() || len(handoffID) > 128 ||
+		leaseOwner == "" || leaseOwner != request.GetLeaseOwner() || len(leaseOwner) > 128 {
+		return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+	}
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	leaseExpiresAt := now.Add(oauthCallbackHandoffLeaseDurationV1)
+	claimed, err := handoffs.ClaimAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), handoffID, leaseOwner, now, leaseExpiresAt)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthCallbackHandoffInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth callback handoff claim failed")
+	}
+	if !claimed {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	record, err := handoffs.GetAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), handoffID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "OAuth callback handoff lookup failed")
+	}
+	if record == nil || record.Status != application.AgentOAuthCallbackHandoffClaimedV1 || record.LeaseOwner != leaseOwner || !record.LeaseExpiresAt.Equal(leaseExpiresAt) || !record.ExpiresAt.After(now) {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	return &agentv1.ClaimOAuthCallbackHandoffResponse{
+		HandoffId: record.HandoffUUID, TransactionId: record.TransactionUUID, Issuer: record.Issuer, RedirectUri: record.RedirectURI,
+		AuthorizationCodeSha256: record.AuthorizationCodeSHA256, SealedAuthorizationCode: record.SealedAuthorizationCode,
+		RuntimeKeyId: record.RuntimeKeyID, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(), LeaseExpiresAtUnixMs: record.LeaseExpiresAt.UnixMilli(), OwnerUserId: record.OwnerUserUUID,
+	}, nil
+}
+
+func (s *Server) CompleteOAuthCallbackHandoff(ctx context.Context, request *agentv1.CompleteOAuthCallbackHandoffRequest) (*agentv1.CompleteOAuthCallbackHandoffResponse, error) {
+	return completeOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func completeOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.CompleteOAuthCallbackHandoffRequest, handoffs application.AgentOAuthCallbackHandoffStoreV1) (*agentv1.CompleteOAuthCallbackHandoffResponse, error) {
+	handoffID, err := authorizeOAuthCallbackHandoffTerminalV1(ctx, request.GetContext(), request.GetHandoffId(), request.GetLeaseOwner(), handoffs)
+	if err != nil {
+		return nil, err
+	}
+	completed, err := handoffs.CompleteAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), handoffID, request.GetLeaseOwner(), time.Now().UTC().Truncate(time.Millisecond))
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthCallbackHandoffInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth callback handoff completion failed")
+	}
+	if !completed {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	return &agentv1.CompleteOAuthCallbackHandoffResponse{HandoffId: handoffID}, nil
+}
+
+func (s *Server) ReleaseOAuthCallbackHandoff(ctx context.Context, request *agentv1.ReleaseOAuthCallbackHandoffRequest) (*agentv1.ReleaseOAuthCallbackHandoffResponse, error) {
+	return releaseOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func releaseOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.ReleaseOAuthCallbackHandoffRequest, handoffs application.AgentOAuthCallbackHandoffStoreV1) (*agentv1.ReleaseOAuthCallbackHandoffResponse, error) {
+	handoffID, err := authorizeOAuthCallbackHandoffTerminalV1(ctx, request.GetContext(), request.GetHandoffId(), request.GetLeaseOwner(), handoffs)
+	if err != nil {
+		return nil, err
+	}
+	released, err := handoffs.ReleaseAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), handoffID, request.GetLeaseOwner(), time.Now().UTC().Truncate(time.Millisecond))
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthCallbackHandoffInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth callback handoff release failed")
+	}
+	if !released {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	return &agentv1.ReleaseOAuthCallbackHandoffResponse{HandoffId: handoffID}, nil
+}
+
+func authorizeOAuthCallbackHandoffTerminalV1(ctx context.Context, requestContext *commonv1.RequestContext, handoffID, leaseOwner string, handoffs application.AgentOAuthCallbackHandoffStoreV1) (string, error) {
+	caller, err := grpccommon.Caller(ctx, requestContext)
+	if err != nil {
+		return "", err
+	}
+	if caller != "dipole-agent" {
+		return "", status.Error(codes.PermissionDenied, "only Agent Runtime may transition OAuth callback handoffs")
+	}
+	if handoffs == nil {
+		return "", status.Error(codes.Unavailable, "OAuth callback handoff is unavailable")
+	}
+	normalizedHandoffID, normalizedLeaseOwner := strings.TrimSpace(handoffID), strings.TrimSpace(leaseOwner)
+	if normalizedHandoffID == "" || normalizedHandoffID != handoffID || len(normalizedHandoffID) > 128 ||
+		normalizedLeaseOwner == "" || normalizedLeaseOwner != leaseOwner || len(normalizedLeaseOwner) > 128 {
+		return "", status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+	}
+	return normalizedHandoffID, nil
 }
 
 func (s *Server) BeginMcpToolInvocation(ctx context.Context, request *agentv1.BeginMcpToolInvocationRequest) (*agentv1.BeginMcpToolInvocationResponse, error) {
@@ -1370,6 +1609,13 @@ func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.
 		Kind: application.AgentMessageCommandKindV1(request.GetCommandKind()), Content: request.GetContent(),
 	})
 	if err != nil {
+		logger.Error("Agent Message Command execution failed",
+			zap.String("task_id", request.GetTaskId()),
+			zap.String("run_id", request.GetRunId()),
+			zap.String("invocation_id", request.GetInvocationId()),
+			zap.String("command_kind", request.GetCommandKind()),
+			zap.Error(err),
+		)
 		switch {
 		case errors.Is(err, application.ErrAgentCommandDenied):
 			return nil, status.Error(codes.PermissionDenied, "Agent Message Command denied")
@@ -1444,7 +1690,7 @@ func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.
 			TaskUUID: request.GetTaskId(), WorkflowID: request.GetWorkflowId(), RunID: request.GetWorkflowRunId(),
 			Status: application.AgentTaskWorkflowStatusV1(request.GetWorkflowStatus()), Revision: request.GetWorkflowRevision(),
 		},
-		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent",
 	})
 	if err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
@@ -1494,11 +1740,15 @@ func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestAp
 	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
-	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetResourceScope() == nil {
+	mode := request.GetMode()
+	if mode == "" {
+		mode = "shadow"
+	}
+	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetResourceScope() == nil || (mode != "shadow" && mode != "active") {
 		return nil, status.Error(codes.InvalidArgument, "Agent Approval request is invalid")
 	}
 	approval, err := s.approvals.Request(ctx, application.AgentApprovalRequestV1{
-		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: mode,
 		Approval: application.AgentApprovalV1{
 			ApprovalUUID: request.GetApprovalId(), TaskUUID: request.GetTaskId(), CapabilityID: request.GetCapabilityId(),
 			ResourceScope: application.AgentResourceScopeV1{ResourceType: request.GetResourceScope().GetResourceType(), ResourceID: request.GetResourceScope().GetResourceId(), Actions: request.GetResourceScope().GetActions()},
@@ -1525,7 +1775,7 @@ func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveAp
 		return nil, status.Error(codes.InvalidArgument, "Agent Approval resolution is invalid")
 	}
 	approval, err := s.approvals.Resolve(ctx, application.AgentApprovalResolutionV1{
-		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent",
 		ApprovalUUID: request.GetApprovalId(), ActorUUID: request.GetActorUserId(), Decision: application.AgentApprovalDecisionV1(request.GetDecision()),
 	})
 	if err != nil {
@@ -1778,6 +2028,52 @@ func (s *Server) ReadConversation(ctx context.Context, request *agentv1.ReadConv
 		}
 	}
 	return response, nil
+}
+
+func (s *Server) SearchConversations(ctx context.Context, request *agentv1.SearchConversationsRequest) (*agentv1.SearchConversationsResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	query := strings.TrimSpace(request.GetQuery())
+	limit := int(request.GetLimit())
+	if query == "" || len([]rune(query)) > 256 || limit < 1 || limit > 20 {
+		return nil, status.Error(codes.InvalidArgument, "Agent conversation search request is invalid")
+	}
+	invocation, err := s.resolver.Resolve(ctx, request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task policy denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task policy lookup failed")
+	}
+	items, err := s.capability.SearchConversations(ctx, invocation, query, limit)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentCapabilityDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Capability denied")
+		}
+		if errors.Is(err, application.ErrAgentCapabilityUnavailable) {
+			return nil, status.Error(codes.Unavailable, "Agent conversation search is unavailable")
+		}
+		return nil, status.Error(codes.Internal, "Agent conversation search failed")
+	}
+	response := &agentv1.SearchConversationsResponse{Evidence: make([]*agentv1.ConversationSearchEvidence, 0, len(items))}
+	for _, item := range items {
+		if item != nil {
+			response.Evidence = append(response.Evidence, conversationSearchEvidenceToProto(item))
+		}
+	}
+	return response, nil
+}
+
+func conversationSearchEvidenceToProto(item *application.AgentConversationSearchEvidenceV1) *agentv1.ConversationSearchEvidence {
+	return &agentv1.ConversationSearchEvidence{
+		MessageId: item.MessageUUID, ConversationKey: item.ConversationKey, MessageSeq: item.MessageSeq,
+		Revision: item.Revision, SenderId: item.SenderUUID, MessageType: int32(item.MessageType),
+		Content: item.Content, SentAtUnixMs: item.SentAt.UnixMilli(), QuerySha256: item.QuerySHA256,
+	}
 }
 
 func conversationToProto(item *model.Conversation) *agentv1.ConversationSnapshot {

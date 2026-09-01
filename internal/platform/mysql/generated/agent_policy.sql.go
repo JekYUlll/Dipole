@@ -470,7 +470,7 @@ func (q *Queries) GetAgentEventSubscription(ctx context.Context, subscriptionUui
 }
 
 const getAgentRun = `-- name: GetAgentRun :one
-SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at, candidate_version FROM agent_runs WHERE run_uuid = ? LIMIT 1
+SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at, candidate_version, trace_id FROM agent_runs WHERE run_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error) {
@@ -489,6 +489,7 @@ func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, er
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.CandidateVersion,
+		&i.TraceID,
 	)
 	return i, err
 }
@@ -821,8 +822,8 @@ func (q *Queries) InsertAgentEventSubscription(ctx context.Context, arg InsertAg
 
 const insertAgentRun = `-- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
-    run_uuid, task_uuid, runtime_id, candidate_version, mode, status, started_at
-) VALUES (?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP())
+    run_uuid, task_uuid, runtime_id, candidate_version, trace_id, mode, status, started_at
+) VALUES (?, ?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP())
 `
 
 type InsertAgentRunParams struct {
@@ -830,6 +831,7 @@ type InsertAgentRunParams struct {
 	TaskUuid         string
 	RuntimeID        string
 	CandidateVersion sql.NullString
+	TraceID          sql.NullString
 	Mode             string
 }
 
@@ -839,6 +841,7 @@ func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) 
 		arg.TaskUuid,
 		arg.RuntimeID,
 		arg.CandidateVersion,
+		arg.TraceID,
 		arg.Mode,
 	)
 	if err != nil {

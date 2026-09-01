@@ -28,6 +28,7 @@ type Client struct {
 
 var _ application.MessageApplication = (*Client)(nil)
 var _ application.MessageCommandReceiptQuery = (*Client)(nil)
+var _ application.AgentMessageCommandSender = (*Client)(nil)
 
 func NewClient(rpc messagev1.MessageServiceClient) (*Client, error) {
 	return NewClientForService(rpc, "dipole-gateway")
@@ -112,6 +113,22 @@ func (c *Client) SendGroupMessageContext(parent context.Context, senderUUID, gro
 	return grpcmapping.MessageFromProto(response.GetMessage()), response.GetRecipientUserIds(), nil
 }
 
+func (c *Client) SendAssistantTextMessageContext(parent context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
+	defer cancel()
+	response, err := c.rpc.SendAssistantText(ctx, &messagev1.SendAssistantTextRequest{
+		Context:         c.invocation(ctx, assistantUUID),
+		AssistantUserId: assistantUUID,
+		TargetUserId:    targetUUID,
+		Content:         content,
+		ClientMessageId: clientMessageID,
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return grpcmapping.MessageFromProto(response.GetMessage()), nil
+}
+
 func (c *Client) SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
 	return c.SendDirectFileMessageContext(context.Background(), senderUUID, targetUUID, fileUUID, clientMessageID)
 }
@@ -155,6 +172,22 @@ func (c *Client) SendSystemDirectMessage(senderUUID, targetUUID, content string)
 	defer cancel()
 	response, err := c.rpc.SendSystemDirectMessage(ctx, &messagev1.SendSystemDirectMessageRequest{
 		Context: c.invocation(ctx, senderUUID), SenderUserId: senderUUID, TargetUserId: targetUUID, Content: content,
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return grpcmapping.MessageFromProto(response.GetMessage()), nil
+}
+
+func (c *Client) SendSystemDirectMessageCommandContext(parent context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
+	defer cancel()
+	response, err := c.rpc.SendSystemDirectMessage(ctx, &messagev1.SendSystemDirectMessageRequest{
+		Context:         c.invocation(ctx, senderUUID),
+		SenderUserId:    senderUUID,
+		TargetUserId:    targetUUID,
+		Content:         content,
+		ClientMessageId: clientMessageID,
 	})
 	if err != nil {
 		return nil, domainError(err)

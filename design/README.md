@@ -2,6 +2,8 @@
 
 `dipole-ui.pen` 是 Dipole 前端的 canonical 可编辑设计文件。产品交互、响应式状态或视觉 token 变化时，应增量修改同一文件，并同步更新 `DESIGN-CHANGELOG.md`。
 
+`export-manifest.json` 是批准评审导出的清单。新增或替换评审图时，先更新清单和设计更新日志，再运行 `npm run test:design`；清单路径相对于 `design/`，目录条目至少需要包含一个 PNG 文件。
+
 ## F1 Frame 与评审导出
 
 | Frame | 评审导出 |
@@ -13,8 +15,16 @@
 | Chat Mobile | `exports/chat-mobile.png` |
 | Design Review Checklist | `exports/review-checklist.png` |
 | 完整画布总览 | `exports/dipole-ui-overview.png` |
+| Group Directory desktop/mobile/state matrix | `exports/group-v1/` |
+| Settings desktop/mobile/state matrix | `exports/settings-v1/` |
+| Device Security desktop/mobile/state matrix | `exports/device-security-*-review.png` |
+| Agent Task Create desktop/mobile/state matrix | `exports/agent-task-create-v1/` |
 
 ## 当前 Frame
+
+### Brand Signal v2
+
+`brand-signal-v2-brief.md` 记录新版标识的评审约束。Pencil CLI 在本轮增量写入超过安全超时前已导出一张方向性评审图，但没有完成 canonical `.pen` 保存，因此该文件尚未形成一个已批准的 Canvas Frame。仓库 SVG 使用同一套 Signal Link 方向交付；后续 Pencil 小批次只补充品牌评审区和导出，不能重建现有页面。
 
 ### Foundations 与组件
 
@@ -52,6 +62,42 @@ Vue 实现位于 `frontend/src/components/SearchWorkspace.vue`，状态控制器
 
 显式退出、HTTP 401、WS kick 和账号切换统一复用现有登录跳转与 Sync 状态，不新增视觉分支；终止过程先撤销会话，再在后台完成账号级本地数据清理。
 
+### Contact v1
+
+- `Contact/Desktop/Manage`：在深色导航轨与暖白工作区中展示可信联系人目录、关系筛选、备注、拉黑/删除入口和待审申请。
+- `Contact/Mobile/Manage`：在 390px 宽度内保留联系人、申请和拉黑筛选，申请处理与关系操作均维持可见安全边界。
+- `Contact/State Matrix`：覆盖 loading、empty、request pending 和 safety blocked；状态只表达既有认证联系人 API 的加载、申请审核与拉黑关系语义。
+- `Component/Contact Row` 与 `Component/Contact Request`：供后续 Contact 页面、会话侧栏和审批入口复用。
+
+批准的 2x 预览位于 `exports/contact-v1/`。当前切片仅建立 Pencil 视觉与状态基线，尚未新增 Contact Vue 路由或更改 Gateway API。后续实现必须从认证会话派生 principal，接受、忽略、拉黑、删除或修改备注后重新读取权威联系人状态；页面不得暗示自动审批或跨用户关系操作。
+
+### Group Directory v1
+
+- `Group/Desktop/Directory`：深色导航轨与暖白工作区中的认证群目录，只展示服务端权威投影。
+- `Group/Mobile/Directory`：390px 单列布局，保留群状态、成员摘要和只读边界。
+- `Group/State Matrix`：覆盖 loading、empty、unavailable、dismissed 和 hot group；热群明确使用 `notify + pull`。
+- `Component/Group Row`、`Component/Group Status`、`Component/Group Member Summary`：供目录、会话侧栏和群摘要复用。
+
+批准的 2x 预览位于 `exports/group-v1/`。当前切片只允许认证读取当前用户会话中的群投影；成员邀请、群资料修改、移除成员、解散和退出群继续使用既有聊天内管理入口，不在目录中新增写入能力。读取失败必须清空旧投影，避免旧群状态被误认为权威状态。
+
+### Device Security v1
+
+- `Device/Desktop/Sessions`：认证设备会话页，展示当前会话、其他会话与登出其他设备确认。
+- `Device/Mobile/Sessions`：390px 堆叠会话卡片和清晰的批准确认区，避免窄屏横向表格。
+- `Device/State Matrix`：覆盖 loading、无其他会话、读取失败重试、单设备确认、全部其他设备确认、成功反馈和动作失败。
+- `Device Session Row`、`Device Trust Status`、`Session Sign-out Confirmation`：页面与状态矩阵共用的组件。
+
+批准的 2x 预览位于 `exports/device-security-*-review.png`。设计只展示设备标签、粗粒度浏览器或设备说明、相对活动时间和当前/信任状态；IP、节点、连接 ID、用户 ID、Token、精确位置与原始 User-Agent 不进入 UI。后续 Vue 页面从认证会话调用既有设备列表与登出 API，单设备和全部其他设备动作均需要明确确认并以权威响应收敛。
+
+### Settings v1
+
+- `Settings/Desktop/Account`：深色导航轨和暖白账户工作区，分为个人资料、同步状态与会话退出边界。
+- `Settings/Mobile/Account`：390px 单列布局，保留资料、低敏设备安全入口、本机同步状态和退出操作。
+- `Settings/State Matrix`：覆盖 loading、保存成功、服务不可用和同步异常；失败时保留本地草稿并提供重试。
+- `Component/Settings Profile`、`Component/Settings Sync Status`、`Component/Settings Logout Boundary`：资料、低敏同步与危险会话操作的共享组件。
+
+批准的 2x 预览位于 `exports/settings-v1/`。页面仅复用认证 profile API、本机 safe cursor、设备安全入口和退出会话；IP、节点、连接 ID、消息正文、对象存储信息和设备原始标识不进入设置页。
+
 ### Agent Workflow Repair v1
 
 - `Agent Repair/Desktop/Proposed`：对照 MySQL Task projection 与 Temporal Workflow 历史，展示 canonical evidence SHA-256、提案依据和双人审批链。
@@ -85,6 +131,56 @@ Vue 实现位于 `frontend/src/components/AgentElicitationForm.vue`，路由为 
 批准的管理预览位于 `exports/agent-subscription-v1/`，创建预览位于 `exports/agent-subscription-create-v1/`。当前稿固定展示 `OWNER CONTROL / DIRECT_TARGET` 边界：订阅控制状态可以持久化，Runtime 仍保持默认关闭，页面不得暗示已经启动共享事件触发或语义模型预筛。创建订阅必须选择经过 Gateway 鉴权的 active Definition version 与 Core 返回的可读 conversation scope；用户无需也不能手填内部 Definition ID、event type、resource 或 principal。撤销要求精确原因并保留审计信息，撤销动作不改变模型 Runtime 生命周期。
 
 公开 Gateway owner list/create/revoke HTTP adapter、Vue 管理页、owner-scoped active Definition 目录和 authenticated conversation chooser 已按本设计默认关闭接入，分别由 `gateway.agent_subscription_enabled=false|true` 和 `VITE_AGENT_SUBSCRIPTIONS_ENABLED=false|true` 控制。服务端从认证会话派生 principal、固定 tenant，并在创建前后由 Core 复核 Definition、可读会话与 scope；页面查询失败时清空旧候选，创建和撤销均以权威响应收敛。本设计和管理页面不能用于声明 `subscription` Runtime 模式已经可用。
+
+### Agent Task Timeline v1
+
+- `Agent Timeline/Desktop/Events`：只读任务事件历史，展示 Task、revision、event sequence、kind、status、time、Capability 与低敏 provenance label。
+- `Agent Timeline/Mobile/Events`：单列窄屏布局，事件按序分组且不依赖横向滚动。
+- `Agent Timeline/State Matrix`：覆盖 loading、empty、unavailable/retry 与 older-events pagination；不可用状态明确说明历史未加载。
+- `Component/Agent Timeline Event`、`Component/Agent Timeline Revision Badge`、`Component/Agent Timeline Provenance Label` 与 `Component/Agent Timeline Unavailable State`：供后续 Timeline 与审计页面复用。
+
+批准的 2x 预览位于 `exports/agent-timeline-overview/`，全画布记录位于 `exports/agent-timeline-v1/overview.png`。Timeline 只展示持久化低敏元数据，不提供编辑、删除或任务执行控制，也不回放外部 evidence 正文。
+
+Vue 实现位于 `frontend/src/components/AgentTaskTimeline.vue`，路由为 `/agent/tasks/:taskId/timeline`，由 `VITE_AGENT_TASK_TIMELINE_ENABLED=true` 显式启用。设计稿不表示 active Agent authority、MCP continuation 或写 Capability 已开放。
+
+当前 Vue 只读页面的 Chromium visual baseline 位于 `frontend/e2e/agent-task-timeline.visual.spec.ts`；它使用受控低敏 fixture 固定 revision、Capability、等待审批、分页入口与 event kind 展示边界，不能替代全页面或跨浏览器视觉验收。
+
+### Agent Task Create v1
+
+- `Agent Task Create/Desktop`：认证后的聚焦任务创建器，展示本地 request identity、任务目标、只读会话访问边界与未校验时禁用的提交动作。
+- `Agent Task Create/Mobile`：390px 单列版本，保留任务范围与提交状态，避免横向溢出。
+- `Agent Task Create/State Matrix`：覆盖 idle、validation error、submitting、accepted/redirecting 与 unavailable；只有严格 accepted 回包才允许跳转 Timeline。
+- `Component/Agent Task Goal Field`、`Component/Agent Task Request Badge` 与 `Component/Agent Task Submit State`：创建页及后续受控入口复用的低敏组件。
+- `frontend/e2e/agent-task-create.visual.spec.ts`：以 Chromium 认证 fixture 固定初始空表单的 canonical 截图；Playwright 启动进程才显式开启创建页开关，常规构建继续关闭入口。
+- 聊天主界面仅在创建页和 Timeline 双开关同时启用时显示创建入口；入口只导航到已批准的创建页，不传递身份、配置或任务参数。
+
+批准的 2x 预览位于 `exports/agent-task-create-v1/`。Vue 实现位于 `frontend/src/components/AgentTaskCreate.vue`，路由为 `/agent/tasks/new`；只有 `VITE_AGENT_TASK_CREATE_ENABLED=true` 且 Timeline 开关同时开启时才可访问。页面只提交本地 `client_request_id` 与目标文本，principal、tenant、Agent、Tool、Memory 和 Runtime 控制均由服务端恢复或固定；设计与页面均不表达 active authority、Compose、Kafka 或 Temporal 已启用。
+
+### Agent Definition Catalog v1
+
+- `Agent Definition/Desktop/Catalog`：owner-scoped 的只读 Definition 目录，展示精确版本、会话 scope 与 Runtime 关闭边界。
+- `Agent Definition/Mobile/Catalog`：窄屏单列目录，保留版本、scope、`CATALOG ONLY` 与 `RUNTIME DISABLED` 信息。
+- `Agent Definition/State Matrix`：覆盖 loading、empty、unavailable/retry 与分页后的精确版本目录。
+- `Component/Agent Definition Row`、`Component/Agent Definition Scope Chip` 与 `Component/Agent Definition Status`：供 Definition、Subscription 和治理页复用。
+
+批准的 2x 预览位于 `exports/agent-definition-overview/`，全画布记录位于 `exports/agent-definition-v1/overview.png`。目录没有 create、edit、activate、delete、model 或 Tool 控制；页面也不披露 owner、tenant、内部 provenance 或参数。订阅创建继续以 Core 权威 scope 重新校验。
+
+Vue 实现位于 `frontend/src/components/AgentDefinitionCatalog.vue`，路由为 `/agent/definitions`，由 `VITE_AGENT_DEFINITIONS_ENABLED=true` 显式启用。Chromium visual baseline 位于 `frontend/e2e/agent-definitions.visual.spec.ts`，受控 fixture 只固定低敏 Definition metadata；它不能替代 active Runtime、写 Capability、跨浏览器或真实共享环境验收。
+
+### Agent Artifact Metadata v1
+
+- `Agent Artifact/Desktop/Metadata`：owner-scoped 的只读 Artifact metadata 页面，展示类型、版本、标题、媒体类型、大小、Task/Run、创建时间和内容寻址摘要。
+- `Agent Artifact/Mobile/Metadata`：390x844 单列布局，保留 Timeline 返回入口、metadata 状态和正文披露边界。
+- `Agent Artifact/State Matrix`：覆盖 loading、ready、unavailable/retry 和 disclosure closed；读取失败必须清空旧 metadata。
+- `Component/Agent Artifact Disclosure` 与 `Component/Agent Artifact Integrity`：固定“正文、对象键与下载保持关闭”和 SHA-256 content address 的只读语义。
+
+批准的 2x 预览位于 `exports/agent-artifact-v1/`。页面不会显示正文、对象键、metadata JSON、公开 URL、下载或写入控制；未来正文/下载需要独立的对象访问授权、披露策略和设计切片。
+
+Vue 实现位于 `frontend/src/components/AgentArtifactMetadata.vue`，路由为 `/agent/artifacts/:artifactId`，由 `VITE_AGENT_ARTIFACTS_ENABLED=true` 显式启用。Timeline 只在 `kind=artifact` 和 64 位内容寻址 ID 同时成立时提供跳转；认证读取流程已在 Chromium、Firefox、WebKit 复核，Chromium visual baseline 只固定受控 metadata fixture，不能替代共享环境或下载授权验收。
+
+### Agent Artifact Digest Reader v2
+
+`conversation_digest` 且媒体类型为 `text/markdown` 的 Artifact 可通过认证 owner 的受限正文接口进入阅读区。metadata、完整性摘要与正文分别加载；正文不可用时保留已确认的 metadata 并提供重试。对象键、metadata JSON、公开 URL、通用下载、写控制和其他 Artifact 类型的正文仍不进入浏览器。Pencil 画布增量和导出以 `agent-artifact-digest-v2-brief.md` 为输入，完成后再登记至 export manifest；实现继续使用 `VITE_AGENT_ARTIFACTS_ENABLED=true`。
 
 ## Sync 交互契约
 

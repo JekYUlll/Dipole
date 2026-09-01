@@ -31,6 +31,36 @@ func TestAgentMemoryCandidatePromotionRequiresAcceptedExactReview(t *testing.T) 
 	}
 }
 
+func TestAgentMemoryCandidatePromotionPersistsReviewedTargetType(t *testing.T) {
+	now := time.Date(2026, 8, 29, 1, 0, 0, 0, time.UTC)
+	candidate := promotionCandidate(now)
+	review := promotionReview(candidate)
+	store := &candidatePromotionStore{candidate: &candidate, review: &review}
+	service, _ := NewPersistentAgentMemoryCandidatePromotionServiceV1(store, func() time.Time { return now })
+	memory, err := service.Promote(context.Background(), application.AgentMemoryCandidatePromotionRequestV1{
+		TenantID: "dipole", PrincipalUUID: "U100", CandidateUUID: candidate.CandidateUUID,
+		CandidateSHA256: candidate.CandidateSHA256, ReviewUUID: review.ReviewUUID, TargetMemoryType: application.AgentMemoryTypeSemantic,
+	})
+	if err != nil || memory == nil || memory.MemoryType != application.AgentMemoryTypeSemantic {
+		t.Fatalf("promote semantic memory=%+v err=%v", memory, err)
+	}
+}
+
+func TestAgentMemoryCandidatePromotionRejectsTaskScopedWorkingType(t *testing.T) {
+	now := time.Date(2026, 8, 29, 1, 0, 0, 0, time.UTC)
+	candidate := promotionCandidate(now)
+	review := promotionReview(candidate)
+	store := &candidatePromotionStore{candidate: &candidate, review: &review}
+	service, _ := NewPersistentAgentMemoryCandidatePromotionServiceV1(store, func() time.Time { return now })
+	_, err := service.Promote(context.Background(), application.AgentMemoryCandidatePromotionRequestV1{
+		TenantID: "dipole", PrincipalUUID: "U100", CandidateUUID: candidate.CandidateUUID,
+		CandidateSHA256: candidate.CandidateSHA256, ReviewUUID: review.ReviewUUID, TargetMemoryType: application.AgentMemoryTypeWorking,
+	})
+	if !errors.Is(err, application.ErrAgentMemoryCandidateInvalid) || store.promotions != 0 {
+		t.Fatalf("err=%v promotions=%d", err, store.promotions)
+	}
+}
+
 func TestAgentMemoryCandidatePromotionFailsClosedOnPendingDriftAndStaleEvidence(t *testing.T) {
 	now := time.Date(2026, 8, 29, 1, 0, 0, 0, time.UTC)
 	candidate := promotionCandidate(now)

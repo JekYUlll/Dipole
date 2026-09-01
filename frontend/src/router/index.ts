@@ -16,6 +16,45 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/contacts',
+      name: 'contacts',
+      component: () => import('@/views/ContactDirectoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/groups',
+      name: 'groups',
+      component: () => import('@/views/GroupDirectoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/files',
+      name: 'files',
+      component: () => import('@/views/FileDirectoryView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/devices',
+      name: 'devices',
+      component: () => import('@/views/DeviceSecurityView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/views/SettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/agent/tasks/new',
+      name: 'agent-task-create',
+      component: () => import('@/views/AgentTaskCreateView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED === 'true' && import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
       path: '/agent/tasks/:taskId/input',
       name: 'agent-task-input',
       component: () => import('@/views/AgentElicitationView.vue'),
@@ -43,11 +82,29 @@ const router = createRouter({
         : { name: 'chat' },
     },
     {
+      path: '/agent/artifacts/:artifactId',
+      name: 'agent-artifact',
+      component: () => import('@/views/AgentArtifactView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
       path: '/agent/subscriptions',
       name: 'agent-subscriptions',
       component: () => import('@/views/AgentSubscriptionsView.vue'),
       meta: { requiresAuth: true },
       beforeEnter: () => import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
+      path: '/agent/definitions',
+      name: 'agent-definitions',
+      component: () => import('@/views/AgentDefinitionsView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED === 'true'
         ? true
         : { name: 'chat' },
     },

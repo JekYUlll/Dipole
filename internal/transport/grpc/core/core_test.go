@@ -5,12 +5,16 @@ import (
 	"net"
 	"testing"
 
+	agentv1 "github.com/JekYUlll/Dipole/api/gen/go/agent/v1"
 	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	corev1 "github.com/JekYUlll/Dipole/api/gen/go/core/v1"
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -42,6 +46,16 @@ func (stubCoreCapability) GetOwnedFile(uploaderUUID, fileUUID string) (*model.Up
 		return nil, nil
 	}
 	return &model.UploadedFile{UUID: fileUUID, UploaderUUID: uploaderUUID, FileName: "design.pen", FileSize: 42, ContentType: "application/octet-stream", URL: "https://files.test/design.pen"}, nil
+}
+
+func (stubCoreCapability) ListOwnedFiles(uploaderUUID, beforeFileUUID string, limit int) (*application.OwnedFilePage, error) {
+	if uploaderUUID != "U1" || limit != 2 || beforeFileUUID != "" {
+		return &application.OwnedFilePage{}, nil
+	}
+	return &application.OwnedFilePage{Files: []*model.UploadedFile{
+		{UUID: "F2", UploaderUUID: uploaderUUID, FileName: "second.txt", FileSize: 2},
+		{UUID: "F1", UploaderUUID: uploaderUUID, FileName: "first.txt", FileSize: 1},
+	}, NextCursor: "F1", HasMore: true}, nil
 }
 
 func (stubCoreCapability) ListSearchConversationKeys(userUUID string) ([]string, error) {
@@ -83,6 +97,10 @@ func TestRemoteClientImplementsCoreCapability(t *testing.T) {
 	if err != nil || file != nil {
 		t.Fatalf("expected hidden unowned file, got %+v err=%v", file, err)
 	}
+	page, err := client.ListOwnedFiles("U1", "", 2)
+	if err != nil || len(page.Files) != 2 || page.Files[0].UUID != "F2" || !page.HasMore || page.NextCursor != "F1" {
+		t.Fatalf("unexpected owned file page: %+v err=%v", page, err)
+	}
 	keys, err := client.ListSearchConversationKeys("U1")
 	if err != nil || len(keys) != 2 || keys[0] != "direct:U1:U2" {
 		t.Fatalf("unexpected Search scope: keys=%v err=%v", keys, err)
@@ -110,6 +128,41 @@ func TestServerRejectsMissingSearchPrincipal(t *testing.T) {
 func TestClientRequiresCallerService(t *testing.T) {
 	if _, err := NewClientForService(newBufconnRPCClient(t, stubCoreCapability{}), " "); err == nil {
 		t.Fatal("expected empty caller service to fail")
+	}
+}
+
+func TestRestrictServiceMethodsAllowsBoundAgentWriteRPCs(t *testing.T) {
+	interceptor, err := grpcauth.NewUnaryServerInterceptor("secret", "dipole-agent")
+	if err != nil {
+		t.Fatalf("new auth interceptor: %v", err)
+	}
+	allowed := []string{
+		agentv1.AgentCapabilityService_ConsumeApproval_FullMethodName,
+		agentv1.AgentCapabilityService_ResolveApprovalGrant_FullMethodName,
+		agentv1.AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName,
+	}
+	for _, method := range allowed {
+		t.Run(method, func(t *testing.T) {
+			ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(
+				"x-dipole-caller-service", "dipole-agent", "x-dipole-service-token", "secret",
+			))
+			_, err := interceptor(ctx, nil, &grpc.UnaryServerInfo{FullMethod: method}, func(ctx context.Context, request any) (any, error) {
+				return RestrictServiceMethods(ctx, request, &grpc.UnaryServerInfo{FullMethod: method}, func(context.Context, any) (any, error) { return "ok", nil })
+			})
+			if err != nil {
+				t.Fatalf("allow %s: %v", method, err)
+			}
+		})
+	}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs(
+		"x-dipole-caller-service", "dipole-agent", "x-dipole-service-token", "secret",
+	))
+	_, err = interceptor(ctx, nil, &grpc.UnaryServerInfo{FullMethod: corev1.CoreCapabilityService_GetUser_FullMethodName}, func(ctx context.Context, request any) (any, error) {
+		return RestrictServiceMethods(ctx, request, &grpc.UnaryServerInfo{FullMethod: corev1.CoreCapabilityService_GetUser_FullMethodName}, func(context.Context, any) (any, error) { return "ok", nil })
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("deny unrelated agent RPC code = %s, want %s", status.Code(err), codes.PermissionDenied)
 	}
 }
 

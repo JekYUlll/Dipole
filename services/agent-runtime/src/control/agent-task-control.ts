@@ -23,11 +23,13 @@ export interface AgentTaskTimeline {
   readonly events: readonly {
     readonly eventSeq: bigint;
     readonly eventId: string;
+    readonly taskId: string;
     readonly runId: string;
     readonly kind: string;
     readonly status: string;
     readonly capabilityId: string;
     readonly approvalId: string;
+    readonly artifactId: string;
     readonly occurredAtUnixMs: bigint;
   }[];
   readonly nextCursor: string;
@@ -63,7 +65,14 @@ export class AgentTaskControlService {
     workflowProjection: { outcome: "match" | "missing" | "stale" | "ahead" | "conflict"; status?: string; revision?: number };
   }> {
     const authorization = await this.authorize(input);
-    const state = await this.workflows.query(input.taskId);
+    let state: AgentTaskState;
+    try {
+      state = await this.workflows.query(input.taskId);
+    } catch (error) {
+      const persisted = terminalWorkflowProjectionState(authorization, error);
+      if (persisted === undefined) throw error;
+      state = persisted;
+    }
     if (state.taskId !== input.taskId) {
       throw new AgentTaskControlError("conflict", "Agent Task Workflow returned a conflicting binding");
     }
@@ -141,6 +150,31 @@ export class AgentTaskControlService {
     }
     return authorization;
   }
+}
+
+// Temporal does not serve Workflow Queries after a terminal execution has
+// closed. Core's owner-authorized projection remains the durable read model.
+function terminalWorkflowProjectionState(
+  authorization: AgentTaskControlAuthorization,
+  error: unknown
+): AgentTaskState | undefined {
+  if (!workflowUnavailable(error)) return undefined;
+  const projection = authorization.workflow;
+  if (projection === undefined || !terminalTaskStatus(projection.workflowStatus)) return undefined;
+  return {
+    taskId: authorization.taskId,
+    status: projection.workflowStatus,
+    revision: projection.workflowRevision
+  };
+}
+
+function workflowUnavailable(error: unknown): boolean {
+  const code = typeof error === "object" && error !== null && "code" in error ? Number(error.code) : undefined;
+  return code === 5 || error instanceof Error && error.name === "WorkflowNotFoundError";
+}
+
+function terminalTaskStatus(value: string): value is Extract<AgentTaskState["status"], "completed" | "failed" | "cancelled"> {
+  return value === "completed" || value === "failed" || value === "cancelled";
 }
 
 function reconcileWorkflowProjection(authorization: AgentTaskControlAuthorization, state: AgentTaskState): {

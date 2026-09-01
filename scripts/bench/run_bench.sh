@@ -3,11 +3,13 @@ set -euo pipefail
 
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/compose/docker-compose.dist.yml}"
 BENCH_SCRIPT="${BENCH_SCRIPT:-scripts/bench/bench.js}"
+K6_BIN="${K6_BIN:-k6}"
 RESULTS_DIR="${RESULTS_DIR:-scripts/bench/results}"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_ID="${RUN_ID:-g0-${TIMESTAMP}}"
 SCENARIO="${SCENARIO:-mixed}"
 SCENARIO_FILTER="${SCENARIO_FILTER:-}"
+REPORT_SCENARIO="${SCENARIO_FILTER:-${SCENARIO}}"
 BASE_URL="${BASE_URL:-http://127.0.0.1:8081}"
 NODE1_WS="${NODE1_WS:-ws://127.0.0.1:8081}"
 NODE2_WS="${NODE2_WS:-ws://127.0.0.1:8082}"
@@ -57,9 +59,10 @@ require_command() {
   }
 }
 
-for command in docker curl git k6 jq python3; do
+for command in docker curl git jq python3; do
   require_command "${command}"
 done
+require_command "${K6_BIN}"
 
 git_commit="$(git rev-parse HEAD)"
 if [[ -n "$(git status --porcelain)" ]]; then
@@ -167,7 +170,7 @@ capture_process_metrics
 
 echo "==> Running ${BENCH_SCRIPT} with run_id=${RUN_ID}"
 set +e
-k6 run \
+"${K6_BIN}" run \
   --summary-export "${SUMMARY_JSON}" \
   --summary-trend-stats "avg,min,med,max,p(50),p(90),p(95),p(99)" \
   -e RUN_ID="${RUN_ID}" \
@@ -240,7 +243,7 @@ lag_samples="$(jq --raw-input --slurp 'split("\n") | map(select(length > 0) | to
 cpu_model="$(awk -F ': ' '/model name/ { print $2; exit }' /proc/cpuinfo)"
 jq -n \
   --arg run_id "${RUN_ID}" \
-  --arg scenario "${SCENARIO}" \
+  --arg scenario "${REPORT_SCENARIO}" \
   --arg captured_at "${TIMESTAMP}" \
   --arg git_commit "${git_commit}" \
   --arg cpu "${cpu_model}" \

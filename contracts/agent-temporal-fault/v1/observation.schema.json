@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/agent-temporal-fault/v1/observation.schema.json",
+  "title": "Dipole Agent Temporal Fault Observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "drillId", "observedAt", "workflow", "transitions", "faults", "effects"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.temporal-fault-observation.v1" }, "drillId": { "enum": ["worker_replacement_approval_resume", "worker_replacement_input_resume", "read_scope_confirmation_resume", "read_scope_confirmation_declined", "read_scope_confirmation_expired"] }, "observedAt": { "type": "string", "format": "date-time" },
+    "workflow": { "type": "object", "additionalProperties": false, "required": ["taskId", "runId"], "properties": { "taskId": { "type": "string", "minLength": 1, "maxLength": 128 }, "runId": { "type": "string", "minLength": 1, "maxLength": 128 } } },
+    "transitions": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "type": "object", "additionalProperties": false, "required": ["revision", "status"], "properties": { "revision": { "type": "integer", "minimum": 1, "maximum": 256 }, "status": { "enum": ["running", "waiting_approval", "waiting_input", "completed", "failed", "cancelled"] } } } },
+    "faults": { "type": "object", "additionalProperties": false, "required": ["workerReplacements", "terminalWriteRetries"], "properties": { "workerReplacements": { "type": "integer", "minimum": 0, "maximum": 8 }, "terminalWriteRetries": { "type": "integer", "minimum": 0, "maximum": 8 } } },
+    "effects": { "type": "object", "additionalProperties": false, "required": ["admissions", "stepExecutions", "approvalRequests", "approvalResolutions", "terminalWriteAttempts", "terminalPersistedWrites", "inputSignalsRejected", "inputResumptions"], "properties": { "admissions": { "type": "integer", "minimum": 0 }, "stepExecutions": { "type": "integer", "minimum": 0 }, "approvalRequests": { "type": "integer", "minimum": 0 }, "approvalResolutions": { "type": "integer", "minimum": 0 }, "terminalWriteAttempts": { "type": "integer", "minimum": 0 }, "terminalPersistedWrites": { "type": "integer", "minimum": 0 }, "inputSignalsRejected": { "type": "integer", "minimum": 0 }, "inputResumptions": { "type": "integer", "minimum": 0 }, "conversationReads": { "type": "integer", "minimum": 0, "maximum": 16 }, "unconfirmedConversationReads": { "type": "integer", "minimum": 0, "maximum": 16 } } },
+    "cancellation": { "type": "object", "additionalProperties": false, "required": ["reason"], "properties": { "reason": { "enum": ["input_expired", "user_cancelled"] } } }
+  }
+}

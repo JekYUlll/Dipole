@@ -11,6 +11,7 @@ scripts/check-architecture-docs.sh
 - [平台演进计划](architecture/PLATFORM-EVOLUTION-PLAN.md)
 - [架构债务台账](architecture/ARCHITECTURE-DEBT.md)
 - [微服务部署拓扑](architecture/MICROSERVICES-DEPLOYMENT.md)
+- [开发与远程资源工作流](operations/DEVELOPMENT-WORKFLOW.md)
 - [Sync Service](architecture/SYNC-SERVICE.md)
 - [Cassandra Timeline](architecture/CASSANDRA-TIMELINE.md)
 - [Realtime Delivery](architecture/REALTIME-DELIVERY.md)
@@ -38,6 +39,8 @@ scripts/check-architecture-docs.sh
 
 ## 部署与运行
 
+- [远程开发部署与压测](operations/REMOTE-DEV-DEPLOYMENT.md)
+- [轻量微服务 Smoke](../scripts/smoke-microservices-lite.sh)
 - [Gateway 部署](operations/GATEWAY-DEPLOYMENT.md)
 - [Message Service 部署](operations/MESSAGE-SERVICE-DEPLOYMENT.md)
 - [Search Service 部署](operations/SEARCH-SERVICE-DEPLOYMENT.md)
@@ -50,19 +53,29 @@ scripts/check-architecture-docs.sh
 
 Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/agent/` 与 `contracts/`：
 
+- [Agent 文档索引](agent/README.md)
+
 - [Agent Artifact 对账](agent/agent-artifact-reconcile.md)
 - [Agent 外部 MCP](agent/agent-external-mcp.md)
 - [Agent MCP 授权](agent/agent-mcp-authorization.md)
 - [Agent Memory Observation](agent/agent-memory-observation.md)
 - [Agent OpenTelemetry 运维](agent/agent-otel-operations.md)
 - [Agent Subscription Shadow](agent/agent-subscription-shadow.md)
+- [Agent Temporal Fault Receipts](agent/agent-temporal-fault-receipts.md)
 - [Agent Timeline Repair 运维](agent/AGENT-TIMELINE-REPAIR-OPERATIONS.md)
+- [Agent Active 部署运行手册](agent/AGENT-ACTIVE-DEPLOYMENT.md)
 - [Agent 前置能力清单](agent/ai-readiness-checklist.md)
 
 ## 前端设计
 
 - [前端设计计划](frontend/FRONTEND-DESIGN-PLAN.md)
 - [Pencil 设计资产](../design/README.md)
+
+## 文档治理
+
+- [文档入口与目录约定](architecture/REPOSITORY-STRUCTURE.md)
+- [平台演进与阻塞期间并行工作队列](architecture/PLATFORM-EVOLUTION-PLAN.md#41-阻塞期间的并行工作队列)
+- [架构债务台账](architecture/ARCHITECTURE-DEBT.md)
 
 ## 性能记录
 
@@ -72,5 +85,9 @@ Agent 的协议、记忆、MCP、观测和事件触发材料集中在 `docs/agen
 
 ## 指南与参考
 
-- [面试问答](guides/INTERVIEW-QA.md)
+- [简历 Claim 验收矩阵](guides/RESUME-CLAIM-READINESS.md)
+- [学习、简历与面试入口](guides/PROJECT-LEARNING-AND-INTERVIEW.md)
+- [Dipole IM 项目材料](guides/DIPOLE-IM-LEARNING-AND-INTERVIEW.md)
+- [Dipole Agent 项目材料](guides/DIPOLE-AGENT-LEARNING-AND-INTERVIEW.md)
+- [Dipole IM 深入问答](guides/INTERVIEW-QA.md)
 - [参考项目目录说明](references/README.md)

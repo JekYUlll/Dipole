@@ -14,11 +14,14 @@ import (
 )
 
 var (
-	ErrUserAlreadyExists  = errors.New("user already exists")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserDisabled       = errors.New("user is disabled")
-	ErrInvalidTelephone   = errors.New("invalid telephone")
-	telephonePattern      = regexp.MustCompile(`^1[3-9]\d{9}$`)
+	ErrUserAlreadyExists      = errors.New("user already exists")
+	ErrInvalidCredentials     = errors.New("invalid credentials")
+	ErrUserDisabled           = errors.New("user is disabled")
+	ErrInvalidTelephone       = errors.New("invalid telephone")
+	ErrInvalidCurrentPassword = errors.New("invalid current password")
+	ErrPasswordUnchanged      = errors.New("new password must differ from current password")
+	ErrInvalidPassword        = errors.New("invalid password")
+	telephonePattern          = regexp.MustCompile(`^1[3-9]\d{9}$`)
 )
 
 type RegisterInput struct {
@@ -31,6 +34,11 @@ type RegisterInput struct {
 type LoginInput struct {
 	Telephone string
 	Password  string
+}
+
+type ChangePasswordInput struct {
+	CurrentPassword string
+	NewPassword     string
 }
 
 type AuthResult struct {
@@ -56,6 +64,7 @@ type AgentMCPGrantResult struct {
 type authRepository interface {
 	Create(user *model.User) error
 	GetByTelephone(telephone string) (*model.User, error)
+	Update(user *model.User) error
 }
 
 type tokenIssuer interface {
@@ -155,6 +164,49 @@ func (s *AuthService) Logout(token string) error {
 	return nil
 }
 
+// ChangePassword verifies the authenticated user's current secret before
+// replacing its hash. The initiating session is revoked so the user signs in
+// again with the new secret.
+func (s *AuthService) ChangePassword(user *model.User, token string, input ChangePasswordInput) error {
+	if user == nil || user.Status == model.UserStatusDisabled {
+		return ErrUserDisabled
+	}
+	// Profile-cache entries intentionally exclude PasswordHash. Resolve the
+	// credential record through the authoritative telephone lookup instead.
+	storedUser, err := s.repo.GetByTelephone(user.Telephone)
+	if err != nil {
+		return fmt.Errorf("resolve password change user: %w", err)
+	}
+	if storedUser == nil || storedUser.UUID != user.UUID {
+		return ErrInvalidCurrentPassword
+	}
+	if storedUser.Status == model.UserStatusDisabled {
+		return ErrUserDisabled
+	}
+	if !validPassword(input.CurrentPassword) || !validPassword(input.NewPassword) {
+		return ErrInvalidPassword
+	}
+	if input.CurrentPassword == input.NewPassword {
+		return ErrPasswordUnchanged
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(storedUser.PasswordHash), []byte(input.CurrentPassword)); err != nil {
+		return ErrInvalidCurrentPassword
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash changed password: %w", err)
+	}
+	storedUser.PasswordHash = string(passwordHash)
+	if err := s.repo.Update(storedUser); err != nil {
+		return fmt.Errorf("persist changed password: %w", err)
+	}
+	if err := s.tokenService.Revoke(token); err != nil {
+		return fmt.Errorf("revoke session after password change: %w", err)
+	}
+	return nil
+}
+
 func (s *AuthService) IssueAgentMCPGrant(input AgentMCPGrantInput) (*AgentMCPGrantResult, error) {
 	token, err := s.tokenService.IssueAgentMCPAccessToken(input.UserUUID, input.Resource, input.Scopes, input.Consent)
 	if err != nil {
@@ -176,4 +228,8 @@ func generateUserUUID() string {
 	}
 
 	return "U" + strings.ToUpper(hex.EncodeToString(buf))
+}
+
+func validPassword(password string) bool {
+	return len(password) >= 6 && len(password) <= 32
 }

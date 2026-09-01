@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "dipole.agent.context-ablation-manifest.v1",
+  "experimentId": "example:context-ablation",
+  "candidateVersion": "candidate/example@v1",
+  "routePrices": [{"route": "example/flash", "inputMicrousdPerMillionTokens": 1000000, "outputMicrousdPerMillionTokens": 2000000}],
+  "cases": [{
+    "caseSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "requiredOutputIds": ["artifact:conversation_digest:v1"],
+    "relevantEvidenceIds": ["evidence:example"]
+  }]
+}

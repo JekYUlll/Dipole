@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "exports": [
+    { "path": "exports/foundations.png", "purpose": "foundations" },
+    { "path": "exports/login-desktop.png", "purpose": "login-desktop" },
+    { "path": "exports/login-mobile.png", "purpose": "login-mobile" },
+    { "path": "exports/chat-desktop.png", "purpose": "chat-desktop" },
+    { "path": "exports/chat-mobile.png", "purpose": "chat-mobile" },
+    { "path": "exports/review-checklist.png", "purpose": "review-checklist" },
+    { "path": "exports/dipole-ui-overview.png", "purpose": "overview" },
+    { "path": "exports/search-v1", "purpose": "search-v1" },
+    { "path": "exports/sync-v1", "purpose": "sync-v1" },
+    { "path": "exports/contact-v1", "purpose": "contact-v1" },
+    { "path": "exports/group-v1", "purpose": "group-v1" },
+    { "path": "exports/file-directory-review.png", "purpose": "file-directory-v1" },
+    { "path": "exports/settings-v1", "purpose": "settings-v1" },
+    { "path": "exports/device-security-desktop-review.png", "purpose": "device-security-desktop-v1" },
+    { "path": "exports/device-security-mobile-review.png", "purpose": "device-security-mobile-v1" },
+    { "path": "exports/device-security-state-matrix-review.png", "purpose": "device-security-state-matrix-v1" },
+    { "path": "exports/agent-repair-v1", "purpose": "agent-repair-v1" },
+    { "path": "exports/agent-elicitation-v1", "purpose": "agent-elicitation-v1" },
+    { "path": "exports/agent-subscription-v1", "purpose": "agent-subscription-v1" },
+    { "path": "exports/agent-subscription-create-v1", "purpose": "agent-subscription-create-v1" },
+    { "path": "exports/agent-timeline-v1/overview.png", "purpose": "agent-task-timeline-v1-canvas" },
+    { "path": "exports/agent-timeline-overview", "purpose": "agent-task-timeline-v1-frames" },
+    { "path": "exports/agent-definition-v1/overview.png", "purpose": "agent-definition-v1-canvas" },
+    { "path": "exports/agent-definition-overview", "purpose": "agent-definition-v1-frames" },
+    { "path": "exports/agent-task-create-v1", "purpose": "agent-task-create-v1-frames" },
+    { "path": "exports/agent-artifact-v1", "purpose": "agent-artifact-v1-frames" }
+  ]
+}

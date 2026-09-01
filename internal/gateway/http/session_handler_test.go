@@ -5,24 +5,26 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	coresession "github.com/JekYUlll/Dipole/internal/services/core/domain/session"
 )
 
 type stubSessionService struct {
-	listUserDevicesFn       func(userUUID string) ([]*service.DeviceSessionView, error)
+	listUserDevicesFn       func(userUUID string) ([]*coresession.DeviceSessionView, error)
 	forceLogoutConnectionFn func(userUUID, connectionID string) error
 	forceLogoutAllFn        func(userUUID, currentToken string) error
+	forceLogoutOtherFn      func(userUUID, currentDeviceID string) error
 }
 
-func (s *stubSessionService) ListUserDevices(userUUID string) ([]*service.DeviceSessionView, error) {
+func (s *stubSessionService) ListUserDevices(userUUID string) ([]*coresession.DeviceSessionView, error) {
 	return s.listUserDevicesFn(userUUID)
 }
 
@@ -34,15 +36,19 @@ func (s *stubSessionService) ForceLogoutAll(userUUID, currentToken string) error
 	return s.forceLogoutAllFn(userUUID, currentToken)
 }
 
+func (s *stubSessionService) ForceLogoutOther(userUUID, currentDeviceID string) error {
+	return s.forceLogoutOtherFn(userUUID, currentDeviceID)
+}
+
 func TestSessionHandlerListDevicesSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := NewSessionHandler(&stubSessionService{
-		listUserDevicesFn: func(userUUID string) ([]*service.DeviceSessionView, error) {
+		listUserDevicesFn: func(userUUID string) ([]*coresession.DeviceSessionView, error) {
 			if userUUID != "U100" {
 				t.Fatalf("unexpected user uuid: %s", userUUID)
 			}
-			return []*service.DeviceSessionView{
+			return []*coresession.DeviceSessionView{
 				{
 					ConnectionID: "C100",
 					Device:       "desktop",
@@ -64,6 +70,14 @@ func TestSessionHandlerListDevicesSuccess(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
+	if string(recorder.Body.Bytes()) == "" {
+		t.Fatal("expected device response body")
+	}
+	for _, forbidden := range []string{"remote_addr", "user_agent", "node_id"} {
+		if strings.Contains(string(recorder.Body.Bytes()), forbidden) {
+			t.Fatalf("public device projection leaked %s", forbidden)
+		}
+	}
 }
 
 func TestSessionHandlerForceLogoutDeviceNotFound(t *testing.T) {
@@ -71,7 +85,7 @@ func TestSessionHandlerForceLogoutDeviceNotFound(t *testing.T) {
 
 	handler := NewSessionHandler(&stubSessionService{
 		forceLogoutConnectionFn: func(userUUID, connectionID string) error {
-			return service.ErrSessionNotFound
+			return coresession.ErrSessionNotFound
 		},
 	})
 
@@ -121,11 +135,32 @@ func TestSessionHandlerForceLogoutAllSuccess(t *testing.T) {
 	}
 }
 
+func TestSessionHandlerForceLogoutOtherUsesCurrentDeviceID(t *testing.T) {
+	t.Parallel()
+	handler := NewSessionHandler(&stubSessionService{
+		forceLogoutOtherFn: func(userUUID, currentDeviceID string) error {
+			if userUUID != "U100" || currentDeviceID != "web-current" {
+				t.Fatalf("unexpected logout-other input: %s %s", userUUID, currentDeviceID)
+			}
+			return nil
+		},
+	})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/users/me/devices/logout-others", nil)
+	context.Request.Header.Set("X-Device-ID", "web-current")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	handler.ForceLogoutOther(context)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
 func TestSessionHandlerListDevicesFailure(t *testing.T) {
 	t.Parallel()
 
 	handler := NewSessionHandler(&stubSessionService{
-		listUserDevicesFn: func(userUUID string) ([]*service.DeviceSessionView, error) {
+		listUserDevicesFn: func(userUUID string) ([]*coresession.DeviceSessionView, error) {
 			return nil, errors.New("redis unavailable")
 		},
 	})

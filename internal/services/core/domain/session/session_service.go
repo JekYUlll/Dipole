@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrSessionConnectionRequired = errors.New("session connection is required")
+	ErrSessionDeviceRequired     = errors.New("session device is required")
 	ErrSessionNotFound           = errors.New("session not found")
 )
 
@@ -166,5 +167,44 @@ func (s *SessionService) ForceLogoutAll(userUUID, currentToken string) error {
 		}
 	}
 
+	return nil
+}
+
+// ForceLogoutOther revokes all live sessions that do not belong to the caller's stable device.
+// The stable device ID is transport metadata and never appears in the public device projection.
+func (s *SessionService) ForceLogoutOther(userUUID, currentDeviceID string) error {
+	userUUID = strings.TrimSpace(userUUID)
+	currentDeviceID = strings.TrimSpace(currentDeviceID)
+	if currentDeviceID == "" {
+		return ErrSessionDeviceRequired
+	}
+	if s.presence == nil {
+		return nil
+	}
+
+	states, err := s.presence.ListUserConnections(userUUID)
+	if err != nil {
+		return fmt.Errorf("list user connections in force logout other: %w", err)
+	}
+
+	connectionIDs := make([]string, 0, len(states))
+	for _, state := range states {
+		if state.DeviceID == currentDeviceID {
+			continue
+		}
+		if s.tokens != nil && state.TokenID != "" && !state.TokenExpiresAt.IsZero() {
+			if err := s.tokens.RevokeTokenID(state.TokenID, state.TokenExpiresAt); err != nil {
+				return fmt.Errorf("revoke token in force logout other: %w", err)
+			}
+		}
+		if state.ConnectionID != "" {
+			connectionIDs = append(connectionIDs, state.ConnectionID)
+		}
+	}
+	if s.kicker != nil && len(connectionIDs) > 0 {
+		if err := s.kicker.KickConnections(userUUID, connectionIDs); err != nil {
+			return fmt.Errorf("kick other device connections: %w", err)
+		}
+	}
 	return nil
 }

@@ -15,9 +15,28 @@ const configFile = resolve(projectRoot, 'vite.config.ts')
 test('Vite config preserves the Dipole base path and output boundary', async () => {
   const config = await resolveConfig({ configFile }, 'build')
   assert.equal(config.base, '/app/')
-  assert.equal(config.build.outDir, resolve(projectRoot, '../internal/server/webapp'))
+  assert.equal(config.build.outDir, resolve(projectRoot, '../internal/services/core/server/webapp'))
   assert.equal(config.server.proxy['/api'].ws, true)
   assert.equal(config.server.proxy['/api'].changeOrigin, true)
+})
+
+test('frontend exposes the documented typecheck command', async () => {
+  const packageJSON = JSON.parse(await readFile(resolve(projectRoot, 'package.json'), 'utf8'))
+  assert.equal(packageJSON.scripts.typecheck, 'vue-tsc --noEmit')
+})
+
+test('interactive Agent build profile exposes only the read-only demo surface', async () => {
+  const profile = await readFile(resolve(projectRoot, '.env.agent-interactive-shadow'), 'utf8')
+  const values = Object.fromEntries(profile
+    .split(/\r?\n/)
+    .filter((line) => line.includes('='))
+    .map((line) => line.split('=', 2)))
+
+  assert.deepEqual(values, {
+    VITE_AGENT_TASK_CREATE_ENABLED: 'true',
+    VITE_AGENT_TIMELINE_ENABLED: 'true',
+    VITE_AGENT_ARTIFACTS_ENABLED: 'true',
+  })
 })
 
 test('Vite development proxy forwards HTTP and WebSocket upgrades', async (t) => {

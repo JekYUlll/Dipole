@@ -174,6 +174,16 @@ type AgentArtifact struct {
 	CreatedAt     time.Time
 }
 
+type AgentContextAblationBinding struct {
+	ExperimentUuid   string
+	CaseSha256       string
+	ConditionName    string
+	TaskUuid         string
+	RunUuid          string
+	CandidateVersion string
+	CreatedAt        time.Time
+}
+
 type AgentDefinitionVersion struct {
 	ID              uint64
 	DefinitionUuid  string
@@ -331,6 +341,40 @@ type AgentMemoryLineageBackfillJob struct {
 	UpdatedAt             time.Time
 }
 
+type AgentOauthAuthorizationTransaction struct {
+	ID                 uint64
+	TransactionUuid    string
+	OwnerUserUuid      string
+	Issuer             string
+	RedirectUri        string
+	StateSha256        string
+	SealedCodeVerifier string
+	ExpiresAt          time.Time
+	ConsumedAt         sql.NullTime
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
+type AgentOauthCallbackHandoff struct {
+	ID                      uint64
+	HandoffUuid             string
+	TransactionUuid         string
+	OwnerUserUuid           string
+	Issuer                  string
+	RedirectUri             string
+	AuthorizationCodeSha256 string
+	SealedAuthorizationCode string
+	RuntimeKeyID            string
+	Status                  string
+	LeaseOwner              sql.NullString
+	LeaseExpiresAt          sql.NullTime
+	Attempts                uint32
+	ExpiresAt               time.Time
+	CompletedAt             sql.NullTime
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+}
+
 type AgentRun struct {
 	ID               uint64
 	RunUuid          string
@@ -344,6 +388,7 @@ type AgentRun struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	CandidateVersion sql.NullString
+	TraceID          sql.NullString
 }
 
 type AgentRuntimePromotionGrant struct {
@@ -452,24 +497,7 @@ type AgentTaskTimelineEvent struct {
 	ApprovalUuid sql.NullString
 	OccurredAt   time.Time
 	CreatedAt    time.Time
-}
-
-type AgentTaskTimelineRepair struct {
-	EventUuid    string
-	TaskUuid     string
-	RunUuid      sql.NullString
-	EventKind    string
-	Status       string
-	CapabilityID sql.NullString
-	ApprovalUuid sql.NullString
-	OccurredAt   time.Time
-	RepairStatus string
-	RetryCount   uint32
-	LastError    sql.NullString
-	NextRetryAt  sql.NullTime
-	LockedAt     sql.NullTime
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ArtifactUuid sql.NullString
 }
 
 type AgentToolInvocation struct {

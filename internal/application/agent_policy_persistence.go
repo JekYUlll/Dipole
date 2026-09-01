@@ -146,6 +146,7 @@ type AgentRunV1 struct {
 	TaskUUID         string           `json:"task_uuid"`
 	RuntimeID        string           `json:"runtime_id"`
 	CandidateVersion string           `json:"candidate_version,omitempty"`
+	TraceID          string           `json:"trace_id,omitempty"`
 	Mode             string           `json:"mode"`
 	Status           AgentRunStatusV1 `json:"status"`
 	StartedAt        time.Time        `json:"started_at,omitempty"`
@@ -265,7 +266,7 @@ func (r AgentRunV1) Validate() error {
 	if r.Mode != "embedded" && r.Mode != "shadow" && r.Mode != "active" {
 		return ErrAgentPolicyInvalid
 	}
-	if (r.Mode == "active") != (strings.TrimSpace(r.CandidateVersion) != "") || len(r.CandidateVersion) > 128 {
+	if (r.Mode == "active") != (strings.TrimSpace(r.CandidateVersion) != "") || len(r.CandidateVersion) > 128 || len(strings.TrimSpace(r.TraceID)) > 128 {
 		return ErrAgentPolicyInvalid
 	}
 	switch r.Status {

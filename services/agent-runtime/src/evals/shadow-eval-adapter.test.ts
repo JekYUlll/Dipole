@@ -64,7 +64,7 @@ describe("Shadow evaluation adapter", () => {
       }, {
         id: "cost.shadow.e2d3583d196abdf176eaff43", category: "cost",
         expected: { maximums: manifest.labels.cost.maximums },
-        observed: { modelCalls: 1, toolCalls: 2, totalTokens: 150, totalCostMicrousd: 420, latencyMs: 770 }
+        observed: { modelCalls: 1, toolCalls: 2, totalTokens: 150, totalCostMicrousd: 420, latencyMs: 770, tokenMetrics: "complete" }
       }]
     });
   });
@@ -87,6 +87,130 @@ describe("Shadow evaluation adapter", () => {
 
     expect(() => buildShadowEvalSuite(manifest, { ...observed, taskId: "TASK-OTHER" })).toThrow(/Task binding/);
     expect(() => buildShadowEvalSuite(manifest, observed)).toThrow(/capability binding/);
+  });
+
+  it("emits an auditable cost failure when a failed model call has no token metering", () => {
+    const observed = {
+      ...observation(), taskStatus: "failed", runStatus: "failed", steps: [], artifacts: [], toolCalls: [],
+      modelCalls: [{ route: "gateway/primary", status: "failed", inputTokens: null, outputTokens: null, latencyMs: 91 }]
+    } satisfies ShadowEvalObservation;
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1",
+      taskId: observed.taskId, runId: observed.runId,
+      labels: {
+        outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] },
+        trajectory: { steps: ["context.compile"], forbiddenSteps: [] }, permission: [],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 1, minimumPrecision: 1 },
+        cost: {
+          maximums: { modelCalls: 1, toolCalls: 0, totalTokens: 1, totalCostMicrousd: 1, latencyMs: 100 },
+          routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 1, outputMicrousdPerMillionTokens: 1 }]
+        }
+      }
+    });
+
+    const suite = buildShadowEvalSuite(manifest, observed);
+    const cost = suite.cases.find(item => item.category === "cost");
+
+    expect(cost).toMatchObject({ observed: {
+      modelCalls: 1, toolCalls: 0, totalTokens: 0, totalCostMicrousd: 0, latencyMs: 91, tokenMetrics: "unavailable"
+    } });
+  });
+
+  it("uses a terminal durable Workflow when a Shadow policy Task remains running", () => {
+    const observed = { ...observation(), taskStatus: "running", workflowStatus: "completed" };
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1",
+      taskId: observed.taskId, runId: observed.runId,
+      labels: {
+        outcome: { requiredOutputIds: ["task:completed", "run:completed"], forbiddenOutputIds: [] },
+        trajectory: { steps: ["context.compile", "capability:conversation.list:completed", "artifact:conversation_digest:v1"], forbiddenSteps: [] },
+        permission: [{ stepNo: 1, capabilityId: "conversation.list", resourceType: "conversation", resourceId: "user:u100", action: "read", decision: "allowed" }],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 1, minimumPrecision: 1 },
+        cost: {
+          maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 },
+          routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 2_000_000, outputMicrousdPerMillionTokens: 6_000_000 }]
+        }
+      }
+    });
+
+    expect(buildShadowEvalSuite(manifest, observed).cases[0]?.observed).toEqual({ outputIds: ["artifact:conversation_digest:v1", "run:completed", "task:completed"] });
+  });
+
+  it("accepts the bounded wildcard resource scope emitted by the read-shadow policy", () => {
+    const base = observation();
+    const observed = {
+      ...base,
+      taskStatus: "running",
+      workflowStatus: "completed",
+      steps: [{ ...base.steps[0]!, authorization: { resourceType: "conversation", resourceId: "*", action: "list", decision: "allowed" as const } }]
+    };
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1",
+      taskId: observed.taskId, runId: observed.runId,
+      labels: {
+        outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] },
+        trajectory: { steps: [], forbiddenSteps: [] },
+        permission: [{ stepNo: 1, capabilityId: "conversation.list", resourceType: "conversation", resourceId: "*", action: "list", decision: "allowed" }],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 0, minimumPrecision: 0 },
+        cost: { maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 }, routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 2_000_000, outputMicrousdPerMillionTokens: 6_000_000 }] }
+      }
+    });
+
+    expect(buildShadowEvalSuite(manifest, observed).cases[2]?.observed).toEqual({
+      decisions: [{ capabilityId: "conversation.list", resourceType: "conversation", resourceId: "*", action: "list", decision: "allowed" }]
+    });
+  });
+
+  it("accepts the canonical mixed-case direct conversation identifier", () => {
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1", taskId: "TASK-42", runId: "RUN-42",
+      labels: { outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] }, trajectory: { steps: [], forbiddenSteps: [] },
+        permission: [{ stepNo: 1, capabilityId: "conversation.list", resourceType: "conversation", resourceId: "direct:U100:UAI000000000000000001", action: "read", decision: "allowed" }],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 0, minimumPrecision: 0 },
+        cost: { maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 }, routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 1, outputMicrousdPerMillionTokens: 1 }] }
+      }
+    });
+    expect(manifest.labels.permission[0]?.resourceId).toBe("direct:U100:UAI000000000000000001");
+  });
+
+  it("excludes required control-plane context from retrieval precision", () => {
+    const base = observation();
+    const observed = {
+      ...base,
+      contextManifest: {
+        ...base.contextManifest,
+        selected: [
+          ...base.contextManifest.selected,
+          { id: "policy:shadow-v1", provenance: { sourceType: "runtime_policy", sourceId: "shadow-v1" } },
+          { id: "identity:UAI", provenance: { sourceType: "execution_context", sourceId: "RUN-42" } },
+          { id: "task:TASK-42", provenance: { sourceType: "agent_task", sourceId: "TASK-42" } },
+          { id: "capabilities:shadow-v1", provenance: { sourceType: "capability_registry", sourceId: "shadow-v1" } }
+        ]
+      }
+    };
+    const suite = buildShadowEvalSuite(parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1", taskId: "TASK-42", runId: "RUN-42",
+      labels: { outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] }, trajectory: { steps: [], forbiddenSteps: [] }, permission: [],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 1, minimumPrecision: 1 },
+        cost: { maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 }, routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 1, outputMicrousdPerMillionTokens: 1 }] }
+      }
+    }), observed);
+    expect(suite.cases[3]?.observed).toEqual({ retrievedEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"] });
+  });
+
+  it("rejects a running Shadow policy Task without a terminal durable Workflow", () => {
+    const observed = { ...observation(), taskStatus: "running", workflowStatus: "running" };
+    const manifest = parseShadowEvalManifest({
+      schemaVersion: "dipole.agent.shadow-eval-manifest.v1", candidateVersion: "candidate/v1",
+      taskId: observed.taskId, runId: observed.runId,
+      labels: {
+        outcome: { requiredOutputIds: ["task:completed"], forbiddenOutputIds: [] }, trajectory: { steps: [], forbiddenSteps: [] }, permission: [],
+        retrieval: { relevantEvidenceIds: ["evidence:9ca5a7ab8595d195421b6f96f544b8fb"], minimumRecall: 0, minimumPrecision: 0 },
+        cost: { maximums: { modelCalls: 1, toolCalls: 2, totalTokens: 300, totalCostMicrousd: 1000, latencyMs: 1000 }, routePrices: [{ route: "gateway/primary", inputMicrousdPerMillionTokens: 2_000_000, outputMicrousdPerMillionTokens: 6_000_000 }] }
+      }
+    });
+
+    expect(() => buildShadowEvalSuite(manifest, observed)).toThrow(/Task execution and Run must be terminal/);
   });
 
   it("rejects a query sentinel row instead of silently truncating observations", () => {
@@ -114,11 +238,11 @@ describe("Shadow evaluation adapter", () => {
 
 function observation(): ShadowEvalObservation {
   return {
-    taskId: "TASK-42", taskStatus: "completed", runId: "RUN-42", runStatus: "completed",
+    taskId: "TASK-42", taskStatus: "completed", runId: "RUN-42", runStatus: "completed", traceId: "trace:adapter-42",
     contextManifest: {
       selected: [{ id: "event:E42", provenance: { sourceType: "kafka_event", sourceId: "E42" } }], omitted: []
     },
-    steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 20 }],
+    steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 20, authorization: { resourceType: "conversation", resourceId: "user:u100", action: "read", decision: "allowed" } }],
     artifacts: [{ artifactType: "conversation_digest", version: 1 }],
     modelCalls: [{ route: "gateway/primary", status: "completed", inputTokens: 120, outputTokens: 30, latencyMs: 700 }],
     toolCalls: [{ status: "completed", latencyMs: 50 }]

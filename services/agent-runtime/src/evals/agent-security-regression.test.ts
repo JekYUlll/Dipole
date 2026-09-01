@@ -105,7 +105,7 @@ async function runSecurityProbes(): Promise<Record<string, unknown>> {
     }] },
     "security.prompt-injection-provenance": { retrievedEvidenceIds },
     "security.duplicate-event-budget": {
-      modelCalls: plannerCalls, toolCalls: 0, totalTokens: 0, totalCostMicrousd: 0, latencyMs: 0
+      modelCalls: plannerCalls, toolCalls: 0, totalTokens: 0, totalCostMicrousd: 0, latencyMs: 0, tokenMetrics: "complete"
     }
   };
 }

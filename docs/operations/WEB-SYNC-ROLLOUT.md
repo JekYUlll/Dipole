@@ -2,6 +2,8 @@
 
 本文档用于将 Web 客户端从旧 `/messages/offline` 增量链路渐进迁移到 `/sync`。所有阶段都保留可回切构建，真实流量观测结果需要单独归档，规则测试通过仅证明门禁表达式有效。
 
+开发环境可先运行 `scripts/remote-dev.sh web-sync-observability-smoke` 验证隔离 Prometheus、Core、Message、Sync 与 Gateway 的 metrics 连通性。该动作只绑定 loopback 端口并默认清理环境；它不产生真实 incoming-direct 对照样本，不能替代本手册定义的 24 小时观察会话。
+
 ## 1. 适用范围
 
 首批对照范围固定为 `incoming_direct`，只覆盖当前用户收到的私聊消息：
@@ -100,7 +102,7 @@ sum by (outcome) (increase(dipole_web_sync_client_errors_total[24h]))
 
 ### 7.1 可恢复观察会话与证据归档
 
-发布 shadow 候选前，将实际部署的 `frontend/dist` 制作为不可变发布归档。观察会话必须使用完整 40 位 Git commit 和该归档文件，不能用源码目录或任意占位文件代替：
+发布 shadow 候选前，将实际部署的 `internal/services/core/server/webapp` 制作为不可变发布归档。观察会话必须使用完整 40 位 Git commit 和该归档文件，不能用源码目录或任意占位文件代替：
 
 ```bash
 python3 scripts/web_sync_observation.py start \
@@ -112,6 +114,8 @@ python3 scripts/web_sync_observation.py start \
 ```
 
 `start` 会先确认 incoming-direct comparison series 已存在、Sync Projector lag 为零且相关告警没有 firing。Session ID 覆盖候选版本、commit、bundle SHA-256、Prometheus 地址、开始时间和初始原始响应；输出文件使用不可覆盖写入。
+
+工具会拒绝超过当前时钟 5 分钟的开始、状态采集或结束时间。该边界用于防止误用未来时间查询 Prometheus，避免把尚未发生的观察窗口误判为已完成；维护窗口需要校准主机时钟后重新执行命令，不应通过人为调整时间绕过门禁。
 
 观察期间可读取状态，命令不会修改 Session：
 
@@ -127,10 +131,14 @@ python3 scripts/web_sync_observation.py finalize \
   --session /secure/evidence/web-sync-shadow-20260828.1.session.json \
   --git-commit "$(git rev-parse HEAD)" \
   --bundle /secure/releases/web-sync-shadow-20260828.1.tar \
+  --archive-uri s3://dipole-evidence/web-sync-shadow-20260828.1.json \
+  --archive-object-version <object-version-id> \
+  --archive-etag <etag> \
+  --archive-retain-until 2026-09-30T00:00:00Z \
   --output /secure/evidence/web-sync-shadow-20260828.1.evidence.json
 ```
 
-退出码 `0` 表示 `eligible`，退出码 `2` 表示已归档但门禁判定为 `blocked`，输入、网络、时间或完整性错误返回 `1`。Evidence 保存原始 Prometheus API 响应、Session/快照/完整证据 SHA-256 和具体阻塞原因；不得包含凭据、Message UUID 或正文。将 Session、Evidence 与候选发布归档一并保存到启用版本控制和保留策略的受控对象存储，并在晋级记录中固定 object version、ETag 和责任人。
+退出码 `0` 表示 `eligible`，退出码 `2` 表示已归档但门禁判定为 `blocked`，输入、网络、时间或完整性错误返回 `1`。Evidence 保存原始 Prometheus API 响应、Session/快照/完整证据 SHA-256、对象存储归档 URI、object version、ETag 和 retention 截止时间；缺少归档收据时只能判定为 `blocked`。不得包含凭据、Message UUID 或正文。将 Session、Evidence 与候选发布归档一并保存到启用版本控制和保留策略的受控对象存储，并在晋级记录中固定责任人。
 
 本地验证工具与契约：
 

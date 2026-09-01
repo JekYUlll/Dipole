@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/context-ablation-manifest.schema.json",
+  "title": "Dipole Agent Context Ablation Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "experimentId", "candidateVersion", "routePrices", "cases"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.context-ablation-manifest.v1"},
+    "experimentId": {"$ref": "#/$defs/id"},
+    "candidateVersion": {"type": "string", "minLength": 2, "maxLength": 128},
+    "routePrices": {
+      "type": "array", "minItems": 1, "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["route", "inputMicrousdPerMillionTokens", "outputMicrousdPerMillionTokens"],
+        "properties": {
+          "route": {"type": "string", "minLength": 1, "maxLength": 255},
+          "inputMicrousdPerMillionTokens": {"type": "integer", "minimum": 0},
+          "outputMicrousdPerMillionTokens": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "cases": {
+      "type": "array", "minItems": 1, "maxItems": 256,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["caseSha256", "requiredOutputIds", "relevantEvidenceIds"],
+        "properties": {
+          "caseSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "requiredOutputIds": {"allOf": [{"$ref": "#/$defs/ids"}, {"minItems": 1}]},
+          "relevantEvidenceIds": {"allOf": [{"$ref": "#/$defs/ids"}, {"minItems": 1}]}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "ids": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+  }
+}

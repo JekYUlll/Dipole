@@ -5,6 +5,7 @@ import { createPool } from "mysql2/promise";
 
 import { evaluateOfflineEvalSuite } from "./offline-evaluator.js";
 import { buildShadowEvalSuite, parseShadowEvalManifest } from "./shadow-eval-adapter.js";
+import { createShadowEvalReport } from "./shadow-eval-report.js";
 import { MySQLShadowEvalObservationStore, type ShadowEvalObservationStore } from "./mysql-shadow-eval-store.js";
 
 interface Writable {
@@ -39,7 +40,8 @@ export async function runShadowEvalCLI(
     handle = dependencies.openStore();
     const observation = await handle.store.load(manifest.taskId, manifest.runId);
     const report = evaluateOfflineEvalSuite(buildShadowEvalSuite(manifest, observation));
-    stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    const shadowReport = createShadowEvalReport(observation.traceId, report);
+    stdout.write(`${JSON.stringify(shadowReport, null, 2)}\n`);
     return report.passed ? 0 : 2;
   } catch (error) {
     stderr.write(`shadow eval failed closed: ${error instanceof Error ? error.message : String(error)}\n`);

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/JekYUlll/Dipole/internal/compat/service"
+	"github.com/JekYUlll/Dipole/internal/application"
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 )
 
@@ -12,14 +12,14 @@ import (
 func NewGroupEventHandler[T any](
 	hub EventSender,
 	eventType string,
-	buildData func(service.GroupEventPayload) T,
+	buildData func(application.GroupEventPayload) T,
 ) platformKafka.Handler {
 	return func(ctx context.Context, event platformKafka.Event) error {
 		envelope, err := requireEnvelope(event)
 		if err != nil {
 			return fmt.Errorf("decode %s envelope: %w", eventType, err)
 		}
-		payload, err := service.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
+		payload, err := application.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
 		if err != nil {
 			return fmt.Errorf("decode %s payload: %w", eventType, err)
 		}

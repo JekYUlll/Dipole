@@ -121,7 +121,7 @@ CREATED → RUNNING → WAITING_INPUT / WAITING_APPROVAL
           COMPLETED / FAILED / CANCELLED
 ```
 
-Task 包含多个 Run，Run 包含 ContextCompile、ModelCall、ToolCall、Approval 和 ArtifactCreate 等 Step。Temporal Workflow ID 使用 Task ID，确保重复 Kafka 事件不会创建重复任务。
+Task 包含多个 Run，Run 包含 ContextCompile、ModelCall、ToolCall、Approval 和 ArtifactCreate 等 Step。Temporal Workflow ID 使用 Task ID，确保重复 Kafka 事件不会创建重复任务。交互式创建使用 `POST /api/v1/agent/tasks`，请求仅包含 `client_request_id` 与 `goal`；Gateway 从 JWT 派生 principal，再调用 Runtime 私有 `POST /internal/v1/agent/tasks`。Runtime 固定 tenant/Agent identity，并以 `client_request_id` 派生确定性 Task/Event ID。认证 Vue 入口为 `/agent/tasks/new`，需要 `VITE_AGENT_TASK_CREATE_ENABLED=true` 与 `VITE_AGENT_TIMELINE_ENABLED=true` 同时成立，并且仅在验证 `{taskId,status:"accepted"}` 后跳转只读 Timeline。该路由依赖既有 `gateway.agent_control_enabled` 与 `DIPOLE_AGENT_CONTROL_ENABLED` 双侧显式开启，基础 Compose 默认不注册它；请求体携带的身份字段不参与授权。
 
 ### Context Compiler
 
@@ -172,7 +172,7 @@ MCP Worker command dispatcher 的不可信输入面只包含 Task/Run/Invocation
 
 任务输出同时支持 Message 和 Artifact。报告、任务清单、事故分析和会话摘要保存为版本化 Artifact，元数据进入 MySQL，大对象进入 MinIO。
 
-G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、类型、版本和正文 SHA-256，正文限制 1 MiB，元数据限制 16 KiB。`dipole-agent` 只能为当前运行中的 Shadow Run 创建产物，Gateway 只能以 Task principal 读取；读取和精确重试都会验证对象大小与哈希。当前没有更新、删除、公开 URL、消息转换和 active 模式写入，Pencil 恢复后再交付用户界面。
+G3 v1 已实现 `conversation_digest` 产物：Artifact ID 绑定 Task、Run、类型、版本和正文 SHA-256，正文限制 1 MiB，元数据限制 16 KiB。`dipole-agent` 只能为当前运行中的 Shadow Run 创建产物，Gateway 只能以 Task principal 读取；读取和精确重试都会验证对象大小与哈希。默认关闭的 Gateway metadata seam 只返回 Artifact 身份、Task/Run、类型、版本、标题、媒体类型、摘要、大小和创建时间，并在返回前复核正文长度与 SHA-256；正文、对象键与 metadata JSON 仍不进入浏览器 API。Timeline 的 `artifact` 事件现可选携带经过 SHA-256 校验的 `artifact_id`，用于关联同一 Task 内的 owner-scoped metadata；主投影和失败修复队列共同持久化该关联，历史事件缺失该字段时保持可读。当前没有更新、删除、公开 URL、下载、消息转换和 active 模式写入，Pencil 页面与正文披露策略等待独立契约。
 
 ## 7. 数据模型
 
@@ -250,4 +250,4 @@ Project Guardian 订阅一个项目群，每日维护决策、任务和风险；
 
 首期避免引入无明确职责的多 Agent 编排，也避免每条消息直接调用高成本模型。
 
-G2 foundation 已建立在 `services/agent-runtime/`：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2 与 mysql2 由独立 package 管理；领域内核已实现严格 ExecutionContext、resource-scope Policy Engine、Capability Registry、Go 兼容 Task/Run ID 和只读 shadow processor。KafkaJS adapter 使用独立 `dipole-agent-shadow-*` group 消费兼容 v1 Message 事件，冷启动执行有界重连。migration v18 与 MySQL EventLedger 通过 Event/Task 双唯一、事务 claim、lease 和精确 token 提供跨进程幂等，Compose 使用 Agent 专用最小权限账号。物理 main/retry/dead topic 在 readiness 前显式创建并校验；永久错误直达 dead，瞬时错误有界重试，失败转移成功后才完成源 handler（`AD-028` 已关闭）。provider-neutral ModelRouter 已支持有序降级、总 deadline 与单次输出 Token 上限；AI SDK adapter 使用 Zod structured output 并关闭内部 retry。migration v19 与 MySQL ModelAuditStore 固定预算快照、原子 call slot 和 completed/failed/abandoned 轨迹，Router 每次 provider 调用均先占用 slot，跨 Kafka 重投共享上限（`AD-029` 已关闭）。migration v20-v21 保存不可变 Shadow Plan、有序 Step、独立 Runtime Run 与 lease/token 终态。受认证 `dipole.agent.v1` gRPC 通过 mTLS `dipole-agent` 身份完成 Task admission、持久 policy 解析和首个 `conversation.list` 执行，principal 只来自服务端 Task，静态 protobuf client 与最小 RPC allowlist 已关闭 `AD-030`。模型模式默认 `metadata`，显式 `ai_sdk` 强制 MySQL Store、Capability RPC 和只读 shadow；write capability 继续关闭。
+G2 foundation 已建立在 `services/agent-runtime/`：Node 22+、Fastify 5、Zod 4、AI SDK 7、KafkaJS 2 与 mysql2 由独立 package 管理；领域内核已实现严格 ExecutionContext、resource-scope Policy Engine、Capability Registry、Go 兼容 Task/Run ID 和只读 shadow processor。KafkaJS adapter 使用独立 `dipole-agent-shadow-*` group 消费兼容 v1 Message 事件，冷启动执行有界重连。migration v18 与 MySQL EventLedger 通过 Event/Task 双唯一、事务 claim、lease 和精确 token 提供跨进程幂等，Compose 使用 Agent 专用最小权限账号。物理 main/retry/dead topic 在 readiness 前显式创建并校验；永久错误直达 dead，瞬时错误有界重试，失败转移成功后才完成源 handler（`AD-028` 已关闭）。provider-neutral ModelRouter 已支持有序降级、总 deadline 与单次输出 Token 上限；AI SDK adapter 使用 Zod structured output 并关闭内部 retry。`ai_sdk` 模式通过单一 OpenAI-compatible adapter 注入真实 LanguageModel，Provider name 绑定全部 route 前缀，base URL 与密钥在配置解析阶段校验，默认 `metadata` 不创建 Provider。migration v19 与 MySQL ModelAuditStore 固定预算快照、原子 call slot 和 completed/failed/abandoned 轨迹，Router 每次 provider 调用均先占用 slot，跨 Kafka 重投共享上限（`AD-029` 已关闭）。migration v20-v21 保存不可变 Shadow Plan、有序 Step、独立 Runtime Run 与 lease/token 终态。受认证 `dipole.agent.v1` gRPC 通过 mTLS `dipole-agent` 身份完成 Task admission、持久 policy 解析和首个 `conversation.list` 执行，principal 只来自服务端 Task，静态 protobuf client 与最小 RPC allowlist 已关闭 `AD-030`。模型模式默认 `metadata`，显式 `ai_sdk` 强制 MySQL Store、Capability RPC 和只读 shadow；write capability 继续关闭。

@@ -1,5 +1,825 @@
 # 更新日志
 
+- 2026-09-01：Interactive Agent 的 active 消息命令现通过 Message Service gRPC 执行，并由同一远程回执查询完成 Tool action reference 审计。Core 的 `dipole-agent` allowlist 精确放行 `ExecuteMcpMessageCommand`；候选回归还修复了 standalone Core 在审计阶段误用空本地 Message repository 导致的崩溃。Remote GPU loopback-only 隔离 Compose 已验证受认证 Task 创建 `202`、owner 批准 `202`、Temporal 完成、Tool completed、approval 单次 consumed，以及 action reference 对应恰好一条消息。短期开发 promotion grant 在验证后已撤销。该候选使用 dirty development images 和直接受控的开发授权续期，不构成生产发布、浏览器体验、拒绝/重复批准、故障恢复或容量结论。
+
+- 2026-09-01：新增 `agent-interactive-active.yml` 受控 overlay 与 `interactive_active` Temporal profile。该 profile 要求 active Runtime、mTLS Capability RPC、`dipole-agent-interactive-*` 专用队列、Control API 与显式消息写开关，并持续拒绝 MCP、Memory、检索和订阅扩张；基础 Compose 与 `read_active` 均不受影响。Remote GPU 已通过 profile/Temporal 定向测试和类型检查，尚未启动共享 Compose 或产生真实消息副作用。
+
+- 2026-09-01：Interactive Agent 新增默认关闭的显式 `/send <内容>` 受控写入切片。active Runtime 仅在 `DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED=true` 时为直属 Agent 会话装配消息执行器；Temporal 先持久化 `wait_approval`，收到 owner 的 approved Signal 后复用既有 MCP grant/单次 consume/Tool Invocation 审计/Core 消息命令链路完成一次 `system_message`。会话 ID、消息内容哈希、审批 ID 与 Task/Run 绑定，Shadow 与未开启开关的 active profile 保持只读。Remote GPU 已通过 `23` 条定向单测、隔离 Temporal durable resume 和 TypeScript typecheck；共享 Core/Temporal/Compose 的真实副作用 receipt 与回滚演练仍待完成。
+
+- 2026-09-01：前端从"仅 Login 是 V3、其余仍旧青绿"统一到 V3 视觉语言，分三个可回滚切片落地。① 调色板基础：把被 19 个文件重度消费的语义 token（rail/rail-soft/accent/accent-strong/accent-soft/ink/ink-soft/ink-faint/line）重映射到品牌板——导航 rail 与正文 ink 归海军蓝、主操作/未读 accent 归信号红、描边归暖象牙线；`--dp-v3-*` 词汇对齐同一套实测色值，新增金色 `--dp-agent` 系表达受控 Agent 状态。CSS、`design/dipole-ui.pen` 变量（含遗留 `$brand` 微信绿改为信号红）与 `design-tokens.test.ts` 契约锁步移动，canvas/surface/danger/warning 本就是暖中性色故保持不动。② Agent 身份色归位：Agent 组件此前把旧青绿 accent 起别名为 `--green` 统管一切"Agent 身份"，重映射后会误读为红；按 V3 规则拆分——身份文本走海军蓝（金色作小字文本对比度不足），金色只作克制的身份/耐久任务进度标记（状态点、时间线节点、active 药丸填充、scope 边线），信号红留给主操作与链接，danger 留给撤销与错误。③ 去 AI 风格：ChatView 是最后一块 pre-V3 屏（189 处硬编码色、微信品牌绿、emoji 文件图标、硬编码渐变横幅），逐一映射到语义 token——自己的消息变海军蓝气泡+反白字、Agent 消息用金色身份、文件附件用等宽类型标牌（IMG/DOC/XLS…）取代 emoji、danger 横幅去渐变改扁平；新增功能性 `--dp-success`（哑光 BI 绿，刻意区别于已退役的品牌绿）承接"在线/已同步/成功"信号（原先借用现已变红的 accent），并修正 Settings 成功提示与 Memory 同类误标，Memory 的遗留硬编码主题一并折叠到 token。全程 180 项前端测试、typecheck、`test:design`、`test:brand` 门禁与生产构建均通过；仅前端与设计变量改动，不影响运行时与服务 authority。
+
+- 2026-09-01：品牌资产改为由 `scripts/generate-brand-assets.mjs` 单一来源生成，`docs/images/` 下的 IM、Agent、favicon 与 lockup 四个 SVG 全部按 V3 品牌板实测色值（海军蓝 `#0D2744`、信号红 `#EA2521`、轨道金 `#EFAD05`、象牙白 `#FBF2E7`）与同一套几何常量重建，两个标识共用完全镜像的构造。Agent 变体只在同一主体上叠加金色层：均匀 6 单位描边、带明暗渐变的倾斜星环、中心完全镂空的环与打通桥接胶囊的镂空节点，主色块保持平涂。lockup 的字标换为 Goldman Bold 轮廓：宽体方块字形、方正字腔与均匀粗字干呈现机加工硬件感，与标识圆盘形成刻意反差，取代原先偏圆润的字形；轮廓按 cap-height 归一化内联为 path，无字体依赖，并由新增的 `scripts/generate-brand-wordmarks.mjs` 可复现生成。版式改为自适应：列位置按标识包围盒与字标实测宽度计算，cap 高度取仍能留出内边距的最大值（上限为与标识匹配的尺寸），不再使用硬编码坐标——Goldman 比常规无衬线宽约 40%，因此自动缩小而不是撞上分隔线。新增 `npm run test:brand` 门禁校验 SVG 与生成器一致；favicon 与 Login 用的两个标识由生成器镜像进 `frontend/public/` 与 `frontend/src/assets/brand/`，前端构建不再跨出自身根目录引用 `docs/`。退役 4 个旧青绿 SVG 与 `#07c160` 占位 favicon。README 资产引用同步更新，技术 badge 按 go.mod/.nvmrc 修正为 Go 1.26 与 Node 22.12 并补齐 Vue、Temporal、Redis、MinIO，各 badge 使用对应技术的常规品牌色。仅文档与资产改动，不影响运行时与服务 authority。
+
+- 2026-09-01：read 路径的多会话读取范围改为由 Task owner 确认。`conversation.list` 发现两个及以上会话时，Run 在 claim 读取 Step 前暂停并返回 `wait_input`，用 `dipole.agent.elicitation.v1` 的 select Form 提供最多 8 个会话候选并显式披露截断数量；恢复后只读取被确认的会话。用户提交同样按不可信输入处理，必须命中 checkpoint 中的候选集合与确定性 request ID，越界选择、伪造 request、缺失 checkpoint 均 fail closed，Core 仍是最终读取授权。恢复期不重新规划：暂停前已验证的 `conversation.list` 到 `conversation.read` 结构由代码重建，避免二次模型规划改变 Step 编号与 trajectory 重放语义；多于一对 discovery 的 plan 在需要确认时 fail closed。单会话与零会话行为不变，Kafka Shadow 主路径不受影响。写 Capability、active authority 和外部 MCP 保持关闭。
+
+- 2026-09-01：Remote GPU 在候选 `aec1b867` 归档读取范围确认的 [approve/deny/expire 三份 receipt](benchmarks/agent-temporal-fault-2026-09-01/)，集成套件 `10/10` 并经 CLI 独立复核。三条演练由生产 read Activity 驱动，receipt 直接记录 Run 实际读取的会话数：确认路径在伪造 request 被拒绝后只读取被确认的会话并收敛为 completed；owner 取消与确认到期均收敛为 `cancelled`（`user_cancelled` / `input_expired`），会话读取计数为零。故障 receipt 契约同步加入这三个 drill 与 `conversationReads`、`unconfirmedConversationReads` 计数，出现未确认读取直接判定 `ineligible`。运行仍使用内存 Temporal Test Server，不接入 Kafka、Core、MySQL、共享 tenant 或 active authority。
+
+- 2026-09-01：Agent Approval 的跨服务契约现携带 Runtime `mode`。显式 active Runtime 创建的 Approval 会以 active Task/Run 绑定持久化，后续授权解析和一次性消费可与 MCP 消息命令保持同一权限域；未提供字段的既有调用继续按 shadow 处理。Core 对 `dipole-agent` 的最小权限 allowlist 同步放行精确的 grant、consume 和消息命令 RPC。Remote GPU 已通过 Go/TypeScript 定向回归、类型检查和生成契约校验；默认 Interactive profile 仍为 `shadow + read_shadow`，未部署 active 写入。
+
+- 2026-09-01：TypeScript Agent protobuf 生成器现在将已解析的 protobuf 标准库目录同时作为 `--proto_path`。仅安装 pinned `protoc` 的 Remote GPU worktree 可直接生成并校验契约，无需依赖系统 `/usr/include`；生成输出保持不变。
+
+- 2026-09-01：Agent Temporal 集成门禁新增 Runtime HTTP 审批链路：真实 Worker 与 Fastify 控制面验证 owner 读取待审批状态、跨 owner 拒绝、批准请求 `202`、Temporal Signal 以及终态 Activity 绑定。Remote GPU 在 `9217d826` 通过 `8/8`；该验证使用内存 Temporal Test Server，不代替浏览器审批回执或共享 Core 持久化演练。
+
+- 2026-09-01：开发工作流收敛为少分支、少提交的阶段性交付：Agent 主线继续在单一 Epic worktree 中推进，普通测试、文档与修复随可体验闭环合并。Remote GPU 作为授权开发靶场可直接复用本轨道 Dipole project，登录会话和 GPU 任务仅记录资源快照；缺失运行依赖可使用受控 `sudo` 安装。宿主网络、Docker daemon 和其他项目资源仍不在部署操作范围内。
+
+- 2026-09-01：Remote GPU 在 `6beab05d` 完成隔离 Temporal Worker replacement 演练并归档 [两份故障 receipt](benchmarks/agent-temporal-fault-2026-09-01/)。approval/input 恢复均在替换 Worker 上收敛为一次完成；approval 路径的注入终态重试仅持久化一次，input 路径的无效与过期 Signal 均未恢复任务。运行使用内存 Temporal Test Server，未启动 Compose，也未接入 Core、Kafka、MySQL、共享 tenant 或 active authority。
+
+- 2026-09-01：Remote GPU 在 `f0dcf98a` 通过 Approval gate v2 disposable drill，并归档 [v2 receipt](benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)。denied grant、consumed replay 与 failed-operation replay 均被拒绝且不产生新增 effect；同轮 MCP 去重、过期 readiness 与 mTLS identity 检查继续通过。审批 UI、真实外部 MCP 与 active authority 保持关闭。
+
+- 2026-09-01：Approval gate drill receipt 升级为 v2，将 denied grant、consumed replay 与 failed-operation replay 的拒绝结果显式绑定到零副作用基数；v1 归档保持可读，下一次 Remote GPU disposable drill 将生成 v2 evidence。该契约不开放审批 UI、IM 写入、真实外部 MCP 或 active authority。
+
+- 2026-09-01：Remote GPU 已在 `3c1f3eba` 复跑 External MCP/approval disposable Shadow drill，并归档低敏 [MCP 与 approval receipt](benchmarks/agent-mcp-approval-shadow-2026-09-01/)。验证覆盖本地 MCP 单次 Tool/Artifact、重启去重、过期 readiness 拒绝、mTLS identity denial 与 approved fixture operation 的精确副作用基数；共享服务、审批 UI、真实外部 MCP 和 active authority 继续关闭。
+
+- 2026-09-01：External MCP/approval Shadow drill 的一次性 MySQL 追加关闭 native AIO 的启动参数，并由 Compose gate 固定。该兼容项仅覆盖共享 Remote GPU 上的 disposable drill，避免宿主 AIO 配额不足导致初始化失败；基础微服务拓扑保持不变。
+
+- 2026-09-01：Remote GPU 的正常 Git 同步不再依赖 bundle 上传成功；`scp` 上传失败仅禁用离线回退并给出明确提示，远端仍可通过正式 Git remote 获取候选 revision。
+
+- 2026-09-01：修复 Remote GPU 候选在 Git bundle 回退 clone 后仍指向临时 bundle `origin` 的问题；现在会恢复正式 Git remote，后续候选同步可继续 fetch。回归测试覆盖 fallback clone 的 remote 重绑定。
+
+- 2026-09-01：Interactive Agent Web profile 增加 `agent-interactive-shadow` 构建模式，仅开启任务创建、Timeline 与 Artifact 页面。Remote GPU 同 revision 候选已在独立 `18100` 端口验证前端生产构建、认证、Task 创建、Temporal 收敛与 `5` 条 Timeline 事件；公开入口为 `http://223.111.157.214:18100/app/`。该候选仍是 `shadow + read_shadow`，不开放消息写入、MCP、Memory、检索或 active authority。
+
+- 2026-09-01：新增 DeepSeek V4 Flash 的隔离 Interactive Agent Shadow overlay，固定 JSON-text 输出与关闭 reasoning，并在 Compose gate 中校验该配置仍只开放 `shadow + read_shadow` 的任务控制面。Remote GPU 同 revision 候选已验证认证、Task admission、Temporal、模型、Timeline 与 `conversation_digest` Artifact 的完整只读链路；active authority、MCP、Memory、检索和写 Capability 保持关闭。
+
+- 2026-09-01：Agent Artifact 的认证前端现可读取严格限定的 `conversation_digest` Markdown 正文。页面仅在 metadata 为该类型和 `text/markdown` 时请求受限正文接口，正文响应必须与 metadata 的内容寻址 ID 和媒体类型一致；其他 Artifact 保持 metadata-only。正文以纯文本阅读区显示，下载、对象键、Metadata JSON 与写操作继续关闭。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建及 Chromium 功能/视觉回归。
+
+- 2026-09-01：Gateway 现支持默认关闭、owner-scoped 的 `conversation_digest` Markdown 正文读取。`GET /api/v1/agent/artifacts/:artifact_id/content` 复用 Core Artifact owner 校验与内容哈希校验，只返回 Artifact ID、媒体类型和正文；对象键、Metadata JSON 与通用下载仍不进入公开边界。Remote GPU 隔离候选已验证同一用户的 metadata/content 均为 `200`，另一用户读取正文为 `404`。
+
+- 2026-09-01：修复 Agent Artifact Timeline 的持久化 ID 边界。Artifact 的内容寻址 ID 现直接作为 Timeline event ID，符合 MySQL `VARCHAR(64)` 契约；领域校验同步拒绝超长 event ID，避免投影写入失败后造成 Artifact 从 Timeline 缺失。Remote GPU 隔离候选已复验任务完成、Artifact metadata 与 Timeline Artifact 事件一致。
+
+- 2026-09-01：修复隔离 Interactive Agent Task 的 Timeline 读取闭环。Core 现将 Timeline Store 装配到独立 Agent gRPC adapter，并允许受限 `dipole-agent` mTLS caller 调用只读 Timeline RPC；Runtime 在 HTTP 边界将 protobuf `bigint` 转为前端契约要求的序列字符串和安全数字，并保留每个事件的 Task 绑定。Remote GPU 候选验证创建 `202`、终态 `completed` 和 Timeline `200`；空会话任务只有 Task/Run 事件，不将其描述为 Artifact 产出、active authority 或写能力。
+
+- 2026-09-01：Gateway 的 Agent Task Timeline 代理现在将 URL path 与分页 query 分开解析。此前 `?limit` 和 `after` 会被编码进路径，Runtime 返回 `404`；认证、owner 授权和既有控制端点保持不变。
+
+- 2026-09-01：read-shadow Agent 在 `conversation.list` 为空时，将依赖发现结果的 `conversation.read` 记录为 `skipped/no_discovered_conversation` 并继续生成摘要。该分支不调用远端读取 Capability；伪造 ID、缺少紧邻 List 等越权输入继续被拒绝。
+
+- 2026-09-01：read-shadow Agent 将模型计划 JSON Schema 收紧为两个只读步骤：`conversation.list` 与紧随其后的 `conversation.read`；读取步骤的 `conversationId` 在 schema 层固定为 `$discovered.previous`，执行层仍独立校验并解析真实发现结果。该修复避免 Provider 生成裸会话 ID 后触发 Durable Task 重试。
+
+- 2026-09-01：read-shadow Agent 完成两阶段模型闭环：先持久化计划并执行受信只读 Tool，再将完成的 Tool 输出封装为不可信数据交给独立 `synthesis` Model stage，最终 Artifact 使用综合摘要。空 Tool 输出保留原计划摘要；写 Capability、active authority 与自动多轮选择仍关闭。
+
+- 2026-09-01：Agent Model audit 将 durable run 按 `task_uuid + stage` 分隔，默认 `plan` 保持既有运行 ID 与重放语义，新增 `synthesis` 可拥有独立预算、调用记录和恢复结果。该迁移为读取结果后的模型综合准备基础，尚未启用第二次模型调用或改变 Shadow 默认行为。
+
+- 2026-09-01：两步 Agent 读取的执行层新增独立失败关闭门禁。即使上游 Planner 被替换或其校验被绕过，直接携带会话 ID 的 `conversation.read` 仍在授权审计和远程 Capability 调用前被拒绝；只有 `$discovered.previous` 可解析为前一步 List 输出。
+
+- 2026-09-01：Agent read-shadow 现支持受信的两步 `conversation.list → conversation.read`。模型只能在紧邻的读取步骤使用固定 `$discovered.previous` 标记；Runtime 从前一 List 的实际输出提取首个有效会话键后才授权读取，模型自造 ID、缺少前置发现或空发现结果均会在读取前失败。写 Capability、active authority、MCP 写入与多会话选择策略仍未开启。
+
+- 2026-09-01：Agent OAuth callback handoff Runtime 新增跨实例恢复演练：前一 Runtime 仅在显式 `retryable_failure` 后释放 Core 条件租约，替换实例随后才能重新领取并完成。该回归只验证默认未装配执行器对 Core lease 的依赖；callback 路由、Provider 换码、token 生命周期与默认启用状态仍保持关闭。
+
+- 2026-09-01：Remote GPU 的 `node-test` 现在仅在锁文件安装明确报 `ENOTEMPTY` 时，将该候选 app 的中断 `node_modules` 原子隔离后重试一次；网络、锁文件和权限错误保持失败。该恢复路径保留旧目录，避免清理其他工作树的依赖，并继续使用单次 `npm ci --include=optional`。
+
+- 2026-09-01：Remote GPU 隔离交互 Shadow 以 DeepSeek V4 Flash 完成一条新用户只读 Task：Gateway 返回 `202` 后状态收敛为 `completed`，持久化审计为一条完成 Run、一次模型调用、一次 `conversation.list` Step 与一个 `conversation_digest` Artifact。该证据只覆盖隔离 read-shadow；任务策略行保持 `running`、Durable `workflow_status` 与 Run 共同表达终态，写 Capability、active authority 与多轮读取均未开启。
+
+- 2026-09-01：Agent 单轮 Temporal read-shadow 规划器收紧为仅暴露 `conversation.list`。此前模型能在未获得会话列表结果时直接生成 `conversation.read`，对新用户会构造无效目标并触发 Durable Activity 重试；读取 Capability、事件预取与 MCP 边界保持可用，后续多轮编排需要将后续读取目标绑定到已完成的发现结果。
+
+- 2026-09-01：OpenAI-compatible Agent Provider 增加显式 `DIPOLE_AGENT_MODEL_THINKING_MODE=disabled`。开关仅透传给已选择的 Provider；DeepSeek V4 Flash 的受控 Shadow 可借此关闭默认高强度思考，避免有限 JSON-text 输出预算被 `reasoning_content` 耗尽。未设置时继续使用 Provider 默认行为，active authority、写 Capability 与 MCP 均未开启。
+
+- 2026-09-01：Remote GPU 隔离交互 Shadow 候选完成公开 API 的只读 Agent Task 验收：临时用户经 JWT 创建任务后均收敛为 `completed`，Timeline 首次读取和 cursor 续页均成功。候选 Gateway 使用 `4ab924b87` 专用镜像，Core/Agent 保持兼容的既有候选版本；验收记录见 [Agent Interactive Shadow Remote Receipt](docs/agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。该结果不构成同版本发布、任务成功率、active authority、写 Capability 或公开体验入口结论。
+
+- 2026-09-01：新增 `remote-gpu-mysql-aio-compat.yml`。共享 Remote GPU 的 Linux AIO 配额接近上限时，候选 MySQL 可显式关闭 native AIO 完成隔离验证；基础 Compose 与既有 MySQL 栈保持不变。
+
+- 2026-09-01：Remote GPU Node 门禁将每个应用的双阶段 `npm ci + npm install` 收敛为一次锁文件驱动的 `npm ci --include=optional`，避免第二次安装的目录重命名冲突，同时保留 optional 平台依赖。
+
+- 2026-09-01：修正 Remote GPU bundle 生成引用：以 `HEAD` 创建可检出的完整归档，并继续将不可变 commit 单独传给远端做精确校验，避免裸 SHA 被 Git 判定为空 bundle。
+
+- 2026-09-01：Remote GPU 的 origin clone/fetch 增加可配置的 20 秒超时；GitHub 出站异常会在受限时间内转入已上传的 commit bundle，避免开发验证被网络阻塞。
+
+- 2026-09-01：Remote GPU 候选同步新增 commit-pinned Git bundle 回退。远端 GitHub clone/fetch 超时时，脚本通过既有 SSH 上传临时 bundle、校验目标 commit 后 checkout，并在退出时清理 bundle；正常网络路径仍优先使用 origin fetch。
+
+- 2026-09-01：根 README 改用版本控制的 `dipole-v3-brand-lockup.svg`。该矢量 lockup 统一 V3 的海军蓝/信号红 IM 标识与金色 Agent 轨道，替换此前粗粒度 PNG 嵌入；运行时和 Agent authority 不受影响。
+
+- 2026-09-01：微服务镜像构建改为每个 Go 服务使用独立的临时 Docker context，成功和失败路径均在子 shell 退出时清理。此前循环复用 context 会累积前序二进制并放大后续 Docker 上传；镜像内仍只复制目标服务二进制，revision 与 provenance 参数保持不变。
+
+- 2026-09-01：前端开始 V3 品牌兼容切片：以用户提供的双极对话标识重绘 IM/Agent SVG，新增海军蓝、信号红、轨道金和暖象牙白语义 token，并将登录入口迁移到新视觉语言。现有 Pencil canonical 变量与其余页面保持兼容；Pencil CLI 的两次安全增量调用超时且未写入画布，完整 Chat/Agent 视觉基线继续待独立设计验收。
+
+- 2026-09-01：Remote GPU 隔离环境完成受认证 Interactive Agent Task 回归：注册 `200`、创建 `202`、终态读取 `200`，只读 Shadow Workflow 收敛为 `completed`，receipt 归档于 [`agent-interactive-control-2026-09-01`](benchmarks/agent-interactive-control-2026-09-01/)。此次仅重建 Agent `c9f3f424` 验证终态读取修复；Gateway/Core 保持此前 clean candidate，因此不构成同版本发布、active authority、生产体验或成功率结论。
+
+- 2026-09-01：Agent Task control 在已授权的 Durable Workflow 终态关闭后，使用 Core 持久化的终态投影响应读取请求。此前 Temporal 不再接受关闭工作流的 Query 会使已完成任务返回 `404`；运行中任务和非“工作流不可用”错误继续失败关闭，避免旧投影掩盖执行中断。
+
+- 2026-09-01：Remote GPU 以同一 clean revision `676a6d93` 完成隔离微服务 smoke。Gateway/Core/Message/Sync 与 Agent 镜像来自同一源码版本；私聊持久化后重启 Core，最终 Message、Outbox 和目标 Inbox 均为单条，receipt 归档于 [`microservices-same-revision-smoke-2026-09-01`](benchmarks/microservices-same-revision-smoke-2026-09-01/)。该演练不构成 Agent active authority、Cassandra 主读或 A6 浏览器观察验收。
+
+- 2026-09-01：微服务镜像构建将 Go Docker context 收敛为当前目标二进制。构建仍使用同一 `dist` 基线与版本化标签，但每个服务不再重复上传整套 `dist` 工具集，降低 Remote GPU 验收的 Docker I/O 与传输开销；缺少或不可执行的目标二进制会在 build 前失败关闭。
+
+- 2026-09-01：C++ Realtime Delivery 对齐 Timeline 主模式的无正文投递契约。显式 `primary` 只投递 `sync.item.notify.v1` locator，`shadow` 继续为完整消息追加 locator，二者同时开启会失败关闭；热群聚合语义保持不变。Ubuntu 24.04 容器门禁完成 CMake Release 构建并通过 `14/14` CTest。C++ authority 继续默认关闭，Go 仍是当前默认投递路径。
+
+- 2026-09-01：修正 Timeline notify primary 的投递语义。Gateway Kafka 与 embedded Dispatcher 现在只向接收方发送无正文 `sync.item.notify.v1` locator，发送者继续收到 `chat.sent` 回执；`shadow` 保持完整消息加 locator 对照，`off` 保持完整消息投递，热群继续走聚合 notify + pull。direct/group/embedded 回归测试通过，真实 Cassandra 主读窗口和回切验收仍未开启。
+
+- 2026-09-01：Agent Runtime 的本地全量门禁恢复可复现。未显式开启的 Approval mTLS drill 不再在 suite 注册阶段读取远程环境变量；安全 Eval 与 Temporal 只读活动夹具同步当前 token availability 和授权审计契约。离线验证通过 `158` 个测试文件、`796` 项测试，另有 `10` 个显式外部依赖测试跳过，TypeScript typecheck 与生产构建通过；该结果不替代 Remote GPU 同版本 Compose smoke。
+
+- 2026-09-01：Agent Shadow Runtime 增加显式 Provider thinking 控制。`DIPOLE_AGENT_MODEL_THINKING_MODE=disabled` 仅向已选 OpenAI-compatible Provider 传递专有选项，默认继续使用 Provider 行为；单次模型规划同时收紧为 `conversation.list`，后续多轮读取必须绑定已完成的发现结果。该切片不启用写 Capability、active authority 或 MCP。
+
+- 2026-09-01：Web Sync Observation Session 现可绑定完整静态发布目录。目录摘要按稳定相对路径和文件 SHA-256 计算，新增、删除、改名、内容变化、空目录或符号链接都会使候选校验失败；既有单文件 bundle 调用保持兼容。该切片只强化真实浏览器观察的版本证据，未启动 24 小时窗口或改变客户端默认同步模式。
+
+- 2026-09-01：Remote GPU 隔离交互 Shadow 候选复验了认证 Agent Task 链路：新临时用户的只读请求返回 `202`，同一 Task 随后经受限轮询收敛为 `completed`。Gateway/Core 使用 `406c3154`，Agent 使用 `thinking-4e9740a0`，该结果只证明版本兼容与 Shadow 读取路径，不构成同版本发布、active authority、写 Capability 或整体成功率结论。
+
+- 2026-09-01：个人资料弹窗新增修改密码闭环。受保护的 `/api/v1/auth/password` 校验当前密码、以 bcrypt 更新新密码并撤销当前会话；前端在成功后清除本地会话并要求重新登录，密码和哈希均不写入响应、日志或本地存储。
+
+- 2026-09-01：修复 Agent Task 创建页面的默认请求 ID。此前 Vue Function prop 默认值多包了一层函数，浏览器会在本地参数校验阶段拒绝函数对象并显示“任务创建暂不可用”；现在默认生成 UUID 字符串，回归测试覆盖无显式 request ID 的提交路径。
+
+- 2026-09-01：微服务隔离 smoke 增加默认关闭的低敏 Agent Task/Run receipt。显式提供输出路径时，成功收敛后仅写入随机 event、Task、Run、trace 与运行状态，便于后续 Context Ablation runner 在销毁临时 Compose 项目前建立绑定；消息、模型正文和凭据均不导出。
+
+- 2026-09-01：修正 AI SDK Shadow Planner 的会话 hydration 输入：Core `ReadConversation` 现在接收事件中的 `target_uuid`，与其按目标用户/群 UUID 的 RPC 契约一致；`conversation_key` 继续只用于 Memory 作用域。该修复为隔离 Context Ablation 的真实会话证据准备前置条件，不开启任何写能力。
+
+- 2026-09-01：修复 Context Ablation migration `000056` 的外键字符集/排序规则兼容性。binding 表现显式使用与 Agent Task/Run 相同的 `utf8mb4_unicode_ci`，隔离 MySQL 8.4 预检不再因外键列不兼容失败。
+
+- 2026-09-01：新增 Context Ablation 隔离 MySQL 预检。它应用 migration `000056`、核对 binding 表并验证 Eval 账号可读取且没有写权限；脚本不启动完整 Compose 或 Agent 运行时，退出后清理临时容器与网络。
+
+- 2026-09-01：新增 baseline、retrieval、memory 三份默认不加载的 Context Ablation Compose overlay。它们使用独立 Temporal queue，并以开关互斥地选择只读 Context 来源；Memory 写入、消息写入、Control、MCP 和 External MCP 不因此开启。
+
+- 2026-09-01：Context Ablation 增加版本化 manifest JSON Schema 与低敏示例，并将 `agent_context_ablation_bindings` 纳入 `dipole_agent_eval` 的最小 `SELECT` 授权。评测账号继续没有任何写权限，示例不能作为效果或晋级证据。
+
+- 2026-09-01：新增 `eval:context-ablation` 只读 CLI。它以一个低敏评审 manifest 加载 experiment 的三条件绑定观测并输出聚合报告；参数、数据库、审计、版本或计量不完整时失败关闭，成功只表示输入可复算。
+
+- 2026-09-01：Context Ablation 现提供只读 observation adapter：经人工评审的低敏 manifest 以 case SHA-256、Artifact/Evidence ID 和固定模型价格绑定三种条件，再将已持久化的 Task/Run 审计观测编译为统一 Eval 输入。缺少终态、授权、延迟、Token 计量或候选版本一致性时拒绝生成报告；不读取或输出消息正文、模型正文或原始资源 ID。
+
+- 2026-09-01：新增 Agent Context Ablation 实验绑定表与 SQLC 查询。每条记录仅绑定 experiment、case SHA-256、baseline/retrieval/memory 条件、Task/Run 与候选版本；数据库唯一约束阻止同一 case 条件重复或同一 Run 被复用，正文不进入该表。
+
+- 2026-09-01：新增低敏 Context Ablation Eval v1，固定 baseline、retrieval、memory 三种条件，并按任务输出命中、证据召回、权限安全与模型/工具/token/成本/延迟汇总对照；首版只接受脱敏 observation，尚未连接真实 Shadow 查询。
+
+- 2026-09-01：简历 Claim 验收矩阵已同步 Shadow Eval 的缺失 Token 计量语义：失败调用保留为可分类的 `token_metrics_unavailable`，固定任务集与共享环境观察窗口仍是填写任务成功率前的 P0 门禁。
+
+- 2026-09-01：Shadow Eval 窗口输入的发布 JSON Schema 现与 Runtime 对齐，同时接受 40 位 Git revision 与 64 位内容摘要；外部 Schema 校验不再拒绝真实 OCI Git provenance。
+
+- 2026-09-01：Shadow Eval 现将失败模型调用的缺失 Token 计量编码为可审计的 `availability.tokenMetrics=unavailable`，仍输出五类报告并在 Cost case 固定为 `token_metrics_unavailable` 失败；已知调用数和延迟保留，缺失 Token 不再被当作零或导致整份证据无法分类。完整计量样本的既有契约保持兼容。
+
+- 2026-09-01：Remote GPU 隔离 read-shadow 新归档受控完成子集 `N=2` 的五类 Eval
+  [窗口](benchmarks/agent-shadow-eval-window-2026-09-01-n2/)，两份 Task/Run 的 Outcome、Trajectory、Permission、Retrieval、Cost 均通过。其 `100%` 仅适用于该完成子集；同一栈另有一次 Provider 空 JSON-text 失败因 token 计量缺失无法形成五类报告，整体任务成功率继续保留占位符。
+
+- 2026-09-01：Shadow Eval 汇总的 `runtimeRevision` 同时接受 40 位 Git SHA-1 与 64 位内容摘要；此前 OCI 镜像的有效 Git revision 会在汇总阶段被错误拒绝，现已由回归测试覆盖。
+
+- 2026-09-01：Shadow Eval 窗口收集器改为从运行中 `agent` 容器的 OCI revision 与 clean-source
+  标签取得 Runtime provenance；缺失或 dirty 标签立即失败关闭，避免候选 checkout 与实际评测镜像漂移。
+
+- 2026-09-01：新增 `collect-agent-shadow-eval-window.sh`，可在已运行的 read-shadow Compose 中逐份执行人工评审的 Shadow Eval manifest，并生成按候选 revision、唯一 Trace 与唯一 Suite 绑定的低敏窗口汇总。脚本不创建任务、不生成评审标签、不启动服务或修改开关；全通过返回 `0`，有效失败窗口返回 `2`。
+
+- 2026-09-01：Temporal 的“模型结果后置确认丢失”集成夹具补齐 Step 授权审计依赖，并固定断言重试仅记录一次授权。Remote GPU 以 Node `22.12.0` 重跑 `test:temporal:integration`，两个测试文件共 `10` 项均通过；该演练覆盖隔离 Temporal 的模型/Step 重放，不扩大 active authority 或外部写能力。
+
+- 2026-09-01：Remote GPU 的 disposable read-shadow Compose 在候选 `agent-runtime@064568d9` 生成新的五类 Shadow Eval 报告：Outcome、Trajectory、Permission、Retrieval 和 Cost 均通过；Retrieval precision/recall 均为 `1`，单次执行记录 `1` 次模型调用、`2` 次工具调用、`1765` tokens 与 `7032 ms` 聚合延迟。报告归档于 [`agent-shadow-eval-2026-09-01-rerun`](benchmarks/agent-shadow-eval-2026-09-01-rerun/)，只表示受控隔离 `N=1` 观察，不构成生产成功率、共享 authority 或写 Capability 结论。
+
+- 2026-09-01：Shadow Eval 的 Retrieval 指标现排除 runtime policy、execution context、task 与 capability registry 等控制面基线，仅统计领域证据；它们仍保留在 Context/Trajectory 审计中，不影响 Capability 或运行时上下文。
+
+- 2026-09-01：微服务 Compose 增加 `dipole_agent_eval` 专用 MySQL 只读账号，仅允许 Shadow Eval 查询 Task、Run、Plan、Step、Artifact、Model 与 Tool 审计投影；该配置不启用自动评测或任何运行时写入权限。
+- 2026-09-01：Remote GPU 隔离 read-shadow Compose 已用该账号完成 `SELECT`，并确认零行 `UPDATE` 仍被 MySQL 拒绝；该证据只覆盖账号权限，不代表 Eval 质量或 active authority。
+
+- 2026-09-01：Agent Shadow Step 在持有有效 lease 时持久化精确 `resourceType/resourceId/action/decision`；Shadow Eval 只接受完整且为 `allowed` 的持久授权记录，并逐项对照评审 manifest。旧、部分或无效授权记录均 fail closed，未新增 Capability、授权或默认运行路径；待在隔离真实环境重新生成五类报告。
+
+- 2026-09-01：撤回 `agent-shadow-eval-2026-09-01` 的五类通过报告。复核发现 Permission case 尚未持久化实际 resource scope，`resourceType/resourceId/action` 仍可来自评审 manifest，无法证明其与 Runtime 授权决策一致。该 JSON 已从当前证据集移除；后续将以 Step lease 内持久 scope/decision 与精确比对重新生成报告。
+
+- 2026-09-01：Agent Shadow Eval manifest 与五类离线评测现可保留 Runtime 策略中的资源类通配 scope `*`。此前评估契约只能表达具体 resource ID，会使默认 `conversation/*` read-shadow 授权无法进入权限评测；JSON Schema、TypeScript parser、通用 evaluator 与回归测试现共同限制为稳定标识符或唯一 `*`，不扩大任何 Capability 或运行时授权。
+
+- 2026-08-31：Agent Shadow Eval 现区分策略 Task 状态与 Durable Workflow 状态。常规 Task 仍以 `agent_tasks.status` 判定终态；read-shadow 仅在 CAS `workflow_status` 和持久 Run 同时终态时生成五类报告，避免将运行中的 Shadow 策略记录误判为未完成，也拒绝非终态 Workflow 伪造成功率。
+
+- 2026-08-31：Agent EventLedger 新增 `dipole.agent.event-lease-reclaim.v1` receipt，绑定过期 claim 回收、旧 owner completion 拒绝与最终 completed 行唯一性。Remote GPU 的 loopback-only MySQL 8.4 集成测试 `3/3`、receipt 测试 `4/4` 与 TypeScript typecheck 均通过；该证据仅覆盖消费租约，不外推至 Temporal Workflow 或 active authority。
+
+- 2026-08-31：Remote GPU 在候选 `a7bc03ef` 的隔离 Compose 项目完成 `dipole.agent.core-restart-read-shadow.v1` 实测：事件发布后 Core 重启、Gateway 代理恢复，且同一事件的 Ledger、Task、Run、模型调用和 `conversation_digest` Artifact 均精确为 `1`。新镜像内正式 CLI 已复核 24 小时低敏 receipt；该证据不外推到共享环境、写 authority 或 lease expiry。
+
+- 2026-08-31：微服务 read-shadow Core restart 演练新增 `dipole.agent.core-restart-read-shadow.v1` receipt。只有重启后的 Core/Gateway 恢复，且同一事件的 Ledger、Task、Run、模型调用与 `conversation_digest` Artifact 全部精确收敛时才生成；artifact 以 SHA-256 和 24 小时窗口绑定，明确 `production_authority=false`。
+
+- 2026-08-31：`BUILD_IMAGE=1` 的微服务 smoke 现同时构建 TypeScript `dipole-agent` 镜像并注入候选 revision 元数据。此前仅重建 Go 镜像，导致 Agent Runtime 可能运行旧 `latest` 代码；构建门禁已覆盖该同版本要求。
+
+- 2026-08-31：Approval gate drill 新增语言中立 `dipole.agent.approval-gate-drill.v1` receipt、canonical SHA-256 与 24 小时有效期校验。隔离 mTLS 演练输出 approved `1`、denied/replay `0`、failed `1`、failed-replay `0` 的低敏 artifact；该证据不代表 IM 消息已写入、生产 authority 或共享 Shadow。
+
+- 2026-08-31：External MCP Shadow drill 新增真实 mTLS `AgentCapabilityRPCClient` 的 Approval gate 场景：精确 approved grant 只执行一次，denied 与已消费 grant 均零执行，执行失败后审批保持已消费并拒绝自动重放。脚本同时固定 Node/npm 同源，干净 Remote GPU worktree 不会以系统 Node 误装依赖；默认写 Capability 与 production authority 继续关闭。
+
+- 2026-08-31：Core 的 `dipole-agent` mTLS Capability allowlist 现包含 `ResolveApprovalGrant` 与 `ConsumeApproval`。隔离认证测试覆盖审批请求、批准、精确 grant、单次消费，以及错误 service secret 和错误客户端证书拒绝；该改动不启用常驻写 Capability、外部 MCP 写入或生产 authority。
+
+- 2026-08-31：External MCP Shadow drill 现在在干净候选 worktree 缺少 `vitest` 时，以 `DIPOLE_NODE_BIN` 相邻的锁定 npm 执行 `npm ci --ignore-scripts`；已有依赖不重复安装。该修复使 Remote GPU 演练使用 Node 22，默认运行时 authority 不变。
+
+- 2026-08-31：Remote GPU 在 `bb1e43e8` 上重跑 External MCP Shadow drill：`2/2` EventLedger 收敛、一次 Tool 与一次 Artifact、重启重复投递被抑制、过期 readiness 被拒绝，并通过 Go internal gRPC mTLS identity denial 检查。receipt 为短时低敏隔离证据，明确 `production_authority=false`。
+
+- 2026-08-31：Temporal fault receipt v1 追加 `worker_replacement_input_resume`，将无效/过期输入拒绝、精确输入恢复、Worker 替换和终态写入基数收敛为独立可验证场景；该隔离证据不外推到 Core restart、lease expiry 或 active authority。
+
+- 2026-08-31：Agent Temporal 增加 `worker_replacement_approval_resume` fault receipt v1。它将隔离测试中的状态修订、Worker 替换、终态写入重试和副作用基数绑定为 SHA-256 receipt；任何状态或单次副作用漂移都会得到 `ineligible`。该 receipt 证明本地 Temporal 场景，不构成共享环境、Core restart、lease expiry 或 active authority 证据。
+
+- 2026-08-31：Agent Shadow Eval 现在把受信任 admission 的 `trace_id` 持久化到 `agent_runs`，并由 `eval:shadow` 输出版本化低敏 Trace envelope。窗口汇总拒绝缺失/非法 Trace、Trace 复用、混版本、合成 Suite 与重复摘要，便于将受控 Shadow 的成功率和失败分类关联到 OTel；旧 Run 因缺 Trace 不可作为该证据。
+
+- 2026-08-31：Agent Eval 新增 `reviewed_shadow` 窗口汇总契约与 CLI。它只接收同候选版本、唯一摘要且完整绑定的终态 Shadow 五类报告，输出脱敏的任务样本量、成功率、类别通过率和失败原因计数；合成 Suite、混版本、重复报告及非绑定 case 均失败关闭。报告仍不构成 active authority、生产质量或用户影响证据。
+
+- 2026-08-31：README 现采用用户提供的 Dipole V3 品牌板作为主视觉，并增加 Go、TypeScript Agent Runtime、Kafka、sqlc 与 MIT 许可证 badge。`docs/images/dipole-brand-v3.png` 成为 IM/Agent 双标识、配色和后续产品视觉调整的参考资产。
+
+- 2026-08-31：Remote GPU 在隔离项目 `dipole-message-recovery-53a4edf7` 完成 Message Service 持久化后重启演练：同一 `client_message_id` 重放后 Message、Outbox 与目标 Inbox 均为单条，候选资源自动清理。低敏 receipt 归档于 `benchmarks/microservices-message-recovery-2026-08-31/`；Kafka/broker/in-flight 故障矩阵仍待验证。
+
+- 2026-08-31：候选消息恢复 smoke 的 readiness 和首次持久化失败现输出有限服务状态、容器日志及 `wscli` 尾部。失败仍自动清理隔离 Compose 项目；诊断信息用于区分拓扑未就绪与消息链路未收敛，不能替代成功 receipt。
+
+- 2026-08-31：候选微服务 smoke 的服务内 health、数据库计数与恢复探针现统一通过有界 `SMOKE_EXEC_TIMEOUT_SECONDS` 包装。Remote GPU 出现停止态 `docker compose exec` 客户端时，演练会在默认 20 秒后发送 `TERM`，再于 5 秒后强制结束并清理隔离项目，不再无限等待。
+
+- 2026-08-31：候选微服务消息 smoke 新增显式 `SMOKE_MESSAGE_RESTART_SERVICE` 持久化后恢复演练。脚本在首次 WebSocket 消息落库后重启 Core、Gateway、Message 或 Sync，使用同一 `client_message_id` 重放，并在权限为 `0600` 的 receipt 中核对 Message、Outbox、目标 Inbox 三类副作用各为一条；默认 smoke 路径不变。
+
+- 2026-08-31：新增简历 Claim 验收矩阵，将 Dipole IM 与 Dipole Agent 的目标表述逐项绑定到实现、可重跑运行证据和剩余门禁。后续优先补齐消息/Agent 故障副作用 receipt、Sync/Cassandra/Search/热点群 P99 和 Agent Eval 成功率；无对应报告时继续保留指标占位符。
+
+- 2026-08-31：微服务 smoke 现支持版本化 Compose overlay、受控 Compose 环境文件、事件发布后的可选 Core 重启，以及 Read Shadow 的模型调用和 `conversation_digest` Artifact 绑定断言。Remote GPU 已在隔离 Compose 项目完成事件发布后 Core 重启、Temporal 收敛与 Artifact 绑定演练，资源随后自动清理。该工具不改变默认基础 Shadow 路径和 authority。
+
+- 2026-08-31：基础微服务 Compose 的 Agent Shadow profile 现显式清空 v2 模型 route context profile，避免宿主 `.env` 的 AI SDK/active 配置与固定的 v1 Context Compiler 冲突而导致 Agent 启动失败。专用 AI SDK 与 active overlay 继续显式启用 v2 并注入 profile。
+
+- 2026-08-31：微服务 smoke 新增可选 `RESTART_CORE=1` 隔离 Core 重启阶段。重启后重新验证 Core readiness 与 Gateway 代理，再执行既有 Agent EventLedger/Task/Run 幂等检查；Remote GPU 已以独立 Compose 项目和端口完成该演练并自动清理。默认 smoke 行为不变，Capability RPC read-shadow 恢复仍需单独演练。
+
+- 2026-08-31：Agent Capability RPC 的重连包装器现在在每次方法调用时解析当前 gRPC channel。Core 返回 `UNAVAILABLE` 后，即使上层保留了旧方法引用，下一次事件级调用也会使用新 channel；失败调用仍不在 transport 层重放，Kafka/EventLedger 保持幂等重试责任。
+
+- 2026-08-31：默认关闭的 Agent OAuth callback handoff executor 现在在私钥解封前和 Provider processor 前两次复核 durable handoff 的 lease/expiry。过期检查失败属于副作用前故障并释放 lease；processor 或 completion 结果不确定时仍保留 lease。该改动不装配 callback HTTP、Provider token exchange 或 token 生命周期。
+
+- 2026-08-31：Cassandra read-rollout 新增 Prometheus 窗口转换器与 CLI。它将 Message Service 的起止快照转换为 evidence v1，并拒绝 route/verification counter 回退、未知标签、histogram bucket 漂移及未覆盖最终路由的延迟数据；`mysql_fallback` 同时归入 MySQL 最终路径和 fallback 比例。转换过程只读取快照文件，不改变 Cassandra 读比例或 MySQL 回退。
+
+- 2026-08-31：补齐主链路外部阻塞期间的并行治理规则。前端设计、只读体验、视觉回归、文档入口和图表可在独立分支推进；这些切片不改变服务 authority、默认 feature flag 或真实环境证据门槛。
+
+- 2026-08-31：新增 Cassandra read-rollout 原始 Prometheus 窗口采集脚本，严格分离不可覆盖的 `start` 与 `end` 快照，并绑定部署 revision 与配置读比例。脚本只读取 Message Service `/metrics`，为后续 evidence v1 转换与共享灰度归档提供输入，不修改流量开关。
+
+- 2026-08-31：修正 Cassandra read-rollout evidence 对运行时回退指标的计数契约：`mysql_fallback` 是 MySQL 最终路由的子集，评估器现按该关系校验。真实 Prometheus 窗口中的 Cassandra 失败回退不再被误判为无效 evidence，默认读比例与回退行为不变。
+
+- 2026-08-31：Remote GPU 使用隔离 MySQL 容器完成 Agent Task Timeline repair 进程 smoke：worker 重放单个 intent 并幂等收敛。该脚本现支持 `DIPOLE_GO_BIN`，避免远端默认 Go 版本低于模块要求时误阻断演练；不改变默认 repair profile 或生产开关。
+
+- 2026-08-31：Agent Timeline repair Compose smoke 改为从已版本化 migration 文件动态推导 schema 基线，并轮询正常退出的 `mysql-permissions` 一次性初始化容器。Remote GPU 使用 MySQL migration v53 完成最小权限、UTC、worker readiness、pending intent 恢复和 event UUID 幂等重放；随机 Compose 项目、卷和临时工作树均已自动清理。
+
+- 2026-08-31：Agent Runtime 现在会拒绝 `DIPOLE_AGENT_OAUTH_CALLBACK_ENABLED=true` 的未批准部署 profile。当前镜像没有 Provider code-exchange processor，启动会在创建 listener、Kafka、Temporal 或 RPC 资源前失败；未设置该开关时保持默认关闭。
+
+- 2026-08-31：Agent Runtime 新增 OAuth callback handoff 的注入式组合工厂，统一 claim、私钥解封、processor、complete/release 与 Gateway control adapter；默认启动路径仍不构造该工厂，且未实现 Provider code exchange 或 token 生命周期。组合工厂要求独立 Core 凭据，并支持仅用于受控测试的 key/envelope 注入。
+
+- 2026-08-31：C++ Realtime Delivery 后续开发暂缓。现有协议、容器构建、故障回切和基准证据保持可复核，但 Go 继续作为唯一投递 authority；当前开发窗口优先完成 TypeScript Agent Runtime 的默认关闭 OAuth handoff 执行器组合验证与安全闭环。
+
+- 2026-08-31：Remote GPU 的 `agent-temporal-read-shadow` 完成受控只读 Durable Task 演练：Kafka 事件经 Temporal 和 Core mTLS 投影后，持久 Run 完成、EventLedger 单次收敛，并生成 `conversation_digest` Artifact。开发环境将 Flash 单次输出预算设为 `1024`，用于避免推理过程耗尽正文预算；仍保持零内部重试、只读 Capability、schema 校验和默认关闭的写能力。
+
+- 2026-08-31：微服务 Compose 的独立 Agent 服务现在显式加载受忽略的根目录 `.env`。这保证重建 `agent-temporal-read-shadow` 容器时保留受托管的 Provider 路由和凭据；缺失 `.env` 时基础 `metadata` 配置仍可启动，AI SDK overlay 继续因缺 Provider 配置失败关闭。
+
+- 2026-08-31：修复独立 Core 在远程 Agent Temporal 运行时遗漏 Task approval、control、Workflow projection/repair 与 Artifact RPC 装配的问题。独立 Core 现在复用 embedded 回滚基线的持久服务组合；Artifact 仍要求既有存储开关。该修复仅使 `read_shadow` Durable Task 能完整投影和产出受控 Artifact，不开放消息写入、外部 MCP 或 active authority。
+
+- 2026-08-31：修复 `agent-temporal-read-shadow` 开发 overlay 在容器网络中无法通过健康检查的部署缺口：Temporal 显式监听 `0.0.0.0`，保留 loopback `7233` 探针，并由 Compose 合同检查锁定该绑定。该 overlay 仍只提供内部网络的 `read_shadow` 执行，不开放默认写能力或外部端口。
+
+- 2026-08-31：DeepSeek V4 Flash 的 `json_text` 输出恢复支持单个、受限包装的 JSON 对象：短前后说明可被剥离，第二个 JSON 对象、超长包装、无效 JSON 和 schema 不匹配继续失败关闭。解析结果仍须通过 Zod 与只读 Capability allowlist；该修复不改变任务权限、模型预算或副作用边界。
+
+- 2026-08-31：新增显式 `agent-temporal-read-shadow` 开发 overlay 与运行手册。它将 Temporal/PostgreSQL 限定在 Compose 内部网络，并把 Agent 固定为 DeepSeek 等 AI SDK Provider 可用时的 `read_shadow`、v2 Context 与独立 task queue；消息写入、Memory、检索、Control、MCP、OAuth callback 和默认基础 Compose 均保持关闭。
+
+- 2026-08-31：OAuth callback handoff 增加 Runtime 重启重复通知与 terminal completion 不可用的组合测试：进程内去重不会跨重启保留，重复请求重新交给 Core lease；完成终态不确定时不释放 lease。callback HTTP、key source、provider exchange 与默认启动配置仍保持关闭。
+
+- 2026-08-31：Remote GPU 开发环境使用 `.env` 托管的 DeepSeek V4 Flash 完成真实私聊到 Kafka、Agent Capability RPC、单次 JSON-text 模型调用、持久化 Model Run/Call 与 Shadow Plan 的只读闭环验证；该证据仅覆盖 Shadow Runtime，不代表 active authority 或写能力已开放。
+
+- 2026-08-31：`json_text` 解析支持受限的前置标签：仅提取响应末尾唯一、完整的 JSON 对象；对象后的任意文本仍拒绝。提取结果继续经过 Zod schema 与 Capability allowlist 验证。
+
+- 2026-08-31：`json_text` 兼容解析额外剥离完整、封闭的 `<think>...</think>` 前缀，再验证剩余 JSON；普通解释性文本继续拒绝，推理正文不进入审计或计划数据。
+
+- 2026-08-31：`json_text` 模式现接受完整的 `json` Markdown 代码围栏，再以同一 Zod schema 验证对象；带额外解释文字、无效 JSON 或 schema 不匹配仍会失败关闭。
+
+- 2026-08-31：Agent AI SDK 输出协议新增 `DIPOLE_AGENT_MODEL_OUTPUT_MODE=json_text`。对于不支持 OpenAI JSON Schema response format 的兼容 Provider，Runtime 在单次、零内部重试调用中要求纯 JSON 并以原始 Zod schema 本地复核，失败仍由既有 ModelRouter 预算与审计处理。
+
+- 2026-08-31：新增受版本控制的 `agent-ai-sdk-shadow.yml` 开发 overlay，统一从受忽略 `.env` 读取 OpenAI-compatible Provider、预算、Context profile 和可选 structured-output 声明；移除该 overlay 即回退为基础 metadata Shadow Runtime。
+
+- 2026-08-31：OpenAI-compatible Agent Provider 增加显式 `DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS` 能力声明，默认关闭；声明为 `true` 时才请求 AI SDK/Zod JSON Schema structured output。该配置可由开发环境 `.env` 为已验证 Provider 启用，API key 始终只从环境读取。
+
+- 2026-08-31：standalone Core 的 Agent Capability 在 `core.message.transport=grpc` 时改用惰性 Message History RPC reader，避免 Core 未持有本地消息仓储却参与 `conversation.read` 时发生空指针崩溃；reader 复用 Core service identity，并在 Runtime 关闭时释放连接。
+
+- 2026-08-31：Agent Capability RPC transport 在收到 `UNAVAILABLE` 时会关闭并替换失效的底层 gRPC channel；失败调用不在客户端层重放，Kafka/EventLedger 保持原有幂等重试责任，使 Core 容器重建后的下一次事件尝试重新解析服务地址。
+
+- 2026-08-31：微服务 Compose 的 Agent 现等待 Core `service_healthy` 后才启动，避免首次部署时 Agent gRPC transport 在 Core listener 就绪前固定失败连接。Core 运行中重启后的 retry/reconnect 演练继续作为独立可靠性切片推进。
+
+- 2026-08-31：微服务 Compose 的 Core 现以 `ai.enabled=true` 和 `ai.runtime_mode=remote` 维护唯一 assistant identity；独立 TypeScript Agent Runtime 继续作为 Shadow consumer。Compose 门禁同时固定 Core remote mode 与 Agent UUID，避免运行时目标用户缺失。
+
+- 2026-08-31：Core standalone 现在在内部 RPC 已启用且 mTLS 完整时始终装配基础 Agent Capability RPC，确保独立 TS Runtime 可以执行 `admit_run`、会话列表和会话读取。`conversation.search` 仍由 `internal_rpc.agent_conversation_search_enabled` 单独控制；关闭时 Core 不拨号 Search，调用搜索能力返回受控 `Unavailable`。
+
+- 2026-08-31：增加 OAuth callback Runtime 默认关闭配置契约。只有显式 `enabled=true` 时才要求独立 control secret、固定 lease owner 与 Runtime key 映射；未启用时忽略残留值并保持零 callback surface。该配置尚未由 `index.ts` 消费。
+
+- 2026-08-31：新增默认关闭的 OAuth callback Runtime control-to-executor 集成测试，覆盖 Gateway service-secret 认证、handoff-ID-only body、重复通知去重和固定 Runtime lease owner 转发。测试仅使用内存 fake executor，未构造 Runtime bootstrap、provider 或外部 callback。
+
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback control service adapter。它将 Gateway 已认证的 handoff ID 与 correlation 交给 executor，并使用进程固定且校验过的 Runtime lease owner；不接受 principal、authorization code 或配置自定义身份。`index.ts` 不构造该 adapter，默认网络行为不变。
+
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff executor。它串联 claim、Runtime key source、AAD 解封与 complete/release：仅解封前失败或 processor 明确返回 retryable 时释放 lease；processor 异常和完成后 terminal 失败保留 lease，避免副作用不确定时重复换码。该 seam 不执行 provider exchange，`index.ts` 未构造它。
+
+- 2026-08-31：OAuth callback handoff claim 响应增加 Runtime-only `owner_user_id` binding。该字段只在 `dipole-agent` mTLS 领取链返回，用于重建 AES-GCM envelope AAD；Gateway control HTTP、浏览器、Kafka、Temporal、日志和审计均不接触它。Runtime client 对字段缺失或格式异常失败关闭，默认 callback 配置保持关闭。
+
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff terminal client。它用 `dipole-agent` mTLS metadata 仅提交 handoff ID 和 lease owner，以精确 ID 回包结束或释放租约；principal、授权码、密文、key 与 token 都不会进入该调用。无效输入、回包冲突或 Core 错误均 fail closed，`index.ts` 和 control handler 未注入它。同时为四个既有生成 gRPC 回调补充显式协议元素类型，恢复锁定 TypeScript 的完整 typecheck。
+
+- 2026-08-31：Agent Capability 增加默认未装配的 OAuth callback handoff 终态 RPC。`CompleteOAuthCallbackHandoff` 与 `ReleaseOAuthCallbackHandoff` 仅接受 `dipole-agent` mTLS caller 的 handoff ID 和 lease owner，Core 以 SQLC 条件更新复核有效 lease 后返回无敏感字段的 ID；缺 Store、越权、无效或过期 lease 均 fail closed。TypeScript 生成脚本会优先复用已安装的锁定 `protoc`，确保隔离 Remote GPU 可重复生成。Runtime 终态 client、key open、code exchange、token 生命周期与 callback route 继续未装配。
+
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff control handler。它仅认证 `dipole-gateway` service secret，拒绝任何 principal header 和非单字段 `{handoff_id}` body，成功返回 `202`；有界进程内去重避免重复通知的重复下游派发，失败会释放记录以支持重试。该 handler 未接入 `index.ts`、未读取环境变量、未启动 claim/exchange，因此默认网络 surface 不变。
+
+- 2026-08-31：Gateway 增加未装配的 OAuth callback handoff notifier。它只向 Runtime control endpoint 发送严格的 `handoff_id` JSON 和 request/trace correlation，固定 `dipole-gateway` service identity 且不写 principal header；非 `202`、非 loopback HTTP target 或非法 ID 均 fail closed。该 client 未加入 bootstrap、callback route 或开关，因此默认仍无外部 OAuth 流量。
+
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback handoff claim client。它通过现有 Runtime-to-Core mTLS metadata 固定 `dipole-agent` caller、仅提交 handoff ID 和 Runtime lease owner，并对返回的 ID、HTTPS binding、SHA-256、envelope、key ID、lease 与授权 expiry 逐项 fail closed。该库未读入 Runtime config、未注册 Gateway notifier、未开启 callback 或 token exchange。
+
+- 2026-08-31：Agent Capability 增加默认未装配的 OAuth callback handoff claim RPC。只有 `dipole-agent` mTLS caller 可领取，Core 固定 30 秒租约并从持久化记录恢复 transaction、issuer、redirect、摘要、Runtime key ID 与 Runtime-only 密文；Gateway、浏览器和用户主体均无法影响 owner binding。缺 Store 时固定返回 `Unavailable`，未注册 callback route、Runtime client、code exchange 或 token 生命周期。TypeScript proto 生成器同时改为使用锁定的 `@protobuf-ts/protoc`，避免依赖宿主 protobuf 安装。
+
+- 2026-08-31：固定 Agent OAuth callback handoff 的双通道 transport contract：Gateway 到 Runtime 的私有 control HTTP 仅通知 handoff ID；Runtime 到 Core 使用 `dipole-agent` mTLS 领取、完成或释放 lease。契约明确禁止 code/state/verifier/ciphertext/key/token 进入 HTTP、Kafka、Temporal、日志或审计，并列出重复通知、重启、Core outage 和过期 lease 的验收矩阵。该项未注册任何 route 或 RPC。
+
+- 2026-08-31：Agent Runtime 增加未装配的 OAuth callback private-key source。它仅接受显式 key ID 到绝对路径映射，每次使用检查目录/文件 owner、权限、链接和大小，确认 PKCS#8 RSA modulus 至少 2048 位后才在 callback 内短时提供 Buffer，并在结束时清零。Runtime 默认启动、Gateway、callback route 与 token exchange 均未读取该 source。
+
+- 2026-08-31：增加 Agent OAuth callback Runtime envelope v1。Gateway 仅用 Runtime RSA public key 通过 OAEP-SHA256 封装每次 handoff 的 AES-256-GCM data key；授权码密文以完整 handoff binding 作为 AAD，Runtime 只用私钥解封并重算 code SHA-256。Go/TypeScript 各自对版本、base64url、长度、RSA/OAEP、AAD、摘要和毫秒时间 fail closed。该原语未接入 callback route、Store writer、Runtime claim、code exchange 或 token 持久化。
+
+- 2026-08-31：Agent OAuth callback handoff 增加 SQLC durable persistence foundation：migration `000053` 保存 Runtime-key 标识、授权码 SHA-256、Runtime-only 密文、transaction/owner/issuer/redirect binding 与有限状态。领取以条件更新实现；租约不得跨越授权过期时间，完成和失败释放均绑定尚有效的 Runtime lease，重启后可从同一 handoff 恢复。该层尚未注册 browser callback、密钥封装、Runtime 领取 RPC、code exchange 或 token 写入，默认部署仍为零 OAuth callback 流量。
+
+- 2026-08-31：补充 Agent OAuth callback handoff 的发布前设计门禁与故障矩阵。明确当前 Core 单次 consume 不支持 Runtime 不可达后的可靠重试，且 callback correlation 尚未定义；因此继续不注册 callback HTTP route。后续 handoff 需要 browser binding、issuer/redirect 核对、Runtime-key ciphertext、lease 状态与 controlled provider 演练。
+
+- 2026-08-31：Gateway 增加未装配的 OAuth authorization transaction consume client foundation。它通过已有 Core mTLS 通道只提交 owner、transaction ID 与 state digest，严格复核返回的 HTTPS binding、expiry 与 base64url 密封 verifier；结果类型禁止作为 HTTP/审计/日志载荷。尚未注册 HTTP callback、Runtime handoff、解封、code exchange 或 token 写入。
+
+- 2026-08-31：Core standalone bootstrap 为 OAuth authorization transaction consume 增加显式、默认关闭的 SQLC Store 注入门禁。只有 `internal_rpc.agent_oauth_authorization_transaction_consume_enabled=true` 且内部 RPC mTLS 已开启才装配受限 adapter；它可与 Memory receipt seam 共存，未增加 HTTP callback、verifier 解封、code exchange 或 token 写入。
+
+- 2026-08-31：Agent Capability RPC 新增默认关闭的 OAuth authorization transaction consume seam。仅 `dipole-gateway` 可使用认证 `RequestContext` 派生 owner 并提交 transaction ID/state digest；Core 先核对 owner/state，再以 SQLC 条件更新单次消费，成功时只返回密封 verifier 和固定 issuer/callback binding。默认 composition 未注入 store，调用固定返回 `Unavailable`，未新增 callback HTTP、换码或 token 写入。
+
+- 2026-08-31：Agent OAuth authorization transaction 已增加 SQLC persistence foundation：migration `000052` 保存密封 verifier、state 摘要、owner、issuer、callback、expiry 与单次 `consumed_at`，消费查询同时要求 transaction/owner/state digest/未过期/未消费。该层未注册 callback 或 Runtime writer，默认部署无 OAuth 事务写入。
+
+- 2026-08-31：Agent OAuth 增加短时授权事务记录契约。记录只保存 state SHA-256 和 AES-256-GCM 密封的 PKCE verifier，并用 transaction、owner、issuer、redirect URI、state digest 与 expiry 作为 AAD；回调必须由后续 Core/SQLC Store 原子按 owner/state/expiry consume 后才能解封。当前没有内存 fallback、callback 路由、换码、令牌保存或 Runtime 默认接线。
+
+- 2026-08-31：Agent Runtime 的 OAuth foundation 新增默认关闭、注入式的 RFC 8414 metadata discovery client。请求只访问由 canonical issuer 派生的 HTTPS URL，固定 `redirect: manual`、10 秒上限、64 KiB 响应上限和 JSON Content-Type；重定向、状态错误、网络失败、超限或无效元数据均 fail closed。该库未接入 Runtime 默认路径，未保存 state/verifier，未执行 code exchange 或 refresh token 操作。
+
+- 2026-08-31：Agent Runtime 增加默认关闭的 OAuth discovery/PKCE foundation：严格派生 RFC 8414 authorization-server metadata URI，要求 exact issuer、HTTPS 端点和 `S256`，并生成不落 URL 的 code verifier、challenge 与 state。该切片不执行 discovery 网络请求、不保存授权材料、不交换 code、不注册客户端，也不改变 MCP Runtime 默认关闭状态。
+
+- 2026-08-31：Remote GPU 在 `bed7a5d0` 重跑 C3 同契约 Go/C++ projection benchmark。Ubuntu 24.04 builder 的 CTest `14/14` 通过，但 C++/Go 吞吐比为 `0.239956`，低于 `1.0` 晋级门槛，判定 `blocked`；Go 继续作为投递 authority，未启动 Dipole 长驻容器或切换灰度。
+
+- 2026-08-31：Remote GPU 在隔离 worktree 为当前 `2ca6b199` 生成 A6 Web Sync Shadow 候选包；Vue production build 与 14 项 observation contract 测试通过，归档以 `0600` 保存并固定 SHA-256。该工件只作为真实观察的不可变输入；主机有 25 个活动登录会话，未启动 Compose、Prometheus 或客户端流量窗口。
+
+- 2026-08-31：Remote GPU 在 `7601e78e` 上完成 A7 Multipart 故障矩阵：确定性 File/Gateway/cleanup contract、Prometheus 7 条告警规则、真实 MinIO/Redis 对账及 Redis restart 注入均通过。矩阵使用随机名称、loopback 绑定的临时容器并在退出后确认清理；默认上传模式仍为 `relay`，预签名直传切流继续需要 24 小时受控证据。
+
+- 2026-08-31：active Agent Runtime 将 retrieval 与 retrieval-to-Context 纳入运行时只读 surface gate。即使绕过 Compose 直接注入环境变量，active/read 或 `promotion_active` profile 也会拒绝扩张到 `conversation.search`；Shadow profile 继续可按独立门禁使用受控检索。
+
+- 2026-08-31：`promotion_active` 现强制使用 `dipole-agent-memory-promotion-` 前缀的独立 Temporal task queue。Runtime profile 和 Compose 渲染门禁会拒绝通用或 read-active 队列，避免 reviewed Memory 提交 Worker 误消费其他任务；默认部署和写入开关不变。
+
+- 2026-08-31：收敛 `promotion_active` 的永久提交失败路径。Memory receipt commit 在 Temporal 用尽重试后，Workflow 现在将错误转换为受限的 Agent Task `failed` 终态并调用既有 `finishAgentTask` 持久化 Run，避免孤立的运行中任务；默认 profile、双开关、mTLS 和共享环境写入状态不变。
+
+- 2026-08-31：默认关闭的 Agent Task 创建页现提供 IM 主界面导航入口。入口同时要求创建页和 Timeline feature flag，点击只跳转受现有路由守卫保护的 `/agent/tasks/new`；不携带身份、配置或任务参数，也不启用 Runtime/Tool/外部服务。
+
+- 2026-08-31：Agent Runtime 增加 `test:temporal:integration` 门禁，固定在内存 Temporal Test Server 复核幂等启动、Worker 恢复、审批、Elicitation、取消、步数预算、后效重放和 reviewed Memory receipt 重试。该门禁不连接 Compose、Kafka、Core、MySQL 或 active authority。
+
+- 2026-08-31：收敛 Agent Task Timeline 单元测试的 RouterLink 依赖。统一挂载 helper 为全部时间线状态注入路由桩，消除认证页面测试的组件解析警告；不改变 Timeline 路由、Artifact 链接、Capability 或默认关闭状态。
+
+- 2026-08-31：补齐默认关闭的 Agent Task 创建前端入口。认证 `/agent/tasks/new` 仅在 `VITE_AGENT_TASK_CREATE_ENABLED=true` 且 Timeline 开关同时开启时可访问；浏览器生成本地幂等 `client_request_id`，客户端严格校验 `{taskId,status:"accepted"}` 后才跳转只读 Timeline。页面不收集 principal、tenant、Agent、Tool、Memory 或 Runtime 配置。Remote GPU Node 22 定向 `15` 项 Vitest、typecheck 与 production build 通过；Pencil CLI 已完成 canonical desktop/mobile/五态创建画板与 2x 导出，并新增 Chromium 初始表单截图回归。active authority、Compose、Kafka 与 Temporal 均保持关闭。
+
+- 2026-08-31：Agent Runtime 增加默认关闭的交互式 Task 创建链路。Gateway 仅从 JWT 注入 principal，向 Runtime 私有控制面转发 `client_request_id` 与目标；Runtime 固定 tenant/Agent 身份，以客户端幂等键派生确定性 Task/Event ID 并交由 Temporal dispatcher 启动。请求体中的身份字段不参与授权。Remote GPU Node 22 定向 Vitest `10` 项、typecheck、build 与 Gateway Go 测试均通过；未启动 Compose、Kafka、Temporal 或 active authority，用户界面与共享环境切流继续待办。
+
+- 2026-08-31：Remote GPU 候选工作树在 `8e99bde7` 上以 Node `22.12.0` 完成完整 Agent Runtime 开发期门禁：`134 passed / 9 skipped` 测试文件、`703 passed / 30 skipped` 测试，以及 `typecheck` 和 production `build` 均通过；验证结束后工作树保持干净。该命令未启动 Compose、Kafka、Temporal 或 active authority，不能替代共享环境演练。
+
+- 2026-08-31：校正 Agent Memory active promotion 的证据台账。Gateway 已具备认证 owner revoke HTTP 到 `dipole-gateway` mTLS Core RPC 的受约束传输链，并由 principal 绑定与审计回包测试覆盖；共享环境 Kafka trigger、该链路的运行记录、promotion overlay 回滚和 24 小时观测仍保持未完成。
+
+- 2026-08-31：将 embedded 聚合运行时、Kafka 组合、消息/同步兼容传输及其测试收敛到 `internal/services/core/bootstrap/embedded/`；Core 的唯一兼容桥继续保留本地回滚能力，服务布局门禁拒绝 `internal/bootstrap/embedded` 回流，独立服务运行路径不变。
+
+- 2026-08-31：Agent Context hydration 现并行读取已授权的会话、Memory 与受 Core 调解的检索证据，并记录低敏数量指标；任一读取失败仍在模型调用前 fail closed，默认检索与共享环境开关保持关闭。
+
+- 2026-08-31：Multipart 策略门禁现以 `contracts/multipart-upload/v1` 为唯一默认值基准，自动比对 release manifest、`config.dist.yaml`、Go 默认配置和 Web 离线回退值。策略更新若遗漏任一层会阻断校验；运行时默认仍为 `relay` 并保留即时回退。
+
+- 2026-08-31：登录入口现复用 canonical Signal Link 紧凑标识，与 README 的深青绿双极、橙色事件脉冲保持一致；新增源代码设计契约，阻止入口页退回无标识的文字品牌。
+
+- 2026-08-31：Remote GPU 在 `6f15f887` 完成不启动 Compose 的完整 Node 门禁：Agent Runtime 通过 `134` 个测试文件、`702` 项测试（另有 `9/30` 项预期跳过），前端通过 `41` 个测试文件、`165` 项测试；两侧 typecheck 与 production build 均通过，生成 Web 产物退出后恢复，候选工作树保持干净。
+
+- 2026-08-31：Remote GPU 候选同步会先拒绝已跟踪的远端修改；对于与目标 Git blob 的 SHA-256 完全一致的未跟踪文件冲突，仅清理可由提交恢复的生成物。内容不同的文件保持原样并 fail closed，避免视觉快照等测试产物阻塞后续已提交 revision。
+
+- 2026-08-31：Settings 的认证页面检查现运行于全部 Playwright 项目，Chromium 保留像素基线，Remote GPU Firefox 已通过真实路由与披露断言。WebKit 二进制已安装，但共享宿主缺少 `libgstreamer-plugins-bad1.0-0` 与 `libavif16`，系统依赖安装留待维护窗口。
+
+- 2026-08-31：完成 Settings 的 canonical Pencil desktop/mobile/四态设计、批准 PNG 导出和 Chromium 受控截图基线。认证账户页继续只呈现签名、本机同步状态、Device Security 入口和当前会话退出边界，跨浏览器视觉回归保持后续独立切片。
+
+- 2026-08-31：Core 新增默认关闭的受控 `conversation.search` assembly。启用需 mTLS，Core 以独立身份调用 Search，再以持久 Task/Run 恢复 principal、scope 和 capability policy；Search RPC 仅允许 Gateway 与 Core 服务身份。默认 Compose 固定关闭，生产检索流量未启用。
+
+- 2026-08-31：Compose 部署层显式固定 Agent retrieval 与 retrieval-to-Context 为关闭：基础 Shadow、active read 和 External MCP Shadow overlay 均写入 `false`，`check-compose.sh` 复核渲染结果，防止宿主环境变量意外扩张默认只读能力面。
+
+- 2026-08-31：将默认 Signal Link 品牌从偏蓝变体恢复为深青绿与橙色事件脉冲方案，统一主字标、IM 标识与 Agent 标识。保留 SVG 文件名和现有 README 引用，运行时行为不受影响。
+
+- 2026-08-31：Agent Runtime 新增默认关闭的 `DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED`。在已启用受权 retrieval 的 Shadow/Temporal read composition 中，Planner 仅从当前事件正文派生有界 query，经 Core 返回最多 8 条命中并按 Context budget 写入带 provenance 的 `untrusted` evidence；检索失败在模型调用前 fail closed。生产 Search、共享流量和默认路径未改变。
+
+- 2026-08-31：修复 Remote GPU 候选代码同步在 squash 合并后产生的陈旧 tracking ref 警告。`dipole-dev/<user>` 现在只在远端使用受限强制 refspec 刷新，`master` 等共享引用继续普通更新，fetch 失败会直接中止同步；部署与活动用户保护策略未改变。
+
+- 2026-08-31：修复 Agent `conversation.search` 扩展后的 legacy Eino 测试桩漂移。共享桩现记录并返回受控搜索证据，并由编译期 `AgentCapabilityV1` 断言覆盖新增方法；运行时检索开关和生产搜索路径未改变。
+
+- 2026-08-31：新增 `multipart-presigned-rollout/v1` 可执行晋级门禁。候选将 Multipart 默认模式从 `relay` 改为 `presigned` 前，必须提交绑定策略 SHA-256 的 24 小时同版本 evidence，并满足直传样本、fallback/failed/expired/checksum 比率、P95、clear alert、relay 回切演练和独立 reviewer；工具输出可审计 receipt，阻断结果返回退出码 `2`。默认上传策略未改变。
+
+- 2026-08-31：Agent Runtime 增加默认关闭的 `DIPOLE_AGENT_RETRIEVAL_ENABLED`。仅在 AI SDK 与受认证 Capability RPC 同时就绪时，Shadow/Temporal read composition 才注册并向模型公开 `conversation.search`；关闭时模型 allowlist、Registry 与执行 Context 均保持 `conversation.list/read`。Core 继续从 Task/Run 恢复身份并约束权限、scope 与有界 untrusted evidence；Elasticsearch、共享环境检索灰度和生产默认路径未改变。
+
+- 2026-08-31：恢复上一版 Signal Link 品牌资产。主字标与紧凑应用图标回到深青双极和橙色事件脉冲，IM 标识表达消息投递链路，Agent 标识表达受控任务能力；保留既有 SVG 文件名和 README 引用，运行时行为不受影响。
+
+- 2026-08-31：新增认证 `/settings` 页面，提供签名更新、低敏 Device Security 入口、当前客户端同步状态与退出登录。设备详情继续由独立隐私页面负责，设置页不显示 IP、节点或连接标识；路由与 Agent 路由测试解除总数硬编码，后续普通页面增加不会削弱 Agent 的认证/开关断言。
+
+- 2026-08-31：校正 Agent Memory promotion 债务口径：Core receipt commit RPC、TypeScript client、Temporal `promotion_active` Activity、mTLS/双开关与隔离重试、grant 撤销、owner revoke 演练已完成；共享环境 Kafka 触发、Gateway revoke 传输、overlay 回滚和观测证据仍未完成，默认写入路径保持关闭。
+
+- 2026-08-31：Remote GPU 为 `45a80b3d475f4ba0317addab9d11ee0cb93397f2` 生成不可变 Web Sync Shadow bundle `/tmp/dipole-dev-horeb-web-sync-shadow-45a80b3d.tar`，SHA-256 为 `0c458602868170dbb45933f1c48fa0f9ba22c5978d6d79cb2d007cb0344bfdd5`。过程未启动 Compose、Prometheus、客户端流量或 GPU 任务；它仅为后续 24 小时观察提供可复核输入。
+
+- 2026-08-31：更新为 Signal Link 品牌体系：实心端点、空心端点与连接轨迹取代旧的蓝色成对极形，统一用于主字标、IM、Agent 和紧凑应用图标；运行时行为不受影响。
+
+- 2026-08-31：新增默认关闭的 Agent `conversation.search` 契约。Core Agent Capability 从 Task/Run 恢复身份后，经可注入 Search port 查询，要求独立 permission 与 `conversation/*/read` scope；RPC/TS 双端拒绝客户端 principal、超限输入和冲突 evidence，并限制 query、结果数及正文。默认 composition 未注入 Search port，生产 Elasticsearch 与 Runtime 注册继续关闭。
+
+- 2026-08-31：恢复蓝色双极 SVG 品牌体系。README 和文档入口重新采用更高识别度的成对信号标记、冷色画布与深蓝字色；历史单色 PNG 继续弃用。本项只影响品牌呈现。
+
+- 2026-08-30：固定 Agent 检索 Context 的安全契约：Runtime 不直连 Search，后续由 Core 以 Task/Run 恢复的身份、permission 与 scope 调解查询；命中只能作为有界 `untrusted` evidence 进入 Context Compiler。生产 Elasticsearch、默认 Runtime 和跨会话检索继续关闭。
+
+- 2026-08-30：校正平台计划与已合并实现的交付口径：Context Compiler v1/v2 已编译预算、可信度、会话证据、Memory、Capability 元数据和 route tokenizer，完整检索编排仍未完成；F2 仅保留 Settings，F3 仅保留 MCP 多轮、敏感授权、产品入口与未覆盖视觉回归。
+
+- 2026-08-30：修复 Remote GPU 临时候选引用在 squash 合并后的同步失败。默认 `dipole-dev/<user>` 现以远端 tip 的精确 lease 更新，允许复用单一候选引用并拒绝并发覆盖；显式 `master` 或其他共享分支继续只接受快进推送。
+
+- 2026-08-30：将 Dipole Signal 主标及 IM/Agent 标记从偏蓝的渐变校正为深青绿色，保留双极信号、橙色事件脉冲和既有 SVG 文件名，避免 README 与文档入口产生蓝色产品标识的观感。
+
+- 2026-08-30：F2 Device Security 完成 Pencil desktop/mobile/七态设计、认证 `/devices` 路由与严格低敏会话解析。公共设备投影移除 IP、节点和原始 User-Agent；新增 `logout-others` 精确动作，以认证请求的稳定设备 ID 排除当前设备，单设备与批量登出均要求前端明确确认并在结果后重读权威列表。Remote GPU Node 22 已在候选切片通过前端 `40` 个测试文件、`162` 项测试、typecheck 和 production build；Playwright 的 Chromium/Firefox/WebKit binaries 当前不可用，交互执行与 Chromium 像素快照保留为独立环境准备切片。
+
+- 2026-08-30：校正 External MCP Shadow 的运行口径：`external_mcp_shadow` 已作为独占、默认关闭的 TypeScript Runtime mode 接入受控 Kafka/Temporal/Capability RPC 生命周期；基础 Compose 仍为 `foundation`，未配置完整 Shadow 依赖时零外部连接或消费。文档、架构债务和 Agent 面试材料现明确区分该本地/隔离能力与尚未完成的共享环境、DNS/TLS、凭据和生产授权证据。
+
+- 2026-08-30：F2 File Directory 完成 Pencil desktop/mobile/状态矩阵、批准导出和认证只读 `/files` 路由。Core 经 SQLC owner-scoped 文件 UUID cursor 和版本化 gRPC 返回低敏目录投影；HTTP、Swagger 与 Vue 严格排除对象键、存储 URL、校验值和上传会话，下载逐项重新授权，读取失败清空旧状态。Remote GPU Node 22 在提交 `a29d9927` 通过 38 个前端测试文件、157 项测试、typecheck 和 production build。上传仍由会话编辑器和既有 MinIO Multipart 数据面处理；删除、分享、跨浏览器视觉回归和预签名直传默认切流继续作为独立切片。
+
+- 2026-08-30：修复 Remote GPU `node-test` 的 Vite 构建清理：原先对 Web 产物反向应用 diff 会误删基线 hashed assets，现改为仅对受控 `internal/services/core/server/webapp` 目录恢复固定 `HEAD` 后清理新文件。Remote GPU 在 `3f1f3936` 复跑后工作树干净，未启动 Compose 或 GPU 任务。
+
+- 2026-08-30：Agent Project Guardian 增加版本化低敏 subscription 预筛语料：四类关注项目状态、四类干扰事件、双 reviewer 100% agreement 与共享 deterministic evaluator 已纳入回归。规则 evidence 直接复用 production `matchEventSubscriptions`，避免测试手写 decision 造成语义分叉。Remote GPU Node 22 验证 Agent Runtime `133` 个测试文件、`695` 项通过，typecheck/build 通过；素材固定使用 synthetic `fixture:` 标识，不含真实会话、用户或模型输出。真实 corpus、retrieval relevance、候选模型成本阈值和 shared shadow 观察仍由 `AD-038` 管理。
+
+- 2026-08-30：F2 Group Directory 完成 Pencil canonical desktop/mobile 目录、loading/empty/unavailable/dismissed/hot-group 状态矩阵、三个复用组件和批准导出，并交付认证只读 `/groups` 路由。目录从会话投影派生范围后读取权威群详情，异常时清空旧状态；Remote GPU Node 22 通过 36 个前端测试文件、152 项测试、typecheck 与 production build。热群继续采用 `notify + pull`，群成员与管理写操作未在目录中开放。
+
+- 2026-08-30：收紧 SQLC-only 数据访问门禁：`check-sqlc.sh` 现作为唯一权威入口，拒绝 GORM module、任意 Go import/selector 和运行时 `AutoMigrate`，并以临时 Git fixture 覆盖 SQLC-only 基线及三类回流场景，防止后续微服务与多语言演进重新引入第二套 ORM 模型。
+
+- 2026-08-30：Remote GPU 为 `253cf3d29ec79a0f58bcc06c58f5fbad20974b45` 生成不可变 Web Sync Shadow bundle `/tmp/dipole-dev-horeb-web-sync-shadow-253cf3d2.tar`，SHA-256 为 `f4a3a90c5ed5d7d04575a9b939ca738b7e6bd92f53fe3ef818a7249941725f9d`。该动作未启动 Compose、Prometheus 或客户端流量，只提供后续 Observation Session 的候选输入。
+
+- 2026-08-30：收紧 Go/Eino Agent 迁移边界：服务布局门禁要求 production legacy import 只能来自 embedded Kafka composition，`github.com/cloudwego/eino` 只能位于 `internal/services/agent/legacy`。独立 TypeScript Runtime、Gateway 与服务入口无法绕过 Capability、Temporal 与 promotion 门禁回接旧链路。
+
+- 2026-08-30：F2 Contact 增加受认证只读目录 `/contacts`：前端严格解析 `/api/v1/contacts` 的联系人投影，读取失败会清空旧数据并提供重试入口；Remote GPU Node 22 通过 `34` 个前端测试文件、`147` 项测试、typecheck 与 production build。备注、拉黑、删除、申请处理及跨浏览器视觉回归继续按独立权限切片推进。
+
+- 2026-08-30：F2 Contact 完成 Pencil canonical desktop/mobile 管理稿、申请与安全状态矩阵、可复用 Contact Row/Request 组件及 2x 评审导出。该切片只建立视觉基线，未新增前端路由、权限或 Contact API 行为。
+
+- 2026-08-30：修正 IM 深度面试问答的历史叙事：当前 `messages`/`user_sync_inbox`/设备 Cursor 已分别承担 Message Store、Sync Store 与多端位点；Redis 保持实时状态与可丢弃加速职责。Cassandra 迁移、A6 真实 Web Sync 观察和旧 Offline 兼容窗口仍按既有门禁推进。
+
+- 2026-08-30：Remote GPU 在提交 `37d02383` 上拉取 `quay.io/prometheus/alertmanager:v0.28.1` 并通过 `amtool check-config`；配置包含全局配置、路由和一个 discard receiver。该证据只验证 Alertmanager 配置，未启动常驻 Compose 服务或外部通知。
+
+- 2026-08-30：开发 observability profile 新增 loopback-only Alertmanager，并由 Prometheus 配置转发告警。仓库 receiver 为 discard，用于配置与投递链路验证；生产通知凭据和目标继续通过受控部署层配置。
+
+- 2026-08-30：Web Sync 开发观察新增隔离 Prometheus smoke 与远程入口；Gateway/Prometheus 宿主端口默认限制为 loopback，验证必要服务 metrics target 后自动清理。该 smoke 不启动 24 小时观察会话，也不构成晋级证据。
+
+- 2026-08-30：移除无引用的旧蓝色 PNG 主标；项目入口统一使用深青绿与橙色 Signal SVG 视觉系统。
+
+- 2026-08-30：Remote GPU 已为 `b0e4f2523392796837af6130f6c3b27c5b5400de` 生成不可变 Web Sync Shadow bundle `web-sync-shadow-b0e4f2523392-20260830`，SHA-256 为 `7d815e968dfd489b8c6ec43f7ebe27a46cac15e28b593bb414db904a945151a5`。构建与归档准备完成，尚未连接 Prometheus 或启动 24 小时真实流量观察。
+
+- 2026-08-30：修正 Web Sync 候选 bundle 默认来源至 Vite 实际生产输出 `internal/services/core/server/webapp`，避免发布归档错误读取已废弃的 `frontend/dist` 并在远端构建后失败。
+
+- 2026-08-30：修复前端 Agent 路由安全契约遗漏 Artifact 页面的问题：测试现覆盖 `agent-artifact` 的认证与独立 feature flag，并按当前 8 个受认证页面校验，恢复 Shadow Web 候选构建门禁。
+
+- 2026-08-30：按项目视觉方向恢复 README 的深青/橙色 Signal 品牌：双极主标表达事件脉冲，IM 与 Agent 分别表达消息投递和受控能力。蓝色 SVG 版本不再作为项目入口视觉，运行时行为不受影响。
+
+- 2026-08-30：Remote GPU 一次性 worktree 通过 External MCP Shadow 全栈演练：隔离 MySQL/Kafka、Temporal、mTLS Core fixture 与本地 MCP 共同验证 2 个事件、持久 ledger、1 次 allowlisted Tool/Artifact、同 group 重启去重和过期 readiness 拒绝。证据固定为 `production_authority=false`，未连接共享服务或外部 MCP。
+
+- 2026-08-30：统一 README SVG 品牌资产与既有蓝色 Dipole 主标：主标、IM 与 Agent 图形共享双极信号母版，并新增资产用途说明。此次调整只影响开源项目介绍与文档呈现，不改变服务、协议或 Agent 权限状态。
+
+- 2026-08-30：修复 Agent active overlay 的 Kafka consumer group 启动边界：配置层与消费器层均要求 active 使用独立 `dipole-agent-active-*` group，shadow 继续限定 `dipole-agent-shadow-*`。专项测试验证 active 直投消息进入 Temporal dispatcher；Remote GPU 隔离 Node 22 worktree 在独立 `npm ci` 后通过 `132` 个测试文件、`693` 项测试、typecheck 与 build。该证据不包含真实 broker、Core mTLS、Temporal Worker 或 Memory promotion 提交。
+
+- 2026-08-30：主 README 收敛为成熟开源项目入口：新增可维护 SVG 主标、IM/Agent 标记、产品概览、可验证的本地启动与检查入口、文档导航和贡献规范；架构细节、更新日志与面试材料继续归档到对应文档。
+
+- 2026-08-30：Temporal/Core/MySQL receipt 联合演练补齐 owner-scoped Memory rollback：首个 receipt 经 durable retry 收敛为同一条 Memory，撤销 active grant 后预 admission receipt 被拒绝且零写入，owner application control 随后撤销已写入 Memory。Gateway owner revoke 的网络传输、Kafka trigger、共享 overlay rollback 仍待验证。
+
+- 2026-08-30：学习与面试材料拆分为 `Dipole IM` 与 `Dipole Agent` 两个独立项目口径。入口页只负责选择材料和说明受控集成边界；双文档门禁、README、文档目录和架构清单已同步，避免在投递和现场介绍中混用 IM 与 Agent 成果。
+
+- 2026-08-30：Temporal/Core/MySQL receipt 联合演练新增 admission 后 grant 撤销场景：同一有效 grant 预先 admission 两个 Task/Run；首个完成持久重试，撤销后第二个 receipt 经 mTLS 被 Core 拒绝，且候选没有产生 Memory。该隔离证据仍不包含 Kafka 或业务级 Memory rollback。
+
+- 2026-08-30：Remote GPU 隔离联合演练将 Temporal、实际 Core receipt adapter、TCP+mTLS 与临时 MySQL 8.4 串联。首次提交后故意使 Worker Activity 失败，重试复用同一 receipt 并返回同一持久 Memory；同时修复候选晋级在重试时误将首次 `ValidFrom` 视为冲突的问题。Kafka、共享环境 grant 撤销和 overlay 回滚证据仍待完成。
+
+- 2026-08-30：将 Agent receipt 的隔离 MySQL 合约提升为 loopback TCP+mTLS：临时 CA、Core 方法白名单、`dipole-agent` 证书身份、protobuf adapter 和 MySQL 持久事务在同一测试链通过。Remote GPU MySQL 8.4 验证通过；Temporal Worker 同组运行仍待完成。
+
+- 2026-08-30：扩展 Agent Memory receipt 的隔离 MySQL 合约至实际 Core receipt adapter：经 Agent service 身份拦截器执行完整 migration、首次提交、同 receipt 幂等重放与 grant 撤销后拒绝。Remote GPU MySQL 8.4 通过；mTLS 网络握手与 Temporal Worker 联合演练继续待完成。
+
+- 2026-08-30：Remote GPU 一次性 worktree 使用内存 Temporal test server 验证 Agent Memory promotion workflow：prepared receipt 可持久返回，受控首次 commit 失败后会重试且保持同一低敏 receipt binding。该测试未启动 Core、MySQL、Kafka 或 active Compose，联合演练仍待完成。
+
+- 2026-08-30：收敛 Web Multipart 故障重试：浏览器断连及 `408`、`429`、`5xx` 保持指数退避；确定不可恢复的预签名 `4xx` 立即上抛，避免重复 PUT。专项 28 项测试、类型检查与生产构建通过；默认 `relay` 路径和预签名切流开关保持不变。
+
+- 2026-08-30：Remote GPU 隔离验证 MinIO Multipart lifecycle 与 restart smoke：乱序/替换分片、完成、内容校验、重复 Abort，以及服务重启后的继续上传均通过；预签名默认切流和浏览器网络故障矩阵继续关闭。
+
+- 2026-08-30：修正 active receipt authority 的默认关闭结构门禁，要求 production Bootstrap 同时保留显式 receipt 开关和 mTLS 前置条件；默认 Agent Runtime 写 Capability 继续禁止注册。
+
+- 2026-08-30：Active Agent 部署手册补充隔离 MySQL、mTLS RPC 与 Temporal retry 三层验证顺序，并明确三者不能替代 Core/Temporal/MySQL 联合演练。
+
+- 2026-08-30：补齐 embedded Agent active Run admission 的 promotion grant authorizer 注入，使 admission 与 receipt invocation resolver 使用同一持久授权边界；默认 active Worker 仍关闭。
+
+- 2026-08-30：Core 与 embedded receipt commit composition 现注入持久 active Runtime promotion authorizer，使已开启且已授权的 receipt 可通过 Invocation Resolver 复核；缺失或失效 grant 继续 fail-closed，默认 active 路径未改变。
+
+- 2026-08-30：新增隔离 MySQL receipt promotion contract。它经完整 migration 验证持久 Task/Run、active grant、accepted candidate/review、首个晋级、同 receipt 幂等重放和撤销 grant 后拒绝；同时修复 candidate promotion 未 canonicalize Memory lineage 而触发 MySQL 约束回滚的问题。默认 active Worker 路径继续关闭。
+
+- 2026-08-30：学习、简历与面试主文档新增合并前复核清单；门禁要求项目定位、简历描述、现场介绍、工程故事和独立问答入口保持完整。后续架构、Agent、前端与性能切片须按清单同步叙事、证据与限制。
+
+- 2026-08-30：新增 `drill-agent-memory-promotion-rpc.sh`，以临时 CA、loopback Go fixture 和 TypeScript generated gRPC client 演练 reviewed receipt 的跨语言 mTLS 提交。Fixture 覆盖 `dipole-agent` 身份、错误 secret/证书拒绝、prepared receipt 序列化及低敏回包绑定，并支持 `DIPOLE_GO_BIN` 固定远端工具链；不启动 Docker、Temporal、Kafka 或 MySQL，不写入真实 Memory。
+
+- 2026-08-30：Remote GPU 的隔离 Node 22 worktree 已复核 Agent Memory promotion 基线：`promotion_active` profile 6 项、in-memory Temporal receipt preparation/retry 2 项与 TypeScript typecheck 全部通过。该验证未启动 Compose、未占用 GPU，且不连接共享 Core、Kafka 或真实 grant，因此默认写路径保持关闭。
+
+- 2026-08-30：`check-compose.sh` 新增 Agent Memory promotion overlay 门禁：叠加 active 与 promotion 配置时，验证 Core receipt commit、`promotion_active` Worker、显式 `operator_approved` authority 与只读能力边界；缺少 authority 时 Compose 渲染必须失败。该检查只验证静态输入，不构成共享环境提交、grant 撤销或回滚证据。
+
+- 2026-08-30：学习、简历与面试主文档加入可执行维护门禁。架构文档检查现验证主文档受版本控制、README/文档目录入口、核心章节和能力卡片模板字段；每个改变服务边界、默认路径、用户流程、性能结论或 Agent 权限的合并切片均须同步叙事与证据。
+
+- 2026-08-30：Temporal Memory promotion 集成测试新增 `commit=true` 路径：首次 receipt commit Activity 临时失败后由 Temporal 重试，重试复用相同 receipt hash 并收敛到同一低敏 Memory binding。该测试使用隔离 Temporal test server，不连接 Core、Kafka 或共享环境，默认 Worker 写路径继续关闭。
+
+- 2026-08-30：新增 Memory receipt `promotion:memory-worker-drill` evidence 契约与 CLI，将共享环境的候选版本、manifest/configuration/evidence 摘要、grant、首个提交、重试幂等、失效 grant 拒绝和回滚结果收敛为低敏 decision。CLI 不连接 Runtime、Temporal、Core 或数据库，也不提供写入授权；缺少任一演练结果固定为 `blocked`。
+
+- 2026-08-30：新增默认不加载的 `agent-memory-promotion.yml` overlay 与 `promotion_active` Temporal Worker profile。提交 Activity 只有在 active Runtime、Temporal、Capability RPC mTLS、显式 `operator_approved` authority、Runtime 开关和 Core receipt commit 开关同时成立时才会装配；Profile 继续拒绝 Control、MCP、自动 Memory、subscription 与消息写入。共享环境重放、失效 grant 和回滚证据仍待完成。
+
+- 2026-08-30：Core bootstrap 为 receipt commit 增加 `internal_rpc.agent_memory_promotion_receipt_commit_enabled` 显式开关，默认关闭；仅在内部 RPC 已启用 mTLS 时才构造并注入 commit service。Compose 同步保持 `DIPOLE_AGENT_MEMORY_PROMOTION_RECEIPT_COMMIT_ENABLED=false`，Temporal Worker 仍未装配写 Activity。
+
+- 2026-08-30：为 reviewed Memory receipt 增加可注入的 Temporal commit Activity。Workflow 仅在显式 `commit=true` 的受控输入完成后提交 prepared receipt，基础 Worker 固定拒绝；Activity 只转发 receipt 与 correlation 至 active RPC client，持久化结果只保留低敏 binding。Worker 组合、Core bootstrap、Compose profile 和自动写入保持关闭。
+
+- 2026-08-30：收紧 `CommitMemoryPromotionReceipt` 的返回契约为低敏 receipt response，移除 `AgentOwnedMemory` 中的正文、资源与 owner 字段；TS active client 会先校验 receipt v2，再复核 Memory ID、类型、状态、provenance 和 receipt hash。默认 Worker、Temporal Activity、Core bootstrap 和自动写入继续关闭。
+
+- 2026-08-30：新增 `CommitMemoryPromotionReceipt` 内部 protobuf/gRPC seam，仅允许认证的 `dipole-agent` 调用并由 Core caller policy 放行；未注入 commit service 时 fail closed 为 `Unavailable`。Gateway owner RPC 不获得该方法，Temporal Activity、Runtime client、Core bootstrap 和自动写入开关继续关闭。
+
+- 2026-08-30：新增默认未接线的 Core Memory promotion receipt commit service。它从持久化 Task/Run Invocation 恢复 owner，要求 active `dipole-agent` Runtime，并以 TS/Go 共用的毫秒级 ISO canonical SHA-256 向量复核 receipt 后委托既有 candidate/review 幂等事务；RPC、Temporal Activity、启动链和自动写入开关继续关闭。
+
+- 2026-08-30：补充 Agent Memory promotion active executor v1 契约，固定 `dipole-agent` 的专用内部提交边界、Core 侧 Task/Run 身份恢复、active admission/promotion grant 验证、receipt 重算与幂等重放要求。当前仅完成设计与测试矩阵，默认配置继续为 receipt-only，未启用 Runtime 自动写入。
+
+- 2026-08-30：Agent Artifact metadata 的受认证只读流程已在 Chromium、Firefox、WebKit 三浏览器完成本地功能复核，继续固定为 metadata-only 且无下载面。视觉快照仍仅以 Chromium 受控 fixture 为基线；共享环境、正文和下载授权保持关闭。
+
+- 2026-08-30：新增默认关闭的 Agent Artifact metadata 页面：Pencil canonical 已补齐 desktop/mobile/state matrix 与批准导出，Vue 仅按经认证的精确 64 位内容寻址 ID 读取类型、版本、标题、媒体类型、大小、Task/Run、创建时间和 SHA-256。Timeline 仅对 `artifact` event 提供条件跳转；失败清空旧 metadata，正文、对象键、metadata JSON、下载和写控制继续关闭，Chromium visual fixture 仅覆盖低敏本地基线。
+
+- 2026-08-30：Agent Memory candidate promotion 新增显式持久化 `target_memory_type`，贯通 Gateway、版本化 gRPC、Core 与 MySQL 事务。已接受 review 的 owner 可写入 episodic、semantic、procedural 或 observational Memory；空字段保持 observational 兼容，task-scoped working 在 Gateway 与 Core 双层拒绝，重复请求保持幂等。TS receipt v2 到 active executor 的接线仍默认关闭。
+
+- 2026-08-30：Agent Task Timeline v1 增加可选的内容寻址 `artifact_id`，通过 MySQL 主投影与失败修复队列、Core gRPC、TypeScript Runtime 和前端解析贯通。新 `artifact` 事件要求精确小写 SHA-256 ID，其他事件携带该字段会拒绝；该能力只支持 owner-scoped metadata 关联，正文、对象键、下载与 Artifact 页面仍未开放。
+
+- 2026-08-30：学习、简历与面试主文档新增合并切片维护记录模板，要求针对可讲能力同步维护对外表述、演示、证据、追问、限制和复核条件；根 README 增加直接入口，文档叙事继续以代码、契约、测试和运行记录为准。
+
+- 2026-08-30：Gateway 新增默认关闭的 owner-scoped Artifact metadata 读取 seam，复用认证 Core gRPC 绑定 principal，并要求精确 64 位 SHA-256 Artifact ID、校验正文长度与 SHA-256 后只返回身份、Task/Run、类型、版本、标题、媒体类型、摘要和大小；Artifact 正文、对象键与 metadata JSON 继续不暴露给浏览器，下载与 Web 页面等待独立契约。
+
+- 2026-08-30：Agent Definition Catalog 的认证读取流程已在 Chromium、Firefox、WebKit 三浏览器通过；视觉快照仍只以 Chromium 固定，未将该功能验收外推为 active Runtime、写 Capability 或共享环境证据。
+
+- 2026-08-30：新增默认关闭的 Agent Definition Catalog：Pencil canonical 设计包含 desktop/mobile/state matrix 与复用组件，Vue 页面通过 authenticated Gateway 查询精确 Definition version 和 scope，异常时清空旧目录；Chromium visual regression 固定只读边界。页面不提供 Runtime、激活、编辑或写 Capability 控制，学习与面试主文档同步增加能力卡片索引。
+
+- 2026-08-30：新增 `agent-external-mcp-shadow.yml` 受控 Compose overlay，强制外部 MCP Profile、I/O/route manifest、只读 secrets、独立 Kafka group 与 Temporal 输入；Compose 门禁覆盖完整渲染和缺 Profile 拒绝，关闭开关时 Runtime 不读取残留 Profile。基础 Compose 继续关闭外部 MCP，真实公网与共享环境证据仍待完成。
+
+- 2026-08-30：新增 Agent Task Timeline Chromium visual regression，以受控低敏 fixture 固定 revision、Capability、等待审批、分页入口和 raw event kind 展示边界；学习与面试主文档同步加入滚动维护契约、设计证据与对应追问，其他浏览器和全页面视觉基线仍待完成。
+
+- 2026-08-30：通过真实 Pencil CLI 与原子 safe-edit 包装器完成 Agent Task Timeline desktop/mobile/state-matrix 增量设计，新增只读 metadata/provenance 组件和批准导出；完整页面视觉基线与其余前端流程继续按设计计划推进。
+
+- 2026-08-30：项目学习与面试主文档增加服务边界、SQLC、Temporal Durable Approval、远程验证和 C++ 数据面证据速查与高频追问，明确区分已验证、默认关闭和规划能力。
+
+- 2026-08-30：Agent Runtime 在 active 启动链执行只读 profile 校验，Control、MCP Server、External MCP、Memory 或 subscription Shadow 任一开启都会在构造运行资源前停止；Shadow 运维路径保持可配置。
+
+- 2026-08-30：新增项目学习与面试主文档，集中维护简历描述、60 秒/3 分钟介绍、工程故事、高频问答、学习路线与面试前检查；详细题库保留为扩展阅读，状态标签要求区分已验证、默认关闭和规划能力。
+
+- 2026-08-30：Agent active overlay 强制固定 direct-target、Memory、Control、MCP Server 与 External MCP 为关闭；Compose 门禁覆盖 host 环境试图开启 Control/MCP 的回归，user-gray 继续只允许只读 Temporal 路径。
+
+- 2026-08-30：新增 Agent Active 部署运行手册，明确 user-gray 的 Provider、Kafka、Temporal、Capability RPC、五类 Eval、operator grant 与维护窗口证据边界，并提供静态渲染和移除 override 的回滚步骤。
+
+- 2026-08-30：Agent active Compose overlay 现要求独立 Kafka consumer group、OpenAI-compatible Provider、v2 Context profile 与 Temporal endpoint/namespace/task queue，并强制 `ai_sdk` 和 `read_active`；缺少任一输入即在 Compose 渲染阶段拒绝。基础微服务 Compose 继续固定 Shadow，移除 override 可立即回滚。
+
+- 2026-08-30：Agent Runtime 的 `ai_sdk` 模式改为显式 OpenAI-compatible Provider adapter；Provider name 绑定全部模型 route 前缀，base URL、API key 与 route 在启动前校验，避免把字符串 route 作为模型对象使用。默认 `metadata` 路径保持不创建 Provider，真实 active 仍需独立完成 Temporal、Kafka、Capability RPC 和 authority 证据。
+
+- 2026-08-30：Agent Memory promotion receipt 新增 `v2`：将 observational candidate 与显式目标 Memory 类型共同纳入确定性哈希和 Temporal replay 绑定；历史 `v1` receipt 继续可读，但缺少类型绑定时停止 replay 并要求重新审批。External MCP Shadow 组合配置不完整时新增零进程启动回归测试，默认关闭路径保持不创建 Worker、RPC 或网络资源。
+
+- 2026-08-30：Agent Runtime 新增五类 Memory 类型策略边界，明确 working 为任务级临时记忆，其余类型需经过 review；候选生成继续限定为 observational，目标类型必须显式指定且不会凭借类型校验获得写入权限。补充 Agent 文档与跨服务契约导航，并通过 Memory 测试、TypeScript typecheck 和文档索引门禁。
+
+- 2026-08-30：新增 `scripts/check-doc-indexes.sh` 并接入架构文档门禁，校验项目、Agent 和跨服务契约索引中的本地相对链接，降低文档重排后的断链风险。
+
+- 2026-08-30：新增 `contracts/README.md` 契约总索引，并将 Agent Capability、Task、Memory、MCP、发布、修复和评估契约按领域归类；Agent 文档入口与项目 README 同步链接，明确版本兼容、证据哈希和 authority 边界。
+
+- 2026-08-30：新增 `docs/agent/README.md` 作为 Agent Runtime 专属文档入口，统一阅读顺序、运行时职责、默认开关和真实环境证据边界；总文档目录与架构文档清单同步收录，便于后续滚动维护。
+
+- 2026-08-30：为 Multipart `upload_part` retry counter 增加 Prometheus 连续重试告警与 promtool firing 时序测试；告警仅聚合 operation，保持低基数和业务路径不变。
+
+- 2026-08-30：Multipart Core 为同一 session 重复上传同一 `partNumber` 增加低基数 `upload_part{outcome="retry"}` 计数；retry 与最终结果分开记录，耗时只采样一次，旧 session store 可通过可选接口兼容，上传默认路径和回滚语义保持不变。
+
+- 2026-08-30：Multipart cleanup 的 Prometheus textfile 输出新增低基数生命周期状态指标，覆盖 active、expired、aborted、failed、扫描完成状态和清理耗时；`--metrics-output` 可在仅 cleanup 场景使用，reconciliation 指标保持兼容，默认 dry-run 和 relay 回滚路径不变。
+
+- 2026-08-30：Remote GPU 真实联合 reconciliation smoke 通过：隔离 MinIO+Redis 依次识别匹配 session、missing Redis metadata 和 Redis orphan drift，退出清理无残留；测试使用完整对象键等待 MinIO listing 收敛。
+
+- 2026-08-30：新增隔离 MinIO+Redis Multipart reconciliation smoke，真实验证匹配 session、Redis metadata 缺失和 Redis 孤儿三种跨存储状态；临时容器、bucket 和未完成 upload 自动清理。
+
+- 2026-08-30：新增 Redis Multipart session TTL 回归测试，验证 metadata 与 parts hash 同步过期、分片续传刷新 TTL，以及完成收据按独立 TTL 到期；覆盖 Redis 状态过期后安全停止续传的持久化边界。
+
+- 2026-08-30：补充 Multipart 过期 session fail-closed 回归测试；status、presign、register、upload、complete 和 abort 入口均在 session 不存在时停止，避免过期会话继续调用 MinIO。
+
+- 2026-08-30：新增真实 MinIO Multipart cleanup 生命周期验证：创建带 part 的未完成 upload，按 cutoff 选择并 Abort，随后重新列举确认 upload 清除；针对 MinIO listing 收敛使用有界等待，隔离桶自动清理。
+
+- 2026-08-30：Remote GPU `remote-dev.sh sync` 与 `multipart-smoke` 在最新 `master` 上验证通过；未显式设置 Go 根目录时自动选择用户态 Go `1.27.0`。此前偶发的小写 SSH 别名问题在当前环境无法复现，暂不修改主机 SSH 配置。
+
+- 2026-08-30：真实 MinIO cleanup 生命周期 smoke 已通过：未完成 upload 的 listing、cutoff 选择、Abort 和清理后无残留均完成验证；测试对当前 MinIO listing 收敛采用有界等待与完整对象键隔离，生产清理前缀保持不变。
+
+- 2026-08-30：修复直接调用的 MinIO Multipart smoke 脚本忽略 `DIPOLE_REMOTE_GO_ROOT` 的问题；显式用户态 Go 现在会经过可执行性校验并优先加入 `PATH`，默认固定 `GOTOOLCHAIN=local`，避免远端测试意外下载工具链。14 项远程入口契约测试、Remote GPU 两项真实 MinIO smoke 均通过。
+
+- 2026-08-30：确认 Remote GPU 并行启动策略：开发阶段允许在已有 GPU 任务运行时启动隔离的 CPU/容器型 Dipole 构建、Smoke、集成测试和压力测试；活动登录会话仍默认保护，确需 GPU 的任务必须单独声明设备、显存预算和冲突检查。该授权不允许停止、重启、迁移或修改其他 GPU 任务。
+
+- 2026-08-30：Web Multipart 上传增加 `AbortSignal` 传播，覆盖 presigned PUT、relay API、part 重试和页面卸载；取消后停止新请求并保留可恢复 session，避免页面销毁后的无效重试。默认 relay/presigned 策略保持不变。
+
+- 2026-08-30：强化 Multipart 中断恢复集成验证：中断流使用同一 part 编号重试后完成上传并校验最终对象内容，确认失败尝试不会污染 Complete 结果；完整浏览器断网、过期会话和网关限流矩阵仍待完成。
+
+- 2026-08-30：扩展真实 MinIO Multipart 集成契约，模拟客户端在 part 读取过程中断后使用同一 part 编号重试，并验证失败尝试不污染后续会话；默认 relay/presigned 开关和生产路径保持不变。完整浏览器断网、过期会话和网关限流矩阵仍待完成。
+
+- 2026-08-30：在 Remote GPU 对 `master` 提交 `bd7283d1` 完成远程 canonical 验证：Go 全量测试、服务布局与架构文档门禁通过；Agent Runtime `125` 个测试文件/`665` 个测试通过并完成 typecheck/build，Frontend `29` 个测试文件/`114` 个测试通过并完成 typecheck/Vite build。验证仅使用 CPU/用户态工具链，未启动业务 Compose 或触碰 GPU 任务；Node `22.12.0` 对部分依赖要求 `22.22.2+` 仅产生非阻断警告。
+
+- 2026-08-30：在 Remote GPU 完成 MinIO Multipart 服务重启恢复 smoke；分片跨重启保留并成功完成对象，临时容器和数据卷已清理，客户端断网与预签名切流仍待验证。
+
+- 2026-08-30：在 Remote GPU 使用现有 Go `1.27.0` 完成隔离 MinIO Multipart smoke，验证乱序/替换/完成/内容校验/重复 Abort；临时容器已清理，完整故障矩阵继续待完成。
+
+- 2026-08-30：对齐 Eino 版本评估状态：`v0.10.0-alpha.26` 只读 spike 报告已归档，当前稳定回滚基线为 `v0.9.17`；未将 alpha API 加入默认构建、Compose 或 Agent authority。
+- 2026-08-30：Multipart cleanup 对 nil MinIO client 和批量 listing error fail-closed；错误总数完整保留，错误详情最多 32 条并显式标记截断。
+
+- 2026-08-30：对齐平台总计划、Kafka 集群说明和架构债务摘要，明确业务高可用依赖组合已可渲染，组件级演练与真实业务故障收敛仍分开计证。
+- 2026-08-30：修正业务 MySQL Router Compose 门禁对 healthcheck 参数位置的错误假设，改为按端口值语义检查；相关业务拓扑契约和全量 Compose 校验通过。
+- 2026-08-30：业务集群 override 接入 MySQL Router 和三节点 InnoDB Cluster，应用继续通过稳定的 `mysql:3306` writer endpoint 连接；单节点微服务 Compose 保持默认回滚路径。已加入 Compose 渲染与业务拓扑契约门禁，真实业务故障切换仍待 Remote GPU 独立演练。
+- 2026-08-30：为微服务 Gateway 增加可配置宿主端口，业务集群演练默认使用 `18080`，允许多个隔离 Compose project 并行运行；默认端口仍保持 `8080`。
+- 2026-08-30：新增隔离业务集群生命周期入口 `scripts/bench/business_cluster_topology.sh`，提供 `config/up/status/down`、活动会话保护、GPU 并行资源提示和无卷删除回滚；真实业务故障演练继续要求显式批准与独立 project。
+
+- 2026-08-30：新增业务集群 Compose override，将 Kafka 三节点和 Redis Sentinel 接入微服务业务服务的客户端配置；默认单节点 Compose 继续作为回滚路径，完整业务故障切换仍需 Remote GPU 验收。
+
+- 2026-08-30：新增业务依赖拓扑契约，明确单节点微服务 Compose、Kafka/Redis 组件级集群演练和未来业务集群的证据边界；`check-compose.sh` 在缺少契约或出现业务集群误宣称时 fail closed，默认部署路径保持不变。
+
+- 2026-08-30：新增 `remote-dev.sh recovery` 远程节点恢复入口，自动绑定 `dipole-c1` 候选端口、`/tmp` 报告目录和 Dockerized k6 fallback，减少手工 SSH 参数漂移；入口继续经过活动用户门禁和候选镜像 provenance 校验。
+
+- 2026-08-30：远程 Dockerized k6 wrapper 额外挂载 `/tmp`，允许 benchmark/recovery 报告使用宿主临时目录并被容器正常写回；仓库挂载、UID/GID 映射和隔离网络保持不变。
+
+- 2026-08-30：完成 C1 候选业务拓扑节点恢复演练：在 `d8b0e4a9`、隔离 `dipole-c1` 三节点环境中停止并恢复 `dipole-node2`，不可用观测 `518ms`、恢复健康 `16093ms`；consumer group 稳定成员 `72`，恢复后 `40/40` 消息接受/持久化/投递，HTTP failure `0%`，Kafka lag `0`。证据归档于 `benchmarks/c1-node2-recovery-d8b0e4a9/`，外部 GPU 任务保持运行。
+
+- 2026-08-30：修复 Remote GPU 活动会话批准参数未跨 SSH 透传的问题；`DIPOLE_REMOTE_ALLOW_ACTIVE=1` 现在由远端启动门禁显式接收，GPU 任务并行策略和活跃用户默认保护保持不变。
+
+- 2026-08-30：统一 Remote GPU 并行启动行为：CPU/容器型 Dipole 构建、Smoke 和压力测试在检测到既有 GPU 任务时继续执行并记录资源快照；活跃登录用户仍默认阻断，`DIPOLE_REMOTE_ALLOW_ACTIVE=1` 仅用于明确批准的活动会话。隔离 Compose project、资源边界和自动清理策略保持不变。
+
+- 2026-08-30：改进 Remote GPU benchmark 入口，新增受控的 `DIPOLE_BENCH_SCENARIO_FILTER`、`DIPOLE_BENCH_GROUP_MAX_DURATION`、`DIPOLE_BENCH_USER_COUNT`、`DIPOLE_BENCH_GROUP_SIZE` 和 `DIPOLE_BENCH_RUN_ID` 转发；后续可从本地统一触发 group-only、规模和可比性 workload，避免手工远端脚本参数漂移。
+- 2026-08-30：修复 benchmark 报告场景标识：设置 `SCENARIO_FILTER` 时，operations 与最终报告现在使用实际过滤场景，避免 group-only workload 被错误标记为 `mixed`；新增契约测试，默认 mixed/direct/concurrent 行为保持兼容。
+- 2026-08-30：完成 C1 100 成员群组 fan-out 观察：使用 `SCENARIO_FILTER=group_blast` 在 `master` 提交 `9595b0ef` 的隔离候选拓扑上完成 100/100 VU；10/10 群消息持久化、1,000 条群 Inbox 行、990/990 预期回执和 100% 投递，P50/P95/P99 为 121/222/226ms，Kafka lag 为 0。Node1 CPU 峰值约 46.42%，该结果用于规模趋势观察，热群故障回切和 C++ 灰度仍待完成。
+- 2026-08-30：补齐 C1 群组基准覆盖：`group_blast` 运行窗口改为可配置，默认 `35s`，并在 Remote GPU 以提交 `67a4aa1a` 完成 50/50 VU；10/10 群消息持久化、500 条群 Inbox 行、490/490 预期回执和 100% 投递，P50/P95/P99 为 106/118/132ms，Kafka lag 从 1 收敛到 0。该结果只代表 50 成员群组基线，不代表热群容量或故障回切已完成。
+- 2026-08-30：修复 Remote GPU Dockerized k6 runner 的宿主文件写入权限，使用调用者 UID/GID 映射确保基准汇总文件可落盘；在 `master` 提交 `b9281eaa` 的隔离 C1 候选拓扑上完成有效基线：450/450 消息接受、持久化和投递，端到端 P50/P95/P99 为 88/109/181ms，Kafka 峰值与结算 lag 均为 0。群组阶段在优雅停止窗口内完成 30/50，HTTP 失败率包含该覆盖限制，后续仍需独立群组容量和故障矩阵。
+- 2026-08-30：改进 Remote GPU C1 基准工作流：`run_bench.sh` 支持显式 `K6_BIN`，远端缺少宿主机 k6 时自动使用固定 `grafana/k6:0.57.0` 容器和 host network；修复 SSH 可选空参数导致的镜像参数左移，并在 `dipole-c1` project 下自动映射 `18081/18082` 候选端口。新增远程入口、Shell 和 Python 契约测试，默认 Go authority 与候选拓扑隔离保持不变。
+- 2026-08-30：完成 Eino `v0.10.0-alpha.26` 隔离 spike：核对 ADK Session/Checkpoint/Resume、background task lease/CAS 和 notification outbox，并形成与现有 Temporal + MySQL Task/Run authority 的映射；默认 `v0.9.17` 依赖保持不变。
+- 2026-08-30：为大文件 Multipart session 增加浏览器 Web Locks 独占租约，同一文件在多个标签页中会串行执行，避免重复接管；无 Web Locks 的浏览器保持兼容回退，并新增串行/回退测试，上传测试 `15/15`、Frontend typecheck 通过。
+- 2026-08-30：补充预签名服务不可用回归测试：刷新签名失败时保留原错误、只发起一次失败分片 PUT，不误报上传成功；Multipart 上传测试 `13/13`、Frontend typecheck 通过。
+- 2026-08-30：新增 `multipart-restart-smoke` 远程故障验证：首个分片上传后重启隔离 MinIO 容器，再继续上传并完成对象，使用独立持久卷并在退出时清理；新增 Go smoke tool、远程入口和操作说明，不申请 GPU。
+- 2026-08-30：将预签名过期恢复提炼为可复用的 `uploadPresignedPartWithRefresh` 原语，并新增 403 -> 刷新签名 -> 重试测试；上传测试 `12/12`、Frontend typecheck 通过，页面层只负责签名 API 与 URL 映射。
+- 2026-08-30：Multipart 预签名分片上传新增 `401/403` 过期恢复：保留 HTTP 状态、按分片重新获取签名并交给既有指数退避重试；失败 session 继续保留，成功 Complete 仍清理本地状态。上传测试 `11/11`、Frontend typecheck/build 通过。
+- 2026-08-30：修复大文件 Multipart 上传失败后的断点续传行为：分片或 Complete 失败时保留服务端 session 与本地文件身份，后续重试通过 status 跳过已完成分片；成功 Complete 仍清理本地 session，服务端已完成记录保持幂等。Frontend `29/114`、typecheck 和生产构建通过。
+- 2026-08-30：远程开发入口新增 `multipart-smoke`，统一注入远端 Go toolchain 并固定 `GOTOOLCHAIN=local`；该 CPU/容器型动作允许与 GPU 任务并行，使用脚本自有临时 MinIO 容器和自动清理，新增入口契约测试 `7/7` 通过。
+- 2026-08-30：Remote GPU 在 `master` revision `67235080` 使用已验证 Go 1.27 本地 toolchain 完成 MinIO Multipart 生命周期 smoke；乱序分片、同编号替换、按序 Complete、对象内容校验和重复 Abort 全部通过。首次尝试因 Go 自动工具链下载超时，随后固定 `GOTOOLCHAIN=local` 重试成功；测试容器已自动清理，默认 relay 路径未改变。
+- 2026-08-30：A6 新增真实 Chromium Sync Timeline 恢复验收，覆盖 IndexedDB 持久化、浏览器重开、从已提交 cursor `2` 继续请求、幂等重 ACK `2` 后推进到 `4`，并确认本地恢复消息先于远端增量交付；Chromium `6` 项通过、`2` 项按条件跳过，未改变 `/sync` 默认路由或切流开关。
+- 2026-08-30：C3 性能基准新增显式 `DIPOLE_REALTIME_BENCH_CONTAINER=1` 模式，使用当前 revision 的 Docker builder 产物运行 C++ benchmark，并在报告记录 runner 来源；解除宿主机 `clang-tidy` 缺失与性能测量之间的耦合，默认路径和 Go authority 保持不变。
+- 2026-08-30：C3 性能基准支持 `DIPOLE_GO_BIN` 注入远端已安装的 Go toolchain，避免 `go run` 因自动下载 toolchain 超时而阻断同版本 C++/Go 对比；默认仍使用 PATH 中的 `go`。
+- 2026-08-30：Remote GPU 在存在 2 个 Python GPU 任务期间完成提交 `7eb11de7` 的容器 C++ benchmark 与 Go 对比，C++ builder CTest `14/14` 通过，C++/Go ratio `0.119227`，按阈值 `1.0` fail closed；报告归档到 `benchmarks/c3-cpp-projection-benchmark-2026-08-30/`，Go 继续作为 authority。
+- 2026-08-30：将 C3 Go 对照改为同一 `DeliveryEnvelope`/item projection 后，在 Remote GPU 完成 revision `8a87cc44` 的 10,000 次等价契约 workload；C++/Go ratio `0.247269`，C++ builder CTest `14/14` 通过但仍低于 `1.0` 门槛，报告归档到 `benchmarks/c3-cpp-projection-benchmark-2026-08-30-equivalent/`。
+- 2026-08-30：补充 C3 5 次稳定性采样，C++ 约 `30.76k-31.58k ops/s`、Go 约 `122.12k-125.59k ops/s`，ratio 稳定约 `0.25`；确认性能阻断来自稳定差距，不是单次抖动，采样说明归档在同一 benchmark 目录。
+- 2026-08-30：Remote GPU C3 长时 profiling 尝试完成 1,000,000 次 C++ 投影，吞吐 `31,598.15 ops/s`；宿主 `perf` 因缺少内核 `6.14.0-36` 对应 linux-tools 返回 `2`，未生成伪造热点数据。profiling 容器已清理，GPU 任务未受影响。
+
+- 2026-08-30：补充开发与远程资源工作流：Remote GPU 存在其他 GPU 任务时允许启动 CPU/容器型 Dipole 构建、Smoke 和压力测试；新增独立 Compose project、资源快照、GPU 显式申请和禁止触碰他人任务的边界。GPU 忙碌本身不再作为开发启动阻断条件。
+
+- 2026-08-30：新增隔离 MinIO Multipart 生命周期 smoke，真实验证乱序分片、同编号分片替换、按序 Complete、对象内容校验和重复 Abort；脚本使用临时容器并自动清理，不改变默认 relay 路径。
+
+- 2026-08-30：复核 Agent Runtime 独立门禁：Vitest `125` 个测试文件通过、`665` 个测试通过，TypeScript typecheck 与生产 build 均通过；误用 Jest 的 `--runInBand` 仅记录为命令兼容性提示，项目标准入口保持 `npm test`。
+
+- 2026-08-30：修复 `smoke-sync-write-ownership.sh` 在服务目录重排后仍指向 `internal/bootstrap` 的三个测试选择器，改为 Sync/Message 服务实际拥有的测试包，并保留“selector 无匹配即失败”保护。
+
+- 2026-08-30：为 C3 灰度发布增加独立 `RolloutPolicy` 契约，支持按节点/用户作用域使用稳定盐值确定性选择 `go|shadow|cpp` 目标；默认百分比为 Go，配置或 subject 异常 fail closed。当前仅提供纯策略和测试，未接入 Gateway 投递副作用，性能收益与可执行回切门禁保持不变。
+- 2026-08-30：修复 `RolloutPolicy` 未拒绝 `101..255` 百分比的边界问题；非法灰度比例现在在选择前 fail closed，并增加回归测试。
+
+- 2026-08-30：校正阶段计划状态：C3 authority、自动回切、Redis/Kafka 故障注入和 C++ primary 隔离证据已完成；C1/C2/C3 主阶段继续保持进行中，剩余门禁为可复现的 C++ 性能收益和按节点/用户灰度发布。避免将已完成故障演练重复排队，也避免提前宣称 C++ 已替换 Go。
+
+- 2026-08-30：补充 Remote GPU C1 组件故障证据：独立三 broker Kafka consumer rebalance 在 member 退出后接管全部 6 个 partition 且 lag 恢复为 `0`；独立 Redis Sentinel 在 master 停止后约 4 秒完成切换，客户端读写、Pub/Sub、Presence、热群和限流状态恢复，旧 master 重新加入为 replica。Redis 探针镜像支持 `DIPOLE_REDIS_FAILOVER_PROBE_IMAGE`，避免远端固定镜像未缓存造成阻塞；候选业务拓扑的 Kafka/Redis 自动回切仍待验证。
+
+- 2026-08-30：完成 Remote GPU C1 单节点恢复演练：`dipole-node2` stop/start 后约 `505ms` 观察到不可用、约 `16.0s` 恢复健康，consumer group 稳定恢复为 `72` 个成员；恢复后 40/40 消息接受/持久化/投递，Kafka lag 为 `0`，PID 更换且 revision 未漂移。完整 evidence/report 已归档。
+
+- 2026-08-30：修复 C1 节点 recovery drill 的 Compose 相对路径解析，移除旧的 `--project-directory`，使 stop/start 故障证据与候选拓扑使用同一配置挂载语义；新增契约断言，生产 Compose 不受影响。
+
+- 2026-08-30：补充 Remote GPU C1 100 用户并发容量观察：400/400 消息接受、持久化和投递，投递率 `100%`，HTTP 失败率 `0%`，消息端到端 P50/P95/P99 为 `149/178.04/243.01ms`，Kafka lag 采样为 `0`。相比 20 用户并发延迟上升；该结果仍不代表容量上限或故障恢复能力。
+
+- 2026-08-30：补充 Remote GPU C1 并发在线基线：20 个在线用户、80 条消息全部接受/持久化/投递，投递率 `100%`，消息端到端 P50/P95/P99 为 `91.5/103.05/104.41ms`，Kafka lag 采样为 `0`。结果已归档；容量上限、故障恢复和自动回切仍待验证。
+
+- 2026-08-30：补充 Remote GPU C1 群广播基线：20 个成员、10 条群消息，`190/190` 预期回执、投递率 `100%`，消息端到端 P50/P95/P99 为 `83/89.54/107ms`，Kafka lag 采样为 `0`。结果已与 direct message 基线一并归档；容量上限和故障恢复仍待验证。
+
+- 2026-08-30：归档 Remote GPU C1 低负载 direct message 基线：提交 `160d2cc6`、20 用户、50 条消息全部接受/持久化/投递，HTTP 失败率 `0%`，消息端到端 P50/P95/P99 为 `49/162.10/165ms`，Kafka lag 峰值与稳定采样均为 `0`。该结果仅覆盖候选链路可运行性，不代表容量上限。
+
+- 2026-08-30：C1 候选拓扑默认只启动消息基准所需的核心服务；Kafdrop/Nginx 改为通过 `C1_ENABLE_OPTIONAL_SERVICES=1` 显式启用，避免可选镜像下载阻塞核心健康检查和负载测试。
+
+- 2026-08-30：修复 C1 候选拓扑的 Compose 相对挂载路径和证书前置：移除会把 `../../configs` 解析到仓库外的 `--project-directory`，并由候选脚本按需生成短期开发自签名 Nginx 证书；失败拓扑已清理，未改变生产 Compose。
+
+- 2026-08-30：修复远程 C1 候选构建 heredoc 的变量展开问题；候选 revision、创建时间和镜像标签现在均在远端脚本中计算，避免本地未定义变量导致构建提前退出。新增契约断言并通过 Shell、脚本、架构文档和 diff 门禁。
+
+- 2026-08-30：远程构建入口新增默认关闭的 `DIPOLE_REMOTE_BUILD_CANDIDATE=1`，按当前提交额外生成带 OCI revision、创建时间和 `dirty=false` provenance 的 `dipole-server:c1-<commit>` 候选镜像；默认微服务构建路径与回滚行为保持不变，为完整 C1 三节点基线补齐可验证前置。
+
+- 2026-08-30：归档 Remote GPU 微服务入口只读基线：提交 `f227401a` 的隔离微服务栈执行 1000 次 Gateway `/health` 请求、并发 16，成功率 `100%`，P50/P95/P99 为 `0.521/0.791/1.960ms`；退出后无容器或卷残留。该证据只覆盖入口稳定性，不代表消息吞吐或 WebSocket 容量，完整 C1 k6 基线仍待候选三节点拓扑和远端工具链。
+
+- 2026-08-30：远端基础镜像经一次性流式导入后，隔离 `smoke-lite` 在提交 `f227401a` 上完整通过；MySQL、Redis、Kafka、MinIO、Core、Message、Sync、Gateway 均 healthy，Gateway readiness、认证代理和可选服务隔离检查通过。脚本退出后自动清理，无本项目容器或卷残留；现有 GPU 任务未被操作，完整基线压测仍单独排队。
+
+- 2026-08-30：在用户明确授权 GPU 任务并行的前提下，Remote GPU 对 `c09334f0` 完成提交绑定 Go 编译和 8 个微服务镜像构建；Go 镜像构建上下文实测约 `688MB`，未启动或影响现有 GPU 任务。隔离 `smoke-lite` 已完成 preflight/证书阶段，但首次拉取 MySQL 基础镜像耗时过长后安全中止；Compose trap 清理后无本项目容器或卷残留，完整 Smoke 与负载测试继续待镜像缓存或受控代理条件。
+
+- 2026-08-30：修复 Go 微服务镜像最小上下文切换中的变量引用错误，并以脚本契约测试锁定 `root_dir/dist`；首次远端实测的 fail-closed 结果已记录，未启动容器。
+
+- 2026-08-30：将 Go 微服务镜像构建上下文收窄为生成的 `dist/` 目录，Dockerfile 仅复制指定服务二进制；新增脚本契约测试，减少 Remote GPU 构建时重复发送根目录数据。
+
+- 2026-08-30：修复 Remote GPU 构建入口，`scripts/remote-dev.sh build` 会先编译提交绑定的 Go 服务二进制再构建逐服务镜像；同步修正文档中的 `planning-with-files` 模式，并记录隔离 Smoke 因 registry mirror 对缺失自定义镜像返回 `403` 的可回滚证据。
+
+- 2026-08-30：Multipart Prometheus 规则新增 reconciliation 漂移、扫描不完整和指标过期告警，并补充 `promtool` 触发时序测试；修复动作仍保持人工确认和原有删除保护。
+
+- 2026-08-30：Remote GPU 在用户态 Go 1.27.0 下对 `master` 提交 `9c0f2702` 完成远端 canonical 门禁；Go 白名单测试、服务布局和架构文档检查全部通过，未启动 Compose 或创建容器，构建/Smoke/Benchmark 继续遵守活动用户保护。
+
+- 2026-08-30：Multipart reconciliation 工具新增可选 `--metrics-output`，以原子替换方式输出固定名称、低基数 Prometheus textfile gauges，覆盖扫描状态、漂移数量和最后运行时间；默认不创建指标文件，JSON、退出码和删除保护语义保持不变。
+
+- 2026-08-30：新增 [开发工作流与提速规则](docs/operations/DEVELOPMENT-WORKFLOW.md)，将活动计划、历史记录、快速门禁、共享环境演练、Epic 同步和 worktree 生命周期分层；确认当前瓶颈来自计划上下文膨胀与验证串行化，后续按 30 分钟切片和一次性 Epic 同步执行。
+
+- 2026-08-30：A6 Web Sync Observation 工具新增 5 分钟未来时间偏差门禁，`start/status/finalize` 均拒绝未来时间查询，并补充可注入时钟测试和操作手册说明；该改动只强化证据完整性，未改变客户端默认同步路径或任何切流开关。
+
+- 2026-08-30：本机 `planning-with-files` 更新至上游稳定版 `v3.11.2`；移出重复的 `.agents` skill 安装，仅保留 `.codex` canonical 来源，并在 Codex 适配器层加入同 session/项目根短窗口去重。真实并行 Bash 验证确认三次触发只注入一份计划上下文，旧版本与 hook 配置已保留在日期备份目录。
+
+- 2026-08-30：新增 `scripts/remote-dev.test.mjs` 远程开发入口契约测试，覆盖提交绑定同步、Node 锁文件保护、`webapp` 构建产物清理、Node 版本门禁及活动主机下的构建/Smoke/Benchmark 保护；`4/4` 通过。
+
+- 2026-08-30：在 Remote GPU 对 `master` revision `b96403b0` 重新执行 Go canonical 门禁；全部白名单 Go 包测试、服务布局和架构文档检查通过，未启动 Compose，远端源码工作树保持干净。
+
+- 2026-08-30：修复 Remote GPU `node-test` 的构建产物污染：测试前检查 `internal/services/core/server/webapp` 是否干净，退出时仅恢复该目录的 tracked diff 并清理本次生成的 untracked 资产；Agent Runtime 与 Frontend 验证可持续运行且不留下远端源码变更。
+
+- 2026-08-30：同步 `epic/01-microservices`、`epic/02-storage-architecture`、`epic/03-agent-runtime`、`epic/04-cpp-realtime` 和 `epic/05-frontend-experience` 到最新 `master` 基线；核心三阶段分支快进同步，C++/Frontend 扩展分支保留独有提交后完成合并并推送。
+
+- 2026-08-30：Remote GPU 最新 preflight 通过（224 vCPU、约 161 GiB 可用内存、约 1 TiB 可用磁盘），但构建门禁检测到 `users=23`、`gpu_processes=5` 并安全拒绝启动；未创建镜像或容器，继续等待维护窗口。
+
+- 2026-08-30：Remote GPU 已在提交 `37d5f1b3` 上完成最新 Go canonical 复核；Go 测试、服务布局和架构文档门禁全部通过，Agent/Frontend Node 验证产生的锁文件临时差异已清理，远端工作目录恢复干净。
+
+- 2026-08-30：Remote GPU 用户态 Node `22.12.0` 完成 Agent Runtime 与 Frontend 验证；Agent 通过 125 个测试文件/665 个测试，typecheck/build 通过；Frontend 通过 29 个测试文件/114 个测试，typecheck/Vite 构建通过。集成测试按环境条件跳过，未启动 Docker。
+
+- 2026-08-30：为 Codex `planning-with-files` 的 `PostToolUse` 增加同会话/工作目录短窗口去重；并行 Bash 完成事件只保留一条提醒，超过窗口仍恢复提示，避免开发工作流噪声累积。
+
+- 2026-08-30：Remote GPU 已同步 `master` 提交 `3dfaf53d`，使用用户态 Go 1.27.0 与 `GOPROXY=off` 完成最新离线 canonical 测试；Go test、服务布局和架构文档门禁全部通过，未启动容器。
+
+- 2026-08-30：新增 `scripts/drain-local-dipole.sh`，支持迁移成功后的本机降载预览与显式执行；仅停止 `dipole*` 容器，保留卷/镜像并避开无关项目，补充脚本契约测试和恢复说明。
+
+- 2026-08-30：Remote GPU 在断开临时 module proxy 后使用本地缓存、用户态 Go 1.27.0 完成完全离线 `scripts/remote-dev.sh test`；Go test、Compose、服务布局和架构文档门禁全部通过，退出码为 `0`。为降低本机负载，Dipole 本地 Compose、隔离 smoke 和观测拓扑已停止，未删除卷或镜像。
+
+- 2026-08-30：Remote GPU 在用户态 Go 1.27.0、受控只读 module proxy 和提交 `a92b9a8c` 上完成远端 canonical 验证；Go test、Compose、服务布局与架构文档门禁全部通过，退出码为 `0`。本机 Dipole Compose 拓扑已停止，远端未启动容器。
+
+- 2026-08-30：远端测试入口增加可选 `DIPOLE_REMOTE_GOPROXY`，允许通过短期受控缓存代理补齐远端缺失 Go modules；代理地址只存在于运行环境，不写入仓库或持久配置。
+
+- 2026-08-30：为 Remote GPU 增加 `DIPOLE_REMOTE_GO_ROOT` 用户态 Go 工具链入口；已同步 Go 1.27.0 到 `/home/admin1/.local/go-1.27.0`，不修改系统 Go，后续可在远端执行完整 canonical 测试。
+
+- 2026-08-30：远端开发测试流程增加 Go 工具链预检并固定 `GOTOOLCHAIN=local`，在 Remote GPU 仅有 Go 1.22.2、项目要求 Go 1.26.0 时快速失败，避免因隐式下载工具链造成网络超时；当前未启动容器，待远端维护窗口补齐 Go 1.26+ 后继续执行 canonical 测试。
+
+- 2026-08-30：Multipart 策略接口加入三份静态 Swagger 文档；当前 Go 1.27 环境下 `swag` 生成器仍受历史注释/标准库解析兼容影响，运行时路由与静态文档已保持一致。
+
+- 2026-08-30：Multipart 策略接入运行时：Core 新增认证的 `/api/v1/files/uploads/policy`，前端按服务端版本策略执行阈值、并发、重试和预签名候选模式；策略异常或接口不可用时回退到 `v1/relay`，默认生产流量保持不变。
+
+- 2026-08-30：新增 `contracts/multipart-upload/v1` 版本化上传策略、默认 `relay` 策略和 SHA-256 release manifest，并增加 `scripts/check-multipart-policy.mjs` 及 Node 测试；大文件上限、分片大小、并发、重试和预签名 URL TTL 统一进入可审计契约，生产仍保留旧路径回切。
+
+- 2026-08-30：Multipart Web 上传增加可见的暂停/继续控制；暂停只停止新分片调度并保留 Redis/MinIO 会话，继续时复用原 `upload_id` 和已确认分片，前端上传专项测试、类型检查和生产构建通过。
+
+- 2026-08-30：重新执行 `scripts/smoke-microservices.sh`，隔离验证 Core、Gateway、Message、Sync、Agent 及 MySQL/Redis/Kafka/MinIO readiness、metrics、mTLS、远程 WS ownership 和 Agent 幂等；临时拓扑自动清理，KafkaJS 分区器 warning 未影响验收。
+- 2026-08-30：重新执行 `scripts/smoke-cassandra-read-routing.sh`，隔离验证 migration v50、Cassandra Seq 页面读取，以及 payload 损坏和缺失行按同一 cursor 回退 MySQL；临时资源自动清理，生产 Cassandra 主读保持关闭。
+- 2026-08-30：在最新 `master` 重新执行 `scripts/check-go.sh`，全部 Go 包 test/vet 通过；直接 `go test ./...` 仍受本地忽略的旧 `agent-runtime` 构建目录影响，规范验收继续使用包白名单入口。
+- 2026-08-30：在最新 `master` 重新执行 `scripts/check-go.sh`，全部 Go 包 test/vet 通过；直接 `go test ./...` 仍受本地忽略的旧 `agent-runtime` 构建目录影响，规范验收继续使用包白名单入口。
+- 2026-08-30：补充 Multipart P95 延迟告警的正向 promtool 触发测试，确保 30 秒阈值和 `operation` 标签在规则变更后仍可验证。
+- 2026-08-30：增加 Multipart Prometheus 告警规则与 promtool 测试，覆盖操作错误、整文件 checksum mismatch 和高延迟；修正 Core 指标将 checksum mismatch 以专用 outcome 暴露，规则挂载保持可回滚。
+- 2026-08-30：Multipart reconciliation 增加 `--reconcile-fail-on-drift` 告警门禁，显式开启时发现 MinIO/Redis 跨存储漂移返回退出码 `3`；默认仍只读且不修改数据。
+- 2026-08-30：Multipart cleanup 增加只读 `--reconcile` 模式，对照 MinIO 未完成 upload 与 Redis session metadata，识别跨存储漂移并以测试保证默认不修改任何数据。
+- 2026-08-30：Multipart 增加短期完成收据与重复请求保护：成功响应丢失后重复 Complete 返回同一文件记录，重复 Abort 不重复调用对象存储，已完成会话拒绝 Abort；补充 Core 服务测试与 A7/AD-055 台账记录。
+- 2026-08-30：校准 AD-055 与 A7 的大文件上传状态：记录整文件 SHA-256 绑定与可选强制校验已完成，明确 Redis 孤儿扫描已有基础能力，并将剩余工作收敛为 Multipart reconciliation、生命周期告警、Complete/Abort 幂等、暂停/继续和真实故障矩阵。
+- 2026-08-30：同步 `PLATFORM-EVOLUTION-PLAN.md` 的实际质量基线和 F4 状态：Agent Runtime 更新为 `125` 个测试文件/`665` 个通过、`27` 个按条件跳过，Frontend 更新为 `28` 个文件/`104` 个测试，并明确 token 映射、核心流程和跨浏览器功能回归已完成；全页面截图视觉基线、真实 Pencil CLI 增量编辑及未覆盖平台仍保留待办。
+- 2026-08-30：完成主线综合门禁复核：架构文档、服务布局、SQLC 和脚本包白名单下的 Go 全量 test/vet 均通过；同时确认根目录 Markdown 与 `docs/` 分类保持收敛，未新增散落文档。
+- 2026-08-30：修正 `docs/architecture/DEVELOPMENT-ROADMAP.md` 中对已退役 `internal/service` 的过时表述，改为描述共享兼容适配器与 `internal/services/<service>/` 的持续收敛，避免路线图误导新服务开发。
+- 2026-08-30：修复 `smoke-sync-cassandra-hydration.sh` 对已退役 `internal/service` 的路径引用，改用 `internal/services/message/domain`；修复后真实隔离 hydration smoke 通过 shadow comparison、重复响应恢复、Legacy ID 恢复和 Metadata backfill。
+- 2026-08-30：在当前 `master` revision `801e69ce` 上复跑完整微服务 Compose smoke；逐服务 health/readiness、metrics、Core 代理 401、Core WS 边界、mTLS 启动、远程 WS ownership 及 Agent EventLedger/Task/Run 幂等均通过，隔离拓扑自动清理，生产 Kafka ownership 与回滚切换继续关闭。
+- 2026-08-30：在当前 `master` revision `69055e87` 上复跑 Cassandra primary Compose smoke；Cassandra schema init、Sync primary profile、依赖 readiness 和 Sync `readyz` 全部通过，临时资源已清理。本次仅证明启动与配置门禁，真实 Inbox hydration、共享环境观测、责任人批准和可执行回切继续关闭。
+- 2026-08-30：复核 Agent Runtime Context Compiler 校准命令：fixture evidence 覆盖中文、英文、代码、Emoji 和 Tool Schema 五类样本，`eligible=true`、无低估，report SHA-256 为 `d5bce2090f8d4b4c6af786d75dee656fd9dd33554ecaf8026e5880abe4863562`；同时全量回归 `665` 项通过、`27` 项按条件跳过，真实候选模型校准仍保持生产前置门禁。
+- 2026-08-30：在当前 `master` revision `d2507377` 上重建微服务候选镜像并复跑 Agent Timeline repair Compose smoke；migration `v50`、UTC、专用最小权限、worker readiness、pending intent 恢复和 event UUID 幂等均通过，隔离栈已清理，共享环境 operator 灰度与默认生产开关继续关闭。
+- 2026-08-30：补齐前端 `npm run typecheck` 标准脚本，并由 Vite 工具链契约测试锁定 `vue-tsc --noEmit` 命令；后续类型检查可使用统一入口执行。
+- 2026-08-30：收敛 Chat 初始化阶段的认证恢复异常：HTTP 401 仍由统一拦截器执行会话清理和跳转，Vue 生命周期不再产生未处理 Promise rejection；共享设备认证 E2E 在 Chromium、Firefox、WebKit 共 `6/6` 通过。
+- 2026-08-30：完成前端全浏览器 Playwright 回归：Chromium、Firefox、WebKit 共 `90` 项配置测试中 `64` 项通过、`26` 项按平台/条件跳过；Agent 表单、Task Timeline、IndexedDB 恢复、Search 视觉状态和设备会话均通过适用场景。
+- 2026-08-30：修正 Agent Memory Chromium E2E 的非精确标题断言，避免 `长期记忆` 与 `正在读取长期记忆` 触发 Playwright strict mode；目标场景 `3/3`、完整 Chromium E2E `28` 项通过（`2` 项按条件跳过）。
+- 2026-08-30：修正 Vite 生产构建输出边界，前端产物统一写入 Core-owned `internal/services/core/server/webapp/`，避免构建重新生成已退役的 `internal/server/webapp/`；工具链 `3/3`、Vitest `28` 个文件/`104` 个测试、`vue-tsc` 和生产构建均通过。
+- 2026-08-30：补充 Agent Active Compose 负向门禁，缺失 release manifest 或 candidate version 时在插值阶段直接失败；默认 Shadow 配置和 Active 回滚路径保持不变。
+- 2026-08-30：核验 CloudWeGo Eino 依赖升级状态：`go list -m -u` 未发现高于当前 `v0.9.17` 的可用升级；公开 `v0.10.0-alpha` 仍属于预发布路线，暂不引入 Go/Eino 回滚基线，避免与 TS Agent Runtime 接管和微服务切换同时改变。
+- 2026-08-30：复核 Agent Active 晋级前置门禁：TypeScript Runtime Vitest `125` 个文件、`665` 个测试通过，`typecheck`、生产构建和 Compose active overlay 契约均通过；默认 Shadow、显式 `user_gray` manifest 和 candidate 绑定保持 fail-closed，共享 Temporal/Kafka/Active authority 联调仍待完成。
+
+- 2026-08-30：修复 Inbox projector 隔离 smoke 的失败拓扑保留逻辑，并补齐 Message Service 的 `DIPOLE_SYNC_PROJECTOR_ENABLED` 前置配置；在 projector ownership 模式下完成真实消息流程验证，receipt 归档于 `benchmarks/ad048-projector-message-flow-2026-08-30/receipt.json`，回滚仍为移除 overlay 并恢复 `atomic`。
+- 2026-08-30：完成逐服务候选镜像的真实消息流程验证，覆盖注册登录、好友关系、WebSocket 发送、Message/Outbox/Inbox 幂等和 Seq 历史/增量读取；receipt 归档于 `benchmarks/ad048-message-flow-2026-08-30/receipt.json`，生产切换保持关闭。
+- 2026-08-30：收紧 Memory candidate 解析边界，正文和 compact 摘要均拒绝凭据模式；新增绕过 ObservationWorker 的 fail-closed 测试，保持自动 Memory 写入关闭。
+- 2026-08-30：收紧 Agent Task Timeline 的 TS RPC 客户端响应校验，拒绝跨任务、空事件 ID、重复或倒序 `event_seq`，新增 fail-closed 契约测试；不改变服务端协议和默认关闭状态。
+- 2026-08-30：完成逐服务镜像候选拓扑验证：基于干净 `master` revision 重建 Go 服务镜像，并在 Search profile 隔离 Compose 中验证 Core、Message、Sync、Gateway、Search 和 Search Indexer 的 health/readiness；证据归档于 `benchmarks/ad048-independent-images-2026-08-30/receipt.json`，生产切换仍保持关闭。
+- 2026-08-30：收紧 embedded 聚合的服务边界：仅允许 Core 的显式 `embedded_compat.go` 作为本地兼容/回滚桥接，新增结构门禁与 Core bootstrap 回归测试，阻止独立服务重新依赖 `internal/bootstrap/embedded`。
+- 2026-08-30：修正 C++ Realtime Delivery CMake 根目录探测并通过标准容器门禁；Ubuntu 24.04 容器构建、14/14 CTest 和镜像打包均通过，本机 host gate 因缺少 `grpc++` 依赖暂不能运行，C++ primary 仍保持关闭。
+- 2026-08-30：修正 C++ Realtime Delivery 的 CMake 根目录探测：同时支持源码仓库和独立容器构建上下文，按 canonical delivery proto 与 fence testdata 定位 `api/`、`contracts/`，避免本地配置误解析到 `services/api`。
+- 2026-08-30：Agent Runtime 对 `DIPOLE_AGENT_RUNTIME_MODE` 增加显式枚举校验，除 `shadow`/`remote` 外的值现在 fail closed，避免拼写错误静默回退到 Shadow。
+- 2026-08-30：增加 Agent 前端路由安全契约测试，锁定 5 条 Agent 页面均需认证、各自受独立 feature flag 保护且关闭时回到 Chat；未改变默认关闭配置。
+- 2026-08-30：同步前端设计计划与实际 Router：补充 5 条受 feature flag 保护的 Agent 页面路由，并明确 Search/Sync 属于 Chat 工作区能力；Contact、Group、File、Device 和 Settings 仍保持待完成状态。
+- 2026-08-30：收紧 Web Sync Observation Session 的状态时间边界：`status` 对早于 `started_at` 的采样时间 fail closed，并增加回归测试，避免观测证据出现倒序时间。
+- 2026-08-30：复核主线前端与 Web Sync 契约：Pencil 设计门禁通过（54 个 Frame、2036 个节点、36 个变量、23 个可复用组件），前端 Vitest 通过 27 个文件/102 个测试，Web Sync 观测契约通过 9 个测试；真实客户端 24 小时观测仍保持未启动。
+- 2026-08-30：将微服务 Compose 的 Agent Runtime 默认模式显式固定为 `shadow`，并由 Compose 门禁阻止默认配置漂移到 `active`；运行行为保持原有安全默认值。
+- 2026-08-30：明确 Agent Runtime 默认部署语义：微服务 Compose 默认启动独立容器并消费 Kafka Shadow 流，但 `active` authority、模型调用和写能力保持关闭；同步更新服务目录说明，避免“默认启用”被误解为已完成生产接管。
+- 2026-08-30：诊断 Pencil Gemini 增量路径：CLI 因 selected model 缺少 API key 在执行前退出，safe-edit wrapper 清理临时输出并保持 canonical `.pen` 不变；Claude 路径的执行超时仍单独记录于 `AD-044`。
+- 2026-08-30：按正确的 `--prompt` 与 `--prompt-file` 参数重试 Agent Task Timeline Pencil 增量编辑；CLI 进入 Agent 会话后在 90 秒窗口内未完成，safe-edit wrapper 清理临时输出并保持 canonical `.pen` 不变，继续记录 `AD-044`。
+- 2026-08-30：明确忽略根级遗留 `agent-runtime/` 构建产物，保留 `services/agent-runtime/` 作为唯一 TypeScript Agent 源码目录；Go 项目继续使用显式包白名单门禁，源码布局不受本地构建输出影响。
+- 2026-08-30：在兼容服务测试根退休后的最新 `master` 上完成规范 Go 门禁复核；`scripts/check-go.sh` 中的全量 `go test` 与 `go vet` 均通过，裸 `go test ./...` 仅受本地忽略构建目录影响，不作为项目门禁。
+- 2026-08-30：完成 `internal/compat/service` 兼容测试根退休：跨版本 domain-event 契约测试迁入 `internal/platform/events/contract` 外部测试包，兼容目录仅保留说明，结构门禁阻止旧路径回流。
+- 2026-08-30：完成 `internal/app` 聚合测试壳退休：迁移 11 个 Agent application 边界测试至 `internal/services/agent/application` 外部测试包，删除空聚合目录，并增加结构门禁防止其回流。
+- 2026-08-30：审计确认 Gateway 旧 `NewServer` 仅被测试使用，已迁移测试到显式依赖注入入口并删除隐式 Core Auth 兼容包装；结构门禁锁定 Gateway 只接受 Composition Root 提供的 `TokenResolver`。
+- 2026-08-30：为 `gateway.NewServerWithDependencies` 增加 `TokenResolver` 必填校验和回归测试；独立 Gateway 组合缺少 verifier 时启动前失败，旧 `NewServer` 继续提供兼容注入。
+- 2026-08-30：Gateway Server 新增显式 `TokenResolver` 注入构造函数，独立 bootstrap 负责提供 Core verifier；旧 `NewServer` 保留兼容包装，认证行为和回滚路径保持兼容。
+- 2026-08-30：将 WebSocket Authenticator 的 `ResolveSession` 和 TokenSession 依赖提取为 `internal/application.TokenSessionResolver`；WS transport 不再绑定 Core Auth 具体类型，新增结构门禁与跨包回归测试。
+- 2026-08-30：将 Agent token session contract 提取到 `internal/application`，middleware 改为依赖最小 token resolver 接口；Core Auth 保留具体 JWT 实现，Gateway 后续可注入独立 verifier，相关测试和结构门禁通过。
+- 2026-08-30：将 Agent MCP 默认 resource 与配置 resource 解析下沉到 `internal/application`；Core Auth 保留兼容入口并继续负责 token issuer/verifier，Gateway bootstrap、proxy 和 middleware 统一使用跨服务 contract，相关回流门禁与测试通过。
+- 2026-08-30：将 Gateway Agent MCP 代理使用的 resource identifier、只读 scope 和安全 URL 校验下沉到 `internal/application`；Core 继续持有 token 签发/解析实现，Gateway 代理仅依赖跨服务认证 contract，并新增回流门禁与安全校验测试。
+- 2026-08-30：将 Gateway Kafka 消费所需的群组、会话强制退出、联系人删除和会话已读事件 payload/decoder 下沉到 `internal/application`；Gateway 不再编译期依赖 Core domain，新增服务布局门禁防止该依赖回流，事件 JSON 与投递语义保持兼容。
+- 2026-08-30：调用审计确认 embedded `NewMessageProcessRepositories` 包装无独立语义，已删除并让 embedded aggregate 直接调用 Message-owned SQLC constructor；inbox 写入开关和回滚配置保持显式传递。
+- 2026-08-30：审计确认 embedded `Repositories.Search` 无生产或测试调用者，删除 embedded Search SQLC 构造和冗余字段；Search Service 继续由 Elasticsearch-owned runtime 独立装配。
+- 2026-08-30：embedded repository composition 将 Core 的 User、Group、Contact、File、Conversation、Admin 仓储统一收回 `CoreProcessRepositories`，移除聚合根的 Core 扁平字段；Core HTTP 适配、assistant 初始化和 embedded 回滚语义保持兼容。
+- 2026-08-30：embedded repository composition 将 Message、Outbox、Sync 仓储访问统一收回 `MessageProcessRepositories` 与 `SyncProcessRepositories`，移除聚合根的 Message/Sync 扁平字段；Outbox 启动、Inbox 组合和回滚语义保持兼容。
+- 2026-08-30：embedded repository composition 将 Agent policy、task、memory、approval、artifact、tool audit 等仓储统一收回 `AgentProcessRepositories`，移除聚合根的 Agent 扁平字段；Agent 初始化、SQLC 实现和 embedded 回滚语义保持兼容。
+- 2026-08-30：Core server 与 standalone bootstrap 已改用 Core-owned repository、messaging 和 application 端口；embedded 聚合通过边界适配继续提供本地回滚组合，Core 服务自有代码不再直接依赖 `internal/bootstrap/embedded`。
+- 2026-08-30：Core Auth 的输入、结果、错误和 MCP grant 调用已统一迁移到 Core-owned Auth domain，删除无调用者的 `internal/compat/service/auth_compat.go`；认证 HTTP contract 保持兼容。
+- 2026-08-30：Core Conversation 的视图、已读回执、错误和事件契约调用已统一迁移到 Core-owned Conversation domain，删除无调用者的 `internal/compat/service/conversation_compat.go`；Conversation HTTP/Kafka contract 保持兼容。
+- 2026-08-30：Core Contact 的输入、响应、错误和事件契约调用已统一迁移到 Core-owned Contact domain，删除无调用者的 `internal/compat/service/contact_compat.go`；联系人 HTTP/Kafka contract 保持兼容。
+- 2026-08-30：Core User 的输入、响应、错误和 User HTTP 调用已统一迁移到 Core-owned User domain，删除无调用者的 `internal/compat/service/user_compat.go`；用户管理和头像 HTTP contract 保持兼容。
+- 2026-08-30：Core Session 的设备会话、Session Kick 事件和错误契约调用已统一迁移到 Core-owned Session domain，删除无调用者的 `internal/compat/service/session_compat.go`；设备会话 HTTP/Kafka contract 保持兼容。
+- 2026-08-30：Core Admin 的 Overview、错误契约和 HTTP/DTO 调用已统一迁移到 Core-owned Admin domain，删除无调用者的 `internal/compat/service/admin_compat.go`；User/Auth 等仍有实际调用者的兼容入口继续保留。
+- 2026-08-30：Core Auth 的 TokenService、TokenSession 与 MCP 资源校验调用已统一迁移到 Core-owned Auth domain，删除无调用者的 `internal/compat/service/token_compat.go`；Auth grant contract 兼容入口继续保留。
+- 2026-08-30：执行 `scripts/smoke-kafka-rebalance.sh`，隔离验证双 consumer 加入、成员退出后的六分区接管和 lag 归零；临时 Kafka 集群自动清理，生产 consumer ownership、offset 和切换配置保持不变。
+- 2026-08-30：完成 TypeScript Agent Runtime 独立交付回归：Vitest 通过 125 个测试文件（662 个测试），`typecheck` 与生产构建均通过；真实共享 Kafka/Temporal/MCP 联调和 active authority 仍按发布门禁保持关闭。
+- 2026-08-30：执行 `scripts/smoke-search-service.sh`，隔离验证 Elasticsearch 9.5.2 查询路径、Core 派生 scope 和 Search Service 内部 RPC contract；临时资源自动清理，生产 Search Alias 与索引切换保持关闭。
+- 2026-08-30：执行 `scripts/smoke-cassandra-read-routing.sh`，验证 Timeline 页面使用 Cassandra 读取，并在 payload 损坏或记录缺失时按同一 cursor 安全回退 MySQL；隔离资源自动清理，生产 Cassandra 主读开关保持关闭。
+- 2026-08-30：执行 `scripts/smoke-sync-cassandra-primary-compose.sh`，在隔离 Compose 中验证 Cassandra schema init、MySQL migration、Sync Cassandra primary 配置和 `/readyz`；临时资源自动清理，生产 Cassandra 主读、共享环境观测与回切开关保持关闭。
+- 2026-08-30：删除仅被 legacy 测试使用的 shared `newInternalRPCServer` 与 `dialInternalRPC` 转发层，测试和 Core embedded 组合直接使用 `internal/platform/rpc`；RPC transport、认证、TLS 和回滚语义保持兼容。
+- 2026-08-30：将 Core Agent RPC caller-to-method 权限策略从 shared `internal/bootstrap` 下沉到 `internal/services/core/rpcpolicy`；embedded Core server 与 MCP drill fixture 复用 Core-owned policy，保留 Agent/Search/Sync 的方法白名单、mTLS caller 校验和拒绝语义。
+- 2026-08-30：在最新 `master` 上再次执行 `scripts/smoke-microservices.sh`，隔离验证 Core、Message、Sync、Gateway、Agent 及 MySQL、Redis、Kafka、MinIO 的 readiness、metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等；临时拓扑自动清理，生产流量与 ownership 配置保持不变。
+- 2026-08-30：修正架构债务台账重复编号：将“服务入口已拆分但共享实现区仍缺少服务级物理边界”统一编号为 `AD-054`，保留已完成的运维目录整理为 `AD-050`，不改变债务状态或运行行为。
+- 2026-08-30：删除经全仓调用审计确认仅被测试使用的 shared `NewCoreRPCServerWithAgent` facade；Agent RPC contract 测试直接构造 adapter 并验证 Core server 组合，运行时使用的 control/projection/artifact 构造路径保持不变。
+- 2026-08-30：删除经全仓调用审计确认无调用者的 shared `RegisterCoreProjectionKafkaHandlers` facade；Core standalone runtime 继续直接使用 Core-owned projection 注册器，Conversation projection、Kafka ownership 和回滚路径不变。
+- 2026-08-30：删除经全仓调用审计确认无调用者的 shared Kafka 注册 facade `RegisterKafkaHandlersWithRepositories` 与 `RegisterCoreKafkaHandlersWithRepositories`；embedded runtime 继续使用私有装配，Core projection 保持由 Core-owned 入口注册，Kafka topic、消费语义和回滚路径不变。
+- 2026-08-30：在最新 `master` 上重新执行 `scripts/smoke-microservices.sh`，真实验证 Core、Message、Sync、Gateway、Agent 及 MySQL、Redis、Kafka、MinIO 冷启动 readiness、metrics、Core proxy、mTLS、远程 WS ownership 和 Agent EventLedger/Task/Run 幂等；隔离拓扑自动清理，生产流量与 ownership 配置保持不变。
+- 2026-08-30：将 Core RPC 测试 helper 切换到 Core-owned bootstrap，删除无生产调用者的 `internal/bootstrap.NewCoreRPCServer` 公开 facade；Core capability 的认证、mTLS 和协议行为保持兼容。
+- 2026-08-30：将 Delivery Observation RPC 的测试调用切换到 Gateway-owned bootstrap，删除无生产调用者的 `internal/bootstrap` facade；Realtime 服务身份、mTLS transport 和 backpressure contract 保持兼容。
+- 2026-08-30：收敛 embedded runtime 的 metrics 入口，删除无生产调用者的 `internal/bootstrap` 转发层，测试迁入 `internal/platform/runtime` 并直接验证平台 API；指标启停、地址校验和 typed-nil collector 语义保持不变。
+- 2026-08-30：修复 `scripts/smoke-mysql-cluster.sh` 的隔离配置注入，使用带 YAML 后缀的一次性 Router 配置并显式禁用宿主机 cgo DNS；MySQL 8.4.8 三节点 migration v50、Router writer 故障转移、已提交数据可见和停止节点 AdminAPI rejoin smoke 全部通过，临时资源自动清理。
+- Agent 增加独立 `deploy/microservices/agent-active.yml` 部署 override：显式要求 candidate 和 release manifest 文件，并以只读方式挂载；默认 Compose 仍为 shadow，移除 override 即可回滚。
+- 2026-08-30：重新执行 Sync Cassandra primary Compose smoke，验证 Cassandra schema init、Core/Message/Sync 依赖 readiness、primary hydration 配置和 Sync `/readyz`；临时拓扑自动清理，生产 Cassandra 主读保持关闭。
+- Agent 微服务 Compose 增加显式 Runtime mode、candidate 和 release manifest 路径契约：默认固定 `shadow` 且不挂载 manifest，active override 必须只读挂载 `user_gray` 清单；回滚恢复 shadow 配置即可。
+- 2026-08-30：重新执行 Kafka rebalance 隔离 smoke，验证双 consumer 成员、成员退出后的六分区接管和 lag 归零；临时集群自动清理，生产 offset、retry/DLQ 和 consumer group 配置保持不变。
+- 2026-08-30：重新执行 Kafka observability 隔离 smoke，验证 Prometheus 规则、consumer lag、retry/DLQ、ISR 缺口及 broker 恢复；临时三节点集群自动清理，生产 Kafka ownership 和 topic 配置保持不变。
+- 2026-08-30：重新执行 Redis Sentinel 三节点故障转移 smoke，真实验证客户端重连、Pub/Sub、Presence、Hot Group 和限流语义恢复，以及原主节点重新加入为副本；隔离栈自动清理，生产 Redis 配置保持不变。
+- 2026-08-30：重新执行 Elasticsearch Search Service 隔离 smoke，真实验证 Elasticsearch 9.5.2 查询路径、Core 派生 scope 和 Internal RPC 契约；临时存储栈自动清理，生产 Search Alias 与索引切换保持不变。
+- 2026-08-30：重新执行 Cassandra read-routing 隔离 smoke，真实验证 migration v50、Cassandra Seq 页面主读，以及 payload 损坏/缺行按同一 cursor 回退 MySQL；临时 Compose 资源自动清理，生产主读开关保持关闭。
 - Agent Runtime active 启动增加 release manifest 绑定：必须提供 manifest 文件、candidate 必须一致且阶段必须为 `user_gray`；默认 shadow 路径不变，缺失/读取失败/阶段或版本漂移均 fail closed。
 - Go/Eino 兼容 Agent 基线已从 `internal/modules/ai/` 收敛到 `internal/services/agent/legacy/`；bootstrap import 与相关文档同步更新，保留 TS Runtime 接管前的回滚路径。
 - 服务布局门禁已固定 Agent legacy 目录归属，并阻止 `internal/modules/ai/` 回流。
@@ -19,6 +839,94 @@
 
 ## [Unreleased]
 
+- 新增默认关闭的 `agent-interactive-shadow` Compose overlay：仅启用经认证的 Agent Task 创建、查询、取消、输入与审批代理，固定 `shadow + read_shadow` 执行路径，并关闭 MCP、外部 MCP、Memory、检索和任何写入 authority。
+
+- 恢复 Emerald Signal Link 品牌调色：README、IM、Agent 与紧凑入口标记统一采用深青信号场、浅色画布和橙色事件脉冲，替换分支中遗留的偏蓝青渐变；本项只影响品牌呈现。
+
+### Added
+
+- Added a Chromium visual baseline for the owner-scoped File Directory. The fixture locks the metadata-only disclosure boundary and per-file authorization entrypoint without contacting object storage.
+
+- 远程开发入口在未指定 `DIPOLE_REMOTE_GO_ROOT` 时会自动选择 `/home/admin1/.local/go-*` 中的最高版本，显式路径仍优先；继续禁止隐式 Go toolchain 下载，减少 Remote GPU 默认 PATH 漂移导致的测试阻断。
+- Web Sync 观察证据现在强制绑定对象存储归档收据：opaque URI、object version、ETag 和未来 retention 截止时间；缺少或过期收据时只能生成 `blocked`，不会误判为可晋级。
+- 远程开发策略更新：Remote GPU 存在 GPU 任务时允许启动 Dipole 的 CPU、Docker、集成测试和压力测试任务；新增 GPU 进程保护、Compose/端口/目录隔离、资源检查和自有资源清理约束，避免把 GPU 占用误判为全局启动阻断条件。
+
+- 新增 Remote GPU 测试入口 `scripts/remote-dev.sh test`，远端执行 Go canonical 测试、Compose、服务布局和架构文档门禁；测试阶段不启动容器，继续保留部署动作的活动用户保护。
+- Remote GPU 管理员工作目录已重新同步到正式 `master` 提交 `27138a32`；当前主机仍有活动实验，未启动构建或服务。
+- Remote GPU 构建入口已完成一次安全阻断验证：同步成功后检测到 23 个登录用户和 5 个 GPU 任务，在构建前退出且无容器/镜像副作用；维护窗口开启后可直接重试。
+- Remote GPU 主机前置修复完成：`admin1` 已加入 Docker 组并安装 Compose v2，管理员工作流 preflight 通过；由于仍有活动实验，服务构建与启动继续由 fail-closed 保护阻止。
+- Remote GPU 管理员工作目录已成功切换到正式 `master` 提交 `b9035b66`；同步链路可用，Docker 权限与 Compose 插件前置现已修复，构建与启动继续等待活动实验释放。
+- Remote GPU 管理员工作流已验证 SSH、资源和代码同步；当前 `admin1` 无 Docker socket 访问且主机缺少 Compose v2 插件，preflight 会阻止构建/部署/压测，待维护窗口完成最小权限和插件修复。
+- Remote GPU 工作流默认切换为 SSH alias `LAB113-OPS` 的 `admin1` 账号和 `/home/admin1/workspaces/Dipole`，与实际可用的管理员连接配置一致；凭据仍不写入仓库。
+- preflight 现在区分 Docker Compose 插件缺失和 Compose 文件无效，Remote GPU 缺少 `docker compose` 时会以 `compose=plugin-missing` fail-closed；不会自动安装主机组件。
+- Remote GPU 代码同步已更新至 `c3739971`；资源 preflight 通过，但因主机缺少 Docker Compose v2 插件返回 `compose=plugin-missing`，未启动容器，部署与压测继续等待维护窗口。
+- 修正 Remote GPU 默认工作目录为实际账号可用的 `/home/zhangzhuyu/workspaces/Dipole`，并补充首次同步自动创建目录的说明；不改变现有主机保护和隔离 project 规则。
+- 将开发部署、代码同步、镜像构建和完整压测统一收敛到 Remote GPU 工作流，新增 `scripts/remote-dev.sh`；本机不启动完整 Compose，远端动作绑定已提交 revision、隔离 Compose project，并在活动用户或 GPU 任务存在时默认 fail-closed。
+- 新增低资源只读 HTTP 负载探针 `scripts/bench/http-read-load.sh`，固定 GET 并输出请求成功率与 P50/P95/P99，可用于 TencentCloud_01 的健康检查和认证边界回归；完整吞吐、WebSocket、Kafka lag 与故障证据仍使用既有 k6 基准。
+
+- 2026-08-30：补充 TencentCloud_01 只读占用核验：现有 `nkdoing-app` 使用公网 `80`，`nkdoing-postgres` 使用本机 `5432`，宿主 MySQL 监听 `3306`；Dipole 轻量 smoke 仍需独立 Compose project、端口和卷，并等待业务影响确认后执行，当前未启动容器。
+
+- 2026-08-30：完成两台开发主机的只读 preflight：Remote GPU（224 vCPU、可用内存约 163510 MiB、可用磁盘约 1084340 MiB）和 TencentCloud_01（2 vCPU、可用内存约 1172 MiB、可用磁盘约 34347 MiB）均通过对应 profile；未启动容器，实际部署和负载测试仍等待维护窗口。
+
+- 2026-08-30：完成 Eino 上游复核：当前稳定依赖保持 `v0.9.17`，官方最新预发布为 `v0.10.0-alpha.26`，其 v0.10 方向增加可恢复 Session、可重放中间件状态、后台任务和 Automemory；由于仍处于 alpha 且可能存在破坏性变化，暂不升级生产回滚链路，新增隔离 spike 评估项。
+
+- 2026-08-30：新增 `scripts/smoke-microservices-lite.sh` 与依赖闭包契约测试，以 Gateway 依赖闭包验证 TencentCloud 轻量拓扑的 Gateway/Core/Message/Sync readiness、认证代理和可选服务隔离，默认不启动 Agent、Search、Cassandra、可观测性或 C++；完整 `smoke-microservices.sh` 继续用于 Remote GPU。
+
+- 2026-08-30：改进开发主机 preflight 的内存判定，默认读取 `MemAvailable` 而非物理总内存，避免已有实验造成内存压力时误放行；保留显式覆盖值和原有 fail-closed profile 门禁。
+
+- 2026-08-30：新增远程开发部署与压测 runbook，明确 Remote GPU 完整拓扑、TencentCloud 轻量 smoke、本机资源限制、独立 Compose project、提交绑定镜像、证据采集、停止条件和回滚要求；记录 Remote GPU 当前存在活动会话与 GPU 任务，实际部署需等待维护窗口。
+
+- 2026-08-30：新增开发主机 preflight `scripts/check-dev-host.sh` 与 Node 测试：Remote GPU profile 用于完整微服务和负载测试，TencentCloud profile 仅用于轻量 smoke，本机资源不足时 fail closed；检查支持资源覆盖、Docker daemon 和 Compose 配置校验，当前仅完成门禁实现，尚未执行远程部署。
+
+- 2026-08-30：完成开发期部署环境评估：Remote GPU（224 vCPU、188 GiB 内存、约 1.1 TiB 可用磁盘、4 张 RTX 4090）作为完整微服务、存储实验、Agent Runtime 和分级负载测试环境；TencentCloud_01（2 vCPU、2 GiB 内存、50 GiB 磁盘）收敛为轻量 smoke 与低资源兼容性环境；本机暂不运行完整集群压测。远程部署门禁、资源快照、不可变镜像、隔离 Compose project、故障停止和回滚要求已写入平台演进计划，当前尚未执行远程部署。
+
+- 2026-08-30：Multipart 初始化支持可选 `file_sha256`，会话绑定整文件摘要；开启 `storage.multipart_require_checksum` 后，Complete 会读取已完成对象校验 SHA-256，缺失或不匹配时拒绝并清理对象，前端会在初始化阶段提交 Web Crypto 摘要，默认仍保持兼容模式。
+- 2026-08-30：为 Redis Multipart 清理增加幂等与截断保护回归：重复执行不会重复删除，达到 `--redis-max-keys` 时报告 `complete=false`，避免把部分扫描结果误判为全量清理。
+- 2026-08-30：扩展 `dipole-multipart-cleanup` 的可选 Redis 生命周期扫描：`--redis-orphans` 以有界 SCAN 检测无 TTL 的 Multipart meta 与 meta 已过期的孤儿 parts，默认 dry-run，只有 `--execute --confirm` 才删除孤儿 parts；保留原 MinIO 报告字段，完整过期 upload reconciliation 和告警仍待 A7/AD-055。
+- 2026-08-30：Core File Service 接入低基数 Multipart 指标 `dipole_multipart_operations_total` 与 `dipole_multipart_operation_duration_seconds`，覆盖 initiate、presign、register、upload_part、complete、abort 的结果和耗时；不记录用户、会话或对象标识，Redis 过期扫描与清理指标仍待 A7/AD-055。
+- 2026-08-30：新增可选真实 MinIO 预签名代理集成测试，验证 Multipart `UploadPart` 经 Gateway 同源代理转发后仍通过 S3 Host 签名校验，并完成 ETag、Complete 和对象内容核对；测试通过后自动清理测试对象，完整故障矩阵与默认切流仍待 A7/AD-055。
+- 2026-08-30：为开源 MinIO Bucket CORS 不可用场景增加默认关闭的 Gateway 同源 S3 PUT 代理：仅转发带完整签名的 Multipart 分片，固定上传 bucket、限制 PUT 方法和分片体积，并保留 Core 中转路径作为回切方案；真实代理启用和预签名端到端切流继续由 A7/AD-055 跟踪。
+- 2026-08-30：真实 MinIO 验收确认开源 MinIO `RELEASE.2025-04-22T22-12-26Z` 不支持 Bucket CORS API，`mc cors set` 返回 `501 NotImplemented`；移除三套 Compose 中会导致初始化失败的 CORS 命令，预签名 Multipart 默认切流继续暂停，待补 Gateway 同源代理 CORS 或切换支持 Bucket CORS 的对象存储实现。
+- 2026-08-30：补充平台存储 CORS 策略 XML 作为支持 Bucket CORS 的对象存储部署参考；当前开源 MinIO 不支持该 API，生产域名与浏览器直传仍需通过 Gateway 同源代理或兼容实现落地。
+- 2026-08-30：Web Multipart 接入默认关闭的预签名直传试运行：批量获取绑定 `uploadId + partNumber` 的 MinIO URL，浏览器直接 PUT 后向 Core 登记 ETag/尺寸，失败沿用 Abort 回滚；新增 `VITE_MULTIPART_PRESIGNED_ENABLED=false` 配置，默认仍走 Core 中转路径，真实 MinIO/CORS 验收和默认切流继续由 A7/AD-055 跟踪。
+- 2026-08-30：新增 Multipart 预签名 part URL 契约：Core 按用户归属和合法 part 编号批量签发绑定 `uploadId + partNumber` 的短期 MinIO URL，并同步 HTTP/Swagger contract 与回归测试；当前仍保持 Core 中转上传为默认路径，客户端直传切流、ETag 登记和真实 MinIO 验收继续由 A7/AD-055 跟踪。
+- 2026-08-30：新增默认 dry-run 的 `dipole-multipart-cleanup` 运维工具，按 MinIO 发起时间筛选 `message-files/` 下的未完成 Multipart，输出可审计 JSON；只有显式 `--execute --confirm` 才执行 Abort，单个清理失败会保留结果并返回失败状态，Redis session 扫描、指标和真实 MinIO 集成仍由 A7/AD-055 跟踪。
+- 2026-08-30：Web Multipart 上传接入客户端断点恢复基础：按文件指纹持久化 session，恢复前通过 Core 状态接口校验文件元数据并跳过已确认 part，完成或失败取消后清理本地 session；新增 helper 恢复测试，暂停/继续 UI 和预签名直传继续由 A7/AD-055 跟踪。
+- 2026-08-30：新增受所有权保护的 `GET /api/v1/files/uploads/{session_id}` Multipart 会话状态接口，返回已完成 part 的编号、ETag 和实际尺寸；该 contract 为后续暂停/断点恢复提供基础，当前仍保持现有 Core 中转上传路径。
+- 2026-08-30：Multipart part 增加 `X-Part-SHA256` 校验链路：现代 Web Crypto 可用时 Web 客户端发送摘要，Core 在保存 ETag/Size 前校验实际读取长度并恒时比较，校验失败不会登记可完成 part；旧客户端缺少该头时保持兼容，并同步更新 Swagger contract 与回归测试。
+- 2026-08-30：Multipart 完成阶段新增 part 实际大小校验；新 Redis 会话保存 `ETag + Size`，前置分片和最后分片必须匹配初始化文件尺寸，旧 ETag-only 会话在无法证明完整性时安全拒绝完成，并通过 Core File/Storage 定向测试。
+- 2026-08-30：Web 大文件 Multipart 上传新增可测试的有界并发与分片重试：默认 3 路并发、每个 part 最多 2 次指数退避重试，永久失败停止继续调度并沿用现有会话 Abort 回滚；暂停/断点恢复、预签名直传和 checksum 继续由 A7/AD-055 跟踪。
+- 2026-08-30：确认文件上传已支持 MinIO 原生 S3 Multipart Upload：Web 端超过 `4 MiB` 自动进入初始化、5 MiB 分片和完成流程，Core 使用 `NewMultipartUpload`、`PutObjectPart`、`CompleteMultipartUpload`，失败时执行 Abort；当前默认上限为 `50 MiB`，后续 A7 计划增强预签名直传、并发重试、断点恢复、checksum 和未完成 upload 清理。
+- 2026-08-30：将 Group、Conversation、Contact、Session domain-event decoder 下沉到对应 Core domain，删除生产代码对 `internal/compat/service` 的依赖，并新增门禁阻止兼容目录回流；事件校验和 Kafka 投递 contract 保持兼容。
+- 2026-08-30：同步修正服务边界文档中已过期的 Message/Sync 兼容入口描述，明确剩余兼容目录仅承担跨版本 domain-event decoder 辅助；不改变运行时 contract。
+- 2026-08-30：Message HTTP/WS 错误和 service 构造调用已统一迁移到 Message-owned contract，删除无调用者的 `internal/compat/service/message_compat.go`；兼容目录仅保留跨版本 domain-event decoder 辅助。
+- 2026-08-30：Message event payload、mutation 和 Search/Sync projection 调用已统一迁移到 Message domain，兼容文件重命名并缩减为仍有调用者的 Message service/错误 contract；Kafka、Search、Sync 和 Gateway 事件行为保持兼容。
+- 2026-08-30：Core Group 的 HTTP、DTO、Gateway Kafka 和 embedded 解码调用已统一迁移到 Core-owned Group domain contract，删除无调用者的 `internal/compat/service/group_compat.go`；群组 HTTP/Kafka contract 保持兼容。
+- 2026-08-30：Core File 的 HTTP、DTO 和测试调用已统一迁移到 Core-owned File domain contract，删除无调用者的 `internal/compat/service/file_compat.go`；文件上传、分片会话和下载内容 HTTP contract 保持兼容。
+- 2026-08-30：删除经全仓调用审计确认无调用者的 `internal/compat/service/sync_compat.go`，Sync domain 继续由 `internal/services/sync/domain` 唯一持有，其他兼容入口和回滚路径保持不变。
+- 2026-08-30：为 `internal/application` 增加 contract ownership 说明和架构测试，禁止跨服务契约层依赖服务实现、旧数据层及运维目录，为 SQLC 与多语言协议演进固定边界。
+- 2026-08-30：加强微服务 Compose 镜像隔离门禁，覆盖默认 Agent Runtime 和 Timeline repair profile 的独立镜像、构建上下文与服务入口；不改变默认 Go authority 或回滚路径。
+- 2026-08-30：前端 Pencil 设计门禁新增批准导出清单校验，覆盖基础页面、Search、Sync 和 Agent 评审资产；缺失或空导出会在 `npm run test:design` 阶段 fail closed，不改变运行时行为。
+- 2026-08-30：复核 SQLC-only 数据访问边界：`scripts/check-sqlc.sh`、服务布局门禁和 Go 全仓回归均通过；生产 Go 源码与 `go.mod`/`go.sum` 未发现 GORM/`AutoMigrate` 回流，`AD-010` 继续保持已解决。
+- 2026-08-30：复跑 `scripts/smoke-runtime-dependency-readiness.sh`，确认 readiness 探针超时修复在完整微服务拓扑中生效；Core/Message/Sync/Gateway 冷启动、Gateway assignment、Elasticsearch 故障降级/恢复和核心服务不重启均通过，临时资源自动清理。
+- 2026-08-30：为 `scripts/smoke-runtime-dependency-readiness.sh` 增加 `docker compose exec` 10 秒硬超时，避免 readiness 探针在 CLI/容器异常时无限等待；修复后完整 smoke 通过 Elasticsearch 停止/恢复、Search readiness 降级恢复、Gateway assignment 和核心服务容器不重启校验。
+- 2026-08-30：运行 `services/agent-runtime` 的 `context:calibrate` fixture，报告 `eligible=true`，覆盖中文、代码、Emoji、英文和 Tool schema 5 类样本，生成稳定的 evidence/report SHA-256；该结果仅验证校准器链路，fixture tokenizer 和合成语料不能替代真实候选模型切流证据。
+- 2026-08-30：执行 `scripts/check-agent-timeline-repair-alerts.sh` 与 `scripts/smoke-agent-timeline-repair-compose.sh`，验证 2 条 Prometheus 告警规则、migration v50、最小权限、worker readiness、启动前 pending intent 恢复和 event UUID 幂等重放；临时 Compose 资源自动清理，operator 灰度和默认生产开关保持关闭。
+- 2026-08-30：在 `master` 当前基线复跑 Agent Runtime 与服务级回归门禁：Vitest 通过 125 个测试文件（662 个测试，7 个文件/27 个测试按契约跳过），`typecheck`、生产构建、Go 全仓、服务布局和 Compose 契约均通过；本次验证仍只覆盖 shadow/协议边界，不改变 active authority、Temporal 共享联调或生产灰度开关。
+- 复跑 `scripts/smoke-sync-cassandra-primary-compose.sh`：隔离微服务 Compose 真实验证 Cassandra schema init、MySQL migration、Core/Message/Sync readiness 与 `primary=true` 配置；临时资源自动清理，生产 Cassandra 主读和共享环境灰度保持关闭。
+- 复跑 `scripts/smoke-cassandra-read-routing.sh`：在隔离 MySQL/Cassandra 与 migration v50 环境验证 Timeline 页面使用 Cassandra，并在 payload 损坏或记录缺失时按同一 locator 安全回退 MySQL；临时资源自动清理，生产主读开关保持关闭。
+- 将 Gateway HTTP/WS server、Agent 控制代理和 Search 边缘适配迁入 `internal/services/gateway/server/`，Gateway bootstrap 直接使用服务自有 server；共享 Gin handler 保留在 `internal/gateway/http/` 供兼容 Core server 复用。
+- 将 Core HTTP/WS server、静态资源和通知适配器迁入 `internal/services/core/server/`，独立 Core 与 embedded 兼容入口统一使用 Core-owned server；旧 `internal/server/` 路径退役，HTTP、WS 和回滚语义保持兼容。
+- 服务布局门禁新增 shared `internal/bootstrap` 根目录生产 Go 文件回流检查，embedded runtime 必须位于 `internal/bootstrap/embedded/runtime/`，独立服务 runtime 必须位于对应服务 bootstrap。
+- 将 embedded 聚合 runtime 的 Message persistence ownership 策略迁入 `internal/bootstrap/embedded/`，runtime 通过 embedded-owned API 判断 local/gRPC/remote 组合；独立服务的 ownership 与回滚语义保持不变。
+- 将 embedded 聚合 runtime 迁入 `internal/bootstrap/embedded/runtime/` 子包，避免 server 与 embedded composition 形成 import cycle；Core embedded 兼容入口、生命周期和回滚语义保持兼容。
+- 将 embedded Kafka managed topic 清单及其契约扫描测试迁入 `internal/bootstrap/embedded/`；聚合 runtime 通过 embedded-owned API 确保 topic，独立服务的 consumer ownership 不变。
+- 清理服务布局门禁中针对已删除 `internal/bootstrap/internal_rpc.go` 的无效检查，避免通过门禁时产生误导性 IO 警告；Core RPC 组合和 embedded Kafka 组合的当前归属与实际目录保持一致。
+- 将 embedded Kafka 组合及其兼容测试迁入 `internal/bootstrap/embedded/`，聚合 runtime 通过 `RegisterKafkaHandlers` 调用；Conversation projection、群初始化、旧 Eino 触发、日志 handler 和实时投递注册顺序保持兼容。
+- 迁移 `internal/bootstrap` RPC contract 测试至 `internal/services/core/rpc`，删除 Core RPC 组合的旧 bootstrap wrapper、类型别名和生产服务名常量；embedded runtime 直接持有 Core-owned RPC 类型，测试常量仅保留在测试辅助文件。
+- 将 Core RPC 组合逻辑迁入 `internal/services/core/rpc/`；embedded runtime 直接使用 Core-owned composition，旧 `internal/bootstrap/internal_rpc.go` 已完全移除，RPC 协议、mTLS、caller allowlist 和 Agent 方法权限保持兼容。
+- 修正文档中的 SQLC 仓储目录描述，使 `REPOSITORY-STRUCTURE.md` 与 `SERVICE-BOUNDARIES.md` 和结构门禁一致：`internal/data/mysql` 已退役，业务仓储由各服务 infrastructure 独占，`internal/platform/mysql` 仅保留共享数据库基础设施。
+- 复测 `master` 上 1000 成员 Conversation SQLC 批量 upsert：四个固定 workload 子项通过，batch 相比 serial 约降低 46.2 倍，并发对照约降低 286.9 倍；SQL 层锁等待增量为零。证据见 `benchmarks/ad005-conversation-batch-2026-08-30/`，端到端 P95、多轮统计和共享拓扑容量仍待完成。
 - 将仅供 embedded 聚合运行时使用的 Sync transport/shadow 实现迁入 `internal/bootstrap/embedded/`，共享 bootstrap 只保留生命周期编排；local/grpc/shadow 回退、设备 checkpoint 和同步查询语义保持不变。
 - 删除经调用审计确认无调用者的 shared `NewMessageRPCServer`、`DialMessageApplication` 和 `DialCoreMessageApplication` facade；Message RPC server/client 统一由 Message/Gateway/embedded 自有 bootstrap 持有。
 - 删除经调用审计确认仅被 contract 测试使用的 shared `NewSearchRPCServer` 与 `NewSyncRPCServer` facade；测试和生产入口统一使用 Search/Sync 自有 bootstrap。
@@ -1147,3 +2055,29 @@
 
 - 列出尚未解决且可能影响使用、开发或发布的问题。
 ```
+
+# 2026-08-30 Remote C1 200-member group fan-out baseline
+
+- 修复 `remote-dev.sh bench` 通过 SSH 传递可选参数时的空值左移；所有可选工具链、代理和 workload 参数使用显式哨兵并在远端解码，入口契约测试 `10/10` 通过。
+- Remote GPU provenance 门禁拦截旧候选镜像后，重建并绑定 `master` `959ac70d` 的 `dipole-server:c1-959ac70d`；正式入口完成 200 成员 `group_blast`，200/200 VU、10/10 消息 accepted/persisted、群 Inbox `2000` 行、1990/1990 回执、投递率 `100%`、HTTP failure `0%`。
+- 端到端平均/P50/P95/P99/最大值为 `126.84/121/167/169/169 ms`，Kafka 峰值 lag `1`、结算 lag `0`，Node1/2/3 CPU 峰值 `72.14%/20.99%/19.85%`；候选拓扑清理后无 `dipole-c1` 残留。热群 notify/pull、背压阈值和 broker/Redis 故障回切仍待独立验收。
+
+- 2026-08-30：扩展 `remote-dev.sh bench` workload 白名单，支持选择 `bench_group.js`、隔离 `PHONE_PREFIX`、warm-up、激活等待和 hot-group 阈值；默认仍使用原有 `bench.js` 和默认参数，入口契约测试 `10/10` 通过。
+- 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
+## Unreleased
+
+- 2026-09-01：Remote GPU 长驻 Agent Shadow 体验项目已将 Core 静态资源更新到 `6d274a54`；Core、Gateway 与 Timeline 路由健康，部署前端资产包含等待审批入口。复用候选 `.env` 的单服务更新现要求显式传入 `DIPOLE_INTERNAL_CERT_DIR`，避免 mTLS 证书 bind 路径漂移。
+- 2026-09-01：Agent Task Timeline 对具有 approval ID 的 `waiting_approval` 事件提供审批页入口，使创建任务后的只读轨迹可进入既有 owner-scoped Human-in-the-loop 页面；已完成和无效事件保持无操作入口。
+- 2026-09-01：开发工作流收敛为主轨道连续 worktree 与里程碑提交；Remote GPU 开发验证可直接更新本轨道已有 Compose project，缺失依赖可经 sudo 安装。仅在明确冲突时新建隔离项目，普通 Smoke、脚本试验和文档验证不再创建完整临时集群。
+- 2026-08-30：Remote development 新增 `web-sync-bundle` 动作，提交同步后在 Remote GPU 生成绑定 revision 的 shadow bundle；该动作不启动 Compose、不申请 GPU，归档输出位于 `/tmp` 并保持不可覆盖和 `0600` 权限。
+- 2026-08-30：A6 新增 `scripts/package-web-sync-bundle.sh`，将候选 Web 构建按完整 Git revision、显式 Sync 模式和稳定 tar 元数据打包为不可覆盖的 `web-sync-bundle.v1`；报告权限固定为 `0600`，源目录内输出会 fail-closed，便于后续观察会话复核 bundle 哈希。
+- 2026-08-30：Sync/Message Inbox ownership smoke 新增可选 `SMOKE_REPORT_FILE` 机器可读 receipt，绑定源码 revision、dirty 状态、projector/atomic 模式、非破坏性回滚动作、退出状态和临时容器清理结果；报告以 `0600` 权限原子写入，默认路径与 GPU 并行策略保持不变。
+- 2026-08-30：完成 Multipart fault-matrix 联合验收：Remote GPU 使用官方 Prometheus `3.5.0` `promtool` 通过告警规则与 firing timeline、确定性 Go contract、真实 MinIO/Redis reconciliation 和 Redis restart smoke；GPU 任务前后未变化，临时资源已清理。A7 默认预签名切流、生命周期指标和 Alertmanager 联调继续保留为后续工作。
+- 2026-08-30：新增 Multipart fault-matrix 聚合入口，统一执行 Go contract、promtool、真实 MinIO/Redis reconciliation 和 Redis restart smoke；Remote GPU 已通过确定性与两组真实存储矩阵，promtool 首次镜像拉取因 registry 无进展中止，未伪造完整矩阵结论。
+- 2026-08-30：预签名 Multipart Gateway 代理接入按客户端地址的文件上传限流；超限请求在进入 MinIO 代理前返回 `429` 与 `Retry-After`，允许请求保持签名校验和既有超时边界。
+- 2026-08-30：预签名 Multipart Gateway 代理新增可配置上游响应超时，默认 `30s`；上游对象存储超时返回 `502`，避免长连接无限占用，配置异常 fail-closed，relay 回退路径保持不变。
+- 2026-08-30：补充 Multipart HTTP Gateway 初始化限流回归：超过文件上传窗口时在 `initiate` 阶段返回 `429`，不调用 Core/MinIO，并保留 Retry 语义；普通上传和预签名代理默认路径保持不变。
+- 2026-08-30：补充 Multipart reconciliation 指标发布失败测试：模拟原子 rename 目标冲突，确认旧目标不被替换、临时文件自动清理；promtool 告警规则与默认指标路径保持不变。
+- 2026-08-30：Multipart cleanup 将 MinIO `NoSuchUpload` 竞态视为已收敛的幂等结果并记录为 `already_gone`；列举与 Abort 之间 upload 已被其他 worker 清理时不再误报失败，其他 Abort 错误仍保持 fail-closed。
+- 2026-08-30：Multipart 真实对账 smoke 增加可选 Redis 重启故障注入：在匹配状态建立后重启隔离 Redis，验证 metadata 丢失被识别、MinIO 未完成 upload 仍可清理、孤儿 Redis drift 仍可报告；默认 smoke 路径不变，GPU 任务可并行运行且测试资源自动清理。
+- **A7 Multipart cleanup fail-closed**：MinIO 未完成上传扫描错误现在会进入结构化报告并阻止清理命令成功返回，避免部分扫描被误判为完整生命周期证据。

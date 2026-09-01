@@ -6,12 +6,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformCache "github.com/JekYUlll/Dipole/internal/platform/cache"
@@ -23,8 +23,8 @@ var (
 )
 
 const (
-	AgentMCPResource  = "https://dipole.local/api/v1/agent/mcp"
-	AgentMCPReadScope = "dipole.agent.mcp.read"
+	AgentMCPResource  = application.AgentMCPResource
+	AgentMCPReadScope = application.AgentMCPReadScope
 
 	sessionTokenUse  = "session"
 	agentMCPTokenUse = "agent_mcp_access"
@@ -37,12 +37,7 @@ type tokenClaims struct {
 	TokenUse string `json:"token_use,omitempty"`
 }
 
-type TokenSession struct {
-	UserUUID  string
-	TokenID   string
-	IssuedAt  time.Time
-	ExpiresAt time.Time
-}
+type TokenSession = application.AgentTokenSession
 
 type TokenService struct{}
 
@@ -277,16 +272,11 @@ func audienceContains(audience jwt.ClaimStrings, required string) bool {
 }
 
 func AgentMCPResourceIdentifier() string {
-	resource := strings.TrimSpace(config.AuthConfig().AgentMCPResource)
-	if resource == "" {
-		return AgentMCPResource
-	}
-	return resource
+	return application.AgentMCPResourceIdentifier(config.AuthConfig().AgentMCPResource)
 }
 
 func ValidateAgentMCPResource(resource string) error {
-	parsed, err := url.Parse(strings.TrimSpace(resource))
-	if err != nil || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.Host == "" || parsed.Fragment != "" || parsed.User != nil || parsed.RawQuery != "" {
+	if err := application.ValidateAgentMCPResource(resource); err != nil {
 		return ErrInvalidAgentMCPGrant
 	}
 	return nil

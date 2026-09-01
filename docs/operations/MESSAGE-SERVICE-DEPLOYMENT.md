@@ -64,3 +64,7 @@ DIPOLE_MESSAGE_ENFORCE_DB_PERMISSIONS=true
 若问题仅发生在 Remote 查询，可先关闭 `message.shadow_queries`；若证书或网络配置失败，修复前保持 Local，不放宽明文非 loopback 限制。
 
 隔离候选拓扑可以使用 `SMOKE_INBOX_PROJECTOR=1 SMOKE_MESSAGE_FLOW=1 scripts/smoke-microservice-isolated-images.sh` 加载 `deploy/microservices/inbox-projector.yml`，验证 Gateway 发送后由 Sync projector 异步物化目标用户 Inbox。该参数只作用于独立 smoke project，退出时自动清理；默认 smoke 仍使用 atomic 路径。成功运行会生成权限为 `0600` 的 `/tmp/<compose-project>-receipt.json`，也可以通过 `SMOKE_REPORT_FILE` 指定归档位置；receipt 记录源码 revision、dirty 状态、模式和无数据迁移回滚动作。
+
+`SMOKE_MESSAGE_RESTART_SERVICE=core|gateway|message|sync` 只能与 `SMOKE_MESSAGE_FLOW=1` 一起使用。它在首次消息持久化后重启一个候选服务，等待 readiness 后以相同 `client_message_id` 重放，并将 `message_recovery.message_count`、`outbox_count` 与 `inbox_count` 写入 receipt。三个计数均为 `1` 才通过；该结果只代表指定服务、提交和隔离负载下的持久化后恢复，不可外推为所有故障点的零副作用结论。
+
+若 Gateway 或服务 readiness 未收敛，smoke 会输出该服务的有限状态和最后 80 行容器日志；首次消息未持久化时会输出最后 80 行 `wscli` 日志。脚本仍会清理候选项目，排查时可显式设置 `KEEP_ON_FAILURE=1` 保留资源，并在完成后使用同一 Compose project 执行 `down -v --remove-orphans`。

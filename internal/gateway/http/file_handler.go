@@ -12,28 +12,47 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/dto/httpdto"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 )
 
 type fileService interface {
 	UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
-	InitiateMultipartUpload(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error)
-	UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error
+	InitiateMultipartUpload(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
+	GetMultipartUploadStatus(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error)
+	UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error
 	CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	AbortMultipartUpload(uploaderUUID, sessionID string) error
-	CreateDownloadLink(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error)
-	OpenContent(currentUserUUID, fileUUID string) (*service.FileContentResult, error)
+	CreateDownloadLink(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error)
+	OpenContent(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error)
+}
+
+type multipartPresignService interface {
+	PresignMultipartParts(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error)
+}
+
+type multipartPartRegisterService interface {
+	RegisterMultipartPart(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error
+}
+
+type multipartPolicyService interface {
+	MultipartUploadPolicy() corefile.MultipartUploadPolicy
+}
+
+type ownedFileDirectoryService interface {
+	ListOwnedFiles(uploaderUUID, beforeFileUUID string, limit int) (*application.OwnedFilePage, error)
 }
 
 type FileHandler struct {
 	service        fileService
 	maxUploadBytes int64
 	limiter        fileRateLimiter
+	directory      ownedFileDirectoryService
 }
 
 type fileRateLimiter interface {
@@ -54,6 +73,52 @@ func newFileHandler(service fileService, maxUploadBytes int64) *FileHandler {
 func (h *FileHandler) WithLimiter(limiter fileRateLimiter) *FileHandler {
 	h.limiter = limiter
 	return h
+}
+
+// WithDirectory wires the Core-owned file projection. A nil dependency keeps
+// the read endpoint fail-closed while upload/download compatibility remains.
+func (h *FileHandler) WithDirectory(directory ownedFileDirectoryService) *FileHandler {
+	h.directory = directory
+	return h
+}
+
+// ListOwned godoc
+// @Summary 列出当前用户上传的文件
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Param cursor query string false "上一页最后一个文件 ID"
+// @Param limit query int false "每页数量，1-50"
+// @Success 200 {object} OwnedFileDirectoryResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Router /files [get]
+func (h *FileHandler) ListOwned(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	if h.directory == nil {
+		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "owner file directory is unavailable")
+		return
+	}
+	limit := 30
+	if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 50 {
+			ErrorWithCode(c, http.StatusBadRequest, code.FileDirectoryQueryInvalid, "file directory limit must be between 1 and 50")
+			return
+		}
+		limit = parsed
+	}
+	page, err := h.directory.ListOwnedFiles(currentUser.UUID, strings.TrimSpace(c.Query("cursor")), limit)
+	if err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.FileDirectoryQueryInvalid, "file directory cursor is invalid")
+		return
+	}
+	Success(c, httpdto.ToOwnedFileDirectoryResponse(page.Files, page.NextCursor, page.HasMore))
 }
 
 // Upload godoc
@@ -107,11 +172,11 @@ func (h *FileHandler) Upload(c *gin.Context) {
 	file, err := h.service.UploadMessageFile(currentUser.UUID, fileHeader)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrFileMissing):
+		case errors.Is(err, corefile.ErrFileMissing):
 			ErrorWithCode(c, http.StatusBadRequest, code.FileMissing, "file is required")
-		case errors.Is(err, service.ErrFileTooLarge):
+		case errors.Is(err, corefile.ErrFileTooLarge):
 			ErrorWithCode(c, http.StatusBadRequest, code.FileTooLarge, "file is too large")
-		case errors.Is(err, service.ErrFileStorageUnavailable):
+		case errors.Is(err, corefile.ErrFileStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -145,13 +210,13 @@ func (h *FileHandler) Download(c *gin.Context) {
 	result, err := h.service.CreateDownloadLink(currentUser.UUID, c.Param("file_id"))
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrFileNotFound):
+		case errors.Is(err, corefile.ErrFileNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.FileNotFound, "file not found")
-		case errors.Is(err, service.ErrFilePermissionDenied):
+		case errors.Is(err, corefile.ErrFilePermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.FilePermissionDenied, "file permission denied")
-		case errors.Is(err, service.ErrFileExpired):
+		case errors.Is(err, corefile.ErrFileExpired):
 			ErrorWithCode(c, http.StatusForbidden, code.FileExpired, "file is expired")
-		case errors.Is(err, service.ErrFileStorageUnavailable):
+		case errors.Is(err, corefile.ErrFileStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -185,13 +250,13 @@ func (h *FileHandler) Content(c *gin.Context) {
 	result, err := h.service.OpenContent(currentUser.UUID, c.Param("file_id"))
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrFileNotFound):
+		case errors.Is(err, corefile.ErrFileNotFound):
 			ErrorWithCode(c, http.StatusNotFound, code.FileNotFound, "file not found")
-		case errors.Is(err, service.ErrFilePermissionDenied):
+		case errors.Is(err, corefile.ErrFilePermissionDenied):
 			ErrorWithCode(c, http.StatusForbidden, code.FilePermissionDenied, "file permission denied")
-		case errors.Is(err, service.ErrFileExpired):
+		case errors.Is(err, corefile.ErrFileExpired):
 			ErrorWithCode(c, http.StatusForbidden, code.FileExpired, "file is expired")
-		case errors.Is(err, service.ErrFileStorageUnavailable):
+		case errors.Is(err, corefile.ErrFileStorageUnavailable):
 			ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 		default:
 			ErrorWithCode(c, http.StatusInternalServerError, code.Internal, err.Error())
@@ -260,10 +325,11 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.InitiateMultipartUpload(currentUser.UUID, service.InitiateMultipartUploadInput{
+	result, err := h.service.InitiateMultipartUpload(currentUser.UUID, corefile.InitiateMultipartUploadInput{
 		FileName:    req.FileName,
 		FileSize:    req.FileSize,
 		ContentType: req.ContentType,
+		FileSHA256:  req.FileSHA256,
 	})
 	if err != nil {
 		h.handleMultipartError(c, err)
@@ -271,6 +337,141 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 	}
 
 	Success(c, httpdto.ToFileMultipartInitiateResponse(result))
+}
+
+// MultipartPolicy godoc
+// @Summary 获取分片上传策略
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} SuccessEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Router /files/uploads/policy [get]
+func (h *FileHandler) MultipartPolicy(c *gin.Context) {
+	if _, ok := middleware.CurrentUser(c); !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	provider, ok := h.service.(multipartPolicyService)
+	if !ok {
+		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "multipart policy is unavailable")
+		return
+	}
+	Success(c, provider.MultipartUploadPolicy())
+}
+
+// MultipartStatus godoc
+// @Summary 查询分片上传状态
+// @Tags File
+// @Security BearerAuth
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Success 200 {object} FileMultipartStatusResponseEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id} [get]
+func (h *FileHandler) MultipartStatus(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+
+	result, err := h.service.GetMultipartUploadStatus(currentUser.UUID, c.Param("session_id"))
+	if err != nil {
+		h.handleMultipartError(c, err)
+		return
+	}
+	Success(c, httpdto.ToFileMultipartStatusResponse(result))
+}
+
+// PresignMultipartParts godoc
+// @Summary 签发分片直传 URL
+// @Tags File
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Param request body httpdto.FileMultipartPresignRequest true "分片编号"
+// @Success 200 {object} MultipartPresignResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id}/parts/presign [post]
+func (h *FileHandler) PresignMultipartParts(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	presigner, ok := h.service.(multipartPresignService)
+	if !ok {
+		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "multipart presigning is unavailable")
+		return
+	}
+	var req httpdto.FileMultipartPresignRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "invalid multipart presign request")
+		return
+	}
+	result, err := presigner.PresignMultipartParts(currentUser.UUID, c.Param("session_id"), req.PartNumbers)
+	if err != nil {
+		h.handleMultipartError(c, err)
+		return
+	}
+	Success(c, httpdto.ToFileMultipartPresignResponse(result))
+}
+
+// RegisterMultipartPart godoc
+// @Summary 登记已直传分片
+// @Tags File
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param session_id path string true "上传会话 ID"
+// @Param part_number path int true "分片编号"
+// @Param request body httpdto.FileMultipartPartRegisterRequest true "分片 ETag 和尺寸"
+// @Success 200 {object} MultipartPartResponseEnvelope
+// @Failure 400 {object} ErrorEnvelope
+// @Failure 401 {object} ErrorEnvelope
+// @Failure 403 {object} ErrorEnvelope
+// @Failure 404 {object} ErrorEnvelope
+// @Failure 503 {object} ErrorEnvelope
+// @Failure 500 {object} ErrorEnvelope
+// @Router /files/uploads/{session_id}/parts/{part_number}/register [post]
+func (h *FileHandler) RegisterMultipartPart(c *gin.Context) {
+	currentUser, ok := middleware.CurrentUser(c)
+	if !ok {
+		ErrorWithCode(c, http.StatusUnauthorized, code.AuthTokenRequired, "authorization token is required")
+		return
+	}
+	registrar, ok := h.service.(multipartPartRegisterService)
+	if !ok {
+		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "multipart part registration is unavailable")
+		return
+	}
+	partNumber, err := strconv.Atoi(c.Param("part_number"))
+	if err != nil || partNumber <= 0 {
+		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "invalid multipart part number")
+		return
+	}
+	var req httpdto.FileMultipartPartRegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "invalid multipart part registration")
+		return
+	}
+	if err := registrar.RegisterMultipartPart(currentUser.UUID, c.Param("session_id"), partNumber, corefile.RegisterMultipartPartInput{ETag: req.ETag, Size: req.Size}); err != nil {
+		h.handleMultipartError(c, err)
+		return
+	}
+	Success(c, gin.H{"part_number": partNumber})
 }
 
 // UploadPart godoc
@@ -281,6 +482,7 @@ func (h *FileHandler) InitiateMultipart(c *gin.Context) {
 // @Produce json
 // @Param session_id path string true "上传会话 ID"
 // @Param part_number path int true "分片编号"
+// @Param X-Part-SHA256 header string false "分片 SHA-256（十六进制）"
 // @Success 200 {object} MultipartPartResponseEnvelope
 // @Failure 400 {object} ErrorEnvelope
 // @Failure 401 {object} ErrorEnvelope
@@ -308,7 +510,7 @@ func (h *FileHandler) UploadPart(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UploadMultipartPart(currentUser.UUID, sessionID, partNumber, contentLength, c.Request.Body); err != nil {
+	if err := h.service.UploadMultipartPart(currentUser.UUID, sessionID, partNumber, contentLength, c.GetHeader("X-Part-SHA256"), c.Request.Body); err != nil {
 		h.handleMultipartError(c, err)
 		return
 	}
@@ -373,19 +575,21 @@ func (h *FileHandler) AbortMultipart(c *gin.Context) {
 
 func (h *FileHandler) handleMultipartError(c *gin.Context, err error) {
 	switch {
-	case errors.Is(err, service.ErrFileMissing):
+	case errors.Is(err, corefile.ErrFileMissing):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileMissing, "file is required")
-	case errors.Is(err, service.ErrFileTooLarge):
+	case errors.Is(err, corefile.ErrFileTooLarge):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileTooLarge, "file is too large")
-	case errors.Is(err, service.ErrFilePermissionDenied):
+	case errors.Is(err, corefile.ErrFilePermissionDenied):
 		ErrorWithCode(c, http.StatusForbidden, code.FilePermissionDenied, "file permission denied")
-	case errors.Is(err, service.ErrMultipartSessionNotFound):
+	case errors.Is(err, corefile.ErrMultipartSessionNotFound):
 		ErrorWithCode(c, http.StatusNotFound, code.FileMultipartSessionNotFound, "multipart upload session not found")
-	case errors.Is(err, service.ErrMultipartSessionInvalid):
+	case errors.Is(err, corefile.ErrMultipartSessionInvalid):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartSessionInvalid, "multipart upload session is invalid")
-	case errors.Is(err, service.ErrMultipartPartInvalid):
+	case errors.Is(err, corefile.ErrMultipartPartInvalid):
 		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "multipart upload part is invalid")
-	case errors.Is(err, service.ErrFileStorageUnavailable):
+	case errors.Is(err, corefile.ErrMultipartChecksumRequired), errors.Is(err, corefile.ErrMultipartChecksumMismatch):
+		ErrorWithCode(c, http.StatusBadRequest, code.FileMultipartPartInvalid, "multipart file checksum is invalid")
+	case errors.Is(err, corefile.ErrFileStorageUnavailable):
 		ErrorWithCode(c, http.StatusServiceUnavailable, code.FileStorageUnavailable, "file storage is unavailable")
 	default:
 		// Preserve current response envelope even when the lower layer returns a

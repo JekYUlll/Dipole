@@ -21,6 +21,7 @@ export interface KafkaConsumerFactoryPort {
 export interface KafkaShadowConsumerConfig {
   readonly groupId: string;
   readonly topic: string;
+  readonly runtimeMode?: "shadow" | "active";
   readonly startupAttempts?: number;
   readonly startupRetryDelayMs?: number;
 }
@@ -104,8 +105,10 @@ export class KafkaShadowConsumer {
     private readonly failureRouter?: KafkaFailureRouter
   ) {
     const groupId = config.groupId.trim();
-    if (!groupId.startsWith("dipole-agent-shadow-")) {
-      throw new Error("Kafka shadow consumer requires an isolated dipole-agent-shadow-* group");
+    const runtimeMode = config.runtimeMode ?? "shadow";
+    const requiredPrefix = `dipole-agent-${runtimeMode}-`;
+    if (!groupId.startsWith(requiredPrefix)) {
+      throw new Error(`Kafka ${runtimeMode} consumer requires an isolated ${requiredPrefix}* group`);
     }
     if (!config.topic.trim()) {
       throw new Error("Kafka shadow consumer topic is required");

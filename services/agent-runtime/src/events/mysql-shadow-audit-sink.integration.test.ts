@@ -63,6 +63,7 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
       const name = ({ 29: "agent_memories", 38: "agent_memory_owner_governance", 39: "agent_memory_corrections", 40: "agent_memory_content_erasure", 41: "agent_memory_task_lineage", 42: "agent_memory_pre_model_lineage" } as const)[version as 29 | 38 | 39 | 40 | 41 | 42];
       await pool.query(await readFile(new URL(`../../../../db/migrations/${String(version).padStart(6, "0")}_${name}.up.sql`, import.meta.url), "utf8"));
     }
+    await pool.query(await readFile(new URL("../../../../db/migrations/000055_agent_shadow_step_authorization.up.sql", import.meta.url), "utf8"));
     await pool.query("INSERT INTO agent_memories (memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status, resource_type, resource_id, content, priority, source_type, source_id, valid_from, memory_root_uuid, memory_version) VALUES ('MEM-PLAN-1', 'dipole', 'U100', 'UAI', 'semantic', 'active', 'conversation', 'group:G1', 'private fact', 80, 'message', 'M1', UTC_TIMESTAMP(3), 'MEM-PLAN-1', 1)");
     await pool.query("INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal) VALUES ('TASK-PLAN-1', 'DEF-PLAN-1', 1, 'dipole', 'U100', 'UAI', 'running', 'message.direct.created', 'M-PLAN-1', 'test plan')");
   });
@@ -198,7 +199,12 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
     const retry = await sink.claimStep(record.taskId, 1, 60_000);
     if (retry.outcome !== "claimed") throw new Error("expected retry Step owner");
     await expect(sink.completeStep(record.taskId, 1, first.token, { stale: true })).rejects.toThrow(/stale/);
+    await sink.recordAuthorization(record.taskId, 1, retry.token, { resourceType: "conversation", resourceId: "*", action: "list" }, "allowed");
     await sink.completeStep(record.taskId, 1, retry.token, { conversations: [] });
+    const [authorization] = await pool.query<Array<RowDataPacket & { authorization_resource_type: string; authorization_resource_id: string; authorization_action: string; authorization_decision: string }>>(
+      "SELECT authorization_resource_type, authorization_resource_id, authorization_action, authorization_decision FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = 1", [record.taskId]
+    );
+    expect(authorization).toEqual([{ authorization_resource_type: "conversation", authorization_resource_id: "*", authorization_action: "list", authorization_decision: "allowed" }]);
     await expect(sink.claimStep(record.taskId, 1, 60_000)).resolves.toEqual({ outcome: "completed" });
   });
 

@@ -12,22 +12,42 @@ import { loadShadowRuntimeConfig } from "./shadow-runtime.js";
 describe("external MCP production Shadow startup", () => {
   it("keeps disabled configuration free of process side effects", async () => {
     const startProcess = vi.fn<ExternalMcpProductionShadowSeams["startProcess"]>();
+
     await expect(startExternalMcpProductionShadow(
       {}, shadow(false), temporal(false, false), foundationAgentTaskActivities, {}, undefined, { startProcess }
     )).resolves.toBeUndefined();
+
     expect(startProcess).not.toHaveBeenCalled();
   });
 
-  it("rejects partial enablement before process construction", () => {
+  it("does not inspect residual profiles while the external MCP switch is off", () => {
+    const env = { DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false" } as NodeJS.ProcessEnv;
+    const profileGetter = vi.fn(() => {
+      throw new Error("disabled startup inspected residual external MCP profiles");
+    });
+    Object.defineProperty(env, "DIPOLE_AGENT_EXTERNAL_MCP_PROFILES", { get: profileGetter });
+
+    expect(validateExternalMcpProductionShadowMode(env, shadow(false), temporal(false, false))).toBe(false);
+    expect(profileGetter).not.toHaveBeenCalled();
+  });
+
+  it("rejects every partial configuration before process construction", async () => {
     const cases = [
       [enabledEnv(), shadow(false), temporal(true)],
       [enabledEnv(), shadow(true, "direct_target"), temporal(true)],
       [{}, shadow(true), temporal(true)],
       [enabledEnv(), shadow(true), temporal(false)]
     ] as const;
+
     for (const [env, shadowConfig, temporalConfig] of cases) {
+      const startProcess = vi.fn<ExternalMcpProductionShadowSeams["startProcess"]>();
+
       expect(() => validateExternalMcpProductionShadowMode(env, shadowConfig, temporalConfig))
         .toThrow(/^External MCP production Shadow mode configuration is invalid$/);
+      await expect(startExternalMcpProductionShadow(
+        env, shadowConfig, temporalConfig, foundationAgentTaskActivities, {}, undefined, { startProcess }
+      )).rejects.toThrow(/^External MCP production Shadow mode configuration is invalid$/);
+      expect(startProcess).not.toHaveBeenCalled();
     }
   });
 

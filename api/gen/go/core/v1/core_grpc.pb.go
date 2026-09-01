@@ -25,6 +25,7 @@ const (
 	CoreCapabilityService_GetGroupMember_FullMethodName             = "/dipole.core.v1.CoreCapabilityService/GetGroupMember"
 	CoreCapabilityService_ListGroupMembers_FullMethodName           = "/dipole.core.v1.CoreCapabilityService/ListGroupMembers"
 	CoreCapabilityService_GetOwnedFile_FullMethodName               = "/dipole.core.v1.CoreCapabilityService/GetOwnedFile"
+	CoreCapabilityService_ListOwnedFiles_FullMethodName             = "/dipole.core.v1.CoreCapabilityService/ListOwnedFiles"
 	CoreCapabilityService_ListSearchConversationKeys_FullMethodName = "/dipole.core.v1.CoreCapabilityService/ListSearchConversationKeys"
 )
 
@@ -38,6 +39,7 @@ type CoreCapabilityServiceClient interface {
 	GetGroupMember(ctx context.Context, in *GetGroupMemberRequest, opts ...grpc.CallOption) (*GetGroupMemberResponse, error)
 	ListGroupMembers(ctx context.Context, in *ListGroupMembersRequest, opts ...grpc.CallOption) (*ListGroupMembersResponse, error)
 	GetOwnedFile(ctx context.Context, in *GetOwnedFileRequest, opts ...grpc.CallOption) (*GetOwnedFileResponse, error)
+	ListOwnedFiles(ctx context.Context, in *ListOwnedFilesRequest, opts ...grpc.CallOption) (*ListOwnedFilesResponse, error)
 	ListSearchConversationKeys(ctx context.Context, in *ListSearchConversationKeysRequest, opts ...grpc.CallOption) (*ListSearchConversationKeysResponse, error)
 }
 
@@ -109,6 +111,16 @@ func (c *coreCapabilityServiceClient) GetOwnedFile(ctx context.Context, in *GetO
 	return out, nil
 }
 
+func (c *coreCapabilityServiceClient) ListOwnedFiles(ctx context.Context, in *ListOwnedFilesRequest, opts ...grpc.CallOption) (*ListOwnedFilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListOwnedFilesResponse)
+	err := c.cc.Invoke(ctx, CoreCapabilityService_ListOwnedFiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *coreCapabilityServiceClient) ListSearchConversationKeys(ctx context.Context, in *ListSearchConversationKeysRequest, opts ...grpc.CallOption) (*ListSearchConversationKeysResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListSearchConversationKeysResponse)
@@ -129,6 +141,7 @@ type CoreCapabilityServiceServer interface {
 	GetGroupMember(context.Context, *GetGroupMemberRequest) (*GetGroupMemberResponse, error)
 	ListGroupMembers(context.Context, *ListGroupMembersRequest) (*ListGroupMembersResponse, error)
 	GetOwnedFile(context.Context, *GetOwnedFileRequest) (*GetOwnedFileResponse, error)
+	ListOwnedFiles(context.Context, *ListOwnedFilesRequest) (*ListOwnedFilesResponse, error)
 	ListSearchConversationKeys(context.Context, *ListSearchConversationKeysRequest) (*ListSearchConversationKeysResponse, error)
 	mustEmbedUnimplementedCoreCapabilityServiceServer()
 }
@@ -157,6 +170,9 @@ func (UnimplementedCoreCapabilityServiceServer) ListGroupMembers(context.Context
 }
 func (UnimplementedCoreCapabilityServiceServer) GetOwnedFile(context.Context, *GetOwnedFileRequest) (*GetOwnedFileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOwnedFile not implemented")
+}
+func (UnimplementedCoreCapabilityServiceServer) ListOwnedFiles(context.Context, *ListOwnedFilesRequest) (*ListOwnedFilesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListOwnedFiles not implemented")
 }
 func (UnimplementedCoreCapabilityServiceServer) ListSearchConversationKeys(context.Context, *ListSearchConversationKeysRequest) (*ListSearchConversationKeysResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSearchConversationKeys not implemented")
@@ -290,6 +306,24 @@ func _CoreCapabilityService_GetOwnedFile_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCapabilityService_ListOwnedFiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOwnedFilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCapabilityServiceServer).ListOwnedFiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCapabilityService_ListOwnedFiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCapabilityServiceServer).ListOwnedFiles(ctx, req.(*ListOwnedFilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _CoreCapabilityService_ListSearchConversationKeys_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListSearchConversationKeysRequest)
 	if err := dec(in); err != nil {
@@ -338,6 +372,10 @@ var CoreCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOwnedFile",
 			Handler:    _CoreCapabilityService_GetOwnedFile_Handler,
+		},
+		{
+			MethodName: "ListOwnedFiles",
+			Handler:    _CoreCapabilityService_ListOwnedFiles_Handler,
 		},
 		{
 			MethodName: "ListSearchConversationKeys",

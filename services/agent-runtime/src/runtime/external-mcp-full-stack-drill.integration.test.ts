@@ -244,8 +244,8 @@ function runtimeConfig(database: string, topicPrefix: string, groupId: string): 
     groupId, topic: "message.direct.created", topicPrefix, failureMaxAttempts: 2, topicPartitions: 1,
     topicReplicationFactor: 1, tenantId: "dipole", agentUuid: "UAI-DRILL", triggerMode: "subscription",
     subscriptionShadowEnabled: false,
-    ledgerMode: "mysql", leaseMs: 5_000, modelMode: "metadata", modelRoutes: [], contextCompilerVersion: "v1",
-    memoryEnabled: false, modelContextProfiles: [], modelBudget: { maxCalls: 1, totalTimeoutMs: 1_000, maxOutputTokensPerCall: 128 },
+    ledgerMode: "mysql", leaseMs: 5_000, modelMode: "metadata", modelProvider: { kind: "disabled", name: "", baseURL: "", apiKey: "", supportsStructuredOutputs: false, outputMode: "json_schema", thinkingMode: "provider_default" }, modelRoutes: [], contextCompilerVersion: "v1",
+    memoryEnabled: false, retrievalEnabled: false, retrievalContextEnabled: false, interactiveMessageWritesEnabled: false, modelContextProfiles: [], modelBudget: { maxCalls: 1, totalTimeoutMs: 1_000, maxOutputTokensPerCall: 128 },
     capabilityRpc: { enabled: true, target: requiredEnv("DIPOLE_TEST_AGENT_RPC_TARGET"),
       secret: requiredEnv("DIPOLE_TEST_AGENT_RPC_SECRET"), timeoutMs: 2_000, tls: {
       enabled: true, caFile: requiredEnv("DIPOLE_TEST_AGENT_RPC_CA_FILE"),

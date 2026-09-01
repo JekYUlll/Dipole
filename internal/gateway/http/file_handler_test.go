@@ -13,24 +13,45 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/code"
-	"github.com/JekYUlll/Dipole/internal/compat/service"
 	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
+	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 )
 
 type stubFileService struct {
 	uploadFn            func(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error)
-	initiateMultipartFn func(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error)
-	uploadPartFn        func(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error
+	initiateMultipartFn func(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error)
+	statusMultipartFn   func(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error)
+	presignMultipartFn  func(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error)
+	registerMultipartFn func(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error
+	uploadPartFn        func(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error
 	completeMultipartFn func(uploaderUUID, sessionID string) (*model.UploadedFile, error)
 	abortMultipartFn    func(uploaderUUID, sessionID string) error
-	downloadFn          func(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error)
-	openContentFn       func(currentUserUUID, fileUUID string) (*service.FileContentResult, error)
+	downloadFn          func(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error)
+	openContentFn       func(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error)
 }
 
 type stubFileLimiter struct {
 	allowFileUploadFn func(userUUID string) (bool, time.Duration)
+}
+
+type stubOwnedFileDirectory struct {
+	listFn func(uploaderUUID, cursor string, limit int) (*application.OwnedFilePage, error)
+}
+
+func (s stubOwnedFileDirectory) ListOwnedFiles(uploaderUUID, cursor string, limit int) (*application.OwnedFilePage, error) {
+	return s.listFn(uploaderUUID, cursor, limit)
+}
+
+type policyFileService struct {
+	*stubFileService
+	policy corefile.MultipartUploadPolicy
+}
+
+func (s *policyFileService) MultipartUploadPolicy() corefile.MultipartUploadPolicy {
+	return s.policy
 }
 
 func (s *stubFileService) UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
@@ -40,32 +61,53 @@ func (s *stubFileService) UploadMessageFile(uploaderUUID string, header *multipa
 	return s.uploadFn(uploaderUUID, header)
 }
 
-func (s *stubFileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error) {
+func (s *stubFileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error) {
 	if s.downloadFn == nil {
 		return nil, nil
 	}
 	return s.downloadFn(currentUserUUID, fileUUID)
 }
 
-func (s *stubFileService) OpenContent(currentUserUUID, fileUUID string) (*service.FileContentResult, error) {
+func (s *stubFileService) OpenContent(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error) {
 	if s.openContentFn == nil {
 		return nil, nil
 	}
 	return s.openContentFn(currentUserUUID, fileUUID)
 }
 
-func (s *stubFileService) InitiateMultipartUpload(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error) {
+func (s *stubFileService) InitiateMultipartUpload(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error) {
 	if s.initiateMultipartFn == nil {
 		return nil, nil
 	}
 	return s.initiateMultipartFn(uploaderUUID, input)
 }
 
-func (s *stubFileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error {
+func (s *stubFileService) GetMultipartUploadStatus(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error) {
+	if s.statusMultipartFn == nil {
+		return nil, nil
+	}
+	return s.statusMultipartFn(uploaderUUID, sessionID)
+}
+
+func (s *stubFileService) PresignMultipartParts(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error) {
+	if s.presignMultipartFn == nil {
+		return nil, nil
+	}
+	return s.presignMultipartFn(uploaderUUID, sessionID, partNumbers)
+}
+
+func (s *stubFileService) RegisterMultipartPart(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error {
+	if s.registerMultipartFn == nil {
+		return nil
+	}
+	return s.registerMultipartFn(uploaderUUID, sessionID, partNumber, input)
+}
+
+func (s *stubFileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
 	if s.uploadPartFn == nil {
 		return nil
 	}
-	return s.uploadPartFn(uploaderUUID, sessionID, partNumber, contentLength, body)
+	return s.uploadPartFn(uploaderUUID, sessionID, partNumber, contentLength, partSHA256, body)
 }
 
 func (s *stubFileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error) {
@@ -88,6 +130,87 @@ func (s *stubFileLimiter) AllowFileUpload(userUUID string) (bool, time.Duration)
 	}
 
 	return s.allowFileUploadFn(userUUID)
+}
+
+func TestFileHandlerMultipartPolicy(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&policyFileService{
+		stubFileService: &stubFileService{},
+		policy: corefile.MultipartUploadPolicy{
+			SchemaVersion:              "dipole.multipart-upload.policy.v1",
+			PolicyVersion:              "v1",
+			Mode:                       "relay",
+			FallbackMode:               "relay",
+			DirectUploadThresholdBytes: 4 * 1024 * 1024,
+			MaxFileSizeBytes:           50 * 1024 * 1024,
+			ChunkSizeBytes:             5 * 1024 * 1024,
+			MaxConcurrency:             3,
+			MaxRetries:                 2,
+			RetryDelayMS:               250,
+			PresignURLTTLSeconds:       900,
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files/uploads/policy", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.MultipartPolicy(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	var response struct {
+		Code int                            `json:"code"`
+		Data corefile.MultipartUploadPolicy `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != code.Success || response.Data.Mode != "relay" || response.Data.MaxConcurrency != 3 {
+		t.Fatalf("unexpected Multipart policy response: %+v", response)
+	}
+}
+
+func TestFileHandlerListsOnlyCurrentOwnerProjection(t *testing.T) {
+	t.Parallel()
+	handler := newFileHandler(&stubFileService{}, 50*1024*1024).WithDirectory(stubOwnedFileDirectory{
+		listFn: func(owner, cursor string, limit int) (*application.OwnedFilePage, error) {
+			if owner != "U100" || cursor != "F200" || limit != 30 {
+				t.Fatalf("unexpected owner directory query: %s %s %d", owner, cursor, limit)
+			}
+			return &application.OwnedFilePage{Files: []*model.UploadedFile{{
+				UUID: "F100", UploaderUUID: owner, FileName: "handoff.md", FileSize: 42,
+				ContentType: "text/markdown", ObjectKey: "must-not-leak", URL: "https://must-not-leak",
+			}}, NextCursor: "F100", HasMore: true}, nil
+		},
+	})
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files?cursor=F200", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	handler.ListOwned(context)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	if strings.Contains(recorder.Body.String(), "must-not-leak") || !strings.Contains(recorder.Body.String(), "/api/v1/files/F100/download") {
+		t.Fatalf("unexpected owner directory response: %s", recorder.Body.String())
+	}
+}
+
+func TestFileHandlerOwnerDirectoryFailsClosedWithoutCoreProjection(t *testing.T) {
+	t.Parallel()
+	handler := newFileHandler(&stubFileService{}, 50*1024*1024)
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files", nil)
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+	handler.ListOwned(context)
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status 503, got %d", recorder.Code)
+	}
 }
 
 func TestFileHandlerUploadSuccess(t *testing.T) {
@@ -173,11 +296,11 @@ func TestFileHandlerDownloadSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := newFileHandler(&stubFileService{
-		downloadFn: func(currentUserUUID, fileUUID string) (*service.FileDownloadResult, error) {
+		downloadFn: func(currentUserUUID, fileUUID string) (*corefile.FileDownloadResult, error) {
 			if currentUserUUID != "U100" || fileUUID != "F100" {
 				t.Fatalf("unexpected download args: %s %s", currentUserUUID, fileUUID)
 			}
-			return &service.FileDownloadResult{
+			return &corefile.FileDownloadResult{
 				FileID:      "F100",
 				FileName:    "hello.txt",
 				FileSize:    5,
@@ -204,11 +327,11 @@ func TestFileHandlerContentSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := newFileHandler(&stubFileService{
-		openContentFn: func(currentUserUUID, fileUUID string) (*service.FileContentResult, error) {
+		openContentFn: func(currentUserUUID, fileUUID string) (*corefile.FileContentResult, error) {
 			if currentUserUUID != "U100" || fileUUID != "F100" {
 				t.Fatalf("unexpected open content args: %s %s", currentUserUUID, fileUUID)
 			}
-			return &service.FileContentResult{
+			return &corefile.FileContentResult{
 				FileID:      "F100",
 				FileName:    "image.png",
 				ContentType: "image/png",
@@ -241,11 +364,11 @@ func TestFileHandlerInitiateMultipartSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := newFileHandler(&stubFileService{
-		initiateMultipartFn: func(uploaderUUID string, input service.InitiateMultipartUploadInput) (*service.InitiateMultipartUploadResult, error) {
+		initiateMultipartFn: func(uploaderUUID string, input corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error) {
 			if uploaderUUID != "U100" || input.FileName != "big.bin" || input.FileSize != 12 {
 				t.Fatalf("unexpected multipart init args: %s %+v", uploaderUUID, input)
 			}
-			return &service.InitiateMultipartUploadResult{
+			return &corefile.InitiateMultipartUploadResult{
 				SessionID:  "MU100",
 				ChunkSize:  5,
 				TotalParts: 3,
@@ -266,13 +389,53 @@ func TestFileHandlerInitiateMultipartSuccess(t *testing.T) {
 	}
 }
 
+func TestFileHandlerInitiateMultipartRateLimitedBeforeServiceCall(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&stubFileService{
+		initiateMultipartFn: func(string, corefile.InitiateMultipartUploadInput) (*corefile.InitiateMultipartUploadResult, error) {
+			t.Fatalf("multipart service should not be called when rate limited")
+			return nil, nil
+		},
+	}, 50*1024*1024).WithLimiter(&stubFileLimiter{
+		allowFileUploadFn: func(userUUID string) (bool, time.Duration) {
+			if userUUID != "U100" {
+				t.Fatalf("unexpected uploader uuid: %s", userUUID)
+			}
+			return false, 7 * time.Second
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/files/uploads/initiate", bytes.NewBufferString(`{"file_name":"big.bin","file_size":12,"content_type":"application/octet-stream"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.InitiateMultipart(context)
+
+	if recorder.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected status 429, got %d", recorder.Code)
+	}
+	var response map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if int(response["code"].(float64)) != code.FileUploadRateLimited {
+		t.Fatalf("expected business code %d, got %v", code.FileUploadRateLimited, response["code"])
+	}
+}
+
 func TestFileHandlerUploadPartSuccess(t *testing.T) {
 	t.Parallel()
 
 	handler := newFileHandler(&stubFileService{
-		uploadPartFn: func(uploaderUUID, sessionID string, partNumber int, contentLength int64, body io.Reader) error {
+		uploadPartFn: func(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
 			if uploaderUUID != "U100" || sessionID != "MU100" || partNumber != 1 || contentLength != 5 {
 				t.Fatalf("unexpected multipart part args: %s %s %d %d", uploaderUUID, sessionID, partNumber, contentLength)
+			}
+			if partSHA256 != "checksum-1" {
+				t.Fatalf("unexpected multipart checksum: %s", partSHA256)
 			}
 			data, err := io.ReadAll(body)
 			if err != nil {
@@ -289,6 +452,7 @@ func TestFileHandlerUploadPartSuccess(t *testing.T) {
 	context, _ := gin.CreateTestContext(recorder)
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/files/uploads/MU100/parts/1", bytes.NewBufferString("hello"))
 	req.ContentLength = 5
+	req.Header.Set("X-Part-SHA256", "checksum-1")
 	context.Request = req
 	context.Params = gin.Params{
 		{Key: "session_id", Value: "MU100"},
@@ -300,6 +464,89 @@ func TestFileHandlerUploadPartSuccess(t *testing.T) {
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestFileHandlerMultipartStatusSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&stubFileService{
+		statusMultipartFn: func(uploaderUUID, sessionID string) (*corefile.MultipartUploadStatus, error) {
+			if uploaderUUID != "U100" || sessionID != "MU100" {
+				t.Fatalf("unexpected status args: %s %s", uploaderUUID, sessionID)
+			}
+			return &corefile.MultipartUploadStatus{
+				SessionID:     "MU100",
+				FileName:      "big.bin",
+				FileSize:      10,
+				ChunkSize:     5,
+				TotalParts:    2,
+				UploadedParts: []corefile.MultipartUploadPartStatus{{PartNumber: 1, ETag: "etag-1", Size: 5}},
+			}, nil
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/files/uploads/MU100", nil)
+	context.Params = gin.Params{{Key: "session_id", Value: "MU100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.MultipartStatus(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestFileHandlerPresignMultipartPartsSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&stubFileService{
+		presignMultipartFn: func(uploaderUUID, sessionID string, partNumbers []int) ([]corefile.MultipartPartUploadURL, error) {
+			if uploaderUUID != "U100" || sessionID != "MU100" || len(partNumbers) != 2 || partNumbers[0] != 1 || partNumbers[1] != 2 {
+				t.Fatalf("unexpected presign args: %s %s %v", uploaderUUID, sessionID, partNumbers)
+			}
+			return []corefile.MultipartPartUploadURL{{PartNumber: 1, URL: "https://minio.test/1"}}, nil
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/files/uploads/MU100/parts/presign", strings.NewReader(`{"part_numbers":[1,2]}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "session_id", Value: "MU100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.PresignMultipartParts(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestFileHandlerRegisterMultipartPartSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := newFileHandler(&stubFileService{
+		registerMultipartFn: func(uploaderUUID, sessionID string, partNumber int, input corefile.RegisterMultipartPartInput) error {
+			if uploaderUUID != "U100" || sessionID != "MU100" || partNumber != 1 || input.ETag != "etag-1" || input.Size != 5 {
+				t.Fatalf("unexpected register args: %s %s %d %+v", uploaderUUID, sessionID, partNumber, input)
+			}
+			return nil
+		},
+	}, 50*1024*1024)
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/files/uploads/MU100/parts/1/register", strings.NewReader(`{"etag":"etag-1","size":5}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "session_id", Value: "MU100"}, {Key: "part_number", Value: "1"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.RegisterMultipartPart(context)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
 }
 

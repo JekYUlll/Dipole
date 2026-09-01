@@ -22,7 +22,7 @@ describe("Shadow evaluation CLI", () => {
     expect(code).toBe(0);
     expect(load).toHaveBeenCalledWith("TASK-1", "RUN-1");
     expect(close).toHaveBeenCalledOnce();
-    expect(JSON.parse(output.join(""))).toMatchObject({ candidateVersion: "candidate/v1", passed: true });
+    expect(JSON.parse(output.join(""))).toMatchObject({ evaluation: { candidateVersion: "candidate/v1", passed: true }, traceId: "trace:shadow-1" });
     expect(output.join("")).not.toContain("E1");
     expect(errors).toEqual([]);
   });
@@ -52,9 +52,9 @@ function manifest() {
 
 function observation(): ShadowEvalObservation {
   return {
-    taskId: "TASK-1", taskStatus: "completed", runId: "RUN-1", runStatus: "completed",
+    taskId: "TASK-1", taskStatus: "completed", runId: "RUN-1", runStatus: "completed", traceId: "trace:shadow-1",
     contextManifest: { selected: [{ id: "event:E1", provenance: { sourceType: "kafka_event", sourceId: "E1" } }], omitted: [] },
-    steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 3 }], artifacts: [],
+    steps: [{ stepNo: 1, capabilityId: "conversation.list", status: "completed", attemptCount: 1, latencyMs: 3, authorization: { resourceType: "conversation", resourceId: "user:u1", action: "read", decision: "allowed" } }], artifacts: [],
     modelCalls: [{ route: "gateway/primary", status: "completed", inputTokens: 10, outputTokens: 2, latencyMs: 10 }], toolCalls: []
   };
 }

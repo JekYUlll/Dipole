@@ -12,7 +12,9 @@ import (
 type stubAuthRepository struct {
 	usersByTelephone map[string]*model.User
 	createdUser      *model.User
+	updatedUser      *model.User
 	createErr        error
+	updateErr        error
 	getErr           error
 }
 
@@ -38,6 +40,14 @@ func (r *stubAuthRepository) GetByTelephone(telephone string) (*model.User, erro
 	}
 
 	return r.usersByTelephone[telephone], nil
+}
+
+func (r *stubAuthRepository) Update(user *model.User) error {
+	if r.updateErr != nil {
+		return r.updateErr
+	}
+	r.updatedUser = user
+	return nil
 }
 
 type stubTokenIssuer struct {
@@ -202,6 +212,51 @@ func TestAuthServiceLogoutRevokesToken(t *testing.T) {
 	}
 	if tokenIssuer.revoked != "TOKEN123" {
 		t.Fatalf("expected revoked token TOKEN123, got %s", tokenIssuer.revoked)
+	}
+}
+
+func TestAuthServiceChangePasswordRehashesAndRevokesCurrentSession(t *testing.T) {
+	t.Parallel()
+	currentHash, err := bcrypt.GenerateFromPassword([]byte("old-secret"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash current password: %v", err)
+	}
+	storedUser := &model.User{UUID: "U100", Telephone: "13800138000", PasswordHash: string(currentHash), Status: model.UserStatusNormal}
+	// Middleware receives a redacted profile-cache projection without PasswordHash.
+	user := &model.User{UUID: storedUser.UUID, Telephone: storedUser.Telephone, Status: model.UserStatusNormal}
+	repo := &stubAuthRepository{usersByTelephone: map[string]*model.User{user.Telephone: storedUser}}
+	tokens := &stubTokenIssuer{}
+	auth := NewAuthService(repo, tokens)
+
+	if err := auth.ChangePassword(user, "CURRENT_TOKEN", ChangePasswordInput{CurrentPassword: "old-secret", NewPassword: "new-secret"}); err != nil {
+		t.Fatalf("change password: %v", err)
+	}
+	if repo.updatedUser != storedUser {
+		t.Fatal("expected authoritative user record to be updated")
+	}
+	if storedUser.PasswordHash == string(currentHash) || bcrypt.CompareHashAndPassword([]byte(storedUser.PasswordHash), []byte("new-secret")) != nil {
+		t.Fatal("expected password to be replaced with a bcrypt hash")
+	}
+	if tokens.revoked != "CURRENT_TOKEN" {
+		t.Fatalf("expected current session revoked, got %q", tokens.revoked)
+	}
+}
+
+func TestAuthServiceChangePasswordRejectsInvalidCurrentAndReusedSecrets(t *testing.T) {
+	t.Parallel()
+	currentHash, err := bcrypt.GenerateFromPassword([]byte("old-secret"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("hash current password: %v", err)
+	}
+	storedUser := &model.User{UUID: "U100", Telephone: "13800138000", PasswordHash: string(currentHash), Status: model.UserStatusNormal}
+	user := &model.User{UUID: storedUser.UUID, Telephone: storedUser.Telephone, Status: model.UserStatusNormal}
+	repo := &stubAuthRepository{usersByTelephone: map[string]*model.User{user.Telephone: storedUser}}
+
+	if err := NewAuthService(repo, &stubTokenIssuer{}).ChangePassword(user, "TOKEN", ChangePasswordInput{CurrentPassword: "wrong-secret", NewPassword: "new-secret"}); !errors.Is(err, ErrInvalidCurrentPassword) {
+		t.Fatalf("expected invalid current password, got %v", err)
+	}
+	if err := NewAuthService(repo, &stubTokenIssuer{}).ChangePassword(user, "TOKEN", ChangePasswordInput{CurrentPassword: "old-secret", NewPassword: "old-secret"}); !errors.Is(err, ErrPasswordUnchanged) {
+		t.Fatalf("expected unchanged password error, got %v", err)
 	}
 }
 

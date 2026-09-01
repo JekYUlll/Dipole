@@ -17,8 +17,8 @@ func TestEvaluateEligibleReadRollout(t *testing.T) {
 func TestEvaluateBlocksLowSamplesAndFallback(t *testing.T) {
 	evidence := validEvidence()
 	evidence.Requests.Total = 10
-	evidence.Requests.Cassandra = 10
-	evidence.Requests.MySQL = 0
+	evidence.Requests.Cassandra = 8
+	evidence.Requests.MySQL = 2
 	evidence.Requests.Fallback = 2
 	evidence.Requests.VerificationSamples = 0
 	report, err := Evaluate(evidence, Policy{MinimumTotalRequests: 100, MinimumCassandraRequests: 40, MinimumObservedShareBPS: 4_000, MaximumFallbackBPS: 500, MaximumVerificationMismatchBPS: 100, MaximumVerificationErrorBPS: 100, MaximumCassandraP95LatencyMicros: 20_000})
@@ -27,6 +27,19 @@ func TestEvaluateBlocksLowSamplesAndFallback(t *testing.T) {
 	}
 	if report.Decision != "blocked" || !hasReason(report.Reasons, "insufficient_samples") || !hasReason(report.Reasons, "fallback_ratio_exceeded") {
 		t.Fatalf("unexpected reasons: %+v", report.Reasons)
+	}
+}
+
+func TestEvaluateAcceptsFallbackAsMySQLFinalRoute(t *testing.T) {
+	evidence := validEvidence()
+	evidence.Requests = RouteCounts{Total: 100, Cassandra: 95, MySQL: 5, Fallback: 5, VerificationSamples: 20}
+	policy := Policy{MinimumTotalRequests: 100, MinimumCassandraRequests: 90, MinimumObservedShareBPS: 9_000, MaximumFallbackBPS: 500, MaximumVerificationMismatchBPS: 0, MaximumVerificationErrorBPS: 0, MaximumCassandraP95LatencyMicros: 20_000}
+	report, err := Evaluate(evidence, policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Decision != "eligible" || report.Metrics.FallbackRatioBPS != 500 {
+		t.Fatalf("unexpected report: %+v", report)
 	}
 }
 

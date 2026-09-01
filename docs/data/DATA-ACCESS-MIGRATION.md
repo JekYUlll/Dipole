@@ -63,6 +63,7 @@ go run ./cmd/services/core
 - [x] 建立 `DBTX`、事务 helper、错误映射和真实 MySQL 测试 fixture。
 - [x] 迁移期以 GORM/sqlc 共享契约验证行为，退役后保留 sqlc 功能契约。
 - [x] 提供生成漂移门禁，执行 `sqlc generate` 后检查工作区无差异。
+- [x] 将 SQLC-only 回流防护纳入同一门禁：拒绝 `gorm.io/*` 与历史 GORM module、任意 Go 代码中的 GORM selector/import，以及运行时 `AutoMigrate` 调用；该扫描覆盖测试代码，避免测试 fixture 保留第二套数据访问模型。
 
 首批 AICallLog、Admin、File、User、Contact、Group、Conversation、Message、Sync 与 Outbox GORM/sqlc adapters 已通过各自的真实 MySQL contract test。Admin sqlc adapter 使用单条聚合查询替代九次独立 count；File、User、Contact 与 Group sqlc adapters 在写入后回读记录，保持 ID 与时间戳回填语义。User、Contact 与 Group 的 Redis/Bloom 策略已抽离为共享装饰器，数据库 adapters 只负责持久化。Group sqlc adapter 通过 `mysql.Store.WithinTx` 保持群、成员和成员计数原子更新；Conversation adapter 使用显式赋值顺序保证消息幂等与未读计算；Outbox Relay adapter 在同一事务内执行 `FOR UPDATE SKIP LOCKED` 领取和租约写入。GORM 会回填 AICallLog 输入模型的自增 ID，sqlc adapter 保持输入不变；调用方按单次调用创建独立日志对象，不依赖该副作用。
 

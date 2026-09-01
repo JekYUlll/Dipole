@@ -7,6 +7,7 @@ from pathlib import Path
 from scripts.web_sync_observation import (
     build_final_evidence,
     build_session,
+    build_status,
     verify_candidate,
     write_immutable_json,
 )
@@ -50,6 +51,15 @@ def clean_final_values():
         "dipole:web_sync_shadow:window_complete": 1,
         "dipole:web_sync_shadow:promotion_ready": 1,
         'count(ALERTS{alertname=~"DipoleSyncProjector(Lag|Retry|DeadLetter)|DipoleWebSync(ShadowDivergence|ShadowOverflow|StorageFull|ClientErrors)",alertstate="firing"})': None,
+    }
+
+
+def clean_archive():
+    return {
+        "uri": "s3://dipole-evidence/web-sync/session.json",
+        "object_version": "version-001",
+        "etag": "a" * 32,
+        "retention_until": "2026-09-30T00:00:00Z",
     }
 
 
@@ -102,6 +112,34 @@ class WebSyncObservationTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_final_evidence(session, START + timedelta(hours=23, minutes=59), FakePrometheus(clean_final_values()))
 
+    def test_session_rejects_future_start(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "app.js"
+            bundle.write_bytes(b"candidate bundle")
+            with self.assertRaisesRegex(ValueError, "session start cannot be more than 5 minutes"):
+                build_session(
+                    "web-sync-v1",
+                    COMMIT,
+                    bundle,
+                    "http://prometheus:9090",
+                    START,
+                    FakePrometheus(clean_start_values()),
+                    now=START - timedelta(minutes=6),
+                )
+
+    def test_status_and_finalize_reject_future_capture(self):
+        session = self._session()
+        future = START + timedelta(hours=24, minutes=6)
+        with self.assertRaisesRegex(ValueError, "status capture cannot be more than 5 minutes"):
+            build_status(session, future, FakePrometheus(clean_final_values()), now=START + timedelta(hours=24))
+        with self.assertRaisesRegex(ValueError, "observation end cannot be more than 5 minutes"):
+            build_final_evidence(session, future, FakePrometheus(clean_final_values()), now=START + timedelta(hours=24))
+
+    def test_status_rejects_capture_before_session_start(self):
+        session = self._session()
+        with self.assertRaisesRegex(ValueError, "cannot precede"):
+            build_status(session, START - timedelta(seconds=1), FakePrometheus(clean_final_values()))
+
     def test_candidate_verification_rejects_commit_or_bundle_drift(self):
         with tempfile.TemporaryDirectory() as directory:
             bundle = Path(directory) / "app.js"
@@ -114,13 +152,45 @@ class WebSyncObservationTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 verify_candidate(session, COMMIT, bundle)
 
+    def test_session_binds_every_file_in_a_deployed_bundle_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "webapp"
+            assets = bundle / "assets"
+            assets.mkdir(parents=True)
+            (bundle / "index.html").write_text("<script src='/assets/app.js'></script>", encoding="utf-8")
+            (assets / "app.js").write_bytes(b"first bundle")
+            session = build_session("web-sync-v1", COMMIT, bundle, "http://prometheus:9090", START, FakePrometheus(clean_start_values()))
+            verify_candidate(session, COMMIT, bundle)
+
+            (assets / "app.js").write_bytes(b"changed bundle")
+            with self.assertRaises(ValueError):
+                verify_candidate(session, COMMIT, bundle)
+
+            (assets / "app.js").write_bytes(b"first bundle")
+            (assets / "late.css").write_bytes(b"body{}")
+            with self.assertRaises(ValueError):
+                verify_candidate(session, COMMIT, bundle)
+
+    def test_session_rejects_empty_or_symlinked_bundle_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory) / "webapp"
+            bundle.mkdir()
+            with self.assertRaisesRegex(ValueError, "cannot be empty"):
+                build_session("web-sync-v1", COMMIT, bundle, "http://prometheus:9090", START, FakePrometheus(clean_start_values()))
+
+            (bundle / "index.html").write_text("ok", encoding="utf-8")
+            (bundle / "linked.js").symlink_to(bundle / "index.html")
+            with self.assertRaisesRegex(ValueError, "symbolic links"):
+                build_session("web-sync-v1", COMMIT, bundle, "http://prometheus:9090", START, FakePrometheus(clean_start_values()))
+
     def test_finalize_archives_eligible_clean_window(self):
         session = self._session()
-        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()))
+        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()), archive=clean_archive())
         self.assertEqual(evidence["schema_version"], "dipole.web-sync.observation-evidence.v1")
         self.assertEqual(evidence["decision"], "eligible")
         self.assertEqual(evidence["issues"], [])
         self.assertRegex(evidence["snapshot_sha256"], r"^[a-f0-9]{64}$")
+        self.assertEqual(evidence["archive"]["object_version"], "version-001")
         self.assertRegex(evidence["evidence_sha256"], r"^[a-f0-9]{64}$")
 
     def test_finalize_archives_blocked_window_without_weakening_thresholds(self):
@@ -128,9 +198,24 @@ class WebSyncObservationTest(unittest.TestCase):
         values = clean_final_values()
         values["dipole:web_sync_shadow:terminal_differences_24h"] = 1
         values["dipole:web_sync_shadow:promotion_ready"] = 0
-        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(values))
+        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(values), archive=clean_archive())
         self.assertEqual(evidence["decision"], "blocked")
         self.assertIn("terminal differences must be zero", evidence["issues"])
+
+    def test_finalize_blocks_without_archive_receipt(self):
+        session = self._session()
+        evidence = build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()))
+        self.assertEqual(evidence["decision"], "blocked")
+        self.assertIn("evidence archive receipt is required", evidence["issues"])
+
+    def test_archive_receipt_rejects_expired_or_non_opaque_metadata(self):
+        session = self._session()
+        for archive in (
+            {**clean_archive(), "retention_until": "2026-08-29T00:00:00Z"},
+            {**clean_archive(), "uri": "https://example.test/evidence"},
+        ):
+            with self.assertRaises(ValueError):
+                build_final_evidence(session, START + timedelta(hours=24), FakePrometheus(clean_final_values()), archive=archive)
 
     def test_evidence_write_is_immutable(self):
         with tempfile.TemporaryDirectory() as directory:

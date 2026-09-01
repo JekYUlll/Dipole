@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CORSConfiguration>
+  <CORSRule>
+    <AllowedOrigin>http://localhost:5173</AllowedOrigin>
+    <AllowedOrigin>http://127.0.0.1:5173</AllowedOrigin>
+    <AllowedOrigin>http://localhost</AllowedOrigin>
+    <AllowedOrigin>http://127.0.0.1</AllowedOrigin>
+    <AllowedOrigin>https://localhost</AllowedOrigin>
+    <AllowedOrigin>https://127.0.0.1</AllowedOrigin>
+    <AllowedOrigin>http://192.168.1.8</AllowedOrigin>
+    <AllowedOrigin>https://192.168.1.8</AllowedOrigin>
+    <AllowedMethod>PUT</AllowedMethod>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <AllowedHeader>Content-Type</AllowedHeader>
+    <AllowedHeader>x-amz-content-sha256</AllowedHeader>
+    <AllowedHeader>x-amz-date</AllowedHeader>
+    <AllowedHeader>x-amz-user-agent</AllowedHeader>
+    <ExposeHeader>ETag</ExposeHeader>
+    <MaxAgeSeconds>300</MaxAgeSeconds>
+  </CORSRule>
+</CORSConfiguration>

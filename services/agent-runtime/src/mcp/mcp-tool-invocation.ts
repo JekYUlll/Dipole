@@ -87,6 +87,13 @@ export class McpToolInvocationRunner {
         try {
           rawResult = await operationWithTimeout(signal => operation(signal, invocationId), this.timeoutMs);
         } catch (error) {
+          console.error("Agent Tool operation failed", {
+            taskId: context.taskId,
+            runId: context.runId,
+            invocationId,
+            toolName: tool.name,
+            error: error instanceof Error ? error.message : "unknown operation error"
+          });
           await this.finishFailed(invocationId, context, startedAt, error instanceof ToolOperationTimeout ? "tool_timeout" : "tool_execution_failed");
           throw new ToolInvocationFailure();
         }

@@ -37,6 +37,11 @@ WHERE task_uuid = ? AND step_no = ? AND (
 -- name: GetAgentShadowStep :one
 SELECT status, claim_token FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = ? LIMIT 1;
 
+-- name: RecordAgentShadowStepAuthorization :execrows
+UPDATE agent_shadow_steps
+SET authorization_resource_type = ?, authorization_resource_id = ?, authorization_action = ?, authorization_decision = ?
+WHERE task_uuid = ? AND step_no = ? AND claim_token = ? AND status = 'running' AND lease_expires_at >= UTC_TIMESTAMP();
+
 -- name: CompleteAgentShadowStep :execrows
 UPDATE agent_shadow_steps
 SET status = 'completed', output_json = ?, finished_at = UTC_TIMESTAMP(), lease_expires_at = UTC_TIMESTAMP(), last_error = NULL

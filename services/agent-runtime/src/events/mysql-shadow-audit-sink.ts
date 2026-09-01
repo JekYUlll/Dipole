@@ -9,6 +9,7 @@ import {
   FAIL_AGENT_SHADOW_STEP,
   GET_AGENT_SHADOW_PLAN,
   GET_AGENT_SHADOW_STEP,
+  RECORD_AGENT_SHADOW_STEP_AUTHORIZATION,
   INSERT_AGENT_MEMORY_TASK_LINEAGE,
   INSERT_AGENT_SHADOW_PLAN,
   INSERT_AGENT_SHADOW_STEP
@@ -131,6 +132,14 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
     }
   }
 
+  async recordAuthorization(taskId: string, stepNo: number, token: string, resource: { readonly resourceType: string; readonly resourceId: string; readonly action: string }, decision: "allowed"): Promise<void> {
+    const [result] = await this.pool.execute<ResultSetHeader>(RECORD_AGENT_SHADOW_STEP_AUTHORIZATION, [
+      required(resource.resourceType, "authorization resource type"), required(resource.resourceId, "authorization resource ID"),
+      required(resource.action, "authorization action"), decision, required(taskId, "Task ID"), stepNo, required(token, "Step claim token")
+    ]);
+    if (result.affectedRows !== 1) throw new Error(`Agent shadow Step ${taskId}/${stepNo} authorization is stale`);
+  }
+
   async failStep(taskId: string, stepNo: number, token: string, error: unknown): Promise<void> {
     const message = (error instanceof Error ? error.message : String(error)).slice(0, 65_535);
     const [result] = await this.pool.execute<ResultSetHeader>(FAIL_AGENT_SHADOW_STEP, [
@@ -186,6 +195,10 @@ function canonicalJSON(value: unknown): string {
 }
 
 function canonicalValue(value: unknown): unknown {
+  if (typeof value === "bigint") {
+    // MySQL BIGINT fields arrive as bigint from the generated gRPC client.
+    return value.toString();
+  }
   if (Array.isArray(value)) {
     return value.map(canonicalValue);
   }

@@ -243,15 +243,16 @@ func (x *GroupMemberSnapshot) GetRole() int32 {
 }
 
 type FileSnapshot struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	FileId         string                 `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
-	UploaderUserId string                 `protobuf:"bytes,2,opt,name=uploader_user_id,json=uploaderUserId,proto3" json:"uploader_user_id,omitempty"`
-	FileName       string                 `protobuf:"bytes,3,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
-	FileSize       int64                  `protobuf:"varint,4,opt,name=file_size,json=fileSize,proto3" json:"file_size,omitempty"`
-	ContentType    string                 `protobuf:"bytes,5,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	Url            string                 `protobuf:"bytes,6,opt,name=url,proto3" json:"url,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	FileId             string                 `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	UploaderUserId     string                 `protobuf:"bytes,2,opt,name=uploader_user_id,json=uploaderUserId,proto3" json:"uploader_user_id,omitempty"`
+	FileName           string                 `protobuf:"bytes,3,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	FileSize           int64                  `protobuf:"varint,4,opt,name=file_size,json=fileSize,proto3" json:"file_size,omitempty"`
+	ContentType        string                 `protobuf:"bytes,5,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Url                string                 `protobuf:"bytes,6,opt,name=url,proto3" json:"url,omitempty"`
+	CreatedAtUnixMilli int64                  `protobuf:"varint,7,opt,name=created_at_unix_milli,json=createdAtUnixMilli,proto3" json:"created_at_unix_milli,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *FileSnapshot) Reset() {
@@ -324,6 +325,13 @@ func (x *FileSnapshot) GetUrl() string {
 		return x.Url
 	}
 	return ""
+}
+
+func (x *FileSnapshot) GetCreatedAtUnixMilli() int64 {
+	if x != nil {
+		return x.CreatedAtUnixMilli
+	}
+	return 0
 }
 
 type GetUserRequest struct {
@@ -926,6 +934,134 @@ func (x *GetOwnedFileResponse) GetFile() *FileSnapshot {
 	return nil
 }
 
+type ListOwnedFilesRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Context        *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	UploaderUserId string                 `protobuf:"bytes,2,opt,name=uploader_user_id,json=uploaderUserId,proto3" json:"uploader_user_id,omitempty"`
+	BeforeFileId   string                 `protobuf:"bytes,3,opt,name=before_file_id,json=beforeFileId,proto3" json:"before_file_id,omitempty"`
+	Limit          int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ListOwnedFilesRequest) Reset() {
+	*x = ListOwnedFilesRequest{}
+	mi := &file_dipole_core_v1_core_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOwnedFilesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOwnedFilesRequest) ProtoMessage() {}
+
+func (x *ListOwnedFilesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_core_v1_core_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOwnedFilesRequest.ProtoReflect.Descriptor instead.
+func (*ListOwnedFilesRequest) Descriptor() ([]byte, []int) {
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *ListOwnedFilesRequest) GetContext() *v1.RequestContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ListOwnedFilesRequest) GetUploaderUserId() string {
+	if x != nil {
+		return x.UploaderUserId
+	}
+	return ""
+}
+
+func (x *ListOwnedFilesRequest) GetBeforeFileId() string {
+	if x != nil {
+		return x.BeforeFileId
+	}
+	return ""
+}
+
+func (x *ListOwnedFilesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListOwnedFilesResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Files            []*FileSnapshot        `protobuf:"bytes,1,rep,name=files,proto3" json:"files,omitempty"`
+	NextBeforeFileId string                 `protobuf:"bytes,2,opt,name=next_before_file_id,json=nextBeforeFileId,proto3" json:"next_before_file_id,omitempty"`
+	HasMore          bool                   `protobuf:"varint,3,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ListOwnedFilesResponse) Reset() {
+	*x = ListOwnedFilesResponse{}
+	mi := &file_dipole_core_v1_core_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListOwnedFilesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListOwnedFilesResponse) ProtoMessage() {}
+
+func (x *ListOwnedFilesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_dipole_core_v1_core_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListOwnedFilesResponse.ProtoReflect.Descriptor instead.
+func (*ListOwnedFilesResponse) Descriptor() ([]byte, []int) {
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListOwnedFilesResponse) GetFiles() []*FileSnapshot {
+	if x != nil {
+		return x.Files
+	}
+	return nil
+}
+
+func (x *ListOwnedFilesResponse) GetNextBeforeFileId() string {
+	if x != nil {
+		return x.NextBeforeFileId
+	}
+	return ""
+}
+
+func (x *ListOwnedFilesResponse) GetHasMore() bool {
+	if x != nil {
+		return x.HasMore
+	}
+	return false
+}
+
 type ListSearchConversationKeysRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Context       *v1.RequestContext     `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
@@ -935,7 +1071,7 @@ type ListSearchConversationKeysRequest struct {
 
 func (x *ListSearchConversationKeysRequest) Reset() {
 	*x = ListSearchConversationKeysRequest{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[16]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -947,7 +1083,7 @@ func (x *ListSearchConversationKeysRequest) String() string {
 func (*ListSearchConversationKeysRequest) ProtoMessage() {}
 
 func (x *ListSearchConversationKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[16]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -960,7 +1096,7 @@ func (x *ListSearchConversationKeysRequest) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ListSearchConversationKeysRequest.ProtoReflect.Descriptor instead.
 func (*ListSearchConversationKeysRequest) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{16}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListSearchConversationKeysRequest) GetContext() *v1.RequestContext {
@@ -979,7 +1115,7 @@ type ListSearchConversationKeysResponse struct {
 
 func (x *ListSearchConversationKeysResponse) Reset() {
 	*x = ListSearchConversationKeysResponse{}
-	mi := &file_dipole_core_v1_core_proto_msgTypes[17]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -991,7 +1127,7 @@ func (x *ListSearchConversationKeysResponse) String() string {
 func (*ListSearchConversationKeysResponse) ProtoMessage() {}
 
 func (x *ListSearchConversationKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dipole_core_v1_core_proto_msgTypes[17]
+	mi := &file_dipole_core_v1_core_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1004,7 +1140,7 @@ func (x *ListSearchConversationKeysResponse) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use ListSearchConversationKeysResponse.ProtoReflect.Descriptor instead.
 func (*ListSearchConversationKeysResponse) Descriptor() ([]byte, []int) {
-	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{17}
+	return file_dipole_core_v1_core_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListSearchConversationKeysResponse) GetConversationKeys() []string {
@@ -1035,14 +1171,15 @@ const file_dipole_core_v1_core_proto_rawDesc = "" +
 	"\x13GroupMemberSnapshot\x12\x19\n" +
 	"\bgroup_id\x18\x01 \x01(\tR\agroupId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
-	"\x04role\x18\x03 \x01(\x05R\x04role\"\xc0\x01\n" +
+	"\x04role\x18\x03 \x01(\x05R\x04role\"\xf3\x01\n" +
 	"\fFileSnapshot\x12\x17\n" +
 	"\afile_id\x18\x01 \x01(\tR\x06fileId\x12(\n" +
 	"\x10uploader_user_id\x18\x02 \x01(\tR\x0euploaderUserId\x12\x1b\n" +
 	"\tfile_name\x18\x03 \x01(\tR\bfileName\x12\x1b\n" +
 	"\tfile_size\x18\x04 \x01(\x03R\bfileSize\x12!\n" +
 	"\fcontent_type\x18\x05 \x01(\tR\vcontentType\x12\x10\n" +
-	"\x03url\x18\x06 \x01(\tR\x03url\"e\n" +
+	"\x03url\x18\x06 \x01(\tR\x03url\x121\n" +
+	"\x15created_at_unix_milli\x18\a \x01(\x03R\x12createdAtUnixMilli\"e\n" +
 	"\x0eGetUserRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"C\n" +
@@ -1075,18 +1212,28 @@ const file_dipole_core_v1_core_proto_rawDesc = "" +
 	"\x10uploader_user_id\x18\x02 \x01(\tR\x0euploaderUserId\x12\x17\n" +
 	"\afile_id\x18\x03 \x01(\tR\x06fileId\"H\n" +
 	"\x14GetOwnedFileResponse\x120\n" +
-	"\x04file\x18\x01 \x01(\v2\x1c.dipole.core.v1.FileSnapshotR\x04file\"_\n" +
+	"\x04file\x18\x01 \x01(\v2\x1c.dipole.core.v1.FileSnapshotR\x04file\"\xb9\x01\n" +
+	"\x15ListOwnedFilesRequest\x12:\n" +
+	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12(\n" +
+	"\x10uploader_user_id\x18\x02 \x01(\tR\x0euploaderUserId\x12$\n" +
+	"\x0ebefore_file_id\x18\x03 \x01(\tR\fbeforeFileId\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\x96\x01\n" +
+	"\x16ListOwnedFilesResponse\x122\n" +
+	"\x05files\x18\x01 \x03(\v2\x1c.dipole.core.v1.FileSnapshotR\x05files\x12-\n" +
+	"\x13next_before_file_id\x18\x02 \x01(\tR\x10nextBeforeFileId\x12\x19\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"_\n" +
 	"!ListSearchConversationKeysRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\"Q\n" +
 	"\"ListSearchConversationKeysResponse\x12+\n" +
-	"\x11conversation_keys\x18\x01 \x03(\tR\x10conversationKeys2\xce\x05\n" +
+	"\x11conversation_keys\x18\x01 \x03(\tR\x10conversationKeys2\xaf\x06\n" +
 	"\x15CoreCapabilityService\x12J\n" +
 	"\aGetUser\x12\x1e.dipole.core.v1.GetUserRequest\x1a\x1f.dipole.core.v1.GetUserResponse\x12q\n" +
 	"\x14CanSendDirectMessage\x12+.dipole.core.v1.CanSendDirectMessageRequest\x1a,.dipole.core.v1.CanSendDirectMessageResponse\x12M\n" +
 	"\bGetGroup\x12\x1f.dipole.core.v1.GetGroupRequest\x1a .dipole.core.v1.GetGroupResponse\x12_\n" +
 	"\x0eGetGroupMember\x12%.dipole.core.v1.GetGroupMemberRequest\x1a&.dipole.core.v1.GetGroupMemberResponse\x12e\n" +
 	"\x10ListGroupMembers\x12'.dipole.core.v1.ListGroupMembersRequest\x1a(.dipole.core.v1.ListGroupMembersResponse\x12Y\n" +
-	"\fGetOwnedFile\x12#.dipole.core.v1.GetOwnedFileRequest\x1a$.dipole.core.v1.GetOwnedFileResponse\x12\x83\x01\n" +
+	"\fGetOwnedFile\x12#.dipole.core.v1.GetOwnedFileRequest\x1a$.dipole.core.v1.GetOwnedFileResponse\x12_\n" +
+	"\x0eListOwnedFiles\x12%.dipole.core.v1.ListOwnedFilesRequest\x1a&.dipole.core.v1.ListOwnedFilesResponse\x12\x83\x01\n" +
 	"\x1aListSearchConversationKeys\x121.dipole.core.v1.ListSearchConversationKeysRequest\x1a2.dipole.core.v1.ListSearchConversationKeysResponseB6Z4github.com/JekYUlll/Dipole/api/gen/go/core/v1;corev1b\x06proto3"
 
 var (
@@ -1101,7 +1248,7 @@ func file_dipole_core_v1_core_proto_rawDescGZIP() []byte {
 	return file_dipole_core_v1_core_proto_rawDescData
 }
 
-var file_dipole_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_dipole_core_v1_core_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_dipole_core_v1_core_proto_goTypes = []any{
 	(*UserSnapshot)(nil),                       // 0: dipole.core.v1.UserSnapshot
 	(*GroupSnapshot)(nil),                      // 1: dipole.core.v1.GroupSnapshot
@@ -1119,42 +1266,48 @@ var file_dipole_core_v1_core_proto_goTypes = []any{
 	(*ListGroupMembersResponse)(nil),           // 13: dipole.core.v1.ListGroupMembersResponse
 	(*GetOwnedFileRequest)(nil),                // 14: dipole.core.v1.GetOwnedFileRequest
 	(*GetOwnedFileResponse)(nil),               // 15: dipole.core.v1.GetOwnedFileResponse
-	(*ListSearchConversationKeysRequest)(nil),  // 16: dipole.core.v1.ListSearchConversationKeysRequest
-	(*ListSearchConversationKeysResponse)(nil), // 17: dipole.core.v1.ListSearchConversationKeysResponse
-	(*v1.RequestContext)(nil),                  // 18: dipole.common.v1.RequestContext
+	(*ListOwnedFilesRequest)(nil),              // 16: dipole.core.v1.ListOwnedFilesRequest
+	(*ListOwnedFilesResponse)(nil),             // 17: dipole.core.v1.ListOwnedFilesResponse
+	(*ListSearchConversationKeysRequest)(nil),  // 18: dipole.core.v1.ListSearchConversationKeysRequest
+	(*ListSearchConversationKeysResponse)(nil), // 19: dipole.core.v1.ListSearchConversationKeysResponse
+	(*v1.RequestContext)(nil),                  // 20: dipole.common.v1.RequestContext
 }
 var file_dipole_core_v1_core_proto_depIdxs = []int32{
-	18, // 0: dipole.core.v1.GetUserRequest.context:type_name -> dipole.common.v1.RequestContext
+	20, // 0: dipole.core.v1.GetUserRequest.context:type_name -> dipole.common.v1.RequestContext
 	0,  // 1: dipole.core.v1.GetUserResponse.user:type_name -> dipole.core.v1.UserSnapshot
-	18, // 2: dipole.core.v1.CanSendDirectMessageRequest.context:type_name -> dipole.common.v1.RequestContext
-	18, // 3: dipole.core.v1.GetGroupRequest.context:type_name -> dipole.common.v1.RequestContext
+	20, // 2: dipole.core.v1.CanSendDirectMessageRequest.context:type_name -> dipole.common.v1.RequestContext
+	20, // 3: dipole.core.v1.GetGroupRequest.context:type_name -> dipole.common.v1.RequestContext
 	1,  // 4: dipole.core.v1.GetGroupResponse.group:type_name -> dipole.core.v1.GroupSnapshot
-	18, // 5: dipole.core.v1.GetGroupMemberRequest.context:type_name -> dipole.common.v1.RequestContext
+	20, // 5: dipole.core.v1.GetGroupMemberRequest.context:type_name -> dipole.common.v1.RequestContext
 	2,  // 6: dipole.core.v1.GetGroupMemberResponse.member:type_name -> dipole.core.v1.GroupMemberSnapshot
-	18, // 7: dipole.core.v1.ListGroupMembersRequest.context:type_name -> dipole.common.v1.RequestContext
+	20, // 7: dipole.core.v1.ListGroupMembersRequest.context:type_name -> dipole.common.v1.RequestContext
 	2,  // 8: dipole.core.v1.ListGroupMembersResponse.members:type_name -> dipole.core.v1.GroupMemberSnapshot
-	18, // 9: dipole.core.v1.GetOwnedFileRequest.context:type_name -> dipole.common.v1.RequestContext
+	20, // 9: dipole.core.v1.GetOwnedFileRequest.context:type_name -> dipole.common.v1.RequestContext
 	3,  // 10: dipole.core.v1.GetOwnedFileResponse.file:type_name -> dipole.core.v1.FileSnapshot
-	18, // 11: dipole.core.v1.ListSearchConversationKeysRequest.context:type_name -> dipole.common.v1.RequestContext
-	4,  // 12: dipole.core.v1.CoreCapabilityService.GetUser:input_type -> dipole.core.v1.GetUserRequest
-	6,  // 13: dipole.core.v1.CoreCapabilityService.CanSendDirectMessage:input_type -> dipole.core.v1.CanSendDirectMessageRequest
-	8,  // 14: dipole.core.v1.CoreCapabilityService.GetGroup:input_type -> dipole.core.v1.GetGroupRequest
-	10, // 15: dipole.core.v1.CoreCapabilityService.GetGroupMember:input_type -> dipole.core.v1.GetGroupMemberRequest
-	12, // 16: dipole.core.v1.CoreCapabilityService.ListGroupMembers:input_type -> dipole.core.v1.ListGroupMembersRequest
-	14, // 17: dipole.core.v1.CoreCapabilityService.GetOwnedFile:input_type -> dipole.core.v1.GetOwnedFileRequest
-	16, // 18: dipole.core.v1.CoreCapabilityService.ListSearchConversationKeys:input_type -> dipole.core.v1.ListSearchConversationKeysRequest
-	5,  // 19: dipole.core.v1.CoreCapabilityService.GetUser:output_type -> dipole.core.v1.GetUserResponse
-	7,  // 20: dipole.core.v1.CoreCapabilityService.CanSendDirectMessage:output_type -> dipole.core.v1.CanSendDirectMessageResponse
-	9,  // 21: dipole.core.v1.CoreCapabilityService.GetGroup:output_type -> dipole.core.v1.GetGroupResponse
-	11, // 22: dipole.core.v1.CoreCapabilityService.GetGroupMember:output_type -> dipole.core.v1.GetGroupMemberResponse
-	13, // 23: dipole.core.v1.CoreCapabilityService.ListGroupMembers:output_type -> dipole.core.v1.ListGroupMembersResponse
-	15, // 24: dipole.core.v1.CoreCapabilityService.GetOwnedFile:output_type -> dipole.core.v1.GetOwnedFileResponse
-	17, // 25: dipole.core.v1.CoreCapabilityService.ListSearchConversationKeys:output_type -> dipole.core.v1.ListSearchConversationKeysResponse
-	19, // [19:26] is the sub-list for method output_type
-	12, // [12:19] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	20, // 11: dipole.core.v1.ListOwnedFilesRequest.context:type_name -> dipole.common.v1.RequestContext
+	3,  // 12: dipole.core.v1.ListOwnedFilesResponse.files:type_name -> dipole.core.v1.FileSnapshot
+	20, // 13: dipole.core.v1.ListSearchConversationKeysRequest.context:type_name -> dipole.common.v1.RequestContext
+	4,  // 14: dipole.core.v1.CoreCapabilityService.GetUser:input_type -> dipole.core.v1.GetUserRequest
+	6,  // 15: dipole.core.v1.CoreCapabilityService.CanSendDirectMessage:input_type -> dipole.core.v1.CanSendDirectMessageRequest
+	8,  // 16: dipole.core.v1.CoreCapabilityService.GetGroup:input_type -> dipole.core.v1.GetGroupRequest
+	10, // 17: dipole.core.v1.CoreCapabilityService.GetGroupMember:input_type -> dipole.core.v1.GetGroupMemberRequest
+	12, // 18: dipole.core.v1.CoreCapabilityService.ListGroupMembers:input_type -> dipole.core.v1.ListGroupMembersRequest
+	14, // 19: dipole.core.v1.CoreCapabilityService.GetOwnedFile:input_type -> dipole.core.v1.GetOwnedFileRequest
+	16, // 20: dipole.core.v1.CoreCapabilityService.ListOwnedFiles:input_type -> dipole.core.v1.ListOwnedFilesRequest
+	18, // 21: dipole.core.v1.CoreCapabilityService.ListSearchConversationKeys:input_type -> dipole.core.v1.ListSearchConversationKeysRequest
+	5,  // 22: dipole.core.v1.CoreCapabilityService.GetUser:output_type -> dipole.core.v1.GetUserResponse
+	7,  // 23: dipole.core.v1.CoreCapabilityService.CanSendDirectMessage:output_type -> dipole.core.v1.CanSendDirectMessageResponse
+	9,  // 24: dipole.core.v1.CoreCapabilityService.GetGroup:output_type -> dipole.core.v1.GetGroupResponse
+	11, // 25: dipole.core.v1.CoreCapabilityService.GetGroupMember:output_type -> dipole.core.v1.GetGroupMemberResponse
+	13, // 26: dipole.core.v1.CoreCapabilityService.ListGroupMembers:output_type -> dipole.core.v1.ListGroupMembersResponse
+	15, // 27: dipole.core.v1.CoreCapabilityService.GetOwnedFile:output_type -> dipole.core.v1.GetOwnedFileResponse
+	17, // 28: dipole.core.v1.CoreCapabilityService.ListOwnedFiles:output_type -> dipole.core.v1.ListOwnedFilesResponse
+	19, // 29: dipole.core.v1.CoreCapabilityService.ListSearchConversationKeys:output_type -> dipole.core.v1.ListSearchConversationKeysResponse
+	22, // [22:30] is the sub-list for method output_type
+	14, // [14:22] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_dipole_core_v1_core_proto_init() }
@@ -1168,7 +1321,7 @@ func file_dipole_core_v1_core_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dipole_core_v1_core_proto_rawDesc), len(file_dipole_core_v1_core_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

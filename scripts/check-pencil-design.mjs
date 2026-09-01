@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 
 const file = resolve(process.argv[2] ?? 'design/dipole-ui.pen')
+const manifestFile = resolve(process.env.DIPOLE_DESIGN_EXPORT_MANIFEST ?? resolve(dirname(file), 'export-manifest.json'))
 let document
 try {
   document = JSON.parse(readFileSync(file, 'utf8'))
@@ -18,16 +19,24 @@ if (!document.variables || typeof document.variables !== 'object' || Object.keys
   fail('canonical Pencil document must define design variables')
 }
 
+checkExportManifest()
+
 const nodes = []
 walk(document)
 const names = new Set(nodes.map(node => node.name).filter(name => typeof name === 'string'))
 const requiredFrames = [
   '00 Foundations', 'Login Desktop', 'Login Mobile', 'Chat Desktop', 'Chat Mobile',
   'Search/Desktop/Results', 'Search/Mobile/Results', 'Sync/Desktop/Restoring', 'Sync/Mobile/Restoring',
+  'Contact/Desktop/Manage', 'Contact/Mobile/Manage', 'Contact/State Matrix',
+  'Group/Desktop/Directory', 'Group/Mobile/Directory', 'Group/State Matrix',
+  'File/Desktop/Directory', 'File/Mobile/Directory', 'File/State Matrix',
+  'Device/Desktop/Sessions', 'Device/Mobile/Sessions', 'Device/State Matrix',
+  'Settings/Desktop/Account', 'Settings/Mobile/Account', 'Settings/State Matrix',
   'Agent Repair/Desktop/Proposed', 'Agent Repair/Mobile/Approval',
   'Agent Elicitation/Desktop/Form', 'Agent Elicitation/Mobile/Form',
   'Agent Subscription/Desktop/Manage', 'Agent Subscription/Mobile/Revoke',
-  'Agent Memory/Desktop/Manage', 'Agent Memory/Mobile/Revoke'
+  'Agent Memory/Desktop/Manage', 'Agent Memory/Mobile/Revoke',
+  'Agent Artifact/Desktop/Metadata', 'Agent Artifact/Mobile/Metadata', 'Agent Artifact/State Matrix'
 ]
 const missing = requiredFrames.filter(name => !names.has(name))
 if (missing.length > 0) fail(`required design frames are missing: ${missing.join(', ')}`)
@@ -53,4 +62,40 @@ function walk(value) {
 function fail(message) {
   process.stderr.write(`Pencil design gate: ${message}\n`)
   process.exit(1)
+}
+
+function checkExportManifest() {
+  let manifest
+  try {
+    manifest = JSON.parse(readFileSync(manifestFile, 'utf8'))
+  } catch (error) {
+    fail(`cannot read export manifest: ${error instanceof Error ? error.message : String(error)}`)
+  }
+  if (!manifest || manifest.version !== 1 || !Array.isArray(manifest.exports) || manifest.exports.length === 0) {
+    fail('export manifest must contain version 1 and at least one export')
+  }
+
+  for (const entry of manifest.exports) {
+    if (!entry || typeof entry.path !== 'string' || entry.path.length === 0) {
+      fail('export manifest contains an invalid entry')
+    }
+    const designDir = dirname(manifestFile)
+    const target = resolve(designDir, entry.path)
+    if (!target.startsWith(designDir + '/')) {
+      fail(`export manifest path escapes design directory: ${entry.path}`)
+    }
+    let stats
+    try {
+      stats = statSync(target)
+    } catch {
+      fail(`approved export is missing: ${entry.path}`)
+    }
+    if (stats.isDirectory()) {
+      const files = readdirSync(target, { withFileTypes: true })
+        .filter(item => item.isFile() && item.name.toLowerCase().endsWith('.png'))
+      if (files.length === 0) fail(`approved export directory has no PNG files: ${entry.path}`)
+      continue
+    }
+    if (!stats.isFile() || stats.size === 0) fail(`approved export is empty: ${entry.path}`)
+  }
 }

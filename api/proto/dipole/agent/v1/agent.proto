@@ -70,6 +70,7 @@ message RequestApprovalRequest {
   string arguments_sha256 = 8;
   string nonce_sha256 = 9;
   int64 expires_at_unix_ms = 10;
+  string mode = 11;
 }
 
 message ResolveApprovalRequest {
@@ -162,6 +163,30 @@ message ReadConversationResponse {
   repeated dipole.message.v1.Message messages = 5;
 }
 
+message SearchConversationsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string query = 3;
+  int32 limit = 4;
+  string run_id = 5;
+}
+
+message ConversationSearchEvidence {
+  string message_id = 1;
+  string conversation_key = 2;
+  uint64 message_seq = 3;
+  uint64 revision = 4;
+  string sender_id = 5;
+  int32 message_type = 6;
+  string content = 7;
+  int64 sent_at_unix_ms = 8;
+  string query_sha256 = 9;
+}
+
+message SearchConversationsResponse {
+  repeated ConversationSearchEvidence evidence = 1;
+}
+
 message AuthorizeTaskControlRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -195,6 +220,7 @@ message AgentTaskTimelineEvent {
   string capability_id = 7;
   string approval_id = 8;
   int64 occurred_at_unix_ms = 9;
+  string artifact_id = 10;
 }
 
 message ListAgentTaskTimelineResponse {
@@ -215,6 +241,7 @@ message AppendAgentTaskTimelineEventRequest {
   string capability_id = 7;
   string approval_id = 8;
   int64 occurred_at_unix_ms = 9;
+  string artifact_id = 10;
 }
 
 message AppendAgentTaskTimelineEventResponse {
@@ -239,6 +266,68 @@ message ResolveMcpContextResponse {
   repeated string approved_capabilities = 7;
   string runtime_id = 8;
   string mode = 9;
+}
+
+// The Gateway supplies only a SHA-256 of callback state. Core derives the
+// owner from its authenticated request context and atomically consumes once.
+message ConsumeOAuthAuthorizationTransactionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string transaction_id = 2;
+  string state_sha256 = 3;
+}
+
+// The verifier remains sealed. Only the separately configured Agent Runtime
+// key boundary may decrypt it for the subsequent token exchange.
+message ConsumeOAuthAuthorizationTransactionResponse {
+  string transaction_id = 1;
+  string issuer = 2;
+  string redirect_uri = 3;
+  string sealed_code_verifier = 4;
+  int64 expires_at_unix_ms = 5;
+}
+
+// Only the authenticated Agent Runtime may claim a persisted callback handoff.
+// Core chooses the lease duration and recovers all ownership binding itself.
+message ClaimOAuthCallbackHandoffRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string handoff_id = 2;
+  string lease_owner = 3;
+}
+
+message ClaimOAuthCallbackHandoffResponse {
+  string handoff_id = 1;
+  string transaction_id = 2;
+  string issuer = 3;
+  string redirect_uri = 4;
+  string authorization_code_sha256 = 5;
+  string sealed_authorization_code = 6;
+  string runtime_key_id = 7;
+  int64 expires_at_unix_ms = 8;
+  int64 lease_expires_at_unix_ms = 9;
+  // Returned only to the Runtime mTLS claimant to reconstruct envelope AAD.
+  string owner_user_id = 10;
+}
+
+// Completes a claimed handoff after a successful provider exchange.
+message CompleteOAuthCallbackHandoffRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string handoff_id = 2;
+  string lease_owner = 3;
+}
+
+message CompleteOAuthCallbackHandoffResponse {
+  string handoff_id = 1;
+}
+
+// Releases a claimed handoff after a retryable exchange failure.
+message ReleaseOAuthCallbackHandoffRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string handoff_id = 2;
+  string lease_owner = 3;
+}
+
+message ReleaseOAuthCallbackHandoffResponse {
+  string handoff_id = 1;
 }
 
 message BeginMcpToolInvocationRequest {
@@ -813,6 +902,34 @@ message PromoteMemoryCandidateRequest {
   string candidate_id = 3;
   string candidate_sha256 = 4;
   string review_id = 5;
+  // Empty preserves the v1 observational promotion default. Persistent working
+  // memory is rejected by the Agent service because it is task scoped.
+  string target_memory_type = 6;
+}
+
+message CommitMemoryPromotionReceiptRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string receipt_id = 2;
+  string receipt_sha256 = 3;
+  string schema_version = 4;
+  string status = 5;
+  string task_id = 6;
+  string run_id = 7;
+  string candidate_id = 8;
+  string candidate_sha256 = 9;
+  string review_id = 10;
+  string policy_version = 11;
+  string target_memory_type = 12;
+  int64 created_at_unix_ms = 13;
+  int64 expires_at_unix_ms = 14;
+}
+
+message CommitMemoryPromotionReceiptResponse {
+  string memory_id = 1;
+  string memory_type = 2;
+  string status = 3;
+  AgentMemoryProvenance provenance = 4;
+  string receipt_sha256 = 5;
 }
 
 message PublishMcpReadinessEvidenceRequest {
@@ -866,6 +983,7 @@ service AgentCapabilityService {
   rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
   rpc CorrectOwnedMemory(CorrectOwnedMemoryRequest) returns (CorrectOwnedMemoryResponse);
   rpc PromoteMemoryCandidate(PromoteMemoryCandidateRequest) returns (AgentOwnedMemory);
+  rpc CommitMemoryPromotionReceipt(CommitMemoryPromotionReceiptRequest) returns (CommitMemoryPromotionReceiptResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);
@@ -875,10 +993,15 @@ service AgentCapabilityService {
   rpc ResolveApprovalGrant(ResolveApprovalGrantRequest) returns (ResolveApprovalGrantResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   rpc ReadConversation(ReadConversationRequest) returns (ReadConversationResponse);
+  rpc SearchConversations(SearchConversationsRequest) returns (SearchConversationsResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ListAgentTaskTimeline(ListAgentTaskTimelineRequest) returns (ListAgentTaskTimelineResponse);
   rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
+  rpc ConsumeOAuthAuthorizationTransaction(ConsumeOAuthAuthorizationTransactionRequest) returns (ConsumeOAuthAuthorizationTransactionResponse);
+  rpc ClaimOAuthCallbackHandoff(ClaimOAuthCallbackHandoffRequest) returns (ClaimOAuthCallbackHandoffResponse);
+  rpc CompleteOAuthCallbackHandoff(CompleteOAuthCallbackHandoffRequest) returns (CompleteOAuthCallbackHandoffResponse);
+  rpc ReleaseOAuthCallbackHandoff(ReleaseOAuthCallbackHandoffRequest) returns (ReleaseOAuthCallbackHandoffResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
   rpc ClaimMcpToolRound(ClaimMcpToolRoundRequest) returns (ClaimMcpToolRoundResponse);

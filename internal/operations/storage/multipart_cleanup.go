@@ -1,0 +1,105 @@
+package storageops
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/minio/minio-go/v7"
+)
+
+const maxMultipartCleanupErrors = 32
+
+type MultipartUploadCandidate struct {
+	ObjectKey string    `json:"object_key"`
+	UploadID  string    `json:"upload_id"`
+	Initiated time.Time `json:"initiated_at"`
+	Status    string    `json:"status"`
+	Error     string    `json:"error,omitempty"`
+}
+
+type MultipartCleanupReport struct {
+	Bucket          string                     `json:"bucket"`
+	Prefix          string                     `json:"prefix"`
+	Cutoff          time.Time                  `json:"cutoff"`
+	Execute         bool                       `json:"execute"`
+	Complete        bool                       `json:"complete"`
+	Scanned         int                        `json:"scanned"`
+	Selected        int                        `json:"selected"`
+	Aborted         int                        `json:"aborted"`
+	Failed          int                        `json:"failed"`
+	ErrorCount      int                        `json:"error_count"`
+	Errors          []string                   `json:"errors,omitempty"`
+	ErrorsTruncated bool                       `json:"errors_truncated,omitempty"`
+	Candidates      []MultipartUploadCandidate `json:"candidates"`
+}
+
+type MultipartClient interface {
+	ListIncompleteUploads(ctx context.Context, bucketName, objectPrefix string, recursive bool) <-chan minio.ObjectMultipartInfo
+	AbortMultipartUpload(ctx context.Context, bucketName, objectName, uploadID string) error
+}
+
+func RunMultipartCleanup(ctx context.Context, client MultipartClient, bucket, prefix string, cutoff time.Time, execute bool) MultipartCleanupReport {
+	report := MultipartCleanupReport{
+		Bucket: bucket, Prefix: prefix, Cutoff: cutoff.UTC(), Execute: execute, Complete: true,
+		Candidates: make([]MultipartUploadCandidate, 0),
+	}
+	if client == nil {
+		report.Complete = false
+		report.Failed++
+		report.ErrorCount++
+		report.Errors = append(report.Errors, "MinIO client is required")
+		return report
+	}
+	for upload := range client.ListIncompleteUploads(ctx, bucket, prefix, true) {
+		report.Scanned++
+		if upload.Err != nil {
+			report.Complete = false
+			report.Failed++
+			report.ErrorCount++
+			if len(report.Errors) < maxMultipartCleanupErrors {
+				report.Errors = append(report.Errors, fmt.Sprintf("list MinIO upload: %v", upload.Err))
+			} else {
+				report.ErrorsTruncated = true
+			}
+			continue
+		}
+		if upload.Initiated.IsZero() || !upload.Initiated.Before(cutoff) {
+			continue
+		}
+		report.Selected++
+		candidate := MultipartUploadCandidate{
+			ObjectKey: upload.Key, UploadID: upload.UploadID, Initiated: upload.Initiated.UTC(), Status: "eligible",
+		}
+		if execute {
+			if err := client.AbortMultipartUpload(ctx, bucket, upload.Key, upload.UploadID); err != nil {
+				if isMultipartUploadGone(err) {
+					report.Aborted++
+					candidate.Status = "already_gone"
+				} else {
+					report.Failed++
+					candidate.Status = "failed"
+					candidate.Error = err.Error()
+				}
+			} else {
+				report.Aborted++
+				candidate.Status = "aborted"
+			}
+		}
+		report.Candidates = append(report.Candidates, candidate)
+	}
+	sort.Slice(report.Candidates, func(i, j int) bool {
+		return report.Candidates[i].Initiated.Before(report.Candidates[j].Initiated)
+	})
+	return report
+}
+
+func isMultipartUploadGone(err error) bool {
+	return minio.ToErrorResponse(err).Code == "NoSuchUpload"
+}
+
+func NormalizePrefix(prefix string) string {
+	return strings.Trim(strings.TrimSpace(prefix), "/") + "/"
+}

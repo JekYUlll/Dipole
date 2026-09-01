@@ -348,9 +348,9 @@ function clearObject(value: Record<string, unknown>): void {
 .task-badge { padding: 8px 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: color-mix(in srgb, var(--dp-surface) 45%, transparent); font: 700 11px var(--dp-font-data); }
 .elicitation-grid { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(240px, 320px) 1fr; overflow: hidden; border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent); border-radius: 6px 24px 6px 6px; box-shadow: 0 26px 70px color-mix(in srgb, var(--dp-rail) 14%, transparent); }
 .source-rail { padding: 32px; color: var(--dp-text-inverse); background: var(--forest); }
-.source-rail .rail-label { color: var(--dp-accent-soft); }
+.source-rail .rail-label { color: var(--dp-agent-soft); }
 .trust-chip { display: inline-flex; margin: 26px 0; padding: 6px 9px; border: 1px solid var(--dp-warning); border-radius: 3px; color: var(--dp-warning-soft); font-size: 10px; font-weight: 800; letter-spacing: .1em; }
-.trust-chip.local { border-color: var(--dp-accent); color: var(--dp-accent-soft); }
+.trust-chip.local { border-color: var(--dp-agent); color: var(--dp-rail); }
 .source-rail dl { margin: 0; }
 .binding-list { margin-top: 24px !important; padding-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,.14); }
 .source-rail dt { margin-top: 18px; color: var(--dp-ink-faint); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
@@ -383,7 +383,7 @@ button, .link-button { min-height: 42px; padding: 0 17px; border-radius: var(--d
 button:disabled { cursor: not-allowed; opacity: .55; }
 .state-card { max-width: 760px; margin: 80px auto; padding: 34px; border: 1px solid var(--line); border-radius: 4px 18px 4px 4px; background: var(--cream); box-shadow: 0 20px 55px color-mix(in srgb, var(--dp-rail) 11%, transparent); }
 .state-card-danger { border-left: 5px solid var(--accent); }
-.state-card-complete { border-left: 5px solid var(--dp-accent-strong); }
+.state-card-complete { border-left: 5px solid var(--dp-agent); }
 .state-title { margin: 0 0 8px; font-family: var(--dp-font-display); font-size: 22px; }
 .state-card > p:not(.state-title) { color: var(--muted); }
 .state-card .secondary-button { margin-top: 12px; }

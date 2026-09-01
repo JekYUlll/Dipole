@@ -96,6 +96,30 @@ func (s *Server) GetOwnedFile(ctx context.Context, request *corev1.GetOwnedFileR
 	return &corev1.GetOwnedFileResponse{File: fileToProto(file)}, nil
 }
 
+func (s *Server) ListOwnedFiles(ctx context.Context, request *corev1.ListOwnedFilesRequest) (*corev1.ListOwnedFilesResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	principal, err := grpccommon.Principal(request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if request.GetUploaderUserId() != principal {
+		return nil, status.Error(codes.PermissionDenied, "owner file directory principal mismatch")
+	}
+	page, err := s.capability.ListOwnedFiles(principal, request.GetBeforeFileId(), int(request.GetLimit()))
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "owned file directory query is invalid")
+	}
+	response := &corev1.ListOwnedFilesResponse{NextBeforeFileId: page.NextCursor, HasMore: page.HasMore}
+	for _, file := range page.Files {
+		if file != nil {
+			response.Files = append(response.Files, fileToProto(file))
+		}
+	}
+	return response, nil
+}
+
 func (s *Server) ListSearchConversationKeys(ctx context.Context, request *corev1.ListSearchConversationKeysRequest) (*corev1.ListSearchConversationKeysResponse, error) {
 	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
@@ -150,11 +174,12 @@ func fileToProto(file *model.UploadedFile) *corev1.FileSnapshot {
 		return nil
 	}
 	return &corev1.FileSnapshot{
-		FileId:         file.UUID,
-		UploaderUserId: file.UploaderUUID,
-		FileName:       file.FileName,
-		FileSize:       file.FileSize,
-		ContentType:    file.ContentType,
-		Url:            file.URL,
+		FileId:             file.UUID,
+		UploaderUserId:     file.UploaderUUID,
+		FileName:           file.FileName,
+		FileSize:           file.FileSize,
+		ContentType:        file.ContentType,
+		Url:                file.URL,
+		CreatedAtUnixMilli: file.CreatedAt.UTC().UnixMilli(),
 	}
 }

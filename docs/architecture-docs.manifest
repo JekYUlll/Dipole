@@ -9,6 +9,8 @@ docs/architecture/CASSANDRA-TIMELINE.md
 docs/data/ELASTICSEARCH-SEARCH.md
 docs/architecture/AGENT-RUNTIME-DESIGN.md
 docs/agent/AGENT-TIMELINE-REPAIR-OPERATIONS.md
+docs/agent/AGENT-ACTIVE-DEPLOYMENT.md
+docs/agent/README.md
 docs/frontend/FRONTEND-DESIGN-PLAN.md
 docs/performance/PERFORMANCE-BASELINE.md
 docs/architecture/REALTIME-DELIVERY.md
@@ -19,8 +21,14 @@ docs/architecture/MESSAGE-STORAGE-AND-SYNC.md
 docs/architecture/MESSAGE-SYNC-STRATEGY.md
 docs/data/CACHE-STRATEGY.md
 docs/operations/TLS-SETUP.md
+docs/operations/DEVELOPMENT-WORKFLOW.md
 docs/operations/TODO.md
+docs/operations/MULTIPART-CLEANUP.md
 docs/performance/LOAD-TEST-REPORT.md
 docs/guides/INTERVIEW-QA.md
+docs/guides/PROJECT-LEARNING-AND-INTERVIEW.md
+docs/guides/RESUME-CLAIM-READINESS.md
+docs/guides/DIPOLE-IM-LEARNING-AND-INTERVIEW.md
+docs/guides/DIPOLE-AGENT-LEARNING-AND-INTERVIEW.md
 docs/agent/ai-readiness-checklist.md
 docs/README.md

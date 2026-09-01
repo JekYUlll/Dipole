@@ -27,11 +27,12 @@ type LocalAgentCapabilityV1 struct {
 	messages      AgentCapabilityMessages
 	conversations AgentCapabilityConversations
 	commands      application.AgentCommandV1
+	search        application.SearchApplication
 }
 
 var _ application.AgentCapabilityV1 = (*LocalAgentCapabilityV1)(nil)
 
-func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCapabilityMessages, conversations AgentCapabilityConversations, commands application.AgentCommandV1) (*LocalAgentCapabilityV1, error) {
+func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCapabilityMessages, conversations AgentCapabilityConversations, commands application.AgentCommandV1, searches ...application.SearchApplication) (*LocalAgentCapabilityV1, error) {
 	if core == nil {
 		return nil, errors.New("Agent Capability Core dependency is required")
 	}
@@ -44,7 +45,60 @@ func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCa
 	if commands == nil {
 		return nil, errors.New("Agent Capability Command dependency is required")
 	}
-	return &LocalAgentCapabilityV1{core: core, messages: messages, conversations: conversations, commands: commands}, nil
+	if len(searches) > 1 {
+		return nil, errors.New("at most one Agent Capability Search dependency may be configured")
+	}
+	var search application.SearchApplication
+	if len(searches) == 1 {
+		search = searches[0]
+	}
+	return &LocalAgentCapabilityV1{core: core, messages: messages, conversations: conversations, commands: commands, search: search}, nil
+}
+
+const (
+	agentSearchQueryMaxRunes   = 256
+	agentSearchResultMaxItems  = 20
+	agentSearchContentMaxRunes = 2000
+)
+
+func (c *LocalAgentCapabilityV1) SearchConversations(_ context.Context, invocation application.AgentInvocationV1, query string, limit int) ([]*application.AgentConversationSearchEvidenceV1, error) {
+	if err := authorizeLocalAgentCapabilityForResourceV1(invocation, application.AgentCapabilityConversationSearch, application.AgentResourceTypeConversation, application.AgentResourceWildcard, application.AgentResourceActionRead); err != nil {
+		return nil, err
+	}
+	query = strings.TrimSpace(query)
+	if query == "" || len([]rune(query)) > agentSearchQueryMaxRunes || limit < 1 || limit > agentSearchResultMaxItems {
+		return nil, application.ErrAgentCapabilityDenied
+	}
+	if c.search == nil {
+		return nil, application.ErrAgentCapabilityUnavailable
+	}
+	documents, err := c.search.Search(strings.TrimSpace(invocation.PrincipalUUID), query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("search Agent conversations: %w", err)
+	}
+	queryDigest := sha256.Sum256([]byte(query))
+	querySHA256 := hex.EncodeToString(queryDigest[:])
+	results := make([]*application.AgentConversationSearchEvidenceV1, 0, min(limit, len(documents)))
+	for _, document := range documents {
+		if document == nil || len(results) == limit {
+			continue
+		}
+		results = append(results, &application.AgentConversationSearchEvidenceV1{
+			MessageUUID: document.MessageUUID, ConversationKey: document.ConversationKey,
+			MessageSeq: document.MessageSeq, Revision: document.Revision, SenderUUID: document.SenderUUID,
+			MessageType: document.MessageType, Content: truncateAgentSearchContentV1(document.Content),
+			SentAt: document.SentAt, QuerySHA256: querySHA256,
+		})
+	}
+	return results, nil
+}
+
+func truncateAgentSearchContentV1(content string) string {
+	runes := []rune(content)
+	if len(runes) <= agentSearchContentMaxRunes {
+		return content
+	}
+	return string(runes[:agentSearchContentMaxRunes])
 }
 
 func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, invocation application.AgentInvocationV1, subjectUUID string) (*model.User, error) {

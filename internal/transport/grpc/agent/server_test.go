@@ -21,6 +21,22 @@ import (
 
 type resolverStub struct{ invocation application.AgentInvocationV1 }
 
+func TestArtifactTimelineEventUsesContentAddressedEventID(t *testing.T) {
+	artifactID := strings.Repeat("a", application.AgentTaskTimelineEventUUIDMaxLengthV1)
+	event := artifactTimelineEventV1(&application.AgentArtifactV1{
+		ArtifactUUID: artifactID,
+		TaskUUID:     "task-1",
+		RunUUID:      "run-1",
+		CreatedAt:    time.Now().UTC(),
+	})
+	if event.EventUUID != artifactID || len(event.EventUUID) > application.AgentTaskTimelineEventUUIDMaxLengthV1 {
+		t.Fatalf("timeline event ID = %q, want content-addressed Artifact ID within persisted limit", event.EventUUID)
+	}
+	if err := event.Validate(); err != nil {
+		t.Fatalf("artifact timeline event validation = %v", err)
+	}
+}
+
 func (s resolverStub) Resolve(context.Context, string, string) (application.AgentInvocationV1, error) {
 	return s.invocation, nil
 }
@@ -110,6 +126,17 @@ type agentMemoryOwnerControlStub struct {
 type agentMemoryCandidatePromotionStub struct {
 	request application.AgentMemoryCandidatePromotionRequestV1
 	item    application.AgentMemoryV1
+}
+
+type agentMemoryPromotionReceiptCommitStub struct {
+	request application.AgentMemoryPromotionReceiptCommitRequestV1
+	item    application.AgentMemoryV1
+}
+
+func (s *agentMemoryPromotionReceiptCommitStub) CommitMemoryPromotionReceipt(_ context.Context, request application.AgentMemoryPromotionReceiptCommitRequestV1) (*application.AgentMemoryV1, error) {
+	s.request = request
+	item := s.item
+	return &item, nil
 }
 
 func (s *agentMemoryCandidatePromotionStub) Promote(_ context.Context, request application.AgentMemoryCandidatePromotionRequestV1) (*application.AgentMemoryV1, error) {
@@ -338,6 +365,14 @@ func (s *capabilityStub) ReadConversation(_ context.Context, invocation applicat
 	}, nil
 }
 
+func (s *capabilityStub) SearchConversations(_ context.Context, invocation application.AgentInvocationV1, query string, limit int) ([]*application.AgentConversationSearchEvidenceV1, error) {
+	s.invocation = invocation
+	return []*application.AgentConversationSearchEvidenceV1{{
+		MessageUUID: "M1", ConversationKey: "group:G1", MessageSeq: uint64(limit), Revision: 1,
+		SenderUUID: "U200", MessageType: model.MessageTypeText, Content: query, SentAt: time.UnixMilli(1_000), QuerySHA256: strings.Repeat("a", 64),
+	}}, nil
+}
+
 func TestListConversationsResolvesTrustedTaskIdentity(t *testing.T) {
 	capability := &capabilityStub{}
 	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
@@ -392,6 +427,37 @@ func TestReadConversationRejectsClientPrincipal(t *testing.T) {
 	}
 }
 
+func TestSearchConversationsResolvesTrustedTaskIdentityAndMapsEvidence(t *testing.T) {
+	capability := &capabilityStub{}
+	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "migration", Limit: 20,
+	})
+	if err != nil || capability.invocation.PrincipalUUID != "U100" || len(response.GetEvidence()) != 1 ||
+		response.GetEvidence()[0].GetMessageSeq() != 20 || response.GetEvidence()[0].GetContent() != "migration" {
+		t.Fatalf("unexpected trusted search response: invocation=%+v response=%+v err=%v", capability.invocation, response, err)
+	}
+}
+
+func TestSearchConversationsRejectsClientPrincipalAndInvalidBounds(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	_, err := server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "migration", Limit: 20,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+	_, err = server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "", Limit: 21,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("invalid bounds code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+}
+
 func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	controls := &taskControlAuthorizerStub{result: application.AgentTaskControlAuthorizationV1{
 		TaskUUID: "TASK-1", Status: application.AgentTaskStatusWaitingApproval,
@@ -416,7 +482,7 @@ func TestListAgentTaskTimelineUsesOwnerAuthorizationAndCursor(t *testing.T) {
 		Workflow: &application.AgentTaskWorkflowProjectionV1{Revision: 7},
 	}}
 	timeline := &taskTimelineStub{events: []application.AgentTaskTimelineEventV1{
-		{EventSeq: 4, EventUUID: "EV-4", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventToolInvocation, Status: "completed", OccurredAt: time.UnixMilli(4_000)},
+		{EventSeq: 4, EventUUID: "EV-4", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventArtifact, Status: "created", ArtifactUUID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", OccurredAt: time.UnixMilli(4_000)},
 		{EventSeq: 5, EventUUID: "EV-5", TaskUUID: "TASK-1", Kind: application.AgentTaskTimelineEventTerminal, Status: "completed", OccurredAt: time.UnixMilli(5_000)},
 	}}
 	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
@@ -432,7 +498,7 @@ func TestListAgentTaskTimelineUsesOwnerAuthorizationAndCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list timeline: %v", err)
 	}
-	if response.GetSchemaVersion() != application.AgentTaskTimelineSchemaVersionV1 || response.GetRevision() != 7 || len(response.GetEvents()) != 1 || response.GetEvents()[0].GetEventSeq() != 4 || response.GetNextCursor() != "4" || controls.principalUUID != "U100" {
+	if response.GetSchemaVersion() != application.AgentTaskTimelineSchemaVersionV1 || response.GetRevision() != 7 || len(response.GetEvents()) != 1 || response.GetEvents()[0].GetEventSeq() != 4 || response.GetEvents()[0].GetArtifactId() != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" || response.GetNextCursor() != "4" || controls.principalUUID != "U100" {
 		t.Fatalf("unexpected timeline response: response=%+v controls=%+v", response, controls)
 	}
 }
@@ -478,9 +544,9 @@ func TestAppendAgentTaskTimelineEventRequiresRuntimeAndValidRunBinding(t *testin
 	}
 	response, err := server.AppendAgentTaskTimelineEvent(context.Background(), &agentv1.AppendAgentTaskTimelineEventRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), EventId: "MODEL-1", TaskId: "TASK-1", RunId: "RUN-1",
-		Kind: "model_call", Status: "completed", OccurredAtUnixMs: 1_000,
+		Kind: "artifact", Status: "created", ArtifactId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", OccurredAtUnixMs: 1_000,
 	})
-	if err != nil || response.GetEventId() != "MODEL-1" || len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventModelCall {
+	if err != nil || response.GetEventId() != "MODEL-1" || len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventArtifact || timeline.events[0].ArtifactUUID != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
 		t.Fatalf("unexpected append response=%+v events=%+v err=%v", response, timeline.events, err)
 	}
 	_, err = server.AppendAgentTaskTimelineEvent(context.Background(), &agentv1.AppendAgentTaskTimelineEventRequest{
@@ -696,7 +762,7 @@ func TestExecuteMcpMessageCommandUsesBoundRuntimeService(t *testing.T) {
 	}
 }
 
-func TestProjectTaskWorkflowStateUsesFixedRuntimeBinding(t *testing.T) {
+func TestProjectTaskWorkflowStateUsesFixedRuntimeBindingWithoutModeDefault(t *testing.T) {
 	projection := &taskWorkflowProjectionStub{result: application.AgentTaskWorkflowProjectionV1{
 		TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
 		Status: application.AgentTaskWorkflowStatusWaitingInput, Revision: 2,
@@ -711,7 +777,7 @@ func TestProjectTaskWorkflowStateUsesFixedRuntimeBinding(t *testing.T) {
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
 		WorkflowId: "dipole-agent-task/TASK-1", WorkflowRunId: "temporal-run-1", WorkflowStatus: "waiting_input", WorkflowRevision: 2,
 	})
-	if err != nil || response.GetWorkflowRevision() != 2 || projection.request.RuntimeID != "dipole-agent" || projection.request.Mode != "shadow" || projection.request.RunUUID != "RUN-1" {
+	if err != nil || response.GetWorkflowRevision() != 2 || projection.request.RuntimeID != "dipole-agent" || projection.request.Mode != "" || projection.request.RunUUID != "RUN-1" {
 		t.Fatalf("unexpected Workflow projection: response=%+v request=%+v err=%v", response, projection.request, err)
 	}
 }
@@ -1031,14 +1097,14 @@ func TestPromoteMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
 	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
 		return server.PromoteMemoryCandidate(ctx, &agentv1.PromoteMemoryCandidateRequest{
 			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", CandidateId: "CAND-1",
-			CandidateSha256: strings.Repeat("a", 64), ReviewId: "REV-1",
+			CandidateSha256: strings.Repeat("a", 64), ReviewId: "REV-1", TargetMemoryType: "semantic",
 		})
 	})
 	if err != nil {
 		t.Fatalf("promote candidate: %v", err)
 	}
 	item := response.(*agentv1.AgentOwnedMemory)
-	if promotion.request.PrincipalUUID != "U100" || promotion.request.TenantID != "dipole" || promotion.request.CandidateUUID != "CAND-1" || item.GetMemoryId() != "MEM-CAND-1" {
+	if promotion.request.PrincipalUUID != "U100" || promotion.request.TenantID != "dipole" || promotion.request.CandidateUUID != "CAND-1" || promotion.request.TargetMemoryType != application.AgentMemoryTypeSemantic || item.GetMemoryId() != "MEM-CAND-1" {
 		t.Fatalf("unexpected promotion request=%+v response=%+v", promotion.request, item)
 	}
 	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
@@ -1046,6 +1112,37 @@ func TestPromoteMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent candidate promotion code = %s", status.Code(err))
+	}
+}
+
+func TestCommitMemoryPromotionReceiptIsAgentBoundAndOptIn(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	commit := &agentMemoryPromotionReceiptCommitStub{item: application.AgentMemoryV1{
+		MemoryUUID: "MEM-CAND-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+		MemoryType: application.AgentMemoryTypeSemantic, Status: application.AgentMemoryStatusActive,
+		ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60,
+		Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: "CAND-1", Sequence: "REV-1"}, ValidFrom: now, CreatedAt: now,
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	request := &agentv1.CommitMemoryPromotionReceiptRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), ReceiptId: "MEM-PROMOTE-" + strings.Repeat("a", 64), ReceiptSha256: strings.Repeat("a", 64),
+		SchemaVersion: application.AgentMemoryPromotionReceiptSchemaV2, Status: application.AgentMemoryPromotionReceiptPrepared,
+		TaskId: "TASK-1", RunId: "RUN-1", CandidateId: "CAND-1", CandidateSha256: strings.Repeat("b", 64), ReviewId: "REV-1", PolicyVersion: "memory-v1", TargetMemoryType: "semantic",
+		CreatedAtUnixMs: now.UnixMilli(), ExpiresAtUnixMs: now.Add(time.Minute).UnixMilli(),
+	}
+	_, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.CommitMemoryPromotionReceipt(ctx, request) })
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("unconfigured commit code = %s", status.Code(err))
+	}
+	server, _ = server.WithMemoryPromotionReceiptCommits(commit)
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) { return server.CommitMemoryPromotionReceipt(ctx, request) })
+	if err != nil || response.(*agentv1.CommitMemoryPromotionReceiptResponse).GetMemoryId() != "MEM-CAND-1" || response.(*agentv1.CommitMemoryPromotionReceiptResponse).GetReceiptSha256() != request.ReceiptSha256 || commit.request.TaskUUID != "TASK-1" || commit.request.TargetMemoryType != application.AgentMemoryTypeSemantic {
+		t.Fatalf("commit response=%+v request=%+v err=%v", response, commit.request, err)
+	}
+	request.Context = grpccommon.RequestContext("", "dipole-gateway")
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) { return server.CommitMemoryPromotionReceipt(ctx, request) })
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Gateway commit code = %s", status.Code(err))
 	}
 }
 
@@ -1117,7 +1214,7 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	response, err := server.RequestApproval(context.Background(), &agentv1.RequestApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1",
 		CapabilityId: "message.bulk.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "G1", Actions: []string{"write"}},
-		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(),
+		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(), Mode: "shadow",
 	})
 	if err != nil || response.GetStatus() != "pending" || approvals.requested.RuntimeID != "dipole-agent" || approvals.requested.Mode != "shadow" {
 		t.Fatalf("request Approval response=%+v request=%+v err=%v", response, approvals.requested, err)
@@ -1128,11 +1225,24 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	resolved, err := server.ResolveApproval(context.Background(), &agentv1.ResolveApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1", ActorUserId: "U100", Decision: "approved",
 	})
-	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
+	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.Mode != "" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
 		t.Fatalf("resolve Approval response=%+v resolution=%+v err=%v", resolved, approvals.resolved, err)
 	}
 	if len(timeline.events) != 2 || timeline.events[1].Kind != application.AgentTaskTimelineEventApproval || timeline.events[1].Status != "approved" {
 		t.Fatalf("unexpected Approval timeline resolution: %+v", timeline.events)
+	}
+}
+
+func TestApprovalRPCPropagatesActiveRuntimeMode(t *testing.T) {
+	approvals := &approvalServiceStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{}, approvals)
+	response, err := server.RequestApproval(context.Background(), &agentv1.RequestApprovalRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-ACTIVE",
+		CapabilityId: "message.system.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "direct:U100:UAI", Actions: []string{"write"}},
+		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(), Mode: "active",
+	})
+	if err != nil || response.GetStatus() != "pending" || approvals.requested.Mode != "active" {
+		t.Fatalf("request active Approval response=%+v request=%+v err=%v", response, approvals.requested, err)
 	}
 }
 

@@ -1,6 +1,6 @@
 package httpdto
 
-import "github.com/JekYUlll/Dipole/internal/compat/service"
+import coreuser "github.com/JekYUlll/Dipole/internal/services/core/domain/user"
 
 type UpdateProfileRequest struct {
 	Nickname  *string `json:"nickname"`
@@ -9,8 +9,8 @@ type UpdateProfileRequest struct {
 	Signature *string `json:"signature"`
 }
 
-func (r UpdateProfileRequest) ToInput() service.UpdateProfileInput {
-	return service.UpdateProfileInput{
+func (r UpdateProfileRequest) ToInput() coreuser.UpdateProfileInput {
+	return coreuser.UpdateProfileInput{
 		Nickname:  r.Nickname,
 		Email:     r.Email,
 		Avatar:    r.Avatar,

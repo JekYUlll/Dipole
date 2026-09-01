@@ -4,19 +4,67 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 语义色变量从旧青绿盘重映射到 V3 品牌板并与前端 CSABC 锁步：`.pen` 的 `rail`/`ink` 系归海军蓝、`accent` 系归信号红、`line` 归暖象牙线，遗留 `brand`/`brand-deep`（微信绿 `#07C160`/`#04964A`）改为信号红，新增 `agent`/`agent-soft` 轨道金变量表达受控 Agent 状态；`canvas`/`surface`/`danger`/`warning` 为暖中性色保持不变。仅改变量值（内联到帧的 302 处硬编码色仍是旧盘，属既有设计债，见下）。
+- 确立 Agent 配色规则（前端已落地，画板待跟进）：Agent 身份文本用海军蓝而非金色（金色作小字文本对比度不足），金色只作克制的身份与耐久任务进度标记（状态点、时间线节点、active 药丸填充、scope 边线）；信号红留主操作/链接，danger 留撤销/错误。另引入功能性 `--dp-success` 哑光 BI 绿承接"在线/已同步/成功"，刻意区别于已退役的品牌绿。
+- V3 品牌资产改为脚本生成的单一来源，色值按 V3 品牌板实测校正（海军蓝 `#0D2744`、信号红 `#EA2521`、轨道金 `#EFAD05`、象牙白 `#FBF2E7`），与 `brand-v3-ui-brief.md` 中早期估读的十六进制值不同，后续画板与 Vue 实现以生成器为准。
+- 字标由 Poppins Bold 换为 Goldman Bold：宽体方块字形、方正字腔与均匀粗字干提供硬朗的机加工硬件感，与标识的圆盘形成刻意反差；先后试过的 Space Grotesk（偏几何柔和）与 Tomorrow（方形但硬度不足）均已否决。字标以 cap-height 归一化的 path 内联（生成脚本 `scripts/generate-brand-wordmarks.mjs`），画板与前端按目标 cap 高度直接缩放。辅助标签保持系统等宽体、大写加字距，作为系统的数据面语态。
+- Agent 变体的科技感统一由金色层承载：均匀描边、带明暗渐变的星环与镂空节点；主色块保持平涂，禁止在色块上叠加渐变。
+
+### 新增
+
+- 新增 `agent-artifact-digest-v2-brief.md`，定义 owner-scoped `conversation_digest` Markdown 阅读区、desktop/mobile 画板、正文状态矩阵及两个复用组件；对象键、Metadata JSON、通用下载和写控制保持关闭。
+
+- 新增 `brand-v3-ui-brief.md`，将用户提供的 V3 双极对话标识转换为 Pencil 可执行 brief：海军蓝/信号红/轨道金/暖象牙白、Login、Chat 和 Agent Task 的 desktop/mobile 目标以及只读、审批边界。
+
+- 增加 Agent Task Create v1 的 desktop/mobile 创建页、五态 State Matrix 与 `exports/agent-task-create-v1/` 批准预览。
+- 增加 `Component/Agent Task Goal Field`、`Component/Agent Task Request Badge` 和 `Component/Agent Task Submit State`；页面固定只提交本地请求身份与目标文本，身份、权限、Agent、Capability、Memory 与 Runtime 控制不进入浏览器输入。
+- 增加 Agent Task Create 的 Chromium canonical screenshot，使用认证 fixture 固定初始空表单、只读会话访问边界和 Runtime/Tool/外部服务未启用提示；该基线只覆盖 Chromium 初始态。
+- 增加 Settings v1 的 desktop/mobile 账户页、四态 State Matrix 与 `exports/settings-v1/` 批准预览。
+- 增加 `Component/Settings Profile`、`Component/Settings Sync Status` 和 `Component/Settings Logout Boundary`；资料、同步和危险会话操作沿用现有绿色与风险色语义。
+- 固定 Settings 数据披露边界：只呈现签名、本机 safe cursor、同步状态和 Device Security 入口；IP、节点、连接 ID、消息正文及设备原始标识保持关闭。
+- 增加 Device Security v1 的 desktop/mobile 会话页与七态 State Matrix，归档三张 `exports/device-security-*-review.png` 2x 评审基线。
+- 增加 `Device Session Row`、`Device Trust Status` 和 `Session Sign-out Confirmation` 三个复用组件；移动端使用堆叠会话卡片与明确批准区，避免桌面行布局在窄屏拥挤。
+- 固定 Device Security 隐私披露边界：仅显示设备标签、粗粒度设备或浏览器说明、相对活动时间和状态；IP、节点、连接 ID、用户 ID、Token、精确位置和原始 User-Agent 均不进入设计稿。
+- 增加 File Directory v1 的 desktop/mobile 只读目录、loading/empty/unavailable 状态矩阵及 File Directory Row、File Type Badge、Empty State 三个复用组件。
+- 归档 `exports/file-directory-review.png` 评审基线；目录仅展示 owner-scoped 文件元数据，存储 URL、对象键、校验值、上传会话和删除控制均不进入页面。
+- 增加 Group Directory v1 的 desktop/mobile 目录、五态权威状态矩阵和 Group Row/Status/Member Summary 三个可复用组件。
+- 归档 `exports/group-v1/` 的 2x 评审图；设计只覆盖认证读取、解散只读和热群 `notify + pull`，不开放群管理写操作。
+- 增加 Contact v1 的 desktop/mobile 管理稿、关系状态矩阵和两个可复用组件，覆盖可信联系人、传入/传出申请、备注、拉黑和删除入口。
+- 归档 `exports/contact-v1/` 的 2x 评审图；当前仅为设计基线，Vue 路由与交互实现继续待 F2 后续切片接入。
+
+- 新增 `brand-signal-v2-brief.md`，固定实心端点、空心端点与连续连接轨迹的标识方向，覆盖横向字标、方形应用图标和小尺寸单色图标。Pencil CLI 已生成方向性中间评审图，但在安全超时前未完成 canonical `.pen` 保存；SVG 资产可先作为文档入口使用，Pencil 评审 Frame 与正式导出继续待补。
 - 增加本地 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该检查不修改设计文件，也不替代 Pencil 视觉评审。
+- 增加 `design/export-manifest.json` 评审导出清单；设计门禁现在同时校验批准的单文件和导出目录存在且包含非空 PNG，避免设计稿与评审资产发生静默漂移。
 
 ### 变更
+
+- V3 的两次 Pencil CLI 增量编辑均在临时输出阶段超时，安全包装器已删除临时文件，canonical `.pen` 与批准导出保持不变。Vue 先以 additive `--dp-v3-*` token 和 V3 SVG 改造 Login；完整视觉基线待 CLI 可完成增量写回后恢复。
 
 - Agent Task 审批页完成 Vue 首个实现切片：沿用既有 Agent Approval 设计基线，展示任务/请求绑定、风险提示、过期和不可用状态；入口由 `VITE_AGENT_APPROVAL_ENABLED` 默认关闭，未扩展 canonical `.pen`。
 - 将 `.pen` Foundations 的颜色、字体、间距和圆角变量映射为 `frontend/src/styles/design-tokens.css`，应用壳层与 Search 工作区复用同一组 `--dp-*` token；新增 Vitest 契约测试，后续设计稿更新需同步调整该文件。
 
 ### 验证
 
-- Agent Task Timeline v1 增量设计已建立可复用 brief `design/agent-task-timeline-v1-brief.md`；Pencil CLI `0.3.5` 在两次受限模型调用中均未在超时窗口内完成，safe-edit wrapper 保留 canonical `.pen`，未生成导出图。F3/F4 视觉交付继续保持待处理状态。
+- Agent Task Create v1 通过 Pencil CLI 增量编辑、无裁切/placeholder 检查、canonical JSON 结构门禁和三张 2x 导出复核；Vue 交互的 Remote GPU Node 22 定向测试、typecheck 和 production build 已在前置切片通过。active authority、Compose、Kafka、Temporal 与共享环境控制面演练继续关闭。
+- Settings v1 认证页面在 Chromium 固定截图基线，Remote GPU Firefox 已通过路由与低敏披露断言；WebKit 二进制虽已安装，当前共享宿主缺少浏览器运行库，待系统维护窗口后补充验证。
+
+- File Directory 的 Chromium 受控 fixture 现固定 owner-scoped 文件 metadata、逐项授权下载入口和存储信息披露边界；截图不连接对象存储，也不覆盖其他浏览器或上传写路径。
+- File Directory v1 的 Pencil 结构门禁、低敏目录解析/状态组件测试和认证路由契约通过；Remote GPU Node 22 在 `a29d9927` 通过 38 个前端测试文件、157 项测试、typecheck 与 production build。当前未覆盖跨浏览器交互或视觉回归，以及文件写操作。
+- Group Directory v1 的 Pencil 结构门禁、目录解析/状态组件测试、认证路由契约、Remote GPU Node 22 typecheck 与 production build 通过；当前未覆盖跨浏览器截图回归或群管理写路径。
+- Agent Definition Catalog v1 使用 Pencil CLI `0.3.5` 与 `scripts/pencil-safe-edit.mjs` 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、三个复用组件和 2x 导出。Vue 目录页的 Chromium visual baseline 只覆盖受控低敏 metadata 与只读边界，active Runtime 和写 Capability 继续关闭。
+- Agent Task Timeline v1 使用 Pencil CLI `0.3.5`、`scripts/pencil-safe-edit.mjs` 和既有 brief 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、四个复用组件和 2x 导出。F2/F3 未完成页面、完整截图级视觉回归与未覆盖平台场景继续保持待处理状态。
+- Agent Task Timeline Vue 页面新增 Chromium canonical screenshot，使用受控低敏 fixture 固定只读 metadata、Capability、等待审批和分页入口；该验证不涵盖其余浏览器或完整页面基线。
 
 ### 新增
 
+- 增加 Agent Artifact metadata desktop/mobile 页面、loading/ready/unavailable/disclosure-closed 状态矩阵和 `exports/agent-artifact-v1/` 批准预览。
+- 增加 Artifact Disclosure 与 Integrity 两个可复用组件；设计固定只披露 owner-scoped metadata 和内容寻址摘要，正文、对象键、metadata JSON、下载与写控制继续关闭。
+- 增加 Agent Definition Catalog desktop/mobile 目录、loading/empty/unavailable/pagination 状态矩阵和只读 Runtime 边界，并归档 `exports/agent-definition-overview/` 和 `exports/agent-definition-v1/overview.png`。
+- 增加 Agent Definition Row、Scope Chip 和 Status 三个可复用组件；目录设计不提供创建、编辑、激活、删除、模型或 Tool 控制，也不披露 owner、tenant、内部 provenance 或参数。
+- 增加 Agent Task Timeline desktop/mobile 事件历史和四态矩阵，明确 revision、序号、Capability、状态与低敏 provenance 的只读边界，并归档 `exports/agent-timeline-overview/` 和全画布 `exports/agent-timeline-v1/overview.png`。
+- 增加 Agent Timeline Event、Revision Badge、Provenance Label 和 Unavailable State 四个可复用组件；canonical 文件扩展为 61 个顶层 Frame 和 27 个可复用组件。
 - 增加 Agent Event Subscription desktop/mobile 创建流程和七类创建状态，归档 `exports/agent-subscription-create-v1/` 的 2x 评审基线。
 - 增加 Subscription Create Option 与 Authority Summary 两个可复用组件；canonical 文件扩展为 44 个顶层 Frame 和 21 个可复用组件。
 - 增加 Agent Event Subscription desktop owner 管理页、六态契约矩阵和 mobile 撤销确认层，并保存 `exports/agent-subscription-v1/` 的 2x 评审基线。

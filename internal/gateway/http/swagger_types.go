@@ -98,6 +98,11 @@ type UploadedFileResponseEnvelope struct {
 	Data *httpdto.UploadedFileResponse `json:"data"`
 }
 
+type OwnedFileDirectoryResponseEnvelope struct {
+	Code int                                 `json:"code"`
+	Data *httpdto.OwnedFileDirectoryResponse `json:"data"`
+}
+
 type FileDownloadResponseEnvelope struct {
 	Code int                           `json:"code"`
 	Data *httpdto.FileDownloadResponse `json:"data"`
@@ -106,6 +111,16 @@ type FileDownloadResponseEnvelope struct {
 type FileMultipartInitiateResponseEnvelope struct {
 	Code int                                    `json:"code"`
 	Data *httpdto.FileMultipartInitiateResponse `json:"data"`
+}
+
+type FileMultipartStatusResponseEnvelope struct {
+	Code int                                  `json:"code"`
+	Data *httpdto.FileMultipartStatusResponse `json:"data"`
+}
+
+type MultipartPresignResponseEnvelope struct {
+	Code int                                   `json:"code"`
+	Data *httpdto.FileMultipartPresignResponse `json:"data"`
 }
 
 type DeviceSessionListResponseEnvelope struct {

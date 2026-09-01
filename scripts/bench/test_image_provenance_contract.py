@@ -26,7 +26,7 @@ class ImageProvenanceContractTest(unittest.TestCase):
     def test_benchmark_resolves_running_image_provenance_before_load(self):
         script = (ROOT / "scripts/bench/run_bench.sh").read_text(encoding="utf-8")
         resolve_index = script.index("\nresolve_process_metric_bindings\n")
-        load_index = script.index("k6 run")
+        load_index = script.index('"${K6_BIN}" run')
 
         self.assertLess(resolve_index, load_index)
         self.assertIn("docker image inspect", script)
