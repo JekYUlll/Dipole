@@ -530,6 +530,67 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     }
   }, 120_000);
 
+  it("cancels an interactive write after one denied approval and ignores replayed signals", async () => {
+    const taskQueue = `dipole-agent-interactive-denied-${Date.now()}`;
+    const finishes: AgentTaskFinishInput[] = [];
+    const resolutions: unknown[] = [];
+    const writeExecutions: unknown[] = [];
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) { return { taskId: input.taskId, runId: "run-interactive-denied-1", runStatus: "running" }; },
+      async finishAgentTask(input) { finishes.push(input); },
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval(input) { resolutions.push(input); },
+      async executeAgentTaskStep(input) {
+        if (input.resume?.kind === "approval") {
+          writeExecutions.push(input.resume);
+          return { kind: "complete", output: { action: "approved" } };
+        }
+        return {
+          kind: "wait_approval", requestId: "REQ-DENIED-1", summary: "Send the prepared digest",
+          approval: {
+            approvalId: "APR-DENIED-1", capabilityId: "message.system.send",
+            resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+            scopeSha256: "a".repeat(64), argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64),
+            expiresAtUnixMs: Date.now() + 60_000
+          }
+        };
+      }
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+    const workerRun = worker.run();
+    const tasks = new TemporalTaskClient(env.client.workflow, taskQueue);
+    const controls = new TemporalTaskControlClient(env.client.workflow);
+
+    try {
+      const started = await tasks.start({ taskId: "task-interactive-denied-1", goal: "send prepared digest" });
+      const handle = env.client.workflow.getHandle(started.workflowId);
+      await waitForStatus(env, handle, "waiting_approval");
+      const pending = await controls.query("task-interactive-denied-1") as { pending: { requestId: string; approvalId: string } };
+      const decision = {
+        requestId: pending.pending.requestId, approvalId: pending.pending.approvalId,
+        decision: "denied" as const, actorUserId: "U100"
+      };
+
+      await Promise.all([
+        controls.resolveApproval("task-interactive-denied-1", decision),
+        controls.resolveApproval("task-interactive-denied-1", decision)
+      ]);
+
+      await expect(handle.result()).resolves.toMatchObject({
+        status: "cancelled", cancellation: { reason: "approval_denied", requestId: "REQ-DENIED-1" }
+      });
+      expect(resolutions).toEqual([expect.objectContaining({
+        approvalId: "APR-DENIED-1", decision: "denied", actorUserId: "U100"
+      })]);
+      expect(writeExecutions).toEqual([]);
+      expect(finishes).toEqual([expect.objectContaining({ runStatus: "cancelled", lastError: "approval_denied" })]);
+    } finally {
+      worker.shutdown();
+      await workerRun;
+    }
+  }, 120_000);
+
   it("cancels an unanswered durable input after its recorded deadline", async () => {
     const taskQueue = `dipole-agent-task-input-timeout-${Date.now()}`;
     const finishes: AgentTaskFinishInput[] = [];
