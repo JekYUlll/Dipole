@@ -43,11 +43,32 @@ describe('AgentTaskTimeline', () => {
   })
 
   it('clears events and shows retry when the authoritative endpoint fails', async () => {
+    vi.useFakeTimers()
     const getTimeline = vi.fn().mockRejectedValue(new Error('unavailable'))
     const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
     await flushPromises()
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
     expect(wrapper.find('[data-agent-timeline-retry]').exists()).toBe(true)
     expect(wrapper.find('[data-event-seq]').exists()).toBe(false)
+    vi.useRealTimers()
+  })
+
+  it('retries the initial Timeline read once while a newly admitted Task is projected', async () => {
+    vi.useFakeTimers()
+    const getTimeline = vi.fn()
+      .mockRejectedValueOnce(new Error('not found yet'))
+      .mockResolvedValueOnce({ schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 1, events: [], nextCursor: '' })
+    const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
+
+    await flushPromises()
+    expect(getTimeline).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+
+    expect(getTimeline).toHaveBeenCalledTimes(2)
+    expect(wrapper.attributes('data-state')).toBe('ready')
+    vi.useRealTimers()
   })
 
   it('links only validated Artifact events to the metadata surface', async () => {
