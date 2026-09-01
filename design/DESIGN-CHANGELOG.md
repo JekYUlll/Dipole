@@ -96,8 +96,8 @@
 # 2026-09-01 Pencil V3 path asset import
 
 - 在活动 Pencil canvas 中将 `LOGO_V3.png` 的 VTracer 原始四路径几何导入 Group、Contact、File 和 Device rail，保留源 viewBox、品牌颜色与比例；导入过程未使用人工重绘或外部 image fill。
-- 活动画布的 Group、Contact、File、Device 节点级截图通过，确认标志无 checkerboard、裁切、溢出或折叠；因活动 canvas 与当前分支 canonical `.pen` 存在额外未归属差异，本轮暂不直接合并整文件，canonical 持久化保留为下一次隔离编辑切片。
+- Group、Contact、File、Device 节点级截图通过，确认标志无 checkerboard、裁切、溢出或折叠；已将活动 Pencil canvas 的完整设计基线安全同步到当前分支 canonical `.pen`，保留完整页面 frame 与复用组件。
 
 ### 验证
 
-- Pencil canonical 结构门禁待本切片提交前复跑；前端页面继续通过 `scripts/check-brand-assets.mjs` 校验页面引用与路径资产完整性。
+- Pencil canonical 结构门禁通过 `107 frames / 3329 nodes / 36 variables / 49 reusable`；前端页面继续通过 `scripts/check-brand-assets.mjs` 校验页面引用与路径资产完整性。
