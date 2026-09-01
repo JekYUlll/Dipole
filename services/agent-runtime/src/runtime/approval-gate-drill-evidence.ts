@@ -4,15 +4,18 @@ import { z } from "zod";
 
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 
-export const approvalGateDrillEvidenceSchemaVersion = "dipole.agent.approval-gate-drill.v1" as const;
+export const approvalGateDrillEvidenceSchemaVersion = "dipole.agent.approval-gate-drill.v2" as const;
 export const approvalGateDrillEvidenceMaximumValidityMs = 24 * 60 * 60 * 1_000;
 
 const outcomeSchema = z.object({
   approved_effect_count: z.literal(1),
   denied_effect_count: z.literal(0),
+  denied_authorization_rejected: z.literal(true),
   consumed_replay_effect_count: z.literal(0),
+  consumed_replay_rejected: z.literal(true),
   failed_effect_count: z.literal(1),
   failed_replay_effect_count: z.literal(0),
+  failed_replay_rejected: z.literal(true),
   core_rpc_type: z.literal("go_internal_grpc_mtls"),
   core_rpc_authenticated: z.literal(true)
 }).strict();

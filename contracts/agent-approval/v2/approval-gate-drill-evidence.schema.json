@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-approval/v2/approval-gate-drill-evidence.schema.json",
+  "title": "Dipole Agent Approval Gate Drill Evidence v2",
+  "description": "Low-sensitivity, expiring evidence for the disposable Go Core mTLS approval gate drill.",
+  "type": "object",
+  "x-dipole-version": "dipole.agent.approval-gate-drill.v2",
+  "required": [
+    "schema_version", "outcome", "isolation", "collected_at", "expires_at",
+    "approved_effect_count", "denied_effect_count", "denied_authorization_rejected",
+    "consumed_replay_effect_count", "consumed_replay_rejected", "failed_effect_count",
+    "failed_replay_effect_count", "failed_replay_rejected", "core_rpc_type",
+    "core_rpc_authenticated", "production_authority", "content_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "dipole.agent.approval-gate-drill.v2"},
+    "outcome": {"const": "passed"},
+    "isolation": {"const": "disposable_go_core_mtls_approval_gate_fixture"},
+    "collected_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "approved_effect_count": {"const": 1},
+    "denied_effect_count": {"const": 0},
+    "denied_authorization_rejected": {"const": true},
+    "consumed_replay_effect_count": {"const": 0},
+    "consumed_replay_rejected": {"const": true},
+    "failed_effect_count": {"const": 1},
+    "failed_replay_effect_count": {"const": 0},
+    "failed_replay_rejected": {"const": true},
+    "core_rpc_type": {"const": "go_internal_grpc_mtls"},
+    "core_rpc_authenticated": {"const": true},
+    "production_authority": {"const": false},
+    "content_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "additionalProperties": false
+}
