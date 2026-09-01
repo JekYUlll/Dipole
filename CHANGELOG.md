@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Interactive Agent 的 active 消息命令现通过 Message Service gRPC 执行，并由同一远程回执查询完成 Tool action reference 审计。Core 的 `dipole-agent` allowlist 精确放行 `ExecuteMcpMessageCommand`；候选回归还修复了 standalone Core 在审计阶段误用空本地 Message repository 导致的崩溃。Remote GPU loopback-only 隔离 Compose 已验证受认证 Task 创建 `202`、owner 批准 `202`、Temporal 完成、Tool completed、approval 单次 consumed，以及 action reference 对应恰好一条消息。短期开发 promotion grant 在验证后已撤销。该候选使用 dirty development images 和直接受控的开发授权续期，不构成生产发布、浏览器体验、拒绝/重复批准、故障恢复或容量结论。
+
 - 2026-09-01：新增 `agent-interactive-active.yml` 受控 overlay 与 `interactive_active` Temporal profile。该 profile 要求 active Runtime、mTLS Capability RPC、`dipole-agent-interactive-*` 专用队列、Control API 与显式消息写开关，并持续拒绝 MCP、Memory、检索和订阅扩张；基础 Compose 与 `read_active` 均不受影响。Remote GPU 已通过 profile/Temporal 定向测试和类型检查，尚未启动共享 Compose 或产生真实消息副作用。
 
 - 2026-09-01：Interactive Agent 新增默认关闭的显式 `/send <内容>` 受控写入切片。active Runtime 仅在 `DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED=true` 时为直属 Agent 会话装配消息执行器；Temporal 先持久化 `wait_approval`，收到 owner 的 approved Signal 后复用既有 MCP grant/单次 consume/Tool Invocation 审计/Core 消息命令链路完成一次 `system_message`。会话 ID、消息内容哈希、审批 ID 与 Task/Run 绑定，Shadow 与未开启开关的 active profile 保持只读。Remote GPU 已通过 `23` 条定向单测、隔离 Temporal durable resume 和 TypeScript typecheck；共享 Core/Temporal/Compose 的真实副作用 receipt 与回滚演练仍待完成。
