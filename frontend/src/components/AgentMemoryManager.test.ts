@@ -39,6 +39,12 @@ describe('AgentMemoryManager', () => {
     expect(source).toContain('font-family: var(--dp-font-body)')
   })
 
+  it('uses the PNG-derived Agent mark in the control rail', () => {
+    expect(source).toContain("import agentMark from '../../../docs/images/dipole-v3-agent-mark-traced.svg'")
+    expect(source).toContain(':src="agentMark"')
+    expect(source).toContain('class="brand-mark"')
+  })
+
   it('renders owner-visible provenance and trust boundaries', async () => {
     const client = service()
     const wrapper = mount(AgentMemoryManager, { props: { client } })

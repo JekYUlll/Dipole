@@ -42,6 +42,12 @@ describe('AgentSubscriptionManager', () => {
     expect(source).not.toContain('--paper:#f4f6f8')
   })
 
+  it('uses the PNG-derived Agent mark in the control rail', () => {
+    expect(source).toContain("import agentMark from '../../../docs/images/dipole-v3-agent-mark-traced.svg'")
+    expect(source).toContain(':src="agentMark"')
+    expect(source).toContain('class="brand-mark"')
+  })
+
   it('renders the owner-derived list and opens creation from trusted catalogs', async () => {
     const client = service()
     const definitionClient = definitions()
