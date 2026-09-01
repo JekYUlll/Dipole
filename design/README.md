@@ -16,6 +16,20 @@
 
 ## 当前 Frame
 
+### V3 页面验收导出
+
+Pencil canonical 画布中的 File、Device 和 Settings frame 已导出到
+`exports/frontend-v3-canonical/`，供前端实现 review 和截图基线对照：
+
+| 页面 | Desktop | Mobile |
+| --- | --- | --- |
+| File Directory | `file-desktop/frame.png` | `file-mobile/frame.png` |
+| Device Sessions | `device-desktop/frame.png` | `device-mobile/frame.png` |
+| Settings Account | `settings-desktop/frame.png` | `settings-mobile/frame.png` |
+
+这些导出物来自当前连接的 Pencil canonical 画布；源设计文件仍按
+`dipole-ui.pen` 的单一 canonical 规则维护，不在仓库中复制第二份 `.pen`。
+
 ### Foundations 与组件
 
 - `00 Foundations`：颜色、字体、圆角和间距基线。
