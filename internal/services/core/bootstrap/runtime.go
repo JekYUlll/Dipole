@@ -106,11 +106,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 
 	runtime := &CoreRuntime{}
 	var systemMessages applicationPort.SystemMessageSender
-	var messageReceipts applicationPort.MessageCommandReceiptQuery = messaging.Messages
+	messageReceipts := coreAgentToolReceiptQuery(messaging.Messages, nil)
 	if config.CoreMessageConfig().Transport == "grpc" {
 		runtime.messageSender = newLazyCoreMessageSender(config.InternalRPCConfig())
 		systemMessages = runtime.messageSender
-		messageReceipts = runtime.messageSender
+		messageReceipts = coreAgentToolReceiptQuery(messaging.Messages, runtime.messageSender)
 	}
 	cleanup := func() { runtime.Close() }
 	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
@@ -371,6 +371,15 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	}
 	logger.Info("standalone Core runtime initialized", zap.String("mode", gatewayMode), zap.String("rpc_addr", rpcAddress(runtime.coreRPC)))
 	return runtime, nil
+}
+
+// coreAgentToolReceiptQuery keeps action-reference verification on the
+// authoritative Message service when standalone Core delegates message writes.
+func coreAgentToolReceiptQuery(local applicationPort.MessageCommandReceiptQuery, remote *lazyCoreMessageSender) applicationPort.MessageCommandReceiptQuery {
+	if remote != nil {
+		return remote
+	}
+	return local
 }
 
 func validateStandaloneCoreMode(mode string) error {
