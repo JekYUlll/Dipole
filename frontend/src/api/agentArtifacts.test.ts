@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { agentArtifactClient, parseAgentArtifactMetadata } from './agentArtifacts'
+import { agentArtifactClient, parseAgentArtifactContent, parseAgentArtifactMetadata } from './agentArtifacts'
 
 const artifactId = 'a'.repeat(64)
 const valid = {
@@ -15,7 +15,9 @@ const valid = {
   createdAtUnixMs: 1_725_000_000_000,
 }
 
-vi.mock('@/api', () => ({ default: { get: vi.fn(async () => valid) } }))
+const digest = { artifactId, mediaType: 'text/markdown', content: '# Project digest\n- Ship the gateway' }
+
+vi.mock('@/api', () => ({ default: { get: vi.fn(async (path: string) => path.endsWith('/content') ? digest : valid) } }))
 
 describe('Agent Artifact metadata API', () => {
   it('accepts the exact low-sensitive metadata shape', () => {
@@ -32,5 +34,13 @@ describe('Agent Artifact metadata API', () => {
     const api = (await import('@/api')).default
     expect(api.get).toHaveBeenCalledWith(`/api/v1/agent/artifacts/${artifactId}`)
     await expect(agentArtifactClient.get('short-id')).rejects.toThrow('ID')
+  })
+
+  it('accepts the constrained digest content shape and uses its dedicated route', async () => {
+    expect(parseAgentArtifactContent(digest)).toEqual(digest)
+    expect(() => parseAgentArtifactContent({ ...digest, objectKey: 'private' })).toThrow('content')
+    await expect(agentArtifactClient.getContent(artifactId)).resolves.toEqual(digest)
+    const api = (await import('@/api')).default
+    expect(api.get).toHaveBeenCalledWith(`/api/v1/agent/artifacts/${artifactId}/content`)
   })
 })

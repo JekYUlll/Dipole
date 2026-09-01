@@ -6,6 +6,8 @@
 
 ### 新增
 
+- 新增 `agent-artifact-digest-v2-brief.md`，定义 owner-scoped `conversation_digest` Markdown 阅读区、desktop/mobile 画板、正文状态矩阵及两个复用组件；对象键、Metadata JSON、通用下载和写控制保持关闭。
+
 - 新增 `brand-v3-ui-brief.md`，将用户提供的 V3 双极对话标识转换为 Pencil 可执行 brief：海军蓝/信号红/轨道金/暖象牙白、Login、Chat 和 Agent Task 的 desktop/mobile 目标以及只读、审批边界。
 
 - 增加 Agent Task Create v1 的 desktop/mobile 创建页、五态 State Matrix 与 `exports/agent-task-create-v1/` 批准预览。

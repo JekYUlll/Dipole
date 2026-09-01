@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Agent Artifact 的认证前端现可读取严格限定的 `conversation_digest` Markdown 正文。页面仅在 metadata 为该类型和 `text/markdown` 时请求受限正文接口，正文响应必须与 metadata 的内容寻址 ID 和媒体类型一致；其他 Artifact 保持 metadata-only。正文以纯文本阅读区显示，下载、对象键、Metadata JSON 与写操作继续关闭。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建及 Chromium 功能/视觉回归。
+
 - 2026-09-01：Gateway 现支持默认关闭、owner-scoped 的 `conversation_digest` Markdown 正文读取。`GET /api/v1/agent/artifacts/:artifact_id/content` 复用 Core Artifact owner 校验与内容哈希校验，只返回 Artifact ID、媒体类型和正文；对象键、Metadata JSON 与通用下载仍不进入公开边界。Remote GPU 隔离候选已验证同一用户的 metadata/content 均为 `200`，另一用户读取正文为 `404`。
 
 - 2026-09-01：修复 Agent Artifact Timeline 的持久化 ID 边界。Artifact 的内容寻址 ID 现直接作为 Timeline event ID，符合 MySQL `VARCHAR(64)` 契约；领域校验同步拒绝超长 event ID，避免投影写入失败后造成 Artifact 从 Timeline 缺失。Remote GPU 隔离候选已复验任务完成、Artifact metadata 与 Timeline Artifact 事件一致。

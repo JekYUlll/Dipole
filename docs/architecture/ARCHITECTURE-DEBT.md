@@ -4,6 +4,8 @@
 
 - 2026-09-01：默认关闭的 Gateway Artifact 控制面已增加受限的 `conversation_digest` Markdown 正文读取。Gateway 仍通过 mTLS Core RPC 从认证 principal 重新解析 owner，并复核正文长度与 SHA-256；公开响应只包含 Artifact ID、媒体类型和正文。Remote GPU 隔离验收验证 owner metadata/content 为 `200`、foreign content 为 `404`。对象键、Metadata JSON、其他 Artifact 类型和通用下载继续关闭，前端正文展示留待独立前端里程碑。
 
+- 2026-09-01：Artifact 前端里程碑已接入 owner-scoped `conversation_digest` 阅读区。客户端仅在 metadata 精确匹配 `conversation_digest` 与 `text/markdown` 时读取正文，并复核响应的 Artifact ID/媒体类型；正文不可用时 metadata 继续保留且可重试。页面以文本阅读区呈现 Markdown 源文，未增加下载、对象键、Metadata JSON、公开 URL 或写入口。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建和 Chromium 功能/视觉回归；Pencil v2 brief 已归档，实际画布增量继续由 AD-044 跟踪。
+
 - 2026-09-01：全新 Remote GPU 候选已从空 MySQL 卷完成 migration v57，当前 Core 与 read-shadow Agent 启动。验收发现 Artifact Timeline 的拼接 event ID 超过 MySQL `VARCHAR(64)`，写入被投影层吸收；修复改用 Artifact 的 64 位内容寻址 ID，并在领域层校验上限。重建同版本 Core 后，新受认证只读任务已完成，Artifact metadata 与 Timeline 中唯一对应 Artifact 事件均返回 `200`；该证据未扩大 active authority 或写 Capability。
 
 - 2026-09-01：Remote GPU 真实 Provider 验收表明，自由 `record` 输入 schema 会让模型偶发构造裸 `conversation.read` target，即使 prompt 已声明 discovery 规则。计划 schema 已收紧为 `conversation.list` 和固定 `$discovered.previous` 的 `conversation.read`，并保留执行层验证。候选数据库必须先应用 `000057_agent_model_run_stages`，两阶段 plan/synthesis 环境需配置 `DIPOLE_AGENT_MODEL_MAX_CALLS>=2`；同版本迁移镜像和可重跑体验 receipt 仍待完成。
