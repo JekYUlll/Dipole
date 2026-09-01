@@ -109,16 +109,20 @@ COMPOSE_PROJECT_NAME=dipole-agent-shadow-window \
 COMPOSE_ENV_FILE=.env \
 COMPOSE_OVERLAYS=deploy/microservices/agent-ai-sdk-shadow.yml:deploy/microservices/agent-temporal-read-shadow.yml \
 DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR=/secure/reviewed-manifests \
+DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256=<reviewed-set-sha256> \
 DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR=/secure/shadow-window \
 scripts/collect-agent-shadow-eval-window.sh
 ```
 
 The output directory must not exist before collection. It receives one report
-per manifest, the exact summary input and the `reviewed_shadow` summary report.
-Exit status `0` means every reviewed task passed; `2` preserves a valid window
-with at least one failed task; all other statuses fail closed. The generated
-window remains an isolated development observation until its task set, reviewer
-process and environment are independently approved.
+per manifest, the exact summary input, the `reviewed_shadow` summary report and
+a low-sensitivity `manifest-set.json` receipt. The receipt binds the window to
+the reviewed task-set digest, candidate version and sample count without
+copying Task ID, Prompt, user, message or reviewer labels. Exit status `0`
+means every reviewed task passed; `2` preserves a valid window with at least
+one failed task; all other statuses fail closed. The generated window remains
+an isolated development observation until its task set, reviewer process and
+environment are independently approved.
 
 Before reading a manifest, the collector resolves the running `agent` container
 and records its OCI `org.opencontainers.image.revision` label. It rejects a

@@ -47,6 +47,8 @@ npm run eval:prefilter -- \
 
 `shadow-manifest.schema.json` 将评审标签、Task/Run 绑定、检索阈值和版本化模型价格与数据库 observation 分离。`shadow-manifest.example.json` 只展示格式，其中的 Task、Evidence 和价格均为占位值，不能作为晋级证据。
 
+受控 Shadow 窗口必须先由评审者使用 `scripts/hash-agent-shadow-eval-manifest-set.sh <manifest-directory>` 计算任务集摘要，并将结果作为 `DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256` 传给采集器。采集器拒绝目录内容漂移、候选版本混用，并按 `shadow-manifest-set-receipt.schema.json` 输出低敏 `manifest-set.json` 回执，仅包含集合摘要、候选版本和样本数，不包含 Task ID、Prompt、用户、消息或评审标签正文。
+
 运行前为独立只读账号应用 `configs/mysql/agent-eval-grants.dist.sql`，并以受控 Secret 配置连接：
 
 ```bash

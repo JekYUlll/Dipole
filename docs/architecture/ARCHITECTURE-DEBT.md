@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：`reviewed_shadow` Eval 窗口现具备固定任务集输入边界。评审者先对 manifest 目录计算内容摘要，采集器在连接运行中 Agent 前复核摘要和单一 candidate version，并生成不含 Task/Prompt/用户/消息/标签正文的 manifest-set receipt。Remote GPU shell fixture 通过正常、失败和输入漂移拒绝路径。该能力使多样本成功率窗口可复跑；当前尚无同一固定任务集的真实多样本运行，成功率 `[XX]%` 与 shared-development 结论继续保持空缺。
+
 - 2026-09-02：Interactive Agent 的 completed Tool terminal 现对 `UNAVAILABLE` / `DEADLINE_EXCEEDED` 执行一次同载荷重放。Core 已有精确 terminal 幂等校验，因此 Runtime 只重发首次生成的 invocation、结果摘要、action reference 和延迟字段；若两次都处于不确定状态，Runtime 不会把可能已提交的 completed 覆盖为 failed。Remote GPU Node 22 定向 Vitest `10/10` 与 typecheck 通过。`AD-009` 仍跟踪 Worker 替换后的审批恢复、真实 Core/Message 跨进程响应丢失、部分副作用 rollback、浏览器 HITL、shared tenant 和容量证据。
 
 - 2026-09-02：Interactive active Compose 回归揭示 Message command 从 Kafka 入队到 MySQL receipt committed 存在短暂间隔，Core 若立即固化 Tool action reference 会将已提交消息误判为冲突。Tool 审计现只对 `absent` receipt 在 `2s` 内有界确认，committed 后再完成审计；任何错误、nil receipt 或超时后的 absent 仍 fail closed。Remote GPU loopback-only 同版本候选已验证并发 deny 的零副作用及并发 approve 的单次 Tool/Message/Sync 收敛，project、volumes 和临时 grant 均已清理。`AD-009` 继续跟踪 Core/Message 响应丢失、Worker 替换、部分副作用 rollback、浏览器 HITL、shared tenant 和容量证据。

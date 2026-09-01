@@ -34,6 +34,9 @@ if [[ "$1" == "compose" ]]; then
       else
         printf '%s\n' '{"schemaVersion":"dipole.agent.shadow-eval-report.v1","decision":"eligible"}'
       fi
+      if [[ "${DIPOLE_TEST_SHADOW_EVAL_FAILURE:-false}" == "true" ]]; then
+        exit 2
+      fi
       exit 0
     fi
   done
@@ -47,10 +50,36 @@ chmod +x "${fixture_dir}/bin/docker"
 export PATH="${fixture_dir}/bin:${PATH}"
 export COMPOSE_PROJECT_NAME="agent-shadow-eval-fixture"
 export DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR="${fixture_dir}/manifests"
+export DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256="$("${root_dir}/scripts/hash-agent-shadow-eval-manifest-set.sh" "${fixture_dir}/manifests")"
 export DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR="${fixture_dir}/window"
 "${root_dir}/scripts/collect-agent-shadow-eval-window.sh" >/dev/null
 jq -e '.source.runtimeRevision == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
   "${fixture_dir}/window/summary-input.json" >/dev/null
+jq -e --arg sha256 "${DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256}" \
+  '.schemaVersion == "dipole.agent.shadow-eval-manifest-set-receipt.v1" and .manifestSetSha256 == $sha256 and .manifestCount == 1' \
+  "${fixture_dir}/window/manifest-set.json" >/dev/null
+
+export DIPOLE_TEST_SHADOW_EVAL_FAILURE=true
+export DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR="${fixture_dir}/failed-window"
+set +e
+"${root_dir}/scripts/collect-agent-shadow-eval-window.sh" >/dev/null
+status=$?
+set -e
+[[ "${status}" == "2" ]]
+jq -e '.schemaVersion == "dipole.agent.shadow-eval-manifest-set-receipt.v1"' \
+  "${fixture_dir}/failed-window/manifest-set.json" >/dev/null
+unset DIPOLE_TEST_SHADOW_EVAL_FAILURE
+
+export DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256="$(printf 'b%.0s' {1..64})"
+export DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR="${fixture_dir}/drift-window"
+set +e
+"${root_dir}/scripts/collect-agent-shadow-eval-window.sh" >/dev/null 2>"${fixture_dir}/drift.err"
+status=$?
+set -e
+[[ "${status}" == "2" ]]
+grep -qx 'Shadow Eval manifest set SHA-256 does not match reviewed input' "${fixture_dir}/drift.err"
+
+export DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256="$("${root_dir}/scripts/hash-agent-shadow-eval-manifest-set.sh" "${fixture_dir}/manifests")"
 
 export DIPOLE_TEST_AGENT_IMAGE_DIRTY=true
 export DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR="${fixture_dir}/dirty-window"

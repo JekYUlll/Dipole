@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Agent Shadow Eval 窗口现要求评审任务集的内容摘要。采集前用独立脚本按稳定顺序计算 manifest SHA-256 集合，运行时拒绝摘要漂移或候选版本混用，并输出仅包含集合摘要、候选版本和样本数的 `manifest-set.json` 回执。Remote GPU 与本地 fixture 均验证通过，覆盖通过、有效失败和任务集漂移拒绝；真实多样本窗口和任务成功率仍待由受控运行生成。
+
 - 2026-09-02：Interactive Agent 的完成 Tool 审计增加单次、同载荷的回包丢失恢复。仅当 Core 返回 `UNAVAILABLE` 或 `DEADLINE_EXCEEDED` 时，Runtime 才重放同一 completed terminal；两次均不确定时保留原完成态，不再尝试写入冲突的 failed terminal。Remote GPU Node 22 定向 Vitest `10/10` 与 TypeScript typecheck 通过。该切片覆盖 Runtime 到审计 RPC 的短暂响应丢失，不替代 Worker 替换、跨进程故障注入或共享环境回执，详见 [Agent Active 部署运行手册](docs/agent/AGENT-ACTIVE-DEPLOYMENT.md)。
 
 - 2026-09-02：Interactive Agent active 的 Tool 完成审计现会有界确认异步 Message receipt。Message command 经 Kafka 入队后，Core 在 `2s` 内仅对临时 `absent` receipt 轮询，receipt committed 后才固化 action reference；非 `absent` 结果与所有读取错误仍立即失败。新增“先 absent、后 committed”的 Agent application 回归，并在 Remote GPU 的 loopback-only 隔离 Compose 中验证并发 deny 零副作用、并发 approve 单次 consume、单条消息、一次 completed Tool Invocation 与两条 Sync Inbox 项；临时 grant、容器和 volumes 均已清理。详见 [Agent Active 部署运行手册](docs/agent/AGENT-ACTIVE-DEPLOYMENT.md)。
