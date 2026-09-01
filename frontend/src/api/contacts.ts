@@ -33,9 +33,14 @@ function parsePublicUser(raw: unknown): PublicUser {
       !Number.isSafeInteger(raw.user_type) || !Number.isSafeInteger(raw.status)) {
     throw new Error('contact user projection is invalid')
   }
+  const user = raw as Record<string, string | number>
   return {
-    uuid: raw.uuid, nickname: raw.nickname, avatar: raw.avatar, signature: raw.signature,
-    user_type: raw.user_type, status: raw.status,
+    uuid: user.uuid as string,
+    nickname: user.nickname as string,
+    avatar: user.avatar as string,
+    signature: user.signature as string,
+    user_type: user.user_type as number,
+    status: user.status as number,
   }
 }
 
