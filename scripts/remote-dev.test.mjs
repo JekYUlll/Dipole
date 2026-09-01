@@ -66,6 +66,8 @@ test("remote sync carries a commit-pinned bundle for outbound Git fallback", () 
   assert.match(source, /scp -q -o BatchMode=yes -o ConnectTimeout=[\s\S]*?"\$\{bundle_path\}" "\$\{REMOTE_HOST\}:\$\{remote_bundle\}"/);
   assert.match(source, /git_timeout="\$\{DIPOLE_REMOTE_GIT_TIMEOUT:-20\}"/);
   assert.match(source, /if ! timeout "\$git_timeout" git clone "\$remote_url" "\$root"; then[\s\S]*?git clone "\$bundle" "\$root"/);
+  assert.match(source, /git clone "\$bundle" "\$root"[\s\S]*?git -C "\$root" remote set-url origin "\$remote_url"/);
+  assert.doesNotMatch(source, /git -C "\$root" remote add origin "\$remote_url"/);
   assert.match(source, /if ! timeout "\$git_timeout" git fetch origin "\$fetch_ref"; then[\s\S]*?git fetch "\$bundle" "\$commit"/);
   assert.match(source, /cleanup_bundle\(\) \{ rm -f "\$bundle"; \}/);
   assert.match(source, /git rev-parse --verify "\$\{commit\}\^\{commit\}"/);

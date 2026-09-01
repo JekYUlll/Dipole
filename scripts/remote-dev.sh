@@ -89,7 +89,7 @@ if [[ ! -d "$root/.git" ]]; then
   if ! timeout "$git_timeout" git clone "$remote_url" "$root"; then
     rm -rf "$root"
     git clone "$bundle" "$root"
-    git -C "$root" remote add origin "$remote_url"
+    git -C "$root" remote set-url origin "$remote_url"
   fi
 fi
 cd "$root"
