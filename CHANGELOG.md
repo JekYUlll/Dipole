@@ -63,6 +63,9 @@
 - 2026-09-01：新增 DeepSeek V4 Flash 的隔离 Interactive Agent Shadow overlay，固定 JSON-text 输出与关闭 reasoning，并在 Compose gate 中校验该配置仍只开放 `shadow + read_shadow` 的任务控制面。Remote GPU 同 revision 候选已验证认证、Task admission、Temporal、模型、Timeline 与 `conversation_digest` Artifact 的完整只读链路；active authority、MCP、Memory、检索和写 Capability 保持关闭。
 
 - 2026-09-01：Agent Artifact 的认证前端现可读取严格限定的 `conversation_digest` Markdown 正文。页面仅在 metadata 为该类型和 `text/markdown` 时请求受限正文接口，正文响应必须与 metadata 的内容寻址 ID 和媒体类型一致；其他 Artifact 保持 metadata-only。正文以纯文本阅读区显示，下载、对象键、Metadata JSON 与写操作继续关闭。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建及 Chromium 功能/视觉回归。
+- 2026-09-02：Remote GPU 完成同版本隔离 Interactive read-shadow 验收。Core、Gateway、Message、Sync、Search、迁移、修复与 Agent 镜像均绑定干净 revision `d7fee99a`；临时用户的 JWT Task admission 返回 `202`，Durable Task 收敛为 `completed`，Timeline 两页各返回两项。该结果仅覆盖 loopback 开发候选与只读 Shadow，不能表述为成功率、active authority、写 Capability、生产部署或公开体验。
+
+- 2026-09-02：Go 微服务镜像将 Alpine 共享依赖层置于 revision、构建时间、dirty 状态和服务二进制标签之前。候选 revision 变化时，`ca-certificates` 与 `tzdata` 可复用本机 Docker cache；镜像 provenance 与每服务独立二进制上下文保持不变，静态构建回归测试已覆盖层顺序。
 
 - 2026-09-01：Gateway 现支持默认关闭、owner-scoped 的 `conversation_digest` Markdown 正文读取。`GET /api/v1/agent/artifacts/:artifact_id/content` 复用 Core Artifact owner 校验与内容哈希校验，只返回 Artifact ID、媒体类型和正文；对象键、Metadata JSON 与通用下载仍不进入公开边界。Remote GPU 隔离候选已验证同一用户的 metadata/content 均为 `200`，另一用户读取正文为 `404`。
 

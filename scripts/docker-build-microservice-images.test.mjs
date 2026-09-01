@@ -17,6 +17,14 @@ test("Go microservice images stage only the target binary as the Docker context"
   assert.doesNotMatch(dockerfile, /COPY dist\/\$\{DIPOLE_BINARY\}/);
 });
 
+test("Go microservice images cache base dependencies before revision-specific provenance", () => {
+  const dependencyLayer = dockerfile.indexOf("RUN apk add --no-cache ca-certificates tzdata");
+  const provenanceLayer = dockerfile.indexOf("LABEL org.opencontainers.image.revision");
+
+  assert.ok(dependencyLayer >= 0, "base dependency layer must exist");
+  assert.ok(provenanceLayer > dependencyLayer, "revision-specific labels must not invalidate the shared dependency layer");
+});
+
 test("microservice image builds include the TypeScript Agent Runtime at the same revision", () => {
   assert.match(script, /agent_image=\$\{DIPOLE_AGENT_IMAGE:-dipole-agent:latest\}/);
   assert.match(script, /--file services\/agent-runtime\/Dockerfile[\s\S]*?services\/agent-runtime/);

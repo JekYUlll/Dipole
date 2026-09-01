@@ -1,6 +1,39 @@
 # Agent Interactive Shadow Remote Receipt
 
-## Scope
+## Same-Revision Acceptance (2026-09-02)
+
+This development-only Remote GPU run used a fresh Compose project with its
+Gateway bound to `127.0.0.1:18113`. Every Core, Gateway, Message, Sync,
+Search, migration, repair, and Agent image carried source revision
+`d7fee99afc71ebcae6ffac68efb43e74f3655e1d` and
+`io.dipole.source.dirty=false`. No shared port, container, volume, network, or
+Docker daemon configuration was changed.
+
+The run loaded `remote-gpu-mysql-aio-compat`, `agent-temporal-read-shadow`,
+`agent-ai-sdk-shadow`, and `agent-interactive-shadow`. Runtime remained in
+`shadow` and `read_shadow`; MCP, external MCP, Memory promotion, active
+authority, and write capabilities remained disabled.
+
+| Check | Result |
+| --- | --- |
+| Candidate image provenance | same clean revision for all participating services |
+| Gateway health on loopback candidate port | passed |
+| JWT-authenticated `POST /api/v1/agent/tasks` | `202` |
+| Durable Task terminal state | `completed` |
+| First Timeline page (`limit=2`) | `200`, two events |
+| Cursor continuation page | `200`, two events |
+
+The probe used one temporary user and a read-only conversation-listing goal.
+Passwords, JWTs, user identifiers, task identifiers, request identifiers,
+conversation content, model output, and provider credentials were retained
+only in the process and were not archived.
+
+This proves the isolated same-revision interactive read-shadow path. It does
+not establish a task success-rate metric, active write authority, a production
+deployment, a public experience URL, or a shared-environment observation
+window.
+
+## Mixed-Version Acceptance (2026-09-01)
 
 This receipt records a development-only acceptance run on 2026-09-01. The
 isolated Compose project ran on Remote GPU from source revision `a273bae2`.
