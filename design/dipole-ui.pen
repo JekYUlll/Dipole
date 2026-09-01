@@ -8470,7 +8470,7 @@
                   "name": "Outgoing Message Bubble",
                   "reusable": true,
                   "width": 260,
-                  "fill": "$brand",
+                  "fill": "$rail",
                   "cornerRadius": "$radius-md",
                   "layout": "vertical",
                   "gap": 6,
