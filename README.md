@@ -7,19 +7,19 @@
 </p>
 
 <p align="center">
-  <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.26-0D2744?style=flat-square&labelColor=0D2744&logo=go&logoColor=FBF2E7" alt="Go 1.26" /></a>
-  <a href="services/agent-runtime"><img src="https://img.shields.io/badge/TypeScript-Agent_Runtime-0D2744?style=flat-square&labelColor=0D2744&logo=typescript&logoColor=FBF2E7" alt="TypeScript Agent Runtime" /></a>
-  <a href="frontend"><img src="https://img.shields.io/badge/Vue-3-0D2744?style=flat-square&labelColor=0D2744&logo=vuedotjs&logoColor=FBF2E7" alt="Vue 3 web client" /></a>
-  <a href="frontend/.nvmrc"><img src="https://img.shields.io/badge/Node-22.12-0D2744?style=flat-square&labelColor=0D2744&logo=nodedotjs&logoColor=FBF2E7" alt="Node 22.12" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0D2744?style=flat-square&labelColor=0D2744" alt="MIT License" /></a>
+  <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26" /></a>
+  <a href="services/agent-runtime"><img src="https://img.shields.io/badge/TypeScript-Agent_Runtime-3178C6?logo=typescript&logoColor=white" alt="TypeScript Agent Runtime" /></a>
+  <a href="frontend"><img src="https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3 web client" /></a>
+  <a href="frontend/.nvmrc"><img src="https://img.shields.io/badge/Node-22.12-5FA04E?logo=nodedotjs&logoColor=white" alt="Node 22.12" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License" /></a>
 </p>
 
 <p align="center">
-  <a href="https://kafka.apache.org/"><img src="https://img.shields.io/badge/Kafka-Event_Driven-0D2744?style=flat-square&labelColor=0D2744&logo=apachekafka&logoColor=FBF2E7" alt="Kafka event driven" /></a>
-  <a href="https://temporal.io/"><img src="https://img.shields.io/badge/Temporal-Durable_Tasks-0D2744?style=flat-square&labelColor=0D2744&logo=temporal&logoColor=FBF2E7" alt="Temporal durable tasks" /></a>
-  <a href="https://sqlc.dev/"><img src="https://img.shields.io/badge/MySQL-sqlc-0D2744?style=flat-square&labelColor=0D2744&logo=mysql&logoColor=FBF2E7" alt="MySQL with sqlc generated queries" /></a>
-  <a href="docs/README.md"><img src="https://img.shields.io/badge/Redis-Realtime_State-0D2744?style=flat-square&labelColor=0D2744&logo=redis&logoColor=FBF2E7" alt="Redis realtime state" /></a>
-  <a href="docs/README.md"><img src="https://img.shields.io/badge/MinIO-Multipart_Objects-0D2744?style=flat-square&labelColor=0D2744&logo=minio&logoColor=FBF2E7" alt="MinIO multipart object storage" /></a>
+  <a href="https://kafka.apache.org/"><img src="https://img.shields.io/badge/Kafka-Event_Driven-231F20?logo=apachekafka&logoColor=white" alt="Kafka event driven" /></a>
+  <a href="https://temporal.io/"><img src="https://img.shields.io/badge/Temporal-Durable_Tasks-000000?logo=temporal&logoColor=white" alt="Temporal durable tasks" /></a>
+  <a href="https://sqlc.dev/"><img src="https://img.shields.io/badge/MySQL-sqlc-4479A1?logo=mysql&logoColor=white" alt="MySQL with sqlc generated queries" /></a>
+  <a href="docs/README.md"><img src="https://img.shields.io/badge/Redis-Realtime_State-DC382D?logo=redis&logoColor=white" alt="Redis realtime state" /></a>
+  <a href="docs/README.md"><img src="https://img.shields.io/badge/MinIO-Multipart_Objects-C72E49?logo=minio&logoColor=white" alt="MinIO multipart object storage" /></a>
 </p>
 
 <p align="center">
