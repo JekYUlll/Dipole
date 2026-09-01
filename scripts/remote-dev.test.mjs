@@ -63,7 +63,7 @@ test("remote candidate tracking refs accept only the expected mutable update", (
 test("remote sync carries a commit-pinned bundle for outbound Git fallback", () => {
   assert.match(source, /git bundle create "\$\{bundle_path\}" HEAD/);
   assert.match(source, /remote "\$\{REMOTE_BRANCH\}" "\$\{commit\}" "\$\{remote_url\}" "\$\{remote_bundle\}"/);
-  assert.match(source, /scp -q -o BatchMode=yes -o ConnectTimeout=[\s\S]*?"\$\{bundle_path\}" "\$\{REMOTE_HOST\}:\$\{remote_bundle\}"/);
+  assert.match(source, /if ! scp -q -o BatchMode=yes -o ConnectTimeout=[\s\S]*?"\$\{bundle_path\}" "\$\{REMOTE_HOST\}:\$\{remote_bundle\}"; then[\s\S]*?bundle fallback upload failed/);
   assert.match(source, /git_timeout="\$\{DIPOLE_REMOTE_GIT_TIMEOUT:-20\}"/);
   assert.match(source, /if ! timeout "\$git_timeout" git clone "\$remote_url" "\$root"; then[\s\S]*?git clone "\$bundle" "\$root"/);
   assert.match(source, /git clone "\$bundle" "\$root"[\s\S]*?git -C "\$root" remote set-url origin "\$remote_url"/);

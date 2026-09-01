@@ -68,8 +68,10 @@ sync_revision() {
   # A symbolic ref keeps the bundle non-empty while the remote still verifies
   # the immutable commit passed separately below.
   git bundle create "${bundle_path}" HEAD
-  scp -q -o BatchMode=yes -o ConnectTimeout="${DIPOLE_REMOTE_CONNECT_TIMEOUT:-8}" \
-    "${bundle_path}" "${REMOTE_HOST}:${remote_bundle}"
+  if ! scp -q -o BatchMode=yes -o ConnectTimeout="${DIPOLE_REMOTE_CONNECT_TIMEOUT:-8}" \
+    "${bundle_path}" "${REMOTE_HOST}:${remote_bundle}"; then
+    printf 'remote sync warning: bundle fallback upload failed; remote Git access is required\n' >&2
+  fi
   remote_tip="$(git ls-remote --heads origin "refs/heads/${REMOTE_BRANCH}" | awk 'NR == 1 { print $1 }')"
   if [[ "${REMOTE_BRANCH}" == "dipole-dev/"* && -n "${remote_tip}" ]]; then
     # Candidate refs are per-user, mutable pointers. The exact lease rejects

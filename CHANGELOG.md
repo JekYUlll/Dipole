@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-01：Remote GPU 的正常 Git 同步不再依赖 bundle 上传成功；`scp` 上传失败仅禁用离线回退并给出明确提示，远端仍可通过正式 Git remote 获取候选 revision。
+
 - 2026-09-01：修复 Remote GPU 候选在 Git bundle 回退 clone 后仍指向临时 bundle `origin` 的问题；现在会恢复正式 Git remote，后续候选同步可继续 fetch。回归测试覆盖 fallback clone 的 remote 重绑定。
 
 - 2026-09-01：Interactive Agent Web profile 增加 `agent-interactive-shadow` 构建模式，仅开启任务创建、Timeline 与 Artifact 页面。Remote GPU 同 revision 候选已在独立 `18100` 端口验证前端生产构建、认证、Task 创建、Temporal 收敛与 `5` 条 Timeline 事件；公开入口为 `http://223.111.157.214:18100/app/`。该候选仍是 `shadow + read_shadow`，不开放消息写入、MCP、Memory、检索或 active authority。
