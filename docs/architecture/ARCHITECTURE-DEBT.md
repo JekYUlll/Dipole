@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-02：修复 Shadow Runtime 的 candidate-version admission 漂移。candidate version 只属于 active promotion binding；Shadow admission 现在固定传空值，避免 Core 在 Task 创建后拒绝无效的 Shadow Run。Remote GPU Node 22 的定向回归 `15/15`、typecheck 与 production build 已通过；隔离 Compose 的真实 Task/Run/Temporal 收敛仍在复测，shared 环境、active authority 与写入副作用证据继续由 `AD-009` 跟踪。
+- 2026-09-02：修复 Shadow Runtime 的 candidate-version admission 漂移。candidate version 只属于 active promotion binding；Shadow admission 现在固定传空值，避免 Core 在 Task 创建后拒绝无效的 Shadow Run。Remote GPU Node 22 的定向回归 `15/15`、typecheck 与 production build 已通过；干净 `70bd4c74` 镜像的隔离 Compose 回归进一步证明认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，且 Run 为 `shadow / candidate_version=NULL / completed`。候选无可读会话，仅生成只读摘要 Artifact，消息写入数为零。该证据不扩大 shared 环境、active authority、写 Capability、MCP 或 Memory；这些继续由 `AD-009` 跟踪。
 
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
 
