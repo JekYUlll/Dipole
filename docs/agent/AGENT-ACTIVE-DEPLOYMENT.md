@@ -54,6 +54,29 @@ Runtime 也会在启动前执行相同的 active read profile 校验，因此直
 
 `deploy/microservices/agent-interactive-active.yml` 是 `agent-active.yml` 之上的独立 overlay。它将 Activity 切换到 `interactive_active`，开启 Agent Control API、Gateway 的任务控制转发与 `/send` 执行器，并要求 `DIPOLE_AGENT_INTERACTIVE_TASK_QUEUE` 使用 `dipole-agent-interactive-` 前缀及独立的 `DIPOLE_AGENT_CONTROL_SECRET`。Artifact 与 MCP 入口在该 overlay 中保持关闭。只有归档本节要求的共享环境 receipt 后才允许加载该 overlay。
 
+### 隔离 Compose 验收
+
+开发环境可执行以下 smoke，将同一受控 profile 放入一次性的 Compose
+project。脚本生成临时 mTLS 证书、release manifest、active Kafka group、
+Temporal queue 与 promotion grant；Gateway 只绑定 loopback，结束时会撤销
+grant 并删除该 project 的 volumes。`/send` 场景不调用模型，因此脚本使用
+无效的本地占位 Provider endpoint，避免将开发凭据发送到外部网络。
+
+```bash
+BUILD_IMAGE=1 scripts/smoke-agent-interactive-active-compose.sh
+```
+
+验收分为两条确定性路径：并发 `denied` 重放必须收敛为零 Tool/Message
+副作用；并发 `approved` 重放必须收敛为一次 approval consume、一次完成的
+Tool Invocation、一个稳定 client message ID、一条 Message 和两条收件人
+Sync Timeline 项。Message command 通过 Kafka 持久化时，Core 只会对临时
+`absent` receipt 在 `2s` 内确认，避免在已提交消息尚未投影前固化冲突；读取
+错误、nil receipt 和超时后的 `absent` 均保持失败关闭。`KEEP_STACK=1` 仅用于
+隔离排障，保留 stack 后仍必须确认 promotion grant 已撤销。该 smoke 覆盖干净
+Compose 的审批重放与异步 receipt 确认，不覆盖 Core/Message 响应丢失、Worker
+替换、部分副作用 rollback、浏览器 HITL、共享 tenant 或容量结论；这些继续由
+`AD-009` 管理。
+
 ## 4. Reviewed Memory 提交扩展
 
 `deploy/microservices/agent-memory-promotion.yml` 是 `agent-active.yml` 之上的独立 overlay，默认不加载。它只允许为已审核的 receipt 增加 `promotion_active` Temporal Activity，同时打开 Core 的 receipt commit Adapter。该 overlay 不改变 candidate 生成、Memory 召回、消息发送、Control 或 MCP 的关闭状态。

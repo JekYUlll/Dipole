@@ -65,6 +65,22 @@ func (s agentToolReceiptQueryStub) GetMessageCommandReceipt(string, string) (*ap
 	return s.receipt, nil
 }
 
+type agentToolReceiptSequenceStub struct {
+	receipts []*application.MessageCommandReceipt
+	index    int
+}
+
+func (s *agentToolReceiptSequenceStub) GetMessageCommandReceipt(string, string) (*application.MessageCommandReceipt, error) {
+	if len(s.receipts) == 0 {
+		return nil, nil
+	}
+	index := s.index
+	if index < len(s.receipts)-1 {
+		s.index++
+	}
+	return s.receipts[index], nil
+}
+
 type agentToolAuditResolverStub struct {
 	invocation application.AgentInvocationV1
 	err        error
@@ -342,6 +358,36 @@ func TestPersistentAgentToolInvocationAuditVerifiesMessageActionReference(t *tes
 	finish.ActionReference.ResourceUUID = "MSG-1"
 	if err := service.Finish(context.Background(), finish); !errors.Is(err, application.ErrAgentToolInvocationConflict) {
 		t.Fatalf("missing Message receipt error = %v", err)
+	}
+}
+
+func TestPersistentAgentToolInvocationAuditWaitsForAsyncMessageReceipt(t *testing.T) {
+	clientMessageID, err := application.AgentCommandClientMessageIDV1(application.AgentMessageCommandSystemMessageV1, "CMD-ASYNC")
+	if err != nil {
+		t.Fatalf("derive client message ID: %v", err)
+	}
+	store := &agentToolAuditStoreStub{invocation: &application.AgentToolInvocationV1{
+		InvocationUUID: "INV-ASYNC", TaskUUID: "TASK-1", RunUUID: "RUN-1", PrincipalUUID: "U100", AgentUUID: "UAI",
+		CapabilityID: application.AgentCapabilitySystemMessageSend, ApprovalUUID: "APR-1", Status: application.AgentToolInvocationStatusRunning,
+	}}
+	receipts := &agentToolReceiptSequenceStub{receipts: []*application.MessageCommandReceipt{
+		{Status: application.MessageCommandReceiptStatusAbsent},
+		{Status: application.MessageCommandReceiptStatusCommitted, Message: &model.Message{
+			UUID: "MSG-ASYNC", ClientMessageID: clientMessageID, ConversationKey: model.DirectConversationKey("UAI", "U100"),
+			SenderUUID: "UAI", TargetUUID: "U100", TargetType: model.MessageTargetDirect, MessageType: model.MessageTypeSystem,
+		}},
+	}}
+	service, _ := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{}, agentToolApprovalReaderStub{}, receipts, time.Now)
+	err = service.Finish(context.Background(), application.AgentToolInvocationFinishV1{
+		InvocationUUID: "INV-ASYNC", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
+		ResultSHA256: testAuditSHA, ResultBytes: 64, LatencyMS: 9,
+		ActionReference: &application.AgentToolActionReferenceV1{ResourceType: application.AgentToolActionResourceMessage, ResourceUUID: "MSG-ASYNC", CommandKind: application.AgentMessageCommandSystemMessageV1, CommandID: "CMD-ASYNC"},
+	})
+	if err != nil {
+		t.Fatalf("finish after Message receipt becomes committed: %v", err)
+	}
+	if receipts.index != 1 || store.finished.Status != application.AgentToolInvocationStatusCompleted {
+		t.Fatalf("receipt retry did not finish the invocation: index=%d finish=%+v", receipts.index, store.finished)
 	}
 }
 

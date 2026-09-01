@@ -117,6 +117,17 @@ export class McpToolInvocationRunner {
         return result;
       } catch (error) {
         if (!(error instanceof ToolInvocationFailure)) {
+          // The command may already be committed when its terminal audit fails.
+          // Keep the RPC details in the service log so recovery can distinguish
+          // a receipt mismatch from a transport failure without logging content.
+          console.error("Agent Tool completion audit failed", {
+            taskId: context.taskId,
+            runId: context.runId,
+            invocationId,
+            toolName: tool.name,
+            grpcCode: grpcErrorCode(error),
+            grpcDetails: grpcErrorDetails(error)
+          });
           try {
             await this.finishFailed(invocationId, context, startedAt, "tool_execution_failed");
           } catch {
@@ -154,6 +165,18 @@ export class McpToolInvocationRunner {
 
 class ToolInvocationFailure extends Error {}
 class ToolOperationTimeout extends Error {}
+
+function grpcErrorCode(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) return undefined;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "number" ? code : undefined;
+}
+
+function grpcErrorDetails(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("details" in error)) return undefined;
+  const details = (error as { details?: unknown }).details;
+  return typeof details === "string" && details.trim() ? details : undefined;
+}
 
 function operationWithTimeout(operation: (signal: AbortSignal) => Promise<unknown>, timeoutMs: number): Promise<unknown> {
   const controller = new AbortController();

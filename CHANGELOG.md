@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Interactive Agent active 的 Tool 完成审计现会有界确认异步 Message receipt。Message command 经 Kafka 入队后，Core 在 `2s` 内仅对临时 `absent` receipt 轮询，receipt committed 后才固化 action reference；非 `absent` 结果与所有读取错误仍立即失败。新增“先 absent、后 committed”的 Agent application 回归，并在 Remote GPU 的 loopback-only 隔离 Compose 中验证并发 deny 零副作用、并发 approve 单次 consume、单条消息、一次 completed Tool Invocation 与两条 Sync Inbox 项；临时 grant、容器和 volumes 均已清理。详见 [Agent Active 部署运行手册](docs/agent/AGENT-ACTIVE-DEPLOYMENT.md)。
+
 - 2026-09-02：Interactive Agent Message command 的回包丢失恢复已扩展到隔离 MySQL 8.4。受认证 Core-to-Message gRPC 调用在服务端提交后收到 `UNAVAILABLE`，Core 以同一 `client_message_id` 查询 SQLC Message receipt 并恢复结果；数据库断言 message、metadata 各一条，发送者和接收者各一条 Sync Timeline 项。新增自动清理的 `smoke-agent-message-command-recovery.sh`，Remote GPU Go 1.27 已通过。该 smoke 不启动 Compose、Kafka、Temporal 或 shared tenant，见 [Interactive Message MySQL Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-MYSQL-RECEIPT.md)。
 
 - 2026-09-02：补齐 Interactive Agent Message command 的 Core-to-Message gRPC 回包丢失回归。受认证的 Message 服务先持久化 system message，测试代理随后返回 `UNAVAILABLE`；Core `LocalAgentCommandV1` 通过同一 `client_message_id` 的 Message receipt 恢复结果，提交次数保持为一。Remote GPU Go 1.27 已通过 Agent application 与 Message gRPC 相关包回归。该验证使用 bufconn 和内存持久化模型，Compose、MySQL、跨进程网络中断、Worker 替换及部分副作用回滚继续独立受控；详见 [Interactive Message Transport Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)。

@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Interactive active Compose 回归揭示 Message command 从 Kafka 入队到 MySQL receipt committed 存在短暂间隔，Core 若立即固化 Tool action reference 会将已提交消息误判为冲突。Tool 审计现只对 `absent` receipt 在 `2s` 内有界确认，committed 后再完成审计；任何错误、nil receipt 或超时后的 absent 仍 fail closed。Remote GPU loopback-only 同版本候选已验证并发 deny 的零副作用及并发 approve 的单次 Tool/Message/Sync 收敛，project、volumes 和临时 grant 均已清理。`AD-009` 继续跟踪 Core/Message 响应丢失、Worker 替换、部分副作用 rollback、浏览器 HITL、shared tenant 和容量证据。
+
 - 2026-09-02：Agent Message command 已增加隔离 MySQL 8.4 的回包丢失恢复 smoke，详见 [Interactive Message MySQL Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-MYSQL-RECEIPT.md)。真实 SQLC repository 在受认证 Core-to-Message gRPC 调用中持久化一条 Message 与 metadata；代理随后返回 `UNAVAILABLE`，Core 以稳定 `client_message_id` 读取 receipt 恢复相同消息。数据库断言 sender/target 两条 Sync Timeline 项各自唯一，测试容器自动清理。该证据没有启动 Compose、Kafka、Temporal、shared tenant 或部分副作用 rollback，`AD-009` 继续开放。
 
 - 2026-09-02：Agent Message command 的 Core-to-Message gRPC 回包丢失恢复已增加受认证 transport 回归，详见 [Interactive Message Transport Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)。服务端先提交受控 system message，代理在 response 前返回 `UNAVAILABLE`；Core 使用稳定 `client_message_id` 查询 receipt 并恢复同一条 Message，精确提交计数为一。Remote GPU Go 1.27 已通过 Agent application 与 Message gRPC 包回归。该测试使用 bufconn 与内存模型，不能代表 MySQL、Compose、跨进程网络、Worker 替换、部分副作用回滚或共享环境恢复；这些继续由 `AD-009` 跟踪。
