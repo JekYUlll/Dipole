@@ -22,6 +22,7 @@ export interface KafkaShadowConsumerConfig {
   readonly groupId: string;
   readonly topic: string;
   readonly runtimeMode?: "shadow" | "active";
+  readonly subscriptionActiveEnabled?: boolean;
   readonly startupAttempts?: number;
   readonly startupRetryDelayMs?: number;
 }
@@ -106,9 +107,11 @@ export class KafkaShadowConsumer {
   ) {
     const groupId = config.groupId.trim();
     const runtimeMode = config.runtimeMode ?? "shadow";
-    const requiredPrefix = `dipole-agent-${runtimeMode}-`;
-    if (!groupId.startsWith(requiredPrefix)) {
-      throw new Error(`Kafka ${runtimeMode} consumer requires an isolated ${requiredPrefix}* group`);
+    const allowedPrefixes = config.subscriptionActiveEnabled
+      ? ["dipole-agent-subscription-active-"]
+      : [`dipole-agent-${runtimeMode}-`];
+    if (!allowedPrefixes.some((prefix) => groupId.startsWith(prefix))) {
+      throw new Error(`Kafka ${runtimeMode} consumer requires an isolated ${allowedPrefixes.join(" or ")}* group`);
     }
     if (!config.topic.trim()) {
       throw new Error("Kafka shadow consumer topic is required");

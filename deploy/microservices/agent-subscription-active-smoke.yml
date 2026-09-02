@@ -1,0 +1,6 @@
+services:
+  agent:
+    volumes:
+      - ${DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE:?DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE is required}:/app/model-stub.mjs:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["node /app/model-stub.mjs & exec node dist/index.js"]

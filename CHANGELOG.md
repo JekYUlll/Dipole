@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Remote GPU 已在隔离、loopback-only Compose project 完成 Event Subscription Active Read 验收。认证 owner 通过真实 Gateway `chat.send` 产生消息，Kafka matcher 创建一个 owner-scoped Temporal Durable Task；Task 完成一次 loopback 模型调用且未发送 Agent 消息。最终 MySQL 收据为 `completed_tasks=1`、`completed_model_runs=1`、`agent_sent_messages=0`、`active_grants=0`，临时 Compose 项目已按标签清理。该 smoke 使用受控定义、临时 grant 和本进程模型 stub，只覆盖开发期只读链路，不代表共享 tenant、外部 Provider、语义预筛质量、性能或默认路径启用。
+
 - 2026-09-02：补齐 `agent-subscription-active.yml` 的 Compose 静态门禁。验收固定其独立的 Kafka consumer group 与 Temporal queue、显式 subscription trigger、mTLS Capability RPC 依赖和关闭的 Control、消息写入、MCP/External MCP 面；缺少 subscription group 时渲染必须失败。Remote GPU 的隔离 Node 22 环境已通过该 profile 的 `18/18` 定向运行时测试与 typecheck。此记录仅覆盖配置和运行时单测，不代表 Kafka、Temporal、模型调用或共享环境的端到端启用。
 
 - 2026-09-02：新增受控 `agent-subscription-active.yml`。该 Active Read overlay 使用显式 subscription trigger、独立 Kafka consumer group 与 Temporal queue，将 owner-scoped Event Subscription 交给 durable Task；Control、消息写入、Memory、MCP 和 External MCP 固定关闭。普通 `read_active` 配置若尝试使用 subscription trigger 会在启动前拒绝，基础 Compose 继续保持默认关闭。
