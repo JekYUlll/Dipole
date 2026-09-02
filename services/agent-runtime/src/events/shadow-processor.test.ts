@@ -61,6 +61,32 @@ describe("ShadowEventProcessor", () => {
     expect(append).not.toHaveBeenCalled();
   });
 
+  it("suppresses the Agent's own authored messages regardless of command-kind lineage", async () => {
+    const plan = vi.fn();
+    const append = vi.fn();
+    const claim = vi.fn();
+    const dispatch = vi.fn();
+    const processor = new ShadowEventProcessor(
+      { plan }, { append }, { claim, complete: vi.fn(), release: vi.fn() },
+      undefined, undefined, undefined, 60_000, { dispatch }
+    );
+    // An autonomous subscription reply is written as a system message, so it
+    // carries no Agent-origin lineage; sender identity must still suppress it to
+    // avoid re-triggering the same subscription in a loop.
+    const event = {
+      eventId: "E-SELF", eventType: "message.direct.created", aggregateId: "M-SELF",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { sender_uuid: "UAI" }
+    };
+
+    await expect(processor.process(event, {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI"
+    })).resolves.toEqual({ outcome: "suppressed", taskId: expect.stringMatching(/^task:/) });
+    expect(claim).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(plan).not.toHaveBeenCalled();
+    expect(append).not.toHaveBeenCalled();
+  });
+
   it("uses the Go-compatible Task ID and records each event once", async () => {
     expect(agentTaskId({
       tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100"

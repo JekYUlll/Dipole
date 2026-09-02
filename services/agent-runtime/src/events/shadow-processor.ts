@@ -228,7 +228,13 @@ export class ShadowEventProcessor {
       taskId,
       attributes: { "dipole.agent.event.type": event.eventType, "dipole.agent.mode": "shadow" }
     }, async taskSpan => {
-      if (event.lineage?.origin.type === "agent" && event.lineage.origin.id === identity.agentUuid.trim()) {
+      // Never let the Agent react to its own writes. Lineage catches non-message
+      // Agent origins; sender identity catches authored messages regardless of
+      // command kind (e.g. an autonomous subscription reply sent as a system
+      // message would otherwise re-trigger the same subscription in a loop).
+      const selfAuthoredLineage = event.lineage?.origin.type === "agent" && event.lineage.origin.id === identity.agentUuid.trim();
+      const senderUuid = typeof event.payload.sender_uuid === "string" ? event.payload.sender_uuid.trim() : "";
+      if (selfAuthoredLineage || (senderUuid !== "" && senderUuid === identity.agentUuid.trim())) {
         taskSpan.setAttribute("dipole.agent.task.outcome", "suppressed");
         return { outcome: "suppressed", taskId };
       }
