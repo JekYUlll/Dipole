@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Agent Task 控制面新增认证 Runtime 状态查询。`GET /api/v1/agent/status` 通过 Gateway 会话和内部可信调用返回 Runtime mode、Temporal activity mode、Task control 与交互写开关，帮助体验端区分控制面未装配和任务执行失败；响应不暴露 Provider、端点、凭据、Task、消息或用户数据。
+
 - 2026-09-02：完成 Dipole 主干历史收敛。`master` 由 4,286 条历史重建为 20 条可审查的里程碑提交，保留 IM 基础、可靠投递、Sync Timeline、微服务、分层存储、Agent Runtime、交互式任务与治理边界的实际文件演进；重写前完整历史固定在 `archive/pre-history-rewrite-2026-09-02`，此前分支 tip 由同日的本地和远端 consolidation archive tag 保存。
 
 - 2026-09-02：完成远端 Git 分支收敛。删除前先推送 `archive/remote-branch-consolidation-2026-09-02`，保全 40 条未合并 tip；随后回收 810 条已合并分支及 36 条已归档的短期分支。远端由 852 条 ref 收敛为 6 条，保留 `master`、Agent/Frontend Epic 与两条存在活跃 worktree 的功能分支。本地已完成阶段 Epic 同步追踪 `origin/master`。

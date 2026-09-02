@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
+	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
 )
 
@@ -24,6 +27,7 @@ type AgentTaskControlResult struct {
 }
 
 type AgentTaskControlApplication interface {
+	GetRuntimeStatus(ctx context.Context, principalUUID string) (*AgentTaskControlResult, error)
 	StartTask(ctx context.Context, principalUUID, clientRequestID, goal string) (*AgentTaskControlResult, error)
 	GetTask(ctx context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error)
 	GetTimeline(ctx context.Context, principalUUID, taskUUID, after string, limit int) (*AgentTaskControlResult, error)
@@ -36,6 +40,18 @@ type AgentTaskControlClient struct {
 	baseURL *url.URL
 	secret  string
 	client  *http.Client
+}
+
+func agentRuntimeStatusHandler(tasks AgentTaskControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		result, err := tasks.GetRuntimeStatus(c.Request.Context(), user.UUID)
+		writeAgentTaskControlResult(c, result, err)
+	}
 }
 
 func NewAgentTaskControlClient(target, secret string, timeout time.Duration) (*AgentTaskControlClient, error) {
@@ -57,6 +73,10 @@ func (c *AgentTaskControlClient) StartTask(ctx context.Context, principalUUID, c
 		"clientRequestId": clientRequestID,
 		"goal":            goal,
 	})
+}
+
+func (c *AgentTaskControlClient) GetRuntimeStatus(ctx context.Context, principalUUID string) (*AgentTaskControlResult, error) {
+	return c.request(ctx, http.MethodGet, principalUUID, "/internal/v1/agent/status", nil)
 }
 
 func (c *AgentTaskControlClient) GetTask(ctx context.Context, principalUUID, taskUUID string) (*AgentTaskControlResult, error) {

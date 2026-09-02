@@ -105,6 +105,11 @@ type gatewayAgentTaskStub struct {
 	input           any
 }
 
+func (s *gatewayAgentTaskStub) GetRuntimeStatus(_ context.Context, principalUUID string) (*AgentTaskControlResult, error) {
+	s.principal = principalUUID
+	return agentControlJSON(http.StatusOK, map[string]any{"schemaVersion": "dipole.agent.runtime_status.v1", "taskControlEnabled": true}), nil
+}
+
 type gatewayAgentMCPStub struct {
 	principal string
 	taskID    string
@@ -701,6 +706,13 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 	token, err := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
 	if err != nil {
 		t.Fatalf("issue token: %v", err)
+	}
+	statusRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/status", nil)
+	statusRequest.Header.Set("Authorization", "Bearer "+token)
+	statusResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(statusResponse, statusRequest)
+	if statusResponse.Code != http.StatusOK || tasks.principal != "U100" || !strings.Contains(statusResponse.Body.String(), `"taskControlEnabled":true`) {
+		t.Fatalf("Agent runtime status: code=%d tasks=%+v body=%s", statusResponse.Code, tasks, statusResponse.Body.String())
 	}
 
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/agent/tasks/TASK-1/approvals/APR-1", strings.NewReader(`{"decision":"approved","principal_user_id":"U999"}`))

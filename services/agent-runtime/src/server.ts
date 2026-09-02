@@ -10,6 +10,7 @@ export interface RuntimeReadiness {
 
 export interface AgentTaskControlAPI {
   startTask?(input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }): Promise<{ taskId: string; status: "accepted" }>;
+  getRuntimeStatus?(input: { principalUserId: string; requestId?: string; traceId?: string }): Promise<unknown>;
   getTask(input: AgentTaskControlIdentity): Promise<unknown>;
   getTimeline?(input: AgentTaskControlIdentity & { afterSeq: bigint; limit: number }): Promise<AgentTaskTimeline>;
   cancelTask(input: AgentTaskControlIdentity & { reason?: string }): Promise<void>;
@@ -100,6 +101,18 @@ export function buildServer(
     if (control.secret.trim().length === 0) {
       throw new Error("Agent Task control HTTP secret is required");
     }
+    server.get("/internal/v1/agent/status", async (request, reply) => {
+      const identity = trustedControlRequestIdentity(request.headers, control.secret);
+      if (identity === undefined) return reply.code(401).send({ code: 401, message: "Agent Runtime status authentication failed" });
+      if (control.service.getRuntimeStatus === undefined) {
+        return reply.code(503).send({ code: 503, message: "Agent Runtime status is unavailable" });
+      }
+      try {
+        return await control.service.getRuntimeStatus(identity);
+      } catch (error) {
+        return sendControlError(reply, error);
+      }
+    });
     const startTask = control.service.startTask;
     if (startTask !== undefined) {
       server.post<{ Body?: unknown }>("/internal/v1/agent/tasks", async (request, reply) => {

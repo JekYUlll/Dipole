@@ -123,6 +123,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		engine.GET("/api/v1/messages/search", middleware.Auth(dependencies.TokenResolver, userFinder), searchHandler.Search)
 	}
 	if dependencies.AgentTasks != nil {
+		engine.GET("/api/v1/agent/status", auth, agentRuntimeStatusHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks", auth, agentTaskStartHandler(dependencies.AgentTasks))
 		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
 		engine.GET("/api/v1/agent/tasks/:task_id/timeline", auth, agentTaskTimelineHandler(dependencies.AgentTasks))

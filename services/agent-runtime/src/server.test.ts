@@ -75,6 +75,22 @@ describe("agent runtime Task control API", () => {
     await server.close();
   });
 
+  it("exposes low-sensitivity Runtime status only to the trusted Gateway", async () => {
+    const getRuntimeStatus = vi.fn(async () => ({
+      schemaVersion: "dipole.agent.runtime_status.v1", runtimeMode: "shadow", temporal: { enabled: true, activityMode: "read_shadow" },
+      taskControlEnabled: true, interactiveMessageWritesEnabled: false
+    }));
+    const server = buildServer({ isReady: () => true }, {
+      secret: "control-secret", service: { getRuntimeStatus, getTask: vi.fn(), cancelTask: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() }
+    });
+    expect((await server.inject({ method: "GET", url: "/internal/v1/agent/status" })).statusCode).toBe(401);
+    const response = await server.inject({ method: "GET", url: "/internal/v1/agent/status", headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(expect.objectContaining({ schemaVersion: "dipole.agent.runtime_status.v1", taskControlEnabled: true }));
+    expect(getRuntimeStatus).toHaveBeenCalledWith({ principalUserId: "U100", requestId: "R1", traceId: "T1" });
+    await server.close();
+  });
+
   it("serializes Timeline bigint fields at the HTTP boundary", async () => {
     const getTimeline = vi.fn(async () => ({
       schemaVersion: "dipole.agent.task_timeline.v1", taskId: "TASK-1", revision: 3n, nextCursor: "4",

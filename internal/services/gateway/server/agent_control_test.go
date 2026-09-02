@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -56,6 +57,25 @@ func TestAgentTaskControlClientStartsInteractiveTaskWithoutPrincipalField(t *tes
 	result, err := client.StartTask(context.Background(), "U100", "client-1", "Summarize unread work")
 	if err != nil || result.StatusCode != http.StatusAccepted {
 		t.Fatalf("start task: result=%+v err=%v", result, err)
+	}
+}
+
+func TestAgentTaskControlClientGetsRuntimeStatusWithTrustedPrincipal(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.URL.Path != "/internal/v1/agent/status" || request.Header.Get("X-Dipole-Principal-User-ID") != "U100" {
+			t.Fatalf("unexpected runtime status request: method=%s path=%s headers=%v", request.Method, request.URL.Path, request.Header)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"schemaVersion":"dipole.agent.runtime_status.v1","taskControlEnabled":true}`))
+	}))
+	defer server.Close()
+	client, err := NewAgentTaskControlClient(server.URL, "secret", time.Second)
+	if err != nil {
+		t.Fatalf("new client: %v", err)
+	}
+	result, err := client.GetRuntimeStatus(context.Background(), "U100")
+	if err != nil || result.StatusCode != http.StatusOK || !bytes.Contains(result.Body, []byte(`"taskControlEnabled":true`)) {
+		t.Fatalf("runtime status: result=%+v err=%v", result, err)
 	}
 }
 

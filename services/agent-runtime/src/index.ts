@@ -160,7 +160,14 @@ const interactiveTaskStarter = controlEnabled
   : undefined;
 const controlService = controlEnabled
   ? Object.assign(new AgentTaskControlService(controlRPC!.client, temporalDispatcher!), {
-    startTask: (input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }) => interactiveTaskStarter!.start(input)
+    startTask: (input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }) => interactiveTaskStarter!.start(input),
+    getRuntimeStatus: async () => ({
+      schemaVersion: "dipole.agent.runtime_status.v1",
+      runtimeMode: shadowConfig.runtimeMode,
+      temporal: { enabled: temporalConfig.enabled, activityMode: temporalConfig.activityMode },
+      taskControlEnabled: true,
+      interactiveMessageWritesEnabled: shadowConfig.runtimeMode === "active" && shadowConfig.interactiveMessageWritesEnabled
+    })
   })
   : undefined;
 const mcpRegistry = mcpEnabled ? new CapabilityRegistry() : undefined;
