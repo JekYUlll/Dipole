@@ -105,6 +105,8 @@ jq -e '
   and .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_CONVERSATION_SEARCH_ENABLED == "false"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "false"
   and .services.message.image == "dipole-message:latest"
   and .services.message.entrypoint == ["/app/service"]
   and .services.sync.image == "dipole-sync:latest"
@@ -214,6 +216,7 @@ jq -e '
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_SECRET == "compose-check-control-secret"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "false"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_shadow_config}" >/dev/null
 
@@ -243,6 +246,7 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "false"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED == "false"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_active_config}" >/dev/null

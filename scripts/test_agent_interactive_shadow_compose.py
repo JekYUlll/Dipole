@@ -36,6 +36,7 @@ class InteractiveAgentShadowComposeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED == "true"', checker)
         self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"', checker)
         self.assertIn('DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"', checker)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "false"', checker)
         interactive_shadow = checker.split("interactive_shadow_config", 1)[1].split("interactive_active_config", 1)[0]
         self.assertIn("DIPOLE_GATEWAY_AGENT_CONTROL_SECRET=compose-check-control-secret", interactive_shadow)
 
