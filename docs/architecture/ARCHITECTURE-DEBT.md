@@ -945,6 +945,7 @@
 
 - **优先级：** P1
 - **状态：** 处理中
+- **2026-09-02 进展：** Standalone Core 现将会话投影 Topic 创建和 Kafka group assignment 纳入启动/ready 契约。Remote GPU 隔离 Smoke 以候选 Core/Gateway/Message/Sync 镜像验证真实 WebSocket 直聊到 Conversation projection，再完成 owner-scoped Event Subscription、Shadow match metric 和一条 direct-target Task。该证据仅覆盖 shadow 订阅链路，不构成 active authority、真实模型效果或用户灰度证据。
 - **2026-08-30 进展：** `project-guardian-synthetic-corpus` 已把四类 Project Guardian 关注事件与四类干扰事件收口为版本化、双 reviewer agreement 的低敏基线。它使用固定 fixture 标识；规则 evidence 直接复用生产 `matchEventSubscriptions`，回归测试同时验证 corpus/review hash 绑定及 production matcher 的 precision/recall/cost 门槛。Remote GPU Node 22 已通过 Agent Runtime `133` 个测试文件、`695` 项、typecheck 与 build。真实 Task/Run、人工受控语料、retrieval relevance、模型成本分位与共享观察窗口仍未具备，状态保持处理中。
 - **2026-08-30 验证：** Context calibration fixture 已通过 5 类合成样本并生成 hash-bound report；该结果不构成真实 Task、模型和人工语料证据，不能开启 Agent active authority 或生产上下文灰度。
 - **发现日期：** 2026-08-27
