@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Interactive Agent active Compose smoke 纳入认证 Runtime status 验收。Remote GPU 的同版本 `9884b848` 隔离候选中，临时 owner 经 Gateway JWT 成功读取 `GET /api/v1/agent/status` 的低敏 active 状态；随后拒绝审批保持零副作用，重复批准收敛为一次 Tool、一次消息和两条 Sync Inbox。项目、卷与回环端口在结束后均已清理；该确定性 fixture 不代表公开体验、真实模型效果、共享环境或性能结论，详见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
+
 - 2026-09-02：Agent Task 控制面新增认证 Runtime 状态查询。`GET /api/v1/agent/status` 通过 Gateway 会话和内部可信调用返回 Runtime mode、Temporal activity mode、Task control 与交互写开关，帮助体验端区分控制面未装配和任务执行失败；响应不暴露 Provider、端点、凭据、Task、消息或用户数据。
 
 - 2026-09-02：完成 Dipole 主干历史收敛。`master` 由 4,286 条历史重建为 20 条可审查的里程碑提交，保留 IM 基础、可靠投递、Sync Timeline、微服务、分层存储、Agent Runtime、交互式任务与治理边界的实际文件演进；重写前完整历史固定在 `archive/pre-history-rewrite-2026-09-02`，此前分支 tip 由同日的本地和远端 consolidation archive tag 保存。

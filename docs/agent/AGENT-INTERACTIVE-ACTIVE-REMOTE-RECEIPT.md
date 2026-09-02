@@ -1,5 +1,32 @@
 # Interactive Active Remote Receipt
 
+## Same-Revision Runtime Status And Active Smoke (2026-09-02)
+
+This development-only Remote GPU run used source revision
+`9884b84886b19916ae87a5421c90c46e64b5c589` for the isolated Compose project
+`dipole-agent-status-9884b848`. The Gateway was bound only to
+`127.0.0.1:18130`; the project used unique Kafka and Temporal queues together
+with the candidate-only MySQL native-AIO compatibility overlay.
+
+The smoke registered one temporary owner, obtained a session through Core, and
+called the public Gateway route. It required a `200` response from
+`GET /api/v1/agent/status` with the low-sensitive active Runtime contract:
+`dipole.agent.runtime_status.v1`, active mode, enabled Task control, and
+enabled interactive message writes. The test then retained the existing
+deterministic approval checks.
+
+| Scenario | Result |
+| --- | --- |
+| Authenticated Runtime status | Gateway returned the expected active control-plane flags |
+| Deny replay | Zero Tool Invocations and zero messages |
+| Approve replay | One completed Tool Invocation, one message, and two Sync Inbox entries |
+| Cleanup | Candidate containers, volumes, and loopback port were absent after exit |
+
+The fixture uses the compose smoke's deterministic provider path and does not
+evaluate model quality. It also does not establish a public browser experience,
+shared-tenant authority, capacity, latency, availability, or a task-success
+rate.
+
 ## Scope
 
 This receipt records a development-only acceptance run on 2026-09-02. The

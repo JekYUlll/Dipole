@@ -20,6 +20,8 @@
 
 - 2026-09-02：Agent Task 控制面新增受认证的低敏 Runtime status 查询。Gateway 从会话派生 principal 并通过内部共享凭据转发；Runtime 只返回 mode、Temporal activity mode、Task control 与交互写开关，拒绝匿名调用且不返回 Provider、端点、凭据、Task 或消息数据。该状态用于诊断任务创建是否已装配，`AD-009` 的真实任务、HITL、Worker 故障、共享环境和性能证据继续开放。
 
+- 2026-09-02：同版本 `9884b848` 的隔离 Remote GPU `interactive_active` Compose smoke 已通过 Gateway JWT 调用 Runtime status，并复核 deny 零副作用、approve 单次 Tool/Message 与两条 Sync Inbox。候选容器、卷和回环端口在退出后已确认清理。该确定性 fixture 不覆盖真实模型效果、浏览器 HITL、共享 tenant、Worker/Core/Message 故障、部分副作用回滚或容量，`AD-009` 保持处理中。
+
 - 2026-09-02：`reviewed_shadow` Eval 窗口现具备固定任务集输入边界。评审者先对 manifest 目录计算内容摘要，采集器在连接运行中 Agent 前复核摘要和单一 candidate version，并生成不含 Task/Prompt/用户/消息/标签正文的 manifest-set receipt。Remote GPU shell fixture 通过正常、失败和输入漂移拒绝路径。该能力使多样本成功率窗口可复跑；当前尚无同一固定任务集的真实多样本运行，成功率 `[XX]%` 与 shared-development 结论继续保持空缺。
 
 - 2026-09-02：Interactive Agent 的 completed Tool terminal 现对 `UNAVAILABLE` / `DEADLINE_EXCEEDED` 执行一次同载荷重放。Core 已有精确 terminal 幂等校验，因此 Runtime 只重发首次生成的 invocation、结果摘要、action reference 和延迟字段；若两次都处于不确定状态，Runtime 不会把可能已提交的 completed 覆盖为 failed。Remote GPU Node 22 定向 Vitest `10/10` 与 typecheck 通过。`AD-009` 仍跟踪 Worker 替换后的审批恢复、真实 Core/Message 跨进程响应丢失、部分副作用 rollback、浏览器 HITL、shared tenant 和容量证据。
