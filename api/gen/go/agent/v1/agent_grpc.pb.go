@@ -24,6 +24,7 @@ const (
 	AgentCapabilityService_ListEligibleSubscriptionConversations_FullMethodName = "/dipole.agent.v1.AgentCapabilityService/ListEligibleSubscriptionConversations"
 	AgentCapabilityService_ListEventSubscriptions_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/ListEventSubscriptions"
 	AgentCapabilityService_RevokeEventSubscription_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/RevokeEventSubscription"
+	AgentCapabilityService_CreateAgentDefinition_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/CreateAgentDefinition"
 	AgentCapabilityService_ListAgentDefinitions_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ListAgentDefinitions"
 	AgentCapabilityService_ListContextMemories_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/ListContextMemories"
 	AgentCapabilityService_ListOwnedMemories_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListOwnedMemories"
@@ -83,6 +84,7 @@ type AgentCapabilityServiceClient interface {
 	ListEligibleSubscriptionConversations(ctx context.Context, in *ListEligibleSubscriptionConversationsRequest, opts ...grpc.CallOption) (*ListEligibleSubscriptionConversationsResponse, error)
 	ListEventSubscriptions(ctx context.Context, in *ListEventSubscriptionsRequest, opts ...grpc.CallOption) (*ListEventSubscriptionsResponse, error)
 	RevokeEventSubscription(ctx context.Context, in *RevokeEventSubscriptionRequest, opts ...grpc.CallOption) (*AgentEventSubscription, error)
+	CreateAgentDefinition(ctx context.Context, in *CreateAgentDefinitionRequest, opts ...grpc.CallOption) (*AgentDefinitionCatalogItem, error)
 	ListAgentDefinitions(ctx context.Context, in *ListAgentDefinitionsRequest, opts ...grpc.CallOption) (*ListAgentDefinitionsResponse, error)
 	ListContextMemories(ctx context.Context, in *ListContextMemoriesRequest, opts ...grpc.CallOption) (*ListContextMemoriesResponse, error)
 	ListOwnedMemories(ctx context.Context, in *ListOwnedMemoriesRequest, opts ...grpc.CallOption) (*ListOwnedMemoriesResponse, error)
@@ -185,6 +187,16 @@ func (c *agentCapabilityServiceClient) RevokeEventSubscription(ctx context.Conte
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AgentEventSubscription)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_RevokeEventSubscription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) CreateAgentDefinition(ctx context.Context, in *CreateAgentDefinitionRequest, opts ...grpc.CallOption) (*AgentDefinitionCatalogItem, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AgentDefinitionCatalogItem)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_CreateAgentDefinition_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -680,6 +692,7 @@ type AgentCapabilityServiceServer interface {
 	ListEligibleSubscriptionConversations(context.Context, *ListEligibleSubscriptionConversationsRequest) (*ListEligibleSubscriptionConversationsResponse, error)
 	ListEventSubscriptions(context.Context, *ListEventSubscriptionsRequest) (*ListEventSubscriptionsResponse, error)
 	RevokeEventSubscription(context.Context, *RevokeEventSubscriptionRequest) (*AgentEventSubscription, error)
+	CreateAgentDefinition(context.Context, *CreateAgentDefinitionRequest) (*AgentDefinitionCatalogItem, error)
 	ListAgentDefinitions(context.Context, *ListAgentDefinitionsRequest) (*ListAgentDefinitionsResponse, error)
 	ListContextMemories(context.Context, *ListContextMemoriesRequest) (*ListContextMemoriesResponse, error)
 	ListOwnedMemories(context.Context, *ListOwnedMemoriesRequest) (*ListOwnedMemoriesResponse, error)
@@ -752,6 +765,9 @@ func (UnimplementedAgentCapabilityServiceServer) ListEventSubscriptions(context.
 }
 func (UnimplementedAgentCapabilityServiceServer) RevokeEventSubscription(context.Context, *RevokeEventSubscriptionRequest) (*AgentEventSubscription, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevokeEventSubscription not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) CreateAgentDefinition(context.Context, *CreateAgentDefinitionRequest) (*AgentDefinitionCatalogItem, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAgentDefinition not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ListAgentDefinitions(context.Context, *ListAgentDefinitionsRequest) (*ListAgentDefinitionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAgentDefinitions not implemented")
@@ -1005,6 +1021,24 @@ func _AgentCapabilityService_RevokeEventSubscription_Handler(srv interface{}, ct
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).RevokeEventSubscription(ctx, req.(*RevokeEventSubscriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_CreateAgentDefinition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAgentDefinitionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).CreateAgentDefinition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_CreateAgentDefinition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).CreateAgentDefinition(ctx, req.(*CreateAgentDefinitionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1899,6 +1933,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RevokeEventSubscription",
 			Handler:    _AgentCapabilityService_RevokeEventSubscription_Handler,
+		},
+		{
+			MethodName: "CreateAgentDefinition",
+			Handler:    _AgentCapabilityService_CreateAgentDefinition_Handler,
 		},
 		{
 			MethodName: "ListAgentDefinitions",

@@ -76,6 +76,10 @@ type agentDefinitionCatalogStub struct {
 	page      application.AgentDefinitionCatalogPageV1
 }
 
+func (s *agentDefinitionCatalogStub) Create(_ context.Context, principal string, request application.AgentDefinitionCatalogCreateRequestV1) (*application.AgentDefinitionVersionV1, error) {
+	return &application.AgentDefinitionVersionV1{DefinitionUUID: "DEF-CREATED", Version: 1, TenantID: request.TenantID, OwnerUUID: principal, AgentUUID: "UAI", Status: application.AgentDefinitionStatusActive, Permissions: []string{application.AgentPermissionConversationRead}, Scopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"read"}}}, ValidFrom: time.Unix(1, 0), CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0)}, nil
+}
+
 func (s *agentDefinitionCatalogStub) List(_ context.Context, principal string, request application.AgentDefinitionCatalogListRequestV1) (*application.AgentDefinitionCatalogPageV1, error) {
 	s.principal, s.request = principal, request
 	copy := s.page

@@ -793,6 +793,11 @@ message AgentDefinitionCatalogItem {
   int64 updated_at_unix_ms = 8;
 }
 
+message CreateAgentDefinitionRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+}
+
 message ListAgentDefinitionsRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -977,6 +982,7 @@ service AgentCapabilityService {
   rpc ListEligibleSubscriptionConversations(ListEligibleSubscriptionConversationsRequest) returns (ListEligibleSubscriptionConversationsResponse);
   rpc ListEventSubscriptions(ListEventSubscriptionsRequest) returns (ListEventSubscriptionsResponse);
   rpc RevokeEventSubscription(RevokeEventSubscriptionRequest) returns (AgentEventSubscription);
+  rpc CreateAgentDefinition(CreateAgentDefinitionRequest) returns (AgentDefinitionCatalogItem);
   rpc ListAgentDefinitions(ListAgentDefinitionsRequest) returns (ListAgentDefinitionsResponse);
   rpc ListContextMemories(ListContextMemoriesRequest) returns (ListContextMemoriesResponse);
   rpc ListOwnedMemories(ListOwnedMemoriesRequest) returns (ListOwnedMemoriesResponse);

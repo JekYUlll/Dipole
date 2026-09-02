@@ -2501,6 +2501,19 @@ export interface AgentDefinitionCatalogItem {
     updatedAtUnixMs: bigint;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.CreateAgentDefinitionRequest
+ */
+export interface CreateAgentDefinitionRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ListAgentDefinitionsRequest
  */
 export interface ListAgentDefinitionsRequest {
@@ -10596,6 +10609,60 @@ class AgentDefinitionCatalogItem$Type extends MessageType<AgentDefinitionCatalog
  */
 export const AgentDefinitionCatalogItem = new AgentDefinitionCatalogItem$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class CreateAgentDefinitionRequest$Type extends MessageType<CreateAgentDefinitionRequest> {
+    constructor() {
+        super("dipole.agent.v1.CreateAgentDefinitionRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<CreateAgentDefinitionRequest>): CreateAgentDefinitionRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        if (value !== undefined)
+            reflectionMergePartial<CreateAgentDefinitionRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: CreateAgentDefinitionRequest): CreateAgentDefinitionRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: CreateAgentDefinitionRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.CreateAgentDefinitionRequest
+ */
+export const CreateAgentDefinitionRequest = new CreateAgentDefinitionRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class ListAgentDefinitionsRequest$Type extends MessageType<ListAgentDefinitionsRequest> {
     constructor() {
         super("dipole.agent.v1.ListAgentDefinitionsRequest", [
@@ -12283,6 +12350,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ListEligibleSubscriptionConversations", options: {}, I: ListEligibleSubscriptionConversationsRequest, O: ListEligibleSubscriptionConversationsResponse },
     { name: "ListEventSubscriptions", options: {}, I: ListEventSubscriptionsRequest, O: ListEventSubscriptionsResponse },
     { name: "RevokeEventSubscription", options: {}, I: RevokeEventSubscriptionRequest, O: AgentEventSubscription },
+    { name: "CreateAgentDefinition", options: {}, I: CreateAgentDefinitionRequest, O: AgentDefinitionCatalogItem },
     { name: "ListAgentDefinitions", options: {}, I: ListAgentDefinitionsRequest, O: ListAgentDefinitionsResponse },
     { name: "ListContextMemories", options: {}, I: ListContextMemoriesRequest, O: ListContextMemoriesResponse },
     { name: "ListOwnedMemories", options: {}, I: ListOwnedMemoriesRequest, O: ListOwnedMemoriesResponse },

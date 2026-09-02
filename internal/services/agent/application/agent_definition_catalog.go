@@ -2,6 +2,8 @@ package agentapplication
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
@@ -13,18 +15,57 @@ import (
 )
 
 type PersistentAgentDefinitionCatalogV1 struct {
-	store application.AgentDefinitionCatalogStoreV1
-	now   func() time.Time
+	store     application.AgentDefinitionCatalogStoreV1
+	agentUUID string
+	now       func() time.Time
 }
 
-func NewPersistentAgentDefinitionCatalogV1(store application.AgentDefinitionCatalogStoreV1, now func() time.Time) (*PersistentAgentDefinitionCatalogV1, error) {
-	if store == nil {
-		return nil, errors.New("Agent Definition catalog store is required")
+func NewPersistentAgentDefinitionCatalogV1(store application.AgentDefinitionCatalogStoreV1, agentUUID string, now func() time.Time) (*PersistentAgentDefinitionCatalogV1, error) {
+	agentUUID = strings.TrimSpace(agentUUID)
+	if store == nil || agentUUID == "" || utf8.RuneCountInString(agentUUID) > 24 {
+		return nil, errors.New("Agent Definition catalog store and Agent identity are required")
 	}
 	if now == nil {
 		now = time.Now
 	}
-	return &PersistentAgentDefinitionCatalogV1{store: store, now: now}, nil
+	return &PersistentAgentDefinitionCatalogV1{store: store, agentUUID: agentUUID, now: now}, nil
+}
+
+func (s *PersistentAgentDefinitionCatalogV1) Create(ctx context.Context, principalUUID string, request application.AgentDefinitionCatalogCreateRequestV1) (*application.AgentDefinitionVersionV1, error) {
+	principalUUID = strings.TrimSpace(principalUUID)
+	request.TenantID = strings.TrimSpace(request.TenantID)
+	if principalUUID == "" || request.TenantID == "" || utf8.RuneCountInString(principalUUID) > 24 || utf8.RuneCountInString(request.TenantID) > 64 {
+		return nil, application.ErrAgentDefinitionCatalogInvalid
+	}
+	definition := userReadDefinitionV1(request.TenantID, principalUUID, s.agentUUID, s.now().UTC())
+	if err := s.store.CreateDefinitionVersion(ctx, definition); err != nil {
+		existing, lookupErr := s.store.GetDefinitionVersion(ctx, definition.DefinitionUUID, definition.Version)
+		if lookupErr != nil || existing == nil || !sameUserReadDefinitionV1(*existing, definition) {
+			return nil, application.ErrAgentDefinitionCatalogConflict
+		}
+		return existing, nil
+	}
+	stored, err := s.store.GetDefinitionVersion(ctx, definition.DefinitionUUID, definition.Version)
+	if err != nil || stored == nil || !sameUserReadDefinitionV1(*stored, definition) {
+		return nil, application.ErrAgentDefinitionCatalogConflict
+	}
+	return stored, nil
+}
+
+func userReadDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.Time) application.AgentDefinitionVersionV1 {
+	digest := sha256.Sum256([]byte("dipole.agent.user-read-definition.v1\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
+	return application.AgentDefinitionVersionV1{
+		DefinitionUUID: "user:" + hex.EncodeToString(digest[:])[:59], Version: 1, TenantID: tenantID, OwnerUUID: ownerUUID, AgentUUID: agentUUID,
+		Status: application.AgentDefinitionStatusActive, Permissions: []string{application.AgentPermissionConversationRead},
+		Scopes:    []application.AgentResourceScopeV1{{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead}}},
+		ValidFrom: validFrom,
+	}
+}
+
+func sameUserReadDefinitionV1(left, right application.AgentDefinitionVersionV1) bool {
+	return left.DefinitionUUID == right.DefinitionUUID && left.Version == right.Version && left.TenantID == right.TenantID && left.OwnerUUID == right.OwnerUUID && left.AgentUUID == right.AgentUUID &&
+		left.Status == right.Status && left.RevokedAt == nil && right.RevokedAt == nil && len(left.Permissions) == 1 && left.Permissions[0] == application.AgentPermissionConversationRead &&
+		len(left.Scopes) == 1 && left.Scopes[0].ResourceType == application.AgentResourceTypeConversation && left.Scopes[0].ResourceID == application.AgentResourceWildcard && len(left.Scopes[0].Actions) == 1 && left.Scopes[0].Actions[0] == application.AgentResourceActionRead
 }
 
 func (s *PersistentAgentDefinitionCatalogV1) List(ctx context.Context, principalUUID string, request application.AgentDefinitionCatalogListRequestV1) (*application.AgentDefinitionCatalogPageV1, error) {

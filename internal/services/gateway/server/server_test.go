@@ -137,6 +137,10 @@ type gatewayAgentDefinitionStub struct {
 	limit            int
 }
 
+func (*gatewayAgentDefinitionStub) CreateDefinition(context.Context, string) (*AgentDefinitionCatalogItem, error) {
+	return &AgentDefinitionCatalogItem{DefinitionID: "DEF-CREATED", Version: 1, AgentID: "UAI", ConversationScopes: []string{"*"}, ValidFromUnixMS: 1_000, CreatedAtUnixMS: 1_000, UpdatedAtUnixMS: 1_000}, nil
+}
+
 type gatewayAgentMemoryStub struct {
 	principal, after, memoryID, reason                        string
 	content, compactContent                                   string

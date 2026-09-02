@@ -27,6 +27,10 @@ type AgentDefinitionCatalogListRequestV1 struct {
 	Limit               int
 }
 
+type AgentDefinitionCatalogCreateRequestV1 struct {
+	TenantID string
+}
+
 type AgentDefinitionCatalogPageV1 struct {
 	Definitions        []AgentDefinitionCatalogItemV1
 	NextDefinitionUUID string
@@ -34,9 +38,12 @@ type AgentDefinitionCatalogPageV1 struct {
 }
 
 type AgentDefinitionCatalogServiceV1 interface {
+	Create(ctx context.Context, principalUUID string, request AgentDefinitionCatalogCreateRequestV1) (*AgentDefinitionVersionV1, error)
 	List(ctx context.Context, principalUUID string, request AgentDefinitionCatalogListRequestV1) (*AgentDefinitionCatalogPageV1, error)
 }
 
 type AgentDefinitionCatalogStoreV1 interface {
+	CreateDefinitionVersion(ctx context.Context, definition AgentDefinitionVersionV1) error
+	GetDefinitionVersion(ctx context.Context, definitionUUID string, version uint64) (*AgentDefinitionVersionV1, error)
 	ListOwnedActiveDefinitions(ctx context.Context, tenantID, ownerUUID, afterDefinitionUUID string, afterVersion uint64, activeAt time.Time, limit int) ([]AgentDefinitionVersionV1, error)
 }

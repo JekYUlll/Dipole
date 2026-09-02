@@ -93,6 +93,7 @@ type AgentSubscriptionControlApplication interface {
 }
 
 type AgentDefinitionCatalogApplication interface {
+	CreateDefinition(ctx context.Context, principalUUID string) (*AgentDefinitionCatalogItem, error)
 	ListDefinitions(ctx context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error)
 }
 
@@ -101,7 +102,21 @@ type agentSubscriptionRPC interface {
 	ListEligibleSubscriptionConversations(context.Context, *agentv1.ListEligibleSubscriptionConversationsRequest, ...grpc.CallOption) (*agentv1.ListEligibleSubscriptionConversationsResponse, error)
 	ListEventSubscriptions(context.Context, *agentv1.ListEventSubscriptionsRequest, ...grpc.CallOption) (*agentv1.ListEventSubscriptionsResponse, error)
 	RevokeEventSubscription(context.Context, *agentv1.RevokeEventSubscriptionRequest, ...grpc.CallOption) (*agentv1.AgentEventSubscription, error)
+	CreateAgentDefinition(context.Context, *agentv1.CreateAgentDefinitionRequest, ...grpc.CallOption) (*agentv1.AgentDefinitionCatalogItem, error)
 	ListAgentDefinitions(context.Context, *agentv1.ListAgentDefinitionsRequest, ...grpc.CallOption) (*agentv1.ListAgentDefinitionsResponse, error)
+}
+
+func (c *AgentSubscriptionControlClient) CreateDefinition(ctx context.Context, principalUUID string) (*AgentDefinitionCatalogItem, error) {
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.CreateAgentDefinition(callCtx, &agentv1.CreateAgentDefinitionRequest{Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID})
+	if err != nil {
+		return nil, mapAgentSubscriptionRPCError(err)
+	}
+	if response == nil || !validAgentSubscriptionPublicID(response.GetDefinitionId(), 64) || response.GetVersion() == 0 || !validAgentSubscriptionPublicID(response.GetAgentId(), 24) || len(response.GetConversationScopes()) != 1 || response.GetConversationScopes()[0] != "*" {
+		return nil, ErrAgentSubscriptionUnavailable
+	}
+	return &AgentDefinitionCatalogItem{DefinitionID: response.GetDefinitionId(), Version: response.GetVersion(), AgentID: response.GetAgentId(), ConversationScopes: append([]string(nil), response.GetConversationScopes()...), ValidFromUnixMS: response.GetValidFromUnixMs(), ExpiresAtUnixMS: response.GetExpiresAtUnixMs(), CreatedAtUnixMS: response.GetCreatedAtUnixMs(), UpdatedAtUnixMS: response.GetUpdatedAtUnixMs()}, nil
 }
 
 func (c *AgentSubscriptionControlClient) ListEligibleConversations(ctx context.Context, principalUUID, definitionID string, definitionVersion uint64) (*AgentSubscriptionConversationOptions, error) {

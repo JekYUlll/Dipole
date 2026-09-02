@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：新增 owner-scoped Agent Definition 创建契约。认证 Gateway 可调用 `POST /api/v1/agent/definitions`，Core 从可信 principal、tenant 与 Assistant 配置生成确定性只读 `conversation.read` wildcard Definition；重放收敛到同一记录，跨 owner 严格隔离。gRPC 与 TypeScript protobuf 同步生成。Gateway Subscription 控制仍默认关闭，待 standalone Core 装配同一控制面后受控启用。
+
 - 2026-09-02：Agent Definition 已按 owner 进入持久化查询与版本唯一性边界。migration v58 将唯一键升级为 `(tenant, owner, agent, version)`，Core 在订阅触发时按 Subscription 创建者选择最新 Definition；同一 Agent 面向多位用户的策略不再互相覆盖。SQLC、应用层 owner 选择和 MySQL 合同测试均已补齐。公开订阅控制与 Runtime trigger 保持默认关闭，下一切片将补用户 Definition 创建后再进行受控启用。
 
 - 2026-09-02：收紧 Agent Event Subscription 的执行主体与幂等契约。Runtime 对每个确定性命中订阅独立派发，使用订阅创建者作为可信 principal；Core 再次校验 Subscription、pinned Definition 与 principal 的 owner 一致性。订阅触发的 Task ID 与 EventLedger key 纳入 subscription identity，多个 owner 命中同一消息时可独立执行，单订阅重复消费仍收敛。默认 `direct_target` 和 subscription trigger 默认关闭均未改变，详见 [Agent Subscription Shadow](docs/agent/agent-subscription-shadow.md)。

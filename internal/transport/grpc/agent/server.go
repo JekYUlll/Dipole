@@ -567,17 +567,45 @@ func (s *Server) ListAgentDefinitions(ctx context.Context, request *agentv1.List
 		NextDefinitionId: page.NextDefinitionUUID, NextVersion: page.NextVersion,
 	}
 	for _, item := range page.Definitions {
-		definition := &agentv1.AgentDefinitionCatalogItem{
-			DefinitionId: item.DefinitionUUID, Version: item.Version, AgentId: item.AgentUUID,
-			ConversationScopes: append([]string(nil), item.ConversationScopes...),
-			ValidFromUnixMs:    item.ValidFrom.UnixMilli(), CreatedAtUnixMs: item.CreatedAt.UnixMilli(), UpdatedAtUnixMs: item.UpdatedAt.UnixMilli(),
-		}
-		if item.ExpiresAt != nil {
-			definition.ExpiresAtUnixMs = item.ExpiresAt.UnixMilli()
-		}
-		response.Definitions = append(response.Definitions, definition)
+		response.Definitions = append(response.Definitions, agentDefinitionCatalogItemResponseV1(item))
 	}
 	return response, nil
+}
+
+func (s *Server) CreateAgentDefinition(ctx context.Context, request *agentv1.CreateAgentDefinitionRequest) (*agentv1.AgentDefinitionCatalogItem, error) {
+	principal, err := eventSubscriptionOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.definitionCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Definition catalog is unavailable")
+	}
+	definition, err := s.definitionCatalog.Create(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentDefinitionCatalogCreateRequestV1{TenantID: request.GetTenantId()})
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrAgentDefinitionCatalogInvalid):
+			return nil, status.Error(codes.FailedPrecondition, "Agent Definition request is invalid")
+		case errors.Is(err, application.ErrAgentDefinitionCatalogConflict):
+			return nil, status.Error(codes.Aborted, "Agent Definition authority changed")
+		default:
+			return nil, status.Error(codes.Internal, "Agent Definition creation failed")
+		}
+	}
+	item := application.AgentDefinitionCatalogItemV1{DefinitionUUID: definition.DefinitionUUID, Version: definition.Version, AgentUUID: definition.AgentUUID, ValidFrom: definition.ValidFrom, ExpiresAt: definition.ExpiresAt, CreatedAt: definition.CreatedAt, UpdatedAt: definition.UpdatedAt}
+	for _, scope := range definition.Scopes {
+		if scope.ResourceType == application.AgentResourceTypeConversation {
+			item.ConversationScopes = append(item.ConversationScopes, scope.ResourceID)
+		}
+	}
+	return agentDefinitionCatalogItemResponseV1(item), nil
+}
+
+func agentDefinitionCatalogItemResponseV1(item application.AgentDefinitionCatalogItemV1) *agentv1.AgentDefinitionCatalogItem {
+	response := &agentv1.AgentDefinitionCatalogItem{DefinitionId: item.DefinitionUUID, Version: item.Version, AgentId: item.AgentUUID, ConversationScopes: append([]string(nil), item.ConversationScopes...), ValidFromUnixMs: item.ValidFrom.UnixMilli(), CreatedAtUnixMs: item.CreatedAt.UnixMilli(), UpdatedAtUnixMs: item.UpdatedAt.UnixMilli()}
+	if item.ExpiresAt != nil {
+		response.ExpiresAtUnixMs = item.ExpiresAt.UnixMilli()
+	}
+	return response
 }
 
 func eventSubscriptionOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {

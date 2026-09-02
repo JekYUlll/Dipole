@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Gateway/Core 的 owner-scoped user Definition 创建已具备，固定为 Assistant 的 `conversation.read` wildcard 权限并使用稳定 ID 重放；客户端不能指定 tenant、owner、Agent 或写权限。嵌入式 Core 已装配该控制面。standalone Core 尚未装配 Subscription/Definition control，因此 Gateway 开关继续默认关闭；须完成同一服务组合、受控 Shadow 观察和回滚验证后再启用。
+
 - 2026-09-02：Agent Definition 现按 `(tenant, owner, agent)` 查询，migration v58 允许不同 owner 为同一 Agent 使用相同 version。Subscription 的可信 principal 已与该 owner query 对齐；嵌入式 direct-target 保持 Agent owner。用户自助创建 Definition、Subscription 默认启用、真实 Shadow 观察窗口和 Runtime 灰度仍未完成，`AD-034` 保持处理中。
 
 - 2026-09-02：Event Subscription enforced Runtime 现已按 Subscription fan-out，可信执行主体改为记录的 `created_by_id`，Core 复核 owner 与 Definition/Subscription binding，Task/EventLedger 幂等键分别加入 subscription identity。定向 TypeScript 回归覆盖两个 owner 命中一条事件的独立派发、Temporal binding 与重复键分离；Go 回归待使用非 Xlings 工具链或 Remote GPU 复核。本机默认仍为 `direct_target`，subscription trigger 和共享环境切换保持关闭，须先完成 AD-034 的 reviewed corpus、Shadow 观察窗口、rollout gate 与受控部署证据。

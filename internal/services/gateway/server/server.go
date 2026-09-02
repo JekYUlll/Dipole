@@ -138,6 +138,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		engine.POST("/api/v1/agent/subscriptions/:subscription_id/revoke", auth, agentSubscriptionRevokeHandler(dependencies.AgentSubscriptions))
 	}
 	if dependencies.AgentDefinitions != nil {
+		engine.POST("/api/v1/agent/definitions", auth, agentDefinitionCreateHandler(dependencies.AgentDefinitions))
 		engine.GET("/api/v1/agent/definitions", auth, agentDefinitionCatalogHandler(dependencies.AgentDefinitions))
 	}
 	if dependencies.AgentMemories != nil {
@@ -421,6 +422,22 @@ func agentDefinitionCatalogHandler(catalog AgentDefinitionCatalogApplication) gi
 		}
 		page, err := catalog.ListDefinitions(c.Request.Context(), user.UUID, after, limit)
 		writeAgentSubscriptionResult(c, page, err)
+	}
+}
+
+func agentDefinitionCreateHandler(catalog AgentDefinitionCatalogApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		item, err := catalog.CreateDefinition(c.Request.Context(), user.UUID)
+		if err != nil {
+			writeAgentSubscriptionResult(c, nil, err)
+			return
+		}
+		c.JSON(http.StatusCreated, item)
 	}
 }
 

@@ -2,6 +2,7 @@ package agentapplication
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -15,6 +16,26 @@ type agentDefinitionCatalogStoreStub struct {
 	limit                          int
 	activeAt                       time.Time
 	err                            error
+}
+
+func (s *agentDefinitionCatalogStoreStub) CreateDefinitionVersion(_ context.Context, definition application.AgentDefinitionVersionV1) error {
+	for _, item := range s.items {
+		if item.DefinitionUUID == definition.DefinitionUUID && item.Version == definition.Version {
+			return errors.New("duplicate Definition")
+		}
+	}
+	s.items = append(s.items, definition)
+	return nil
+}
+
+func (s *agentDefinitionCatalogStoreStub) GetDefinitionVersion(_ context.Context, definitionUUID string, version uint64) (*application.AgentDefinitionVersionV1, error) {
+	for index := range s.items {
+		if s.items[index].DefinitionUUID == definitionUUID && s.items[index].Version == version {
+			item := s.items[index]
+			return &item, nil
+		}
+	}
+	return nil, nil
 }
 
 func (s *agentDefinitionCatalogStoreStub) ListOwnedActiveDefinitions(_ context.Context, tenant, owner, afterDefinition string, afterVersion uint64, activeAt time.Time, limit int) ([]application.AgentDefinitionVersionV1, error) {
@@ -32,7 +53,7 @@ func TestAgentDefinitionCatalogListsOwnedEligibleVersions(t *testing.T) {
 		application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "group:G1", Actions: []string{"read"}},
 		application.AgentResourceScopeV1{ResourceType: "file", ResourceID: "*", Actions: []string{"read"}},
 	)
-	service, err := NewPersistentAgentDefinitionCatalogV1(store, func() time.Time { return now })
+	service, err := NewPersistentAgentDefinitionCatalogV1(store, "UAI", func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Definition catalog: %v", err)
 	}
@@ -66,7 +87,7 @@ func TestAgentDefinitionCatalogFailsClosedOnAuthorityDrift(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			item := definitionCatalogFixture("DEF-1", 1, now)
 			test.mutate(&item)
-			service, _ := NewPersistentAgentDefinitionCatalogV1(&agentDefinitionCatalogStoreStub{items: []application.AgentDefinitionVersionV1{item}}, func() time.Time { return now })
+			service, _ := NewPersistentAgentDefinitionCatalogV1(&agentDefinitionCatalogStoreStub{items: []application.AgentDefinitionVersionV1{item}}, "UAI", func() time.Time { return now })
 			if _, err := service.List(context.Background(), "U100", application.AgentDefinitionCatalogListRequestV1{TenantID: "dipole", Limit: 10}); err != application.ErrAgentDefinitionCatalogConflict {
 				t.Fatalf("error = %v, want conflict", err)
 			}
@@ -75,9 +96,33 @@ func TestAgentDefinitionCatalogFailsClosedOnAuthorityDrift(t *testing.T) {
 }
 
 func TestAgentDefinitionCatalogRejectsPartialCursor(t *testing.T) {
-	service, _ := NewPersistentAgentDefinitionCatalogV1(&agentDefinitionCatalogStoreStub{}, time.Now)
+	service, _ := NewPersistentAgentDefinitionCatalogV1(&agentDefinitionCatalogStoreStub{}, "UAI", time.Now)
 	if _, err := service.List(context.Background(), "U100", application.AgentDefinitionCatalogListRequestV1{TenantID: "dipole", AfterDefinitionUUID: "DEF-1"}); err != application.ErrAgentDefinitionCatalogInvalid {
 		t.Fatalf("error = %v, want invalid", err)
+	}
+}
+
+func TestAgentDefinitionCatalogCreatesOwnerScopedReadDefinitionIdempotently(t *testing.T) {
+	now := time.Unix(1000, 0).UTC()
+	store := &agentDefinitionCatalogStoreStub{}
+	service, err := NewPersistentAgentDefinitionCatalogV1(store, "UAI", func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole"})
+	if err != nil {
+		t.Fatalf("create owner Definition: %v", err)
+	}
+	replayed, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole"})
+	if err != nil || first.DefinitionUUID != replayed.DefinitionUUID || len(store.items) != 1 || first.OwnerUUID != "U100" || first.AgentUUID != "UAI" {
+		t.Fatalf("owner Definition replay drifted: first=%+v replay=%+v items=%+v err=%v", first, replayed, store.items, err)
+	}
+	foreign, err := service.Create(context.Background(), "U200", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole"})
+	if err != nil || foreign.DefinitionUUID == first.DefinitionUUID || len(store.items) != 2 {
+		t.Fatalf("foreign owner Definition isolation failed: foreign=%+v items=%+v err=%v", foreign, store.items, err)
+	}
+	if _, err := service.Create(context.Background(), "", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole"}); err != application.ErrAgentDefinitionCatalogInvalid {
+		t.Fatalf("missing owner error = %v", err)
 	}
 }
 

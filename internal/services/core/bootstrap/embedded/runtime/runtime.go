@@ -228,7 +228,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Event Subscription control: %w", composeErr)
 		}
-		definitionCatalog, composeErr := agentapplication.NewPersistentAgentDefinitionCatalogV1(agentRepos.DefinitionCatalog, time.Now)
+		definitionCatalog, composeErr := agentapplication.NewPersistentAgentDefinitionCatalogV1(agentRepos.DefinitionCatalog, config.AIConfig().AssistantUUID, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Definition catalog: %w", composeErr)
 		}

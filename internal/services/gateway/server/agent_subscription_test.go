@@ -23,6 +23,10 @@ type agentSubscriptionRPCStub struct {
 	definitionRequest *agentv1.ListAgentDefinitionsRequest
 }
 
+func (*agentSubscriptionRPCStub) CreateAgentDefinition(_ context.Context, request *agentv1.CreateAgentDefinitionRequest, _ ...grpc.CallOption) (*agentv1.AgentDefinitionCatalogItem, error) {
+	return &agentv1.AgentDefinitionCatalogItem{DefinitionId: "DEF-CREATED", Version: 1, AgentId: "UAI", ConversationScopes: []string{"*"}, ValidFromUnixMs: 1_000, CreatedAtUnixMs: 1_000, UpdatedAtUnixMs: 1_000}, nil
+}
+
 func (s *agentSubscriptionRPCStub) CreateEventSubscription(_ context.Context, request *agentv1.CreateEventSubscriptionRequest, _ ...grpc.CallOption) (*agentv1.AgentEventSubscription, error) {
 	s.createRequest = request
 	return &agentv1.AgentEventSubscription{
