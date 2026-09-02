@@ -26,6 +26,8 @@ trap cleanup EXIT INT TERM
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET="${DIPOLE_INTERNAL_RPC_SHARED_SECRET:-$(openssl rand -hex 32)}"
 export DIPOLE_INTERNAL_CERT_DIR="${scratch_dir}/certs"
 export INTERNAL_CERT_DIR="${DIPOLE_INTERNAL_CERT_DIR}"
+export DIPOLE_GATEWAY_BIND_ADDRESS="${DIPOLE_GATEWAY_BIND_ADDRESS:-127.0.0.1}"
+export DIPOLE_GATEWAY_PORT="${DIPOLE_GATEWAY_PORT:-$((18000 + RANDOM % 2000))}"
 "${root_dir}/scripts/generate-internal-certs.sh"
 compose config --quiet
 compose up -d --wait
