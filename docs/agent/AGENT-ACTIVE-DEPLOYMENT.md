@@ -89,6 +89,17 @@ Compose 的审批重放与异步 receipt 确认。Runtime 对 completed Tool ter
 `conversation.read` 和 wildcard scope。该检查只覆盖固定只读 Definition 模板，
 不启用 Event Subscription 控制或 `subscription` trigger。
 
+开发期可用以下窄化入口只执行上述 Definition 闭环；它会在 MySQL 断言通过后退出，
+因此不会进入 `/send`、approval 或消息副作用路径：
+
+```bash
+DIPOLE_AGENT_DEFINITION_ONLY=1 scripts/smoke-agent-interactive-active-compose.sh
+```
+
+2026-09-02，该入口已在 Remote GPU 的隔离 loopback-only project 中通过，并在退出后
+确认该 project 已清理。该结果不替代共享环境、Subscription Shadow、Runtime 灰度或
+消息写入的验收。
+
 ## 4. Reviewed Memory 提交扩展
 
 `deploy/microservices/agent-memory-promotion.yml` 是 `agent-active.yml` 之上的独立 overlay，默认不加载。它只允许为已审核的 receipt 增加 `promotion_active` Temporal Activity，同时打开 Core 的 receipt commit Adapter。该 overlay 不改变 candidate 生成、Memory 召回、消息发送、Control 或 MCP 的关闭状态。

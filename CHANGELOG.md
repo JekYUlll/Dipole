@@ -1,6 +1,6 @@
 # 更新日志
 
-- 2026-09-02：Interactive Active 隔离 Compose smoke 现覆盖用户 Agent Definition 闭环：认证 Gateway 重放两次创建，读取 owner 目录，并直接复核 MySQL 中唯一的 owner、Assistant、`conversation.read` 与 wildcard scope。该检查在同一短期项目内执行，Subscription trigger 继续关闭。
+- 2026-09-02：Remote GPU 已以隔离、loopback-only Compose project 完成 Agent Definition-only smoke。认证 owner 经 Gateway 重放两次创建，读取 owner 目录，并直接复核 MySQL 中唯一的 owner、Assistant、`conversation.read` 与 wildcard scope；项目、容器与 volumes 均已自动清理。该检查只覆盖固定只读 Definition 模板，Subscription trigger、Runtime 灰度和消息写入继续关闭。
 
 - 2026-09-02：将固定只读 Agent Definition 模板从 Event Subscription 开关中拆分。`gateway.agent_definition_enabled` 默认关闭；Interactive Shadow 与 Interactive Active 隔离 Compose profile 显式打开该入口，用户可创建和读取自己的 `conversation.read` Definition。Subscription 控制、subscription trigger 与 Shadow 晋级条件保持关闭。
 

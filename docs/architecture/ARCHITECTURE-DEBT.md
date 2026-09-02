@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-02：Interactive Active Compose smoke 已纳入用户 Definition 的 HTTP/gRPC/SQLC 持久化闭环：认证 owner 重放创建、列出目录，并复核单条 Definition 的 owner、Assistant、只读权限和 wildcard scope。实际 Remote GPU 同版本执行回执待本轮归档；Subscription trigger、reviewed Shadow 与灰度继续由 `AD-034` 跟踪。
+- 2026-09-02：Remote GPU 的隔离、loopback-only Interactive Active Compose smoke 已验证用户 Definition 的 HTTP/gRPC/SQLC 持久化闭环：认证 owner 重放创建、列出目录，并复核单条 Definition 的 owner、Assistant、只读权限和 wildcard scope。Definition-only project、容器与 volumes 已自动清理；Subscription trigger、reviewed Shadow 与 Runtime 灰度继续由 `AD-034` 跟踪。
 
 - 2026-09-02：固定 `conversation.read` 的 owner Definition API 已从 Subscription 控制门禁中独立为 `gateway.agent_definition_enabled`。默认配置仍关闭，Interactive Shadow/Active 的隔离 Compose profile 可显式启用；其不授予订阅写入、subscription trigger 或消息写入。Subscription 的 reviewed Shadow、Runtime 灰度与回滚验证继续由 `AD-034` 跟踪。
 
