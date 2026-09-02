@@ -139,6 +139,7 @@ func TestRestrictServiceMethodsAllowsBoundAgentWriteRPCs(t *testing.T) {
 	allowed := []string{
 		agentv1.AgentCapabilityService_ConsumeApproval_FullMethodName,
 		agentv1.AgentCapabilityService_ResolveApprovalGrant_FullMethodName,
+		agentv1.AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName,
 		agentv1.AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName,
 	}
 	for _, method := range allowed {
