@@ -20,6 +20,7 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('agent-subscription-active-smoke.yml', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"', smoke)
+        self.assertIn('event_id="EA-${RANDOM}-$$"', smoke)
         self.assertIn('compose down --volumes --remove-orphans', smoke)
         self.assertIn('Subscription active Compose stack retained: project=%s scratch=%s', smoke)
         self.assertIn('UPDATE agent_runtime_promotion_grants SET revoked_at', smoke)

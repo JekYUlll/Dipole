@@ -9,7 +9,9 @@ project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-subscription-active-${RANDOM}
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-subscription-active.XXXXXX")
 owner_telephone="13900000004"
 agent_uuid="UAI000000000000000001"
-event_id="SUBSCRIPTION-ACTIVE-SMOKE-${RANDOM}-$$"
+# Keep test identifiers within the production columns shared by Message,
+# Sync, and the Agent event ledger.
+event_id="EA-${RANDOM}-$$"
 grant_uuid="PROMOTION-SUBSCRIPTION-ACTIVE-${RANDOM}-$$"
 
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
