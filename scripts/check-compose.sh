@@ -213,6 +213,7 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_MODEL_THINKING_MODE == "disabled"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_SECRET == "compose-check-control-secret"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_shadow_config}" >/dev/null
 
@@ -241,6 +242,7 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED == "false"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_active_config}" >/dev/null

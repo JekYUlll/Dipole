@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：固定 `conversation.read` 的 owner Definition API 已从 Subscription 控制门禁中独立为 `gateway.agent_definition_enabled`。默认配置仍关闭，Interactive Shadow/Active 的隔离 Compose profile 可显式启用；其不授予订阅写入、subscription trigger 或消息写入。Subscription 的 reviewed Shadow、Runtime 灰度与回滚验证继续由 `AD-034` 跟踪。
+
 - 2026-09-02：standalone Core 已用与 embedded 路径一致的 SQLC Agent 组合装配 Definition catalog、Subscription resolver 和 owner-scoped Subscription control；Gateway 调用不再因独立服务缺少控制面而返回未装配。`gateway.agent_subscription_enabled=false`、受控 Shadow 观察、Runtime `subscription` 灰度和可执行回滚仍是启用前置条件，`AD-034` 保持处理中。
 
 - 2026-09-02：Gateway/Core 的 owner-scoped user Definition 创建已具备，固定为 Assistant 的 `conversation.read` wildcard 权限并使用稳定 ID 重放；客户端不能指定 tenant、owner、Agent 或写权限。嵌入式 Core 已装配该控制面。standalone Core 尚未装配 Subscription/Definition control，因此 Gateway 开关继续默认关闭；须完成同一服务组合、受控 Shadow 观察和回滚验证后再启用。

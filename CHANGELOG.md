@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：将固定只读 Agent Definition 模板从 Event Subscription 开关中拆分。`gateway.agent_definition_enabled` 默认关闭；Interactive Shadow 与 Interactive Active 隔离 Compose profile 显式打开该入口，用户可创建和读取自己的 `conversation.read` Definition。Subscription 控制、subscription trigger 与 Shadow 晋级条件保持关闭。
+
 - 2026-09-02：独立 `dipole-core` 已装配与嵌入式路径相同的 Agent Definition 和 Event Subscription 控制面。Core 以 SQLC Agent 仓储、可信会话可读性服务和 Assistant 配置组装 resolver、owner 控制与只读 Definition catalog，并注入 Agent gRPC adapter；Gateway 的默认关闭开关、Shadow 观察和 Runtime 灰度门禁保持不变。
 
 - 2026-09-02：新增 owner-scoped Agent Definition 创建契约。认证 Gateway 可调用 `POST /api/v1/agent/definitions`，Core 从可信 principal、tenant 与 Assistant 配置生成确定性只读 `conversation.read` wildcard Definition；重放收敛到同一记录，跨 owner 严格隔离。gRPC 与 TypeScript protobuf 同步生成。Gateway Subscription 控制仍默认关闭，待 standalone Core 装配同一控制面后受控启用。

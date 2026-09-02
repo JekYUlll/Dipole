@@ -115,8 +115,10 @@ docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
   config --quiet
 ```
 
-这组 overlay 只开放认证后的 Task 控制面，保持 `shadow + read_shadow`。
-Memory、检索、MCP、外部 MCP、active authority 和写 Capability 均关闭。
+这组 overlay 开放认证后的 Task 控制面与固定只读 Definition 模板，保持
+`shadow + read_shadow`。Definition 仅生成 owner-scoped `conversation.read`
+wildcard 策略，不会打开 Subscription 控制或 trigger。Memory、检索、MCP、
+外部 MCP、active authority 和写 Capability 均关闭。
 DeepSeek overlay 固定 `json_text` 与 `thinking=disabled`，避免不支持 JSON
 Schema response format 或仅返回 reasoning 的兼容性失败。
 

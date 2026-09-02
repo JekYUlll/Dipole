@@ -21,7 +21,10 @@ gateway:
   # Keep disabled until the Agent Runtime and Temporal control plane are ready.
   agent_control_enabled: false
   agent_control_target: http://127.0.0.1:8091
-  # Exposes owner-scoped Event Subscription controls through Core gRPC. Keep disabled until user Definition creation and the reviewed Shadow gate are ready.
+  # Exposes only the fixed owner-scoped conversation.read Definition template through Core gRPC.
+  # Keep disabled in the default deployment; isolated Agent profiles can enable it without enabling subscriptions.
+  agent_definition_enabled: false
+  # Exposes owner-scoped Event Subscription controls through Core gRPC. Keep disabled until the reviewed Shadow gate is ready.
   agent_subscription_enabled: false
   agent_subscription_tenant_id: dipole
   # Exposes owner-visible Memory list/revoke control. Automatic Observation writes remain disabled.

@@ -351,6 +351,9 @@ func TestConfigDistKeepsAgentTaskControlsDefaultOff(t *testing.T) {
 	if v.GetBool("gateway.agent_subscription_enabled") {
 		t.Fatal("Gateway Agent Subscription control must remain default off")
 	}
+	if v.GetBool("gateway.agent_definition_enabled") {
+		t.Fatal("Gateway Agent Definition control must remain default off")
+	}
 	if v.GetBool("gateway.agent_artifact_enabled") {
 		t.Fatal("Gateway Agent Artifact metadata must remain default off")
 	}

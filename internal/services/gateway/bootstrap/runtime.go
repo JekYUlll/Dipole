@@ -232,14 +232,21 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		}
 	}
 	var agentSubscriptions *gateway.AgentSubscriptionControlClient
-	if gatewayCfg.AgentSubscriptionEnabled {
-		agentSubscriptions, err = gateway.NewAgentSubscriptionControlClient(
+	var agentDefinitions *gateway.AgentSubscriptionControlClient
+	if gatewayCfg.AgentSubscriptionEnabled || gatewayCfg.AgentDefinitionEnabled {
+		agentControlClient, clientErr := gateway.NewAgentSubscriptionControlClient(
 			agentv1.NewAgentCapabilityServiceClient(coreConn), gatewayCfg.AgentSubscriptionTenantID,
 			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
 		)
-		if err != nil {
+		if clientErr != nil {
 			cleanup()
-			return nil, fmt.Errorf("initialize Agent Subscription control client: %w", err)
+			return nil, fmt.Errorf("initialize Agent Definition/Subscription control client: %w", clientErr)
+		}
+		if gatewayCfg.AgentSubscriptionEnabled {
+			agentSubscriptions = agentControlClient
+		}
+		if gatewayCfg.AgentDefinitionEnabled {
+			agentDefinitions = agentControlClient
 		}
 	}
 	var agentMemories *gateway.AgentMemoryControlClient
@@ -298,7 +305,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		Search:                 search,
 		AgentTasks:             agentTasks,
 		AgentSubscriptions:     agentSubscriptions,
-		AgentDefinitions:       agentSubscriptions,
+		AgentDefinitions:       agentDefinitions,
 		AgentMemories:          agentMemories,
 		AgentArtifacts:         agentArtifactApplication(agentArtifacts),
 		AgentMCP:               agentMCP,

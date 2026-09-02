@@ -35,6 +35,7 @@ type Gateway struct {
 	AgentControlEnabled       bool   `mapstructure:"agent_control_enabled"`
 	AgentControlTarget        string `mapstructure:"agent_control_target"`
 	AgentControlSecret        string `mapstructure:"agent_control_secret"`
+	AgentDefinitionEnabled    bool   `mapstructure:"agent_definition_enabled"`
 	AgentSubscriptionEnabled  bool   `mapstructure:"agent_subscription_enabled"`
 	AgentSubscriptionTenantID string `mapstructure:"agent_subscription_tenant_id"`
 	AgentMemoryEnabled        bool   `mapstructure:"agent_memory_enabled"`
@@ -372,6 +373,7 @@ func Load() error {
 		v.SetDefault("gateway.agent_control_enabled", false)
 		v.SetDefault("gateway.agent_control_target", "http://127.0.0.1:8091")
 		v.SetDefault("gateway.agent_control_secret", "")
+		v.SetDefault("gateway.agent_definition_enabled", false)
 		v.SetDefault("gateway.agent_subscription_enabled", false)
 		v.SetDefault("gateway.agent_subscription_tenant_id", "dipole")
 		v.SetDefault("gateway.agent_memory_enabled", false)
@@ -561,6 +563,7 @@ func Load() error {
 			"gateway.core_http_target",
 			"gateway.agent_control_enabled",
 			"gateway.agent_control_target",
+			"gateway.agent_definition_enabled",
 			"gateway.agent_subscription_enabled",
 			"gateway.agent_subscription_tenant_id",
 			"gateway.agent_memory_enabled",
@@ -808,6 +811,7 @@ func GatewayConfig() Gateway {
 		AgentControlEnabled:       cfg.GetBool("gateway.agent_control_enabled"),
 		AgentControlTarget:        strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
 		AgentControlSecret:        strings.TrimSpace(cfg.GetString("gateway.agent_control_secret")),
+		AgentDefinitionEnabled:    cfg.GetBool("gateway.agent_definition_enabled"),
 		AgentSubscriptionEnabled:  cfg.GetBool("gateway.agent_subscription_enabled"),
 		AgentSubscriptionTenantID: strings.TrimSpace(cfg.GetString("gateway.agent_subscription_tenant_id")),
 		AgentMemoryEnabled:        cfg.GetBool("gateway.agent_memory_enabled"),

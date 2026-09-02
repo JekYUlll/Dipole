@@ -16,6 +16,7 @@ class InteractiveAgentShadowComposeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED: "true"', overlay)
         self.assertIn("DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: ${DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS:-900000}", overlay)
         self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"', overlay)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: "true"', overlay)
         self.assertIn('DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"', overlay)
         self.assertIn('DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"', overlay)
         self.assertIn('DIPOLE_AGENT_MEMORY_ENABLED: "false"', overlay)
@@ -34,6 +35,7 @@ class InteractiveAgentShadowComposeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_RUNTIME_MODE == "shadow"', checker)
         self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED == "true"', checker)
         self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"', checker)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"', checker)
         interactive_shadow = checker.split("interactive_shadow_config", 1)[1].split("interactive_active_config", 1)[0]
         self.assertIn("DIPOLE_GATEWAY_AGENT_CONTROL_SECRET=compose-check-control-secret", interactive_shadow)
 
