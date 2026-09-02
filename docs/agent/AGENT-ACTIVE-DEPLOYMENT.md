@@ -70,6 +70,15 @@ docker compose \
 
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 
+开发期可用隔离 smoke 复跑这条只读闭环：脚本以认证 owner 创建固定 Definition 和 Subscription，再通过 Gateway WebSocket 的 `chat.send` 产生真实消息。消息经 Core/Message/Sync、Kafka matcher 和 Temporal 后必须收敛为一个 completed Task、一次 completed model run、零条 Agent 发送消息，并在退出前撤销临时 grant。
+
+```bash
+BUILD_IMAGE=1 DIPOLE_MYSQL_AIO_COMPAT=1 \
+  scripts/smoke-agent-subscription-active-compose.sh
+```
+
+`KEEP_STACK=1` 仅用于隔离排障；即使保留容器，脚本仍会撤销临时 grant。模型调用固定在容器内 loopback stub，不会访问外部 Provider。该 smoke 不能作为 shared tenant、真实模型效果、语义预筛、容量或默认启用的依据。
+
 交互消息候选在共享环境启用前，还需要同一 revision 的 Core/Temporal/Compose 真实 receipt：owner approve、deny、重复 consume、Activity 重试及回滚均必须记录消息副作用计数。隔离 Temporal 已验证提交后 `UNAVAILABLE` / `DEADLINE_EXCEEDED` 的稳定命令标识与重试收敛，见 [Interactive Active Retry Receipt](AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)；受认证的 Core-to-Message gRPC 回包丢失恢复见 [Interactive Message Transport Receipt](AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)，SQLC MySQL 持久化 smoke 见 [Interactive Message MySQL Receipt](AGENT-INTERACTIVE-ACTIVE-MESSAGE-MYSQL-RECEIPT.md)。这些证据都不能替代真实 Compose、部分副作用回滚或共享环境 receipt。
 
 `deploy/microservices/agent-interactive-active.yml` 是 `agent-active.yml` 之上的独立 overlay。它将 Activity 切换到 `interactive_active`，开启 Agent Control API、Gateway 的任务控制转发与 `/send` 执行器，并要求 `DIPOLE_AGENT_INTERACTIVE_TASK_QUEUE` 使用 `dipole-agent-interactive-` 前缀及独立的 `DIPOLE_AGENT_CONTROL_SECRET`。Artifact 与 MCP 入口在该 overlay 中保持关闭。只有归档本节要求的共享环境 receipt 后才允许加载该 overlay。
