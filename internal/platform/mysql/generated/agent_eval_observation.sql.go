@@ -147,6 +147,7 @@ func (q *Queries) ListAgentEvalObservationModelCalls(ctx context.Context, taskUu
 const listAgentEvalObservationSteps = `-- name: ListAgentEvalObservationSteps :many
 SELECT step_no, capability_id, status, attempt_count,
        authorization_resource_type, authorization_resource_id, authorization_action, authorization_decision,
+       output_json,
        TIMESTAMPDIFF(MICROSECOND, started_at, finished_at) DIV 1000 AS latency_ms
 FROM agent_shadow_steps
 WHERE task_uuid = ?
@@ -163,6 +164,7 @@ type ListAgentEvalObservationStepsRow struct {
 	AuthorizationResourceID   sql.NullString
 	AuthorizationAction       sql.NullString
 	AuthorizationDecision     sql.NullString
+	OutputJson                json.RawMessage
 	LatencyMs                 int32
 }
 
@@ -184,6 +186,7 @@ func (q *Queries) ListAgentEvalObservationSteps(ctx context.Context, taskUuid st
 			&i.AuthorizationResourceID,
 			&i.AuthorizationAction,
 			&i.AuthorizationDecision,
+			&i.OutputJson,
 			&i.LatencyMs,
 		); err != nil {
 			return nil, err

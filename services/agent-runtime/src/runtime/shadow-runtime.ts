@@ -68,6 +68,7 @@ const shadowRuntimeConfigSchema = z.object({
   subscriptionShadowEnabled: z.boolean(),
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
+  readScopeConfirmationTtlMs: z.number().int().min(1000).max(86_400_000),
   modelMode: z.enum(["metadata", "ai_sdk"]),
   modelProvider: modelProviderConfigSchema,
   modelRoutes: z.array(z.string().trim().min(1)),
@@ -246,6 +247,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     subscriptionShadowEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED?.trim().toLowerCase() === "true",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
+    readScopeConfirmationTtlMs: Number.parseInt(env.DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS ?? "900000", 10),
     modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
     modelProvider: loadModelProviderConfig(env),
     modelRoutes: (env.DIPOLE_AGENT_MODEL_ROUTES ?? "").split(",").map((route) => route.trim()).filter(Boolean),
@@ -517,6 +519,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
       planner, audit, registry, trajectory: audit, stepLeaseMs: temporalStepLeaseMs,
       runtimeMode: config.runtimeMode,
       busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 },
+      readScopeConfirmationTtlMs: config.readScopeConfirmationTtlMs,
       ...(config.runtimeMode === "shadow" ? { artifacts: rpc.client } : {}),
       ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {}),
       ...(config.runtimeMode === "active" && config.interactiveMessageWritesEnabled

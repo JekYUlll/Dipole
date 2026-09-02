@@ -1571,6 +1571,13 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 		}
 	}
 	if err := s.toolAudits.Finish(grpccommon.Correlation(ctx, request.GetContext()), finish); err != nil {
+		logger.Warn("Agent Tool invocation finish rejected",
+			zap.String("task_id", finish.TaskUUID),
+			zap.String("run_id", finish.RunUUID),
+			zap.String("invocation_id", finish.InvocationUUID),
+			zap.String("status", string(finish.Status)),
+			zap.Error(err),
+		)
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
 	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{

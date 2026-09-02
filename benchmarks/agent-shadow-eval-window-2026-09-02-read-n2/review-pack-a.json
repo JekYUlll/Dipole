@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "dipole.agent.shadow-eval-review-pack.v1",
+  "reviewStatus": "review_required",
+  "candidateVersion": "agent-runtime@d591bc7592b3974c6ec33425371f66fd9d3e29ea",
+  "evaluatorEligibility": { "status": "eligible", "blockingReasons": [] },
+  "binding": {
+    "taskFingerprint": "sha256:ee9a8a89be890cf1aa728b49c2c1bc9c4c2d366e053946b288bc5914dad6ab27",
+    "runFingerprint": "sha256:f5baff6fb5300db2ab5e13d2d37c194e47b817b8438d78c34c2c18a7a82af868",
+    "traceFingerprint": "sha256:b5e8b0fd0bd014a4852a6fe6b757d9f69503d6923ce73c7317f0b8100745797b"
+  },
+  "observed": {
+    "execution": { "taskStatus": "completed", "workflowStatus": "completed", "runStatus": "completed" },
+    "outputIds": ["artifact:conversation_digest:v1", "run:completed", "task:completed"],
+    "trajectory": ["context.compile", "capability:conversation.list:completed", "capability:conversation.read:completed", "artifact:conversation_digest:v1"],
+    "permissions": [
+      { "stepNo": 1, "capabilityId": "conversation.list", "status": "completed", "authorization": { "status": "complete", "resourceType": "conversation", "resourceFingerprint": "sha256:b3e1dda57eee01aede72e75b7fa1dee8a7215326fb12b534fa2c0f8440656b56", "action": "list", "decision": "allowed" } },
+      { "stepNo": 2, "capabilityId": "conversation.read", "status": "completed", "authorization": { "status": "complete", "resourceType": "conversation", "resourceFingerprint": "sha256:c4484682eb876b3ebdfadf984db987b64925ca5fafffae456c17104acd7003b6", "action": "read", "decision": "allowed" } }
+    ],
+    "retrievedEvidenceIds": ["evidence:5cbbdac6e8f93f2b92d0a18f1dc0b719", "evidence:e05f4fe61417116ce66f632ab07ea9be"],
+    "metering": {
+      "modelCalls": [
+        { "route": "deepseek/deepseek-v4-flash", "status": "completed", "tokenMetering": "complete", "latencyMetering": "complete" },
+        { "route": "deepseek/deepseek-v4-flash", "status": "completed", "tokenMetering": "complete", "latencyMetering": "complete" }
+      ],
+      "toolCallCount": 0,
+      "stepCount": 2
+    }
+  },
+  "reviewerChecklist": [
+    "Create a separate manifest bound to the original Task and Run in a controlled review workspace.",
+    "Independently set expected outcome, trajectory, authorization, retrieval and cost labels.",
+    "Record route prices and metric ceilings from the reviewed candidate policy; this packet never proposes them.",
+    "Treat this packet as observation only. It does not approve a candidate or establish an Agent success rate."
+  ]
+}

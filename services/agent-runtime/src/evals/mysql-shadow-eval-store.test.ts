@@ -50,4 +50,25 @@ describe("MySQL Shadow evaluation observation store", () => {
 
     await expect(store.load("TASK-1", "RUN-1")).rejects.toThrow(/authorization is incomplete/);
   });
+
+  it("recognizes only the canonical no-discovery read skip", async () => {
+    const execute = vi.fn()
+      .mockResolvedValueOnce([[{
+        task_uuid: "TASK-1", task_status: "completed", run_uuid: "RUN-1", run_status: "completed", trace_id: "trace:store-1",
+        context_manifest_json: JSON.stringify({ selected: [], omitted: [] })
+      }]])
+      .mockResolvedValueOnce([[{
+        step_no: 2, capability_id: "conversation.read", status: "completed", attempt_count: 1, latency_ms: 0,
+        authorization_resource_type: null, authorization_resource_id: null, authorization_action: null, authorization_decision: null,
+        output_json: JSON.stringify({ status: "skipped", reason: "no_discovered_conversation" })
+      }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]]);
+    const store = new MySQLShadowEvalObservationStore({ execute } as never);
+
+    await expect(store.load("TASK-1", "RUN-1")).resolves.toMatchObject({
+      steps: [{ stepNo: 2, authorization: null, skipReason: "no_discovered_conversation" }]
+    });
+  });
 });

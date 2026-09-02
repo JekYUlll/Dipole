@@ -10,6 +10,16 @@ SOURCE = (ROOT / "scripts" / "smoke-microservices.sh").read_text(encoding="utf-8
 
 
 class AgentSmokeReceiptContractTest(unittest.TestCase):
+    def test_smoke_requires_terminal_task_convergence(self) -> None:
+        self.assertIn(
+            "agent_tasks WHERE trigger_ref='${agent_message_id}' AND status='completed'",
+            SOURCE,
+        )
+        self.assertNotIn(
+            "agent_tasks WHERE trigger_ref='${agent_message_id}' AND status='running'",
+            SOURCE,
+        )
+
     def test_receipt_is_explicit_and_low_sensitivity(self) -> None:
         self.assertIn('AGENT_SMOKE_RECEIPT="${DIPOLE_AGENT_SMOKE_RECEIPT:-}"', SOURCE)
         self.assertIn("'schemaVersion', 'dipole.agent.smoke-receipt.v1'", SOURCE)

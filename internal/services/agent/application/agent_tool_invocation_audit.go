@@ -19,6 +19,11 @@ type persistentAgentToolInvocationAuditServiceV1 struct {
 	now       func() time.Time
 }
 
+const (
+	agentToolMessageReceiptConfirmTimeoutV1 = 2 * time.Second
+	agentToolMessageReceiptRetryIntervalV1  = 25 * time.Millisecond
+)
+
 var _ application.AgentToolInvocationAuditServiceV1 = (*persistentAgentToolInvocationAuditServiceV1)(nil)
 
 func newPersistentAgentToolInvocationAuditServiceV1(store application.AgentToolInvocationStoreV1, resolver application.AgentInvocationResolverV1, approvals application.AgentToolApprovalReaderV1, receipts application.MessageCommandReceiptQuery, now func() time.Time) (*persistentAgentToolInvocationAuditServiceV1, error) {
@@ -220,7 +225,7 @@ func (s *persistentAgentToolInvocationAuditServiceV1) authorizeWriteApproval(ctx
 
 func (s *persistentAgentToolInvocationAuditServiceV1) verifyMessageActionReference(invocation *application.AgentToolInvocationV1, reference *application.AgentToolActionReferenceV1) error {
 	if reference == nil || reference.Validate() != nil || invocation.ApprovalUUID == "" {
-		return application.ErrAgentToolInvocationConflict
+		return fmt.Errorf("%w: Message action reference is invalid", application.ErrAgentToolInvocationConflict)
 	}
 	wantCapability := application.AgentCapabilityAssistantReplySend
 	wantType := int8(model.MessageTypeAIText)
@@ -229,24 +234,41 @@ func (s *persistentAgentToolInvocationAuditServiceV1) verifyMessageActionReferen
 		wantType = model.MessageTypeSystem
 	}
 	if invocation.CapabilityID != wantCapability {
-		return application.ErrAgentToolInvocationConflict
+		return fmt.Errorf("%w: Message action capability conflicts", application.ErrAgentToolInvocationConflict)
 	}
 	clientMessageID, err := application.AgentCommandClientMessageIDV1(reference.CommandKind, reference.CommandID)
 	if err != nil {
-		return application.ErrAgentToolInvocationConflict
+		return fmt.Errorf("%w: Message command ID is invalid", application.ErrAgentToolInvocationConflict)
 	}
-	receipt, err := s.receipts.GetMessageCommandReceipt(invocation.AgentUUID, clientMessageID)
+	receipt, err := s.confirmMessageReceipt(invocation.AgentUUID, clientMessageID)
 	if err != nil {
 		return fmt.Errorf("verify Agent Tool Message receipt: %w", err)
 	}
 	if receipt == nil {
-		return application.ErrAgentToolInvocationConflict
+		return fmt.Errorf("%w: Message receipt is unavailable", application.ErrAgentToolInvocationConflict)
 	}
 	message := receipt.Message
-	if receipt.Status != application.MessageCommandReceiptStatusCommitted || message == nil || message.UUID != strings.TrimSpace(reference.ResourceUUID) ||
-		message.ClientMessageID != clientMessageID || message.SenderUUID != invocation.AgentUUID || message.TargetUUID != invocation.PrincipalUUID ||
-		message.TargetType != model.MessageTargetDirect || message.ConversationKey != model.DirectConversationKey(invocation.AgentUUID, invocation.PrincipalUUID) || message.MessageType != wantType {
-		return application.ErrAgentToolInvocationConflict
+	if receipt.Status != application.MessageCommandReceiptStatusCommitted || message == nil {
+		return fmt.Errorf("%w: Message receipt is not committed", application.ErrAgentToolInvocationConflict)
+	}
+	if message.UUID != strings.TrimSpace(reference.ResourceUUID) || message.ClientMessageID != clientMessageID ||
+		message.SenderUUID != invocation.AgentUUID || message.TargetUUID != invocation.PrincipalUUID ||
+		message.TargetType != model.MessageTargetDirect || message.ConversationKey != model.DirectConversationKey(invocation.AgentUUID, invocation.PrincipalUUID) ||
+		message.MessageType != wantType {
+		return fmt.Errorf("%w: Message receipt binding conflicts", application.ErrAgentToolInvocationConflict)
 	}
 	return nil
+}
+
+// confirmMessageReceipt bridges the Kafka enqueue-to-persist interval before a
+// completed write invocation records its immutable action reference.
+func (s *persistentAgentToolInvocationAuditServiceV1) confirmMessageReceipt(senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error) {
+	deadline := time.Now().Add(agentToolMessageReceiptConfirmTimeoutV1)
+	for {
+		receipt, err := s.receipts.GetMessageCommandReceipt(senderUUID, clientMessageID)
+		if err != nil || receipt == nil || receipt.Status != application.MessageCommandReceiptStatusAbsent || !time.Now().Before(deadline) {
+			return receipt, err
+		}
+		time.Sleep(agentToolMessageReceiptRetryIntervalV1)
+	}
 }

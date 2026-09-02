@@ -1,6 +1,7 @@
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import * as grpc from "@grpc/grpc-js";
 
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
@@ -145,6 +146,46 @@ describe("MCP Message write projection", () => {
     expect(result).toBe(JSON.stringify({
       commandId: "tool:interactive-1", commandKind: "system_message", resourceId: "MSG-INTERACTIVE-1", resourceType: "message"
     }));
+  });
+
+  it("reuses one message command after an uncertain Core response", async () => {
+    const commandCalls: Array<{ invocationId: string }> = [];
+    const persistedCommandIds = new Set<string>();
+    const finish = vi.fn(async () => undefined);
+    const client = {
+      consumeApproval: vi.fn(async () => undefined),
+      resolveApprovalGrant: vi.fn(async () => ({
+        approvalId: "APR-1", capabilityId: "message.system.send",
+        resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+        scopeSha256: "fda03fe9202766c3e59c11b4b069749a400e50041a44d1d200ff41c64aefa8a5",
+        argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
+        nonceSha256: "d".repeat(64), expiresAtUnixMs: Date.now() + 60_000
+      })),
+      begin: vi.fn(async () => undefined),
+      finishToolInvocation: finish,
+      executeMessageCommand: vi.fn(async (input: { invocationId: string }) => {
+        commandCalls.push({ invocationId: input.invocationId });
+        persistedCommandIds.add(input.invocationId);
+        if (commandCalls.length === 1) {
+          throw Object.assign(new Error("response lost after commit"), { code: grpc.status.UNAVAILABLE });
+        }
+        return {
+          resourceType: "message" as const, resourceId: "MSG-INTERACTIVE-RETRY-1",
+          commandKind: "system_message" as const, commandId: `tool:${input.invocationId}`
+        };
+      })
+    };
+    const executor = createInteractiveMessageExecutor(client);
+    const input = { conversationId: "direct:U100:UAI", content: "notice" };
+
+    await expect(executor.execute(input, context)).rejects.toThrow("Tool invocation failed");
+    await expect(executor.execute(input, context)).resolves.toContain("MSG-INTERACTIVE-RETRY-1");
+
+    expect(commandCalls).toHaveLength(2);
+    expect(commandCalls[0]!.invocationId).toBe(commandCalls[1]!.invocationId);
+    expect(persistedCommandIds).toEqual(new Set([commandCalls[0]!.invocationId]));
+    expect(finish).toHaveBeenCalledOnce();
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
   });
 });
 

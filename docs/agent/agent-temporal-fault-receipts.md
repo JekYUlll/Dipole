@@ -72,6 +72,20 @@ raw artifact 的文件 SHA-256 为
 read-shadow 恢复路径；不构成共享环境、active authority、写 Capability、lease expiry
 或 Worker replacement 联合故障的证据。
 
+### Remote GPU record: 2026-09-02
+
+Remote GPU 在同修订 `3c3f403c74505749ff262a4713d80801e6fd9056` 的 disposable
+Compose 项目完成新的受控演练。发布事件后重启 Core，Core readiness 与 Gateway
+代理恢复；completed EventLedger、策略 Task、completed Shadow Run、completed 模型调用
+和 `conversation_digest` Artifact 的计数均为 `1`。Agent Planner 使用事件的 canonical
+`conversation_key` 作为预取读取标识，修复了私聊中裸 `target_uuid` 触发的本地校验失败。
+
+receipt 的 `collected_at` 为 `2026-09-02T00:19:22.484Z`，canonical `content_sha256`
+为 `8cb9b34d96af831f5910af096f92ad85b795f5333b20292bec44cc0d17e0e2ae`，有效期至
+`2026-09-03T00:19:22.484Z`。raw receipt 不入库；它只覆盖一次只读 Shadow 的 Core
+restart，不代表共享 tenant、任务成功率、active authority、写 Capability、Worker
+replacement 或 lease expiry 已验收。
+
 ## EventLedger lease reclaim evidence
 
 `event-lease-reclaim-evidence.schema.json` 记录 Agent Kafka 消费侧 MySQL
@@ -109,16 +123,45 @@ COMPOSE_PROJECT_NAME=dipole-agent-shadow-window \
 COMPOSE_ENV_FILE=.env \
 COMPOSE_OVERLAYS=deploy/microservices/agent-ai-sdk-shadow.yml:deploy/microservices/agent-temporal-read-shadow.yml \
 DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR=/secure/reviewed-manifests \
+DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256=<reviewed-set-sha256> \
+DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS=10 \
 DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR=/secure/shadow-window \
 scripts/collect-agent-shadow-eval-window.sh
 ```
 
 The output directory must not exist before collection. It receives one report
-per manifest, the exact summary input and the `reviewed_shadow` summary report.
-Exit status `0` means every reviewed task passed; `2` preserves a valid window
-with at least one failed task; all other statuses fail closed. The generated
-window remains an isolated development observation until its task set, reviewer
-process and environment are independently approved.
+per manifest, the exact summary input, the `reviewed_shadow` summary report and
+a low-sensitivity v2 `manifest-set.json` receipt. The receipt binds the window to
+the reviewed task-set digest, candidate version and sample count without
+copying Task ID, Prompt, user, message or reviewer labels. The optional
+`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` gate defaults to `1`; set it for a
+reviewed window and the resulting receipt records the required threshold with
+the observed sample count. Exit status `0`
+means every reviewed task passed; `2` preserves a valid window with at least
+one failed task; all other statuses fail closed. The generated window remains
+an isolated development observation until its task set, reviewer process and
+environment are independently approved.
+
+Before a reviewer writes a manifest, a controlled terminal can export one
+low-sensitivity observation packet from the read-only evaluation account:
+
+```bash
+DIPOLE_AGENT_EVAL_MYSQL_URL='mysql://readonly:...@127.0.0.1:3306/dipole' \
+npm run eval:shadow-review-pack -- \
+  --candidate-version=agent-runtime@<clean-revision> \
+  --task-id=<task-id> \
+  --run-id=<run-id> > /secure/review-packs/sample.json
+```
+
+The packet fingerprints Task, Run, Trace and resource IDs and excludes message,
+prompt, artifact body and tool arguments. It reports terminal execution state,
+capability trajectory, authorization decisions, retrieval evidence fingerprints
+and metering completeness. It remains `review_required`: it does not emit an
+executable manifest, suggest labels or approve a candidate. The final manifest
+must be independently reviewed and bound to the original Task/Run in the
+controlled review workspace before collection. A terminal sample with incomplete
+Step, Tool or Model audit remains exportable for failure classification; its
+`evaluatorEligibility` is `blocked` and the final evaluator still rejects it.
 
 Before reading a manifest, the collector resolves the running `agent` container
 and records its OCI `org.opencontainers.image.revision` label. It rejects a

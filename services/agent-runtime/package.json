@@ -26,6 +26,7 @@
     "eval:subscription-shadow-collect": "tsx src/evals/subscription-shadow-collector-cli.ts",
     "eval:subscription-shadow-evidence": "tsx src/evals/subscription-shadow-evidence-cli.ts",
     "eval:shadow": "tsx src/evals/shadow-eval-cli.ts",
+    "eval:shadow-review-pack": "tsx src/evals/shadow-eval-review-pack-cli.ts",
     "eval:shadow-summary": "tsx src/evals/shadow-eval-summary-cli.ts",
     "eval:context-ablation": "tsx src/evals/context-ablation-cli.ts",
     "receipt:temporal-fault": "tsx src/evals/temporal-fault-receipt-cli.ts",

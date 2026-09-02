@@ -6,7 +6,9 @@
 
 ### 变更
 
-- 语义色变量从旧青绿盘重映射到 V3 品牌板并与前端 CSABC 锁步：`.pen` 的 `rail`/`ink` 系归海军蓝、`accent` 系归信号红、`line` 归暖象牙线，遗留 `brand`/`brand-deep`（微信绿 `#07C160`/`#04964A`）改为信号红，新增 `agent`/`agent-soft` 轨道金变量表达受控 Agent 状态；`canvas`/`surface`/`danger`/`warning` 为暖中性色保持不变。仅改变量值（内联到帧的 302 处硬编码色仍是旧盘，属既有设计债，见下）。
+- 收口聊天自发消息气泡的最后一处设计源与前端分歧：`.pen` 里 Outgoing Message Bubble 原为信号红填充（`$brand`），与前端应用已落地的海军蓝气泡不一致。统一到前端实现——填充改 `$rail`（海军蓝）+ 反白字（`$text-inverse`），信号红回归其 V3 职责（主操作/未读/注意），不再兼作消息底色，避免红色在会话流里泛滥、保留 BI 的信息层级克制。仅改此一处复用组件，其余 `$brand` 红色用途不动。
+- `design/dipole-ui.pen` 的**帧内联色**收口，设计源单代化到 V3。确定性脚本 `scripts/pen-v3-recolor.mjs`：把遗留变量引用重指向 V3 语义变量后删除遗留变量（`text-primary/secondary/muted`→`ink/ink-soft/ink-faint`、`border`→`line`、`surface-app`→`canvas`、`surface-inverse`→`rail`，共 363 处引用），新增 `success`/`success-soft` 对齐前端 `--dp-success`，并把 240 处内联 fill/stroke 旧盘 hex（64 种）按角色映射到 V3 变量——结构=海军蓝、身份/进度=金、正向=BI 绿、注意=琥珀、销毁=danger，大量鼠尾草/电报蓝中性折叠到暖象牙 `line` 与 `ink` 阶，纯白/纯黑作中性保留。脚本幂等，带残留旧盘 hex 与悬空引用断言；`.pen` 变量由 38 减到 34，`check-pencil-design` 结构门禁通过；pen 无头渲染抽查 Foundations/Login/Chat/Agent 板已视觉确认为 V3。**注**：`design/exports/` 的已批准评审 PNG 仍是改色前快照——无头 pen CLI 的 `get_screenshot` 只出 400px 缩略图且无缩放，无法复现已批准的 2880px 全分辨率基线，故不以缩略图降质覆盖，留待 pen.dev 桌面应用（`pen interactive --app desktop`）按批准分辨率重出，属纯渲染、无配色决策的跟进项。
+- 语义色变量从旧青绿盘重映射到 V3 品牌板并与前端 CSABC 锁步：`.pen` 的 `rail`/`ink` 系归海军蓝、`accent` 系归信号红、`line` 归暖象牙线，遗留 `brand`/`brand-deep`（微信绿 `#07C160`/`#04964A`）改为信号红，新增 `agent`/`agent-soft` 轨道金变量表达受控 Agent 状态；`canvas`/`surface`/`danger`/`warning` 为暖中性色保持不变。该轮仅改变量值；内联到帧的旧盘硬编码色已由上条 `scripts/pen-v3-recolor.mjs` 收口。
 - 确立 Agent 配色规则（前端已落地，画板待跟进）：Agent 身份文本用海军蓝而非金色（金色作小字文本对比度不足），金色只作克制的身份与耐久任务进度标记（状态点、时间线节点、active 药丸填充、scope 边线）；信号红留主操作/链接，danger 留撤销/错误。另引入功能性 `--dp-success` 哑光 BI 绿承接"在线/已同步/成功"，刻意区别于已退役的品牌绿。
 - V3 品牌资产改为脚本生成的单一来源，色值按 V3 品牌板实测校正（海军蓝 `#0D2744`、信号红 `#EA2521`、轨道金 `#EFAD05`、象牙白 `#FBF2E7`），与 `brand-v3-ui-brief.md` 中早期估读的十六进制值不同，后续画板与 Vue 实现以生成器为准。
 - 字标由 Poppins Bold 换为 Goldman Bold：宽体方块字形、方正字腔与均匀粗字干提供硬朗的机加工硬件感，与标识的圆盘形成刻意反差；先后试过的 Space Grotesk（偏几何柔和）与 Tomorrow（方形但硬度不足）均已否决。字标以 cap-height 归一化的 path 内联（生成脚本 `scripts/generate-brand-wordmarks.mjs`），画板与前端按目标 cap 高度直接缩放。辅助标签保持系统等宽体、大写加字距，作为系统的数据面语态。

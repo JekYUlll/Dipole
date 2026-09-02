@@ -1,6 +1,40 @@
 # 架构债务台账
 
+- 2026-09-02：Interactive read-shadow 的多会话 owner scope 已补 Remote GPU 同版本回执：认证 owner 可见两条会话时，Task 进入 `waiting_input`；伪造 request ID 返回 `409` 且不改变等待态，确认已展示候选后，持久轨迹精确收敛为一次 `conversation.list`、一次确认会话的 `conversation.read`、零次未确认会话读取与一份 digest Artifact。同一 fixture 的 owner cancel 从 `waiting_input` 收敛到 `cancelled/user_cancelled`，未完成 read 计划行的授权和完成数均为零。随后仅将 Agent 镜像更新到 `d60ace70`，以 2 秒确认 TTL 验证 Gateway start `202`、owner query/Timeline `200`、Task/Run `cancelled/input_expired` 和零授权读取；`input_expired` 状态转换本身要求持久 `waiting_input`。该回执关闭 Gateway 到 Temporal 的恢复、取消、到期及读取 scope 精确绑定的受控功能缺口，详见 [read-scope receipt](../../benchmarks/agent-read-scope-confirmation-2026-09-02/)。Worker/Core/lease 联合故障、共享开发环境和独立人工评审多路径窗口仍未完成；不得将两会话 fixture 外推为成功率、模型质量、性能或 active 写入结论。
+
+- 2026-09-02：Remote GPU 的 Trace 绑定 read-shadow 样本暴露 Core Run/Task 终态投影缺口：`agent_runs` 已为 `completed`，父 `agent_tasks` 仍为 `running`。`PersistentAgentRunAdmissionV1.Finish` 现已在每条 Run 终态路径以 CAS 收敛同名 Task 状态，并允许相同终态重放补齐此前部分提交；Task 处于 `waiting_approval` 等中间态或出现冲突终态仍 fail closed。Agent application、Agent gRPC 回归、同版本 [N=1 terminal convergence receipt](../../benchmarks/agent-terminal-convergence-2026-09-02/) 与真实读取 [N=2 Shadow Eval](../../benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/) 均通过，故代码、单样本部署和固定单会话读取分支均已解决。仍待独立人工评审的多路径任务集覆盖多会话选择、失败/重试与 shared-development 情形；在此之前禁止将现有小样本回执外推为成功率或 promotion 结论。
+
+- 2026-09-02：新增只读 `shadow-eval-review-pack-cli`，为终态观测导出 Task/Run/Trace/资源的域分隔哈希、能力轨迹、证据指纹和计量完整性。子记录缺少授权、延迟或单次 attempt 审计时，包仍可供人工失败分类，并以 `evaluatorEligibility=blocked` 固定原因；最终 evaluator 继续拒绝该样本。该包刻意不能生成可执行 manifest 或推导标签；审核者仍须在受控工作区独立填写 outcome、trajectory、permission、retrieval 和 cost，并用绑定 manifest 执行评测。当前 clean candidate 的多样本窗口、晋级和简历成功率结论继续保持关闭。
+
+- 2026-09-02：clean `f72e47cf` 已在 Remote GPU 独立 Compose 中完成修复后 read-shadow 回归。低敏 receipt 与数据库聚合确认完成 EventLedger、Shadow Run、模型调用和 `conversation_digest`，消息表为零，Gateway 仅绑定 `127.0.0.1:18117`。此证据覆盖单条受控 Kafka 事件，尚未形成固定人工评审多样本集，禁止据此填写任务成功率或放开 promotion。
+
+- 2026-09-02：Remote GPU 同版本 Shadow Smoke 发现 Planner 将事件裸 `target_uuid` 传入要求 canonical conversation key 的 Runtime evidence reader，Temporal Run 因本地输入校验失败，未产生 Model Call、Shadow Step 或 Artifact。代码已改为传递事件 `conversation_key`，direct/group 定向回归与 TypeScript 构建通过。修复前的 failed Run 不计入成功率；必须以 clean revision 重建候选，重跑真实 Kafka、Capability RPC、模型调用、Artifact 和人工评审多样本窗口后，才可更新任务成功率或 promotion 结论。
+
+- 2026-09-02：Remote GPU 用 legacy Docker builder 构建多服务候选时发现，`DIPOLE_BINARY` 即使未被依赖安装命令引用，只要在该层前声明也会切分 Docker cache。镜像已将所有服务特有 build args 与 provenance 标签下移到 `ca-certificates`/`tzdata` 层之后，并用层序测试固定。该修复降低后续候选的网络和 Docker I/O，不影响现有镜像的 provenance 复核、运行验收或回滚要求。
+
+- 2026-09-02：Shadow Eval 窗口已将最低评审样本数变为显式、回执可见的采集门禁。调用者可通过 `DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 固定本窗口阈值；低于阈值会在读取或拷贝任何 manifest 前失败，v2 `manifest-set.json` 同时保存所需与实际数量，既有 v1 回执保持原 schema 可验证。默认 `1` 仅服务单样本调试；成功率 claim 仍须使用人工复核的固定多样本窗口，且不能由该门禁单独证明。
+
+- 2026-09-02：`reviewed_shadow` Eval 窗口现具备固定任务集输入边界。评审者先对 manifest 目录计算内容摘要，采集器在连接运行中 Agent 前复核摘要和单一 candidate version，并生成不含 Task/Prompt/用户/消息/标签正文的 manifest-set receipt。Remote GPU shell fixture 通过正常、失败和输入漂移拒绝路径。该能力使多样本成功率窗口可复跑；当前尚无同一固定任务集的真实多样本运行，成功率 `[XX]%` 与 shared-development 结论继续保持空缺。
+
+- 2026-09-02：Interactive Agent 的 completed Tool terminal 现对 `UNAVAILABLE` / `DEADLINE_EXCEEDED` 执行一次同载荷重放。Core 已有精确 terminal 幂等校验，因此 Runtime 只重发首次生成的 invocation、结果摘要、action reference 和延迟字段；若两次都处于不确定状态，Runtime 不会把可能已提交的 completed 覆盖为 failed。Remote GPU Node 22 定向 Vitest `10/10` 与 typecheck 通过。`AD-009` 仍跟踪 Worker 替换后的审批恢复、真实 Core/Message 跨进程响应丢失、部分副作用 rollback、浏览器 HITL、shared tenant 和容量证据。
+
+- 2026-09-02：Interactive active Compose 回归揭示 Message command 从 Kafka 入队到 MySQL receipt committed 存在短暂间隔，Core 若立即固化 Tool action reference 会将已提交消息误判为冲突。Tool 审计现只对 `absent` receipt 在 `2s` 内有界确认，committed 后再完成审计；任何错误、nil receipt 或超时后的 absent 仍 fail closed。Remote GPU loopback-only 同版本候选已验证并发 deny 的零副作用及并发 approve 的单次 Tool/Message/Sync 收敛，project、volumes 和临时 grant 均已清理。`AD-009` 继续跟踪 Core/Message 响应丢失、Worker 替换、部分副作用 rollback、浏览器 HITL、shared tenant 和容量证据。
+
+- 2026-09-02：Agent Message command 已增加隔离 MySQL 8.4 的回包丢失恢复 smoke，详见 [Interactive Message MySQL Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-MYSQL-RECEIPT.md)。真实 SQLC repository 在受认证 Core-to-Message gRPC 调用中持久化一条 Message 与 metadata；代理随后返回 `UNAVAILABLE`，Core 以稳定 `client_message_id` 读取 receipt 恢复相同消息。数据库断言 sender/target 两条 Sync Timeline 项各自唯一，测试容器自动清理。该证据没有启动 Compose、Kafka、Temporal、shared tenant 或部分副作用 rollback，`AD-009` 继续开放。
+
+- 2026-09-02：Agent Message command 的 Core-to-Message gRPC 回包丢失恢复已增加受认证 transport 回归，详见 [Interactive Message Transport Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)。服务端先提交受控 system message，代理在 response 前返回 `UNAVAILABLE`；Core 使用稳定 `client_message_id` 查询 receipt 并恢复同一条 Message，精确提交计数为一。Remote GPU Go 1.27 已通过 Agent application 与 Message gRPC 包回归。该测试使用 bufconn 与内存模型，不能代表 MySQL、Compose、跨进程网络、Worker 替换、部分副作用回滚或共享环境恢复；这些继续由 `AD-009` 跟踪。
+
+- 2026-09-02：Interactive active 消息写入已增加“Message 提交后 RPC 响应丢失”的定向 Temporal 故障门禁，详见 [Interactive Active Retry Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)。对 Core `UNAVAILABLE` / `DEADLINE_EXCEEDED`，同一 Task/Run/会话/内容派生稳定 Message command ID，运行中的 Tool Invocation 保留至 Activity 重试；Remote GPU Node 22 的内存 Temporal 用例证明两次调用使用同一命令标识、模型 side-effect store 仅记录一次提交，最终只写入一次 completed Tool Invocation。该证据不连接真实 Core、Message、MySQL、Kafka 或 Compose，不能代表部分副作用回滚、Worker 替换或共享环境故障恢复；这些继续由 `AD-009` 跟踪。
+
+- 2026-09-02：`interactive_active` 的干净同版本 Remote GPU 隔离 Compose 已补齐真实跨服务回执，详见 [Interactive Active Remote Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。同一 `430c9e38` 且 `dirty=false` 的镜像在 loopback-only 项目中验证 owner 并发 deny 只产生一次 `approval_denied` 且 Tool/Message 为零；并发 approve 只消费一次 approval，并产生一次完成 Tool、一次 action reference 与恰好一条 Message。开发 promotion grant 已在验证后撤销。该结果关闭此前“干净同版本、owner deny、重复 approve/deny、副作用精确计数”缺口；Shared 环境、浏览器 HITL、Worker/Core/Message 故障重试、部分副作用回滚、MCP 和指标结论继续由 `AD-009` 跟踪。
+
+- 2026-09-02：修复 Shadow Runtime 的 candidate-version admission 漂移。candidate version 只属于 active promotion binding；Shadow admission 现在固定传空值，避免 Core 在 Task 创建后拒绝无效的 Shadow Run。Remote GPU Node 22 的定向回归 `15/15`、typecheck 与 production build 已通过；干净 `70bd4c74` 镜像的隔离 Compose 回归进一步证明认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，且 Run 为 `shadow / candidate_version=NULL / completed`。候选无可读会话，仅生成只读摘要 Artifact，消息写入数为零。该证据不扩大 shared 环境、active authority、写 Capability、MCP 或 Memory；这些继续由 `AD-009` 跟踪。
+
 > 2026-08-31 Claim-first 更新：简历中“零丢失、零重复副作用”、Cassandra/Sync/Search/端到端 P99 和 Agent 任务成功率均须以 [简历 Claim 验收矩阵](../guides/RESUME-CLAIM-READINESS.md)定义的可重跑报告为准。当前优先补齐消息与 Durable Task 故障 receipt、Sync 观察、数据面基准和 Agent Eval；未完成项保持为占位符或限定范围表述。
+
+- 2026-09-01：Interactive Shadow Compose 的有效配置门禁已恢复。此前脚本检查 Gateway 的 control secret 固定值，却漏传对应的 `DIPOLE_GATEWAY_AGENT_CONTROL_SECRET`，即使 Overlay 保持默认关闭的只读边界也会在静态渲染失败。门禁现在使用隔离测试值并有变量级回归测试；该修复不启动服务、不扩大 Shadow 权限，真实 shared Compose receipt 继续由 `AD-009` 跟踪。
+
+- 2026-09-01：Interactive Agent 的隔离 Temporal 集成覆盖已增加 owner `denied` 与重复 Signal 边界：同一 pending approval 的并发重放只调用一次持久 resolution，Task 确定性收敛为 `cancelled/approval_denied`，写步骤计数保持零。Remote GPU 的干净 `f9634d3c` 候选以 Node 22 通过两份 Temporal 集成文件 `16/16` 与 TypeScript typecheck；该门禁不连接真实 Core、Message、MySQL、Kafka 或 Compose。共享环境的 owner deny、重复 approve、Activity 重试、消息副作用计数与回滚 receipt 继续由 `AD-009` 跟踪。
 
 - 2026-09-01：Remote GPU loopback-only 的 `interactive_active` 隔离 Compose 已验证一次真实受认证写闭环：Gateway Task create `202`，owner approve `202`，Temporal Task/Run、Tool Invocation 均为 `completed`，Approval 为一次 `consumed`，且通过持久 action reference 关联到恰好一条 Message。过程暴露并修复两处跨服务边界缺口：Core Agent RPC allowlist 漏掉消息命令方法，以及 standalone Core 的 Tool 审计在 remote Message transport 下仍访问空本地 repository 而 panic。候选使用 dirty development images 与短期直接续期的 developer promotion grant，结束时已 revoke 并清理临时令牌。**仍未收口：** clean same-revision image/provenance、owner deny、并发或重复 approve、Core/Message/Worker 故障重试、回滚、浏览器 HITL、外部 MCP 和可统计成功率；这些仍由 `AD-009` 跟踪，不能据此填写生产或简历指标。
 
@@ -8,7 +42,9 @@
 
 - 2026-09-01：Interactive Agent 已具备默认关闭的显式直属会话消息写入编排。活动只识别 `/send <内容>`，由可信 ExecutionContext 推导 `direct:<owner>:<agent>`，并将 canonical 参数、scope、approval ID、Task/Run 写入 durable checkpoint；批准恢复后经既有 MCP approval gate、一次性消费、Tool Invocation 与 Core 消息命令执行。Remote GPU 隔离验证覆盖 activity、组合器和 Temporal `waiting_approval -> completed`，未连接共享 Core、Temporal、Kafka、MySQL 或 Compose。真实批准/拒绝/重复消费/故障回滚 receipt、active Compose overlay 和浏览器体验继续由 `AD-009` 跟踪。
 
-- 2026-09-01：前端 V3 统一已收口**应用侧**色板。语义 token（rail/accent/ink/line 系）重映射到品牌板并与 `design-tokens.test.ts` 契约、`.pen` 变量锁步；Agent 组件身份色从旧青绿别名归位为"海军蓝身份文本 + 金色进度标记"；ChatView/Settings/Memory 的硬编码青绿、微信品牌绿、emoji 图标与硬编码渐变全部清零，新增功能性 `--dp-success` 承接在线/同步/成功信号；`--dp-v3-*` 重复色阶已退役、LoginView 迁移到语义 token；`brand-v3-ui-brief.md` 的估读十六进制已改回品牌板实测值。`rg` 确认 `frontend/src` 已无旧青绿/微信绿硬编码色。**唯一仍未收口的设计债**：`design/dipole-ui.pen` 仍有约 300 处**内联到帧**的旧盘硬编码色（`$` 变量已是 V3，但帧内联未跟随）。此项须与 `design/exports/` 评审基线**一并**处理——只改帧色而不同步重出 26 个导出快照会让设计源与基线脱钩，因此保留为需 pen.dev 逐板重绘 + 重出 exports + 过 `check-pencil-design` 门禁的单一评审轮任务，不改变运行时或服务 authority。
+- 2026-09-01：前端 V3 统一已收口**应用侧**色板。语义 token（rail/accent/ink/line 系）重映射到品牌板并与 `design-tokens.test.ts` 契约、`.pen` 变量锁步；Agent 组件身份色从旧青绿别名归位为"海军蓝身份文本 + 金色进度标记"；ChatView/Settings/Memory 的硬编码青绿、微信品牌绿、emoji 图标与硬编码渐变全部清零，新增功能性 `--dp-success` 承接在线/同步/成功信号；`--dp-v3-*` 重复色阶已退役、LoginView 迁移到语义 token；`brand-v3-ui-brief.md` 的估读十六进制已改回品牌板实测值。`rg` 确认 `frontend/src` 已无旧青绿/微信绿硬编码色。
+
+- 2026-09-02：设计源 `design/dipole-ui.pen` 的**帧内联色**债已收口。确定性脚本 `scripts/pen-v3-recolor.mjs` 把两代并存的变量单代化（363 处遗留变量引用重指向 V3 后删除 6 个遗留变量，新增 `success`/`success-soft` 对齐 `--dp-success`），并把 240 处内联 fill/stroke 旧盘 hex（64 种）按角色映射到 V3 变量；脚本幂等、带残留旧盘 hex 与悬空引用断言，`.pen` 变量 38→34，`check-pencil-design` 通过，pen 无头渲染抽查已确认视觉为 V3。**残留的唯一设计债缩小为纯渲染项**：`design/exports/` 的已批准评审 PNG 仍是改色前快照。无头 pen CLI 的 `get_screenshot` 只出 400px 缩略图、无缩放参数，无法复现已批准的全分辨率基线（如 login/chat 2880×1800、foundations 3360×1000），因此**不以缩略图降质覆盖已批准导出**；faithful 全分辨率重出须在 pen.dev 桌面应用（`pen interactive --app desktop`）逐帧按 node ID 重渲染，属无配色决策的机械跟进。设计源与运行时/服务 authority 不受影响。
 
 - 2026-09-01：品牌资产已收口为脚本生成的单一来源（`scripts/generate-brand-assets.mjs` + `scripts/generate-brand-wordmarks.mjs`），色值按 V3 品牌板实测校正，`npm run test:brand` 拦截手改 SVG 造成的漂移；favicon 与 Login 标识镜像进前端自身根目录，构建不再跨出 `frontend/` 引用 `docs/`。遗留的 4 个青绿 SVG 与 `#07c160` 占位 favicon 已退役。**仍未收口**：`frontend/src/styles/design-tokens.css` 与 `design/dipole-ui.pen` 中并存三代色板（微信绿 `#07C160`、青绿 `accent #00A86B`、V3），且 `brand-v3-ui-brief.md` 记录的是早期估读十六进制值；ChatView 等页面级 UI 仍使用旧青绿语言。页面级 V3 迁移与 token 统一在前端设计轨道中单独验收，不改变运行时或服务 authority。
 
@@ -31,6 +67,8 @@
 
 - 2026-09-01：Artifact 前端里程碑已接入 owner-scoped `conversation_digest` 阅读区。客户端仅在 metadata 精确匹配 `conversation_digest` 与 `text/markdown` 时读取正文，并复核响应的 Artifact ID/媒体类型；正文不可用时 metadata 继续保留且可重试。页面以文本阅读区呈现 Markdown 源文，未增加下载、对象键、Metadata JSON、公开 URL 或写入口。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建和 Chromium 功能/视觉回归；Pencil v2 brief 已归档，实际画布增量继续由 AD-044 跟踪。
 
+- 2026-09-02：Remote GPU 的全新 loopback-only Compose 候选以同一 clean revision `d7fee99a` 构建 Core、Gateway、Message、Sync、Search、迁移、修复与 Agent 镜像，并完成 JWT Interactive Task `202 -> completed -> Timeline` 两页续页验收。Runtime 继续固定 `shadow/read_shadow`，MCP、Memory promotion、active authority 与写 Capability 未开启；此开发期单任务结果不构成成功率、生产发布、公开体验或共享观察窗口证据。
+- 2026-09-02：Go 微服务候选镜像已调整为先建立可跨 revision 复用的 Alpine 依赖层，再写入 provenance 标签和服务二进制。该改动降低同机候选构建的重复网络与 Docker I/O，且由静态层顺序测试锁定；它不替代同版本 OCI 标签复核、Compose 运行验收或回滚证据。
 - 2026-09-01：全新 Remote GPU 候选已从空 MySQL 卷完成 migration v57，当前 Core 与 read-shadow Agent 启动。验收发现 Artifact Timeline 的拼接 event ID 超过 MySQL `VARCHAR(64)`，写入被投影层吸收；修复改用 Artifact 的 64 位内容寻址 ID，并在领域层校验上限。重建同版本 Core 后，新受认证只读任务已完成，Artifact metadata 与 Timeline 中唯一对应 Artifact 事件均返回 `200`；该证据未扩大 active authority 或写 Capability。
 
 - 2026-09-01：Remote GPU 真实 Provider 验收表明，自由 `record` 输入 schema 会让模型偶发构造裸 `conversation.read` target，即使 prompt 已声明 discovery 规则。计划 schema 已收紧为 `conversation.list` 和固定 `$discovered.previous` 的 `conversation.read`，并保留执行层验证。候选数据库必须先应用 `000057_agent_model_run_stages`，两阶段 plan/synthesis 环境需配置 `DIPOLE_AGENT_MODEL_MAX_CALLS>=2`；同版本迁移镜像和可重跑体验 receipt 仍待完成。
@@ -107,6 +145,10 @@
 
 - 2026-09-01：增加 reviewed Shadow Eval window collector。它只执行已评审 manifest，保存每份低敏 report、输入与去重 Trace/Suite 汇总，并保留有效失败窗口以统计失败分类；没有自动任务创建、标签生成或环境切流。收集器从运行中 `agent` 容器读取 clean OCI revision，拒绝缺失或 dirty provenance，避免脚本 checkout 与实际评测镜像漂移。Remote GPU 已归档 [受控完成子集 N=2](../../benchmarks/agent-shadow-eval-window-2026-09-01-n2/)；五类报告全部通过，但 `100%` 仅描述该子集，当前尚无固定多样本任务集和共享环境窗口，任务成功率继续保留占位符。
 
+- 2026-09-02：Shadow Eval 对外汇总升级为 `shadow-summary-report.v2`，移除原始 Trace ID。运行时仍在受限输入中以 Trace 去重并关联审计，归档只保留 suite 哈希和聚合统计；历史 N=2 样例已按同一限制语义转换。后续共享观察窗口也必须遵循该边界。
+
+- 2026-09-02：Remote GPU 已归档 [N=4 安全跳过窗口](../../benchmarks/agent-shadow-eval-window-2026-09-02-n4/)。它只覆盖 `conversation.list` 成功、随后可信空发现使 `conversation.read` 成为 `not_required/no_discovered_conversation` 的受控路径；四例均通过五类结构性 Eval。固定单路径 cohort 不能填写总体任务成功率，也不能替代恢复、多轮检索、写能力或共享环境证据。
+
 - 2026-09-01：同一受控栈的一条 Provider 空 JSON-text 失败事件在持久 Run 中保留 `model run budget exhausted`，但模型调用缺失 token 计量，现有五类 Eval 会因不完整 Cost observation fail closed。后续需让失败调用输出明确的计量可用性/不可用性并纳入失败分类，禁止以通过样本替代整体成功率。
 
 - 2026-09-01：Remote GPU 受控窗口暴露汇总 schema 只接受 64 位摘要、与 OCI 的 40 位 Git revision 不兼容。契约已放宽为两种有效 revision 长度并覆盖回归；窗口重跑前不产生汇总结论。
@@ -120,6 +162,10 @@
 - 2026-09-01：Compose 新增专用 `dipole_agent_eval` 只读账号。Remote GPU 隔离 read-shadow 已以该账号生成五类报告，并确认零行 `UPDATE` 被 MySQL 拒绝；自动评测、共享环境窗口和 active authority 仍未启用。
 
 - 2026-09-01：Shadow Eval 的 Permission evidence 已改为读取 Step lease 内持久化的 `resourceType/resourceId/action/decision`，并对 manifest 逐项核对；旧、部分、空值和非 `allowed` 记录全部拒绝。隔离 MySQL/Runtime 拓扑的新报告已通过该校验，旧撤回样本仍不得恢复为成功率结论。
+
+- 2026-09-02：Remote GPU 的只读 review pack 发现一个完成 Run 含有无授权的 `conversation.read` Step。复核后该行来自可信 `conversation.list` 的空结果，执行器按设计未准备或调用读取能力，却以 completed skip 写入 trajectory。Eval observation 现读取受限 `output_json`，仅接受 `conversation.read + completed + null authorization + {status:"skipped",reason:"no_discovered_conversation"}` 的精确组合；该组合在审阅包中显示为 `not_required`，不计 Tool 调用。其余任意空授权继续 `blocked`，因此旧 review pack 与任何结构漂移样本仍不可进入评测或成功率。
+
+- 2026-09-02：该分类已在 Remote GPU 的现有 `agent-shadow-eval-f72e47cf` 隔离 Compose 上用新的干净 Agent 镜像复验。一次性容器只经专用只读 Eval 账号读取 Task/Run 观测，输出 `eligible`、列表 Step 的 allowed scope 与读取 Step 的 `not_required/no_discovered_conversation`，并经标识符泄露检查；运行中 Compose 服务、MySQL、Kafka 与消息数据未写入。候选源通过 patch 落地在隔离目录，镜像 provenance 对应其干净内容提交；主线 Git revision 仍由该切片的受审提交固定。样本数仍为一，任何成功率或 promotion 结论继续禁止。
 
 - 2026-08-31：EventLedger lease expiry 现有 `dipole.agent.event-lease-reclaim.v1` receipt，要求过期 claim 被第二次 claim 回收、旧 token 完成失败且最终 completed 行唯一。Remote GPU 已在 loopback-only MySQL 8.4 临时容器通过真实集成 `3/3`、receipt 单测 `4/4` 和 Runtime typecheck；该结论只覆盖消费 ownership，Temporal Workflow、共享 Kafka/Temporal 与 active authority 仍需独立门禁。
 
@@ -881,7 +927,7 @@
 - **补充：** 失败模型调用的 Token 字段为 `NULL` 时，Shadow Eval 现输出完整五类报告并将 Cost 的 `availability.tokenMetrics` 记为 `unavailable`，稳定失败原因为 `token_metrics_unavailable`。已知调用数和延迟可以审计，Token/成本仅作为已报告值的下界，不能通过成本门槛或外推成功率。
 - **风险：** 当前证据可证明 Harness、结构性门禁、评审一致性合同和真实持久执行转换语义。缺少实际归档的 Project Guardian outcome/evidence 与 review 报告、模型语义攻击 corpus、检索相关性集合和按模型/场景校准的成本分位阈值时，`eligible` 仍无法证明产品效果或生产成本满足目标。Step 表仅保存最后一次 attempt 的时间，真实 adapter 会拒绝 `attempt_count != 1`，逐 attempt 成本审计仍待补充。
 - **本轮进展：** 新增 `reviewed_shadow` 窗口汇总契约与 CLI。它只接收同一候选版本、唯一 Suite SHA-256 且五类均为 Task/Run 摘要绑定的终态 Shadow 报告，输出脱敏的样本量、任务成功率、类别通过率与失败原因计数；混入合成 Suite、混版本或重复证据均 fail closed。该汇总仍只声明人工评审 Shadow 样本范围，真实固定任务集、trace 链接、共享观察窗口和用户灰度继续待完成。
-- **本轮进展：** `agent_runs` 现持久化 Core admission 传入的受信任 `trace_id`，SQLC 读取、Shadow adapter 和 `shadow-report.v1` 将其绑定到每个五类报告；缺失/非法 Trace、Trace 复用、重放 Trace 漂移均 fail closed。汇总输出只保留 Trace ID，不回显 Task/Run 或模型正文。旧 Run 未回填 Trace，真实固定任务集和共享观察窗口仍待归档。
+- **本轮进展：** `agent_runs` 现持久化 Core admission 传入的受信任 `trace_id`，SQLC 读取、Shadow adapter 和 `shadow-report.v1` 将其绑定到每个五类报告；缺失/非法 Trace、Trace 复用、重放 Trace 漂移均 fail closed。`shadow-summary-report.v2` 仅在受限输入中使用 Trace 去重，对外汇总不回显 Task、Run、Trace 或模型正文。旧 Run 未回填 Trace，真实固定任务集和共享观察窗口仍待归档。
 - **建议方向：** 建立版本化 Project Guardian corpus 和双评审 agreement，使用真实 adapter 按场景统计 precision/recall、trajectory 差异和成本分位数；报告仅引用受控 evidence ID。候选模型、Prompt、Tool Schema 和 Memory Policy 必须先离线，再 shadow，最后灰度。
 - **处理门槛：** 任何 Agent active authority、自动 Memory 写入、语义检索切流或面向用户的主动消息发送前，至少归档一份真实候选五类报告及对应 Suite hash；当前 promotion v2 只可作为 Harness/Shadow 工程门禁。
 - **本轮进展：** 新增 `dipole.agent.release-manifest.v1`，把 candidate、模型、Prompt、Capability Schema、Memory Policy 和 offline Eval Suite SHA-256 绑定，并要求 promotion 仅使用 `shadow` 阶段清单；真实 Project Guardian 语料、共享观察窗口和用户灰度仍未完成。
@@ -1239,6 +1285,7 @@
 - **本轮进展：** 增加 Gateway-only 的 Execute/Rollback gRPC 契约与可选执行器注入点；未配置执行器时明确返回 `Unavailable`，公开控制面保持默认关闭，先完成协议和认证回归再推进生产启动接线。
 - **本轮进展：** 已核实 operator grant 版本化与 CAS executor 实现：migration v50 增加 `grant_version`/`can_execute`，执行器和事务 commit/rollback 均复核 fresh grant、执行绑定与 projection hash；Go 执行器、Repository 和 Agent Runtime 相关测试通过。公开控制面、生产启动链和共享环境故障演练仍为 AD-009 未完成门禁。
 - **本轮进展：** read Activity 已从单步扩展为「发现 + owner 确认读取」两步，首次让持久 `waiting_input` 出现在真实读取路径上：暂停发生在 claim 读取 Step 之前，恢复由确定性 request ID、checkpoint 候选集合与 Core 授权三重约束。到期沿用既有 `input_expired` 定时器，无新增状态。Remote GPU 候选 `aec1b867` 已归档由生产 read Activity 驱动的 approve/deny/expire 三份 receipt：确认路径在伪造 request 被拒绝后只读取被确认的会话，拒绝与到期路径的会话读取计数为零。共享环境窗口、该路径的 outcome/trajectory/permission 评测和多于一对 discovery 的编排仍未完成。
+- **本轮进展：** `interactive_active` 已在干净同版本、loopback-only 的 Remote GPU Compose 内完成真实 Core/Message/Temporal 回执：owner deny 重放无 Tool/Message，owner approve 重放精确收敛为一次 approval consume、一次完成 Tool/action reference 与一条 Message。测试开发 grant 已撤销，完整范围与排除项见 [Interactive Active Remote Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。这不替代 Shared 环境、浏览器 HITL、故障恢复、部分副作用回滚、MCP、性能和成功率门禁。
 - **风险：** v24 projection 保持 shadow 观察属性，尚未接管原 `agent_tasks.status`；当前 `read_shadow` 只允许 `conversation.list`，也没有 Memory 或真实任务终态 outcome Eval。v25 的 `approved` 只保存审计结论；execution plan v1 仍只允许带 CAS/回滚证据的 dry-run，应用 Executor 已具备 commit/rollback 语义但尚未接入公开控制面、生产启动链和共享环境。操作员授权仍需要受控 SQL 配置，Temporal Worker 停止时 Query 会归类为 unavailable。eligible 决策不能自动切换 active。
 - **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复、单调 revision 投影、取消投影、完成态 Query/Describe 对账和 Activity 丢失完成 ACK 后的模型/Step 重放；真实 MySQL 8.4 已验证 v25 全链升降级、16 路同审批人重放仅一票、两位独立审批后批准，以及原 projection 并发与 shadow cohort keyset 契约。TypeScript/Go canonical evidence SHA-256 使用黄金向量对齐；gRPC 测试验证 Gateway principal 绑定和 Agent 最小权限拒绝。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
 - **建议方向：** canonical Pencil 已维护 Repair evidence review、六态审计矩阵和 desktop/mobile 双人审批边界；下一步为 Executor 增加公开控制面前的 operator 再授权、共享环境故障注入和审计 receipt，再按该契约实现 Vue 恢复界面。完成真实 outcome/trajectory/permission Eval 证据后才评审权威 Task 与回复流量迁移。

@@ -19,8 +19,10 @@ describe("shadow runtime composition", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
       modelProvider: { kind: "disabled" }, contextCompilerVersion: "v1", memoryEnabled: false, retrievalEnabled: false, retrievalContextEnabled: false, interactiveMessageWritesEnabled: false,
-      triggerMode: "direct_target", capabilityRpc: { enabled: false }
+      triggerMode: "direct_target", readScopeConfirmationTtlMs: 900_000, capabilityRpc: { enabled: false }
     });
+    expect(loadShadowRuntimeConfig({ DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: "2000" }).readScopeConfirmationTtlMs).toBe(2_000);
+    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: "999" })).toThrow(/>=1000/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "actve" })).toThrow(/must be shadow or remote/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote" })).toThrow(/Kafka/);

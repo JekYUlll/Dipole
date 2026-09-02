@@ -79,7 +79,8 @@ export function createInteractiveTaskRequest(
   const agentUuid = required(trusted.agentId, "Agent ID");
   if (!Number.isFinite(now.valueOf())) throw new Error("Interactive Agent Task clock is invalid");
 
-  const triggerRef = `interactive:${input.clientRequestId}`;
+  // The browser key is idempotent only inside one authenticated Agent scope.
+  const triggerRef = `interactive:${digest([tenantId, principalUuid, agentUuid, input.clientRequestId])}`;
   const requestId = optional(trusted.requestId);
   const traceId = optional(trusted.traceId);
   const identity: AgentIdentity = {
@@ -91,7 +92,7 @@ export function createInteractiveTaskRequest(
   };
   const taskId = agentTaskId({ tenantId, agentUuid, triggerType: interactiveTriggerType, triggerRef });
   const event: AgentEvent = {
-    eventId: `interactive:${digest([tenantId, principalUuid, agentUuid, input.clientRequestId])}`,
+    eventId: triggerRef,
     eventType: interactiveTriggerType,
     aggregateId: triggerRef,
     occurredAt: now.toISOString(),

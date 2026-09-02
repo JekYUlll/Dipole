@@ -47,6 +47,8 @@ npm run eval:prefilter -- \
 
 `shadow-manifest.schema.json` 将评审标签、Task/Run 绑定、检索阈值和版本化模型价格与数据库 observation 分离。`shadow-manifest.example.json` 只展示格式，其中的 Task、Evidence 和价格均为占位值，不能作为晋级证据。
 
+受控 Shadow 窗口必须先由评审者使用 `scripts/hash-agent-shadow-eval-manifest-set.sh <manifest-directory>` 计算任务集摘要，并将结果作为 `DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256` 传给采集器。v1 的 `shadow-manifest-set-receipt.schema.json` 继续验证既有低敏回执，仅包含集合摘要、候选版本和样本数。当前采集器输出 [v2 receipt](../v2/shadow-manifest-set-receipt.schema.json)，在相同字段之外记录所需最低样本数；两版均不包含 Task ID、Prompt、用户、消息或评审标签正文。
+
 运行前为独立只读账号应用 `configs/mysql/agent-eval-grants.dist.sql`，并以受控 Secret 配置连接：
 
 ```bash
@@ -67,7 +69,7 @@ Adapter 从真实 `Task/Run/Plan/Step/Artifact/ModelCall/ToolCall` 生成 observ
 
 ## Shadow 样本窗口汇总
 
-`shadow-report.schema.json` 是 `eval:shadow` 的低敏输出 envelope，绑定持久化 Run 的 `traceId` 和标准五类报告。`shadow-summary-input.schema.json` 将多个该 envelope 汇总为任务级成功率、五类通过率和失败原因计数。输入只接受同一候选版本、唯一 Suite SHA-256、唯一 Trace ID、每类恰好一个 `*.shadow.<TaskRunDigest>` case 的终态报告；因此合成离线 Suite、重复证据、Trace 复用和混版本样本会 fail closed。输出保留 suite 摘要、Trace ID、聚合数值和固定限制语句，不回显 Task、用户、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。
+`shadow-report.schema.json` 是 `eval:shadow` 的低敏输出 envelope，受限评测环境使用持久化 Run 的 `traceId` 和标准五类报告建立证据关联。`shadow-summary-input.schema.json` 将多个该 envelope 汇总为任务级成功率、五类通过率和失败原因计数。输入只接受同一候选版本、唯一 Suite SHA-256、唯一 Trace ID、每类恰好一个 `*.shadow.<TaskRunDigest>` case 的终态报告；因此合成离线 Suite、重复证据、Trace 复用和混版本样本会 fail closed。公开汇总从 `shadow-summary-report.v2` 起只保留 suite 摘要、聚合数值和固定限制语句；不回显 Task、Run、Trace、用户、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。
 
 ```bash
 cd services/agent-runtime
