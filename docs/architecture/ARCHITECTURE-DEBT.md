@@ -1,5 +1,9 @@
 # 架构债务台账
 
+- 2026-09-02：完成远端分支收敛。810 条已合并 ref 已直接回收，40 条未合并 tip 先进入 `archive/remote-branch-consolidation-2026-09-02` 后按活跃 worktree 与 Epic 身份筛选，最终远端保留 6 条分支。当前保留 Agent/Frontend Epic 与两条活跃功能分支；其余分支可由 archive tag 恢复，但恢复前仍须在新分支完成语义复核与主干对齐。
+
+- 2026-09-02：分支与 worktree 曾按测试、retry、receipt 和小修复持续拆分，形成 65 条本地分支与 31 个 worktree，降低主干集成速度。当前主干经正常 merge 对齐远端并通过全量门禁，创建 `archive/branch-consolidation-2026-09-02` 保全 57 个回收 tip，移除 27 个 clean worktree，保留 8 条本地长期分支和 4 个受保护 worktree。远端收敛已在同日上一条记录完成；后续新增远端分支继续受 archive、owner 和 merge 条件约束。
+
 - 2026-09-02：Interactive read-shadow 的多会话 owner scope 已补 Remote GPU 同版本回执：认证 owner 可见两条会话时，Task 进入 `waiting_input`；伪造 request ID 返回 `409` 且不改变等待态，确认已展示候选后，持久轨迹精确收敛为一次 `conversation.list`、一次确认会话的 `conversation.read`、零次未确认会话读取与一份 digest Artifact。同一 fixture 的 owner cancel 从 `waiting_input` 收敛到 `cancelled/user_cancelled`，未完成 read 计划行的授权和完成数均为零。随后仅将 Agent 镜像更新到 `d60ace70`，以 2 秒确认 TTL 验证 Gateway start `202`、owner query/Timeline `200`、Task/Run `cancelled/input_expired` 和零授权读取；`input_expired` 状态转换本身要求持久 `waiting_input`。该回执关闭 Gateway 到 Temporal 的恢复、取消、到期及读取 scope 精确绑定的受控功能缺口，详见 [read-scope receipt](../../benchmarks/agent-read-scope-confirmation-2026-09-02/)。Worker/Core/lease 联合故障、共享开发环境和独立人工评审多路径窗口仍未完成；不得将两会话 fixture 外推为成功率、模型质量、性能或 active 写入结论。
 
 - 2026-09-02：Remote GPU 的 Trace 绑定 read-shadow 样本暴露 Core Run/Task 终态投影缺口：`agent_runs` 已为 `completed`，父 `agent_tasks` 仍为 `running`。`PersistentAgentRunAdmissionV1.Finish` 现已在每条 Run 终态路径以 CAS 收敛同名 Task 状态，并允许相同终态重放补齐此前部分提交；Task 处于 `waiting_approval` 等中间态或出现冲突终态仍 fail closed。Agent application、Agent gRPC 回归、同版本 [N=1 terminal convergence receipt](../../benchmarks/agent-terminal-convergence-2026-09-02/) 与真实读取 [N=2 Shadow Eval](../../benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/) 均通过，故代码、单样本部署和固定单会话读取分支均已解决。仍待独立人工评审的多路径任务集覆盖多会话选择、失败/重试与 shared-development 情形；在此之前禁止将现有小样本回执外推为成功率或 promotion 结论。
