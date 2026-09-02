@@ -12,9 +12,18 @@ describe("interactive Agent Task request", () => {
     expect(replay.taskId).toBe(first.taskId);
     expect(first).toMatchObject({
       identity: { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "REQ-1", traceId: "TRACE-1" },
-      event: { eventType: "agent.interactive.requested", aggregateId: "interactive:client-1", payload: { content: "Summarize my unread work.", request_kind: "interactive" } }
+      event: { eventType: "agent.interactive.requested", payload: { content: "Summarize my unread work.", request_kind: "interactive" } }
     });
-    expect(first.event.eventId).toMatch(/^interactive:[a-f0-9]{48}$/);
+    expect(first.event.aggregateId).toMatch(/^interactive:[a-f0-9]{48}$/);
+    expect(first.event.eventId).toBe(first.event.aggregateId);
+  });
+
+  it("scopes the client idempotency key to the authenticated principal", () => {
+    const first = createInteractiveTaskRequest({ clientRequestId: "client-1", goal: "Summarize my unread work." }, trusted);
+    const second = createInteractiveTaskRequest({ clientRequestId: "client-1", goal: "Summarize my unread work." }, { ...trusted, principalUserId: "U200" });
+
+    expect(second.taskId).not.toBe(first.taskId);
+    expect(second.event.eventId).not.toBe(first.event.eventId);
   });
 
   it("rejects identity and client input that could make the request ambiguous", () => {
