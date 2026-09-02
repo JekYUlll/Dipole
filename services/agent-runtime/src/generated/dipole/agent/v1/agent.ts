@@ -2512,6 +2512,14 @@ export interface CreateAgentDefinitionRequest {
      * @generated from protobuf field: string tenant_id = 2
      */
     tenantId: string;
+    /**
+     * Explicit owner-selected policy surface. Empty preserves read_only for
+     * older Gateway callers; subscription_autoreply enables only the bounded
+     * owner-to-Agent reply definition.
+     *
+     * @generated from protobuf field: string profile = 3
+     */
+    profile: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.ListAgentDefinitionsRequest
@@ -10613,12 +10621,14 @@ class CreateAgentDefinitionRequest$Type extends MessageType<CreateAgentDefinitio
     constructor() {
         super("dipole.agent.v1.CreateAgentDefinitionRequest", [
             { no: 1, name: "context", kind: "message", T: () => RequestContext },
-            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "profile", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<CreateAgentDefinitionRequest>): CreateAgentDefinitionRequest {
         const message = globalThis.Object.create((this.messagePrototype!));
         message.tenantId = "";
+        message.profile = "";
         if (value !== undefined)
             reflectionMergePartial<CreateAgentDefinitionRequest>(this, message, value);
         return message;
@@ -10633,6 +10643,9 @@ class CreateAgentDefinitionRequest$Type extends MessageType<CreateAgentDefinitio
                     break;
                 case /* string tenant_id */ 2:
                     message.tenantId = reader.string();
+                    break;
+                case /* string profile */ 3:
+                    message.profile = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -10652,6 +10665,9 @@ class CreateAgentDefinitionRequest$Type extends MessageType<CreateAgentDefinitio
         /* string tenant_id = 2; */
         if (message.tenantId !== "")
             writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* string profile = 3; */
+        if (message.profile !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.profile);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
