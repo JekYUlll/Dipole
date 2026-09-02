@@ -355,7 +355,8 @@ export function buildKafkaShadowRuntime(
   return new KafkaShadowConsumer(factory, {
     groupId: config.groupId,
     topic: physicalTopic(config),
-    runtimeMode: config.runtimeMode
+    runtimeMode: config.runtimeMode,
+    subscriptionActiveEnabled: config.subscriptionActiveEnabled
   }, async (raw) => {
     let decoded;
     try {

@@ -39,7 +39,7 @@ describe("KafkaShadowConsumer", () => {
     }, async () => undefined)).toThrow(/isolated/);
   });
 
-  it("accepts an isolated active group and rejects a shadow group in active mode", () => {
+  it("accepts an isolated active group and rejects unrelated groups in active mode", () => {
     const factory = {} as KafkaConsumerFactoryPort;
     expect(() => new KafkaShadowConsumer(factory, {
       groupId: "dipole-agent-active-user-gray-v1",
@@ -51,6 +51,21 @@ describe("KafkaShadowConsumer", () => {
       topic: "message.direct.created",
       runtimeMode: "active"
     }, async () => undefined)).toThrow(/active.*dipole-agent-active/i);
+    expect(() => new KafkaShadowConsumer(factory, {
+      groupId: "dipole-agent-subscription-active-v1",
+      topic: "message.direct.created",
+      runtimeMode: "active"
+    }, async () => undefined)).toThrow(/dipole-agent-active/i);
+  });
+
+  it("accepts the subscription Active group only when the subscription surface is enabled", () => {
+    const factory = {} as KafkaConsumerFactoryPort;
+    expect(() => new KafkaShadowConsumer(factory, {
+      groupId: "dipole-agent-subscription-active-v1",
+      topic: "message.direct.created",
+      runtimeMode: "active",
+      subscriptionActiveEnabled: true
+    }, async () => undefined)).not.toThrow();
   });
 
   it("recreates and disconnects the consumer when cold-start metadata is not ready", async () => {
