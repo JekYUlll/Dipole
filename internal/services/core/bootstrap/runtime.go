@@ -221,12 +221,39 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Task Workflow repair audit: %w", composeErr)
 		}
+		subscriptionResolver, composeErr := agentapplication.NewPersistentAgentEventSubscriptionResolverV1(agentRepos.Subscriptions, agentRepos.Policy, time.Now)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Event Subscription resolver: %w", composeErr)
+		}
+		subscriptionControls, composeErr := agentapplication.NewPersistentAgentEventSubscriptionControlV1(agentRepos.Subscriptions, agentRepos.Policy, messaging.Core, time.Now)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Event Subscription control: %w", composeErr)
+		}
+		definitionCatalog, composeErr := agentapplication.NewPersistentAgentDefinitionCatalogV1(agentRepos.DefinitionCatalog, config.AIConfig().AssistantUUID, time.Now)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Definition catalog: %w", composeErr)
+		}
 		agentServer, composeErr := agentgrpc.NewServerWithControlAndProjection(
 			capability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit,
 		)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent capability rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithEventSubscriptions(subscriptionResolver); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Event Subscription resolver rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithEventSubscriptionControls(subscriptionControls); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Event Subscription control rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithDefinitionCatalog(definitionCatalog); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Definition catalog rpc adapter: %w", composeErr)
 		}
 		if _, composeErr = agentServer.WithTaskTimeline(agentRepos.TaskTimeline); composeErr != nil {
 			cleanup()

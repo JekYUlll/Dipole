@@ -38,6 +38,26 @@ func TestCoreRuntimeKeepsOAuthCallbackConsumptionExplicitAndMTLSBound(t *testing
 	}
 }
 
+func TestCoreRuntimeComposesAgentDefinitionAndSubscriptionControlPlane(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("runtime.go"))
+	if err != nil {
+		t.Fatalf("read Core runtime: %v", err)
+	}
+	text := string(source)
+	for _, requirement := range []string{
+		"NewPersistentAgentEventSubscriptionResolverV1",
+		"NewPersistentAgentEventSubscriptionControlV1",
+		"NewPersistentAgentDefinitionCatalogV1",
+		"agentServer.WithEventSubscriptions(subscriptionResolver)",
+		"agentServer.WithEventSubscriptionControls(subscriptionControls)",
+		"agentServer.WithDefinitionCatalog(definitionCatalog)",
+	} {
+		if !strings.Contains(text, requirement) {
+			t.Fatalf("standalone Core Agent control plane must compose %q", requirement)
+		}
+	}
+}
+
 func TestCoreServiceEntrypointUsesOwnedRuntime(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("entrypoint.go"))
 	if err != nil {

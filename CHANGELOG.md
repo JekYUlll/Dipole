@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：独立 `dipole-core` 已装配与嵌入式路径相同的 Agent Definition 和 Event Subscription 控制面。Core 以 SQLC Agent 仓储、可信会话可读性服务和 Assistant 配置组装 resolver、owner 控制与只读 Definition catalog，并注入 Agent gRPC adapter；Gateway 的默认关闭开关、Shadow 观察和 Runtime 灰度门禁保持不变。
+
 - 2026-09-02：新增 owner-scoped Agent Definition 创建契约。认证 Gateway 可调用 `POST /api/v1/agent/definitions`，Core 从可信 principal、tenant 与 Assistant 配置生成确定性只读 `conversation.read` wildcard Definition；重放收敛到同一记录，跨 owner 严格隔离。gRPC 与 TypeScript protobuf 同步生成。Gateway Subscription 控制仍默认关闭，待 standalone Core 装配同一控制面后受控启用。
 
 - 2026-09-02：Agent Definition 已按 owner 进入持久化查询与版本唯一性边界。migration v58 将唯一键升级为 `(tenant, owner, agent, version)`，Core 在订阅触发时按 Subscription 创建者选择最新 Definition；同一 Agent 面向多位用户的策略不再互相覆盖。SQLC、应用层 owner 选择和 MySQL 合同测试均已补齐。公开订阅控制与 Runtime trigger 保持默认关闭，下一切片将补用户 Definition 创建后再进行受控启用。
