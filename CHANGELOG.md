@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：建立 Dipole Platform Baseline。主干从此提交重新起算，以减少历史中的临时验证、重复 receipt 和小修复噪声；重写前的完整主干固定在 `archive/pre-history-rewrite-2026-09-02`，此前分支 tip 由同日的本地和远端 consolidation archive tag 保存。代码、配置、测试、设计稿和现有更新日志均保留在基线快照内。
+
 - 2026-09-02：完成远端 Git 分支收敛。删除前先推送 `archive/remote-branch-consolidation-2026-09-02`，保全 40 条未合并 tip；随后回收 810 条已合并分支及 36 条已归档的短期分支。远端由 852 条 ref 收敛为 6 条，保留 `master`、Agent/Frontend Epic 与两条存在活跃 worktree 的功能分支。本地已完成阶段 Epic 同步追踪 `origin/master`。
 
 - 2026-09-02：完成本地 Git 治理收敛。`master` 以正常 merge 纳入远端主干并通过 Agent Runtime、Go、Compose、服务布局和文档门禁；回补 Interactive Task 的 principal-scoped idempotency，防止不同用户复用 client request key 碰撞同一 Task。创建 `archive/branch-consolidation-2026-09-02` 保全待回收分支 tip，移除 27 个 clean worktree，本地分支由 65 收敛为 8；随后远端收敛见同日上一条记录。
