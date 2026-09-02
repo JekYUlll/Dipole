@@ -9,9 +9,6 @@ project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-subscription-active-${RANDOM}
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-subscription-active.XXXXXX")
 owner_telephone="13900000004"
 agent_uuid="UAI000000000000000001"
-# Keep test identifiers within the production columns shared by Message,
-# Sync, and the Agent event ledger.
-event_id="EA-${RANDOM}-$$"
 grant_uuid="PROMOTION-SUBSCRIPTION-ACTIVE-${RANDOM}-$$"
 
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
@@ -125,29 +122,39 @@ if (!eligible) throw new Error("subscription conversation did not become eligibl
 const response = await fetch("http://gateway:8080/api/v1/agent/subscriptions", { method: "POST", headers, body: JSON.stringify({ definitionId: definition.definitionId, definitionVersion: 1, conversationKey, filterKind: "all", filter: {} }) });
 const subscription = await response.json();
 if (response.status !== 200 || typeof subscription?.subscriptionId !== "string") throw new Error(`subscription failed: ${response.status}`);
-process.stdout.write(`${ownerUuid}\t${definition.definitionId}\t${subscription.subscriptionId}\t${conversationKey}`);
+process.stdout.write(`${ownerUuid}\t${definition.definitionId}\t${subscription.subscriptionId}\t${conversationKey}\t${token}`);
 NODE
 )
-IFS=$'\t' read -r owner_uuid definition_uuid subscription_uuid conversation_key <<<"${binding}"
+IFS=$'\t' read -r owner_uuid definition_uuid subscription_uuid conversation_key owner_token <<<"${binding}"
 
 mysql <<SQL
 INSERT INTO agent_runtime_promotion_grants (grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version, policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at) VALUES ('${grant_uuid}', 'dipole', 'dipole-agent', '${DIPOLE_AGENT_CANDIDATE_VERSION}', '${definition_uuid}', 1, 'dipole.agent.shadow-promotion-policy.v2', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'U-SMOKE-GRANTOR', 'U-SMOKE-REVIEWER', DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE), DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 15 MINUTE));
 SQL
 
-compose exec -T agent node --input-type=module - "${event_id}" "${owner_uuid}" "${agent_uuid}" "${conversation_key}" <<'NODE'
-import { Kafka } from "kafkajs";
-const [eventId, ownerUuid, agentUuid, conversationKey] = process.argv.slice(2);
-const event = { event_id: eventId, event_type: "message.direct.created", version: "v1", source: "dipole", occurred_at: new Date().toISOString(), payload: { mutation_type: "created", revision: 1, actor_uuid: ownerUuid, message_id: `M-${eventId}`, conversation_key: conversationKey, message_seq: 1, sender_uuid: ownerUuid, target_uuid: agentUuid, target_type: 0, message_type: 0, content: "subscription active smoke", sent_at: new Date().toISOString() } };
-const producer = new Kafka({ clientId: "subscription-active-smoke", brokers: ["kafka:9092"] }).producer(); await producer.connect(); await producer.send({ topic: "dipole.message.direct.created", messages: [{ key: eventId, value: JSON.stringify(event) }] }); await producer.disconnect();
+compose exec -T agent node --input-type=module - "${owner_token}" "${agent_uuid}" <<'NODE'
+const [token, agentUuid] = process.argv.slice(2);
+const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=smoke-subscription`);
+await new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error("subscription message timeout")), 15000);
+  socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: agentUuid, content: "subscription active smoke", client_message_id: `subscription-active-${Date.now()}` } })));
+  socket.addEventListener("message", ({ data }) => {
+    const event = JSON.parse(String(data));
+    if (event?.type === "chat.sent") { clearTimeout(timer); socket.close(); resolve(); }
+    if (event?.type === "error") reject(new Error(`subscription message failed: ${JSON.stringify(event.data)}`));
+  });
+  socket.addEventListener("error", () => reject(new Error("subscription message socket failed")));
+});
 NODE
 
 task_state=""
 for _ in $(seq 1 90); do
-  task_state=$(mysql -e "SELECT CONCAT(status, '\\t', workflow_status) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}' AND trigger_ref = 'M-${event_id}'" || true)
+  task_state=$(mysql -e "SELECT CONCAT(status, '\\t', workflow_status) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'" || true)
   [[ "${task_state}" == $'completed\tcompleted' ]] && break
   sleep 1
 done
 [[ "${task_state}" == $'completed\tcompleted' ]] || { printf 'subscription task did not complete: %q\n' "${task_state}" >&2; exit 1; }
+task_count=$(mysql -e "SELECT COUNT(*) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'")
+[[ "${task_count}" == "1" ]] || { printf 'expected one subscription task, got %s\n' "${task_count}" >&2; exit 1; }
 model_calls=$(mysql -e "SELECT COUNT(*) FROM agent_model_runs AS r JOIN agent_tasks AS t ON t.task_uuid = r.task_uuid WHERE t.trigger_subscription_uuid = '${subscription_uuid}' AND r.status = 'completed'")
 [[ "${model_calls}" == "1" ]] || { printf 'expected one completed model call, got %s\n' "${model_calls}" >&2; exit 1; }
 messages=$(mysql -e "SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}'")

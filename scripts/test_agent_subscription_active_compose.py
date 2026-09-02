@@ -20,7 +20,8 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('agent-subscription-active-smoke.yml', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"', smoke)
-        self.assertIn('event_id="EA-${RANDOM}-$$"', smoke)
+        self.assertIn('device=smoke-subscription', smoke)
+        self.assertNotIn('from "kafkajs"', smoke)
         self.assertIn('compose down --volumes --remove-orphans', smoke)
         self.assertIn('Subscription active Compose stack retained: project=%s scratch=%s', smoke)
         self.assertIn('UPDATE agent_runtime_promotion_grants SET revoked_at', smoke)
@@ -31,6 +32,7 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('/api/v1/agent/subscriptions', smoke)
         self.assertIn('trigger_subscription_uuid', smoke)
         self.assertIn("$'completed\\tcompleted'", smoke)
+        self.assertIn('expected one subscription task', smoke)
         self.assertIn('expected one completed model call', smoke)
         self.assertIn('subscription read task wrote', smoke)
 
