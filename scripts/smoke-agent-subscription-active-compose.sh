@@ -36,6 +36,8 @@ fi
 : "${DIPOLE_AGENT_TEMPORAL_TASK_QUEUE:=${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE}}"
 : "${DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1}"
 : "${DIPOLE_GATEWAY_PORT:=$((18000 + RANDOM % 2000))}"
+: "${DIPOLE_MYSQL_AIO_COMPAT:=0}"
+[[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
 
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_AGENT_IMAGE
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_CANDIDATE_VERSION DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID
@@ -77,6 +79,7 @@ compose_files=(
   -f "${root_dir}/deploy/microservices/agent-subscription-active.yml"
   -f "${root_dir}/deploy/microservices/agent-subscription-active-smoke.yml"
 )
+[[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" ]] || compose_files+=( -f "${root_dir}/deploy/microservices/remote-gpu-mysql-aio-compat.yml" )
 compose() { docker compose -p "${project_name}" "${compose_files[@]}" "$@"; }
 
 cleanup() {
