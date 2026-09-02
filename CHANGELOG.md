@@ -1,6 +1,8 @@
 # 更新日志
 
-- 2026-09-02：完成本地 Git 治理收敛。`master` 以正常 merge 纳入远端主干并通过 Agent Runtime、Go、Compose、服务布局和文档门禁；回补 Interactive Task 的 principal-scoped idempotency，防止不同用户复用 client request key 碰撞同一 Task。创建 `archive/branch-consolidation-2026-09-02` 保全待回收分支 tip，移除 27 个 clean worktree，本地分支由 65 收敛为 8。远端分支继续按共享 owner 与合并状态另行审查，未执行批量删除。
+- 2026-09-02：完成远端 Git 分支收敛。删除前先推送 `archive/remote-branch-consolidation-2026-09-02`，保全 40 条未合并 tip；随后回收 810 条已合并分支及 36 条已归档的短期分支。远端由 852 条 ref 收敛为 6 条，保留 `master`、Agent/Frontend Epic 与两条存在活跃 worktree 的功能分支。本地已完成阶段 Epic 同步追踪 `origin/master`。
+
+- 2026-09-02：完成本地 Git 治理收敛。`master` 以正常 merge 纳入远端主干并通过 Agent Runtime、Go、Compose、服务布局和文档门禁；回补 Interactive Task 的 principal-scoped idempotency，防止不同用户复用 client request key 碰撞同一 Task。创建 `archive/branch-consolidation-2026-09-02` 保全待回收分支 tip，移除 27 个 clean worktree，本地分支由 65 收敛为 8；随后远端收敛见同日上一条记录。
 
 - 2026-09-02：归档 Remote GPU 的 Interactive Agent 多会话范围确认与取消回执。认证 owner 在两条可见会话上启动 read-shadow Task 后，Temporal 进入 `waiting_input`；伪造 request ID 被 Gateway 以 `409` 拒绝且状态保持，确认已展示选项后 Task/Run 完成。持久步骤只包含一次 `conversation.list` 和一次指向确认会话的 `conversation.read`，另一候选会话读取为零，并产出一份 `conversation_digest` Artifact。同一受控 fixture 还验证 owner `user_cancelled`：Gateway 返回 `202`，Task/Run 收敛为 `cancelled`，未完成的 read 计划行没有授权或执行。回执保持 loopback-only、只读 authority 且不含测试账号、Task、Run、消息或会话明文；它只覆盖受控两会话功能链路，不能填写成功率、模型质量、性能、MCP、Memory、active 写入或共享环境结论，详见 [read-scope receipt](benchmarks/agent-read-scope-confirmation-2026-09-02/)。
 

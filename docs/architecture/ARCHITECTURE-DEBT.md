@@ -1,6 +1,8 @@
 # 架构债务台账
 
-- 2026-09-02：分支与 worktree 曾按测试、retry、receipt 和小修复持续拆分，形成 65 条本地分支与 31 个 worktree，降低主干集成速度。当前主干经正常 merge 对齐远端并通过全量门禁，创建 `archive/branch-consolidation-2026-09-02` 保全 57 个回收 tip，移除 27 个 clean worktree，保留 8 条本地长期分支和 4 个受保护 worktree。远端存在大量历史 ref，其共享 owner 与未合并状态尚未逐一审查；批量远端删除保持关闭，后续按开发流程的 archive、owner 和 merge 条件分批处理。
+- 2026-09-02：完成远端分支收敛。810 条已合并 ref 已直接回收，40 条未合并 tip 先进入 `archive/remote-branch-consolidation-2026-09-02` 后按活跃 worktree 与 Epic 身份筛选，最终远端保留 6 条分支。当前保留 Agent/Frontend Epic 与两条活跃功能分支；其余分支可由 archive tag 恢复，但恢复前仍须在新分支完成语义复核与主干对齐。
+
+- 2026-09-02：分支与 worktree 曾按测试、retry、receipt 和小修复持续拆分，形成 65 条本地分支与 31 个 worktree，降低主干集成速度。当前主干经正常 merge 对齐远端并通过全量门禁，创建 `archive/branch-consolidation-2026-09-02` 保全 57 个回收 tip，移除 27 个 clean worktree，保留 8 条本地长期分支和 4 个受保护 worktree。远端收敛已在同日上一条记录完成；后续新增远端分支继续受 archive、owner 和 merge 条件约束。
 
 - 2026-09-02：Interactive read-shadow 的多会话 owner scope 已补 Remote GPU 同版本回执：认证 owner 可见两条会话时，Task 进入 `waiting_input`；伪造 request ID 返回 `409` 且不改变等待态，确认已展示候选后，持久轨迹精确收敛为一次 `conversation.list`、一次确认会话的 `conversation.read`、零次未确认会话读取与一份 digest Artifact。同一 fixture 的 owner cancel 从 `waiting_input` 收敛到 `cancelled/user_cancelled`，未完成 read 计划行的授权和完成数均为零。随后仅将 Agent 镜像更新到 `d60ace70`，以 2 秒确认 TTL 验证 Gateway start `202`、owner query/Timeline `200`、Task/Run `cancelled/input_expired` 和零授权读取；`input_expired` 状态转换本身要求持久 `waiting_input`。该回执关闭 Gateway 到 Temporal 的恢复、取消、到期及读取 scope 精确绑定的受控功能缺口，详见 [read-scope receipt](../../benchmarks/agent-read-scope-confirmation-2026-09-02/)。Worker/Core/lease 联合故障、共享开发环境和独立人工评审多路径窗口仍未完成；不得将两会话 fixture 外推为成功率、模型质量、性能或 active 写入结论。
 
