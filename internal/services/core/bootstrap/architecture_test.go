@@ -58,6 +58,22 @@ func TestCoreRuntimeComposesAgentDefinitionAndSubscriptionControlPlane(t *testin
 	}
 }
 
+func TestCoreRuntimeWaitsForConversationProjectionKafkaAssignment(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("runtime.go"))
+	if err != nil {
+		t.Fatalf("read Core runtime: %v", err)
+	}
+	text := string(source)
+	for _, requirement := range []string{
+		"EnsureTopics(corekafka.ConversationProjectionTopics())",
+		"KafkaConsumerReadinessProbe(\"kafka-assignment\", platformKafka.Subscriber)",
+	} {
+		if !strings.Contains(text, requirement) {
+			t.Fatalf("standalone Core projection startup must include %q", requirement)
+		}
+	}
+}
+
 func TestCoreServiceEntrypointUsesOwnedRuntime(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("entrypoint.go"))
 	if err != nil {

@@ -20,6 +20,25 @@ type conversationProjector interface {
 	UpdateGroupConversations(message *model.Message) error
 }
 
+var conversationProjectionTopics = []string{
+	"group.created",
+	"message.direct.created",
+	"message.group.created",
+	"group.updated",
+	"group.members.added",
+	"group.members.removed",
+	"group.dismissed",
+	"conversation.direct.read",
+	"session.force_logout",
+	"contact.friend.deleted",
+}
+
+// ConversationProjectionTopics declares the Core-owned event streams that
+// must exist before the standalone projection consumer becomes ready.
+func ConversationProjectionTopics() []string {
+	return append([]string(nil), conversationProjectionTopics...)
+}
+
 // RegisterConversationProjections registers only the Kafka projections owned
 // by Core. Message persistence and Agent handlers belong to their services.
 func RegisterConversationProjections(projector conversationProjector) error {

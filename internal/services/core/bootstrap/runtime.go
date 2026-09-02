@@ -118,6 +118,12 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		cleanup()
 		return nil, fmt.Errorf("register Core Kafka projections: %w", err)
 	}
+	if platformKafka.Client != nil {
+		if err := platformKafka.Client.EnsureTopics(corekafka.ConversationProjectionTopics()); err != nil {
+			cleanup()
+			return nil, fmt.Errorf("ensure Core Kafka projection topics: %w", err)
+		}
+	}
 	if platformKafka.Subscriber != nil {
 		if err := platformKafka.Subscriber.Start(ctx); err != nil {
 			cleanup()
@@ -388,6 +394,9 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		}
 		if platformKafka.Client != nil {
 			probes = append(probes, platformRuntime.KafkaReadinessProbe("kafka", platformKafka.Client))
+		}
+		if platformKafka.Subscriber != nil {
+			probes = append(probes, platformRuntime.KafkaConsumerReadinessProbe("kafka-assignment", platformKafka.Subscriber))
 		}
 		if err := platformRuntime.ConfigureDependencyReadiness(runtime.metrics, config.MetricsConfig(), probes...); err != nil {
 			cleanup()
