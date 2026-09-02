@@ -13,6 +13,8 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
         self.assertIn('project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-subscription-active-', smoke)
         self.assertIn('DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1', smoke)
+        self.assertIn('DIPOLE_AGENT_TEMPORAL_ADDRESS:=temporal:7233', smoke)
+        self.assertIn('DIPOLE_AGENT_TEMPORAL_TASK_QUEUE:=${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE}', smoke)
         self.assertIn('agent-subscription-active-smoke.yml', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://agent-model-stub:8089/v1"', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"', smoke)
