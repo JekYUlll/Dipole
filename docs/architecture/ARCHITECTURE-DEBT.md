@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：同版本 `81d8da66` 的 Remote GPU 隔离 `interactive_active` Compose 已再次完整覆盖 active 写入与 Worker 替换：临时 `user_gray` manifest、mTLS、独立 Kafka/Temporal 和短期 grant 仅用于候选项目；Worker 在 `waiting_approval` 后重启并恢复，deny 维持零 Tool/Message，重复 approve 收敛为一次 Tool、一次 Message 和两条 Sync Inbox。退出后 grant、项目、卷和回环端口均已清理。该确定性 `/send` fixture 不调用模型，不能替代 browser HITL、shared tenant、Core/Message replacement、partial-effect rollback、容量或成功率证据，`AD-009` 保持处理中。
+
 - 2026-09-02：同版本 `dc0129a7` 的隔离 Remote GPU `interactive_active` Compose smoke 已覆盖真实 Agent Worker 替换。Task 到达持久 `waiting_approval` 后，测试只重启 Agent Worker 并等待 `/readyz`；随后同一批准重放继续收敛为一次完成 Tool、一次 Message 与两条 Sync Inbox，拒绝路径仍为零 Tool/Message，项目、卷和 `127.0.0.1:18131` 均在退出后清理。该回执关闭 active Compose 单 Worker 替换后的审批恢复缺口；Core/Message 联合替换、EventLedger lease、部分副作用 rollback、浏览器 HITL、shared tenant 与容量仍由 `AD-009` 跟踪，不能据此填写成功率或性能结论。
 
 - 2026-09-02：完成远端分支收敛。810 条已合并 ref 已直接回收，40 条未合并 tip 先进入 `archive/remote-branch-consolidation-2026-09-02` 后按活跃 worktree 与 Epic 身份筛选，最终远端保留 6 条分支。当前保留 Agent/Frontend Epic 与两条活跃功能分支；其余分支可由 archive tag 恢复，但恢复前仍须在新分支完成语义复核与主干对齐。

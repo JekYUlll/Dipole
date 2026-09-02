@@ -1,5 +1,29 @@
 # Interactive Active Remote Receipt
 
+## Active Write And Worker Recovery Smoke (2026-09-02)
+
+This development-only Remote GPU run used source revision
+`81d8da666d78cad369da4e30bdfd26ee5d80257e` for the isolated Compose project
+`dipole-agent-interactive-active-81d8da66`. It generated a temporary
+`user_gray` release manifest, mTLS material, Kafka consumer group, Temporal
+queue, owner identity, and promotion grant. The Gateway bound only to a random
+loopback port; all candidate containers and volumes were removed after exit.
+
+| Scenario | Result |
+| --- | --- |
+| Active profile | Runtime status reported active mode, enabled task control, and enabled interactive message writes |
+| Deny replay | Zero Tool Invocations and zero messages |
+| Approve replay | One completed Tool Invocation, one message, and two Sync Inbox entries |
+| Worker replacement | The Agent Worker restarted at `waiting_approval`, became ready, and the same approval still converged to the approved result |
+| Cleanup | The temporary grant was revoked; the isolated project, volumes, and loopback port were absent after exit |
+
+The deterministic `/send` fixture never calls the model provider. It proves the
+restricted owner-approved direct-message path in an isolated development
+project, including the Worker-replacement recovery boundary. It does not prove
+browser HITL, shared-tenant authority, model quality, task success rate,
+capacity, latency, availability, Core or Message replacement, or partial-effect
+rollback.
+
 ## Same-Revision Worker Restart And Approval Recovery (2026-09-02)
 
 This development-only Remote GPU run used source revision

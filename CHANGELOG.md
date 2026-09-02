@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Remote GPU 以同版本 `81d8da66` 完成隔离的 Interactive Agent active 写入验收。临时 `user_gray` manifest、mTLS、独立 Kafka/Temporal 资源和短期 grant 只用于本次 Compose 项目；`/send` 的拒绝审批保持零副作用，重复批准在 Worker 重启并恢复后仍收敛为一次 Tool、一次消息和两条 Sync Inbox。退出后 grant、容器、卷和回环端口均已清理。该确定性 fixture 不调用模型，不代表浏览器 HITL、共享环境、模型质量、成功率或性能结论，详见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
+
 - 2026-09-02：Interactive Agent active Compose smoke 已覆盖等待审批期间的真实 Worker 替换。Remote GPU 同版本 `dc0129a7` 的隔离项目在 `waiting_approval` 后重启 Agent Worker，并经 `/readyz` 确认恢复；同一批准重放仍收敛为一次 Tool、一次消息和两条 Sync Inbox，拒绝路径保持零副作用。项目、卷与回环端口在结束后均已清理。该确定性 fixture 不代表真实模型效果、浏览器 HITL、共享环境、Core/Message 联合故障、部分副作用回滚或性能结论，详见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
 
 - 2026-09-02：Interactive Agent active Compose smoke 纳入认证 Runtime status 验收。Remote GPU 的同版本 `9884b848` 隔离候选中，临时 owner 经 Gateway JWT 成功读取 `GET /api/v1/agent/status` 的低敏 active 状态；随后拒绝审批保持零副作用，重复批准收敛为一次 Tool、一次消息和两条 Sync Inbox。项目、卷与回环端口在结束后均已清理；该确定性 fixture 不代表公开体验、真实模型效果、共享环境或性能结论，详见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
