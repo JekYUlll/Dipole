@@ -47,6 +47,55 @@ const definitionResponse = await fetch("http://gateway:8080/api/v1/agent/definit
 const definition = await definitionResponse.json();
 if (definitionResponse.status !== 201 || typeof definition?.definitionId !== "string" || definition.version !== 1) throw new Error(`definition failed: ${definitionResponse.status}`);
 const conversationKey = [ownerUuid, agentUuid].sort().join(":");
+
+const sendBootstrapMessage = async () => new Promise((resolve, reject) => {
+  const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=smoke`);
+  const timeout = setTimeout(() => {
+    socket.close();
+    reject(new Error("bootstrap WebSocket message timed out"));
+  }, 15_000);
+  const close = () => {
+    clearTimeout(timeout);
+    socket.close();
+  };
+  socket.addEventListener("open", () => {
+    socket.send(JSON.stringify({
+      type: "chat.send",
+      data: {
+        target_uuid: agentUuid,
+        content: "establish owner subscription scope",
+        client_message_id: `bootstrap-${ownerUuid}`,
+      },
+    }));
+  });
+  socket.addEventListener("message", ({ data }) => {
+    const event = JSON.parse(String(data));
+    if (event?.type === "chat.sent") {
+      close();
+      resolve();
+    }
+    if (event?.type === "error") {
+      close();
+      reject(new Error(`bootstrap WebSocket message failed: ${JSON.stringify(event.data)}`));
+    }
+  });
+  socket.addEventListener("error", () => {
+    close();
+    reject(new Error("bootstrap WebSocket connection failed"));
+  });
+});
+
+await sendBootstrapMessage();
+let eligible = false;
+for (let attempt = 0; attempt < 60; attempt += 1) {
+  const optionsResponse = await fetch(`http://gateway:8080/api/v1/agent/subscriptions/options?definitionId=${encodeURIComponent(definition.definitionId)}&definitionVersion=${definition.version}`, { headers });
+  const options = await optionsResponse.json();
+  eligible = optionsResponse.status === 200 && options?.conversations?.some((item) => item?.conversationKey === `direct:${conversationKey}`);
+  if (eligible) break;
+  await new Promise(resolve => setTimeout(resolve, 1_000));
+}
+if (!eligible) throw new Error("bootstrap direct conversation did not become eligible for subscription");
+
 const subscriptionResponse = await fetch("http://gateway:8080/api/v1/agent/subscriptions", { method: "POST", headers, body: JSON.stringify({ definitionId: definition.definitionId, definitionVersion: definition.version, conversationKey: `direct:${conversationKey}`, filterKind: "all", filter: {} }) });
 const subscription = await subscriptionResponse.json();
 if (subscriptionResponse.status !== 200 || typeof subscription?.subscriptionId !== "string" || subscription.status !== "active") throw new Error(`subscription failed: ${subscriptionResponse.status} ${JSON.stringify(subscription)}`);
