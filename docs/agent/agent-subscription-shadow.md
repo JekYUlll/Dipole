@@ -17,6 +17,22 @@ Definition 选择同样以 owner 为边界：Core 按 `(tenant, created_by_id, a
 - 显式设置 `DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED=true`；Compose 默认固定为 `false`。
 - 先确认 Prometheus 的 `dipole-agent` target 正常，并能读取 `dipole_agent_subscription_shadow_enabled`。
 
+## 受控 Compose Profile
+
+`deploy/microservices/agent-subscription-shadow.yml` 提供开发期的显式观察
+profile。它保持 `shadow + direct_target`，开启 matcher 对照指标，并只暴露
+owner-scoped Definition/Subscription 管理 API；Task Control、Memory、MCP 和
+External MCP 均固定关闭。
+
+```bash
+docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-subscription-shadow.yml up -d
+```
+
+移除该 overlay 后，基础 Compose 会恢复 `DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED=false`
+与两项 Gateway 管理入口关闭的默认状态。
+
 ## 观察指标
 
 - `dipole_agent_subscription_shadow_comparisons_total{direct_target,subscription}`：固定 `accepted|ignored` 与 `match|miss|error` 六种组合。

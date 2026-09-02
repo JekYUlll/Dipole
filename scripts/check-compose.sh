@@ -220,6 +220,28 @@ jq -e '
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_shadow_config}" >/dev/null
 
+subscription_shadow_config="$(
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+    docker compose \
+      -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/agent-subscription-shadow.yml config --format json
+)"
+jq -e '
+  .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
+  and .services.agent.environment.DIPOLE_AGENT_TRIGGER_MODE == "direct_target"
+  and .services.agent.environment.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "true"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
+' <<<"${subscription_shadow_config}" >/dev/null
+
 interactive_active_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \

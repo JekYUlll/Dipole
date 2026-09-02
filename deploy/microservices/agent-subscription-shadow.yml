@@ -1,0 +1,21 @@
+services:
+  agent:
+    environment:
+      # Observe persisted owner subscriptions alongside direct_target without
+      # admitting subscription-triggered Tasks or changing the primary route.
+      DIPOLE_AGENT_RUNTIME_MODE: shadow
+      DIPOLE_AGENT_TRIGGER_MODE: direct_target
+      DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true"
+      DIPOLE_AGENT_MEMORY_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"
+      DIPOLE_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
+
+  gateway:
+    environment:
+      DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_GATEWAY_AGENT_MCP_ENABLED: "false"

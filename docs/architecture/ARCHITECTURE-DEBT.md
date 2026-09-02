@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：开发期 `agent-subscription-shadow.yml` 已将 owner Definition/Subscription 管理与 matcher 对照封装为显式 Compose profile；它固定 `shadow + direct_target`，并关闭 Task Control、Memory、MCP 与 External MCP。基础 Compose、Subscription trigger 和 Runtime 灰度均未改变，真实观察窗口与 `AD-034` 的评审证据继续待完成。
+
 - 2026-09-02：Remote GPU 的隔离、loopback-only Interactive Active Compose smoke 已验证用户 Definition 的 HTTP/gRPC/SQLC 持久化闭环：认证 owner 重放创建、列出目录，并复核单条 Definition 的 owner、Assistant、只读权限和 wildcard scope。Definition-only project、容器与 volumes 已自动清理；Subscription trigger、reviewed Shadow 与 Runtime 灰度继续由 `AD-034` 跟踪。
 
 - 2026-09-02：固定 `conversation.read` 的 owner Definition API 已从 Subscription 控制门禁中独立为 `gateway.agent_definition_enabled`。默认配置仍关闭，Interactive Shadow/Active 的隔离 Compose profile 可显式启用；其不授予订阅写入、subscription trigger 或消息写入。Subscription 的 reviewed Shadow、Runtime 灰度与回滚验证继续由 `AD-034` 跟踪。
