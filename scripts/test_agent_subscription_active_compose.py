@@ -31,7 +31,7 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('/api/v1/agent/subscriptions/options?', smoke)
         self.assertIn('/api/v1/agent/subscriptions', smoke)
         self.assertIn('trigger_subscription_uuid', smoke)
-        self.assertIn("$'completed\\tcompleted'", smoke)
+        self.assertIn('"completed:completed"', smoke)
         self.assertIn('expected one subscription task', smoke)
         self.assertIn('expected one completed model call', smoke)
         self.assertIn('subscription read task wrote', smoke)

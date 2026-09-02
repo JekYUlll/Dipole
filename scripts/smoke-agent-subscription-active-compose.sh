@@ -148,11 +148,11 @@ NODE
 
 task_state=""
 for _ in $(seq 1 90); do
-  task_state=$(mysql -e "SELECT CONCAT(status, '\\t', workflow_status) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'" || true)
-  [[ "${task_state}" == $'completed\tcompleted' ]] && break
+  task_state=$(mysql -e "SELECT CONCAT(status, ':', workflow_status) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'" || true)
+  [[ "${task_state}" == "completed:completed" ]] && break
   sleep 1
 done
-[[ "${task_state}" == $'completed\tcompleted' ]] || { printf 'subscription task did not complete: %q\n' "${task_state}" >&2; exit 1; }
+[[ "${task_state}" == "completed:completed" ]] || { printf 'subscription task did not complete: %q\n' "${task_state}" >&2; exit 1; }
 task_count=$(mysql -e "SELECT COUNT(*) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'")
 [[ "${task_count}" == "1" ]] || { printf 'expected one subscription task, got %s\n' "${task_count}" >&2; exit 1; }
 model_calls=$(mysql -e "SELECT COUNT(*) FROM agent_model_runs AS r JOIN agent_tasks AS t ON t.task_uuid = r.task_uuid WHERE t.trigger_subscription_uuid = '${subscription_uuid}' AND r.status = 'completed'")
