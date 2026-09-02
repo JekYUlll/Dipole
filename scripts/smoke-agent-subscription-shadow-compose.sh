@@ -35,7 +35,7 @@ compose up -d --wait
 owner_uuid=$(compose exec -T agent node --input-type=module - "${owner_telephone}" "${agent_uuid}" <<'NODE'
 import { Kafka } from "kafkajs";
 const [telephone, agentUuid] = process.argv.slice(2);
-const register = await fetch("http://core:8081/api/v1/auth/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ nickname: "Subscription Shadow Owner", telephone, password: "smoke-pass-123" }) });
+const register = await fetch("http://core:8081/api/v1/auth/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ nickname: "Shadow", telephone, password: "smoke-pass-123" }) });
 const registered = await register.json();
 if (register.status !== 200 || typeof registered?.data?.user?.uuid !== "string") throw new Error(`register failed: ${register.status} ${JSON.stringify(registered)}`);
 const ownerUuid = registered.data.user.uuid;
