@@ -18,7 +18,7 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('DIPOLE_MYSQL_AIO_COMPAT:=0', smoke)
         self.assertIn('remote-gpu-mysql-aio-compat.yml', smoke)
         self.assertIn('agent-subscription-active-smoke.yml', smoke)
-        self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://agent-model-stub:8089/v1"', smoke)
+        self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"', smoke)
         self.assertIn('compose down --volumes --remove-orphans', smoke)
         self.assertIn('UPDATE agent_runtime_promotion_grants SET revoked_at', smoke)
@@ -34,9 +34,9 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
 
     def test_model_stub_stays_inside_the_compose_project(self) -> None:
         overlay = (ROOT / "deploy/microservices/agent-subscription-active-smoke.yml").read_text(encoding="utf-8")
-        self.assertIn('image: node:22-bookworm-slim', overlay)
         self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE', overlay)
-        self.assertIn('condition: service_healthy', overlay)
+        self.assertIn('entrypoint: ["/bin/sh", "-ec"]', overlay)
+        self.assertIn('node /app/model-stub.mjs & exec node dist/index.js', overlay)
 
 
 if __name__ == "__main__":
