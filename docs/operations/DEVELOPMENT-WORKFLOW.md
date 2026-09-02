@@ -23,7 +23,8 @@
 
 ## 主干历史基线
 
-- `master` 于 2026-09-02 从当前已验证平台快照建立新的根提交。重写前的完整主干固定为 `archive/pre-history-rewrite-2026-09-02`；分支收敛前的额外 tip 分别由 `archive/branch-consolidation-2026-09-02` 和 `archive/remote-branch-consolidation-2026-09-02` 保全。
+- `master` 于 2026-09-02 从 4,286 条历史收敛为 20 条真实状态快照组成的里程碑链。每条提交都承载相邻平台阶段的实际文件差异，覆盖 IM 基础、可靠投递、Sync Timeline、微服务、分层存储、Agent Runtime 与交互式任务。
+- 重写前的完整主干固定为 `archive/pre-history-rewrite-2026-09-02`；分支收敛前的额外 tip 分别由 `archive/branch-consolidation-2026-09-02` 和 `archive/remote-branch-consolidation-2026-09-02` 保全。
 - 旧主干派生的活跃分支在完成本地修改后，应从新的 `master` 创建分支并以可审阅 patch 承接差异。禁止直接将旧祖先链强行合入新主干。
 - 历史 archive 用于追溯提交、证据和旧链接。新的主干历史只记录可体验闭环、存储/接口迁移边界、发布回滚点与必要的治理变更。
 
