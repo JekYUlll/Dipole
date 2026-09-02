@@ -131,6 +131,68 @@ describe("Temporal read Step Activities", () => {
     expect(contextResolver.resolveMcpContext).toHaveBeenCalledWith(taskId, runId, "U100", {});
   });
 
+  it("delivers the summary to the owner Agent conversation for a subscription-triggered active read", async () => {
+    const event: AgentEvent = {
+      eventId: "E-SUB-REPLY", eventType: "message.direct.created", aggregateId: "M-SUB-REPLY",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "watched update" }, subscriptionId: "SUB-1"
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, subscriptionId: "SUB-1" });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["conversation.read"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read"] }],
+      approvedCapabilities: ["message.system.send" as const]
+    };
+    const execute = vi.fn(async () => "MSG-ACTION-1");
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "  digest for owner  ", steps: [] }) },
+      audit: { append: vi.fn(async () => undefined) },
+      registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-SUB" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) },
+      subscriptionMessage: { execute }, stepLeaseMs: 60_000
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "observe", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).resolves.toEqual({ kind: "complete", output: { summary: "  digest for owner  ", stepCount: 0, replyMessageAction: "MSG-ACTION-1" } });
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute).toHaveBeenCalledWith(
+      { conversationId: "direct:U100:UAI", content: "digest for owner" },
+      expect.objectContaining({ taskId, runId, mode: "active" })
+    );
+  });
+
+  it("does not reply when the active read was not subscription-triggered", async () => {
+    const event: AgentEvent = {
+      eventId: "E-NO-SUB", eventType: "message.direct.created", aggregateId: "M-NO-SUB",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "direct" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["conversation.read"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read"] }],
+      approvedCapabilities: ["message.system.send" as const]
+    };
+    const execute = vi.fn(async () => "MSG-ACTION-1");
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "direct digest", steps: [] }) },
+      audit: { append: vi.fn(async () => undefined) },
+      registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-NO-SUB" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) },
+      subscriptionMessage: { execute }, stepLeaseMs: 60_000
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "observe", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).resolves.toEqual({ kind: "complete", output: { summary: "direct digest", stepCount: 0 } });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it("rejects an event ID that conflicts with the trusted active admission", async () => {
     const event: AgentEvent = {
       eventId: "E-ACTIVE-READ", eventType: "message.direct.created", aggregateId: "M-ACTIVE-READ",

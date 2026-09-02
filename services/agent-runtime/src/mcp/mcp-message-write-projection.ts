@@ -72,9 +72,27 @@ const interactiveMessageTool: DipoleMcpWriteToolProjection = {
   commandKind: "system_message"
 };
 
-export function createInteractiveMessageExecutor(
-  client: Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">
-): { execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext): Promise<string> } {
+export interface MessageExecutor {
+  execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext): Promise<string>;
+}
+
+type MessageExecutorClient = Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">;
+
+const interactiveMessageInvocationNamespace = "dipole.agent.interactive-message-invocation.v1";
+const subscriptionMessageInvocationNamespace = "dipole.agent.subscription-message-invocation.v1";
+
+// The owner Signal drives interactive writes; autonomous subscription replies
+// reuse the identical approval-bound write chain and only differ by a distinct
+// Tool Invocation namespace so the two paths never collide inside one task.
+export function createInteractiveMessageExecutor(client: MessageExecutorClient): MessageExecutor {
+  return createMessageExecutor(client, interactiveMessageInvocationNamespace);
+}
+
+export function createSubscriptionMessageExecutor(client: MessageExecutorClient): MessageExecutor {
+  return createMessageExecutor(client, subscriptionMessageInvocationNamespace);
+}
+
+function createMessageExecutor(client: MessageExecutorClient, invocationNamespace: string): MessageExecutor {
   const registry = new CapabilityRegistry();
   registry.register({
     descriptor: {
@@ -85,7 +103,7 @@ export function createInteractiveMessageExecutor(
     },
     inputSchema: messageInputSchema,
     resolveResource: input => ({ resourceType: "conversation", resourceId: input.conversationId, action: "write" }),
-    execute: async () => { throw new Error("Interactive Agent message writes require an audited Tool Invocation"); }
+    execute: async () => { throw new Error("Agent message writes require an audited Tool Invocation"); }
   });
   const approvals = new McpWriteApprovalGate(
     registry,
@@ -98,7 +116,7 @@ export function createInteractiveMessageExecutor(
       new McpToolInvocationRunner(
         { begin: begin => client.begin(begin), finish: finish => client.finishToolInvocation(finish) },
         undefined,
-        () => interactiveMessageInvocationID(context, input),
+        () => messageInvocationID(invocationNamespace, context, input),
         undefined,
         undefined,
         isUncertainMessageCommandFailure
@@ -108,12 +126,13 @@ export function createInteractiveMessageExecutor(
   };
 }
 
-function interactiveMessageInvocationID(
+function messageInvocationID(
+  invocationNamespace: string,
   context: ExecutionContext,
   input: { readonly conversationId: string; readonly content: string }
 ): string {
   const material = [
-    "dipole.agent.interactive-message-invocation.v1",
+    invocationNamespace,
     context.taskId,
     context.runId,
     interactiveMessageTool.capabilityId,

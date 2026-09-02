@@ -6,7 +6,7 @@ import * as grpc from "@grpc/grpc-js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { createDipoleMcpServer } from "./dipole-mcp-server.js";
-import { createInteractiveMessageExecutor, McpMessageWriteProjection } from "./mcp-message-write-projection.js";
+import { createInteractiveMessageExecutor, createSubscriptionMessageExecutor, McpMessageWriteProjection } from "./mcp-message-write-projection.js";
 import { AllowlistedMcpToolClient } from "./mcp-tool-client.js";
 import { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
 import { McpWriteApprovalGate } from "./mcp-write-approval-gate.js";
@@ -146,6 +146,33 @@ describe("MCP Message write projection", () => {
     expect(result).toBe(JSON.stringify({
       commandId: "tool:interactive-1", commandKind: "system_message", resourceId: "MSG-INTERACTIVE-1", resourceType: "message"
     }));
+  });
+
+  it("derives a distinct Tool Invocation namespace for the subscription executor", async () => {
+    const invocationIds: string[] = [];
+    const makeClient = () => ({
+      consumeApproval: vi.fn(async () => undefined),
+      resolveApprovalGrant: vi.fn(async () => ({
+        approvalId: "APR-1", capabilityId: "message.system.send",
+        resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+        scopeSha256: "fda03fe9202766c3e59c11b4b069749a400e50041a44d1d200ff41c64aefa8a5",
+        argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
+        nonceSha256: "d".repeat(64), expiresAtUnixMs: Date.now() + 60_000
+      })),
+      begin: vi.fn(async () => undefined),
+      finishToolInvocation: vi.fn(async () => undefined),
+      executeMessageCommand: vi.fn(async (input: { invocationId: string }) => {
+        invocationIds.push(input.invocationId);
+        return { resourceType: "message" as const, resourceId: "MSG-1", commandKind: "system_message" as const, commandId: `tool:${input.invocationId}` };
+      })
+    });
+    const input = { conversationId: "direct:U100:UAI", content: "notice" };
+
+    await createInteractiveMessageExecutor(makeClient()).execute(input, context);
+    await createSubscriptionMessageExecutor(makeClient()).execute(input, context);
+
+    expect(invocationIds).toHaveLength(2);
+    expect(invocationIds[0]).not.toBe(invocationIds[1]);
   });
 
   it("reuses one message command after an uncertain Core response", async () => {

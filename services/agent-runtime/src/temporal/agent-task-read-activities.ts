@@ -64,6 +64,7 @@ export function createTemporalReadStepActivities(
     readonly readPermissions?: readonly string[];
     readonly readScopeConfirmationTtlMs?: number;
     readonly interactiveMessage?: InteractiveMessageExecutor;
+    readonly subscriptionMessage?: InteractiveMessageExecutor;
   }
 ): AgentTaskActivities {
   return {
@@ -188,12 +189,15 @@ export function createTemporalReadStepActivities(
           return value;
         });
         span.setAttribute("dipole.agent.run.step_count", plan.steps.length);
+        const replyMessageAction = await maybeSendSubscriptionReply(event, context, plan, runtimeMode, dependencies, telemetry);
+        if (replyMessageAction !== undefined) span.setAttribute("dipole.agent.run.reply", "sent");
         return {
           kind: "complete",
           output: {
             summary: plan.summary,
             stepCount: plan.steps.length,
-            ...(artifact === undefined ? {} : { artifactId: artifact.artifactId, artifactVersion: artifact.version })
+            ...(artifact === undefined ? {} : { artifactId: artifact.artifactId, artifactVersion: artifact.version }),
+            ...(replyMessageAction === undefined ? {} : { replyMessageAction })
           }
         };
       });
@@ -309,6 +313,34 @@ function executeInteractiveMessageStep(
       action
     }
   }));
+}
+
+const maxSubscriptionReplyBytes = 16 * 1024;
+
+// Autonomous replies fire only for subscription-triggered active tasks with the
+// reply surface wired. They deliver the model summary to the owner's direct
+// Agent conversation, reusing the audited approval-bound message write.
+async function maybeSendSubscriptionReply(
+  event: { readonly subscriptionId?: string | undefined },
+  context: ExecutionContext,
+  plan: ShadowPlan,
+  runtimeMode: AgentRuntimeMode,
+  dependencies: { readonly subscriptionMessage?: InteractiveMessageExecutor },
+  telemetry: Pick<AgentTelemetry, "withSpan">
+): Promise<string | undefined> {
+  if (runtimeMode !== "active" || dependencies.subscriptionMessage === undefined || event.subscriptionId === undefined) {
+    return undefined;
+  }
+  const content = plan.summary.trim().slice(0, maxSubscriptionReplyBytes);
+  if (content.length === 0) return undefined;
+  const executor = dependencies.subscriptionMessage;
+  return telemetry.withSpan("agent.message.reply", {
+    taskId: context.taskId, runId: context.runId,
+    attributes: { "dipole.agent.message.kind": "system_message" }
+  }, () => executor.execute(
+    { conversationId: directConversationKey(context.principalUuid, context.agentUuid), content },
+    context
+  ));
 }
 
 function requestedInteractiveMessage(event: { readonly eventType: string; readonly payload: Record<string, unknown> }): { readonly content: string } | undefined {
