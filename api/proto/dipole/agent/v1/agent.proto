@@ -796,6 +796,10 @@ message AgentDefinitionCatalogItem {
 message CreateAgentDefinitionRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
+  // Explicit owner-selected policy surface. Empty preserves read_only for
+  // older Gateway callers; subscription_autoreply enables only the bounded
+  // owner-to-Agent reply definition.
+  string profile = 3;
 }
 
 message ListAgentDefinitionsRequest {

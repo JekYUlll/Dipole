@@ -126,6 +126,49 @@ func TestAgentDefinitionCatalogCreatesOwnerScopedReadDefinitionIdempotently(t *t
 	}
 }
 
+func TestAgentDefinitionCatalogCreatesExplicitSubscriptionAutoReplyDefinition(t *testing.T) {
+	now := time.Unix(1000, 0).UTC()
+	store := &agentDefinitionCatalogStoreStub{}
+	service, err := NewPersistentAgentDefinitionCatalogV1(store, "UAI", func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	readOnly, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole"})
+	if err != nil {
+		t.Fatalf("create read-only Definition: %v", err)
+	}
+	autoReply, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{
+		TenantID: "dipole", Profile: application.AgentDefinitionCatalogProfileSubscriptionAutoReply,
+	})
+	if err != nil {
+		t.Fatalf("create subscription auto-reply Definition: %v", err)
+	}
+	replayed, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{
+		TenantID: "dipole", Profile: application.AgentDefinitionCatalogProfileSubscriptionAutoReply,
+	})
+	if err != nil {
+		t.Fatalf("replay subscription auto-reply Definition: %v", err)
+	}
+	if autoReply.DefinitionUUID == readOnly.DefinitionUUID || replayed.DefinitionUUID != autoReply.DefinitionUUID || len(store.items) != 2 {
+		t.Fatalf("auto-reply Definition identity drifted: read=%+v auto=%+v replay=%+v", readOnly, autoReply, replayed)
+	}
+	if len(autoReply.Permissions) != 2 || autoReply.Permissions[0] != application.AgentPermissionConversationRead || autoReply.Permissions[1] != application.AgentPermissionMessageWrite {
+		t.Fatalf("auto-reply permissions = %#v", autoReply.Permissions)
+	}
+	if len(autoReply.Scopes) != 1 || autoReply.Scopes[0].ResourceType != application.AgentResourceTypeConversation ||
+		autoReply.Scopes[0].ResourceID != application.AgentResourceWildcard || len(autoReply.Scopes[0].Actions) != 2 ||
+		autoReply.Scopes[0].Actions[0] != application.AgentResourceActionRead || autoReply.Scopes[0].Actions[1] != application.AgentResourceActionWrite {
+		t.Fatalf("auto-reply scopes = %#v", autoReply.Scopes)
+	}
+}
+
+func TestAgentDefinitionCatalogRejectsUnknownCreateProfile(t *testing.T) {
+	service, _ := NewPersistentAgentDefinitionCatalogV1(&agentDefinitionCatalogStoreStub{}, "UAI", time.Now)
+	if _, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole", Profile: "write_everywhere"}); err != application.ErrAgentDefinitionCatalogInvalid {
+		t.Fatalf("unknown profile error = %v, want invalid", err)
+	}
+}
+
 func definitionCatalogFixture(id string, version uint64, now time.Time) application.AgentDefinitionVersionV1 {
 	return application.AgentDefinitionVersionV1{
 		DefinitionUUID: id, Version: version, TenantID: "dipole", OwnerUUID: "U100", AgentUUID: "UAI",

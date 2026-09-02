@@ -26,6 +26,16 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('Subscription active Compose stack retained: project=%s scratch=%s', smoke)
         self.assertIn('UPDATE agent_runtime_promotion_grants SET revoked_at', smoke)
 
+    def test_autoreply_requires_explicit_opt_in_and_asserts_exact_side_effects(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
+        self.assertIn(': "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY:=0}"', smoke)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY must be 0 or 1', smoke)
+        self.assertIn('agent-subscription-autoreply.yml', smoke)
+        self.assertIn('profile: "subscription_autoreply"', smoke)
+        self.assertIn("subscription auto-reply side effects drifted", smoke)
+        self.assertIn("capability_id = 'message.system.send'", smoke)
+        self.assertIn("$'1\\t1\\t1\\t1\\t2'", smoke)
+
     def test_smoke_covers_owner_subscription_and_read_only_terminal_state(self) -> None:
         smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
         self.assertIn('/api/v1/agent/subscriptions/options?', smoke)

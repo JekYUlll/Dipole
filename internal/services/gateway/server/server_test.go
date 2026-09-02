@@ -134,10 +134,12 @@ type gatewayAgentSubscriptionStub struct {
 
 type gatewayAgentDefinitionStub struct {
 	principal, after string
+	profile          string
 	limit            int
 }
 
-func (*gatewayAgentDefinitionStub) CreateDefinition(context.Context, string) (*AgentDefinitionCatalogItem, error) {
+func (s *gatewayAgentDefinitionStub) CreateDefinition(_ context.Context, principal, profile string) (*AgentDefinitionCatalogItem, error) {
+	s.principal, s.profile = principal, profile
 	return &AgentDefinitionCatalogItem{DefinitionID: "DEF-CREATED", Version: 1, AgentID: "UAI", ConversationScopes: []string{"*"}, ValidFromUnixMS: 1_000, CreatedAtUnixMS: 1_000, UpdatedAtUnixMS: 1_000}, nil
 }
 
@@ -616,6 +618,22 @@ func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
 	gateway.Engine().ServeHTTP(response, request)
 	if response.Code != http.StatusOK || catalog.principal != "U100" || catalog.limit != 20 || !strings.Contains(response.Body.String(), `"definitionId":"DEF-1"`) {
 		t.Fatalf("catalog code=%d stub=%+v body=%s", response.Code, catalog, response.Body.String())
+	}
+	create := httptest.NewRequest(http.MethodPost, "/api/v1/agent/definitions", strings.NewReader(`{"profile":"subscription_autoreply"}`))
+	create.Header.Set("Authorization", "Bearer "+token)
+	create.Header.Set("Content-Type", "application/json")
+	created := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(created, create)
+	if created.Code != http.StatusCreated || catalog.principal != "U100" || catalog.profile != "subscription_autoreply" || !strings.Contains(created.Body.String(), `"definitionId":"DEF-CREATED"`) {
+		t.Fatalf("create code=%d stub=%+v body=%s", created.Code, catalog, created.Body.String())
+	}
+	invalidCreate := httptest.NewRequest(http.MethodPost, "/api/v1/agent/definitions", strings.NewReader(`{`))
+	invalidCreate.Header.Set("Authorization", "Bearer "+token)
+	invalidCreate.Header.Set("Content-Type", "application/json")
+	invalidResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(invalidResponse, invalidCreate)
+	if invalidResponse.Code != http.StatusBadRequest {
+		t.Fatalf("invalid create code=%d body=%s", invalidResponse.Code, invalidResponse.Body.String())
 	}
 }
 

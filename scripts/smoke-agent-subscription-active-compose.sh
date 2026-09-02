@@ -36,13 +36,15 @@ fi
 : "${DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1}"
 : "${DIPOLE_GATEWAY_PORT:=$((18000 + RANDOM % 2000))}"
 : "${DIPOLE_MYSQL_AIO_COMPAT:=0}"
+: "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY:=0}"
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
+[[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "0" || "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY must be 0 or 1\n' >&2; exit 2; }
 
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_AGENT_IMAGE
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_CANDIDATE_VERSION DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID
 export DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE
 export DIPOLE_AGENT_TEMPORAL_ADDRESS DIPOLE_AGENT_TEMPORAL_NAMESPACE DIPOLE_AGENT_TEMPORAL_TASK_QUEUE
-export DIPOLE_GATEWAY_BIND_ADDRESS DIPOLE_GATEWAY_PORT
+export DIPOLE_GATEWAY_BIND_ADDRESS DIPOLE_GATEWAY_PORT DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY
 export DIPOLE_AGENT_RELEASE_MANIFEST_FILE="${scratch_dir}/release-manifest.json"
 export DIPOLE_INTERNAL_CERT_DIR="${scratch_dir}/certs"
 export INTERNAL_CERT_DIR="${DIPOLE_INTERNAL_CERT_DIR}"
@@ -57,13 +59,18 @@ export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="5000"
 export DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS="256"
 export DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE="${scratch_dir}/model-stub.mjs"
 
+model_summary="subscription active smoke"
+if [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]]; then
+  model_summary="subscription autonomous reply smoke"
+fi
+
 cat >"${DIPOLE_AGENT_RELEASE_MANIFEST_FILE}" <<EOF
 {"schemaVersion":"dipole.agent.release-manifest.v1","candidateVersion":"${DIPOLE_AGENT_CANDIDATE_VERSION}","runtimeId":"dipole-agent","stage":"user_gray","components":{"model":{"version":"v1","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"prompt":{"version":"v1","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"capabilitySchema":{"version":"v1","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"memoryPolicy":{"version":"v1","sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}},"offlineEvalSuiteSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","createdAt":"2026-09-02T00:00:00.000Z"}
 EOF
 
-cat >"${DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE}" <<'NODE'
+cat >"${DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE}" <<NODE
 import http from "node:http";
-const body = JSON.stringify({ id: "subscription-active-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"summary":"subscription active smoke","steps":[]}' } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+const body = JSON.stringify({ id: "subscription-active-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"summary":"${model_summary}","steps":[]}' } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
 http.createServer((request, response) => {
   if (request.method !== "POST" || request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
   request.resume(); request.on("end", () => response.writeHead(200, { "content-type": "application/json" }).end(body));
@@ -78,6 +85,7 @@ compose_files=(
   -f "${root_dir}/deploy/microservices/agent-subscription-active.yml"
   -f "${root_dir}/deploy/microservices/agent-subscription-active-smoke.yml"
 )
+[[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "0" ]] || compose_files+=( -f "${root_dir}/deploy/microservices/agent-subscription-autoreply.yml" )
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" ]] || compose_files+=( -f "${root_dir}/deploy/microservices/remote-gpu-mysql-aio-compat.yml" )
 compose() { docker compose -p "${project_name}" "${compose_files[@]}" "$@"; }
 
@@ -101,8 +109,8 @@ compose up -d --wait
 mysql() { compose exec -T mysql mysql -N -B -uroot -proot123 dipole "$@"; }
 mysql -e "INSERT IGNORE INTO users (uuid, nickname, telephone, password_hash, status, created_at, updated_at) VALUES ('${agent_uuid}', 'Dipole Agent', '13900000002', 'smoke', 1, NOW(3), NOW(3));"
 
-binding=$(compose exec -T agent node --input-type=module - "${owner_telephone}" "${agent_uuid}" <<'NODE'
-const [telephone, agentUuid] = process.argv.slice(2);
+binding=$(compose exec -T agent node --input-type=module - "${owner_telephone}" "${agent_uuid}" "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" <<'NODE'
+const [telephone, agentUuid, autoReply] = process.argv.slice(2);
 const register = await fetch("http://core:8081/api/v1/auth/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ nickname: "Subscription Active", telephone, password: "smoke-pass-123" }) });
 const ownerUuid = (await register.json())?.data?.user?.uuid;
 if (register.status !== 200 || typeof ownerUuid !== "string") throw new Error(`register failed: ${register.status}`);
@@ -110,7 +118,10 @@ const login = await fetch("http://core:8081/api/v1/auth/login", { method: "POST"
 const token = (await login.json())?.data?.token;
 if (login.status !== 200 || typeof token !== "string") throw new Error(`login failed: ${login.status}`);
 const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
-const definitionResponse = await fetch("http://gateway:8080/api/v1/agent/definitions", { method: "POST", headers });
+const definitionResponse = await fetch("http://gateway:8080/api/v1/agent/definitions", {
+  method: "POST", headers,
+  ...(autoReply === "1" ? { body: JSON.stringify({ profile: "subscription_autoreply" }) } : {})
+});
 const definition = await definitionResponse.json();
 if (definitionResponse.status !== 201 || typeof definition?.definitionId !== "string" || definition.version !== 1) throw new Error(`definition failed: ${definitionResponse.status}`);
 const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=smoke`);
@@ -158,6 +169,20 @@ task_count=$(mysql -e "SELECT COUNT(*) FROM agent_tasks WHERE trigger_subscripti
 model_calls=$(mysql -e "SELECT COUNT(*) FROM agent_model_runs AS r JOIN agent_tasks AS t ON t.task_uuid = r.task_uuid WHERE t.trigger_subscription_uuid = '${subscription_uuid}' AND r.status = 'completed'")
 [[ "${model_calls}" == "1" ]] || { printf 'expected one completed model call, got %s\n' "${model_calls}" >&2; exit 1; }
 messages=$(mysql -e "SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}'")
-[[ "${messages}" == "0" ]] || { printf 'subscription read task wrote %s messages\n' "${messages}" >&2; exit 1; }
+if [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]]; then
+  auto_reply_effects=$(mysql -e "SELECT
+  (SELECT COUNT(*) FROM agent_tool_invocations WHERE task_uuid = (SELECT task_uuid FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}') AND status = 'completed' AND capability_id = 'message.system.send'),
+  (SELECT COUNT(*) FROM agent_approvals WHERE task_uuid = (SELECT task_uuid FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}') AND status = 'consumed' AND capability_id = 'message.system.send'),
+  (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content = '${model_summary}'),
+  (SELECT COUNT(DISTINCT client_message_id) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content = '${model_summary}'),
+  (SELECT COUNT(*) FROM user_sync_inbox AS inbox JOIN messages AS message ON message.uuid = inbox.message_uuid WHERE message.sender_uuid = '${agent_uuid}' AND message.target_uuid = '${owner_uuid}' AND message.content = '${model_summary}')")
+  [[ "${auto_reply_effects}" == $'1\t1\t1\t1\t2' ]] || { printf 'subscription auto-reply side effects drifted: %q\n' "${auto_reply_effects}" >&2; exit 1; }
+else
+  [[ "${messages}" == "0" ]] || { printf 'subscription read task wrote %s messages\n' "${messages}" >&2; exit 1; }
+fi
 mysql -e "UPDATE agent_runtime_promotion_grants SET revoked_at = UTC_TIMESTAMP(3) WHERE grant_uuid = '${grant_uuid}' AND revoked_at IS NULL"
-printf 'Agent Subscription active Compose smoke passed: one owner-scoped Kafka event completed one durable read Task with one model call and zero messages.\n'
+if [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]]; then
+  printf 'Agent Subscription auto-reply Compose smoke passed: one owner-scoped Kafka event completed one durable Task with one model call, one consumed approval, and one owner-Agent reply.\n'
+else
+  printf 'Agent Subscription active Compose smoke passed: one owner-scoped Kafka event completed one durable read Task with one model call and zero messages.\n'
+fi

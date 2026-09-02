@@ -426,13 +426,23 @@ func agentDefinitionCatalogHandler(catalog AgentDefinitionCatalogApplication) gi
 }
 
 func agentDefinitionCreateHandler(catalog AgentDefinitionCatalogApplication) gin.HandlerFunc {
+	type requestBody struct {
+		Profile string `json:"profile"`
+	}
 	return func(c *gin.Context) {
 		user, ok := middleware.CurrentUser(c)
 		if !ok {
 			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
 			return
 		}
-		item, err := catalog.CreateDefinition(c.Request.Context(), user.UUID)
+		var request requestBody
+		if c.Request.Body != nil && c.Request.ContentLength != 0 {
+			if err := c.ShouldBindJSON(&request); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Definition profile"})
+				return
+			}
+		}
+		item, err := catalog.CreateDefinition(c.Request.Context(), user.UUID, strings.TrimSpace(request.Profile))
 		if err != nil {
 			writeAgentSubscriptionResult(c, nil, err)
 			return

@@ -581,7 +581,9 @@ func (s *Server) CreateAgentDefinition(ctx context.Context, request *agentv1.Cre
 	if s.definitionCatalog == nil {
 		return nil, status.Error(codes.Unavailable, "Agent Definition catalog is unavailable")
 	}
-	definition, err := s.definitionCatalog.Create(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentDefinitionCatalogCreateRequestV1{TenantID: request.GetTenantId()})
+	definition, err := s.definitionCatalog.Create(grpccommon.Correlation(ctx, request.GetContext()), principal, application.AgentDefinitionCatalogCreateRequestV1{
+		TenantID: request.GetTenantId(), Profile: request.GetProfile(),
+	})
 	if err != nil {
 		switch {
 		case errors.Is(err, application.ErrAgentDefinitionCatalogInvalid):
