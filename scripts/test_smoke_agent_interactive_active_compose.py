@@ -35,6 +35,8 @@ class InteractiveAgentActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('verify_definition_catalog()', script)
         self.assertIn('http://gateway:8080/api/v1/agent/definitions', script)
         self.assertIn('definition_uuid=$(verify_definition_catalog)', script)
+        self.assertIn(': "${DIPOLE_AGENT_DEFINITION_ONLY:=0}"', script)
+        self.assertIn('[[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]] && exit 0', script)
         self.assertIn("JSON_UNQUOTE(JSON_EXTRACT(permissions_json, '\\$[0]'))", script)
         self.assertIn("JSON_UNQUOTE(JSON_EXTRACT(scopes_json, '\\$[0].resource_id'))", script)
         self.assertIn('"x-dipole-principal-user-id": ownerUuid', script)

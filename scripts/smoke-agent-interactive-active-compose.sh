@@ -42,7 +42,9 @@ fi
 : "${DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1}"
 : "${DIPOLE_GATEWAY_PORT:=$((18000 + RANDOM % 2000))}"
 : "${DIPOLE_MYSQL_AIO_COMPAT:=0}"
+: "${DIPOLE_AGENT_DEFINITION_ONLY:=0}"
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
+[[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" || "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]] || { printf 'DIPOLE_AGENT_DEFINITION_ONLY must be 0 or 1\n' >&2; exit 2; }
 
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_AGENT_IMAGE
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_CONTROL_SECRET DIPOLE_AGENT_CANDIDATE_VERSION
@@ -220,6 +222,7 @@ expected_definition_record="${owner_uuid}"$'\tUAI000000000000000001\tconversatio
 [[ "${definition_record}" == "${expected_definition_record}" ]] || { printf 'Definition record diverged: %q\n' "${definition_record}" >&2; exit 1; }
 definition_count=$(mysql -e "SELECT COUNT(*) FROM agent_definition_versions WHERE tenant_id = 'dipole' AND owner_uuid = '${owner_uuid}' AND agent_uuid = '${agent_uuid}' AND version = 1")
 [[ "${definition_count}" == "1" ]] || { printf 'Definition replay created %s records\n' "${definition_count}" >&2; exit 1; }
+[[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]] && exit 0
 
 mysql <<SQL
 INSERT IGNORE INTO users (uuid, nickname, telephone, password_hash, status, created_at, updated_at) VALUES
