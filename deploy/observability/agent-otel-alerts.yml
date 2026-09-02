@@ -1,0 +1,38 @@
+groups:
+  - name: dipole-agent-otel
+    rules:
+      - alert: DipoleAgentOTelCollectorDown
+        expr: up{job="dipole-otel-collector"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Dipole Agent OpenTelemetry Collector is unreachable
+
+      - alert: DipoleAgentOTelExportFailures
+        expr: increase(otelcol_exporter_send_failed_spans_total{job="dipole-otel-collector"}[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Dipole Agent trace export is failing
+
+      - alert: DipoleAgentOTelRefusedSpans
+        expr: increase(otelcol_processor_refused_spans_total{job="dipole-otel-collector",processor="memory_limiter"}[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Dipole Agent spans are being refused
+
+      - alert: DipoleAgentSubscriptionShadowErrors
+        expr: increase(dipole_agent_subscription_shadow_comparisons_total{job="dipole-agent",subscription="error"}[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Dipole Agent subscription Shadow matcher is failing
+
+      - alert: DipoleAgentSubscriptionShadowAdmissionDrift
+        expr: increase(dipole_agent_subscription_shadow_comparisons_total{job="dipole-agent",direct_target="ignored",subscription="match"}[15m]) > 0
+        labels:
+          severity: info
+        annotations:
+          summary: Subscription Shadow would admit events ignored by direct-target

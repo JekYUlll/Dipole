@@ -1,0 +1,86 @@
+x-redis: &redis
+  image: redis:7.4
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 2s
+    timeout: 2s
+    retries: 30
+
+x-sentinel: &sentinel
+  image: redis:7.4
+  restart: unless-stopped
+  command:
+    - sh
+    - -ec
+    - cp /etc/redis/sentinel.conf /tmp/sentinel.conf && exec redis-sentinel /tmp/sentinel.conf
+  volumes:
+    - ../../deploy/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+  healthcheck:
+    test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+    interval: 2s
+    timeout: 2s
+    retries: 30
+
+services:
+  redis-1:
+    <<: *redis
+    command: ["redis-server", "/etc/redis/redis.conf"]
+    volumes:
+      - ../../deploy/redis/redis.conf:/etc/redis/redis.conf:ro
+      - redis_1_data:/data
+
+  redis-2:
+    <<: *redis
+    command: ["redis-server", "/etc/redis/redis.conf", "--replicaof", "redis-1", "6379"]
+    depends_on:
+      redis-1:
+        condition: service_healthy
+    volumes:
+      - ../../deploy/redis/redis.conf:/etc/redis/redis.conf:ro
+      - redis_2_data:/data
+
+  redis-3:
+    <<: *redis
+    command: ["redis-server", "/etc/redis/redis.conf", "--replicaof", "redis-1", "6379"]
+    depends_on:
+      redis-1:
+        condition: service_healthy
+    volumes:
+      - ../../deploy/redis/redis.conf:/etc/redis/redis.conf:ro
+      - redis_3_data:/data
+
+  sentinel-1:
+    <<: *sentinel
+    depends_on:
+      redis-1:
+        condition: service_healthy
+      redis-2:
+        condition: service_healthy
+      redis-3:
+        condition: service_healthy
+
+  sentinel-2:
+    <<: *sentinel
+    depends_on:
+      redis-1:
+        condition: service_healthy
+      redis-2:
+        condition: service_healthy
+      redis-3:
+        condition: service_healthy
+
+  sentinel-3:
+    <<: *sentinel
+    depends_on:
+      redis-1:
+        condition: service_healthy
+      redis-2:
+        condition: service_healthy
+      redis-3:
+        condition: service_healthy
+
+volumes:
+  redis_1_data:
+  redis_2_data:
+  redis_3_data:

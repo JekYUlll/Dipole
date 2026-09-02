@@ -1,0 +1,18 @@
+{
+  "schema_version": "dipole.agent.external-mcp-shadow-drill.v2",
+  "outcome": "passed",
+  "isolation": "disposable_mysql_kafka_temporal_go_core_mtls_and_local_mcp",
+  "production_authority": false,
+  "event_count": 2,
+  "ledger_completed_event_count": 2,
+  "tool_call_count": 1,
+  "artifact_count": 1,
+  "restart_duplicate_suppressed": true,
+  "expired_readiness_denied": true,
+  "core_rpc_type": "go_internal_grpc_mtls",
+  "core_rpc_authenticated": true,
+  "core_rpc_identity_denials_verified": true,
+  "collected_at": "2026-09-01T03:59:16.871Z",
+  "expires_at": "2026-09-02T03:59:16.871Z",
+  "content_sha256": "461a77a5bed28e6155230c0a9ca3c93b28c5d312949b1e45a47bf91205835e71"
+}

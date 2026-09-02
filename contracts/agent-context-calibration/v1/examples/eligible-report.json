@@ -1,0 +1,77 @@
+{
+  "version": "dipole.agent.context-calibration.report.v1",
+  "candidate": "2e4babfb766aed4c512844653bf76622452db61c",
+  "evidenceCapturedAt": "2026-08-27T08:00:00.000Z",
+  "evidenceSha256": "a95ecdbf8023b555cff2c6ec5b4f62e3dccb62b8f3abb0ce157e514fdab4c533",
+  "estimatorId": "route-calibrated-v1:sha256:597b970fa91e846b0a0d8ae6407dba279cc77e051068954ec7d58553a7ec7afe",
+  "contextWindowTokens": 32768,
+  "fallbackRoutes": [],
+  "caseCount": 5,
+  "categories": [
+    "chinese",
+    "code",
+    "emoji",
+    "english",
+    "tool_schema"
+  ],
+  "measurements": [
+    {
+      "id": "chinese",
+      "route": "gateway/calibrated",
+      "category": "chinese",
+      "textSha256": "c268f7cdee75fca3d662a9e0a2120d4c0b5b36d8f3333d26b971ba254c332b94",
+      "utf8Bytes": 42,
+      "referenceTokens": 14,
+      "estimatedTokens": 27,
+      "errorBps": 9286,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    },
+    {
+      "id": "code",
+      "route": "gateway/calibrated",
+      "category": "code",
+      "textSha256": "0dbd71d8abf69df76e355a0f9db8a23d6a47e1e474f3f25dd30a22e6bd59512d",
+      "utf8Bytes": 43,
+      "referenceTokens": 16,
+      "estimatedTokens": 27,
+      "errorBps": 6875,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    },
+    {
+      "id": "emoji",
+      "route": "gateway/calibrated",
+      "category": "emoji",
+      "textSha256": "0aa0f9adf51d96071c8b7b4a3164ad26ca1d319be576d2a137f32d4d38837372",
+      "utf8Bytes": 33,
+      "referenceTokens": 12,
+      "estimatedTokens": 21,
+      "errorBps": 7500,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    },
+    {
+      "id": "english",
+      "route": "gateway/calibrated",
+      "category": "english",
+      "textSha256": "bfb6445ffea0b689360e2c93172fc37ced16aaa96ed4be98b7b9d32554cc06d1",
+      "utf8Bytes": 37,
+      "referenceTokens": 8,
+      "estimatedTokens": 24,
+      "errorBps": 20000,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    },
+    {
+      "id": "tool",
+      "route": "gateway/calibrated",
+      "category": "tool_schema",
+      "textSha256": "b2dade4a965809a5d012d830e097dbc195ec96a2da2d881a9f9af8d335dbcd4b",
+      "utf8Bytes": 54,
+      "referenceTokens": 20,
+      "estimatedTokens": 34,
+      "errorBps": 7000,
+      "source": { "kind": "provider_tokenizer", "provider": "fixture", "model": "fixture", "revision": "v1" }
+    }
+  ],
+  "underestimates": [],
+  "eligible": true,
+  "reportSha256": "d5bce2090f8d4b4c6af786d75dee656fd9dd33554ecaf8026e5880abe4863562"
+}

@@ -1,0 +1,7 @@
+services:
+  agent:
+    environment:
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: dipole-agent-context-ablation-baseline-v1
+      DIPOLE_AGENT_MEMORY_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"

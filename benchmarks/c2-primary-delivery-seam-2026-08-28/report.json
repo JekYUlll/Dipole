@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "client_received_once": true,
+    "gateway_kafka_assigned": true,
+    "gateway_ready": true,
+    "online_ack_enqueued": true,
+    "online_presence_recorded": true,
+    "replay_ack_stable": true,
+    "stale_presence_offline": true
+  },
+  "eligible_for_runtime_primary_review": true,
+  "gateway_image_id": "sha256:e9cbffa396cfe2ec13da738adf738a4bc974c9c69e03de4ecc1bc65708703724",
+  "remaining_gates": [
+    "real partial WebSocket queue saturation through the C++ probe",
+    "Kafka consume-to-ACK offset commit and crash replay in an explicit primary runtime"
+  ],
+  "schema_version": "c2-primary-delivery-evidence-v1",
+  "source_revision": "9589bbc63a380767ac932561fecf438281de9800"
+}

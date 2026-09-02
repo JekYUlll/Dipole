@@ -1,0 +1,3 @@
+dipole-node2	Up 4 hours
+dipole-node3	Up 4 hours
+dipole-node1	Up 4 hours

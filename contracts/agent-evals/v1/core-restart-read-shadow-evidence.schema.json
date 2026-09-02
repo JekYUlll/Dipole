@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/agent-evals/v1/core-restart-read-shadow-evidence.schema.json",
+  "title": "Dipole Agent Core Restart Read Shadow Evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "outcome", "isolation", "event_id", "core_restart_triggered", "core_ready_after_restart", "gateway_proxy_recovered", "ledger_completed_event_count", "task_count", "completed_run_count", "completed_model_call_count", "conversation_digest_artifact_count", "collected_at", "expires_at", "production_authority", "content_sha256"],
+  "properties": {
+    "schema_version": { "const": "dipole.agent.core-restart-read-shadow.v1" },
+    "outcome": { "const": "passed" },
+    "isolation": { "const": "disposable_compose_temporal_kafka_mysql_go_core_read_shadow" },
+    "event_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "core_restart_triggered": { "const": true },
+    "core_ready_after_restart": { "const": true },
+    "gateway_proxy_recovered": { "const": true },
+    "ledger_completed_event_count": { "const": 1 },
+    "task_count": { "const": 1 },
+    "completed_run_count": { "const": 1 },
+    "completed_model_call_count": { "const": 1 },
+    "conversation_digest_artifact_count": { "const": 1 },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "production_authority": { "const": false },
+    "content_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

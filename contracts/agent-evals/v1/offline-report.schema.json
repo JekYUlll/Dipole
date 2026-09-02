@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/offline-report.schema.json",
+  "title": "Dipole Agent Offline Evaluation Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidateVersion", "suiteSha256", "passed", "summary", "cases"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.offline-eval-report.v1"},
+    "candidateVersion": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"},
+    "suiteSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "passed": {"type": "boolean"},
+    "summary": {
+      "type": "object", "additionalProperties": false, "required": ["total", "passed", "categories"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 5}, "passed": {"type": "integer", "minimum": 0},
+        "categories": {
+          "type": "object", "additionalProperties": false,
+          "required": ["outcome", "trajectory", "permission", "retrieval", "cost"],
+          "properties": {
+            "outcome": {"$ref": "#/$defs/categorySummary"}, "trajectory": {"$ref": "#/$defs/categorySummary"},
+            "permission": {"$ref": "#/$defs/categorySummary"}, "retrieval": {"$ref": "#/$defs/categorySummary"},
+            "cost": {"$ref": "#/$defs/categorySummary"}
+          }
+        }
+      }
+    },
+    "cases": {
+      "type": "array", "minItems": 5, "maxItems": 1000,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "category", "passed", "reasons"],
+        "allOf": [
+          {"if": {"properties": {"passed": {"const": true}}}, "then": {"properties": {"reasons": {"maxItems": 0}}}},
+          {"if": {"properties": {"passed": {"const": false}}}, "then": {"properties": {"reasons": {"minItems": 1}}}}
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 2, "maxLength": 128},
+          "category": {"enum": ["outcome", "trajectory", "permission", "retrieval", "cost"]},
+          "passed": {"type": "boolean"},
+          "reasons": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"type": "string", "minLength": 2, "maxLength": 128}},
+          "metrics": {"type": "object", "additionalProperties": {"type": "number", "minimum": 0}},
+          "availability": {"type": "object", "additionalProperties": {"enum": ["complete", "unavailable"]}}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "categorySummary": {
+      "type": "object", "additionalProperties": false, "required": ["total", "passed"],
+      "properties": {"total": {"type": "integer", "minimum": 1}, "passed": {"type": "integer", "minimum": 0}}
+    }
+  }
+}

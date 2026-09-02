@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "dipole.multipart-presigned-rollout-evidence.v1",
+  "service": "gateway",
+  "deploymentRevision": "gateway@candidate-revision",
+  "policySha256": "2aeae42742813d04cf36e25f44b63760503465de52d56319415ad95bedbbb842",
+  "windowStart": "2026-08-30T00:00:00Z",
+  "windowEnd": "2026-08-30T00:30:00Z",
+  "operator": "ops-a",
+  "reviewer": "ops-a",
+  "rollbackVerified": false,
+  "alertState": "warning",
+  "outcomes": {"attempted": 100, "directCompleted": 50, "relayFallback": 20, "failed": 20, "expired": 10, "aborted": 0, "retried": 20, "checksumMismatch": 1},
+  "latency": {"directP95Millis": 30001}
+}

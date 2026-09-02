@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-external-mcp/v1/readiness-evidence.schema.json",
+  "title": "Dipole Agent External MCP Readiness Evidence v1",
+  "description": "Low-sensitivity evidence that one exact production I/O topology passed local preflight and read-only Shadow MCP discovery within a bounded window.",
+  "type": "object",
+  "x-dipole-version": "dipole.agent.external-mcp-readiness-evidence.v1",
+  "required": [
+    "schemaVersion",
+    "bindingSha256",
+    "startedAt",
+    "completedAt",
+    "preflightCheckedAt",
+    "connectivityCheckedAt",
+    "profileCount",
+    "credentialCount",
+    "caBundleCount",
+    "toolCount"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.external-mcp-readiness-evidence.v1"},
+    "bindingSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "completedAt": {"type": "string", "format": "date-time"},
+    "preflightCheckedAt": {"type": "string", "format": "date-time"},
+    "connectivityCheckedAt": {"type": "string", "format": "date-time"},
+    "profileCount": {"type": "integer", "minimum": 1, "maximum": 64},
+    "credentialCount": {"type": "integer", "minimum": 1, "maximum": 64},
+    "caBundleCount": {"type": "integer", "minimum": 1, "maximum": 64},
+    "toolCount": {"type": "integer", "minimum": 1, "maximum": 256}
+  },
+  "additionalProperties": false
+}

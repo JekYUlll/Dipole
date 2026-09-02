@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "dipole.agent.shadow-eval-manifest-set-receipt.v2",
+  "manifestSetSha256": "2f817bd61374de68d56dc59f0f0fc06f37b00a2ed8aaa2a89bc650847e3edab7",
+  "candidateVersion": "agent-runtime@f72e47cf83825169f02ce6014f233a0830831854",
+  "manifestCount": 4,
+  "minimumManifestCount": 4
+}

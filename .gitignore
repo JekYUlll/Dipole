@@ -1,0 +1,55 @@
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
+
+acc/
+/agent/
+certs/
+logs/
+dist/
+# Legacy root-level Agent build output; source lives under services/agent-runtime/.
+/agent-runtime/
+configs/config.yaml
+# Repository documentation is classified under docs/ and reviewed in Git.
+# Keep only generated/local planning output ignored below.
+scripts/bench/results
+__pycache__/
+*.py[cod]
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+tmp/
+frontend/chat-server
+node_modules/
+services/agent-runtime/.artifacts/
+frontend/playwright-report/
+frontend/test-results/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Code coverage profiles and other test artifacts
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# env file
+.env
+configs/config.local.yaml
+
+# Editor/IDE
+# .idea/
+# .vscode/

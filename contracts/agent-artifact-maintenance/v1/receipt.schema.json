@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-artifact-maintenance/v1/receipt.schema.json",
+  "title": "Dipole Agent Artifact Maintenance Receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "authorization_sha256", "mode", "outcome", "bucket", "object_key",
+    "checked_at", "metadata_exists", "object_found", "object_evidence_matched",
+    "delete_attempted", "deleted", "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": { "const": "dipole.agent.artifact-maintenance-receipt.v1" },
+    "authorization_sha256": { "$ref": "#/$defs/sha256" },
+    "mode": { "const": "dry_run" },
+    "outcome": { "enum": ["would_delete", "blocked_metadata_present", "blocked_object_missing", "blocked_evidence_drift", "blocked_expired"] },
+    "bucket": { "const": "dipole-agent-artifacts" },
+    "object_key": { "type": "string", "pattern": "^agent-artifacts/v1/" },
+    "checked_at": { "type": "string", "format": "date-time" },
+    "metadata_exists": { "type": "boolean" },
+    "object_found": { "type": "boolean" },
+    "object_evidence_matched": { "type": "boolean" },
+    "delete_attempted": { "const": false },
+    "deleted": { "const": false },
+    "receipt_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

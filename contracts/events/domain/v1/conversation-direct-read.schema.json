@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/events/domain/v1/conversation-direct-read.schema.json",
+  "title": "Dipole Conversation Direct Read v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["event_id", "event_type", "version", "source", "occurred_at", "payload"],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {"type": "string", "const": "conversation.direct.read"},
+    "version": {"type": "string", "pattern": "^v1(?:\\.[0-9]+)*$"},
+    "source": {"type": "string", "const": "dipole"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "payload": {"$ref": "#/$defs/read_payload"}
+  },
+  "$defs": {
+    "read_payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "reader_uuid",
+        "target_uuid",
+        "target_type",
+        "conversation_key",
+        "last_read_message_uuid",
+        "last_read_seq",
+        "read_at"
+      ],
+      "properties": {
+        "reader_uuid": {"type": "string", "minLength": 1},
+        "target_uuid": {"type": "string", "minLength": 1},
+        "target_type": {"type": "integer", "const": 0},
+        "conversation_key": {"type": "string", "minLength": 1},
+        "last_read_message_uuid": {"type": "string", "minLength": 1},
+        "last_read_seq": {"type": "integer", "minimum": 0},
+        "read_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/offline-suite.schema.json",
+  "title": "Dipole Agent Offline Evaluation Suite v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidateVersion", "cases"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.offline-eval-suite.v1"},
+    "candidateVersion": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"},
+    "cases": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 1000,
+      "items": {"oneOf": [
+        {"$ref": "#/$defs/outcome"}, {"$ref": "#/$defs/trajectory"}, {"$ref": "#/$defs/permission"},
+        {"$ref": "#/$defs/retrieval"}, {"$ref": "#/$defs/cost"}
+      ]}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "resourceId": {"anyOf": [{"const": "*"}, {"$ref": "#/$defs/id"}]},
+    "idSequence": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/id"}},
+    "ids": {"allOf": [{"$ref": "#/$defs/idSequence"}, {"uniqueItems": true}]},
+    "costMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelCalls", "toolCalls", "totalTokens", "totalCostMicrousd", "latencyMs"],
+      "properties": {
+        "modelCalls": {"type": "integer", "minimum": 0}, "toolCalls": {"type": "integer", "minimum": 0},
+        "totalTokens": {"type": "integer", "minimum": 0}, "totalCostMicrousd": {"type": "integer", "minimum": 0},
+        "latencyMs": {"type": "integer", "minimum": 0}
+      }
+    },
+    "observedCostMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelCalls", "toolCalls", "totalTokens", "totalCostMicrousd", "latencyMs"],
+      "properties": {
+        "modelCalls": {"type": "integer", "minimum": 0}, "toolCalls": {"type": "integer", "minimum": 0},
+        "totalTokens": {"type": "integer", "minimum": 0}, "totalCostMicrousd": {"type": "integer", "minimum": 0},
+        "latencyMs": {"type": "integer", "minimum": 0}, "tokenMetrics": {"enum": ["complete", "unavailable"]}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilityId", "resourceType", "resourceId", "action", "decision"],
+      "properties": {
+        "capabilityId": {"$ref": "#/$defs/id"}, "resourceType": {"$ref": "#/$defs/id"},
+        "resourceId": {"$ref": "#/$defs/resourceId"}, "action": {"$ref": "#/$defs/id"},
+        "decision": {"enum": ["allowed", "denied"]}
+      }
+    },
+    "outcome": {
+      "type": "object", "additionalProperties": false, "required": ["id", "category", "expected", "observed"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "category": {"const": "outcome"},
+        "expected": {"type": "object", "additionalProperties": false, "required": ["requiredOutputIds", "forbiddenOutputIds"], "properties": {"requiredOutputIds": {"allOf": [{"$ref": "#/$defs/ids"}, {"minItems": 1}]}, "forbiddenOutputIds": {"$ref": "#/$defs/ids"}}},
+        "observed": {"type": "object", "additionalProperties": false, "required": ["outputIds"], "properties": {"outputIds": {"$ref": "#/$defs/ids"}}}
+      }
+    },
+    "trajectory": {
+      "type": "object", "additionalProperties": false, "required": ["id", "category", "expected", "observed"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "category": {"const": "trajectory"},
+        "expected": {"type": "object", "additionalProperties": false, "required": ["steps", "forbiddenSteps"], "properties": {"steps": {"$ref": "#/$defs/idSequence"}, "forbiddenSteps": {"$ref": "#/$defs/ids"}}},
+        "observed": {"type": "object", "additionalProperties": false, "required": ["steps"], "properties": {"steps": {"$ref": "#/$defs/idSequence"}}}
+      }
+    },
+    "permission": {
+      "type": "object", "additionalProperties": false, "required": ["id", "category", "expected", "observed"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "category": {"const": "permission"},
+        "expected": {"type": "object", "additionalProperties": false, "required": ["decisions"], "properties": {"decisions": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/decision"}}}},
+        "observed": {"type": "object", "additionalProperties": false, "required": ["decisions"], "properties": {"decisions": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/decision"}}}}
+      }
+    },
+    "retrieval": {
+      "type": "object", "additionalProperties": false, "required": ["id", "category", "expected", "observed"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "category": {"const": "retrieval"},
+        "expected": {"type": "object", "additionalProperties": false, "required": ["relevantEvidenceIds", "minimumRecall", "minimumPrecision"], "properties": {"relevantEvidenceIds": {"allOf": [{"$ref": "#/$defs/ids"}, {"minItems": 1}]}, "minimumRecall": {"type": "number", "minimum": 0, "maximum": 1}, "minimumPrecision": {"type": "number", "minimum": 0, "maximum": 1}}},
+        "observed": {"type": "object", "additionalProperties": false, "required": ["retrievedEvidenceIds"], "properties": {"retrievedEvidenceIds": {"$ref": "#/$defs/ids"}}}
+      }
+    },
+    "cost": {
+      "type": "object", "additionalProperties": false, "required": ["id", "category", "expected", "observed"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "category": {"const": "cost"},
+        "expected": {"type": "object", "additionalProperties": false, "required": ["maximums"], "properties": {"maximums": {"$ref": "#/$defs/costMetrics"}}},
+        "observed": {"$ref": "#/$defs/observedCostMetrics"}
+      }
+    }
+  }
+}

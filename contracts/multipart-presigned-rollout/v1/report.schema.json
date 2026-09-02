@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/multipart-presigned-rollout/v1/report.schema.json",
+  "title": "Dipole Multipart Presigned Rollout Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "decision", "reasons", "evidenceSha256", "policySha256", "deploymentRevision", "metrics"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.multipart-presigned-rollout-report.v1"},
+    "decision": {"enum": ["eligible", "blocked"]},
+    "reasons": {"type": "array", "items": {"type": "string"}},
+    "evidenceSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "policySha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "deploymentRevision": {"type": "string", "minLength": 1},
+    "metrics": {"type": "object"}
+  }
+}

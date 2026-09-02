@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "dipole.agent.shadow-eval-report.v1",
+  "traceId": "TRACE-SMOKE-AGENT-EVENT-2cee9a005b2740b5",
+  "evaluation": {
+    "schemaVersion": "dipole.agent.offline-eval-report.v1",
+    "candidateVersion": "agent-runtime@064568d9",
+    "suiteSha256": "ede2cc596ce2fb9ec110fc66a6df4f34f1469db1c148de08515c09aa3d5be1bf",
+    "passed": true,
+    "summary": {
+      "total": 5,
+      "passed": 5,
+      "categories": {
+        "outcome": { "total": 1, "passed": 1 },
+        "trajectory": { "total": 1, "passed": 1 },
+        "permission": { "total": 1, "passed": 1 },
+        "retrieval": { "total": 1, "passed": 1 },
+        "cost": { "total": 1, "passed": 1 }
+      }
+    },
+    "cases": [
+      { "id": "outcome.shadow.f0f04424858cb6e3fd0c9325", "category": "outcome", "passed": true, "reasons": [] },
+      { "id": "trajectory.shadow.f0f04424858cb6e3fd0c9325", "category": "trajectory", "passed": true, "reasons": [] },
+      { "id": "permission.shadow.f0f04424858cb6e3fd0c9325", "category": "permission", "passed": true, "reasons": [] },
+      {
+        "id": "retrieval.shadow.f0f04424858cb6e3fd0c9325",
+        "category": "retrieval",
+        "passed": true,
+        "reasons": [],
+        "metrics": { "precision": 1, "recall": 1 }
+      },
+      {
+        "id": "cost.shadow.f0f04424858cb6e3fd0c9325",
+        "category": "cost",
+        "passed": true,
+        "reasons": [],
+        "metrics": {
+          "modelCalls": 1,
+          "toolCalls": 2,
+          "totalTokens": 1765,
+          "totalCostMicrousd": 1765,
+          "latencyMs": 7032
+        }
+      }
+    ]
+  }
+}

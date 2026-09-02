@@ -1,0 +1,10 @@
+services:
+  # The shared Remote GPU host can exhaust its host-wide Linux AIO quota while
+  # other isolated MySQL stacks are active. Keep this compatibility setting
+  # scoped to the candidate project rather than changing the base topology.
+  mysql:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+      - --innodb-use-native-aio=0

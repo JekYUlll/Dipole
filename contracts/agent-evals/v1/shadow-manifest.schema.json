@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/shadow-manifest.schema.json",
+  "title": "Dipole Agent Shadow Evaluation Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidateVersion", "taskId", "runId", "labels"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.shadow-eval-manifest.v1"},
+    "candidateVersion": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"},
+    "taskId": {"type": "string", "minLength": 1, "maxLength": 64},
+    "runId": {"type": "string", "minLength": 1, "maxLength": 64},
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "trajectory", "permission", "retrieval", "cost"],
+      "properties": {
+        "outcome": {
+          "type": "object", "additionalProperties": false, "required": ["requiredOutputIds", "forbiddenOutputIds"],
+          "properties": {
+            "requiredOutputIds": {"allOf": [{"$ref": "#/$defs/ids"}, {"minItems": 1}]},
+            "forbiddenOutputIds": {"$ref": "#/$defs/ids"}
+          }
+        },
+        "trajectory": {
+          "type": "object", "additionalProperties": false, "required": ["steps", "forbiddenSteps"],
+          "properties": {"steps": {"$ref": "#/$defs/idSequence"}, "forbiddenSteps": {"$ref": "#/$defs/ids"}}
+        },
+        "permission": {
+          "type": "array", "maxItems": 256,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["stepNo", "capabilityId", "resourceType", "resourceId", "action", "decision"],
+            "properties": {
+              "stepNo": {"type": "integer", "minimum": 1}, "capabilityId": {"$ref": "#/$defs/id"},
+              "resourceType": {"$ref": "#/$defs/id"}, "resourceId": {"$ref": "#/$defs/resourceId"},
+              "action": {"$ref": "#/$defs/id"}, "decision": {"enum": ["allowed", "denied"]}
+            }
+          }
+        },
+        "retrieval": {
+          "type": "object", "additionalProperties": false,
+          "required": ["relevantEvidenceIds", "minimumRecall", "minimumPrecision"],
+          "properties": {
+            "relevantEvidenceIds": {"allOf": [{"$ref": "#/$defs/ids"}, {"minItems": 1}]},
+            "minimumRecall": {"type": "number", "minimum": 0, "maximum": 1},
+            "minimumPrecision": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        },
+        "cost": {
+          "type": "object", "additionalProperties": false, "required": ["maximums", "routePrices"],
+          "properties": {
+            "maximums": {"$ref": "#/$defs/costMetrics"},
+            "routePrices": {
+              "type": "array", "minItems": 1, "maxItems": 64,
+              "items": {
+                "type": "object", "additionalProperties": false,
+                "required": ["route", "inputMicrousdPerMillionTokens", "outputMicrousdPerMillionTokens"],
+                "properties": {
+                  "route": {"type": "string", "minLength": 1, "maxLength": 255},
+                  "inputMicrousdPerMillionTokens": {"type": "integer", "minimum": 0},
+                  "outputMicrousdPerMillionTokens": {"type": "integer", "minimum": 0}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "resourceId": {"anyOf": [{"const": "*"}, {"$ref": "#/$defs/id"}]},
+    "idSequence": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/id"}},
+    "ids": {"allOf": [{"$ref": "#/$defs/idSequence"}, {"uniqueItems": true}]},
+    "costMetrics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["modelCalls", "toolCalls", "totalTokens", "totalCostMicrousd", "latencyMs"],
+      "properties": {
+        "modelCalls": {"type": "integer", "minimum": 0}, "toolCalls": {"type": "integer", "minimum": 0},
+        "totalTokens": {"type": "integer", "minimum": 0}, "totalCostMicrousd": {"type": "integer", "minimum": 0},
+        "latencyMs": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-subscription-shadow/v1/collection.schema.json",
+  "title": "Dipole Agent Subscription Shadow Prometheus Collection Request v1",
+  "type": "object",
+  "required": ["schema_version", "prometheus_url", "window_start", "window_end", "runtime_revision", "prometheus_config_sha256", "scrape_interval_seconds"],
+  "properties": {
+    "schema_version": {"const": "dipole.agent.subscription-shadow-collection.v1"},
+    "prometheus_url": {"type": "string", "format": "uri", "pattern": "^https?://[^/?#@]+/?$", "minLength": 1, "maxLength": 2048},
+    "window_start": {"type": "string", "format": "date-time"}, "window_end": {"type": "string", "format": "date-time"},
+    "runtime_revision": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "prometheus_config_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "scrape_interval_seconds": {"type": "integer", "minimum": 1, "maximum": 3600}
+  },
+  "additionalProperties": false
+}

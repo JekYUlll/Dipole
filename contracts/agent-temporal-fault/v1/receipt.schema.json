@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/agent-temporal-fault/v1/receipt.schema.json",
+  "title": "Dipole Agent Temporal Fault Receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "receiptId", "receiptSha256", "drillId", "observedAt", "workflow", "outcome", "transitions", "faults", "effects", "failures"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.temporal-fault-receipt.v1" }, "receiptId": { "type": "string", "pattern": "^TEMPORAL-FAULT-[a-f0-9]{64}$" }, "receiptSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "drillId": { "$ref": "observation.schema.json#/properties/drillId" }, "observedAt": { "type": "string", "format": "date-time" },
+    "workflow": { "$ref": "observation.schema.json#/properties/workflow" }, "outcome": { "enum": ["eligible", "ineligible"] }, "transitions": { "$ref": "observation.schema.json#/properties/transitions" }, "faults": { "$ref": "observation.schema.json#/properties/faults" }, "effects": { "$ref": "observation.schema.json#/properties/effects" }, "cancellation": { "$ref": "observation.schema.json#/properties/cancellation" }, "failures": { "type": "array", "maxItems": 16, "items": { "type": "string", "minLength": 1, "maxLength": 256 } }
+  }
+}

@@ -1,0 +1,32 @@
+groups:
+  - name: dipole-kafka
+    rules:
+      - alert: DipoleKafkaConsumerLag
+        expr: sum(kafka_consumergroup_lag{consumergroup=~"dipole.*"}) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Dipole Kafka consumer lag remains above zero
+
+      - alert: DipoleKafkaUnderReplicatedPartitions
+        expr: sum(kafka_topic_partition_replicas - kafka_topic_partition_in_sync_replica) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Dipole Kafka partitions have replicas outside ISR
+
+      - alert: DipoleKafkaRetryPublished
+        expr: increase(kafka_topic_partition_current_offset{topic=~"dipole\\..*\\.retry"}[5m]) > 0 or increase(dipole_kafka_consumer_retry_published_total[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Dipole consumers published retry traffic
+
+      - alert: DipoleKafkaDeadLetterPublished
+        expr: increase(kafka_topic_partition_current_offset{topic=~"dipole\\..*\\.dead"}[5m]) > 0 or increase(dipole_kafka_consumer_dead_letter_published_total[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Dipole consumers published dead-letter traffic

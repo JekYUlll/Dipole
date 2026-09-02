@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/shadow-summary-report.schema.json",
+  "title": "Dipole Agent Shadow Evaluation Summary Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "source", "candidateVersion", "summary", "evaluationSuiteSha256", "traceIds", "limitations"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.shadow-eval-summary-report.v1"},
+    "source": {"$ref": "shadow-summary-input.schema.json#/properties/source"},
+    "candidateVersion": {"type": "string", "minLength": 2, "maxLength": 128},
+    "summary": {"type": "object"},
+    "evaluationSuiteSha256": {"type": "array", "items": {"type": "string", "pattern": "^[a-f0-9]{64}$"}},
+    "traceIds": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 128}},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  }
+}

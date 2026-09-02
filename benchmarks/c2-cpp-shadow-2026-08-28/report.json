@@ -1,0 +1,32 @@
+{
+  "schema_version": "dipole.realtime.shadow-report.v1",
+  "source_commit": "ef763a4b9fa090b9ba14c1f43e78ca723f9e2ef6",
+  "librdkafka_version": "2.3.0",
+  "consumer_group": "dipole-realtime-shadow-live-v2",
+  "topics": [
+    "dipole.message.direct.created",
+    "dipole.message.group.created"
+  ],
+  "evidence": {
+    "total": 206,
+    "projected": 205,
+    "rejected": 1,
+    "invalid_event": 1,
+    "max_item_count": 198
+  },
+  "readiness": {
+    "single_instance_http_status": 200,
+    "two_instance_http_status": [
+      200,
+      200
+    ],
+    "post_takeover_http_status": 200
+  },
+  "rebalance": {
+    "partitions": 12,
+    "two_instance_consumers": 2,
+    "post_takeover_consumers": 1
+  },
+  "final_lag": 0,
+  "client_writes": 0
+}

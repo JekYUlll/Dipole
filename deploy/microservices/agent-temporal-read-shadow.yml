@@ -1,0 +1,64 @@
+services:
+  temporal-postgresql:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    volumes:
+      - agent_temporal_postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -d temporal"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  temporal:
+    image: temporalio/auto-setup:1.29.1
+    restart: unless-stopped
+    depends_on:
+      temporal-postgresql:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_SEEDS: temporal-postgresql
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      DBNAME: temporal
+      VISIBILITY_DBNAME: temporal_visibility
+      DEFAULT_NAMESPACE: default
+      DEFAULT_NAMESPACE_RETENTION: 24h
+      # The image otherwise selects the container IP, while the health probe is loopback.
+      BIND_ON_IP: 0.0.0.0
+    expose:
+      - "7233"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/7233'"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 30s
+
+  agent:
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      DIPOLE_AGENT_MODEL_MODE: ai_sdk
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v2
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true"
+      DIPOLE_AGENT_TEMPORAL_ADDRESS: temporal:7233
+      DIPOLE_AGENT_TEMPORAL_NAMESPACE: default
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: dipole-agent-read-shadow-v1
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: read_shadow
+      DIPOLE_AGENT_MEMORY_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"
+      DIPOLE_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
+
+volumes:
+  agent_temporal_postgresql_data:

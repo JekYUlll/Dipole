@@ -1,0 +1,197 @@
+{
+  "schema_version": "dipole.performance.baseline.v4",
+  "source_schema_version": "dipole.performance.operations.v4",
+  "run_id": "c2-go-cpp-concurrent-20-v3",
+  "scenario": "concurrent",
+  "captured_at": "20260827T221232Z",
+  "environment": {
+    "git_commit": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+    "cpu": "AMD Ryzen 7 8845H w/ Radeon 780M Graphics",
+    "topology": "docker-compose.microservices.yml",
+    "api_base_url": "http://127.0.0.1:8080",
+    "node1_ws": "ws://127.0.0.1:8080",
+    "node2_ws": "ws://127.0.0.1:8080"
+  },
+  "parameters": {
+    "bench_script": "scripts/bench/bench.js",
+    "user_count": 20,
+    "group_size": 50,
+    "phone_prefix": "145",
+    "sender_count": 20,
+    "messages_per_sender": 2,
+    "message_type": 0,
+    "receiver_conn_ms": 15000,
+    "sender_conn_ms": 15000,
+    "hot_group_warmup_messages": 0,
+    "hot_group_member_count_threshold": null,
+    "hot_group_message_threshold": null
+  },
+  "workload": {
+    "attempted": 40,
+    "accepted": 40,
+    "rejected": 0,
+    "persisted": 40,
+    "received": 40,
+    "expected_receipts": 40,
+    "message_type": 0,
+    "acceptance_rate": 1.0,
+    "persistence_rate": 1.0,
+    "throughput_per_second": 2.489347
+  },
+  "delivery": {
+    "rate": 1.0,
+    "http_failure_rate": 0
+  },
+  "latency_ms": {
+    "average": 724.35,
+    "p50": 771,
+    "p95": 1274.05,
+    "p99": 1301.23,
+    "maximum": 1318
+  },
+  "storage": {
+    "direct": {
+      "messages": 40,
+      "inbox_rows": 80,
+      "inbox_write_amplification": 2.0
+    },
+    "group": {
+      "messages": 0,
+      "inbox_rows": 0,
+      "inbox_write_amplification": null
+    },
+    "conversation_state": {
+      "available": true,
+      "rows_touched": 40,
+      "messages_observed": 40,
+      "write_operations": 160,
+      "writes_per_observed_message": 4.0,
+      "projection_writes": {
+        "direct_message": 160,
+        "group_init": 0,
+        "group_message": 0
+      },
+      "counter_source": "dipole_conversation_projection_writes_total",
+      "timing_available": true,
+      "duration_source": "dipole_conversation_projection_write_duration_seconds",
+      "timing": {
+        "direct_message": {
+          "success_count": 160,
+          "error_count": 0,
+          "success_sum_seconds": 3.673730973,
+          "average_success_ms": 22.960819,
+          "p95_success_upper_bound_ms": 50.0
+        },
+        "group_init": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        },
+        "group_message": {
+          "success_count": 0,
+          "error_count": 0,
+          "success_sum_seconds": 0.0,
+          "average_success_ms": null,
+          "p95_success_upper_bound_ms": null
+        }
+      }
+    }
+  },
+  "kafka": {
+    "samples": [
+      0,
+      18,
+      0,
+      0,
+      0,
+      0
+    ],
+    "peak_lag": 18,
+    "settled_lag": 0
+  },
+  "process_resources": {
+    "available": true,
+    "sample_count": 7,
+    "duration_seconds": 18.710158,
+    "services": {
+      "core": {
+        "pid": 1602002,
+        "cpu_core_percent": 30.03716,
+        "rss_start_bytes": 73601024,
+        "rss_end_bytes": 79769600,
+        "rss_peak_bytes": 79769600,
+        "thread_peak": 22,
+        "voluntary_context_switches": 253953,
+        "involuntary_context_switches": 2598
+      },
+      "gateway": {
+        "pid": 1604398,
+        "cpu_core_percent": 20.149483,
+        "rss_start_bytes": 67436544,
+        "rss_end_bytes": 73199616,
+        "rss_peak_bytes": 73199616,
+        "thread_peak": 21,
+        "voluntary_context_switches": 264974,
+        "involuntary_context_switches": 1920
+      },
+      "message": {
+        "pid": 1602348,
+        "cpu_core_percent": 14.644452,
+        "rss_start_bytes": 63815680,
+        "rss_end_bytes": 67977216,
+        "rss_peak_bytes": 67977216,
+        "thread_peak": 21,
+        "voluntary_context_switches": 222569,
+        "involuntary_context_switches": 1170
+      },
+      "sync": {
+        "pid": 1602888,
+        "cpu_core_percent": 13.842748,
+        "rss_start_bytes": 61558784,
+        "rss_end_bytes": 63377408,
+        "rss_peak_bytes": 63377408,
+        "thread_peak": 21,
+        "voluntary_context_switches": 219301,
+        "involuntary_context_switches": 1014
+      }
+    },
+    "counter_source": "/proc/<pid>/stat,status,task/*/status"
+  },
+  "runtime_provenance": {
+    "available": true,
+    "expected_revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+    "source_aligned": true,
+    "services": {
+      "core": {
+        "container_id": "a48ae87f4c8986121eaaf2452ab3b7f4598475592735d9ad4d88db6e791943b6",
+        "image_id": "sha256:b76c4af3991d8bf8864b8bc347c2e46848eae24118433e32b698219626dabaf8",
+        "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+        "created": "2026-08-27T22:07:28Z",
+        "source_dirty": false
+      },
+      "gateway": {
+        "container_id": "d8f37c2bf2b3e55490f132dcf5aa4af8fd6c5239e48a22a911ed5104da278a3e",
+        "image_id": "sha256:b76c4af3991d8bf8864b8bc347c2e46848eae24118433e32b698219626dabaf8",
+        "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+        "created": "2026-08-27T22:07:28Z",
+        "source_dirty": false
+      },
+      "message": {
+        "container_id": "ca0b8d1afc7b9680f8310e6323210bed5dc1fb4fe77b7043372e85e6eb71743c",
+        "image_id": "sha256:b76c4af3991d8bf8864b8bc347c2e46848eae24118433e32b698219626dabaf8",
+        "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+        "created": "2026-08-27T22:07:28Z",
+        "source_dirty": false
+      },
+      "sync": {
+        "container_id": "9adb69d3577ee6bf4d19c8cfaea4cd87bd393f893d963d5cc9b8267c54211d9f",
+        "image_id": "sha256:b76c4af3991d8bf8864b8bc347c2e46848eae24118433e32b698219626dabaf8",
+        "revision": "a2dfd72a07456b086b0ef140c7a0b0df32aaaebc",
+        "created": "2026-08-27T22:07:28Z",
+        "source_dirty": false
+      }
+    }
+  }
+}

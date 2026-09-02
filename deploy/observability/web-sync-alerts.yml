@@ -1,0 +1,78 @@
+groups:
+  - name: dipole-web-sync-shadow
+    rules:
+      - record: dipole:web_sync_shadow:matches_24h
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"}[24h]))
+
+      - record: dipole:web_sync_shadow:terminal_differences_24h
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome=~"legacy_only|sync_only"}[24h]))
+
+      - record: dipole:web_sync_shadow:overflows_24h
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}[24h]))
+
+      - record: dipole:web_sync_shadow:window_complete
+        expr: (count(dipole_web_sync_comparison_total{scope="incoming_direct",outcome="match"} offset 24h) or vector(0)) > bool 0
+
+      - record: dipole:web_sync_shadow:promotion_ready
+        expr: |
+          dipole:web_sync_shadow:window_complete
+          * (dipole:web_sync_shadow:matches_24h >= bool 100)
+          * (dipole:web_sync_shadow:terminal_differences_24h == bool 0)
+          * (dipole:web_sync_shadow:overflows_24h == bool 0)
+
+      - alert: DipoleWebSyncShadowDivergence
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome=~"legacy_only|sync_only"}[5m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Web Offline and Sync shadow protocols produced a terminal difference
+
+      - alert: DipoleWebSyncShadowOverflow
+        expr: sum(increase(dipole_web_sync_comparison_total{scope="incoming_direct",outcome="overflow"}[5m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Web Sync shadow comparator exceeded its bounded local state
+
+      - alert: DipoleWebSyncStorageFull
+        expr: sum(increase(dipole_web_sync_client_errors_total{outcome="storage_full"}[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Web Sync could not persist a page because local browser storage is full
+
+      - alert: DipoleWebSyncClientErrors
+        expr: sum(increase(dipole_web_sync_client_errors_total{outcome="sync_error"}[5m])) > 5
+        labels:
+          severity: warning
+        annotations:
+          summary: Web Sync client recovery errors are increasing
+
+      - record: dipole:web_timeline_notify_shadow:matches_24h
+        expr: sum(increase(dipole_web_timeline_notify_shadow_total{outcome="match"}[24h]))
+
+      - record: dipole:web_timeline_notify_shadow:failures_24h
+        expr: sum(increase(dipole_web_timeline_notify_shadow_total{outcome=~"missing|mismatch|error|invalid"}[24h]))
+
+      - record: dipole:web_timeline_notify_shadow:window_complete
+        expr: (count(dipole_web_timeline_notify_shadow_total{outcome="match"} offset 24h) or vector(0)) > bool 0
+
+      - record: dipole:web_timeline_notify_shadow:promotion_ready
+        expr: |
+          dipole:web_timeline_notify_shadow:window_complete
+          * (dipole:web_timeline_notify_shadow:matches_24h >= bool 100)
+          * (dipole:web_timeline_notify_shadow:failures_24h == bool 0)
+
+      - alert: DipoleWebTimelineNotifyDivergence
+        expr: sum(increase(dipole_web_timeline_notify_shadow_total{outcome=~"missing|mismatch"}[5m])) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: Web Timeline notification shadow pull diverged from its message locator
+
+      - alert: DipoleWebTimelineNotifyVerifierErrors
+        expr: sum(increase(dipole_web_timeline_notify_shadow_total{outcome=~"error|invalid"}[5m])) > 5
+        labels:
+          severity: warning
+        annotations:
+          summary: Web Timeline notification shadow verification errors are increasing

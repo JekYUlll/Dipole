@@ -1,0 +1,110 @@
+# 设计更新日志
+
+本文档记录 Dipole canonical Pencil 设计的用户可见变化，格式遵循 Keep a Changelog。日常修改统一写入 `Unreleased`。
+
+## [Unreleased]
+
+### 变更
+
+- 收口聊天自发消息气泡的最后一处设计源与前端分歧：`.pen` 里 Outgoing Message Bubble 原为信号红填充（`$brand`），与前端应用已落地的海军蓝气泡不一致。统一到前端实现——填充改 `$rail`（海军蓝）+ 反白字（`$text-inverse`），信号红回归其 V3 职责（主操作/未读/注意），不再兼作消息底色，避免红色在会话流里泛滥、保留 BI 的信息层级克制。仅改此一处复用组件，其余 `$brand` 红色用途不动。
+- `design/dipole-ui.pen` 的**帧内联色**收口，设计源单代化到 V3。确定性脚本 `scripts/pen-v3-recolor.mjs`：把遗留变量引用重指向 V3 语义变量后删除遗留变量（`text-primary/secondary/muted`→`ink/ink-soft/ink-faint`、`border`→`line`、`surface-app`→`canvas`、`surface-inverse`→`rail`，共 363 处引用），新增 `success`/`success-soft` 对齐前端 `--dp-success`，并把 240 处内联 fill/stroke 旧盘 hex（64 种）按角色映射到 V3 变量——结构=海军蓝、身份/进度=金、正向=BI 绿、注意=琥珀、销毁=danger，大量鼠尾草/电报蓝中性折叠到暖象牙 `line` 与 `ink` 阶，纯白/纯黑作中性保留。脚本幂等，带残留旧盘 hex 与悬空引用断言；`.pen` 变量由 38 减到 34，`check-pencil-design` 结构门禁通过；pen 无头渲染抽查 Foundations/Login/Chat/Agent 板已视觉确认为 V3。**注**：`design/exports/` 的已批准评审 PNG 仍是改色前快照——无头 pen CLI 的 `get_screenshot` 只出 400px 缩略图且无缩放，无法复现已批准的 2880px 全分辨率基线，故不以缩略图降质覆盖，留待 pen.dev 桌面应用（`pen interactive --app desktop`）按批准分辨率重出，属纯渲染、无配色决策的跟进项。
+- 语义色变量从旧青绿盘重映射到 V3 品牌板并与前端 CSABC 锁步：`.pen` 的 `rail`/`ink` 系归海军蓝、`accent` 系归信号红、`line` 归暖象牙线，遗留 `brand`/`brand-deep`（微信绿 `#07C160`/`#04964A`）改为信号红，新增 `agent`/`agent-soft` 轨道金变量表达受控 Agent 状态；`canvas`/`surface`/`danger`/`warning` 为暖中性色保持不变。该轮仅改变量值；内联到帧的旧盘硬编码色已由上条 `scripts/pen-v3-recolor.mjs` 收口。
+- 确立 Agent 配色规则（前端已落地，画板待跟进）：Agent 身份文本用海军蓝而非金色（金色作小字文本对比度不足），金色只作克制的身份与耐久任务进度标记（状态点、时间线节点、active 药丸填充、scope 边线）；信号红留主操作/链接，danger 留撤销/错误。另引入功能性 `--dp-success` 哑光 BI 绿承接"在线/已同步/成功"，刻意区别于已退役的品牌绿。
+- V3 品牌资产改为脚本生成的单一来源，色值按 V3 品牌板实测校正（海军蓝 `#0D2744`、信号红 `#EA2521`、轨道金 `#EFAD05`、象牙白 `#FBF2E7`），与 `brand-v3-ui-brief.md` 中早期估读的十六进制值不同，后续画板与 Vue 实现以生成器为准。
+- 字标由 Poppins Bold 换为 Goldman Bold：宽体方块字形、方正字腔与均匀粗字干提供硬朗的机加工硬件感，与标识的圆盘形成刻意反差；先后试过的 Space Grotesk（偏几何柔和）与 Tomorrow（方形但硬度不足）均已否决。字标以 cap-height 归一化的 path 内联（生成脚本 `scripts/generate-brand-wordmarks.mjs`），画板与前端按目标 cap 高度直接缩放。辅助标签保持系统等宽体、大写加字距，作为系统的数据面语态。
+- Agent 变体的科技感统一由金色层承载：均匀描边、带明暗渐变的星环与镂空节点；主色块保持平涂，禁止在色块上叠加渐变。
+
+### 新增
+
+- 新增 `agent-artifact-digest-v2-brief.md`，定义 owner-scoped `conversation_digest` Markdown 阅读区、desktop/mobile 画板、正文状态矩阵及两个复用组件；对象键、Metadata JSON、通用下载和写控制保持关闭。
+
+- 新增 `brand-v3-ui-brief.md`，将用户提供的 V3 双极对话标识转换为 Pencil 可执行 brief：海军蓝/信号红/轨道金/暖象牙白、Login、Chat 和 Agent Task 的 desktop/mobile 目标以及只读、审批边界。
+
+- 增加 Agent Task Create v1 的 desktop/mobile 创建页、五态 State Matrix 与 `exports/agent-task-create-v1/` 批准预览。
+- 增加 `Component/Agent Task Goal Field`、`Component/Agent Task Request Badge` 和 `Component/Agent Task Submit State`；页面固定只提交本地请求身份与目标文本，身份、权限、Agent、Capability、Memory 与 Runtime 控制不进入浏览器输入。
+- 增加 Agent Task Create 的 Chromium canonical screenshot，使用认证 fixture 固定初始空表单、只读会话访问边界和 Runtime/Tool/外部服务未启用提示；该基线只覆盖 Chromium 初始态。
+- 增加 Settings v1 的 desktop/mobile 账户页、四态 State Matrix 与 `exports/settings-v1/` 批准预览。
+- 增加 `Component/Settings Profile`、`Component/Settings Sync Status` 和 `Component/Settings Logout Boundary`；资料、同步和危险会话操作沿用现有绿色与风险色语义。
+- 固定 Settings 数据披露边界：只呈现签名、本机 safe cursor、同步状态和 Device Security 入口；IP、节点、连接 ID、消息正文及设备原始标识保持关闭。
+- 增加 Device Security v1 的 desktop/mobile 会话页与七态 State Matrix，归档三张 `exports/device-security-*-review.png` 2x 评审基线。
+- 增加 `Device Session Row`、`Device Trust Status` 和 `Session Sign-out Confirmation` 三个复用组件；移动端使用堆叠会话卡片与明确批准区，避免桌面行布局在窄屏拥挤。
+- 固定 Device Security 隐私披露边界：仅显示设备标签、粗粒度设备或浏览器说明、相对活动时间和状态；IP、节点、连接 ID、用户 ID、Token、精确位置和原始 User-Agent 均不进入设计稿。
+- 增加 File Directory v1 的 desktop/mobile 只读目录、loading/empty/unavailable 状态矩阵及 File Directory Row、File Type Badge、Empty State 三个复用组件。
+- 归档 `exports/file-directory-review.png` 评审基线；目录仅展示 owner-scoped 文件元数据，存储 URL、对象键、校验值、上传会话和删除控制均不进入页面。
+- 增加 Group Directory v1 的 desktop/mobile 目录、五态权威状态矩阵和 Group Row/Status/Member Summary 三个可复用组件。
+- 归档 `exports/group-v1/` 的 2x 评审图；设计只覆盖认证读取、解散只读和热群 `notify + pull`，不开放群管理写操作。
+- 增加 Contact v1 的 desktop/mobile 管理稿、关系状态矩阵和两个可复用组件，覆盖可信联系人、传入/传出申请、备注、拉黑和删除入口。
+- 归档 `exports/contact-v1/` 的 2x 评审图；当前仅为设计基线，Vue 路由与交互实现继续待 F2 后续切片接入。
+
+- 新增 `brand-signal-v2-brief.md`，固定实心端点、空心端点与连续连接轨迹的标识方向，覆盖横向字标、方形应用图标和小尺寸单色图标。Pencil CLI 已生成方向性中间评审图，但在安全超时前未完成 canonical `.pen` 保存；SVG 资产可先作为文档入口使用，Pencil 评审 Frame 与正式导出继续待补。
+- 增加本地 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该检查不修改设计文件，也不替代 Pencil 视觉评审。
+- 增加 `design/export-manifest.json` 评审导出清单；设计门禁现在同时校验批准的单文件和导出目录存在且包含非空 PNG，避免设计稿与评审资产发生静默漂移。
+
+### 变更
+
+- V3 的两次 Pencil CLI 增量编辑均在临时输出阶段超时，安全包装器已删除临时文件，canonical `.pen` 与批准导出保持不变。Vue 先以 additive `--dp-v3-*` token 和 V3 SVG 改造 Login；完整视觉基线待 CLI 可完成增量写回后恢复。
+
+- Agent Task 审批页完成 Vue 首个实现切片：沿用既有 Agent Approval 设计基线，展示任务/请求绑定、风险提示、过期和不可用状态；入口由 `VITE_AGENT_APPROVAL_ENABLED` 默认关闭，未扩展 canonical `.pen`。
+- 将 `.pen` Foundations 的颜色、字体、间距和圆角变量映射为 `frontend/src/styles/design-tokens.css`，应用壳层与 Search 工作区复用同一组 `--dp-*` token；新增 Vitest 契约测试，后续设计稿更新需同步调整该文件。
+
+### 验证
+
+- Agent Task Create v1 通过 Pencil CLI 增量编辑、无裁切/placeholder 检查、canonical JSON 结构门禁和三张 2x 导出复核；Vue 交互的 Remote GPU Node 22 定向测试、typecheck 和 production build 已在前置切片通过。active authority、Compose、Kafka、Temporal 与共享环境控制面演练继续关闭。
+- Settings v1 认证页面在 Chromium 固定截图基线，Remote GPU Firefox 已通过路由与低敏披露断言；WebKit 二进制虽已安装，当前共享宿主缺少浏览器运行库，待系统维护窗口后补充验证。
+
+- File Directory 的 Chromium 受控 fixture 现固定 owner-scoped 文件 metadata、逐项授权下载入口和存储信息披露边界；截图不连接对象存储，也不覆盖其他浏览器或上传写路径。
+- File Directory v1 的 Pencil 结构门禁、低敏目录解析/状态组件测试和认证路由契约通过；Remote GPU Node 22 在 `a29d9927` 通过 38 个前端测试文件、157 项测试、typecheck 与 production build。当前未覆盖跨浏览器交互或视觉回归，以及文件写操作。
+- Group Directory v1 的 Pencil 结构门禁、目录解析/状态组件测试、认证路由契约、Remote GPU Node 22 typecheck 与 production build 通过；当前未覆盖跨浏览器截图回归或群管理写路径。
+- Agent Definition Catalog v1 使用 Pencil CLI `0.3.5` 与 `scripts/pencil-safe-edit.mjs` 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、三个复用组件和 2x 导出。Vue 目录页的 Chromium visual baseline 只覆盖受控低敏 metadata 与只读边界，active Runtime 和写 Capability 继续关闭。
+- Agent Task Timeline v1 使用 Pencil CLI `0.3.5`、`scripts/pencil-safe-edit.mjs` 和既有 brief 完成真实增量编辑；canonical 文件原子替换后通过结构门禁，新增 desktop/mobile/state matrix、四个复用组件和 2x 导出。F2/F3 未完成页面、完整截图级视觉回归与未覆盖平台场景继续保持待处理状态。
+- Agent Task Timeline Vue 页面新增 Chromium canonical screenshot，使用受控低敏 fixture 固定只读 metadata、Capability、等待审批和分页入口；该验证不涵盖其余浏览器或完整页面基线。
+
+### 新增
+
+- 增加 Agent Artifact metadata desktop/mobile 页面、loading/ready/unavailable/disclosure-closed 状态矩阵和 `exports/agent-artifact-v1/` 批准预览。
+- 增加 Artifact Disclosure 与 Integrity 两个可复用组件；设计固定只披露 owner-scoped metadata 和内容寻址摘要，正文、对象键、metadata JSON、下载与写控制继续关闭。
+- 增加 Agent Definition Catalog desktop/mobile 目录、loading/empty/unavailable/pagination 状态矩阵和只读 Runtime 边界，并归档 `exports/agent-definition-overview/` 和 `exports/agent-definition-v1/overview.png`。
+- 增加 Agent Definition Row、Scope Chip 和 Status 三个可复用组件；目录设计不提供创建、编辑、激活、删除、模型或 Tool 控制，也不披露 owner、tenant、内部 provenance 或参数。
+- 增加 Agent Task Timeline desktop/mobile 事件历史和四态矩阵，明确 revision、序号、Capability、状态与低敏 provenance 的只读边界，并归档 `exports/agent-timeline-overview/` 和全画布 `exports/agent-timeline-v1/overview.png`。
+- 增加 Agent Timeline Event、Revision Badge、Provenance Label 和 Unavailable State 四个可复用组件；canonical 文件扩展为 61 个顶层 Frame 和 27 个可复用组件。
+- 增加 Agent Event Subscription desktop/mobile 创建流程和七类创建状态，归档 `exports/agent-subscription-create-v1/` 的 2x 评审基线。
+- 增加 Subscription Create Option 与 Authority Summary 两个可复用组件；canonical 文件扩展为 44 个顶层 Frame 和 21 个可复用组件。
+- 增加 Agent Event Subscription desktop owner 管理页、六态契约矩阵和 mobile 撤销确认层，并保存 `exports/agent-subscription-v1/` 的 2x 评审基线。
+- 增加 Subscription Status、Filter 和 Row 三个可复用组件；canonical 文件扩展为 41 个顶层 Frame 和 19 个可复用组件。
+- 增加 Agent Elicitation desktop 普通 Form、七态契约矩阵和 mobile 表单，并保存 `exports/agent-elicitation-v1/` 的 2x 评审基线。
+- 增加 Elicitation Source、Field 和 Status 三个可复用组件；canonical 文件扩展为 35 个顶层 Frame 和 16 个可复用组件。
+- 增加 Agent Workflow Repair desktop 审计页、六态契约矩阵和 mobile 审批底部层，并保存 `exports/agent-repair-v1/` 的 2x 评审基线。
+- 增加 Repair Status、Evidence Diff 和 Approval Step 三个可复用组件；canonical 文件扩展为 29 个顶层 Frame 和 13 个可复用组件。
+- 建立 canonical Pencil F1 基线，增加 foundations、可复用 IM 组件、Login/Chat desktop/mobile、离线恢复、只读权限、空态、加载、错误、Agent Approval 和设计评审清单。
+- 合并 F1 与后续 Search/Sync 画板为单一 canonical 文件，统一同名 token，并保留 23 个顶层 Frame 和 10 个可复用组件。
+- Sync 状态矩阵增加 Storage Full，明确浏览器配额不足时本地消息仍可读、安全游标不会前移，并提供释放空间后的重试入口。
+- 增加 Sync Status 可复用组件，以及同步 Restoring、Current、Offline、Error 状态矩阵。
+- 增加消息恢复 desktop/mobile 页面和 `exports/sync-v1/` 批准预览，展示安全游标、本地落库、设备 ACK 与断网可读状态。
+- 建立 `design/dipole-ui.pen`，定义浅色画布、深色导航数据面、绿色强调色、Manrope/Noto Sans SC 字体和基础间距圆角 token。
+- 增加 Search Field、Search Result、Search Skeleton 与 Search State 四个可复用组件。
+- 增加消息搜索 desktop/mobile 的 Results、Loading、Empty、Error 四态设计。
+- 增加 `exports/search-v1/` 批准预览，作为 Vue 实现和后续视觉回归的首个基线。
+
+### 设计决策
+
+- Pencil 增量编辑必须通过 `scripts/pencil-safe-edit.mjs`：真实 CLI 调用写入临时 `.pen`，同时校验文档结构和导出资产，成功后才原子替换 canonical 文件；CLI 超时、进程异常或导出缺失均保留现有设计并进入 `AD-044` 记录。
+- Agent Task Timeline v1 后续编辑优先按 brief 拆分为单 frame 小批次；每批必须同时验证节点命名、canonical JSON 结构和 2x 导出，失败时只保留 brief 与证据，不修改现有设计基线。
+- `sync.item.notify.v1` 的 primary 交互只负责按会话序号补拉并合并已验证消息，不能直接把通知正文当作事实；目标序号或 UUID 校验失败时不展示、不推进客户端状态，服务端 Cassandra 灰度仍由独立运行证据控制。
+- Subscription create 只允许选择 owner active Definition 和 Core 返回的 readable/scope 交集；principal、tenant、event type 与 resource 均由认证上下文和 conversation key 派生，页面不提供手填入口。
+- 创建成功只表示控制记录已持久化。Runtime 与共享环境继续固定 `direct_target`，语义预筛与事件消费晋级需要独立证据。
+- Subscription owner list/create/revoke 已映射到默认关闭的 Gateway HTTP 与 Vue 页面；实现必须同时启用服务端和前端开关，Runtime 继续使用 `direct_target`。
+- Subscription 管理固定披露 owner、精确 Definition version、conversation scope、确定性 filter 和审计状态；列表中的 `active` 只表示控制记录有效，不能表达 Runtime 已消费事件。
+- Runtime 继续显示 `direct_target` Shadow 边界。公开 Definition 目录交付前关闭创建入口，禁止要求用户手填内部 Definition ID；撤销必须提交精确原因并保留审计记录。
+- `definition_stale`、依赖不可用和撤销中的状态均 fail closed；界面不启用共享事件触发，也不声称关键词过滤已经具备语义等价召回能力。
+- Elicitation Form 固定披露 Server、Tool、Invocation 与不可信来源，提交前以当前 Workflow Query 的 schema 和 `request_id` 再校验；缓存 Form 不能在依赖不可用时继续提交。
+- 普通 Elicitation 只渲染 `text|select|multiselect|boolean`；密码、Token、支付、Cookie、文件和 URL 授权进入独立安全设计，不复用当前 Form。
+- `submitting` 不提前显示恢复成功；只有同一 Temporal Signal 被接受并进入 `running` 后才移除旧表单。取消或过期均进入可审计终态。
+- Repair 审批固定采用双人控制：提案人不能审批、两位审批人必须互异、任一拒绝立即终止，证据最长一小时后过期。
+- Repair `approved` 只表达不可变审计结论；在独立、可回滚且再次授权的 executor 落地前，界面不提供执行入口，也不声称 projection 已修复。
+- Repair evidence unavailable 时禁止创建或批准提案，先恢复 Worker/Temporal 并重新采集 canonical evidence。
+- 本地缓存采用高低水位淘汰；容量压缩属于本地保留策略，不改变服务端设备 Cursor 或已提交的安全 `sync_seq`。
+- 同步恢复固定采用“读取安全游标 → 写入本地消息 → 提交设备游标”的可见顺序，避免界面暗示尚未持久化的消息已经安全同步。
+- 同步故障局部降级；本地消息继续可读，错误状态提供重试入口，显式退出时清理当前账号本地数据。
+- Search v1 仅展示 principal 有权访问的会话范围，并持续显示权限提示。
+- Search 故障采用局部降级，不遮挡或禁用聊天主链路。
+- 结果同时展示会话身份和 `message_seq`，为后续精确定位消息保留稳定交互语义。

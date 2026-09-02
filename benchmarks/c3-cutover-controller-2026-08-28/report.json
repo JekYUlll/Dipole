@@ -1,0 +1,15 @@
+{
+  "schema_version": "dipole.realtime.cutover-controller-drill.v1",
+  "git_revision": "0941f03b58fd21f0c33733af0b255f768f946508",
+  "redis_mode": "redis",
+  "attempt_id": "controller-process-a",
+  "process_a_exit_code": 91,
+  "process_a_sequence": 1,
+  "pre_expiry_blocked": true,
+  "process_b_resumed": true,
+  "final_state": "completed",
+  "final_sequence": 6,
+  "final_journal_head_sha256": "16b7ffd223c1be760b45d1c9273c4a8c2d89300b3ac3c47ca5a576ff3abad0e9",
+  "control_lease_ttl_ms": 5000,
+  "completed_at_unix_ms": 1787886088127
+}

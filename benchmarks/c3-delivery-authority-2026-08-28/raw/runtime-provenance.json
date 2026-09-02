@@ -1,0 +1,9 @@
+{
+  "archive_revision": "bbea83f13ca8a6f010c787baf22e70f4e92989c0",
+  "binary_source_revision": "7d079f659e2113197b7f07ae0427af77e6597277",
+  "cpp_binary_sha256": "81631371e1f19935ec9b6feb2160ef83a671f467671764fc61eb18efe8b55644",
+  "cpp_runtime_image": "sha256:c5f626fa357cbc3dfb4d8d8be637f560def3e62efcf16a6df481269faf1478fd",
+  "gateway_binary_sha256": "8ebbad94899084fdd3df3b46d703e1978e45d0c51c05c956e5c3929ba98f3a9e",
+  "gateway_runtime_image": "sha256:2a063f344649c92d8ae120186818bf332b01fd36b94be398a88b9b582abb5456",
+  "schema_version": "c3-delivery-authority-provenance-v1"
+}

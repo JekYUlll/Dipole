@@ -1,0 +1,48 @@
+{
+  "schema_version": "dipole.performance.recovery-report.v1",
+  "run_id": "c1-node2-recovery-d8b0e4a9-fresh",
+  "target_service": "dipole-node2",
+  "expected_revision": "d8b0e4a9ac902c747e7d4259fd5cedccef439d02",
+  "fault": {
+    "action": "stop_start",
+    "consumer_group": "dipole-consumer",
+    "stable_member_count": 72
+  },
+  "recovery": {
+    "fault_to_unavailable_ms": 518,
+    "unavailable_to_ready_ms": 16094,
+    "restart_to_ready_ms": 16093
+  },
+  "timeline": {
+    "fault_started_at": "2026-08-30T06:24:54.379719Z",
+    "unavailable_observed_at": "2026-08-30T06:24:54.898352Z",
+    "start_requested_at": "2026-08-30T06:24:54.899724Z",
+    "ready_observed_at": "2026-08-30T06:25:10.993341Z"
+  },
+  "before": {
+    "container_id": "42c540071182c5dd22cb07d5de8c14a7614693ef1e13ae7b09107d559175e3a0",
+    "image_id": "sha256:7f22c38a12ff0d051ded246a9b200d4db65a4785ab7331700a5f94224e298254",
+    "revision": "d8b0e4a9ac902c747e7d4259fd5cedccef439d02",
+    "source_dirty": false,
+    "pid": 2227470
+  },
+  "after": {
+    "container_id": "42c540071182c5dd22cb07d5de8c14a7614693ef1e13ae7b09107d559175e3a0",
+    "image_id": "sha256:7f22c38a12ff0d051ded246a9b200d4db65a4785ab7331700a5f94224e298254",
+    "revision": "d8b0e4a9ac902c747e7d4259fd5cedccef439d02",
+    "source_dirty": false,
+    "pid": 2239108
+  },
+  "post_load": {
+    "baseline_sha256": "fe8e565f6857e57f0b027325620d1fe7ce70b02609de122ccd90bd6444e24866",
+    "attempted": 40,
+    "accepted": 40,
+    "persisted": 40,
+    "received": 40,
+    "expected_receipts": 40,
+    "delivery_rate": 1.0,
+    "peak_kafka_lag": 0,
+    "settled_kafka_lag": 0
+  },
+  "passed": true
+}

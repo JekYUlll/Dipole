@@ -1,0 +1,307 @@
+app:
+  name: dipole
+  env: docker
+
+log:
+  level: info
+  format: console
+  development: false
+  file_enabled: false
+
+server:
+  host: 0.0.0.0
+  port: 8080
+
+gateway:
+  # Gateway owns public HTTP/WS; non-WS HTTP is proxied to the Core HTTP process during M5.
+  # embedded keeps the modular monolith path; remote gives realtime delivery ownership to cmd/services/gateway.
+  mode: embedded
+  core_http_target: http://127.0.0.1:8081
+  # Exposes JWT-authenticated durable Task query/cancel/approval routes through the Gateway.
+  # Keep disabled until the Agent Runtime and Temporal control plane are ready.
+  agent_control_enabled: false
+  agent_control_target: http://127.0.0.1:8091
+  # Exposes owner-derived Event Subscription list/revoke through Core gRPC. Creation stays closed until Definition discovery exists.
+  agent_subscription_enabled: false
+  agent_subscription_tenant_id: dipole
+  # Exposes owner-visible Memory list/revoke control. Automatic Observation writes remain disabled.
+  agent_memory_enabled: false
+  agent_memory_tenant_id: dipole
+  # Exposes owner-scoped digest metadata and Markdown content. Object keys and metadata JSON remain internal.
+  agent_artifact_enabled: false
+  # Exposes MCP only through Gateway JWT authentication and Core Task/Run authorization.
+  agent_mcp_enabled: false
+  agent_mcp_target: http://127.0.0.1:8091
+
+realtime:
+  # go is the compatible default; shadow keeps Go writes while C++ observes; cpp checkpoints Go message offsets without client writes.
+  delivery: go
+  # C3 shared fencing remains opt-in until cross-language node observations and cutover receipts are complete.
+  fencing_enabled: false
+  fencing_key: dipole:realtime:delivery:authority:v1
+  fencing_epoch: 0
+
+tls:
+  enabled: false
+
+metrics:
+  # Bind to loopback by default. Container deployments may bind the private service network.
+  enabled: false
+  address: 127.0.0.1:9100
+  dependency_probes_enabled: false
+  dependency_probe_interval_seconds: 5
+  dependency_probe_timeout_ms: 1000
+  dependency_failure_threshold: 3
+  dependency_success_threshold: 2
+
+auth:
+  token_ttl_hours: 168
+  jwt_secret: dipole-dev-jwt-secret-change-me
+  jwt_issuer: dipole
+  # Canonical public MCP resource URI. Override together with the Agent Runtime in shared environments.
+  agent_mcp_resource: https://dipole.local/api/v1/agent/mcp
+
+mysql:
+  host: mysql
+  port: 3306
+  user: dipole
+  password: dipole123
+  dbname: dipole
+
+redis:
+  mode: single
+  host: redis
+  port: 6379
+  password: ""
+  db: 0
+  sentinel_master_name: ""
+  sentinel_addresses: []
+  sentinel_password: ""
+
+cassandra:
+  # Shadow projector remains off until its schema and Kafka consumer are deployed independently.
+  enabled: false
+  hosts:
+    - 127.0.0.1:19042
+  keyspace: dipole_message_shadow
+  local_datacenter: datacenter1
+  timeline_bucket_size: 10000
+  connect_timeout_seconds: 5
+
+elasticsearch:
+  # Search Indexer owns this connection; Core, Message and Gateway keep it disabled.
+  enabled: false
+  address: http://127.0.0.1:19200
+  index_prefix: dipole
+  shards: 1
+  replicas: 0
+  request_timeout_seconds: 10
+  username: ""
+  password: ""
+  api_key: ""
+
+kafka:
+  enabled: true
+  brokers:
+    - kafka:9092
+  client_id: dipole
+  topic_prefix: dipole
+  topic_partitions: 6
+  topic_replication_factor: 1
+  topic_min_insync_replicas: 1
+  topic_retention_hours: 168
+  required_acks: one
+  dial_timeout_seconds: 5
+  write_timeout_seconds: 5
+  consume_retry_max_attempts: 3
+  consume_retry_backoff_ms: 500
+  consumer_group_balancer: roundrobin
+  consumer_heartbeat_seconds: 3
+  consumer_session_timeout_seconds: 30
+  consumer_rebalance_timeout_seconds: 30
+
+message:
+  # local keeps direct in-process calls; grpc connects to the authenticated Message endpoint below.
+  transport: local
+  # cmd/services/message: shadow serves queries only; owner enables commands, Kafka persistence, and Outbox.
+  runtime_mode: owner
+  # Query-only comparison; send commands always execute on the selected primary exactly once.
+  shadow_queries: false
+  # Compare Message Store history pages with Cassandra asynchronously; MySQL remains the response source.
+  cassandra_shadow_reads: false
+  # Deterministic conversation cohort for Cassandra Seq-cursor reads; 0 is the emergency rollback.
+  cassandra_read_percentage: 0
+  # Synchronously compare this percentage of conversation-operation cohorts with MySQL using the same Seq cursor.
+  cassandra_read_verify_percentage: 0
+  # Hydrate duplicate-send responses by Metadata locator from Cassandra, with MySQL fallback.
+  cassandra_duplicate_hydration: false
+  # Require a table-scoped MySQL account before accepting Message RPC traffic.
+  enforce_db_permissions: false
+  # atomic is the rollback path; projector retires Message-owned Inbox writes after Sync validation.
+  inbox_write_mode: atomic
+  # off sends only existing realtime frames; shadow appends body-free sync.item.notify.v1 locators.
+  timeline_notify_mode: off
+  # Empty values inherit the global mysql block for backward-compatible local development.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
+
+sync:
+  # local is the instant rollback path; grpc routes Core HTTP Sync calls to dipole-sync.
+  transport: local
+  # Compare read-only Sync calls; checkpoint advances always execute on the selected primary once.
+  shadow_queries: false
+  # Consume message.created into the durable Inbox; keep disabled until dual-run verification passes.
+  projector_enabled: false
+  # Fail startup when the Sync account can modify Message-owned state or read Core-owned data.
+  enforce_db_permissions: false
+  # Compare MySQL-hydrated Sync payloads with Cassandra asynchronously; MySQL remains primary.
+  cassandra_shadow_hydration: false
+  # Opt in to Cassandra-first hydration; any Cassandra failure immediately reads the same locators from MySQL.
+  cassandra_primary_hydration: false
+  # Empty values inherit the global mysql block for backward-compatible local development.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
+
+search:
+  # Gateway registers the public Search route only after the independent Search RPC is deployed.
+  enabled: false
+  # Empty values inherit global MySQL; production maintenance commands use a dedicated account.
+  mysql:
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    dbname: ""
+
+internal_rpc:
+  # Keep disabled until Core and Message are deployed as separate processes.
+  enabled: false
+  shared_secret: ""  # set with DIPOLE_INTERNAL_RPC_SHARED_SECRET
+  core_listen_address: 127.0.0.1:9091
+  core_target: 127.0.0.1:9091
+  message_listen_address: 127.0.0.1:9092
+  message_target: 127.0.0.1:9092
+  search_listen_address: 127.0.0.1:9093
+  search_target: 127.0.0.1:9093
+  sync_listen_address: 127.0.0.1:9094
+  sync_target: 127.0.0.1:9094
+  # Core-to-Search Agent retrieval remains disabled until mTLS and Shadow evidence are reviewed.
+  agent_conversation_search_enabled: false
+  # Core receipt commit stays disabled until active authority and mTLS evidence are approved.
+  agent_memory_promotion_receipt_commit_enabled: false
+  # OAuth callback transaction consumption stays disabled until mTLS, callback routing, and Runtime key handling are reviewed.
+  agent_oauth_authorization_transaction_consume_enabled: false
+  # C2 shadow receiver only records validated node batches; it never delivers to WebSocket clients.
+  delivery_observation_enabled: false
+  delivery_observation_listen_address: 127.0.0.1:9095
+  delivery_observation_capacity: 1024
+  delivery_observation_retry_after_ms: 25
+  # C2 primary edge remains disabled until replay and client-dedup evidence pass.
+  delivery_primary_enabled: false
+  delivery_primary_replay_capacity: 8192
+  dial_timeout_seconds: 5
+  shutdown_timeout_seconds: 15
+  # Plaintext is accepted only on loopback. Enable mTLS for containers or remote hosts.
+  tls_enabled: false
+  tls_cert_file: ""
+  tls_key_file: ""
+  tls_ca_file: ""
+  tls_server_name: ""
+
+storage:
+  enabled: true
+  provider: minio
+  endpoint: minio:9000
+  presign_endpoint: 192.168.1.8:9000
+  # OSS MinIO lacks Bucket CORS; keep the same-origin Gateway proxy disabled by default.
+  presigned_upload_proxy_enabled: false
+  presigned_upload_proxy_timeout_seconds: 30
+  multipart_require_checksum: false
+  access_key: dipoleplatform
+  secret_key: dipoleplatformpass
+  use_ssl: false
+  bucket: dipole-files
+  search_archive_bucket: dipole-search-archives
+  search_archive_retention_days: 30
+  message_archive_bucket: dipole-message-archives
+  message_archive_retention_days: 30
+  # Artifact storage is opt-in and uses a dedicated identity; do not reuse file credentials.
+  artifact_enabled: false
+  artifact_endpoint: 127.0.0.1:9000
+  artifact_access_key: ""
+  artifact_secret_key: ""
+  artifact_use_ssl: false
+  artifact_bucket: dipole-agent-artifacts
+  # Supplied only to the offline reconcile command; never inject into Core or Agent Runtime.
+  artifact_audit_access_key: ""
+  artifact_audit_secret_key: ""
+  # Supplied only to the offline maintenance evaluator; this identity has Stat/Get evidence access and no Delete.
+  artifact_maintenance_access_key: ""
+  artifact_maintenance_secret_key: ""
+  public_base_url: http://192.168.1.8:9000/dipole-files
+  file_max_size_mb: 50
+  multipart_policy_version: v1
+  multipart_mode: relay
+  multipart_chunk_size_mb: 5
+  multipart_session_ttl_minutes: 60
+  multipart_direct_threshold_mb: 4
+  multipart_max_concurrency: 3
+  multipart_max_retries: 2
+  multipart_retry_delay_ms: 250
+  multipart_presign_url_ttl_seconds: 900
+
+rate_limit:
+  enabled: false
+  register_limit: 5
+  register_window_seconds: 3600
+  login_limit: 10
+  login_window_seconds: 300
+  message_limit: 120
+  message_window_seconds: 60
+  file_upload_limit: 10
+  file_upload_window_seconds: 300
+  # Applied independently from the legacy enabled switch whenever the MCP route is mounted.
+  agent_mcp_limit: 60
+  agent_mcp_window_seconds: 60
+
+presence:
+  enabled: true
+  node_id: ""
+  ttl_seconds: 120
+
+hot_group:
+  enabled: true
+  member_count_threshold: 200
+  message_threshold: 50
+  window_seconds: 60
+  cooling_seconds: 180
+
+ai:
+  enabled: true
+  runtime_mode: embedded
+  policy_mode: persistent  # set static for an explicit rollback to code-defined grants
+  provider: openai
+  model: deepseek-chat
+  api_key: ""  # set via DIPOLE_AI_API_KEY in .env or environment
+  base_url: "https://api.deepseek.com"
+  timeout_seconds: 30
+  max_context_messages: 12
+  assistant_uuid: UAI000000000000000001
+  assistant_nickname: Dipole AI
+  assistant_telephone: "19900000000"
+  assistant_email: ai@dipole.local
+  assistant_avatar: https://api.dicebear.com/9.x/bottts/svg?seed=dipole-ai&backgroundColor=1a1a2e
+  system_prompt: >
+    You are Dipole AI, a concise and helpful instant messaging assistant.
+    Use the conversation context to answer naturally.
+    Output in plain text only. Do not use Markdown or HTML formatting.
+    If the user sends a file, acknowledge the file metadata you can see.
+    Keep answers short unless the user asks for depth.

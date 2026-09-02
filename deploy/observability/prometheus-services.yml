@@ -1,0 +1,49 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [alertmanager:9093]
+
+rule_files:
+  - /etc/prometheus/kafka-alerts.yml
+  - /etc/prometheus/cassandra-read-alerts.yml
+  - /etc/prometheus/sync-projector-alerts.yml
+  - /etc/prometheus/multipart-alerts.yml
+  - /etc/prometheus/web-sync-alerts.yml
+  - /etc/prometheus/duplicate-hydration-alerts.yml
+  - /etc/prometheus/service-alerts.yml
+  - /etc/prometheus/agent-otel-alerts.yml
+  - /etc/prometheus/agent-timeline-repair-alerts.yml
+
+scrape_configs:
+  - job_name: dipole-required
+    static_configs:
+      - targets: [core:9100]
+        labels: {service: dipole-core}
+      - targets: [message:9100]
+        labels: {service: dipole-message}
+      - targets: [sync:9100]
+        labels: {service: dipole-sync}
+      - targets: [gateway:9100]
+        labels: {service: dipole-gateway}
+
+  - job_name: dipole-optional
+    static_configs:
+      - targets: [search:9100]
+        labels: {service: dipole-search}
+      - targets: [search-indexer:9100]
+        labels: {service: dipole-search-indexer}
+      - targets: [agent-timeline-repair:9100]
+        labels: {service: dipole-agent-timeline-repair}
+
+  - job_name: dipole-otel-collector
+    static_configs:
+      - targets: [otel-collector:8888]
+
+  - job_name: dipole-agent
+    metrics_path: /metrics
+    static_configs:
+      - targets: [agent:8091]

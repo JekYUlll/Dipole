@@ -1,0 +1,35 @@
+{
+  "schema_version": "dipole.realtime.presence-shadow-report.v1",
+  "source_revision": "633491f19795a583aa465ca7cf82d5368bb90f1f",
+  "source_dirty": false,
+  "image_id": "sha256:670fa32b6c8a86f34339a1dceb4f4d0fc8dee0adf470fab9c1b2d4460ca39907",
+  "kafka_replay": {
+    "evidence_schema": "dipole.realtime.shadow-evidence.v2",
+    "records": 206,
+    "projected": 205,
+    "rejected": 1,
+    "nonzero_node_batches": 20,
+    "eligible_connections": 20,
+    "stale_connections": 20,
+    "malformed_connections": 0,
+    "final_group_lag": 0
+  },
+  "sentinel_failover": {
+    "redis_nodes": 3,
+    "sentinel_nodes": 3,
+    "quorum": 2,
+    "reader_iterations": 80,
+    "successful_reads": 75,
+    "bounded_read_errors": 5,
+    "process_restarted": false,
+    "master_before": "redis-2",
+    "master_after": "redis-3"
+  },
+  "client_writes": 0,
+  "cleanup": {
+    "presence_fixture_removed": true,
+    "shadow_process_stopped": true,
+    "sentinel_project_removed": true,
+    "sentinel_volumes_removed": true
+  }
+}

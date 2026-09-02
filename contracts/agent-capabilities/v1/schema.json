@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-capabilities/v1/schema.json",
+  "title": "Dipole Agent Capability API v1",
+  "description": "Transport-neutral operations exposed to trusted Agent runtimes. Identity fields are supplied by the server execution context.",
+  "type": "object",
+  "x-dipole-version": "dipole.agent.capability.v1",
+  "x-dipole-operations": [
+    "get_user_profile",
+    "list_direct_messages",
+    "list_conversations",
+    "read_conversation",
+    "send_system_message"
+  ],
+  "x-dipole-capabilities": [
+    {"id": "user.profile.read", "risk": "read", "required_permission": "user.profile.read", "approval_required": false},
+    {"id": "message.direct.read", "risk": "read", "required_permission": "conversation.read", "approval_required": false},
+    {"id": "conversation.list", "risk": "read", "required_permission": "conversation.list", "approval_required": false},
+    {"id": "conversation.read", "risk": "read", "required_permission": "conversation.read", "approval_required": false},
+    {"id": "message.system.send", "risk": "write", "required_permission": "message.write", "approval_required": false}
+  ],
+  "required": ["operation", "tenant_id", "principal_uuid", "agent_uuid", "permissions", "resource_scopes", "input"],
+  "properties": {
+    "operation": {
+      "enum": [
+        "get_user_profile",
+        "list_direct_messages",
+        "list_conversations",
+        "read_conversation",
+        "send_system_message"
+      ]
+    },
+    "tenant_id": {"type": "string", "minLength": 1, "readOnly": true},
+    "principal_uuid": {"type": "string", "minLength": 1, "readOnly": true},
+    "agent_uuid": {"type": "string", "minLength": 1, "readOnly": true},
+    "delegated_by_uuid": {"type": "string", "readOnly": true},
+    "permissions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true,
+      "readOnly": true
+    },
+    "resource_scopes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/resource_scope"},
+      "minItems": 1,
+      "readOnly": true
+    },
+    "approved_capabilities": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true,
+      "readOnly": true
+    },
+    "request_id": {"type": "string", "readOnly": true},
+    "trace_id": {"type": "string", "readOnly": true},
+    "event_id": {"type": "string", "readOnly": true},
+    "input": {"type": "object"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "resource_scope": {
+      "type": "object",
+      "required": ["resource_type", "resource_id", "actions"],
+      "properties": {
+        "resource_type": {"type": "string", "minLength": 1},
+        "resource_id": {"type": "string", "minLength": 1},
+        "actions": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "capability_descriptor": {
+      "type": "object",
+      "required": ["id", "risk", "required_permission", "approval_required"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "risk": {"enum": ["read", "write", "destructive"]},
+        "required_permission": {"type": "string", "minLength": 1},
+        "approval_required": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,17 @@
+ffa24a70ff68935fcff6574535fa75f7f10e102a0710497fd92c394c53379ff6  benchmarks/c3-delivery-authority-2026-08-28/raw/cleanup.txt
+d6f82afb6bdba029531b744ab57fb2fd647e1e631754f19bf438b1776f30f517  benchmarks/c3-delivery-authority-2026-08-28/raw/cpp-container-health.json
+2b8c0099b093c710ecf4165815f3cb19e50c3e9a7b90ebf99b0aeda5a9263e25  benchmarks/c3-delivery-authority-2026-08-28/raw/cpp-gateway-metrics.prom
+ed9e98884e64451408ab9e160ccbacf6ada863458689ed38446f2027bdc81c41  benchmarks/c3-delivery-authority-2026-08-28/raw/cpp-go-group.txt
+4ed298e585a3c439fd24e3e0118df1b21b42da0433efc4e97472930c1b348088  benchmarks/c3-delivery-authority-2026-08-28/raw/cpp-primary-group.txt
+44af66cc71a9a9c9be891af8c9ec67cbf0ac82e2aecd373a088df65bef2777b0  benchmarks/c3-delivery-authority-2026-08-28/raw/cpp-probe.json
+df52724b6238f4055cf6adabfb25084b44912dac92505ef351c86a6bc2e334ee  benchmarks/c3-delivery-authority-2026-08-28/raw/cpp-realtime-ready.json
+4ad67fc167c3457f564936e4e396e7b2cbdb268ceb02f911ebced9905b795faa  benchmarks/c3-delivery-authority-2026-08-28/raw/go-group.txt
+427e66498f48b24b63150fcc7bcb1898e6ce79e1cb74cd7237e036d2d4f5ee9a  benchmarks/c3-delivery-authority-2026-08-28/raw/go-metrics.prom
+b3b2ef68b9a77f44b204cd260d5f582702efb3de01154ade128e7dd2bc6d7f68  benchmarks/c3-delivery-authority-2026-08-28/raw/go-probe.json
+3383c53f0dec243445e7d200cd2ce71acc05656773616d45ddf689b41cb92239  benchmarks/c3-delivery-authority-2026-08-28/raw/primary.ndjson
+50ef0bb162311f877fbc555cf60fe00adf1d6d76c040be544ed149e98e9c1fa4  benchmarks/c3-delivery-authority-2026-08-28/raw/runtime-provenance.json
+d17096173161b5305df1d75c93f5a76f71e67296f6943fdb1d8b89cec1f2b5ab  benchmarks/c3-delivery-authority-2026-08-28/raw/shared-nodes-after.txt
+d17096173161b5305df1d75c93f5a76f71e67296f6943fdb1d8b89cec1f2b5ab  benchmarks/c3-delivery-authority-2026-08-28/raw/shared-nodes-before-cleanup.txt
+fe9814beb4d58e7d189d82f056e5a5e3c5fbbf0ba0a6508e0e1ff45971898ccf  benchmarks/c3-delivery-authority-2026-08-28/README.md
+a2e83497412b739b04792b5087b6e0902f0a5d51b31d5172d39f60c76c20b32b  benchmarks/c3-delivery-authority-2026-08-28/report.json
+ae31feb22867f8b5e729d341373e132f712ae89ff8d33710a1d664a5001eeb18  benchmarks/c3-delivery-authority-2026-08-28/verify.py

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dipole.search.v1;
+
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/search/v1;searchv1";
+
+import "google/protobuf/timestamp.proto";
+import "dipole/common/v1/context.proto";
+
+message SearchMessagesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string query = 2;
+  int32 page_size = 3;
+}
+
+message SearchMessage {
+  string server_message_id = 1;
+  string conversation_key = 2;
+  uint64 sequence = 3;
+  uint64 revision = 4;
+  string sender_id = 5;
+  int32 message_type = 6;
+  string content = 7;
+  google.protobuf.Timestamp sent_at = 8;
+}
+
+message SearchMessagesResponse {
+  repeated SearchMessage messages = 1;
+}
+
+service SearchService {
+  rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse);
+}

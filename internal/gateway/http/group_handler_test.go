@@ -1,0 +1,279 @@
+package http
+
+import (
+	"io"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/JekYUlll/Dipole/internal/middleware"
+	"github.com/JekYUlll/Dipole/internal/model"
+	coregroup "github.com/JekYUlll/Dipole/internal/services/core/domain/group"
+)
+
+type stubGroupService struct {
+	createGroupFn   func(currentUserUUID string, input coregroup.CreateGroupInput) (*coregroup.GroupView, error)
+	getGroupFn      func(currentUserUUID, groupUUID string) (*coregroup.GroupView, error)
+	getAvatarFn     func(groupUUID string) (*coregroup.GroupAvatarResponse, error)
+	listMembersFn   func(currentUserUUID, groupUUID string) ([]*coregroup.GroupMemberView, error)
+	addMembersFn    func(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*coregroup.GroupMemberView, error)
+	leaveGroupFn    func(currentUserUUID, groupUUID string) error
+	updateGroupFn   func(currentUserUUID, groupUUID string, input coregroup.UpdateGroupInput) (*coregroup.GroupView, error)
+	uploadAvatarFn  func(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*coregroup.GroupView, error)
+	removeMembersFn func(currentUserUUID, groupUUID string, memberUUIDs []string) error
+	dismissGroupFn  func(currentUserUUID, groupUUID string) error
+}
+
+func (s *stubGroupService) CreateGroup(currentUserUUID string, input coregroup.CreateGroupInput) (*coregroup.GroupView, error) {
+	return s.createGroupFn(currentUserUUID, input)
+}
+
+func (s *stubGroupService) GetGroup(currentUserUUID, groupUUID string) (*coregroup.GroupView, error) {
+	return s.getGroupFn(currentUserUUID, groupUUID)
+}
+
+func (s *stubGroupService) GetAvatarResponse(groupUUID string) (*coregroup.GroupAvatarResponse, error) {
+	return s.getAvatarFn(groupUUID)
+}
+
+func (s *stubGroupService) ListMembers(currentUserUUID, groupUUID string) ([]*coregroup.GroupMemberView, error) {
+	return s.listMembersFn(currentUserUUID, groupUUID)
+}
+
+func (s *stubGroupService) AddMembers(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*coregroup.GroupMemberView, error) {
+	return s.addMembersFn(currentUserUUID, groupUUID, memberUUIDs)
+}
+
+func (s *stubGroupService) LeaveGroup(currentUserUUID, groupUUID string) error {
+	return s.leaveGroupFn(currentUserUUID, groupUUID)
+}
+
+func (s *stubGroupService) UpdateGroup(currentUserUUID, groupUUID string, input coregroup.UpdateGroupInput) (*coregroup.GroupView, error) {
+	return s.updateGroupFn(currentUserUUID, groupUUID, input)
+}
+
+func (s *stubGroupService) UploadAvatar(currentUserUUID, groupUUID string, header *multipart.FileHeader) (*coregroup.GroupView, error) {
+	return s.uploadAvatarFn(currentUserUUID, groupUUID, header)
+}
+
+func (s *stubGroupService) RemoveMembers(currentUserUUID, groupUUID string, memberUUIDs []string) error {
+	return s.removeMembersFn(currentUserUUID, groupUUID, memberUUIDs)
+}
+
+func (s *stubGroupService) DismissGroup(currentUserUUID, groupUUID string) error {
+	return s.dismissGroupFn(currentUserUUID, groupUUID)
+}
+
+func TestGroupHandlerCreateSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		createGroupFn: func(currentUserUUID string, input coregroup.CreateGroupInput) (*coregroup.GroupView, error) {
+			return &coregroup.GroupView{
+				Group: &model.Group{UUID: "G100", Name: input.Name, MemberCount: 1},
+				Owner: &model.User{UUID: currentUserUUID, Nickname: "owner"},
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/groups", strings.NewReader(`{"name":"Team"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Create(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerGetForbidden(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		getGroupFn: func(currentUserUUID, groupUUID string) (*coregroup.GroupView, error) {
+			return nil, coregroup.ErrGroupPermissionDenied
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/groups/G100", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Get(context)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerAddMembersSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		addMembersFn: func(currentUserUUID, groupUUID string, memberUUIDs []string) ([]*coregroup.GroupMemberView, error) {
+			return []*coregroup.GroupMemberView{}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/groups/G100/members", strings.NewReader(`{"member_uuids":["U200"]}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.AddMembers(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerLeaveConflict(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		leaveGroupFn: func(currentUserUUID, groupUUID string) error {
+			return coregroup.ErrGroupOwnerCannotLeave
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodDelete, "/api/v1/groups/G100/members/me", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Leave(context)
+
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerUpdateSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		updateGroupFn: func(currentUserUUID, groupUUID string, input coregroup.UpdateGroupInput) (*coregroup.GroupView, error) {
+			return &coregroup.GroupView{
+				Group: &model.Group{UUID: groupUUID, Name: input.Name},
+				Owner: &model.User{UUID: currentUserUUID},
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/groups/G100/update", strings.NewReader(`{"name":"New Team"}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Update(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerRemoveMembersConflict(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		removeMembersFn: func(currentUserUUID, groupUUID string, memberUUIDs []string) error {
+			return coregroup.ErrGroupOwnerCannotBeRemoved
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/groups/G100/remove-members", strings.NewReader(`{"member_uuids":["U100"]}`))
+	context.Request.Header.Set("Content-Type", "application/json")
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.RemoveMembers(context)
+
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerDismissSuccess(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		dismissGroupFn: func(currentUserUUID, groupUUID string) error {
+			return nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/groups/G100/dismiss", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Dismiss(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerGetAvatarStreamsContent(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		getAvatarFn: func(groupUUID string) (*coregroup.GroupAvatarResponse, error) {
+			return &coregroup.GroupAvatarResponse{
+				ContentType: "image/png",
+				ContentSize: 4,
+				Content:     io.NopCloser(strings.NewReader("data")),
+			}, nil
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodGet, "/api/v1/groups/G100/avatar", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+
+	handler.GetAvatar(context)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+}
+
+func TestGroupHandlerDismissConflictWhenAlreadyDismissed(t *testing.T) {
+	t.Parallel()
+
+	handler := NewGroupHandler(&stubGroupService{
+		dismissGroupFn: func(currentUserUUID, groupUUID string) error {
+			return coregroup.ErrGroupDismissed
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/groups/G100/dismiss", nil)
+	context.Params = gin.Params{{Key: "uuid", Value: "G100"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	handler.Dismiss(context)
+
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d", recorder.Code)
+	}
+}

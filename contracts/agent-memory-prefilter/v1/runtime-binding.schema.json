@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-prefilter/v1/runtime-binding.schema.json",
+  "title": "Dipole Agent Memory Prefilter Runtime Binding v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "mode", "decisionSha256", "candidateId", "configurationSha256", "corpusSha256", "reviewSha256"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-prefilter-runtime-binding.v1"},
+    "mode": {"enum": ["off", "shadow", "enforced"]},
+    "decisionSha256": {"$ref": "#/$defs/sha256"}, "candidateId": {"$ref": "#/$defs/id"}, "configurationSha256": {"$ref": "#/$defs/sha256"}, "corpusSha256": {"$ref": "#/$defs/sha256"}, "reviewSha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"id": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._:-]*$"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

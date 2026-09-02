@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS outbox_events;
+DROP TABLE IF EXISTS ai_call_logs;
+DROP TABLE IF EXISTS group_members;
+DROP TABLE IF EXISTS `groups`;
+DROP TABLE IF EXISTS contact_applications;
+DROP TABLE IF EXISTS contacts;
+DROP TABLE IF EXISTS conversations;
+DROP TABLE IF EXISTS uploaded_files;
+DROP TABLE IF EXISTS user_sync_inbox;
+DROP TABLE IF EXISTS user_sync_states;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS users;

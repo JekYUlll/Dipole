@@ -1,0 +1,129 @@
+syntax = "proto3";
+
+package dipole.core.v1;
+
+option go_package = "github.com/JekYUlll/Dipole/api/gen/go/core/v1;corev1";
+
+import "dipole/common/v1/context.proto";
+
+message UserSnapshot {
+  string user_id = 1;
+  string nickname = 2;
+  string avatar = 3;
+  int32 user_type = 4;
+  int32 status = 5;
+  bool is_admin = 6;
+}
+
+message GroupSnapshot {
+  string group_id = 1;
+  string name = 2;
+  string owner_user_id = 3;
+  int32 member_count = 4;
+  int32 status = 5;
+}
+
+message GroupMemberSnapshot {
+  string group_id = 1;
+  string user_id = 2;
+  int32 role = 3;
+}
+
+message FileSnapshot {
+  string file_id = 1;
+  string uploader_user_id = 2;
+  string file_name = 3;
+  int64 file_size = 4;
+  string content_type = 5;
+  string url = 6;
+	int64 created_at_unix_milli = 7;
+}
+
+message GetUserRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string user_id = 2;
+}
+
+message GetUserResponse {
+  UserSnapshot user = 1;
+}
+
+message CanSendDirectMessageRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string user_id = 2;
+  string target_user_id = 3;
+}
+
+message CanSendDirectMessageResponse {
+  bool allowed = 1;
+}
+
+message GetGroupRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string group_id = 2;
+}
+
+message GetGroupResponse {
+  GroupSnapshot group = 1;
+}
+
+message GetGroupMemberRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string group_id = 2;
+  string user_id = 3;
+}
+
+message GetGroupMemberResponse {
+  GroupMemberSnapshot member = 1;
+}
+
+message ListGroupMembersRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string group_id = 2;
+}
+
+message ListGroupMembersResponse {
+  repeated GroupMemberSnapshot members = 1;
+}
+
+message GetOwnedFileRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string uploader_user_id = 2;
+  string file_id = 3;
+}
+
+message GetOwnedFileResponse {
+  FileSnapshot file = 1;
+}
+
+message ListOwnedFilesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string uploader_user_id = 2;
+  string before_file_id = 3;
+  int32 limit = 4;
+}
+
+message ListOwnedFilesResponse {
+  repeated FileSnapshot files = 1;
+  string next_before_file_id = 2;
+  bool has_more = 3;
+}
+
+message ListSearchConversationKeysRequest {
+  dipole.common.v1.RequestContext context = 1;
+}
+
+message ListSearchConversationKeysResponse {
+  repeated string conversation_keys = 1;
+}
+
+service CoreCapabilityService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc CanSendDirectMessage(CanSendDirectMessageRequest) returns (CanSendDirectMessageResponse);
+  rpc GetGroup(GetGroupRequest) returns (GetGroupResponse);
+  rpc GetGroupMember(GetGroupMemberRequest) returns (GetGroupMemberResponse);
+  rpc ListGroupMembers(ListGroupMembersRequest) returns (ListGroupMembersResponse);
+  rpc GetOwnedFile(GetOwnedFileRequest) returns (GetOwnedFileResponse);
+	 rpc ListOwnedFiles(ListOwnedFilesRequest) returns (ListOwnedFilesResponse);
+  rpc ListSearchConversationKeys(ListSearchConversationKeysRequest) returns (ListSearchConversationKeysResponse);
+}

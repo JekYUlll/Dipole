@@ -1,0 +1,14 @@
+{
+  "subscriptionId": "subscription:project-guardian:synthetic:v1",
+  "definitionId": "definition:project-guardian:synthetic",
+  "definitionVersion": 1,
+  "tenantId": "dipole",
+  "agentId": "agent:project-guardian",
+  "eventType": "message.group.created",
+  "resourceType": "conversation",
+  "resourceId": "group:fixture-project",
+  "filterKind": "message_contains_any",
+  "filter": {
+    "terms": ["commitment", "decision", "risk", "no confirmed owner"]
+  }
+}

@@ -1,0 +1,919 @@
+package corefile
+
+import (
+	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/config"
+	"github.com/JekYUlll/Dipole/internal/model"
+	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
+)
+
+var (
+	ErrFileMissing               = errors.New("file is missing")
+	ErrFileTooLarge              = errors.New("file is too large")
+	ErrFileStorageUnavailable    = application.ErrFileStorageUnavailable
+	ErrFileNotFound              = application.ErrFileNotFound
+	ErrFilePermissionDenied      = application.ErrFilePermissionDenied
+	ErrFileExpired               = errors.New("file is expired")
+	ErrMultipartSessionNotFound  = errors.New("multipart upload session not found")
+	ErrMultipartSessionInvalid   = errors.New("multipart upload session is invalid")
+	ErrMultipartPartInvalid      = errors.New("multipart upload part is invalid")
+	ErrMultipartChecksumRequired = errors.New("multipart file checksum is required")
+	ErrMultipartChecksumMismatch = errors.New("multipart file checksum mismatch")
+	ErrMultipartChecksumCleanup  = errors.New("multipart file checksum cleanup unavailable")
+)
+
+type fileRepository interface {
+	Create(file *model.UploadedFile) error
+	GetByUUID(uuid string) (*model.UploadedFile, error)
+}
+
+type fileMessageRepository interface {
+	FindLatestAccessibleFileMessage(fileUUID, userUUID string) (*model.Message, error)
+}
+
+type fileStorage interface {
+	platformStorage.Uploader
+	platformStorage.Downloader
+}
+
+type multipartObjectRemover interface {
+	RemoveObject(ctx context.Context, bucket, objectKey string) error
+}
+
+type multipartPartURLSigner interface {
+	PresignMultipartPartURL(ctx context.Context, objectKey, uploadID string, partNumber int, expiry time.Duration) (string, error)
+}
+
+type multipartPartInspector interface {
+	InspectMultipartPart(ctx context.Context, objectKey, uploadID string, partNumber int) (*platformStorage.UploadedPart, error)
+}
+
+type FileDownloadResult struct {
+	FileID      string     `json:"file_id"`
+	FileName    string     `json:"file_name"`
+	ContentType string     `json:"content_type"`
+	FileSize    int64      `json:"file_size"`
+	DownloadURL string     `json:"download_url"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+}
+
+type FileContentResult struct {
+	FileID      string
+	FileName    string
+	ContentType string
+	FileSize    int64
+	Content     io.ReadCloser
+	Cleanup     func()
+}
+
+type countingHashReader struct {
+	reader io.Reader
+	hash   io.Writer
+	count  int64
+}
+
+func (r *countingHashReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	if n > 0 {
+		if _, writeErr := r.hash.Write(p[:n]); writeErr != nil {
+			return n, writeErr
+		}
+		r.count += int64(n)
+	}
+	return n, err
+}
+
+type FileService struct {
+	repo                     fileRepository
+	messageRepo              fileMessageRepository
+	storage                  fileStorage
+	sessionStore             multipartUploadSessionStore
+	maxFileSizeBytes         int64
+	multipartChunkSize       int64
+	multipartSessionTTL      time.Duration
+	multipartPresignURLTTL   time.Duration
+	downloadURLTTL           time.Duration
+	multipartMetrics         *MultipartMetrics
+	multipartRequireChecksum bool
+}
+
+func NewFileService(repo fileRepository, messageRepo fileMessageRepository, storage fileStorage) *FileService {
+	storageCfg := config.StorageConfig()
+	service := newFileService(
+		repo,
+		messageRepo,
+		storage,
+		storageCfg.FileMaxSizeMB*1024*1024,
+		maxInt64(storageCfg.MultipartChunkSizeMB, 5)*1024*1024,
+		time.Duration(maxInt(storageCfg.MultipartSessionTTLMin, 60))*time.Minute,
+		time.Duration(storageCfg.DownloadURLTTLMinutes)*time.Minute,
+	)
+	service.multipartRequireChecksum = storageCfg.MultipartRequireChecksum
+	if storageCfg.MultipartPresignURLTTLSeconds >= 60 && storageCfg.MultipartPresignURLTTLSeconds <= 3600 {
+		service.multipartPresignURLTTL = time.Duration(storageCfg.MultipartPresignURLTTLSeconds) * time.Second
+	}
+	return service
+}
+
+func newFileService(repo fileRepository, messageRepo fileMessageRepository, storage fileStorage, maxFileSizeBytes int64, multipartChunkSize int64, multipartSessionTTL time.Duration, downloadURLTTL time.Duration) *FileService {
+	return &FileService{
+		repo:                   repo,
+		messageRepo:            messageRepo,
+		storage:                storage,
+		sessionStore:           newMultipartUploadSessionStore(),
+		maxFileSizeBytes:       maxFileSizeBytes,
+		multipartChunkSize:     multipartChunkSize,
+		multipartSessionTTL:    multipartSessionTTL,
+		multipartPresignURLTTL: multipartPartURLTTL,
+		downloadURLTTL:         downloadURLTTL,
+	}
+}
+
+// WithMultipartMetrics attaches an optional collector without changing the
+// file application port or the embedded construction path.
+func (s *FileService) WithMultipartMetrics(metrics *MultipartMetrics) *FileService {
+	s.multipartMetrics = metrics
+	return s
+}
+
+func (s *FileService) MultipartMetrics() *MultipartMetrics {
+	if s == nil {
+		return nil
+	}
+	return s.multipartMetrics
+}
+
+type InitiateMultipartUploadInput struct {
+	FileName    string `json:"file_name"`
+	FileSize    int64  `json:"file_size"`
+	ContentType string `json:"content_type"`
+	FileSHA256  string `json:"file_sha256,omitempty"`
+}
+
+type InitiateMultipartUploadResult struct {
+	SessionID  string `json:"session_id"`
+	ChunkSize  int64  `json:"chunk_size"`
+	TotalParts int    `json:"total_parts"`
+}
+
+type MultipartUploadPartStatus struct {
+	PartNumber int    `json:"part_number"`
+	ETag       string `json:"etag"`
+	Size       int64  `json:"size"`
+}
+
+type MultipartUploadStatus struct {
+	SessionID     string                      `json:"session_id"`
+	FileName      string                      `json:"file_name"`
+	FileSize      int64                       `json:"file_size"`
+	ChunkSize     int64                       `json:"chunk_size"`
+	TotalParts    int                         `json:"total_parts"`
+	UploadedParts []MultipartUploadPartStatus `json:"uploaded_parts"`
+}
+
+type MultipartPartUploadURL struct {
+	PartNumber int       `json:"part_number"`
+	URL        string    `json:"url"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type RegisterMultipartPartInput struct {
+	ETag string
+	Size int64
+}
+
+const multipartPartURLTTL = 15 * time.Minute
+
+// MultipartUploadPolicy is safe to expose to authenticated clients. It contains
+// routing and sizing controls only, never storage credentials or signed URLs.
+type MultipartUploadPolicy struct {
+	SchemaVersion              string `json:"schema_version"`
+	PolicyVersion              string `json:"policy_version"`
+	Mode                       string `json:"mode"`
+	FallbackMode               string `json:"fallback_mode"`
+	DirectUploadThresholdBytes int64  `json:"direct_upload_threshold_bytes"`
+	MaxFileSizeBytes           int64  `json:"max_file_size_bytes"`
+	ChunkSizeBytes             int64  `json:"chunk_size_bytes"`
+	MaxConcurrency             int    `json:"max_concurrency"`
+	MaxRetries                 int    `json:"max_retries"`
+	RetryDelayMS               int    `json:"retry_delay_ms"`
+	PresignURLTTLSeconds       int    `json:"presign_url_ttl_seconds"`
+}
+
+func (s *FileService) MultipartUploadPolicy() MultipartUploadPolicy {
+	storageCfg := config.StorageConfig()
+	policyVersion := strings.TrimSpace(storageCfg.MultipartPolicyVersion)
+	if policyVersion == "" {
+		policyVersion = "v1"
+	}
+	mode := strings.TrimSpace(storageCfg.MultipartMode)
+	if mode != "presigned" {
+		mode = "relay"
+	}
+	maxFileSizeMB := maxInt64(storageCfg.FileMaxSizeMB, 50)
+	chunkSizeMB := maxInt64(storageCfg.MultipartChunkSizeMB, 5)
+	directThresholdMB := maxInt64(storageCfg.MultipartDirectThresholdMB, 4)
+	maxConcurrency := storageCfg.MultipartMaxConcurrency
+	if maxConcurrency < 1 || maxConcurrency > 32 {
+		maxConcurrency = 3
+	}
+	maxRetries := storageCfg.MultipartMaxRetries
+	if maxRetries < 0 || maxRetries > 10 {
+		maxRetries = 2
+	}
+	retryDelayMS := storageCfg.MultipartRetryDelayMS
+	if retryDelayMS < 0 || retryDelayMS > 60000 {
+		retryDelayMS = 250
+	}
+	presignTTLSeconds := storageCfg.MultipartPresignURLTTLSeconds
+	if presignTTLSeconds < 60 || presignTTLSeconds > 3600 {
+		presignTTLSeconds = 900
+	}
+	return MultipartUploadPolicy{
+		SchemaVersion:              "dipole.multipart-upload.policy.v1",
+		PolicyVersion:              policyVersion,
+		Mode:                       mode,
+		FallbackMode:               "relay",
+		DirectUploadThresholdBytes: directThresholdMB * 1024 * 1024,
+		MaxFileSizeBytes:           maxFileSizeMB * 1024 * 1024,
+		ChunkSizeBytes:             chunkSizeMB * 1024 * 1024,
+		MaxConcurrency:             maxConcurrency,
+		MaxRetries:                 maxRetries,
+		RetryDelayMS:               retryDelayMS,
+		PresignURLTTLSeconds:       presignTTLSeconds,
+	}
+}
+
+func (s *FileService) UploadMessageFile(uploaderUUID string, header *multipart.FileHeader) (*model.UploadedFile, error) {
+	if header == nil {
+		return nil, ErrFileMissing
+	}
+	if s.storage == nil {
+		return nil, ErrFileStorageUnavailable
+	}
+
+	if s.maxFileSizeBytes > 0 && header.Size > s.maxFileSizeBytes {
+		return nil, ErrFileTooLarge
+	}
+
+	file, err := header.Open()
+	if err != nil {
+		return nil, fmt.Errorf("open uploaded file: %w", err)
+	}
+	defer file.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	uploaded, err := s.storage.UploadMessageFile(ctx, file, header)
+	if err != nil {
+		return nil, fmt.Errorf("upload message file: %w", err)
+	}
+
+	record := &model.UploadedFile{
+		UUID:         generateUploadedFileUUID(),
+		UploaderUUID: strings.TrimSpace(uploaderUUID),
+		Bucket:       uploaded.Bucket,
+		ObjectKey:    uploaded.ObjectKey,
+		FileName:     uploaded.FileName,
+		FileSize:     uploaded.FileSize,
+		ContentType:  uploaded.ContentType,
+		URL:          uploaded.URL,
+	}
+	if err := s.repo.Create(record); err != nil {
+		return nil, fmt.Errorf("persist uploaded file: %w", err)
+	}
+
+	return record, nil
+}
+
+func (s *FileService) GetOwnedFile(uploaderUUID, fileUUID string) (*model.UploadedFile, error) {
+	file, err := s.repo.GetByUUID(strings.TrimSpace(fileUUID))
+	if err != nil {
+		return nil, fmt.Errorf("get uploaded file: %w", err)
+	}
+	if file == nil {
+		return nil, ErrFileNotFound
+	}
+	if file.UploaderUUID != strings.TrimSpace(uploaderUUID) {
+		return nil, ErrFilePermissionDenied
+	}
+
+	return file, nil
+}
+
+func (s *FileService) InitiateMultipartUpload(uploaderUUID string, input InitiateMultipartUploadInput) (*InitiateMultipartUploadResult, error) {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("initiate", outcome, started) }()
+	if s.storage == nil {
+		return nil, ErrFileStorageUnavailable
+	}
+	if s.sessionStore == nil {
+		return nil, ErrMultipartSessionInvalid
+	}
+
+	fileName := strings.TrimSpace(input.FileName)
+	if fileName == "" {
+		return nil, ErrFileMissing
+	}
+	if input.FileSize <= 0 {
+		return nil, ErrMultipartSessionInvalid
+	}
+	if s.maxFileSizeBytes > 0 && input.FileSize > s.maxFileSizeBytes {
+		return nil, ErrFileTooLarge
+	}
+	fileSHA256, err := normalizeFileSHA256(input.FileSHA256)
+	if err != nil {
+		return nil, ErrMultipartPartInvalid
+	}
+	if s.multipartRequireChecksum && fileSHA256 == "" {
+		return nil, ErrMultipartChecksumRequired
+	}
+
+	contentType := strings.TrimSpace(input.ContentType)
+	if contentType == "" {
+		contentType = detectFileContentType(fileName)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	upload, err := s.storage.InitiateMessageMultipartUpload(ctx, fileName, contentType)
+	if err != nil {
+		return nil, fmt.Errorf("initiate multipart upload: %w", err)
+	}
+
+	chunkSize := s.effectiveMultipartChunkSize()
+	totalParts := int((input.FileSize + chunkSize - 1) / chunkSize)
+	session := &multipartUploadSession{
+		SessionID:    generateMultipartSessionID(),
+		UploaderUUID: strings.TrimSpace(uploaderUUID),
+		Bucket:       upload.Bucket,
+		ObjectKey:    upload.ObjectKey,
+		UploadID:     upload.UploadID,
+		FileName:     fileName,
+		FileSize:     input.FileSize,
+		ContentType:  contentType,
+		FileSHA256:   fileSHA256,
+		ChunkSize:    chunkSize,
+		TotalParts:   totalParts,
+		CreatedAt:    time.Now().UTC(),
+	}
+	if err := s.sessionStore.Create(ctx, session, s.effectiveMultipartSessionTTL()); err != nil {
+		_ = s.storage.AbortMultipartUpload(ctx, upload.ObjectKey, upload.UploadID)
+		return nil, fmt.Errorf("persist multipart session: %w", err)
+	}
+	outcome = "success"
+
+	return &InitiateMultipartUploadResult{
+		SessionID:  session.SessionID,
+		ChunkSize:  chunkSize,
+		TotalParts: totalParts,
+	}, nil
+}
+
+func (s *FileService) GetMultipartUploadStatus(uploaderUUID, sessionID string) (*MultipartUploadStatus, error) {
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	parts, err := s.sessionStore.ListParts(ctx, session.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("list multipart parts: %w", err)
+	}
+	status := &MultipartUploadStatus{
+		SessionID:     session.SessionID,
+		FileName:      session.FileName,
+		FileSize:      session.FileSize,
+		ChunkSize:     session.ChunkSize,
+		TotalParts:    session.TotalParts,
+		UploadedParts: make([]MultipartUploadPartStatus, 0, len(parts)),
+	}
+	for _, part := range parts {
+		status.UploadedParts = append(status.UploadedParts, MultipartUploadPartStatus{
+			PartNumber: part.PartNumber,
+			ETag:       part.ETag,
+			Size:       part.Size,
+		})
+	}
+	return status, nil
+}
+
+func (s *FileService) PresignMultipartParts(uploaderUUID, sessionID string, partNumbers []int) ([]MultipartPartUploadURL, error) {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("presign", outcome, started) }()
+	signer, ok := s.storage.(multipartPartURLSigner)
+	if !ok {
+		return nil, ErrFileStorageUnavailable
+	}
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if len(partNumbers) == 0 {
+		return nil, ErrMultipartPartInvalid
+	}
+	seen := make(map[int]struct{}, len(partNumbers))
+	ordered := make([]int, 0, len(partNumbers))
+	for _, partNumber := range partNumbers {
+		if partNumber <= 0 || partNumber > session.TotalParts {
+			return nil, ErrMultipartPartInvalid
+		}
+		if _, exists := seen[partNumber]; exists {
+			return nil, ErrMultipartPartInvalid
+		}
+		seen[partNumber] = struct{}{}
+		ordered = append(ordered, partNumber)
+	}
+	sort.Ints(ordered)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	expiresAt := time.Now().UTC().Add(multipartPartURLTTL)
+	result := make([]MultipartPartUploadURL, 0, len(ordered))
+	for _, partNumber := range ordered {
+		presignedURL, signErr := signer.PresignMultipartPartURL(ctx, session.ObjectKey, session.UploadID, partNumber, s.multipartPresignURLTTL)
+		if signErr != nil {
+			return nil, fmt.Errorf("presign multipart part %d: %w", partNumber, signErr)
+		}
+		result = append(result, MultipartPartUploadURL{PartNumber: partNumber, URL: presignedURL, ExpiresAt: expiresAt})
+	}
+	outcome = "success"
+	return result, nil
+}
+
+func (s *FileService) RegisterMultipartPart(uploaderUUID, sessionID string, partNumber int, input RegisterMultipartPartInput) error {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("register", outcome, started) }()
+	inspector, ok := s.storage.(multipartPartInspector)
+	if !ok {
+		return ErrFileStorageUnavailable
+	}
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		return err
+	}
+	if partNumber <= 0 || partNumber > session.TotalParts || strings.TrimSpace(input.ETag) == "" || input.Size <= 0 || input.Size > session.ChunkSize {
+		return ErrMultipartPartInvalid
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	part, err := inspector.InspectMultipartPart(ctx, session.ObjectKey, session.UploadID, partNumber)
+	if err != nil {
+		return ErrMultipartPartInvalid
+	}
+	if part == nil || part.PartNumber != partNumber || part.Size != input.Size || !strings.EqualFold(strings.Trim(part.ETag, "\""), strings.TrimSpace(strings.Trim(input.ETag, "\""))) {
+		return ErrMultipartPartInvalid
+	}
+	if err := s.sessionStore.SavePart(ctx, session.SessionID, part, s.effectiveMultipartSessionTTL()); err != nil {
+		return err
+	}
+	outcome = "success"
+	return nil
+}
+
+func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNumber int, contentLength int64, partSHA256 string, body io.Reader) error {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("upload_part", outcome, started) }()
+	if s.storage == nil {
+		return ErrFileStorageUnavailable
+	}
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		return err
+	}
+	if partNumber <= 0 || partNumber > session.TotalParts {
+		return ErrMultipartPartInvalid
+	}
+	if body == nil || contentLength <= 0 {
+		return ErrMultipartPartInvalid
+	}
+	if contentLength > session.ChunkSize {
+		return ErrMultipartPartInvalid
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if presence, ok := s.sessionStore.(multipartPartPresence); ok {
+		if retry, presenceErr := presence.HasPart(ctx, session.SessionID, partNumber); presenceErr == nil && retry {
+			// A repeated part number is the server-visible signal for a client retry.
+			s.multipartMetrics.ObserveOutcome("upload_part", "retry")
+		}
+	}
+
+	hash := sha256.New()
+	hashedBody := &countingHashReader{
+		reader: io.LimitReader(body, contentLength),
+		hash:   hash,
+	}
+	part, err := s.storage.UploadMultipartPart(ctx, session.ObjectKey, session.UploadID, partNumber, hashedBody, contentLength)
+	if err != nil {
+		return fmt.Errorf("upload multipart part: %w", err)
+	}
+	if hashedBody.count != contentLength {
+		return ErrMultipartPartInvalid
+	}
+	if err := validateMultipartPartSHA256(partSHA256, hash.Sum(nil)); err != nil {
+		return err
+	}
+	if err := s.sessionStore.SavePart(ctx, session.SessionID, part, s.effectiveMultipartSessionTTL()); err != nil {
+		return fmt.Errorf("persist multipart part: %w", err)
+	}
+	outcome = "success"
+	return nil
+}
+
+func validateMultipartPartSHA256(expected string, actual []byte) error {
+	expected = strings.TrimSpace(expected)
+	if expected == "" {
+		return nil
+	}
+	decoded, err := hex.DecodeString(expected)
+	if err != nil || len(decoded) != sha256.Size || subtle.ConstantTimeCompare(decoded, actual) != 1 {
+		return ErrMultipartPartInvalid
+	}
+	return nil
+}
+
+func normalizeFileSHA256(value string) (string, error) {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if value == "" {
+		return "", nil
+	}
+	decoded, err := hex.DecodeString(value)
+	if err != nil || len(decoded) != sha256.Size {
+		return "", ErrMultipartPartInvalid
+	}
+	return value, nil
+}
+
+func (s *FileService) verifyMultipartFileSHA256(ctx context.Context, session *multipartUploadSession, uploaded *platformStorage.UploadedObject) error {
+	expected := strings.TrimSpace(session.FileSHA256)
+	if expected == "" {
+		if s.multipartRequireChecksum {
+			return ErrMultipartChecksumRequired
+		}
+		return nil
+	}
+	content, err := s.storage.OpenObject(ctx, uploaded.Bucket, uploaded.ObjectKey)
+	if err != nil {
+		return fmt.Errorf("open completed multipart object for checksum: %w", err)
+	}
+	defer content.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, content); err != nil {
+		return fmt.Errorf("read completed multipart object for checksum: %w", err)
+	}
+	actual := hash.Sum(nil)
+	want, _ := hex.DecodeString(expected)
+	if subtle.ConstantTimeCompare(want, actual) == 1 {
+		return nil
+	}
+	remover, ok := s.storage.(multipartObjectRemover)
+	if !ok {
+		return ErrMultipartChecksumCleanup
+	}
+	if err := remover.RemoveObject(ctx, uploaded.Bucket, uploaded.ObjectKey); err != nil {
+		return fmt.Errorf("remove checksum-mismatched object: %w", err)
+	}
+	return ErrMultipartChecksumMismatch
+}
+
+func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error) {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("complete", outcome, started) }()
+	if s.storage == nil {
+		return nil, ErrFileStorageUnavailable
+	}
+	completed, err := s.getCompletedMultipartUpload(uploaderUUID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if completed != nil {
+		outcome = "success"
+		return completed, nil
+	}
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	parts, err := s.sessionStore.ListParts(ctx, session.SessionID)
+	if err != nil {
+		return nil, fmt.Errorf("list multipart parts: %w", err)
+	}
+	if err := validateMultipartParts(parts, session.TotalParts, session.FileSize, session.ChunkSize); err != nil {
+		return nil, err
+	}
+
+	uploaded, err := s.storage.CompleteMessageMultipartUpload(
+		ctx,
+		session.UploadID,
+		session.ObjectKey,
+		session.FileName,
+		session.ContentType,
+		session.FileSize,
+		parts,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("complete multipart upload: %w", err)
+	}
+	if err := s.verifyMultipartFileSHA256(ctx, session, uploaded); err != nil {
+		if errors.Is(err, ErrMultipartChecksumMismatch) {
+			outcome = "checksum_mismatch"
+		}
+		return nil, err
+	}
+
+	record := &model.UploadedFile{
+		UUID:         generateUploadedFileUUID(),
+		UploaderUUID: session.UploaderUUID,
+		Bucket:       uploaded.Bucket,
+		ObjectKey:    uploaded.ObjectKey,
+		FileName:     uploaded.FileName,
+		FileSize:     uploaded.FileSize,
+		ContentType:  uploaded.ContentType,
+		URL:          uploaded.URL,
+	}
+	if err := s.repo.Create(record); err != nil {
+		return nil, fmt.Errorf("persist uploaded file: %w", err)
+	}
+	if err := s.sessionStore.SaveCompleted(ctx, session.SessionID, session.UploaderUUID, record, s.effectiveMultipartSessionTTL()); err != nil {
+		return nil, fmt.Errorf("persist multipart completion: %w", err)
+	}
+	if err := s.sessionStore.Delete(ctx, session.SessionID); err != nil {
+		return nil, fmt.Errorf("delete multipart session: %w", err)
+	}
+	outcome = "success"
+
+	return record, nil
+}
+
+func (s *FileService) AbortMultipartUpload(uploaderUUID, sessionID string) error {
+	started := time.Now()
+	outcome := "error"
+	defer func() { s.multipartMetrics.Observe("abort", outcome, started) }()
+	if s.storage == nil {
+		return ErrFileStorageUnavailable
+	}
+	session, err := s.getOwnedMultipartSession(uploaderUUID, sessionID)
+	if err != nil {
+		if errors.Is(err, ErrMultipartSessionNotFound) {
+			completed, completionErr := s.getCompletedMultipartUpload(uploaderUUID, sessionID)
+			if completionErr != nil {
+				return completionErr
+			}
+			if completed != nil {
+				return ErrMultipartSessionInvalid
+			}
+			outcome = "success"
+			return nil
+		}
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := s.storage.AbortMultipartUpload(ctx, session.ObjectKey, session.UploadID); err != nil {
+		return err
+	}
+	if err := s.sessionStore.Delete(ctx, session.SessionID); err != nil {
+		return fmt.Errorf("delete multipart session: %w", err)
+	}
+	outcome = "success"
+	return nil
+}
+
+func (s *FileService) getCompletedMultipartUpload(uploaderUUID, sessionID string) (*model.UploadedFile, error) {
+	if s.sessionStore == nil {
+		return nil, ErrMultipartSessionInvalid
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	file, owner, err := s.sessionStore.GetCompleted(ctx, strings.TrimSpace(sessionID))
+	if err != nil {
+		return nil, fmt.Errorf("get multipart completion: %w", err)
+	}
+	if file == nil {
+		return nil, nil
+	}
+	if owner != strings.TrimSpace(uploaderUUID) {
+		return nil, ErrFilePermissionDenied
+	}
+	return file, nil
+}
+
+func (s *FileService) CreateDownloadLink(currentUserUUID, fileUUID string) (*FileDownloadResult, error) {
+	if s.storage == nil {
+		return nil, ErrFileStorageUnavailable
+	}
+
+	file, err := s.repo.GetByUUID(strings.TrimSpace(fileUUID))
+	if err != nil {
+		return nil, fmt.Errorf("get uploaded file: %w", err)
+	}
+	if file == nil {
+		return nil, ErrFileNotFound
+	}
+
+	now := time.Now().UTC()
+	if file.UploaderUUID != strings.TrimSpace(currentUserUUID) {
+		if s.messageRepo == nil {
+			return nil, ErrFilePermissionDenied
+		}
+		message, err := s.messageRepo.FindLatestAccessibleFileMessage(file.UUID, strings.TrimSpace(currentUserUUID))
+		if err != nil {
+			return nil, fmt.Errorf("find accessible file message: %w", err)
+		}
+		if message == nil {
+			return nil, ErrFilePermissionDenied
+		}
+		if message.FileExpiresAt != nil && !message.FileExpiresAt.After(now) {
+			return nil, ErrFileExpired
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	downloadURL, err := s.storage.PresignDownloadURL(ctx, file.Bucket, file.ObjectKey, s.downloadURLTTL)
+	if err != nil {
+		return nil, fmt.Errorf("presign download url: %w", err)
+	}
+
+	return &FileDownloadResult{
+		FileID:      file.UUID,
+		FileName:    file.FileName,
+		ContentType: file.ContentType,
+		FileSize:    file.FileSize,
+		DownloadURL: downloadURL,
+	}, nil
+}
+
+func (s *FileService) OpenContent(currentUserUUID, fileUUID string) (*FileContentResult, error) {
+	if s.storage == nil {
+		return nil, ErrFileStorageUnavailable
+	}
+
+	file, err := s.repo.GetByUUID(strings.TrimSpace(fileUUID))
+	if err != nil {
+		return nil, fmt.Errorf("get uploaded file: %w", err)
+	}
+	if file == nil {
+		return nil, ErrFileNotFound
+	}
+
+	now := time.Now().UTC()
+	if file.UploaderUUID != strings.TrimSpace(currentUserUUID) {
+		if s.messageRepo == nil {
+			return nil, ErrFilePermissionDenied
+		}
+		message, err := s.messageRepo.FindLatestAccessibleFileMessage(file.UUID, strings.TrimSpace(currentUserUUID))
+		if err != nil {
+			return nil, fmt.Errorf("find accessible file message: %w", err)
+		}
+		if message == nil {
+			return nil, ErrFilePermissionDenied
+		}
+		if message.FileExpiresAt != nil && !message.FileExpiresAt.After(now) {
+			return nil, ErrFileExpired
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	content, err := s.storage.OpenObject(ctx, file.Bucket, file.ObjectKey)
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("open file object: %w", err)
+	}
+
+	contentType := strings.TrimSpace(file.ContentType)
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	return &FileContentResult{
+		FileID:      file.UUID,
+		FileName:    file.FileName,
+		ContentType: contentType,
+		FileSize:    file.FileSize,
+		Content:     content,
+		Cleanup: func() {
+			cancel()
+		},
+	}, nil
+}
+
+func (s *FileService) getOwnedMultipartSession(uploaderUUID, sessionID string) (*multipartUploadSession, error) {
+	if s.sessionStore == nil {
+		return nil, ErrMultipartSessionInvalid
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	session, err := s.sessionStore.Get(ctx, strings.TrimSpace(sessionID))
+	if err != nil {
+		return nil, fmt.Errorf("get multipart session: %w", err)
+	}
+	if session == nil {
+		return nil, ErrMultipartSessionNotFound
+	}
+	if session.UploaderUUID != strings.TrimSpace(uploaderUUID) {
+		return nil, ErrFilePermissionDenied
+	}
+	return session, nil
+}
+
+func (s *FileService) effectiveMultipartChunkSize() int64 {
+	if s.multipartChunkSize > 0 {
+		return s.multipartChunkSize
+	}
+	return 5 * 1024 * 1024
+}
+
+func (s *FileService) effectiveMultipartSessionTTL() time.Duration {
+	if s.multipartSessionTTL > 0 {
+		return s.multipartSessionTTL
+	}
+	return time.Hour
+}
+
+func validateMultipartParts(parts []platformStorage.MultipartCompletePart, totalParts int, fileSize, chunkSize int64) error {
+	if totalParts <= 0 || len(parts) != totalParts {
+		return ErrMultipartSessionInvalid
+	}
+	if fileSize <= 0 || chunkSize <= 0 {
+		return ErrMultipartSessionInvalid
+	}
+	sort.Slice(parts, func(i, j int) bool {
+		return parts[i].PartNumber < parts[j].PartNumber
+	})
+	for idx, part := range parts {
+		expected := idx + 1
+		expectedSize := chunkSize
+		if expected == totalParts {
+			expectedSize = fileSize - chunkSize*int64(totalParts-1)
+		}
+		if part.PartNumber != expected || strings.TrimSpace(part.ETag) == "" || part.Size != expectedSize {
+			return ErrMultipartSessionInvalid
+		}
+	}
+	return nil
+}
+
+func detectFileContentType(fileName string) string {
+	ext := strings.ToLower(strings.TrimSpace(filepath.Ext(fileName)))
+	switch ext {
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	case ".pdf":
+		return "application/pdf"
+	case ".txt":
+		return "text/plain"
+	default:
+		return "application/octet-stream"
+	}
+}
+
+func maxInt64(v, fallback int64) int64 {
+	if v > 0 {
+		return v
+	}
+	return fallback
+}
+
+func maxInt(v, fallback int) int {
+	if v > 0 {
+		return v
+	}
+	return fallback
+}

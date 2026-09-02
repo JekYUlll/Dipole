@@ -1,0 +1,13 @@
+{
+  "minimumWindowMinutes": 1440,
+  "minimumAttempts": 100,
+  "minimumDirectCompleted": 90,
+  "maximumRelayFallbackBps": 100,
+  "maximumFailureBps": 100,
+  "maximumExpiredBps": 0,
+  "maximumChecksumMismatchBps": 0,
+  "maximumDirectP95Millis": 30000,
+  "requireRollbackVerified": true,
+  "requireClearAlerts": true,
+  "requireIndependentReviewer": true
+}

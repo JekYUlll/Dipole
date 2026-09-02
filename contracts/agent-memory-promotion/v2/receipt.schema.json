@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-memory-promotion/v2/receipt.schema.json",
+  "title": "Dipole Agent Memory promotion receipt v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "receiptId", "receiptSha256", "status", "tenantId", "principalUserId", "agentId", "taskId", "runId", "candidateId", "candidateSha256", "reviewId", "policyVersion", "candidateMemoryType", "targetMemoryType", "createdAt", "expiresAt"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-promotion-receipt.v2" },
+    "receiptId": { "type": "string", "pattern": "^MEM-PROMOTE-[a-f0-9]{64}$" },
+    "receiptSha256": { "$ref": "#/$defs/sha256" },
+    "status": { "enum": ["prepared", "committed", "cancelled", "expired"] },
+    "tenantId": { "$ref": "#/$defs/id" },
+    "principalUserId": { "$ref": "#/$defs/id" },
+    "agentId": { "$ref": "#/$defs/id" },
+    "taskId": { "$ref": "#/$defs/id" },
+    "runId": { "$ref": "#/$defs/id" },
+    "candidateId": { "$ref": "#/$defs/id" },
+    "candidateSha256": { "$ref": "#/$defs/sha256" },
+    "reviewId": { "$ref": "#/$defs/id" },
+    "policyVersion": { "$ref": "#/$defs/id" },
+    "candidateMemoryType": { "const": "observational" },
+    "targetMemoryType": { "enum": ["working", "episodic", "semantic", "procedural", "observational"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

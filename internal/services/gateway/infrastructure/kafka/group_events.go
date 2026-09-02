@@ -1,0 +1,33 @@
+package kafka
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/JekYUlll/Dipole/internal/application"
+	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
+)
+
+// NewGroupEventHandler builds a Gateway fan-out handler for a group event.
+func NewGroupEventHandler[T any](
+	hub EventSender,
+	eventType string,
+	buildData func(application.GroupEventPayload) T,
+) platformKafka.Handler {
+	return func(ctx context.Context, event platformKafka.Event) error {
+		envelope, err := requireEnvelope(event)
+		if err != nil {
+			return fmt.Errorf("decode %s envelope: %w", eventType, err)
+		}
+		payload, err := application.DecodeGroupEventPayload(envelope.EventType, envelope.Payload)
+		if err != nil {
+			return fmt.Errorf("decode %s payload: %w", eventType, err)
+		}
+
+		data := buildData(payload)
+		for _, recipientUUID := range payload.RecipientUUIDs {
+			sendEventToUser(ctx, hub, recipientUUID, eventType, data)
+		}
+		return nil
+	}
+}

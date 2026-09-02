@@ -1,0 +1,11 @@
+.git
+.gitignore
+acc
+tmp
+logs
+certs/local
+configs/config.yaml
+node_modules
+*.log
+scripts/bench/results
+# keep dist service binaries in build context for runtime packaging

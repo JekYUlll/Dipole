@@ -1,0 +1,20 @@
+{
+  "contractVersion": "v1",
+  "batchId": "NODE-BATCH-0001",
+  "targetNodeId": "gateway-2",
+  "sourceEventId": "EVENT-0001",
+  "requestId": "REQ-0001",
+  "traceId": "TRACE-0001",
+  "createdAt": "2026-08-28T08:00:00Z",
+  "items": [
+    {
+      "deliveryId": "EVENT-0001:U100",
+      "recipientUserId": "U100",
+      "connectionIds": ["CONN-1", "CONN-2"],
+      "eventType": "chat.message",
+      "payloadJson": "eyJtZXNzYWdlX2lkIjoiTTEwMCIsIm1lc3NhZ2Vfc2VxIjo0Mn0=",
+      "orderingKey": "user:U100",
+      "mode": "DELIVERY_MODE_FULL_EVENT"
+    }
+  ]
+}

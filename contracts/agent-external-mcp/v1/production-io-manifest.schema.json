@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-external-mcp/v1/production-io-manifest.schema.json",
+  "title": "Dipole Agent External MCP Production I/O Manifest v1",
+  "description": "Credential-free file bindings and bounded runtime options for default-off external MCP production I/O adapters.",
+  "type": "object",
+  "x-dipole-version": "dipole.agent.external-mcp-production-io.v1",
+  "required": ["schema_version", "credential_catalog", "encrypted_secret_provider", "ca_bundles", "tls"],
+  "properties": {
+    "schema_version": {"const": "dipole.agent.external-mcp-production-io.v1"},
+    "credential_catalog": {
+      "type": "object",
+      "required": ["path", "maximum_bytes"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^/", "minLength": 1, "maxLength": 4096},
+        "maximum_bytes": {"type": "integer", "minimum": 32, "maximum": 1048576}
+      },
+      "additionalProperties": false
+    },
+    "encrypted_secret_provider": {
+      "type": "object",
+      "required": ["provider_id", "maximum_secret_bytes", "keys", "secrets"],
+      "properties": {
+        "provider_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"},
+        "maximum_secret_bytes": {"type": "integer", "minimum": 16, "maximum": 8192},
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "required": ["key_ref", "path"],
+            "properties": {
+              "key_ref": {"type": "string", "pattern": "^KEY-[A-Z0-9]{16,64}$"},
+              "path": {"type": "string", "pattern": "^/", "minLength": 1, "maxLength": 4096}
+            },
+            "additionalProperties": false
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "required": ["secret_ref", "key_ref", "path"],
+            "properties": {
+              "secret_ref": {"type": "string", "pattern": "^SECRET-[A-Z0-9]{16,64}$"},
+              "key_ref": {"type": "string", "pattern": "^KEY-[A-Z0-9]{16,64}$"},
+              "path": {"type": "string", "pattern": "^/", "minLength": 1, "maxLength": 4096}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ca_bundles": {
+      "type": "object",
+      "required": ["maximum_bytes", "entries"],
+      "properties": {
+        "maximum_bytes": {"type": "integer", "minimum": 256, "maximum": 1048576},
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "object",
+            "required": ["ca_bundle_ref", "path"],
+            "properties": {
+              "ca_bundle_ref": {"type": "string", "pattern": "^CA-[A-Z0-9]{16,64}$"},
+              "path": {"type": "string", "pattern": "^/", "minLength": 1, "maxLength": 4096}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tls": {
+      "type": "object",
+      "required": ["connect_timeout_ms"],
+      "properties": {
+        "connect_timeout_ms": {"type": "integer", "minimum": 100, "maximum": 60000}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

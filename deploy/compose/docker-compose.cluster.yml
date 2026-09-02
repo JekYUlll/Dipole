@@ -1,0 +1,96 @@
+x-kafka: &kafka
+  image: apache/kafka:3.9.0
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9092'"]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+
+x-kafka-environment: &kafka-environment
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_LOG_RETENTION_HOURS: 168
+  CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+
+services:
+  kafka-1:
+    <<: *kafka
+    environment:
+      <<: *kafka-environment
+      KAFKA_NODE_ID: 1
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092
+    volumes:
+      - kafka_cluster_1_data:/var/lib/kafka/data
+
+  kafka-2:
+    <<: *kafka
+    environment:
+      <<: *kafka-environment
+      KAFKA_NODE_ID: 2
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
+    volumes:
+      - kafka_cluster_2_data:/var/lib/kafka/data
+
+  kafka-3:
+    <<: *kafka
+    environment:
+      <<: *kafka-environment
+      KAFKA_NODE_ID: 3
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092
+    volumes:
+      - kafka_cluster_3_data:/var/lib/kafka/data
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.9.0
+    profiles: [observability]
+    restart: unless-stopped
+    command:
+      - --kafka.server=kafka-1:9092
+      - --kafka.server=kafka-2:9092
+      - --kafka.server=kafka-3:9092
+      - --topic.filter=^dipole\..*
+      - --group.filter=^dipole.*
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [observability]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ../../deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../deploy/observability/kafka-alerts.yml:/etc/prometheus/kafka-alerts.yml:ro
+      - ../../deploy/observability/cassandra-read-alerts.yml:/etc/prometheus/cassandra-read-alerts.yml:ro
+      - ../../deploy/observability/sync-projector-alerts.yml:/etc/prometheus/sync-projector-alerts.yml:ro
+      - ../../deploy/observability/multipart-alerts.yml:/etc/prometheus/multipart-alerts.yml:ro
+      - ../../deploy/observability/web-sync-alerts.yml:/etc/prometheus/web-sync-alerts.yml:ro
+      - ../../deploy/observability/duplicate-hydration-alerts.yml:/etc/prometheus/duplicate-hydration-alerts.yml:ro
+      - ../../deploy/observability/agent-timeline-repair-alerts.yml:/etc/prometheus/agent-timeline-repair-alerts.yml:ro
+      - prometheus_cluster_data:/prometheus
+    depends_on:
+      - kafka-exporter
+
+volumes:
+  kafka_cluster_1_data:
+  kafka_cluster_2_data:
+  kafka_cluster_3_data:
+  prometheus_cluster_data:

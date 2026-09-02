@@ -1,0 +1,57 @@
+services:
+  cassandra:
+    profiles: ["cassandra-primary"]
+    image: cassandra:5.0.9
+    restart: unless-stopped
+    environment:
+      CASSANDRA_CLUSTER_NAME: DipoleMicroservicesPrimary
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 100M
+    volumes:
+      - cassandra_primary_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 8s
+      retries: 30
+      start_period: 60s
+
+  cassandra-init:
+    profiles: ["cassandra-primary"]
+    image: cassandra:5.0.9
+    restart: "no"
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ../../db/cassandra/001_timeline.cql:/schema/001_timeline.cql:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["cqlsh cassandra -f /schema/001_timeline.cql"]
+
+  sync:
+    volumes:
+      - ../../configs/config.cassandra-primary.yaml:/app/configs/config.yaml:ro
+    depends_on:
+      cassandra-init:
+        condition: service_completed_successfully
+    environment:
+      DIPOLE_CASSANDRA_ENABLED: "true"
+      DIPOLE_CASSANDRA_HOSTS: cassandra:9042
+      DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION: "true"
+
+  core:
+    environment:
+      # Keep candidate bootstrap one-way while the production remote cycle is tracked.
+      DIPOLE_GATEWAY_MODE: embedded
+      DIPOLE_CORE_MESSAGE_TRANSPORT: local
+
+  message:
+    depends_on:
+      core:
+        condition: service_healthy
+
+volumes:
+  cassandra_primary_data:
