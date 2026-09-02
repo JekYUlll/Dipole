@@ -1,0 +1,17 @@
+services:
+  agent-model-stub:
+    image: node:22-bookworm-slim
+    restart: "no"
+    volumes:
+      - ${DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE:?DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE is required}:/app/model-stub.mjs:ro
+    command: ["node", "/app/model-stub.mjs"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8089/v1/chat/completions', {method:'POST'}).then(r=>process.exit(r.status === 200 ? 0 : 1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  agent:
+    depends_on:
+      agent-model-stub:
+        condition: service_healthy

@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Static safety contract for the isolated subscription-active Compose smoke."""
+
+from pathlib import Path
+import unittest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
+    def test_smoke_isolated_and_deterministic(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-subscription-active-', smoke)
+        self.assertIn('DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1', smoke)
+        self.assertIn('agent-subscription-active-smoke.yml', smoke)
+        self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://agent-model-stub:8089/v1"', smoke)
+        self.assertIn('DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"', smoke)
+        self.assertIn('compose down --volumes --remove-orphans', smoke)
+        self.assertIn('UPDATE agent_runtime_promotion_grants SET revoked_at', smoke)
+
+    def test_smoke_covers_owner_subscription_and_read_only_terminal_state(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('/api/v1/agent/subscriptions/options?', smoke)
+        self.assertIn('/api/v1/agent/subscriptions', smoke)
+        self.assertIn('trigger_subscription_uuid', smoke)
+        self.assertIn("$'completed\\tcompleted'", smoke)
+        self.assertIn('expected one completed model call', smoke)
+        self.assertIn('subscription read task wrote', smoke)
+
+    def test_model_stub_stays_inside_the_compose_project(self) -> None:
+        overlay = (ROOT / "deploy/microservices/agent-subscription-active-smoke.yml").read_text(encoding="utf-8")
+        self.assertIn('image: node:22-bookworm-slim', overlay)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE', overlay)
+        self.assertIn('condition: service_healthy', overlay)
+
+
+if __name__ == "__main__":
+    unittest.main()
