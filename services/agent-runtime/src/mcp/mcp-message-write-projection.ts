@@ -85,7 +85,12 @@ export interface SubscriptionMessageExecutor {
 }
 
 type MessageExecutorClient = Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">;
-type SubscriptionMessageExecutorClient = MessageExecutorClient & Pick<AgentCapabilityRPCClient, "authorizeSubscriptionMessage">;
+type SubscriptionMessageExecutorClient = MessageExecutorClient & Pick<AgentCapabilityRPCClient, "authorizeSubscriptionMessage" | "resolveMcpToolCommand">;
+
+// Marks an autonomous reply the Runtime recognised as already delivered by a
+// prior Activity attempt. The value is informational (task output only); the
+// audited message and its Tool Invocation already exist in Core.
+export const subscriptionReplyReplayMarker = "dipole.agent.subscription-reply.already-delivered.v1";
 
 const interactiveMessageInvocationNamespace = "dipole.agent.interactive-message-invocation.v1";
 const subscriptionMessageInvocationNamespace = "dipole.agent.subscription-message-invocation.v1";
@@ -106,10 +111,41 @@ export function createSubscriptionMessageExecutor(client: SubscriptionMessageExe
     execute: async (input, context) => {
       const request = { conversationId: input.conversationId, content: input.content };
       const binding = subscriptionMessageApproval(context, input);
-      await client.authorizeSubscriptionMessage(context.taskId, context.runId, binding, context);
-      return projection(request, context);
+      try {
+        await client.authorizeSubscriptionMessage(context.taskId, context.runId, binding, context);
+        return await projection(request, context);
+      } catch (error) {
+        // A retried Activity can re-enter after a prior attempt already delivered
+        // this reply and consumed its single-use write grant. The mint stays
+        // idempotent, but resolve/consume then fails on the spent grant. The
+        // reply write commits before that grant is spent, so a completed Tool
+        // Invocation under the deterministic id is proof of delivery: recognise
+        // it and skip instead of double-sending. Any other failure (no completed
+        // invocation) is genuine and must surface so the Task fails loudly.
+        if (await subscriptionReplyAlreadyDelivered(client, context, request)) {
+          return subscriptionReplyReplayMarker;
+        }
+        throw error;
+      }
     }
   };
+}
+
+// Probes the deterministic reply Tool Invocation. Core's ResolveMcpToolCommand
+// is a read: a missing invocation (first attempt) or a still-open one is not
+// proof of delivery, so only a completed status short-circuits the replay.
+async function subscriptionReplyAlreadyDelivered(
+  client: Pick<SubscriptionMessageExecutorClient, "resolveMcpToolCommand">,
+  context: ExecutionContext,
+  request: { readonly conversationId: string; readonly content: string }
+): Promise<boolean> {
+  const invocationId = messageInvocationID(subscriptionMessageInvocationNamespace, context, request);
+  try {
+    const invocation = await client.resolveMcpToolCommand(context.taskId, context.runId, invocationId);
+    return invocation.status === "completed";
+  } catch {
+    return false;
+  }
 }
 
 function messageProjectionExecutor(

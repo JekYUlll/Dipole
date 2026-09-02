@@ -6,7 +6,7 @@ import * as grpc from "@grpc/grpc-js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { createDipoleMcpServer } from "./dipole-mcp-server.js";
-import { createInteractiveMessageExecutor, createSubscriptionMessageExecutor, McpMessageWriteProjection } from "./mcp-message-write-projection.js";
+import { createInteractiveMessageExecutor, createSubscriptionMessageExecutor, McpMessageWriteProjection, subscriptionReplyReplayMarker } from "./mcp-message-write-projection.js";
 import { AllowlistedMcpToolClient } from "./mcp-tool-client.js";
 import { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
 import { McpWriteApprovalGate } from "./mcp-write-approval-gate.js";
@@ -166,6 +166,7 @@ describe("MCP Message write projection", () => {
       })),
       begin: vi.fn(async () => undefined),
       finishToolInvocation: vi.fn(async () => undefined),
+      resolveMcpToolCommand: vi.fn(async () => { throw new Error("no completed invocation"); }),
       executeMessageCommand: vi.fn(async (input: { invocationId: string }) => {
         invocationIds.push(input.invocationId);
         return { resourceType: "message" as const, resourceId: "MSG-1", commandKind: "system_message" as const, commandId: `tool:${input.invocationId}` };
@@ -235,6 +236,57 @@ describe("MCP Message write projection", () => {
     expect(persistedCommandIds).toEqual(new Set([commandCalls[0]!.invocationId]));
     expect(finish).toHaveBeenCalledOnce();
     expect(finish).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
+  });
+
+  it("treats a subscription reply as delivered when its Tool Invocation already completed", async () => {
+    const executeMessageCommand = vi.fn(async () => { throw new Error("resolve should not run"); });
+    const client = {
+      // The retried Activity re-mints idempotently, then resolve fails on the
+      // spent single-use grant. A completed Tool Invocation is proof the reply
+      // already committed, so the executor must skip instead of double-sending.
+      authorizeSubscriptionMessage: vi.fn(async () => undefined),
+      consumeApproval: vi.fn(async () => undefined),
+      resolveApprovalGrant: vi.fn(async () => { throw new Error("MCP write Approval is unavailable"); }),
+      begin: vi.fn(async () => undefined),
+      finishToolInvocation: vi.fn(async () => undefined),
+      resolveMcpToolCommand: vi.fn(async () => ({
+        invocationId: "tool:sub-1", tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+        taskId: "TASK-1", runId: "RUN-1", profileId: "", serverId: "", toolName: "dipole_message_send",
+        capabilityId: "message.system.send", arguments: {}, argumentsSha256: "a".repeat(64),
+        startedAtUnixMs: 1_700_000_000_000, status: "completed" as const
+      })),
+      executeMessageCommand
+    };
+
+    await expect(createSubscriptionMessageExecutor(client).execute(
+      { conversationId: "direct:U100:UAI", content: "notice", eventId: "E-SUB-1", occurredAtUnixMs: 1_700_000_000_000 }, context
+    )).resolves.toBe(subscriptionReplyReplayMarker);
+
+    expect(client.resolveMcpToolCommand).toHaveBeenCalledOnce();
+    expect(executeMessageCommand).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a genuine subscription reply failure when no completed invocation exists", async () => {
+    const client = {
+      authorizeSubscriptionMessage: vi.fn(async () => { throw Object.assign(new Error("denied"), { code: grpc.status.PERMISSION_DENIED }); }),
+      consumeApproval: vi.fn(async () => undefined),
+      resolveApprovalGrant: vi.fn(async () => { throw new Error("unused"); }),
+      begin: vi.fn(async () => undefined),
+      finishToolInvocation: vi.fn(async () => undefined),
+      // No prior delivery: the probe reports a still-open invocation, so the
+      // executor must rethrow rather than mask a real authorization failure.
+      resolveMcpToolCommand: vi.fn(async () => ({
+        invocationId: "tool:sub-1", tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+        taskId: "TASK-1", runId: "RUN-1", profileId: "", serverId: "", toolName: "dipole_message_send",
+        capabilityId: "message.system.send", arguments: {}, argumentsSha256: "a".repeat(64),
+        startedAtUnixMs: 1_700_000_000_000, status: "running" as const
+      })),
+      executeMessageCommand: vi.fn(async () => { throw new Error("unused"); })
+    };
+
+    await expect(createSubscriptionMessageExecutor(client).execute(
+      { conversationId: "direct:U100:UAI", content: "notice", eventId: "E-SUB-1", occurredAtUnixMs: 1_700_000_000_000 }, context
+    )).rejects.toThrow("denied");
   });
 });
 

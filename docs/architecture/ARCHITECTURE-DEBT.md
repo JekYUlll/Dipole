@@ -1,5 +1,10 @@
 # 架构债务台账
 
+- 2026-09-03：Subscription Auto-Reply 的 activity 重试幂等已落地，AD-034 该项收尾。
+  - 修法：幂等收敛在 `services/agent-runtime/src/mcp/mcp-message-write-projection.ts` 的 `createSubscriptionMessageExecutor` 内,不动共享审批闸/runner/Core。正常路径不变(mint→projection);**仅失败时**用 Core 只读 `ResolveMcpToolCommand` 探测确定性 Tool Invocation——已 `completed` 视为已交付,返回 `subscriptionReplyReplayMarker` 跳过(绝不双发);无 completed invocation 一律 rethrow,真错仍大声失败不被掩盖。回复写库先于 grant 消费,故 completed invocation 是交付的充分证据。选择 executor 内闭包幂等而非新增独立 Temporal step,是因为拆步不改变 activity 级重试语义(Temporal 仍会重跑单个 activity),真正的幂等必须靠外部状态(Core 确定性 invocation),故直接以 Core 只读探测实现,面更小、风险更低。
+  - 语义边界:自主回复现为幂等 + happy-path exactly-once;残留 at-most-once 仅限「grant 已消费且 send 恰好瞬断并始终无法完成」的极端窗口——此时不再重驱(需绕过审批闸重发,属安全敏感面,不做),但也不再无限重试拖垮 Task。对无人值守最佳努力回复合理,如需严格 exactly-once 再另立小债(Core 侧对同一 claim 幂等 re-consume)。
+  - 验证:3 条投影单测(首发/已交付重试跳过不双发/真错 rethrow)+ `typecheck` + 定向单测本地绿;happy path 字节级不变,既有 Remote autoreply smoke 仍代表该路径,未重跑 bespoke smoke。**AD-034 至此四项(Core 自动审批、compose overlay+门禁、Remote smoke、durable-step 幂等)均已落地**;启用前仍需 reviewed 观察窗口证据。
+
 - 2026-09-02：Subscription Auto-Reply 的 Remote GPU 端到端 smoke 已跑通，AD-034 剩余债务收窄。
   - 新增 `scripts/smoke-agent-subscription-autoreply-compose.sh`：owner 发消息触发订阅 → 一个 Task → 一次模型调用 → 一条自主回复；断言恰好一条 Agent 消息、`message.system.send` grant 铸+消费一次、一次 tool invocation、无自触发循环。Remote 用独立 tag 镜像跑绿。
   - smoke 暴露并修复两个真 bug：**(a)** Core caller allowlist 漏 `AuthorizeSubscriptionMessage`（`rpcpolicy/policy.go` + `transport/grpc/core/policy.go`），已补；**(b)** 自触发死循环——自主回复以 system 消息写回被订阅会话，`shadow-processor.ts` 的自我抑制只认 `lineage.origin=agent`，漏掉 system 消息，改为按 `sender_uuid==agentUuid` 抑制 Agent 自己发的任何消息。
