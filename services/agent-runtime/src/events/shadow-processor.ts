@@ -188,7 +188,8 @@ export function agentTaskId(input: { tenantId: string; agentUuid: string; trigge
 export function agentEventLedgerKey(event: Pick<AgentEvent, "eventId" | "subscriptionId">): string {
   if (event.subscriptionId === undefined) return event.eventId;
   const canonical = [event.eventId.trim(), event.subscriptionId.trim()].join("\n");
-  return `subscription:${createHash("sha256").update(canonical, "utf8").digest("hex").slice(0, 64)}`;
+  // agent_event_ledger.event_id is VARCHAR(64), including this namespace.
+  return `subscription:${createHash("sha256").update(canonical, "utf8").digest("hex").slice(0, 51)}`;
 }
 
 export function agentRunId(taskId: string, runtimeId = "dipole-agent", mode = "shadow"): string {

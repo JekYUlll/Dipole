@@ -95,7 +95,9 @@ describe("ShadowEventProcessor", () => {
     const second = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100", subscriptionId: "SUB-2" });
     expect(new Set([direct, first, second]).size).toBe(3);
     expect(agentEventLedgerKey({ eventId: "E1" })).toBe("E1");
-    expect(agentEventLedgerKey({ eventId: "E1", subscriptionId: "SUB-1" })).not.toBe(agentEventLedgerKey({ eventId: "E1", subscriptionId: "SUB-2" }));
+    const subscriptionKey = agentEventLedgerKey({ eventId: "E1", subscriptionId: "SUB-1" });
+    expect(subscriptionKey).toHaveLength(64);
+    expect(subscriptionKey).not.toBe(agentEventLedgerKey({ eventId: "E1", subscriptionId: "SUB-2" }));
   });
 
   it("executes an admitted read-only Step and persists its terminal result", async () => {
