@@ -12,7 +12,7 @@ const temporalRuntimeConfigSchema = z.object({
   address: z.string().trim().min(1),
   namespace: z.string().trim().min(1),
   taskQueue: z.string().trim().min(1),
-  activityMode: z.enum(["foundation", "persistent_shadow", "read_shadow", "read_active", "interactive_active", "promotion_active", "external_mcp_shadow"])
+  activityMode: z.enum(["foundation", "persistent_shadow", "read_shadow", "read_active", "subscription_active", "interactive_active", "promotion_active", "external_mcp_shadow"])
 }).strict();
 
 export type TemporalRuntimeConfig = z.infer<typeof temporalRuntimeConfigSchema>;

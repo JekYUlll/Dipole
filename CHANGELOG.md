@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：新增受控 `agent-subscription-active.yml`。该 Active Read overlay 使用显式 subscription trigger、独立 Kafka consumer group 与 Temporal queue，将 owner-scoped Event Subscription 交给 durable Task；Control、消息写入、Memory、MCP 和 External MCP 固定关闭。普通 `read_active` 配置若尝试使用 subscription trigger 会在启动前拒绝，基础 Compose 继续保持默认关闭。
+
 - 2026-09-02：新增显式 `agent-subscription-shadow.yml` 开发期 Compose profile。它保持 Shadow Runtime 的 `direct_target` 主路径，开启 Subscription matcher 对照与 owner 管理 API，同时固定 Task Control、Memory、MCP 与 External MCP 关闭；基础 Compose 默认值不变。
 
 - 2026-09-02：Remote GPU 已以隔离、loopback-only Compose project 完成 Agent Definition-only smoke。认证 owner 经 Gateway 重放两次创建，读取 owner 目录，并直接复核 MySQL 中唯一的 owner、Assistant、`conversation.read` 与 wildcard scope；项目、容器与 volumes 均已自动清理。该检查只覆盖固定只读 Definition 模板，Subscription trigger、Runtime 灰度和消息写入继续关闭。

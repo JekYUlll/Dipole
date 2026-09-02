@@ -19,11 +19,16 @@ describe("shadow runtime composition", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
       modelProvider: { kind: "disabled" }, contextCompilerVersion: "v1", memoryEnabled: false, retrievalEnabled: false, retrievalContextEnabled: false, interactiveMessageWritesEnabled: false,
-      triggerMode: "direct_target", readScopeConfirmationTtlMs: 900_000, capabilityRpc: { enabled: false }
+      triggerMode: "direct_target", subscriptionActiveEnabled: false, readScopeConfirmationTtlMs: 900_000, capabilityRpc: { enabled: false }
     });
     expect(loadShadowRuntimeConfig({ DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: "2000" }).readScopeConfirmationTtlMs).toBe(2_000);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: "999" })).toThrow(/>=1000/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
+    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED: "true" })).toThrow(/requires Kafka/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+      DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED: "true"
+    })).toThrow(/requires subscription trigger mode/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "actve" })).toThrow(/must be shadow or remote/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote" })).toThrow(/Kafka/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote", DIPOLE_AGENT_CANDIDATE_VERSION: "candidate-v1" })).toThrow(/release manifest/);
@@ -152,6 +157,15 @@ describe("shadow runtime composition", () => {
       DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
       DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
     })).toThrow(/direct.target/i);
+  });
+
+  it("reserves a distinct Kafka group namespace for active subscription Tasks", () => {
+    const base = activeSubscriptionEnvironment();
+    expect(() => loadShadowRuntimeConfig({ ...base, DIPOLE_AGENT_KAFKA_GROUP_ID: "dipole-agent-active-read-v1" }))
+      .toThrow(/dipole-agent-subscription-active/i);
+    expect(loadShadowRuntimeConfig(base)).toMatchObject({
+      triggerMode: "subscription", subscriptionActiveEnabled: true, groupId: "dipole-agent-subscription-active-v1"
+    });
   });
 
   it("decodes a Kafka envelope and records a read-only plan", async () => {
@@ -356,6 +370,35 @@ describe("shadow runtime composition", () => {
     expect(metrics.render()).toContain("dipole_agent_subscription_shadow_candidates_total 2");
   });
 });
+
+function activeSubscriptionEnvironment(): NodeJS.ProcessEnv {
+  return {
+    DIPOLE_AGENT_RUNTIME_MODE: "remote",
+    DIPOLE_AGENT_KAFKA_ENABLED: "true",
+    DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
+    DIPOLE_AGENT_KAFKA_GROUP_ID: "dipole-agent-subscription-active-v1",
+    DIPOLE_AGENT_CANDIDATE_VERSION: "candidate-v1",
+    DIPOLE_AGENT_RELEASE_MANIFEST: "/run/dipole/release/manifest.json",
+    DIPOLE_AGENT_LEDGER_MODE: "mysql",
+    DIPOLE_AGENT_MYSQL_HOST: "mysql",
+    DIPOLE_AGENT_MYSQL_USER: "agent",
+    DIPOLE_AGENT_MYSQL_PASSWORD: "secret",
+    DIPOLE_AGENT_MYSQL_DATABASE: "dipole",
+    DIPOLE_AGENT_MODEL_MODE: "ai_sdk",
+    DIPOLE_AGENT_MODEL_ROUTES: "openai/gpt-5-mini",
+    DIPOLE_AGENT_MODEL_PROVIDER: "openai_compatible",
+    DIPOLE_AGENT_MODEL_PROVIDER_NAME: "openai",
+    DIPOLE_AGENT_MODEL_BASE_URL: "https://gateway.example.test/v1",
+    DIPOLE_AGENT_MODEL_API_KEY: "test-model-key",
+    DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
+    DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"openai/gpt-5-mini","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]',
+    DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
+    DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
+    DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret",
+    DIPOLE_AGENT_TRIGGER_MODE: "subscription",
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED: "true"
+  };
+}
 
 function subscriptionConfig() {
   return loadShadowRuntimeConfig({

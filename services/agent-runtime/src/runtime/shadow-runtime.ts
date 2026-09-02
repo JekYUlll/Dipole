@@ -66,6 +66,7 @@ const shadowRuntimeConfigSchema = z.object({
   agentUuid: z.string().trim().min(1),
   triggerMode: z.enum(["direct_target", "subscription"]),
   subscriptionShadowEnabled: z.boolean(),
+  subscriptionActiveEnabled: z.boolean(),
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
   readScopeConfirmationTtlMs: z.number().int().min(1000).max(86_400_000),
@@ -119,10 +120,13 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.runtimeMode === "active" && config.releaseManifestPath.length === 0) {
     refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires a release manifest", path: ["releaseManifestPath"] });
   }
-  if (config.enabled && !config.groupId.startsWith(`dipole-agent-${config.runtimeMode}-`)) {
+  const requiredGroupPrefix = config.subscriptionActiveEnabled
+    ? "dipole-agent-subscription-active-"
+    : `dipole-agent-${config.runtimeMode}-`;
+  if (config.enabled && !config.groupId.startsWith(requiredGroupPrefix)) {
     refinement.addIssue({
       code: "custom",
-      message: `Kafka ${config.runtimeMode} runtime requires an isolated dipole-agent-${config.runtimeMode}-* group`,
+      message: `Kafka ${config.runtimeMode} runtime requires an isolated ${requiredGroupPrefix}* group`,
       path: ["groupId"]
     });
   }
@@ -191,6 +195,12 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.subscriptionShadowEnabled && !config.enabled) {
     refinement.addIssue({ code: "custom", message: "Subscription Shadow observation requires Kafka", path: ["subscriptionShadowEnabled"] });
   }
+  if (config.subscriptionActiveEnabled && !config.enabled) {
+    refinement.addIssue({ code: "custom", message: "Subscription Active mode requires Kafka", path: ["subscriptionActiveEnabled"] });
+  }
+  if (config.subscriptionActiveEnabled && config.triggerMode !== "subscription") {
+    refinement.addIssue({ code: "custom", message: "Subscription Active mode requires subscription trigger mode", path: ["triggerMode"] });
+  }
   if (config.subscriptionShadowEnabled && config.triggerMode !== "direct_target") {
     refinement.addIssue({ code: "custom", message: "Subscription Shadow observation requires direct-target primary mode", path: ["triggerMode"] });
   }
@@ -245,6 +255,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     agentUuid: env.DIPOLE_AGENT_UUID ?? "UAI000000000000000001",
     triggerMode: env.DIPOLE_AGENT_TRIGGER_MODE?.trim().toLowerCase() || "direct_target",
     subscriptionShadowEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED?.trim().toLowerCase() === "true",
+    subscriptionActiveEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED?.trim().toLowerCase() === "true",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
     readScopeConfirmationTtlMs: Number.parseInt(env.DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS ?? "900000", 10),

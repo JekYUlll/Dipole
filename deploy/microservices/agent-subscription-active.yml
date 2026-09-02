@@ -1,0 +1,20 @@
+services:
+  agent:
+    environment:
+      # This explicit overlay admits owner-scoped subscription tasks. It keeps
+      # the model and Capability surface inherited from agent-active read-only.
+      DIPOLE_AGENT_TRIGGER_MODE: subscription
+      DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "false"
+      DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED: "true"
+      DIPOLE_AGENT_KAFKA_GROUP_ID: ${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID is required}
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: subscription_active
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: ${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE is required}
+      DIPOLE_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED: "false"
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
+
+  gateway:
+    environment:
+      DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_GATEWAY_AGENT_MCP_ENABLED: "false"

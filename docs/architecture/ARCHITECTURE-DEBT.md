@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Subscription Active Read 已从普通 `read_active` 分离为专用 `subscription_active` Temporal mode。独立 Profile 要求显式启用、`subscription` trigger、mTLS Capability RPC、隔离 Kafka group/Temporal queue，并拒绝 Control、消息写入、Memory、MCP、External MCP 与 Shadow 对照混用；标准 active read 误配 subscription trigger 会启动失败。当前已完成单元、类型、生产构建和 Compose 渲染验证，真实共享 Kafka/Temporal/模型、owner 可见任务结果、观察窗口与回滚证据仍由 `AD-034`、`AD-009` 跟踪。
+
 - 2026-09-02：开发期 `agent-subscription-shadow.yml` 已将 owner Definition/Subscription 管理与 matcher 对照封装为显式 Compose profile；它固定 `shadow + direct_target`，并关闭 Task Control、Memory、MCP 与 External MCP。基础 Compose、Subscription trigger 和 Runtime 灰度均未改变，真实观察窗口与 `AD-034` 的评审证据继续待完成。
 
 - 2026-09-02：Remote GPU 的隔离、loopback-only Interactive Active Compose smoke 已验证用户 Definition 的 HTTP/gRPC/SQLC 持久化闭环：认证 owner 重放创建、列出目录，并复核单条 Definition 的 owner、Assistant、只读权限和 wildcard scope。Definition-only project、容器与 volumes 已自动清理；Subscription trigger、reviewed Shadow 与 Runtime 灰度继续由 `AD-034` 跟踪。

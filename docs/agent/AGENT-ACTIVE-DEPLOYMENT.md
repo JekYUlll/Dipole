@@ -52,6 +52,22 @@ overlay 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER
 
 同一 overlay 固定 `direct_target`、Memory、retrieval、retrieval-to-Context、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 
+### Subscription Active Read
+
+`deploy/microservices/agent-subscription-active.yml` 是 `agent-active.yml` 之上的专用 overlay，用于把已创建且 owner-scoped 的 Event Subscription 交给 Kafka 和 Temporal 执行。它要求独立的 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID` 与 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE`；运行时还会校验它们分别不与 direct-target consumer group、交互任务队列混用。
+
+该 Profile 只能执行已授权的 `conversation.list/read` 与检索前置路径，保持 Control、消息写入、Memory、MCP 与 External MCP 关闭。需要同时显式加载基础 active overlay：
+
+```bash
+docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-active.yml \
+  -f deploy/microservices/agent-subscription-active.yml \
+  config --quiet
+```
+
+`subscription_active` 是唯一可在 active Runtime 接受 `subscription` trigger 的 Temporal Activity mode。把 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 写入普通 `read_active` 配置会在启动前拒绝，以免绕开独立队列、受控 rollout 与回滚边界。该 overlay 不改变默认 Compose，也不把 Shadow Subscription 直接提升为主路径；共享环境启用前仍需归档同版本 matcher、Kafka、Temporal、Capability RPC、模型与回滚证据。
+
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 
 交互消息候选在共享环境启用前，还需要同一 revision 的 Core/Temporal/Compose 真实 receipt：owner approve、deny、重复 consume、Activity 重试及回滚均必须记录消息副作用计数。隔离 Temporal 已验证提交后 `UNAVAILABLE` / `DEADLINE_EXCEEDED` 的稳定命令标识与重试收敛，见 [Interactive Active Retry Receipt](AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)；受认证的 Core-to-Message gRPC 回包丢失恢复见 [Interactive Message Transport Receipt](AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)，SQLC MySQL 持久化 smoke 见 [Interactive Message MySQL Receipt](AGENT-INTERACTIVE-ACTIVE-MESSAGE-MYSQL-RECEIPT.md)。这些证据都不能替代真实 Compose、部分副作用回滚或共享环境 receipt。

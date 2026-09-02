@@ -10,6 +10,8 @@ Definition 选择同样以 owner 为边界：Core 按 `(tenant, created_by_id, a
 
 该契约仅覆盖 Runtime 与 Core 的一致性门禁。默认 `direct_target` 模式、默认关闭的 subscription trigger、rollout gate 和 reviewed 观察窗口均保持不变。
 
+观察窗口完成后，受控环境可采用 [Subscription Active Read](AGENT-ACTIVE-DEPLOYMENT.md#subscription-active-read) overlay。它使用专用 consumer group 与 Temporal queue 将 owner-scoped Subscription 固化为独立 durable Task，保持只读 Capability，且不复用 Shadow 的 direct-target 主路径。
+
 ## 启用前提
 
 - 保持 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。
