@@ -238,6 +238,26 @@ wait_for_approval() {
   printf '%s' "${approval_id}"
 }
 
+wait_for_agent_ready() {
+  for _ in $(seq 1 30); do
+    if compose exec -T agent node --input-type=module <<'NODE' >/dev/null 2>&1
+const response = await fetch("http://127.0.0.1:8091/readyz");
+process.exit(response.ok ? 0 : 1);
+NODE
+    then
+      return 0
+    fi
+    sleep 1
+  done
+  printf 'Agent worker did not become ready after restart\n' >&2
+  return 1
+}
+
+restart_agent_worker() {
+  compose restart agent
+  wait_for_agent_ready
+}
+
 resolve_twice() {
   local task_id=$1
   local approval_id=$2
@@ -286,6 +306,7 @@ denied_effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_tool_invocations W
 
 approved_task=$(start_task "approve-$(openssl rand -hex 6)" "/send Compose approval replay committed exactly one message.")
 approved_approval=$(wait_for_approval "${approved_task}")
+restart_agent_worker
 resolve_twice "${approved_task}" "${approved_approval}" approved >/dev/null
 wait_for_workflow "${approved_task}" completed
 

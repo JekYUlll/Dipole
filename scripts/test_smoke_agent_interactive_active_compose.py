@@ -42,6 +42,9 @@ class InteractiveAgentActiveComposeSmokeTest(unittest.TestCase):
 
     def test_smoke_verifies_both_replay_outcomes_and_revokes_authority(self) -> None:
         script = (ROOT / "scripts/smoke-agent-interactive-active-compose.sh").read_text(encoding="utf-8")
+        self.assertIn("wait_for_agent_ready()", script)
+        self.assertIn("compose restart agent", script)
+        self.assertIn('approved_approval=$(wait_for_approval "${approved_task}")\nrestart_agent_worker\nresolve_twice', script)
         self.assertIn('resolve_twice "${denied_task}" "${denied_approval}" denied', script)
         self.assertIn("[[ \"${denied_effects}\" == $'0\\t0' ]]", script)
         self.assertIn('resolve_twice "${approved_task}" "${approved_approval}" approved', script)
