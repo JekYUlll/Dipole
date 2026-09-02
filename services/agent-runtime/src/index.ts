@@ -89,6 +89,7 @@ if (temporalConfig.activityMode === "subscription_active") {
     capabilityRPCEnabled: shadowConfig.capabilityRpc.enabled,
     capabilityRPCTLS: shadowConfig.capabilityRpc.tls.enabled,
     interactiveMessageWritesEnabled: shadowConfig.interactiveMessageWritesEnabled,
+    subscriptionMessageWritesEnabled: shadowConfig.subscriptionMessageWritesEnabled,
     ...activeReadSurface
   });
 } else if (shadowConfig.runtimeMode === "active" && (shadowConfig.triggerMode === "subscription" || shadowConfig.subscriptionActiveEnabled)) {

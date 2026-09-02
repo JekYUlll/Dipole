@@ -10,6 +10,7 @@ const profile = {
   capabilityRPCEnabled: true,
   capabilityRPCTLS: true,
   interactiveMessageWritesEnabled: false,
+  subscriptionMessageWritesEnabled: false,
   controlEnabled: false,
   mcpServerEnabled: false,
   externalMcpEnabled: false,
@@ -22,6 +23,15 @@ const profile = {
 describe("active subscription Agent profile", () => {
   it("accepts the explicit read-only subscription surface", () => {
     expect(() => assertActiveSubscriptionProfile(profile)).not.toThrow();
+  });
+
+  it("accepts the opt-in autonomous reply surface without interactive writes", () => {
+    expect(() => assertActiveSubscriptionProfile({ ...profile, subscriptionMessageWritesEnabled: true })).not.toThrow();
+  });
+
+  it("still forbids interactive writes even when the reply surface is opted in", () => {
+    expect(() => assertActiveSubscriptionProfile({ ...profile, subscriptionMessageWritesEnabled: true, interactiveMessageWritesEnabled: true }))
+      .toThrow(/message writes/i);
   });
 
   it.each([

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：为 Event Subscription 自主回复(Subscription Auto-Reply)落地默认关的运行时 opt-in 面。新增 `DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED`(默认 `false`)：配置层拒绝其在非 Subscription Active 下启用，并禁止与 `interactiveMessageWritesEnabled` 同开；`subscription_active` 启动断言接收该开关，仍固定禁止交互写、Control、MCP、Memory、retrieval 与 subscription Shadow。该切片只建立带护栏的启用面，不接线任何消息写执行——真正的回复合成/发送步骤、Core 侧订阅 scoped 自主审批(自主回复无法走 owner 手动 Signal)、compose overlay 与 Remote smoke 作为后续切片，继续由 `AD-034` 跟踪。agent-runtime `typecheck`、`build` 与定向单测(profile 矩阵 + config refinement)通过，全套 850 项通过(一处 external-mcp 凭据文件属主用例在 root 运行环境下不适用)。
+
 - 2026-09-02：Remote GPU 已在隔离、loopback-only Compose project 完成 Event Subscription Active Read 验收。认证 owner 通过真实 Gateway `chat.send` 产生消息，Kafka matcher 创建一个 owner-scoped Temporal Durable Task；Task 完成一次 loopback 模型调用且未发送 Agent 消息。最终 MySQL 收据为 `completed_tasks=1`、`completed_model_runs=1`、`agent_sent_messages=0`、`active_grants=0`，临时 Compose 项目已按标签清理。该 smoke 使用受控定义、临时 grant 和本进程模型 stub，只覆盖开发期只读链路，不代表共享 tenant、外部 Provider、语义预筛质量、性能或默认路径启用。
 
 - 2026-09-02：补齐 `agent-subscription-active.yml` 的 Compose 静态门禁。验收固定其独立的 Kafka consumer group 与 Temporal queue、显式 subscription trigger、mTLS Capability RPC 依赖和关闭的 Control、消息写入、MCP/External MCP 面；缺少 subscription group 时渲染必须失败。Remote GPU 的隔离 Node 22 环境已通过该 profile 的 `18/18` 定向运行时测试与 typecheck。此记录仅覆盖配置和运行时单测，不代表 Kafka、Temporal、模型调用或共享环境的端到端启用。

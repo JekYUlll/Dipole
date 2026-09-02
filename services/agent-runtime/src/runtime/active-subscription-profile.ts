@@ -9,6 +9,9 @@ export interface ActiveSubscriptionProfile extends ActiveReadProfileSurface {
   readonly capabilityRPCEnabled: boolean;
   readonly capabilityRPCTLS: boolean;
   readonly interactiveMessageWritesEnabled: boolean;
+  // Opt-in surface for the autonomous subscription reply write. Default false;
+  // it never coexists with interactive writes (which stay forbidden here).
+  readonly subscriptionMessageWritesEnabled: boolean;
 }
 
 // Subscription tasks are a separate rollout surface so their consumer group and

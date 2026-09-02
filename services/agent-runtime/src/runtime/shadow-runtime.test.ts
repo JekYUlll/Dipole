@@ -19,7 +19,7 @@ describe("shadow runtime composition", () => {
     expect(loadShadowRuntimeConfig({})).toMatchObject({
       enabled: false, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
       modelProvider: { kind: "disabled" }, contextCompilerVersion: "v1", memoryEnabled: false, retrievalEnabled: false, retrievalContextEnabled: false, interactiveMessageWritesEnabled: false,
-      triggerMode: "direct_target", subscriptionActiveEnabled: false, readScopeConfirmationTtlMs: 900_000, capabilityRpc: { enabled: false }
+      triggerMode: "direct_target", subscriptionActiveEnabled: false, subscriptionMessageWritesEnabled: false, readScopeConfirmationTtlMs: 900_000, capabilityRpc: { enabled: false }
     });
     expect(loadShadowRuntimeConfig({ DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: "2000" }).readScopeConfirmationTtlMs).toBe(2_000);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: "999" })).toThrow(/>=1000/);
@@ -29,6 +29,19 @@ describe("shadow runtime composition", () => {
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
       DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED: "true"
     })).toThrow(/requires subscription trigger mode/);
+    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED: "true" })).toThrow(/require Subscription Active mode/);
+    expect(() => loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_KAFKA_GROUP_ID: "dipole-agent-subscription-active-v1",
+      DIPOLE_AGENT_TRIGGER_MODE: "subscription", DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED: "true",
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091", DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret",
+      DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED: "true", DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED: "true"
+    })).toThrow(/cannot combine with interactive message writes/);
+    expect(loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_KAFKA_GROUP_ID: "dipole-agent-subscription-active-v1",
+      DIPOLE_AGENT_TRIGGER_MODE: "subscription", DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED: "true",
+      DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091", DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret",
+      DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED: "true"
+    }).subscriptionMessageWritesEnabled).toBe(true);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "actve" })).toThrow(/must be shadow or remote/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote" })).toThrow(/Kafka/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote", DIPOLE_AGENT_CANDIDATE_VERSION: "candidate-v1" })).toThrow(/release manifest/);

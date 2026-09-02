@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Subscription Auto-Reply 已建立默认关的运行时 opt-in 面(`DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED`)：配置层要求其只在 `subscription_active` 下启用、与交互写互斥，`assertActiveSubscriptionProfile` 接收该开关并保持只读护栏(禁交互写/Control/MCP/Memory/retrieval/Shadow)。当前仅为启用面，**未接线**回复合成与消息发送。剩余债务在 `AD-034`：(1) activity 在读计划完成后按订阅事件合成回复并经审计化 Tool Invocation 发到触发会话 `conversation_key`；(2) Core 侧订阅 scoped 自主审批/预授权，使自主回复跳过 owner 手动 Signal 又保留 grant/幂等审计；(3) 专用 compose overlay(默认关)与静态门禁；(4) Remote GPU 隔离 smoke 断言 `agent_sent_messages=1`、审批消费一次、重放幂等。上述完成并有 reviewed 观察窗口证据前，禁止在共享环境启用。
+
 - 2026-09-02：Subscription Active Read 已从普通 `read_active` 分离为专用 `subscription_active` Temporal mode。独立 Profile 要求显式启用、`subscription` trigger、mTLS Capability RPC、隔离 Kafka group/Temporal queue，并拒绝 Control、消息写入、Memory、MCP、External MCP 与 Shadow 对照混用；标准 active read 误配 subscription trigger 会启动失败。当前已完成单元、类型、生产构建和 Compose 渲染验证，真实共享 Kafka/Temporal/模型、owner 可见任务结果、观察窗口与回滚证据仍由 `AD-034`、`AD-009` 跟踪。
 
 - 2026-09-02：开发期 `agent-subscription-shadow.yml` 已将 owner Definition/Subscription 管理与 matcher 对照封装为显式 Compose profile；它固定 `shadow + direct_target`，并关闭 Task Control、Memory、MCP 与 External MCP。基础 Compose、Subscription trigger 和 Runtime 灰度均未改变，真实观察窗口与 `AD-034` 的评审证据继续待完成。

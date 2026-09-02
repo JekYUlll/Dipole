@@ -78,6 +78,7 @@ const shadowRuntimeConfigSchema = z.object({
   retrievalEnabled: z.boolean(),
   retrievalContextEnabled: z.boolean(),
   interactiveMessageWritesEnabled: z.boolean(),
+  subscriptionMessageWritesEnabled: z.boolean(),
   modelContextProfiles: z.array(routeContextProfileSchema),
   modelBudget: z.object({
     maxCalls: z.number().int().min(1).max(10),
@@ -204,6 +205,12 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.subscriptionShadowEnabled && config.triggerMode !== "direct_target") {
     refinement.addIssue({ code: "custom", message: "Subscription Shadow observation requires direct-target primary mode", path: ["triggerMode"] });
   }
+  if (config.subscriptionMessageWritesEnabled && !config.subscriptionActiveEnabled) {
+    refinement.addIssue({ code: "custom", message: "Subscription message writes require Subscription Active mode", path: ["subscriptionMessageWritesEnabled"] });
+  }
+  if (config.subscriptionMessageWritesEnabled && config.interactiveMessageWritesEnabled) {
+    refinement.addIssue({ code: "custom", message: "Subscription message writes cannot combine with interactive message writes", path: ["subscriptionMessageWritesEnabled"] });
+  }
   if (config.subscriptionShadowEnabled && !config.capabilityRpc.enabled) {
     refinement.addIssue({ code: "custom", message: "Subscription Shadow observation requires Agent Capability RPC", path: ["capabilityRpc", "enabled"] });
   }
@@ -267,6 +274,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     retrievalEnabled: env.DIPOLE_AGENT_RETRIEVAL_ENABLED?.trim().toLowerCase() === "true",
     retrievalContextEnabled: env.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED?.trim().toLowerCase() === "true",
     interactiveMessageWritesEnabled: env.DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED?.trim().toLowerCase() === "true",
+    subscriptionMessageWritesEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED?.trim().toLowerCase() === "true",
     modelContextProfiles: parseRouteContextProfiles(env.DIPOLE_AGENT_MODEL_CONTEXT_PROFILES ?? ""),
     modelBudget: {
       maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
