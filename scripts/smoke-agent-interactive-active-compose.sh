@@ -129,6 +129,37 @@ NODE
 
 register_owner
 
+verify_runtime_status() {
+  compose exec -T agent node --input-type=module - "${owner_telephone}" <<'NODE'
+const [telephone] = process.argv.slice(2);
+const loginResponse = await fetch("http://core:8081/api/v1/auth/login", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ telephone, password: "smoke-pass-123" })
+});
+const loginBody = await loginResponse.json();
+const token = loginBody?.data?.token;
+if (loginResponse.status !== 200 || typeof token !== "string" || token.length === 0) {
+  throw new Error(`login for runtime status failed: ${loginResponse.status}`);
+}
+const response = await fetch("http://gateway:8080/api/v1/agent/status", {
+  headers: { authorization: `Bearer ${token}` }
+});
+const body = await response.json();
+const expected = {
+  schemaVersion: "dipole.agent.runtime_status.v1",
+  runtimeMode: "active",
+  taskControlEnabled: true,
+  interactiveMessageWritesEnabled: true
+};
+if (response.status !== 200 || !body || Object.entries(expected).some(([key, value]) => body[key] !== value)) {
+  throw new Error(`runtime status mismatch: ${response.status}`);
+}
+NODE
+}
+
+verify_runtime_status
+
 canonical_direct_conversation() {
   local first=$1
   local second=$2
