@@ -68,7 +68,7 @@ describe("subscription prefilter evaluator", () => {
     const corpus = parseSubscriptionPrefilterCorpus(corpusFixture());
     const evidence = buildRulePrefilterEvidence(corpus, {
       subscriptionId: "SUB-RULE", definitionId: "DEF-1", definitionVersion: 1,
-      tenantId: "dipole", agentId: "UAI", eventType: "message.direct.created",
+      tenantId: "dipole", agentId: "UAI", createdById: "U100", eventType: "message.direct.created",
       resourceType: "conversation", resourceId: "group:G1",
       filterKind: "message_contains_any", filter: { terms: ["INCIDENT", "延期"] }
     }, { nowMicros: monotonicMicros() });

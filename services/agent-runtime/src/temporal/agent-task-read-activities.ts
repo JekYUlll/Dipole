@@ -80,7 +80,8 @@ export function createTemporalReadStepActivities(
         tenantId: admission.tenantId,
         agentUuid: admission.agentId,
         triggerType: event.eventType,
-        triggerRef: event.aggregateId
+        triggerRef: event.aggregateId,
+        ...(event.subscriptionId === undefined ? {} : { subscriptionId: event.subscriptionId })
       });
       const runtimeMode = dependencies.runtimeMode ?? "shadow";
       if (input.taskId !== expectedTaskId || input.runId !== agentRunId(expectedTaskId, "dipole-agent", runtimeMode) ||

@@ -29,7 +29,8 @@ const taskId = agentTaskId({
   tenantId: identity.tenantId,
   agentUuid: identity.agentUuid,
   triggerType: event.eventType,
-  triggerRef: event.aggregateId
+  triggerRef: event.aggregateId,
+  ...(event.subscriptionId === undefined ? {} : { subscriptionId: event.subscriptionId })
 });
 
 describe("TemporalMcpShadowTaskDispatcher", () => {

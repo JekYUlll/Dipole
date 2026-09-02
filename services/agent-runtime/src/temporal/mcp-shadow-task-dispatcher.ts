@@ -54,7 +54,8 @@ export class TemporalMcpShadowTaskDispatcher implements ShadowTaskDispatcher {
       tenantId: identity.tenantId,
       agentUuid: identity.agentUuid,
       triggerType: event.eventType,
-      triggerRef: event.aggregateId
+      triggerRef: event.aggregateId,
+      ...(event.subscriptionId === undefined ? {} : { subscriptionId: event.subscriptionId })
     });
     if (rawTaskId !== expectedTaskId) {
       throw new Error("Temporal MCP Shadow Task ID does not match the deterministic event binding");

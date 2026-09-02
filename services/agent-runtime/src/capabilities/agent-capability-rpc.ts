@@ -364,6 +364,7 @@ export class AgentCapabilityRPCClient {
             definitionVersion: Number(item.definitionVersion),
             tenantId: item.tenantId,
             agentId: item.agentId,
+            createdById: item.createdById,
             eventType: item.eventType,
             resourceType: item.resourceType,
             resourceId: item.resourceId,

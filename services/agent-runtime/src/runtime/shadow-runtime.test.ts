@@ -262,11 +262,11 @@ describe("shadow runtime composition", () => {
     expect(fixture.ledger.claim).not.toHaveBeenCalled();
   });
 
-  it("pins the stable matching subscription before task admission", async () => {
+  it("dispatches every matching subscription with its owner identity", async () => {
     const fixture = runtimeFixture();
     const subscriptions = subscriptionAdmission([
-      subscription("SUB-B", "all", {}),
-      subscription("SUB-A", "message_contains_any", { terms: ["hello"] })
+      subscription("SUB-B", "all", {}, "U300"),
+      subscription("SUB-A", "message_contains_any", { terms: ["hello"] }, "U200")
     ]);
     const runtime = buildKafkaShadowRuntime(
       subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger, undefined, subscriptions
@@ -275,7 +275,8 @@ describe("shadow runtime composition", () => {
     await runtime.start();
     await fixture.eachMessage()(payload(messageEnvelope("U200")));
 
-    expect(subscriptions.admit).toHaveBeenCalledWith(
+    expect(subscriptions.admit).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         eventId: "E1",
         subscriptionId: "SUB-A",
@@ -287,9 +288,15 @@ describe("shadow runtime composition", () => {
           agentId: "UAI"
         }
       }),
-      expect.objectContaining({ agentUuid: "UAI" })
+      expect.objectContaining({ principalUuid: "U200", agentUuid: "UAI" })
     );
-    expect(fixture.planner.plan).toHaveBeenCalledOnce();
+    expect(subscriptions.admit).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ eventId: "E1", subscriptionId: "SUB-B" }),
+      expect.objectContaining({ principalUuid: "U300", agentUuid: "UAI" })
+    );
+    expect(fixture.planner.plan).toHaveBeenCalledTimes(2);
+    expect(fixture.ledger.claim).toHaveBeenCalledTimes(2);
   });
 
   it("uses a borrowed subscription matcher with an independent dispatcher", async () => {
@@ -312,7 +319,7 @@ describe("shadow runtime composition", () => {
         subscriptionId: "SUB-A",
         subscriptionBinding: expect.objectContaining({ subscriptionId: "SUB-A" })
       }),
-      expect.objectContaining({ agentUuid: "UAI" }),
+      expect.objectContaining({ principalUuid: "U100", agentUuid: "UAI" }),
       expect.any(String)
     );
     expect(fixture.planner.plan).not.toHaveBeenCalled();
@@ -419,7 +426,8 @@ function subscriptionAdmission(candidates: readonly AgentEventSubscription[]) {
         tenantId: identity.tenantId,
         agentUuid: identity.agentUuid,
         triggerType: event.eventType,
-        triggerRef: event.aggregateId
+        triggerRef: event.aggregateId,
+        ...(event.subscriptionId === undefined ? {} : { subscriptionId: event.subscriptionId })
       });
       return { taskId, runId: agentRunId(taskId), runStatus: "running" as const };
     }),
@@ -427,10 +435,10 @@ function subscriptionAdmission(candidates: readonly AgentEventSubscription[]) {
   };
 }
 
-function subscription(subscriptionId: string, filterKind: "all" | "message_contains_any", filter: unknown): AgentEventSubscription {
+function subscription(subscriptionId: string, filterKind: "all" | "message_contains_any", filter: unknown, createdById = "U100"): AgentEventSubscription {
   return {
     subscriptionId, definitionId: "DEF-1", definitionVersion: 1,
-    tenantId: "dipole", agentId: "UAI", eventType: "message.direct.created",
+    tenantId: "dipole", agentId: "UAI", createdById, eventType: "message.direct.created",
     resourceType: "conversation", resourceId: "direct:U100:UAI", filterKind, filter
   };
 }

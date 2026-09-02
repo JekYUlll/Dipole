@@ -300,6 +300,10 @@ func authorizeTriggerSubscriptionV1(ctx context.Context, store application.Agent
 	if subscription.SubscriptionUUID != subscriptionUUID || !ValidSubscriptionDefinitionV1(definition, *subscription, match, at.UTC()) {
 		return fmt.Errorf("%w: Agent Event Subscription binding is invalid", application.ErrAgentExecutionPolicyDenied)
 	}
+	if strings.TrimSpace(subscription.CreatedByUUID) != strings.TrimSpace(request.PrincipalUUID) ||
+		strings.TrimSpace(definition.OwnerUUID) != strings.TrimSpace(request.PrincipalUUID) {
+		return fmt.Errorf("%w: Agent Event Subscription owner binding is invalid", application.ErrAgentExecutionPolicyDenied)
+	}
 	return nil
 }
 
@@ -622,7 +626,17 @@ func invocationFromPolicyStartV1(request application.AgentExecutionPolicyStartV1
 }
 
 func agentTaskUUIDV1(request application.AgentExecutionPolicyStartV1) string {
-	canonical := application.AgentPolicyPersistenceVersionV1 + "\n" + strings.TrimSpace(request.TenantID) + "\n" + strings.TrimSpace(request.AgentUUID) + "\n" + strings.TrimSpace(request.TriggerType) + "\n" + strings.TrimSpace(request.TriggerRef)
+	parts := []string{
+		application.AgentPolicyPersistenceVersionV1,
+		strings.TrimSpace(request.TenantID),
+		strings.TrimSpace(request.AgentUUID),
+		strings.TrimSpace(request.TriggerType),
+		strings.TrimSpace(request.TriggerRef),
+	}
+	if subscriptionUUID := strings.TrimSpace(request.SubscriptionUUID); subscriptionUUID != "" {
+		parts = append(parts, subscriptionUUID)
+	}
+	canonical := strings.Join(parts, "\n")
 	digest := sha256.Sum256([]byte(canonical))
 	return "task:" + hex.EncodeToString(digest[:])[:59]
 }

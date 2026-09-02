@@ -72,7 +72,7 @@ function event(id: string, content: string): object {
 
 function subscription(): object {
   return {
-    subscriptionId: "SUB-RULE", definitionId: "DEF-1", definitionVersion: 1, tenantId: "dipole", agentId: "UAI",
+    subscriptionId: "SUB-RULE", definitionId: "DEF-1", definitionVersion: 1, tenantId: "dipole", agentId: "UAI", createdById: "U100",
     eventType: "message.direct.created", resourceType: "conversation", resourceId: "group:G1",
     filterKind: "message_contains_any", filter: { terms: ["incident"] }
   };

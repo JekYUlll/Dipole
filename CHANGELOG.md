@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：收紧 Agent Event Subscription 的执行主体与幂等契约。Runtime 对每个确定性命中订阅独立派发，使用订阅创建者作为可信 principal；Core 再次校验 Subscription、pinned Definition 与 principal 的 owner 一致性。订阅触发的 Task ID 与 EventLedger key 纳入 subscription identity，多个 owner 命中同一消息时可独立执行，单订阅重复消费仍收敛。默认 `direct_target` 和 subscription trigger 默认关闭均未改变，详见 [Agent Subscription Shadow](docs/agent/agent-subscription-shadow.md)。
+
 - 2026-09-02：Remote GPU 以同版本 `81d8da66` 完成隔离的 Interactive Agent active 写入验收。临时 `user_gray` manifest、mTLS、独立 Kafka/Temporal 资源和短期 grant 只用于本次 Compose 项目；`/send` 的拒绝审批保持零副作用，重复批准在 Worker 重启并恢复后仍收敛为一次 Tool、一次消息和两条 Sync Inbox。退出后 grant、容器、卷和回环端口均已清理。该确定性 fixture 不调用模型，不代表浏览器 HITL、共享环境、模型质量、成功率或性能结论，详见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
 
 - 2026-09-02：Interactive Agent active Compose smoke 已覆盖等待审批期间的真实 Worker 替换。Remote GPU 同版本 `dc0129a7` 的隔离项目在 `waiting_approval` 后重启 Agent Worker，并经 `/readyz` 确认恢复；同一批准重放仍收敛为一次 Tool、一次消息和两条 Sync Inbox，拒绝路径保持零副作用。项目、卷与回环端口在结束后均已清理。该确定性 fixture 不代表真实模型效果、浏览器 HITL、共享环境、Core/Message 联合故障、部分副作用回滚或性能结论，详见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。

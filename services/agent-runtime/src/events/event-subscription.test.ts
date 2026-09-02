@@ -10,7 +10,7 @@ const event: AgentEvent = {
 };
 
 describe("matchEventSubscriptions", () => {
-  it("selects the lexicographically first matching subscription without a model call", () => {
+  it("returns every matching subscription in deterministic order", () => {
     const result = matchEventSubscriptions(event, [
       subscription("SUB-B", "message_contains_any", { terms: ["延期"] }),
       subscription("SUB-A", "all", {})
@@ -39,7 +39,7 @@ describe("matchEventSubscriptions", () => {
 function subscription(subscriptionId: string, filterKind: string, filter: unknown) {
   return {
     subscriptionId, definitionId: "DEF-1", definitionVersion: 1,
-    tenantId: "dipole", agentId: "UAI", eventType: "message.direct.created",
+    tenantId: "dipole", agentId: "UAI", createdById: "U100", eventType: "message.direct.created",
     resourceType: "conversation", resourceId: "group:G1", filterKind, filter
   };
 }

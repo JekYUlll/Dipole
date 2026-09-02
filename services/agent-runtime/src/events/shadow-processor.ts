@@ -173,9 +173,22 @@ export type ShadowPlanExecution =
     readonly discoveredCount: number;
   };
 
-export function agentTaskId(input: { tenantId: string; agentUuid: string; triggerType: string; triggerRef: string }): string {
-  const canonical = [policyVersion, input.tenantId.trim(), input.agentUuid.trim(), input.triggerType.trim(), input.triggerRef.trim()].join("\n");
+export function agentTaskId(input: { tenantId: string; agentUuid: string; triggerType: string; triggerRef: string; subscriptionId?: string }): string {
+  const canonical = [
+    policyVersion,
+    input.tenantId.trim(),
+    input.agentUuid.trim(),
+    input.triggerType.trim(),
+    input.triggerRef.trim(),
+    ...(input.subscriptionId?.trim() ? [input.subscriptionId.trim()] : [])
+  ].join("\n");
   return `task:${createHash("sha256").update(canonical, "utf8").digest("hex").slice(0, 59)}`;
+}
+
+export function agentEventLedgerKey(event: Pick<AgentEvent, "eventId" | "subscriptionId">): string {
+  if (event.subscriptionId === undefined) return event.eventId;
+  const canonical = [event.eventId.trim(), event.subscriptionId.trim()].join("\n");
+  return `subscription:${createHash("sha256").update(canonical, "utf8").digest("hex").slice(0, 64)}`;
 }
 
 export function agentRunId(taskId: string, runtimeId = "dipole-agent", mode = "shadow"): string {
@@ -207,7 +220,8 @@ export class ShadowEventProcessor {
       tenantId: identity.tenantId,
       agentUuid: identity.agentUuid,
       triggerType: event.eventType,
-      triggerRef: event.aggregateId
+      triggerRef: event.aggregateId,
+      ...(event.subscriptionId === undefined ? {} : { subscriptionId: event.subscriptionId })
     });
     return this.telemetry.withSpan("agent.task", {
       taskId,
@@ -217,7 +231,7 @@ export class ShadowEventProcessor {
         taskSpan.setAttribute("dipole.agent.task.outcome", "suppressed");
         return { outcome: "suppressed", taskId };
       }
-      const claim = await this.ledger.claim(event.eventId, taskId, event.eventType);
+      const claim = await this.ledger.claim(agentEventLedgerKey(event), taskId, event.eventType);
       if (claim === undefined) {
         taskSpan.setAttribute("dipole.agent.task.outcome", "duplicate");
         return { outcome: "duplicate", taskId };

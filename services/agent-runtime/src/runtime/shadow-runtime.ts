@@ -388,18 +388,29 @@ export function buildKafkaShadowRuntime(
       }
       const matches = matchEventSubscriptions(event, await matcher.matchEventSubscriptions(event, identity));
       if (matches.length === 0) return;
-      const match = matches[0]!;
-      event = {
-        ...event,
-        subscriptionId: match.subscriptionId,
-        subscriptionBinding: {
-          subscriptionId: match.subscriptionId,
-          definitionId: match.definitionId,
-          definitionVersion: match.definitionVersion,
-          tenantId: match.tenantId,
-          agentId: match.agentId
+      for (const match of matches) {
+        if (match.tenantId !== identity.tenantId || match.agentId !== identity.agentUuid) {
+          throw new Error("Agent Event Subscription identity does not match the Runtime binding");
         }
-      };
+        const subscriptionEvent: AgentEvent = {
+          ...event,
+          subscriptionId: match.subscriptionId,
+          subscriptionBinding: {
+            subscriptionId: match.subscriptionId,
+            definitionId: match.definitionId,
+            definitionVersion: match.definitionVersion,
+            tenantId: match.tenantId,
+            agentId: match.agentId
+          }
+        };
+        const subscriptionIdentity: AgentIdentity = {
+          ...identity,
+          principalUuid: match.createdById,
+          agentUuid: match.agentId
+        };
+        await processor.process(subscriptionEvent, subscriptionIdentity);
+      }
+      return;
     }
     await processor.process(event, identity);
   }, failureRouter);

@@ -4,6 +4,7 @@
   "definitionVersion": 1,
   "tenantId": "dipole",
   "agentId": "UAI",
+  "createdById": "U100",
   "eventType": "message.direct.created",
   "resourceType": "conversation",
   "resourceId": "group:G1",

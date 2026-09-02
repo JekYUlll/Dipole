@@ -249,6 +249,19 @@ func TestAgentTaskUUIDV1MatchesLanguageNeutralGoldenVector(t *testing.T) {
 	}
 }
 
+func TestAgentTaskUUIDV1SeparatesEventSubscriptions(t *testing.T) {
+	t.Parallel()
+
+	direct := agentapplication.AgentTaskUUIDV1(agentPolicyStartRequestV1())
+	first := agentPolicyStartRequestV1()
+	first.SubscriptionUUID = "SUB-1"
+	second := agentPolicyStartRequestV1()
+	second.SubscriptionUUID = "SUB-2"
+	if firstID, secondID := agentapplication.AgentTaskUUIDV1(first), agentapplication.AgentTaskUUIDV1(second); firstID == direct || secondID == direct || firstID == secondID {
+		t.Fatalf("subscription Task IDs must be distinct: direct=%q first=%q second=%q", direct, firstID, secondID)
+	}
+}
+
 func TestAgentRunUUIDV1MatchesLanguageNeutralGoldenVector(t *testing.T) {
 	t.Parallel()
 
@@ -371,6 +384,7 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{
 		application.AgentPermissionConversationList, application.AgentPermissionConversationRead,
 	})
+	definition.OwnerUUID = "U100"
 	store := policyStoreWithDefinitionV1(definition)
 	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
@@ -526,6 +540,38 @@ func TestPersistentAgentRunAdmissionRejectsUnknownTriggerSubscription(t *testing
 	}
 	if _, err := policy.Start(context.Background(), request.AgentExecutionPolicyStartV1); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 		t.Fatalf("Embedded policy should deny unknown trigger Subscription, got %v", err)
+	}
+}
+
+func TestPersistentAgentRunAdmissionRejectsForeignTriggerSubscriptionOwner(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 8, 27, 8, 0, 0, 0, time.UTC)
+	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
+	definition.OwnerUUID = "U100"
+	store := policyStoreWithDefinitionV1(definition)
+	store.subscriptions = map[string]*application.AgentEventSubscriptionV1{
+		"SUB-FOREIGN": {
+			SubscriptionUUID: "SUB-FOREIGN", DefinitionUUID: definition.DefinitionUUID, DefinitionVersion: definition.Version,
+			TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
+			EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "*",
+			FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`), CreatedByUUID: "U200",
+		},
+	}
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("new Run admission: %v", err)
+	}
+	request := application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "shadow",
+	}
+	request.SubscriptionUUID = "SUB-FOREIGN"
+
+	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("foreign trigger Subscription owner should be denied, got %v", err)
+	}
+	if len(store.tasks) != 0 {
+		t.Fatalf("foreign Subscription owner created a Task: %+v", store.tasks)
 	}
 }
 

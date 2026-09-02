@@ -7,7 +7,7 @@ import { ConversationListCapability } from "../capabilities/conversation-list.js
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
 import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
 import { InMemoryEventLedger } from "./event-ledger.js";
-import { ShadowEventProcessor, agentRunId, agentTaskId, type AgentEvent } from "./shadow-processor.js";
+import { ShadowEventProcessor, agentEventLedgerKey, agentRunId, agentTaskId, type AgentEvent } from "./shadow-processor.js";
 import type { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 describe("ShadowEventProcessor", () => {
@@ -87,6 +87,15 @@ describe("ShadowEventProcessor", () => {
     expect(plan.mock.calls[0]?.[1].mode).toBe("shadow");
     expect(plan.mock.calls[0]?.[1].runId).toMatch(/^run:/);
     expect(append).toHaveBeenCalledTimes(1);
+  });
+
+  it("derives subscription-specific Task and ledger identities", () => {
+    const direct = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100" });
+    const first = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100", subscriptionId: "SUB-1" });
+    const second = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100", subscriptionId: "SUB-2" });
+    expect(new Set([direct, first, second]).size).toBe(3);
+    expect(agentEventLedgerKey({ eventId: "E1" })).toBe("E1");
+    expect(agentEventLedgerKey({ eventId: "E1", subscriptionId: "SUB-1" })).not.toBe(agentEventLedgerKey({ eventId: "E1", subscriptionId: "SUB-2" }));
   });
 
   it("executes an admitted read-only Step and persists its terminal result", async () => {

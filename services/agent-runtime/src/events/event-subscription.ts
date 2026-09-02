@@ -14,6 +14,7 @@ const subscriptionSchema = z.object({
   definitionVersion: z.number().int().positive(),
   tenantId: identifier(64),
   agentId: identifier(24),
+  createdById: identifier(24),
   eventType: identifier(64),
   resourceType: z.literal("conversation"),
   resourceId: identifier(128),
