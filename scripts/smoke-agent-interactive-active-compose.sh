@@ -215,7 +215,7 @@ mysql() {
   compose exec -T mysql mysql -N -B -uroot -proot123 dipole "$@"
 }
 
-definition_record=$(mysql -e "SELECT owner_uuid, agent_uuid, JSON_UNQUOTE(JSON_EXTRACT(permissions_json, '$[0]')), JSON_UNQUOTE(JSON_EXTRACT(scopes_json, '$[0].resource_id')) FROM agent_definition_versions WHERE definition_uuid = '${definition_uuid}' AND version = 1")
+definition_record=$(mysql -e "SELECT owner_uuid, agent_uuid, JSON_UNQUOTE(JSON_EXTRACT(permissions_json, '\$[0]')), JSON_UNQUOTE(JSON_EXTRACT(scopes_json, '\$[0].resource_id')) FROM agent_definition_versions WHERE definition_uuid = '${definition_uuid}' AND version = 1")
 expected_definition_record="${owner_uuid}"$'\tUAI000000000000000001\tconversation.read\t*'
 [[ "${definition_record}" == "${expected_definition_record}" ]] || { printf 'Definition record diverged: %q\n' "${definition_record}" >&2; exit 1; }
 definition_count=$(mysql -e "SELECT COUNT(*) FROM agent_definition_versions WHERE tenant_id = 'dipole' AND owner_uuid = '${owner_uuid}' AND agent_uuid = '${agent_uuid}' AND version = 1")
