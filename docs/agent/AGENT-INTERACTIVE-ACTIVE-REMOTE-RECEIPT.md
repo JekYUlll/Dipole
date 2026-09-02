@@ -1,5 +1,31 @@
 # Interactive Active Remote Receipt
 
+## Same-Revision Worker Restart And Approval Recovery (2026-09-02)
+
+This development-only Remote GPU run used source revision
+`dc0129a70ca1e966ff306e2f34449c412d418834` for the isolated Compose project
+`dipole-agent-worker-restart-dc0129a7`. The Gateway was bound only to
+`127.0.0.1:18131`, and the project used isolated Kafka, Temporal, MySQL,
+and MinIO resources.
+
+The smoke registered a temporary owner and reached a durable
+`waiting_approval` checkpoint. It then restarted only the Agent Worker,
+waited for its `/readyz` endpoint, and resolved the same approval through the
+existing duplicate-request path.
+
+| Scenario | Result |
+| --- | --- |
+| Worker replacement | Agent Worker restarted and returned ready before resolution |
+| Deny replay | Zero Tool Invocations and zero messages |
+| Approve replay after restart | One completed Tool Invocation, one message, and two Sync Inbox entries |
+| Cleanup | Candidate containers, volumes, and loopback port were absent after exit |
+
+The fixture uses the compose smoke's deterministic provider path and does not
+evaluate model quality. It establishes an isolated Worker-replacement recovery
+path only; browser HITL, shared-tenant authority, Core or Message replacement,
+partial-effect rollback, capacity, latency, availability, and task-success
+rate claims remain outside this receipt.
+
 ## Same-Revision Runtime Status And Active Smoke (2026-09-02)
 
 This development-only Remote GPU run used source revision

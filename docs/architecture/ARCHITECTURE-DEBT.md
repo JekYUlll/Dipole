@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：同版本 `dc0129a7` 的隔离 Remote GPU `interactive_active` Compose smoke 已覆盖真实 Agent Worker 替换。Task 到达持久 `waiting_approval` 后，测试只重启 Agent Worker 并等待 `/readyz`；随后同一批准重放继续收敛为一次完成 Tool、一次 Message 与两条 Sync Inbox，拒绝路径仍为零 Tool/Message，项目、卷和 `127.0.0.1:18131` 均在退出后清理。该回执关闭 active Compose 单 Worker 替换后的审批恢复缺口；Core/Message 联合替换、EventLedger lease、部分副作用 rollback、浏览器 HITL、shared tenant 与容量仍由 `AD-009` 跟踪，不能据此填写成功率或性能结论。
+
 - 2026-09-02：完成远端分支收敛。810 条已合并 ref 已直接回收，40 条未合并 tip 先进入 `archive/remote-branch-consolidation-2026-09-02` 后按活跃 worktree 与 Epic 身份筛选，最终远端保留 6 条分支。当前保留 Agent/Frontend Epic 与两条活跃功能分支；其余分支可由 archive tag 恢复，但恢复前仍须在新分支完成语义复核与主干对齐。
 
 - 2026-09-02：分支与 worktree 曾按测试、retry、receipt 和小修复持续拆分，形成 65 条本地分支与 31 个 worktree，降低主干集成速度。当前主干经正常 merge 对齐远端并通过全量门禁，创建 `archive/branch-consolidation-2026-09-02` 保全 57 个回收 tip，移除 27 个 clean worktree，保留 8 条本地长期分支和 4 个受保护 worktree。远端收敛已在同日上一条记录完成；后续新增远端分支继续受 archive、owner 和 merge 条件约束。

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Interactive Agent active Compose smoke 已覆盖等待审批期间的真实 Worker 替换。Remote GPU 同版本 `dc0129a7` 的隔离项目在 `waiting_approval` 后重启 Agent Worker，并经 `/readyz` 确认恢复；同一批准重放仍收敛为一次 Tool、一次消息和两条 Sync Inbox，拒绝路径保持零副作用。项目、卷与回环端口在结束后均已清理。该确定性 fixture 不代表真实模型效果、浏览器 HITL、共享环境、Core/Message 联合故障、部分副作用回滚或性能结论，详见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
+
 - 2026-09-02：Interactive Agent active Compose smoke 纳入认证 Runtime status 验收。Remote GPU 的同版本 `9884b848` 隔离候选中，临时 owner 经 Gateway JWT 成功读取 `GET /api/v1/agent/status` 的低敏 active 状态；随后拒绝审批保持零副作用，重复批准收敛为一次 Tool、一次消息和两条 Sync Inbox。项目、卷与回环端口在结束后均已清理；该确定性 fixture 不代表公开体验、真实模型效果、共享环境或性能结论，详见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
 
 - 2026-09-02：Agent Task 控制面新增认证 Runtime 状态查询。`GET /api/v1/agent/status` 通过 Gateway 会话和内部可信调用返回 Runtime mode、Temporal activity mode、Task control 与交互写开关，帮助体验端区分控制面未装配和任务执行失败；响应不暴露 Provider、端点、凭据、Task、消息或用户数据。
