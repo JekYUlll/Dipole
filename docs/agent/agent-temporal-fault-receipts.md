@@ -10,15 +10,33 @@
 
 v1 仅在状态序列为 `1:running,2:waiting_approval,3:running,4:completed`，且 admission、审批请求、审批解析和终态持久写入均为一条时返回 `eligible`。四次 Step execution 与两次 terminal attempts 是该注入场景的预期值。任何偏差都输出 `ineligible`，不得作为恢复或零重复副作用结论。
 
+`read_scope_confirmation_resume`、`read_scope_confirmation_declined` 和 `read_scope_confirmation_expired` 覆盖多会话读取范围的 owner 确认。这三条演练不注入故障，而是让生产 read Activity 直接跑在 Workflow 后面，因此 receipt 额外记录 `conversationReads` 与 `unconfirmedConversationReads`：确认路径要求状态序列为 `1:running,2:waiting_input,3:running,4:completed`、两次 Step execution、一次输入恢复且恰好读取一个被确认的会话；拒绝与到期路径要求 `1:running,2:waiting_input,3:cancelled`、对应的 `user_cancelled` 或 `input_expired` cancellation、一次 Step execution 且零次会话读取。任一路径出现未确认读取都直接判定 `ineligible`。
+
 ## Generate and verify
 
 ```bash
 cd services/agent-runtime
-DIPOLE_AGENT_TEMPORAL_INTEGRATION=true npm run test:temporal:integration
-npm run receipt:temporal-fault -- --observation=temporal-fault-observation.json
+receipt_dir="$(mktemp -d)"
+DIPOLE_AGENT_TEMPORAL_INTEGRATION=true \
+DIPOLE_AGENT_TEMPORAL_FAULT_EVIDENCE_DIR="$receipt_dir" \
+npm test -- --run src/temporal/agent-task-workflow.integration.test.ts
+for receipt in "$receipt_dir"/*.json; do
+  npm run receipt:temporal-fault -- --receipt="$receipt"
+done
 ```
 
-输入和输出由 [`observation.schema.json`](../../contracts/agent-temporal-fault/v1/observation.schema.json) 与 [`receipt.schema.json`](../../contracts/agent-temporal-fault/v1/receipt.schema.json) 固定。CLI 只验证和绑定已归档观察数据；它不启动 Worker、不写数据库，也不替代共享环境的 Core restart、lease expiry、input resume 或 active authority 演练。
+显式 `DIPOLE_AGENT_TEMPORAL_FAULT_EVIDENCE_DIR` 让该集成测试将两份低敏 receipt 写入预先创建的绝对目录；未设置时测试没有文件副作用。输入和输出由 [`observation.schema.json`](../../contracts/agent-temporal-fault/v1/observation.schema.json) 与 [`receipt.schema.json`](../../contracts/agent-temporal-fault/v1/receipt.schema.json) 固定。CLI 可从 observation 创建 receipt，或通过 `--receipt` 独立复核已归档 receipt；它不启动 Worker、不写数据库，也不替代共享环境的 Core restart、lease expiry 或 active authority 演练。
+
+### Remote GPU record: 2026-09-01
+
+候选 `6beab05d` 使用 Node `22.12.0` 执行集成套件 `7/7`，再由 CLI 独立复核
+[`worker_replacement_approval_resume`](../../benchmarks/agent-temporal-fault-2026-09-01/worker-replacement-approval-resume.json)
+与 [`worker_replacement_input_resume`](../../benchmarks/agent-temporal-fault-2026-09-01/worker-replacement-input-resume.json)。两份 receipt 均为 `eligible`，并固定了状态修订和精确副作用基数。该运行使用内存 Temporal Test Server；Core restart、EventLedger lease、共享 tenant 和 active authority 继续使用各自的演练与证据边界。
+
+候选 `aec1b867` 随后在同一主机以 Node `22.12.0` 执行集成套件 `10/10`，并归档读取范围确认的三份 receipt：
+[`read_scope_confirmation_resume`](../../benchmarks/agent-temporal-fault-2026-09-01/read-scope-confirmation-resume.json)、
+[`read_scope_confirmation_declined`](../../benchmarks/agent-temporal-fault-2026-09-01/read-scope-confirmation-declined.json)
+与 [`read_scope_confirmation_expired`](../../benchmarks/agent-temporal-fault-2026-09-01/read-scope-confirmation-expired.json)，均为 `eligible` 并经 CLI 独立复核。三条演练由生产 read Activity 驱动：确认路径在伪造 request 被拒绝后只读取被确认的会话，拒绝与到期路径的会话读取计数为零。该运行同样只使用内存 Temporal Test Server，不涉及 Kafka、Core、MySQL、共享 tenant 或 active authority，也不包含该路径的 outcome/trajectory/permission 评测。
 
 ## Core restart read-shadow evidence
 
@@ -105,16 +123,45 @@ COMPOSE_PROJECT_NAME=dipole-agent-shadow-window \
 COMPOSE_ENV_FILE=.env \
 COMPOSE_OVERLAYS=deploy/microservices/agent-ai-sdk-shadow.yml:deploy/microservices/agent-temporal-read-shadow.yml \
 DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR=/secure/reviewed-manifests \
+DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256=<reviewed-set-sha256> \
+DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS=10 \
 DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR=/secure/shadow-window \
 scripts/collect-agent-shadow-eval-window.sh
 ```
 
 The output directory must not exist before collection. It receives one report
-per manifest, the exact summary input and the `reviewed_shadow` summary report.
-Exit status `0` means every reviewed task passed; `2` preserves a valid window
-with at least one failed task; all other statuses fail closed. The generated
-window remains an isolated development observation until its task set, reviewer
-process and environment are independently approved.
+per manifest, the exact summary input, the `reviewed_shadow` summary report and
+a low-sensitivity v2 `manifest-set.json` receipt. The receipt binds the window to
+the reviewed task-set digest, candidate version and sample count without
+copying Task ID, Prompt, user, message or reviewer labels. The optional
+`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` gate defaults to `1`; set it for a
+reviewed window and the resulting receipt records the required threshold with
+the observed sample count. Exit status `0`
+means every reviewed task passed; `2` preserves a valid window with at least
+one failed task; all other statuses fail closed. The generated window remains
+an isolated development observation until its task set, reviewer process and
+environment are independently approved.
+
+Before a reviewer writes a manifest, a controlled terminal can export one
+low-sensitivity observation packet from the read-only evaluation account:
+
+```bash
+DIPOLE_AGENT_EVAL_MYSQL_URL='mysql://readonly:...@127.0.0.1:3306/dipole' \
+npm run eval:shadow-review-pack -- \
+  --candidate-version=agent-runtime@<clean-revision> \
+  --task-id=<task-id> \
+  --run-id=<run-id> > /secure/review-packs/sample.json
+```
+
+The packet fingerprints Task, Run, Trace and resource IDs and excludes message,
+prompt, artifact body and tool arguments. It reports terminal execution state,
+capability trajectory, authorization decisions, retrieval evidence fingerprints
+and metering completeness. It remains `review_required`: it does not emit an
+executable manifest, suggest labels or approve a candidate. The final manifest
+must be independently reviewed and bound to the original Task/Run in the
+controlled review workspace before collection. A terminal sample with incomplete
+Step, Tool or Model audit remains exportable for failure classification; its
+`evaluatorEligibility` is `blocked` and the final evaluator still rejects it.
 
 Before reading a manifest, the collector resolves the running `agent` container
 and records its OCI `org.opencontainers.image.revision` label. It rejects a

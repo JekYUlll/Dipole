@@ -1,0 +1,8 @@
+services:
+  agent:
+    environment:
+      # DeepSeek V4 Flash returns its reasoning separately. Keep the read-only
+      # demo on the portable JSON-text adapter with reasoning disabled.
+      DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS: "false"
+      DIPOLE_AGENT_MODEL_OUTPUT_MODE: json_text
+      DIPOLE_AGENT_MODEL_THINKING_MODE: disabled

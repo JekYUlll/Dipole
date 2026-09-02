@@ -325,7 +325,7 @@ func (a *PersistentAgentRunAdmissionV1) Finish(ctx context.Context, taskUUID, ru
 	}
 	if run.Status == runStatus {
 		if strings.TrimSpace(run.LastError) == lastError {
-			return nil
+			return a.finishTaskTerminalV1(ctx, taskUUID, runStatus)
 		}
 		return fmt.Errorf("%w: Agent Run terminal evidence conflicts", application.ErrAgentExecutionPolicyDenied)
 	}
@@ -339,11 +339,40 @@ func (a *PersistentAgentRunAdmissionV1) Finish(ctx context.Context, taskUUID, ru
 	if !changed {
 		current, lookupErr := a.store.GetRun(ctx, runUUID)
 		if lookupErr == nil && current != nil && current.Status == runStatus && strings.TrimSpace(current.LastError) == lastError {
-			return nil
+			return a.finishTaskTerminalV1(ctx, taskUUID, runStatus)
 		}
 		return fmt.Errorf("%w: Agent Run terminal transition lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
 	}
-	return nil
+	return a.finishTaskTerminalV1(ctx, taskUUID, runStatus)
+}
+
+func (a *PersistentAgentRunAdmissionV1) finishTaskTerminalV1(ctx context.Context, taskUUID string, runStatus application.AgentRunStatusV1) error {
+	taskStatus := application.AgentTaskStatusV1(runStatus)
+	task, err := a.store.GetTask(ctx, taskUUID)
+	if err != nil {
+		return fmt.Errorf("get Agent Task terminal state: %w", err)
+	}
+	if task == nil {
+		return fmt.Errorf("%w: Agent Task terminal binding missing", application.ErrAgentExecutionPolicyDenied)
+	}
+	if task.Status == taskStatus {
+		return nil
+	}
+	if task.Status != application.AgentTaskStatusRunning {
+		return fmt.Errorf("%w: Agent Task is outside terminal transition state", application.ErrAgentExecutionPolicyDenied)
+	}
+	changed, err := a.store.TransitionTaskStatus(ctx, taskUUID, application.AgentTaskStatusRunning, taskStatus)
+	if err != nil {
+		return fmt.Errorf("finish Agent Task: %w", err)
+	}
+	if changed {
+		return nil
+	}
+	current, lookupErr := a.store.GetTask(ctx, taskUUID)
+	if lookupErr == nil && current != nil && current.Status == taskStatus {
+		return nil
+	}
+	return fmt.Errorf("%w: Agent Task terminal transition lost compare-and-set", application.ErrAgentExecutionPolicyDenied)
 }
 
 func agentTaskMatchesStartV1(task application.AgentTaskV1, request application.AgentExecutionPolicyStartV1) bool {

@@ -1,10 +1,98 @@
 # 更新日志
 
-- 2026-09-02：Remote GPU 在同修订 `3c3f403c` 的 disposable Compose read-shadow 候选完成事件发布后的 Core restart 演练。Core readiness 与 Gateway 代理恢复后，同一事件的 completed EventLedger、策略 Task、completed Shadow Run、completed 模型调用和 `conversation_digest` Artifact 均精确为 `1`；低敏 receipt 的 canonical SHA-256 为 `8cb9b34d96af831f5910af096f92ad85b795f5333b20292bec44cc0d17e0e2ae`。该记录仅覆盖只读 Shadow 的单次开发期恢复，不代表共享 tenant、任务成功率、active authority、写 Capability、Worker replacement 或 lease expiry。
+- 2026-09-02：归档 Remote GPU 的 Interactive Agent 多会话范围确认与取消回执。认证 owner 在两条可见会话上启动 read-shadow Task 后，Temporal 进入 `waiting_input`；伪造 request ID 被 Gateway 以 `409` 拒绝且状态保持，确认已展示选项后 Task/Run 完成。持久步骤只包含一次 `conversation.list` 和一次指向确认会话的 `conversation.read`，另一候选会话读取为零，并产出一份 `conversation_digest` Artifact。同一受控 fixture 还验证 owner `user_cancelled`：Gateway 返回 `202`，Task/Run 收敛为 `cancelled`，未完成的 read 计划行没有授权或执行。回执保持 loopback-only、只读 authority 且不含测试账号、Task、Run、消息或会话明文；它只覆盖受控两会话功能链路，不能填写成功率、模型质量、性能、MCP、Memory、active 写入或共享环境结论，详见 [read-scope receipt](benchmarks/agent-read-scope-confirmation-2026-09-02/)。
 
-- 2026-09-02：修复 Shadow Planner 的事件会话 hydration 参数语义。预取 `conversation.read` 现传递事件的 canonical `conversation_key`，由 Capability RPC 在可信 `ExecutionContext` 内派生实际目标；此前传递裸 `target_uuid` 会在私聊链路的会话键校验前失败并耗尽 Temporal Activity 重试。新增 direct conversation regression；写 Capability、active authority 与默认运行模式保持关闭。
+- 2026-09-02：归档真实 `conversation.read` 的受控 Shadow Eval N=2 窗口。两个独立 Kafka Trace 在同一干净 `d591bc75` Runtime 上均完成可信 `conversation.list -> conversation.read`、`conversation_digest` 产出与五类 Eval；低敏汇总、manifest-set receipt 与双 review pack 不包含 Task、Run、Trace、消息或主体明文。窗口的 `2/2` 仅表示固定单会话 fixture 的功能回归，不能填写 Agent 总体任务成功率、模型质量、共享环境、写能力或 promotion claim，详见 [actual-read N=2 archive](benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/)。
 
-- 2026-09-02：修复 Interactive Agent Shadow 的持久 Run 准入版本漂移。Shadow Runtime 不再携带仅用于 active promotion 绑定的 candidate version，避免 Core 的 mode/version 约束在 Task 已创建后拒绝 Run admission 并导致任务停留在 `running`。Remote GPU 已通过定向 Vitest `15/15`、TypeScript typecheck、生产构建和隔离 Compose 回归：认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，Run 为 `shadow / candidate_version=NULL / completed`，只生成 `conversation_digest` Artifact，消息写入数为零。active authority、写 Capability、MCP、Memory 与默认部署边界保持关闭。
+- 2026-09-02：归档同版本 `d591bc75` Remote GPU 的 Agent Task 终态收敛回执。隔离、loopback-only Compose 中，Kafka 事件的 EventLedger、Temporal Workflow、持久 Task 与 Run 均为 `completed`，并产生一份只读 `conversation_digest` Artifact；脱敏 review pack 同时记录了授权的 `conversation.list`、可信空发现导致的 `conversation.read` 跳过和完整模型计量。微服务 smoke 已改为等待 `agent_tasks.status=completed`，避免旧断言接受过期 `running` Task。该 N=1 回执不构成任务成功率、性能、公开体验、active 写入或候选 promotion 结论，详见 [terminal convergence receipt](benchmarks/agent-terminal-convergence-2026-09-02/)。
+
+- 2026-09-02：Core 的 Agent Run 终态提交现在同步收敛父 Task。`completed`、`failed`、`cancelled` 三种 Run 终态各自通过 Task CAS 迁移到同名状态；Run 已终态而 Task 尚未落库时，带相同证据的重放会补齐 Task，冲突终态和审批等待等非运行态继续拒绝。Agent application 全量回归与 Agent gRPC 终态契约测试通过。
+
+- 2026-09-02：统一聊天自发消息气泡配色，收口设计源与前端最后一处分歧。`design/dipole-ui.pen` 的 Outgoing Message Bubble 由信号红（`$brand`）改为海军蓝（`$rail`）+ 反白字，对齐前端应用早已落地的海军蓝气泡；信号红回归 V3 职责（主操作/未读/注意），不再兼作消息底色。仅改此一处复用组件，`check-pencil-design`（107 帧完好）与 `pen-v3-recolor --check` 幂等断言通过。
+
+- 2026-09-02：Agent Shadow Eval 的公开汇总升级为 `shadow-summary-report.v2`，移除原始 Trace ID。Trace 唯一性继续在受限 evaluator 输入中校验，仓库归档仅保留 Suite 哈希和聚合统计。
+
+- 2026-09-02：Remote GPU 已归档受控 Shadow Eval N=4 安全跳过窗口，四个固定 `no_discovered_conversation` 样本的五类结构性检查均通过。该窗口只证明空会话发现路径的回归稳定性，不能外推 Agent 总体任务成功率、主动写入或共享环境表现。
+
+- 2026-09-02：Shadow Eval 观测将严格识别“可信会话发现为空”导致的 `conversation.read` 跳过。该 Step 仍保留在 trajectory 中，审阅包明确标为 `not_required/no_discovered_conversation`，且不计为工具调用或缺失授权；识别依赖于已完成的 `conversation.read`、空授权及精确的持久化 skip 输出三项同时成立。任何其他空授权、非终态、缺失延迟或重试证据继续阻断 evaluator。此修复来自 Remote GPU review pack 暴露的真实只读样本，不构成新的成功率结论。
+
+- 2026-09-02：Remote GPU 的干净 Agent Runtime 候选已对同一终态 Shadow 样本复导 review pack：`conversation.list` 保留精确 allowed scope，空发现后的 `conversation.read` 标为 `not_required/no_discovered_conversation`，evaluator eligibility 为 `eligible`，且导出不含 Task、Run、Trace 或会话标识明文。该回执只复核已有单样本的观测解释与低敏导出，不能推导任务成功率或候选 promotion。
+
+- 2026-09-02：新增只读 Shadow Eval review-pack CLI。它对 Task、Run、Trace 和资源标识作域分隔哈希后导出终态观测元数据；对缺少授权、延迟或重试审计的样本明确标记 evaluator `blocked` 原因，保留人工失败分类，同时要求独立审核者再创建最终绑定 manifest。导出内容不能直接驱动评测或构成候选晋级、任务成功率结论。
+
+- 2026-09-02：修复后的 clean `f72e47cf` 候选已在 Remote GPU 的 loopback-only Compose 中通过真实 read-shadow Smoke。Kafka 事件、Core Capability RPC、Temporal Run、至少一次完成模型调用和一份 `conversation_digest` Artifact 均收敛，消息表保持零写入；Gateway 仅监听 `127.0.0.1:18117`。该 receipt 仅证明单样本只读链路回归，不构成任务成功率、效果提升或 promotion 结论。
+
+- 2026-09-02：Remote GPU 的同版本 Agent Shadow Smoke 暴露会话证据读取的跨服务契约漂移：Planner 曾把事件裸 `target_uuid` 交给要求 canonical conversation key 的 Runtime RPC adapter，导致 Temporal Run 在模型调用前失败。现改为使用事件 `conversation_key`，并新增 direct/group 回归锁定 `direct:<principal>:<target>` 与 `group:<id>` 两种路径。定向 Vitest `18/18` 与 TypeScript 构建通过；修复镜像、真实 Kafka/Capability RPC/模型/Artifact 成功样本及受控多样本评测窗口仍待重跑。
+
+- 2026-09-02：Remote GPU 的 legacy Docker builder 验证表明，仅后移 provenance 标签仍会因前置 `DIPOLE_BINARY` build arg 使不同 Go 服务重复安装 Alpine 依赖。镜像定义现将服务二进制、revision、构建时间和 dirty 状态全部置于共享依赖层之后，并由静态层序回归锁定；后续同机候选构建可在服务间复用 `ca-certificates` 与 `tzdata` 缓存。
+
+- 2026-09-02：Shadow Eval 窗口收集器新增显式最低样本数门禁。`DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS` 在采集前拒绝不足的评审 manifest 集合，并将阈值与实际样本数共同写入低敏 v2 `manifest-set.json` 回执；默认值为 `1`，保留单样本调试能力。既有 v1 回执保持原 schema 可验证。正式窗口可固定例如 `10` 的阈值，避免从小样本回执外推任务成功率。
+
+- 2026-09-02：Agent Shadow Eval 窗口现要求评审任务集的内容摘要。采集前用独立脚本按稳定顺序计算 manifest SHA-256 集合，运行时拒绝摘要漂移或候选版本混用，并输出仅包含集合摘要、候选版本和样本数的 `manifest-set.json` 回执。Remote GPU 与本地 fixture 均验证通过，覆盖通过、有效失败和任务集漂移拒绝；真实多样本窗口和任务成功率仍待由受控运行生成。
+
+- 2026-09-02：Interactive Agent 的完成 Tool 审计增加单次、同载荷的回包丢失恢复。仅当 Core 返回 `UNAVAILABLE` 或 `DEADLINE_EXCEEDED` 时，Runtime 才重放同一 completed terminal；两次均不确定时保留原完成态，不再尝试写入冲突的 failed terminal。Remote GPU Node 22 定向 Vitest `10/10` 与 TypeScript typecheck 通过。该切片覆盖 Runtime 到审计 RPC 的短暂响应丢失，不替代 Worker 替换、跨进程故障注入或共享环境回执，详见 [Agent Active 部署运行手册](docs/agent/AGENT-ACTIVE-DEPLOYMENT.md)。
+
+- 2026-09-02：Interactive Agent active 的 Tool 完成审计现会有界确认异步 Message receipt。Message command 经 Kafka 入队后，Core 在 `2s` 内仅对临时 `absent` receipt 轮询，receipt committed 后才固化 action reference；非 `absent` 结果与所有读取错误仍立即失败。新增“先 absent、后 committed”的 Agent application 回归，并在 Remote GPU 的 loopback-only 隔离 Compose 中验证并发 deny 零副作用、并发 approve 单次 consume、单条消息、一次 completed Tool Invocation 与两条 Sync Inbox 项；临时 grant、容器和 volumes 均已清理。详见 [Agent Active 部署运行手册](docs/agent/AGENT-ACTIVE-DEPLOYMENT.md)。
+- 2026-09-02：Interactive Agent Message command 的回包丢失恢复已扩展到隔离 MySQL 8.4。受认证 Core-to-Message gRPC 调用在服务端提交后收到 `UNAVAILABLE`，Core 以同一 `client_message_id` 查询 SQLC Message receipt 并恢复结果；数据库断言 message、metadata 各一条，发送者和接收者各一条 Sync Timeline 项。新增自动清理的 `smoke-agent-message-command-recovery.sh`，Remote GPU Go 1.27 已通过。该 smoke 不启动 Compose、Kafka、Temporal 或 shared tenant，见 [Interactive Message MySQL Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-MYSQL-RECEIPT.md)。
+
+- 2026-09-02：补齐 Interactive Agent Message command 的 Core-to-Message gRPC 回包丢失回归。受认证的 Message 服务先持久化 system message，测试代理随后返回 `UNAVAILABLE`；Core `LocalAgentCommandV1` 通过同一 `client_message_id` 的 Message receipt 恢复结果，提交次数保持为一。Remote GPU Go 1.27 已通过 Agent application 与 Message gRPC 相关包回归。该验证使用 bufconn 和内存持久化模型，Compose、MySQL、跨进程网络中断、Worker 替换及部分副作用回滚继续独立受控；详见 [Interactive Message Transport Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-MESSAGE-TRANSPORT-RECEIPT.md)。
+
+- 2026-09-02：Interactive Agent active 消息写入为“消息已提交但响应丢失”的短暂 RPC 故障固定了重试身份。仅对 Core `UNAVAILABLE` / `DEADLINE_EXCEEDED`，Runtime 保持同一 running Tool Invocation，并从 Task、Run、会话和内容推导稳定 Message command ID；Temporal Activity 重试因此由 Message Service 的既有幂等键收敛。Remote GPU Node 22 的定向单测 `5/5`、Temporal 故障用例 `1/1`、typecheck 和生产构建通过。该用例使用内存 Temporal 与受控 Core port stub，未替代真实 Core/Message/Compose 的部分副作用、Worker 替换、共享环境或回滚回执；详见 [Interactive Active Retry Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-RETRY-RECEIPT.md)。
+
+- 2026-09-02：归档 Interactive Agent active 写入的干净同版本 Remote GPU 回执。隔离、loopback-only 的 `430c9e38` Compose 同时覆盖 owner 并发 `denied` 重放与并发 `approved` 重放：拒绝路径持久化一次 `approval_denied` 且 Tool/Message 均为零；批准路径以一次 approval consume、一次完成的 Tool Invocation、一次 action reference 和恰好一条 Message 收敛。验证后的开发 promotion grant 已撤销。详细范围、fixture 前置条件及未覆盖的 shared/HITL/故障/性能边界见 [Interactive Active Remote Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。
+
+- 2026-09-02：修复 Interactive Agent Shadow 的持久 Run 准入版本漂移。Shadow Runtime 不再携带仅用于 active promotion 绑定的 candidate version，避免 Core 的 mode/version 约束在 Task 已创建后拒绝 Run admission 并导致任务停留在 `running`。Remote GPU Node 22 已通过定向 Vitest `15/15`、TypeScript typecheck 和生产构建；干净 `70bd4c74` 镜像的隔离 Compose 回归进一步验证认证 Task 创建 `202`、Temporal Workflow `completed`、持久 Run `shadow / candidate_version=NULL / completed` 与只读 `conversation_digest` Artifact。候选没有可读会话，消息写入数为零；active authority、写 Capability、MCP、Memory 与默认部署边界保持关闭。
+
+- 2026-09-01：修复 Interactive Agent Shadow 的 Compose 门禁。检查脚本此前断言 Gateway control secret 却未为渲染注入 `DIPOLE_GATEWAY_AGENT_CONTROL_SECRET`，导致无改动也会失败；现使用隔离的测试值，并由静态契约测试锁定正确变量名。该修复只恢复配置验证，不改变 Shadow 的只读权限边界或启动任何服务。
+
+- 2026-09-01：Interactive Agent 的 Temporal 集成门禁补充 owner `denied` 与并发重放信号路径。相同 request/approval ID 的两个拒绝 Signal 只会持久化一次拒绝决议，Task 收敛为 `cancelled/approval_denied`，且不会进入任何消息写步骤；该覆盖固定了审批被拒绝时的零副作用边界。Remote GPU 的干净 `f9634d3c` 候选以 Node 22 通过两份 Temporal 集成文件 `16/16` 与 TypeScript typecheck；真实 Core/Message/Compose 的联合 receipt 保持独立要求。
+
+- 2026-09-01：Interactive Agent 的 active 消息命令现通过 Message Service gRPC 执行，并由同一远程回执查询完成 Tool action reference 审计。Core 的 `dipole-agent` allowlist 精确放行 `ExecuteMcpMessageCommand`；候选回归还修复了 standalone Core 在审计阶段误用空本地 Message repository 导致的崩溃。Remote GPU loopback-only 隔离 Compose 已验证受认证 Task 创建 `202`、owner 批准 `202`、Temporal 完成、Tool completed、approval 单次 consumed，以及 action reference 对应恰好一条消息。短期开发 promotion grant 在验证后已撤销。该候选使用 dirty development images 和直接受控的开发授权续期，不构成生产发布、浏览器体验、拒绝/重复批准、故障恢复或容量结论。
+
+- 2026-09-02：设计源 `design/dipole-ui.pen` 的帧内联色统一到 V3，与前端 token、品牌板对齐，完成前端与设计治理的收口。新增确定性脚本 `scripts/pen-v3-recolor.mjs`：把两代并存的变量单代化（363 处遗留变量引用重指向 V3 语义变量后删除 6 个遗留变量，新增 `success`/`success-soft` 对齐前端 `--dp-success`），并把 240 处内联 fill/stroke 旧盘 hex（64 种）按角色映射到 V3 变量——结构=海军蓝、身份/进度=金、正向=BI 绿、注意=琥珀、销毁=danger，鼠尾草/电报蓝中性折叠到暖象牙 `line`/`ink` 阶，纯白/纯黑保留；脚本幂等，带残留旧盘 hex 与悬空引用断言。`.pen` 变量 38→34，`check-pencil-design`、`test:design`、`test:brand` 与 180 项前端测试全绿，pen 无头渲染抽查 Foundations/Login/Chat/Agent 板视觉确认为 V3。`design/exports/` 已批准评审 PNG 仍是改色前快照——无头 pen CLI 只出 400px 缩略图、无缩放，不足以复现已批准的全分辨率基线，故不降质覆盖，留待 pen.dev 桌面应用按批准分辨率重出（纯渲染、无配色决策，见 ARCHITECTURE-DEBT）。仅设计源与文档改动，不影响运行时与服务 authority。
+
+- 2026-09-01：新增 `agent-interactive-active.yml` 受控 overlay 与 `interactive_active` Temporal profile。该 profile 要求 active Runtime、mTLS Capability RPC、`dipole-agent-interactive-*` 专用队列、Control API 与显式消息写开关，并持续拒绝 MCP、Memory、检索和订阅扩张；基础 Compose 与 `read_active` 均不受影响。Remote GPU 已通过 profile/Temporal 定向测试和类型检查，尚未启动共享 Compose 或产生真实消息副作用。
+
+- 2026-09-01：Interactive Agent 新增默认关闭的显式 `/send <内容>` 受控写入切片。active Runtime 仅在 `DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED=true` 时为直属 Agent 会话装配消息执行器；Temporal 先持久化 `wait_approval`，收到 owner 的 approved Signal 后复用既有 MCP grant/单次 consume/Tool Invocation 审计/Core 消息命令链路完成一次 `system_message`。会话 ID、消息内容哈希、审批 ID 与 Task/Run 绑定，Shadow 与未开启开关的 active profile 保持只读。Remote GPU 已通过 `23` 条定向单测、隔离 Temporal durable resume 和 TypeScript typecheck；共享 Core/Temporal/Compose 的真实副作用 receipt 与回滚演练仍待完成。
+
+- 2026-09-01：前端从"仅 Login 是 V3、其余仍旧青绿"统一到 V3 视觉语言，分三个可回滚切片落地。① 调色板基础：把被 19 个文件重度消费的语义 token（rail/rail-soft/accent/accent-strong/accent-soft/ink/ink-soft/ink-faint/line）重映射到品牌板——导航 rail 与正文 ink 归海军蓝、主操作/未读 accent 归信号红、描边归暖象牙线；`--dp-v3-*` 词汇对齐同一套实测色值，新增金色 `--dp-agent` 系表达受控 Agent 状态。CSS、`design/dipole-ui.pen` 变量（含遗留 `$brand` 微信绿改为信号红）与 `design-tokens.test.ts` 契约锁步移动，canvas/surface/danger/warning 本就是暖中性色故保持不动。② Agent 身份色归位：Agent 组件此前把旧青绿 accent 起别名为 `--green` 统管一切"Agent 身份"，重映射后会误读为红；按 V3 规则拆分——身份文本走海军蓝（金色作小字文本对比度不足），金色只作克制的身份/耐久任务进度标记（状态点、时间线节点、active 药丸填充、scope 边线），信号红留给主操作与链接，danger 留给撤销与错误。③ 去 AI 风格：ChatView 是最后一块 pre-V3 屏（189 处硬编码色、微信品牌绿、emoji 文件图标、硬编码渐变横幅），逐一映射到语义 token——自己的消息变海军蓝气泡+反白字、Agent 消息用金色身份、文件附件用等宽类型标牌（IMG/DOC/XLS…）取代 emoji、danger 横幅去渐变改扁平；新增功能性 `--dp-success`（哑光 BI 绿，刻意区别于已退役的品牌绿）承接"在线/已同步/成功"信号（原先借用现已变红的 accent），并修正 Settings 成功提示与 Memory 同类误标，Memory 的遗留硬编码主题一并折叠到 token。全程 180 项前端测试、typecheck、`test:design`、`test:brand` 门禁与生产构建均通过；仅前端与设计变量改动，不影响运行时与服务 authority。
+
+- 2026-09-01：品牌资产改为由 `scripts/generate-brand-assets.mjs` 单一来源生成，`docs/images/` 下的 IM、Agent、favicon 与 lockup 四个 SVG 全部按 V3 品牌板实测色值（海军蓝 `#0D2744`、信号红 `#EA2521`、轨道金 `#EFAD05`、象牙白 `#FBF2E7`）与同一套几何常量重建，两个标识共用完全镜像的构造。Agent 变体只在同一主体上叠加金色层：均匀 6 单位描边、带明暗渐变的倾斜星环、中心完全镂空的环与打通桥接胶囊的镂空节点，主色块保持平涂。lockup 的字标换为 Goldman Bold 轮廓：宽体方块字形、方正字腔与均匀粗字干呈现机加工硬件感，与标识圆盘形成刻意反差，取代原先偏圆润的字形；轮廓按 cap-height 归一化内联为 path，无字体依赖，并由新增的 `scripts/generate-brand-wordmarks.mjs` 可复现生成。版式改为自适应：列位置按标识包围盒与字标实测宽度计算，cap 高度取仍能留出内边距的最大值（上限为与标识匹配的尺寸），不再使用硬编码坐标——Goldman 比常规无衬线宽约 40%，因此自动缩小而不是撞上分隔线。新增 `npm run test:brand` 门禁校验 SVG 与生成器一致；favicon 与 Login 用的两个标识由生成器镜像进 `frontend/public/` 与 `frontend/src/assets/brand/`，前端构建不再跨出自身根目录引用 `docs/`。退役 4 个旧青绿 SVG 与 `#07c160` 占位 favicon。README 资产引用同步更新，技术 badge 按 go.mod/.nvmrc 修正为 Go 1.26 与 Node 22.12 并补齐 Vue、Temporal、Redis、MinIO，各 badge 使用对应技术的常规品牌色。仅文档与资产改动，不影响运行时与服务 authority。
+
+- 2026-09-01：read 路径的多会话读取范围改为由 Task owner 确认。`conversation.list` 发现两个及以上会话时，Run 在 claim 读取 Step 前暂停并返回 `wait_input`，用 `dipole.agent.elicitation.v1` 的 select Form 提供最多 8 个会话候选并显式披露截断数量；恢复后只读取被确认的会话。用户提交同样按不可信输入处理，必须命中 checkpoint 中的候选集合与确定性 request ID，越界选择、伪造 request、缺失 checkpoint 均 fail closed，Core 仍是最终读取授权。恢复期不重新规划：暂停前已验证的 `conversation.list` 到 `conversation.read` 结构由代码重建，避免二次模型规划改变 Step 编号与 trajectory 重放语义；多于一对 discovery 的 plan 在需要确认时 fail closed。单会话与零会话行为不变，Kafka Shadow 主路径不受影响。写 Capability、active authority 和外部 MCP 保持关闭。
+
+- 2026-09-01：Remote GPU 在候选 `aec1b867` 归档读取范围确认的 [approve/deny/expire 三份 receipt](benchmarks/agent-temporal-fault-2026-09-01/)，集成套件 `10/10` 并经 CLI 独立复核。三条演练由生产 read Activity 驱动，receipt 直接记录 Run 实际读取的会话数：确认路径在伪造 request 被拒绝后只读取被确认的会话并收敛为 completed；owner 取消与确认到期均收敛为 `cancelled`（`user_cancelled` / `input_expired`），会话读取计数为零。故障 receipt 契约同步加入这三个 drill 与 `conversationReads`、`unconfirmedConversationReads` 计数，出现未确认读取直接判定 `ineligible`。运行仍使用内存 Temporal Test Server，不接入 Kafka、Core、MySQL、共享 tenant 或 active authority。
+
+- 2026-09-01：Agent Approval 的跨服务契约现携带 Runtime `mode`。显式 active Runtime 创建的 Approval 会以 active Task/Run 绑定持久化，后续授权解析和一次性消费可与 MCP 消息命令保持同一权限域；未提供字段的既有调用继续按 shadow 处理。Core 对 `dipole-agent` 的最小权限 allowlist 同步放行精确的 grant、consume 和消息命令 RPC。Remote GPU 已通过 Go/TypeScript 定向回归、类型检查和生成契约校验；默认 Interactive profile 仍为 `shadow + read_shadow`，未部署 active 写入。
+
+- 2026-09-01：TypeScript Agent protobuf 生成器现在将已解析的 protobuf 标准库目录同时作为 `--proto_path`。仅安装 pinned `protoc` 的 Remote GPU worktree 可直接生成并校验契约，无需依赖系统 `/usr/include`；生成输出保持不变。
+
+- 2026-09-01：Agent Temporal 集成门禁新增 Runtime HTTP 审批链路：真实 Worker 与 Fastify 控制面验证 owner 读取待审批状态、跨 owner 拒绝、批准请求 `202`、Temporal Signal 以及终态 Activity 绑定。Remote GPU 在 `9217d826` 通过 `8/8`；该验证使用内存 Temporal Test Server，不代替浏览器审批回执或共享 Core 持久化演练。
+
+- 2026-09-01：开发工作流收敛为少分支、少提交的阶段性交付：Agent 主线继续在单一 Epic worktree 中推进，普通测试、文档与修复随可体验闭环合并。Remote GPU 作为授权开发靶场可直接复用本轨道 Dipole project，登录会话和 GPU 任务仅记录资源快照；缺失运行依赖可使用受控 `sudo` 安装。宿主网络、Docker daemon 和其他项目资源仍不在部署操作范围内。
+
+- 2026-09-01：Remote GPU 在 `6beab05d` 完成隔离 Temporal Worker replacement 演练并归档 [两份故障 receipt](benchmarks/agent-temporal-fault-2026-09-01/)。approval/input 恢复均在替换 Worker 上收敛为一次完成；approval 路径的注入终态重试仅持久化一次，input 路径的无效与过期 Signal 均未恢复任务。运行使用内存 Temporal Test Server，未启动 Compose，也未接入 Core、Kafka、MySQL、共享 tenant 或 active authority。
+
+- 2026-09-01：Remote GPU 在 `f0dcf98a` 通过 Approval gate v2 disposable drill，并归档 [v2 receipt](benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)。denied grant、consumed replay 与 failed-operation replay 均被拒绝且不产生新增 effect；同轮 MCP 去重、过期 readiness 与 mTLS identity 检查继续通过。审批 UI、真实外部 MCP 与 active authority 保持关闭。
+
+- 2026-09-01：Approval gate drill receipt 升级为 v2，将 denied grant、consumed replay 与 failed-operation replay 的拒绝结果显式绑定到零副作用基数；v1 归档保持可读，下一次 Remote GPU disposable drill 将生成 v2 evidence。该契约不开放审批 UI、IM 写入、真实外部 MCP 或 active authority。
+
+- 2026-09-01：Remote GPU 已在 `3c1f3eba` 复跑 External MCP/approval disposable Shadow drill，并归档低敏 [MCP 与 approval receipt](benchmarks/agent-mcp-approval-shadow-2026-09-01/)。验证覆盖本地 MCP 单次 Tool/Artifact、重启去重、过期 readiness 拒绝、mTLS identity denial 与 approved fixture operation 的精确副作用基数；共享服务、审批 UI、真实外部 MCP 和 active authority 继续关闭。
+
+- 2026-09-01：External MCP/approval Shadow drill 的一次性 MySQL 追加关闭 native AIO 的启动参数，并由 Compose gate 固定。该兼容项仅覆盖共享 Remote GPU 上的 disposable drill，避免宿主 AIO 配额不足导致初始化失败；基础微服务拓扑保持不变。
+
+- 2026-09-01：Remote GPU 的正常 Git 同步不再依赖 bundle 上传成功；`scp` 上传失败仅禁用离线回退并给出明确提示，远端仍可通过正式 Git remote 获取候选 revision。
+
+- 2026-09-01：修复 Remote GPU 候选在 Git bundle 回退 clone 后仍指向临时 bundle `origin` 的问题；现在会恢复正式 Git remote，后续候选同步可继续 fetch。回归测试覆盖 fallback clone 的 remote 重绑定。
+
+- 2026-09-01：Interactive Agent Web profile 增加 `agent-interactive-shadow` 构建模式，仅开启任务创建、Timeline 与 Artifact 页面。Remote GPU 同 revision 候选已在独立 `18100` 端口验证前端生产构建、认证、Task 创建、Temporal 收敛与 `5` 条 Timeline 事件；公开入口为 `http://223.111.157.214:18100/app/`。该候选仍是 `shadow + read_shadow`，不开放消息写入、MCP、Memory、检索或 active authority。
+
+- 2026-09-01：新增 DeepSeek V4 Flash 的隔离 Interactive Agent Shadow overlay，固定 JSON-text 输出与关闭 reasoning，并在 Compose gate 中校验该配置仍只开放 `shadow + read_shadow` 的任务控制面。Remote GPU 同 revision 候选已验证认证、Task admission、Temporal、模型、Timeline 与 `conversation_digest` Artifact 的完整只读链路；active authority、MCP、Memory、检索和写 Capability 保持关闭。
+
+- 2026-09-01：Agent Artifact 的认证前端现可读取严格限定的 `conversation_digest` Markdown 正文。页面仅在 metadata 为该类型和 `text/markdown` 时请求受限正文接口，正文响应必须与 metadata 的内容寻址 ID 和媒体类型一致；其他 Artifact 保持 metadata-only。正文以纯文本阅读区显示，下载、对象键、Metadata JSON 与写操作继续关闭。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建及 Chromium 功能/视觉回归。
+- 2026-09-02：Remote GPU 完成同版本隔离 Interactive read-shadow 验收。Core、Gateway、Message、Sync、Search、迁移、修复与 Agent 镜像均绑定干净 revision `d7fee99a`；临时用户的 JWT Task admission 返回 `202`，Durable Task 收敛为 `completed`，Timeline 两页各返回两项。该结果仅覆盖 loopback 开发候选与只读 Shadow，不能表述为成功率、active authority、写 Capability、生产部署或公开体验。
+
+- 2026-09-02：Go 微服务镜像将 Alpine 共享依赖层置于 revision、构建时间、dirty 状态和服务二进制标签之前。候选 revision 变化时，`ca-certificates` 与 `tzdata` 可复用本机 Docker cache；镜像 provenance 与每服务独立二进制上下文保持不变，静态构建回归测试已覆盖层顺序。
 
 - 2026-09-01：Gateway 现支持默认关闭、owner-scoped 的 `conversation_digest` Markdown 正文读取。`GET /api/v1/agent/artifacts/:artifact_id/content` 复用 Core Artifact owner 校验与内容哈希校验，只返回 Artifact ID、媒体类型和正文；对象键、Metadata JSON 与通用下载仍不进入公开边界。Remote GPU 隔离候选已验证同一用户的 metadata/content 均为 `200`，另一用户读取正文为 `404`。
 
@@ -80,7 +168,7 @@
 
 - 2026-09-01：微服务隔离 smoke 增加默认关闭的低敏 Agent Task/Run receipt。显式提供输出路径时，成功收敛后仅写入随机 event、Task、Run、trace 与运行状态，便于后续 Context Ablation runner 在销毁临时 Compose 项目前建立绑定；消息、模型正文和凭据均不导出。
 
-- 2026-09-01：AI SDK Shadow Planner 曾将事件的 `target_uuid` 传入会话 hydration；该中间实现随后在私聊 Capability 边界暴露语义漂移，已由 2026-09-02 的 canonical `conversation_key` 修复替代。该历史切片不构成读取路径验收结论。
+- 2026-09-01：修正 AI SDK Shadow Planner 的会话 hydration 输入：Core `ReadConversation` 现在接收事件中的 `target_uuid`，与其按目标用户/群 UUID 的 RPC 契约一致；`conversation_key` 继续只用于 Memory 作用域。该修复为隔离 Context Ablation 的真实会话证据准备前置条件，不开启任何写能力。
 
 - 2026-09-01：修复 Context Ablation migration `000056` 的外键字符集/排序规则兼容性。binding 表现显式使用与 Agent Task/Run 相同的 `utf8mb4_unicode_ci`，隔离 MySQL 8.4 预检不再因外键列不兼容失败。
 
@@ -2030,6 +2118,10 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-09-02：Agent Interactive read-scope 受控 Remote GPU 回执补齐未确认输入到期：仅将 Agent 更新至 `d60ace70` 并临时设置 2 秒 TTL，Gateway start 返回 `202`，owner-scoped Task/Timeline 查询返回 `200`，Task/Run 收敛为 `cancelled/input_expired`；持久轨迹保留一次 discovery 与一次未执行 read 计划，已完成和已授权读取均为零。候选验证结束后恢复默认 15 分钟 TTL，详见 `benchmarks/agent-read-scope-confirmation-2026-09-02/`。
+- 2026-09-01：Remote GPU 长驻 Agent Shadow 体验项目已将 Core 静态资源更新到 `6d274a54`；Core、Gateway 与 Timeline 路由健康，部署前端资产包含等待审批入口。复用候选 `.env` 的单服务更新现要求显式传入 `DIPOLE_INTERNAL_CERT_DIR`，避免 mTLS 证书 bind 路径漂移。
+- 2026-09-01：Agent Task Timeline 对具有 approval ID 的 `waiting_approval` 事件提供审批页入口，使创建任务后的只读轨迹可进入既有 owner-scoped Human-in-the-loop 页面；已完成和无效事件保持无操作入口。
+- 2026-09-01：开发工作流收敛为主轨道连续 worktree 与里程碑提交；Remote GPU 开发验证可直接更新本轨道已有 Compose project，缺失依赖可经 sudo 安装。仅在明确冲突时新建隔离项目，普通 Smoke、脚本试验和文档验证不再创建完整临时集群。
 - 2026-08-30：Remote development 新增 `web-sync-bundle` 动作，提交同步后在 Remote GPU 生成绑定 revision 的 shadow bundle；该动作不启动 Compose、不申请 GPU，归档输出位于 `/tmp` 并保持不可覆盖和 `0600` 权限。
 - 2026-08-30：A6 新增 `scripts/package-web-sync-bundle.sh`，将候选 Web 构建按完整 Git revision、显式 Sync 模式和稳定 tar 元数据打包为不可覆盖的 `web-sync-bundle.v1`；报告权限固定为 `0600`，源目录内输出会 fail-closed，便于后续观察会话复核 bundle 哈希。
 - 2026-08-30：Sync/Message Inbox ownership smoke 新增可选 `SMOKE_REPORT_FILE` 机器可读 receipt，绑定源码 revision、dirty 状态、projector/atomic 模式、非破坏性回滚动作、退出状态和临时容器清理结果；报告以 `0600` 权限原子写入，默认路径与 GPU 并行策略保持不变。

@@ -4,7 +4,7 @@
 >
 > 基线：`7a209ae merge: record eino agentic capability assessment`
 >
-> 更新日期：2026-08-30
+> 更新日期：2026-09-01
 
 ## 1. 目标
 
@@ -35,7 +35,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 
 - [x] 增加 `scripts/check-dev-host.sh` 开发主机 preflight：按 Remote GPU、TencentCloud 和本机 profile 检查资源、Docker 与 Compose 配置；实际远程工作目录、Compose project 和部署证据仍待执行。
 - [x] 增加 `scripts/smoke-microservices-lite.sh` 与依赖闭包契约测试：TencentCloud 只验证 Gateway/Core/Message/Sync 及必要依赖，Agent、Search、Cassandra、可观测性和 C++ 保持关闭；实际远程运行证据仍待维护窗口。
-- [x] 增加 `scripts/remote-dev.sh`：提交绑定同步、Remote GPU 远端构建/Smoke/Benchmark 和 project 级停止统一入口；活动登录会话默认保护，已有 GPU 任务只记录资源快照并允许 CPU/容器型开发动作并行。
+- [x] 增加 `scripts/remote-dev.sh`：提交绑定同步、Remote GPU 远端构建/Smoke/Benchmark 和 project 级停止统一入口；开发分支可直接部署到本轨道已有 project，活动登录会话默认保护，已有 GPU 任务只记录资源快照并允许 CPU/容器型开发动作并行。
 - [x] 增加业务集群 Compose override：MySQL Router/InnoDB Cluster、Kafka 三节点和 Redis Sentinel 已可在独立 project 中渲染；真实业务故障切换与恢复收敛仍需运行时证据和活动会话批准。
 - [x] 将 Go canonical 测试和架构静态门禁接入 `scripts/remote-dev.sh test`，允许在 Remote GPU 验证提交而不启动 Compose，降低本机测试负载；远程入口自动发现用户态 Go，显式工具链路径优先。
   - [x] 候选 `dipole-dev/<user>` 的远端 tracking ref 使用受限强制 refspec 刷新，避免 squash 合并后产生非快进警告；共享 ref 继续普通 fetch，fetch 错误 fail closed。
@@ -68,7 +68,7 @@ Dipole 按以下顺序完成四次独立演进，并持续维护前端设计轨�
 - **文档可视化治理：** 基础功能与系统治理文档稳定后，使用 Mermaid 维护可版本化的流程、时序和拓扑图；跨团队评审或复杂静态图使用 draw.io 源文件与导出图，并要求图与部署、接口和回滚契约同次更新。
 - **叙事随证据演进：** 每个改变服务边界、默认路径、用户流程、性能结论或 Agent 权限的切片，在合并前同步更新对应的 IM 或 Agent 学习与面试材料；简历表述、演示、证据、限制和下一步必须与实现状态一致。
 - **阻塞时并行治理：** 当主链路受共享环境、外部凭据、观察窗口或发布批准阻塞时，优先推进独立的前端设计和文档治理切片。此类切片不得改变默认运行路径、不得伪造运行证据，并继续使用独立分支、测试或文档门禁、更新日志和债务台账。
-- **远程资源隔离：** Remote GPU 存在 GPU 任务时，仍可启动 Dipole 的 CPU、Docker、集成测试和压力测试任务；任务必须使用隔离的 Compose project、端口、目录和资源配额，禁止停止、重置或抢占已有 GPU 进程。
+- **远程直接部署：** Remote GPU 存在 GPU 任务时，仍可启动 Dipole 的 CPU、Docker、集成测试和压力测试任务；优先复用本轨道已有 project 并直接更新本轨道服务。仅在与其他用户服务冲突时隔离 Compose project、端口和目录，禁止停止、重置或抢占已有 GPU 进程。
 - **交付节奏：** 当前 Agent 功能在一条连续主线中完成端到端体验后再合并；前端保持独立长期分支。提交以可体验闭环、数据迁移边界或明确回滚点为单位，普通测试、文档和小修复随主线收敛。只有并发冲突、已发布回归或独立交付需求才创建额外 feature 分支。
 - **最小复杂度：** 每个新增保护、配置开关或状态机必须对应已验证的权限、可靠性或回滚风险；对尚未出现的规模或故障假设，先保留观测和测试入口，后续由证据决定是否扩展实现。
 
@@ -497,10 +497,9 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] legacy Eino 测试共享的 `AgentCapabilityV1` stub 已实现 `conversation.search` 并以编译期接口断言锁定，避免 Capability 扩展仅在全量门禁时暴露测试桩漂移。
   - [x] 增加受认证 `conversation.read` Core RPC 与 TS Capability，统一 canonical `conversationId`，完成 direct/group target 解析、Task/Run 身份解析、Core 资源复核、消息映射和 Runtime exact scope 门禁；ModelShadowPlanner/Temporal read activity 已接入最多 20 条 `untrusted` 会话 evidence 的 full/compact 编译。默认关闭的 `DIPOLE_AGENT_RETRIEVAL_ENABLED` 已将受限 `conversation.search` 注册到 AI SDK Shadow/Temporal read allowlist；检索命中编排、route-specific tokenizer 和生产上下文灰度仍待完成。
   - [x] 增加 TS Capability RPC 客户端跨语言契约测试，固定 direct/group target 解析、可信 principal 请求边界、非法 scope 拒绝和响应 target 冲突 fail-closed；分页/检索语义与生产上下文灰度继续按证据推进。
+  - [x] read 路径的多会话读取范围改为 owner 确认：发现两个及以上会话时在 claim 读取 Step 前返回 `wait_input`，select Form 最多 8 个候选并披露发现总数，恢复由确定性 request ID、checkpoint 候选集合与 Core 授权三重约束；恢复期按已验证结构由代码重建 plan，不做二次模型规划，多于一对 discovery 的 plan 在需要确认时 fail closed。单会话与零会话行为不变。Remote GPU 候选 `aec1b867` 已归档 approve/deny/expire 三份 receipt，由生产 read Activity 驱动并记录实际读取的会话数。共享环境窗口、该路径端到端评测和从 MySQL 不可变 plan 读回仍待完成。
   - [x] Context Compiler v2 接入 route-aware 最大输入窗口，按最小候选 route window 扣除最大输出预算，超出请求在编译前 fail closed；旧 v1 构造保持兼容。
   - [x] 在 RPC 边界拒绝超过请求 `limit` 的消息响应，并对 `found=false` 统一执行 target 一致性校验；Planner 保留独立的 20 条/8 KiB context 预算上限。
-  - [x] Shadow Planner 预取会话证据统一传递事件的 canonical `conversation_key`；Capability RPC 在可信 ExecutionContext 内派生目标，避免私聊将裸 `target_uuid` 误作会话标识并在 Activity 重试中耗尽。
-  - [x] Remote GPU 同修订 `3c3f403c` disposable Compose 复验事件发布后 Core restart：Gateway 代理恢复，Ledger、策略 Task、完成 Run、模型调用和 Digest Artifact 均精确为 `1`；只读 Shadow 的 raw receipt 在 24 小时窗口后失效，不能外推为共享 tenant 或 active authority。
   - [x] Context Compiler capability section 接入 Registry descriptor 的 `id/risk/requiredPermission` 低敏元数据，按允许集合和 ID 稳定排序；输入 schema 与 route-specific tokenizer 继续保留为后续门禁。
   - [x] `conversation.list/read` descriptor 增加代码拥有的受限输入 Schema 摘要，Context Compiler 将类型、范围、默认值和额外字段策略注入 trusted capability section；运行时 Zod 校验保持最终约束。
   - [x] Capability Registry 注册阶段限制 Schema 摘要关键字、`properties` 嵌套和 4 KiB 大小，并覆盖未知字段/超限回归测试，防止 descriptor 成为未治理的模型输入通道。
@@ -752,7 +751,7 @@ Epic 分支用于固定长期轨道和阶段验收。当前优先保持 Agent �
 - 默认直接在当前轨道的连续 worktree 开发。当前 Agent 主线完成完整体验闭环后统一合并；前端保持独立长期分支，避免与 Agent 运行链路互相干扰。
 - 只在并发修改同一运行链路、修复已发布回归，或需要独立发布/评审时创建额外 feature 分支。测试补充、排障、文档润色和小修复随当前里程碑收敛，避免产生难以审阅的碎片化提交。
 - 一个提交对应一个可体验闭环、数据迁移边界或明确回滚点；中间验证通过工作树、远程 Compose 记录和测试输出保留，不单独形成提交。
-- 开发候选可以直接部署到 Remote GPU 的隔离 Compose project。只有性能结论、故障演练、合并前验收等需要长期证据的操作，才要求绑定已提交 revision。
+- 开发候选优先直接部署到 Remote GPU 上本轨道已有 Compose project。只有性能结论、故障演练、合并前验收等需要长期证据的操作，才要求绑定已提交 revision；普通 Smoke 不新建完整项目。
 - 紧急修复从 `master` 创建 `fix/*`，合并后在下一个阶段节点批量同步仍活跃的 Epic 分支。禁止对已推送的共享分支执行 force push，避免破坏阶段历史和迁移证据。
 
 ### 持续记录

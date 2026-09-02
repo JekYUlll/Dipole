@@ -214,7 +214,7 @@ for _ in $(seq 1 30); do
     "SELECT IF(
       (SELECT COUNT(*) FROM agent_event_ledger WHERE event_id='${agent_event_id}' AND status='completed') = 1
       AND (SELECT COUNT(*) FROM agent_shadow_plans WHERE event_id='${agent_event_id}') = 1
-      AND (SELECT COUNT(*) FROM agent_tasks WHERE trigger_ref='${agent_message_id}' AND status='running') = 1
+      AND (SELECT COUNT(*) FROM agent_tasks WHERE trigger_ref='${agent_message_id}' AND status='completed') = 1
       AND (SELECT COUNT(*) FROM agent_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND mode='shadow' AND status='completed') = 1
       ${read_shadow_assertions},
       1, 0
@@ -246,7 +246,7 @@ if [[ -n "${AGENT_CORE_RESTART_EVIDENCE}" ]]; then
   agent_counts="$(compose exec -T mysql mysql -uroot -proot123 -Ddipole -N -B -e \
     "SELECT CONCAT_WS(',',
       (SELECT COUNT(*) FROM agent_event_ledger WHERE event_id='${agent_event_id}' AND status='completed'),
-      (SELECT COUNT(*) FROM agent_tasks WHERE trigger_ref='${agent_message_id}' AND status='running'),
+      (SELECT COUNT(*) FROM agent_tasks WHERE trigger_ref='${agent_message_id}' AND status='completed'),
       (SELECT COUNT(*) FROM agent_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND mode='shadow' AND status='completed'),
       (SELECT COUNT(*) FROM agent_model_calls WHERE run_uuid=(SELECT run_uuid FROM agent_model_runs WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') ORDER BY created_at DESC LIMIT 1) AND status='completed'),
       (SELECT COUNT(*) FROM agent_artifacts WHERE task_uuid=(SELECT task_uuid FROM agent_event_ledger WHERE event_id='${agent_event_id}') AND artifact_type='conversation_digest' AND version=1)

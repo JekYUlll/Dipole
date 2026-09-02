@@ -468,7 +468,7 @@ export class AgentCapabilityRPCClient {
         approvalId: approval.approvalId, capabilityId: approval.capabilityId,
         resourceScope: { ...approval.resourceScope, actions: [...approval.resourceScope.actions] },
         scopeSha256: approval.scopeSha256, argumentsSha256: approval.argumentsSha256,
-        nonceSha256: approval.nonceSha256, expiresAtUnixMs: BigInt(approval.expiresAtUnixMs)
+        nonceSha256: approval.nonceSha256, expiresAtUnixMs: BigInt(approval.expiresAtUnixMs), mode: this.mode
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Agent Approval request returned no response"));
         if (response.approvalId !== approval.approvalId || (response.status !== "pending" && response.status !== "approved")) return reject(new Error("Agent Approval request returned a conflicting binding"));
@@ -972,6 +972,16 @@ export class AgentCapabilityRPCClient {
         invocationId: input.invocationId, commandKind: input.commandKind, content
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response?.actionReference === undefined) {
+          if (error !== null) {
+            console.error("Agent Message Command RPC failed", {
+              grpcCode: error.code,
+              grpcDetails: error.details,
+              taskId: input.taskId,
+              runId: input.runId,
+              invocationId: input.invocationId,
+              commandKind: input.commandKind
+            });
+          }
           reject(error ?? new Error("Agent Message Command returned no action reference"));
           return;
         }

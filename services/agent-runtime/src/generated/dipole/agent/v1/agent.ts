@@ -217,6 +217,10 @@ export interface RequestApprovalRequest {
      * @generated from protobuf field: int64 expires_at_unix_ms = 10
      */
     expiresAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string mode = 11
+     */
+    mode: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.ResolveApprovalRequest
@@ -3601,7 +3605,8 @@ class RequestApprovalRequest$Type extends MessageType<RequestApprovalRequest> {
             { no: 7, name: "scope_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 8, name: "arguments_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 9, name: "nonce_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 10, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+            { no: 10, name: "expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 11, name: "mode", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<RequestApprovalRequest>): RequestApprovalRequest {
@@ -3614,6 +3619,7 @@ class RequestApprovalRequest$Type extends MessageType<RequestApprovalRequest> {
         message.argumentsSha256 = "";
         message.nonceSha256 = "";
         message.expiresAtUnixMs = 0n;
+        message.mode = "";
         if (value !== undefined)
             reflectionMergePartial<RequestApprovalRequest>(this, message, value);
         return message;
@@ -3652,6 +3658,9 @@ class RequestApprovalRequest$Type extends MessageType<RequestApprovalRequest> {
                     break;
                 case /* int64 expires_at_unix_ms */ 10:
                     message.expiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string mode */ 11:
+                    message.mode = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -3695,6 +3704,9 @@ class RequestApprovalRequest$Type extends MessageType<RequestApprovalRequest> {
         /* int64 expires_at_unix_ms = 10; */
         if (message.expiresAtUnixMs !== 0n)
             writer.tag(10, WireType.Varint).int64(message.expiresAtUnixMs);
+        /* string mode = 11; */
+        if (message.mode !== "")
+            writer.tag(11, WireType.LengthDelimited).string(message.mode);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

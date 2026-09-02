@@ -1,10 +1,16 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
-import type { AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
+import type { AgentCapabilityRPCClient, AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
+import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import type { DipoleMcpWriteExecutor, DipoleMcpWriteToolProjection } from "./dipole-mcp-server.js";
-import type { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
-import type { McpWriteApprovalGate } from "./mcp-write-approval-gate.js";
+import { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
+import {
+  createMcpWriteApprovalConsumePort,
+  createMcpWriteApprovalGrantResolver,
+  McpWriteApprovalGate
+} from "./mcp-write-approval-gate.js";
 
 export interface McpMessageCommandPort {
   executeMessageCommand(input: {
@@ -55,6 +61,74 @@ export class McpMessageWriteProjection implements DipoleMcpWriteExecutor {
       result => messageActionReference(result, tool.commandKind)
     );
   }
+}
+
+const interactiveMessageTool: DipoleMcpWriteToolProjection = {
+  name: "dipole_message_send",
+  capabilityId: "message.system.send",
+  title: "Send message",
+  description: "Send one approved system message to the task owner's direct Agent conversation",
+  inputSchema: messageInputSchema,
+  commandKind: "system_message"
+};
+
+export function createInteractiveMessageExecutor(
+  client: Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">
+): { execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext): Promise<string> } {
+  const registry = new CapabilityRegistry();
+  registry.register({
+    descriptor: {
+      id: "message.system.send",
+      risk: "write",
+      requiredPermission: "message.write",
+      approvalRequired: true
+    },
+    inputSchema: messageInputSchema,
+    resolveResource: input => ({ resourceType: "conversation", resourceId: input.conversationId, action: "write" }),
+    execute: async () => { throw new Error("Interactive Agent message writes require an audited Tool Invocation"); }
+  });
+  const approvals = new McpWriteApprovalGate(
+    registry,
+    createMcpWriteApprovalConsumePort(client),
+    createMcpWriteApprovalGrantResolver(client)
+  );
+  return {
+    execute: (input, context) => new McpMessageWriteProjection(
+      approvals,
+      new McpToolInvocationRunner(
+        { begin: begin => client.begin(begin), finish: finish => client.finishToolInvocation(finish) },
+        undefined,
+        () => interactiveMessageInvocationID(context, input),
+        undefined,
+        undefined,
+        isUncertainMessageCommandFailure
+      ),
+      { executeMessageCommand: command => client.executeMessageCommand(command) }
+    ).execute(interactiveMessageTool, input, context)
+  };
+}
+
+function interactiveMessageInvocationID(
+  context: ExecutionContext,
+  input: { readonly conversationId: string; readonly content: string }
+): string {
+  const material = [
+    "dipole.agent.interactive-message-invocation.v1",
+    context.taskId,
+    context.runId,
+    interactiveMessageTool.capabilityId,
+    input.conversationId,
+    input.content
+  ].join("\n");
+  return `tool:${createHash("sha256").update(material, "utf8").digest("hex").slice(0, 59)}`;
+}
+
+function isUncertainMessageCommandFailure(error: unknown): boolean {
+  if (typeof error !== "object" || error === null || !("code" in error)) return false;
+  const code = (error as { code?: unknown }).code;
+  // gRPC DEADLINE_EXCEEDED and UNAVAILABLE can occur after the Core accepted
+  // the idempotent command, so a terminal Tool failure would block recovery.
+  return code === 4 || code === 14;
 }
 
 function directConversationKey(first: string, second: string): string {

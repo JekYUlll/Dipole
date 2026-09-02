@@ -15,16 +15,19 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | 能力 | 状态 | 证据 |
 | --- | --- | --- |
 | ExecutionContext、Capability Policy、Temporal Task | 已验证 | [Agent Runtime 设计](../architecture/AGENT-RUNTIME-DESIGN.md) |
-| 交互式 Agent Task 创建 | 已验证的默认关闭入口 | Gateway JWT principal、确定性 Task ID、Vue 幂等提交、Remote GPU 定向回归 |
+| Trusted discovery read Shadow Eval | 已验证（隔离 Remote GPU，固定单会话 N=2） | [actual-read N=2 archive](../../benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/) |
+| 多会话 owner scope 确认、取消与到期 | 已验证（隔离 Remote GPU，两会话 fixture） | [read-scope receipt](../../benchmarks/agent-read-scope-confirmation-2026-09-02/) |
+| 交互式 Agent Task 创建 | 已验证的默认关闭入口 | Gateway JWT principal、确定性 Task ID、Vue 幂等提交、同版本 Remote GPU read-shadow 验收 |
+| Worker replacement 的 approval/input 恢复 | 已验证（隔离 Remote GPU） | [Temporal fault receipt](../../benchmarks/agent-temporal-fault-2026-09-01/) |
 
 #### Interactive Agent Task Admission
 
 - **状态：** 已验证的默认关闭入口
 - **简历句：** 构建 IM-native Agent Task admission：Gateway 从 JWT 派生身份，浏览器只提交本地幂等键和目标文本，Runtime 以确定性 Task ID 启动 durable workflow，并在 accepted 回包后进入只读 Timeline。
 - **演示：** 显式启用服务端控制面与 `VITE_AGENT_TASK_CREATE_ENABLED`、`VITE_AGENT_TIMELINE_ENABLED` 后访问 `/agent/tasks/new`；提交同一 request ID 两次，验证只返回同一 Task 绑定。
-- **证据：** `internal/services/gateway/server/server.go`、`services/agent-runtime/src/control/interactive-task-start.ts`、`frontend/src/components/AgentTaskCreate.vue`、[Remote GPU receipt](../agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。
+- **证据：** `internal/services/gateway/server/server.go`、`services/agent-runtime/src/control/interactive-task-start.ts`、[Remote GPU receipt](../agent/AGENT-INTERACTIVE-SHADOW-REMOTE-RECEIPT.md)。
 - **追问：** “为什么页面不能传 principal 或 Agent ID？” 这些字段由认证上下文和 Runtime 配置确定；把它们暴露给浏览器会扩大跨账号或跨 Agent 访问面。
-- **限制：** Remote GPU 已完成同修订 `3c3f403c` 的只读 Shadow Core restart receipt：同一事件的 Ledger、策略 Task、完成 Run、模型调用和 Digest Artifact 均为 `1`，Gateway 代理在重启后恢复。它是一次 disposable 开发期记录，不能外推为任务成功率、共享 tenant、active authority、写 Capability、Worker replacement 或 lease expiry。基础 Compose 默认仍关闭控制面。Pencil canonical 创建画板和视觉回归继续待补。
+- **限制：** Remote GPU 已完成隔离 Compose 上同版本、只读 admission、终态和 Timeline 分页验证。它不能外推为任务成功率、active authority、写 Capability、生产部署或公开体验；基础 Compose 默认仍关闭控制面。
 - **复核条件：** 修改 admission ID 派生、Gateway 身份、Runtime control 配置、前端 feature flag 或 Timeline 路由时。
 | reviewed Memory receipt、mTLS、MySQL retry | 已验证（隔离 Remote GPU） | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh` |
 | External MCP Shadow 完整链路 | 已验证（隔离 Remote GPU） | `scripts/drill-agent-external-mcp-shadow.sh` |
@@ -32,7 +35,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 | `promotion_active` 与 External MCP Shadow mode | 默认关闭 | [External MCP 运行手册](../agent/agent-external-mcp.md) |
 | Project Guardian 预筛评测基线 | 已验证（合成离线） | `contracts/agent-evals/v1/project-guardian-synthetic-corpus.json` |
 | OAuth callback durable handoff | 已验证的默认关闭组件链 | `contracts/agent-oauth-callback-handoff/v1/TRANSPORT.md` |
-| Trusted discovery read | `conversation.list` output binds the next `conversation.read` target | `services/agent-runtime/src/events/shadow-processor.ts` |
+| Trusted discovery read | 已验证的 `conversation.list` output binds the next `conversation.read` target；固定单会话 N=2 完成五类 Eval | [actual-read N=2 archive](../../benchmarks/agent-shadow-eval-window-2026-09-02-read-n2/) |
 
 #### OAuth Callback Durable Handoff
 
@@ -55,6 +58,16 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 - **限制：** 不含真实消息、身份、任务执行、模型输出或在线流量，不能作为 production accuracy、成本或 active authority 的表述依据。
 - **下一步：** 通过受控 owner approval 归档真实 Project Guardian corpus 和 retrieval relevance，再依次完成离线候选、shadow 观察及灰度回滚证据。
 
+#### Durable Task Fault Recovery
+
+- **状态：** 已验证（隔离 Remote GPU）
+- **简历句：** 基于 Temporal 构建可恢复 Agent Task；Worker 替换后 approval 与 Elicitation input 均能按持久状态恢复，注入终态写入重试仍收敛为一次持久副作用。
+- **演示：** 在 Node 22 环境执行 `DIPOLE_AGENT_TEMPORAL_INTEGRATION=true npm test -- --run src/temporal/agent-task-workflow.integration.test.ts`，再用 `receipt:temporal-fault -- --receipt=<path>` 复核状态修订和 effect 基数。
+- **证据：** [2026-09-01 fault receipt](../../benchmarks/agent-temporal-fault-2026-09-01/)、`services/agent-runtime/src/temporal/agent-task-workflow.integration.test.ts`、`services/agent-runtime/src/evals/temporal-fault-receipt.ts`。
+- **追问：** “为何终态需要单独计数？” Activity acknowledgement 可能在持久化后丢失；计数将可重试尝试与最终持久副作用区分开，避免把重试误报为重复写入。
+- **限制：** 此演练使用内存 Temporal Test Server，不涉及 Core、Kafka、MySQL、共享 tenant 或 active authority；联合故障与审批 UI 仍待独立验收。
+- **复核条件：** 修改 Workflow 状态、Signal、Activity retry policy、终态投影或 receipt canonicalization 时。
+
 #### Durable Memory Promotion
 
 - **状态：** 已验证（隔离 Remote GPU）
@@ -71,9 +84,9 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 
 - **简历句：** 为外部 MCP 只读调用构建可释放的 Shadow 验证链，串联 Kafka、MySQL EventLedger、Temporal、mTLS Core RPC 与受限 MCP Tool，并用重启重放和过期 readiness 验证安全收敛。
 - **演示：** 运行 `scripts/drill-agent-external-mcp-shadow.sh`；查看低敏 evidence 中的事件数、Tool/Artifact 数、重启去重与 readiness 拒绝结果。
-- **证据：** [外部 MCP 运行手册](../agent/agent-external-mcp.md)、`services/agent-runtime/src/runtime/external-mcp-full-stack-drill.integration.test.ts`、`contracts/agent-external-mcp/v2/shadow-drill-evidence.schema.json`。
+- **证据：** [2026-09-01 v2 隔离 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)、[外部 MCP 运行手册](../agent/agent-external-mcp.md)、`services/agent-runtime/src/runtime/external-mcp-full-stack-drill.integration.test.ts`、`contracts/agent-external-mcp/v2/shadow-drill-evidence.schema.json`。
 - **追问：** “为什么重发相同事件不能重复调用 Tool？” Kafka 至少一次投递和 Runtime 重启会产生重复输入，持久 EventLedger 与稳定 Task ID 共同限制只执行一次。
-- **限制：** 演练使用本地 MCP fixture、临时 CA、临时 MySQL/Kafka 与内存 Temporal；未接入共享身份、外部 DNS/TLS、凭据轮换或生产 authority。
+- **限制：** 演练使用本地 MCP fixture、临时 CA、临时 MySQL/Kafka 与内存 Temporal；v2 已验证拒绝 grant 不产生副作用，审批 UI deny 流程仍待前端切片。共享身份、外部 DNS/TLS、凭据轮换或生产 authority 仍未接入。
 - **下一步：** 在独立 Shadow tenant 使用受控只读 Server，补齐真实 Provider owner、凭据吊销、网络故障和观测窗口证据。
 - **复核条件：** 修改 EventLedger、Kafka group、Temporal route、Core RPC、MCP transport 或 readiness policy 时。
 

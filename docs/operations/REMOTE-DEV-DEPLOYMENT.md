@@ -2,7 +2,7 @@
 
 本文仅用于开发环境，不承诺生产容量，也不替代共享环境发布审批。
 
-Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链；未指定时，远程入口会在 `/home/admin1/.local/go-*/bin/go` 中自动选择最高版本，依赖源可通过 `DIPOLE_REMOTE_GOPROXY` 指向受控缓存代理，避免修改系统 Go 和远端网络配置。只读 preflight 不安装系统组件，安装或升级应由主机管理员在维护窗口完成。
+Remote GPU 需要可用的 Docker Compose v2 插件（`docker compose version`）、Go 1.26+ 和 Git SSH；preflight 会将缺少插件报告为 `compose=plugin-missing`。Go 可通过 `DIPOLE_REMOTE_GO_ROOT` 指向用户态工具链；未指定时，远程入口会在 `/home/admin1/.local/go-*/bin/go` 中自动选择最高版本。开发轨道已获授权在缺少运行依赖时使用 `sudo` 安装；安装范围限于本次所需运行库或工具，并记录在运行回执。部署不修改宿主网络、Docker daemon 或其他项目资源。
 
 ## 环境选择
 
@@ -39,7 +39,7 @@ DIPOLE_REMOTE_GO_ROOT=/home/admin1/.local/go-1.27.0 \
 scripts/remote-dev.sh build
 ```
 
-脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。默认 `dipole-dev/<user>` 是提交绑定的临时候选引用：每次同步以远端 tip 的精确 lease 更新，远端 tracking ref 使用受限强制 refspec 刷新，因此 squash 合并后的新 revision 可以复用该单一引用且不会产生陈旧 ref 警告；有并发写入时 lease 会拒绝覆盖。显式指定 `master` 或其他共享分支时保持普通快进推送与普通 tracking ref 更新，不能由该入口改写历史。`build`、`smoke-lite`、`bench` 会记录 GPU 进程快照并允许 CPU/容器型开发动作继续执行；活跃登录用户仍会默认阻断，只有取得明确维护窗口后才可设置 `DIPOLE_REMOTE_ALLOW_ACTIVE=1`。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
+脚本默认使用 SSH alias `LAB113-OPS`（用户 `admin1`）、远端目录 `/home/admin1/workspaces/Dipole` 和按用户隔离的 Compose project。默认 `dipole-dev/<user>` 是提交绑定的临时候选引用：每次同步以远端 tip 的精确 lease 更新，远端 tracking ref 使用受限强制 refspec 刷新，因此 squash 合并后的新 revision 可以复用该单一引用且不会产生陈旧 ref 警告；有并发写入时 lease 会拒绝覆盖。显式指定 `master` 或其他共享分支时保持普通快进推送与普通 tracking ref 更新，不能由该入口改写历史。`build`、`smoke-lite`、`bench` 会记录登录会话和 GPU 进程快照，但授权的 Dipole 开发任务直接继续执行。`test` 只执行远端测试和静态检查，不启动服务；脚本禁止隐式下载 Go toolchain，版本不足时快速失败。目录不存在时由 `sync` 在远端创建并通过 Git 获取提交。
 
 重复使用候选目录时，`sync` 先拒绝任何已跟踪修改。若未跟踪文件与目标 revision 的同路径 Git blob 具有完全相同的 SHA-256，脚本仅清理这类可由目标提交恢复的生成物，以避免 Playwright 视觉快照等输出阻塞 detached checkout。内容不同的未跟踪文件、目录级冲突和所有其他 checkout 错误都会保留原文件并中止；脚本不执行 `git clean`，也不覆盖远端人工修改。
 
@@ -86,12 +86,44 @@ IMAGE_TAG="dev-$(git rev-parse --short HEAD)" scripts/docker-build.sh build
 完整微服务 smoke 使用独立 project，先验证配置，再启动并等待 readiness：
 
 ```bash
-docker compose -p "${DIPOLE_PROJECT}" \
+docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
   -f deploy/compose/docker-compose.microservices.yml config --quiet
-docker compose -p "${DIPOLE_PROJECT}" \
+docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
   -f deploy/compose/docker-compose.microservices.yml up -d --build --wait
 scripts/smoke-microservices.sh
 ```
+
+### Agent Interactive Shadow 候选
+
+DeepSeek V4 Flash 的交互体验候选使用同一 revision 的镜像和下列只读
+overlay。模型凭据继续仅由候选 `.env` 托管；不要将其写入命令历史、回执
+或仓库文件。`DIPOLE_AGENT_IMAGE` 必须显式绑定本次构建的 Agent 镜像，
+避免 Compose 回退到旧的 `latest`。
+
+```bash
+export DIPOLE_PROJECT=dipole-agent-<your-id>
+export DIPOLE_AGENT_IMAGE="dipole-agent:${IMAGE_TAG}"
+export DIPOLE_INTERNAL_CERT_DIR=/home/admin1/workspaces/Dipole/certs/internal
+
+docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/remote-gpu-mysql-aio-compat.yml \
+  -f deploy/microservices/agent-ai-sdk-shadow.yml \
+  -f deploy/microservices/agent-temporal-read-shadow.yml \
+  -f deploy/microservices/agent-interactive-shadow.yml \
+  -f deploy/microservices/agent-deepseek-v4-flash-shadow.yml \
+  config --quiet
+```
+
+这组 overlay 只开放认证后的 Task 控制面，保持 `shadow + read_shadow`。
+Memory、检索、MCP、外部 MCP、active authority 和写 Capability 均关闭。
+DeepSeek overlay 固定 `json_text` 与 `thinking=disabled`，避免不支持 JSON
+Schema response format 或仅返回 reasoning 的兼容性失败。
+
+复用长驻候选并单独重建 Core 或 Gateway 时，必须显式保留
+`DIPOLE_INTERNAL_CERT_DIR`，且该目录需要包含对应服务的 `.pem` 与 `-key.pem`
+文件。候选 `.env` 仅托管其配置与模型凭据，不能替代该宿主证书目录；缺失变量
+会使 Compose 将不存在的证书文件路径创建为目录，导致服务无法通过 mTLS 启动。
 
 实时数据面候选压测沿用 `scripts/bench/candidate_topology.sh`；Agent 默认保持 shadow 或 off，避免外部模型成本和延迟污染 IM 基线。完整 `k6` 基准和 Docker 构建固定在 Remote GPU 执行；本机仅保留脚本静态检查。
 
@@ -143,4 +175,4 @@ docker compose -p "${DIPOLE_PROJECT}" \
 
 压测记录必须包含提交和镜像摘要、配置摘要、主机资源快照、服务 readiness、P50/P95/P99、错误率、Kafka lag、磁盘和内存水位。发生 readiness 失败、数据不一致、错误率升高或资源越界时立即停止加压，回到上一提交或关闭本次 project；不要清理其他用户的容器、卷和进程。
 
-当前 Remote GPU 若存在 GPU 任务，CPU/容器型开发部署可在隔离 project 下继续；若存在活动登录会话，仍需先取得明确维护窗口或显式批准。确需 GPU 的任务必须单独声明设备、显存预算和冲突检查。TencentCloud 凭据不得写入仓库、脚本或压测报告。
+当前 Remote GPU 允许直接复用本轨道的 Dipole project 部署 CPU/容器型开发任务；登录会话和 GPU 进程只作为资源快照记录。确需 GPU 的任务必须单独声明设备、显存预算和冲突检查。TencentCloud 凭据不得写入仓库、脚本或压测报告。

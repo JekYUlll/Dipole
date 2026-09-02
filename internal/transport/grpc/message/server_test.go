@@ -12,6 +12,7 @@ import (
 	applicationPort "github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/correlation"
+	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,6 +23,8 @@ import (
 
 type stubMessageApplication struct {
 	sendDirect          func(senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	sendAssistant       func(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	sendSystemCommand   func(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
 	listDirectBeforeSeq func(currentUserUUID, targetUUID string, cursor uint64, limit int) ([]*model.Message, error)
 	listDirectAfterSeq  func(currentUserUUID, targetUUID string, cursor uint64, limit int) ([]*model.Message, error)
 	listGroup           func(currentUserUUID, groupUUID string, cursor uint, limit int, after bool) ([]*model.Message, error)
@@ -32,6 +35,20 @@ type stubMessageApplication struct {
 
 func (s *stubMessageApplication) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
 	return &model.Message{UUID: "system-direct", SenderUUID: senderUUID, TargetUUID: targetUUID, Content: content}, nil
+}
+
+func (s *stubMessageApplication) SendAssistantTextMessageContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	if s.sendAssistant == nil {
+		return nil, errors.New("assistant sender is not configured")
+	}
+	return s.sendAssistant(ctx, senderUUID, targetUUID, content, clientMessageID)
+}
+
+func (s *stubMessageApplication) SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	if s.sendSystemCommand == nil {
+		return nil, errors.New("system command sender is not configured")
+	}
+	return s.sendSystemCommand(ctx, senderUUID, targetUUID, content, clientMessageID)
 }
 
 func (s *stubMessageApplication) SendSystemGroupMessage(groupUUID, content string) error {
@@ -167,6 +184,64 @@ func TestServerSystemMessageRequiresAuthenticatedCoreCaller(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("unauthenticated system message call code=%v err=%v", status.Code(err), err)
+	}
+}
+
+func TestClientDispatchesTrustedAgentMessageCommands(t *testing.T) {
+	t.Parallel()
+
+	application := &stubMessageApplication{
+		sendDirect: func(string, string, string, string) (*model.Message, error) { return nil, nil },
+		listGroup:  emptyGroupList,
+		sendAssistant: func(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+			if senderUUID != "UAI" || targetUUID != "U100" || content != "assistant reply" || clientMessageID != "agent-reply-1" {
+				t.Fatalf("unexpected assistant command sender=%q target=%q content=%q client=%q", senderUUID, targetUUID, content, clientMessageID)
+			}
+			if ids := correlation.FromContext(ctx); ids.RequestID != "R1" || ids.TraceID != "T1" {
+				t.Fatalf("unexpected assistant correlation: %+v", ids)
+			}
+			return &model.Message{UUID: "M-ASSISTANT", SenderUUID: senderUUID, TargetUUID: targetUUID, ClientMessageID: clientMessageID, MessageType: model.MessageTypeAIText}, nil
+		},
+		sendSystemCommand: func(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+			if senderUUID != "UAI" || targetUUID != "U100" || content != "system notice" || clientMessageID != "agent-system-1" {
+				t.Fatalf("unexpected system command sender=%q target=%q content=%q client=%q", senderUUID, targetUUID, content, clientMessageID)
+			}
+			if ids := correlation.FromContext(ctx); ids.RequestID != "R2" || ids.TraceID != "T2" {
+				t.Fatalf("unexpected system correlation: %+v", ids)
+			}
+			return &model.Message{UUID: "M-SYSTEM", SenderUUID: senderUUID, TargetUUID: targetUUID, ClientMessageID: clientMessageID, MessageType: model.MessageTypeSystem}, nil
+		},
+	}
+	remote, err := NewClientForService(newCoreBufconnClient(t, application), "dipole-core")
+	if err != nil {
+		t.Fatalf("new Core message client: %v", err)
+	}
+	assistantCtx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R1", TraceID: "T1"})
+	if message, err := remote.SendAssistantTextMessageContext(assistantCtx, "UAI", "U100", "assistant reply", "agent-reply-1"); err != nil || message.UUID != "M-ASSISTANT" || message.MessageType != model.MessageTypeAIText {
+		t.Fatalf("assistant command message=%+v err=%v", message, err)
+	}
+	systemCtx := correlation.WithContext(context.Background(), correlation.IDs{RequestID: "R2", TraceID: "T2"})
+	if message, err := remote.SendSystemDirectMessageCommandContext(systemCtx, "UAI", "U100", "system notice", "agent-system-1"); err != nil || message.UUID != "M-SYSTEM" || message.MessageType != model.MessageTypeSystem {
+		t.Fatalf("system command message=%+v err=%v", message, err)
+	}
+}
+
+func TestServerRejectsAgentCommandSenderMismatch(t *testing.T) {
+	t.Parallel()
+
+	serverAdapter, err := NewServer(&stubMessageApplication{sendDirect: func(string, string, string, string) (*model.Message, error) { return nil, nil }, listGroup: emptyGroupList})
+	if err != nil {
+		t.Fatalf("new message server: %v", err)
+	}
+	_, err = serverAdapter.SendAssistantText(context.Background(), &messagev1.SendAssistantTextRequest{
+		Context:         &commonv1.RequestContext{PrincipalUserId: "U100", CallerService: "dipole-core"},
+		AssistantUserId: "UAI",
+		TargetUserId:    "U100",
+		Content:         "assistant reply",
+		ClientMessageId: "agent-reply-1",
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("sender mismatch code=%s err=%v", status.Code(err), err)
 	}
 }
 
@@ -404,6 +479,41 @@ func newBufconnClient(t *testing.T, application *stubMessageApplication) message
 	connection, err := grpc.NewClient(
 		"passthrough:///bufconn",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return listener.Dial() }),
+	)
+	if err != nil {
+		t.Fatalf("new grpc client: %v", err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+	return messagev1.NewMessageServiceClient(connection)
+}
+
+func newCoreBufconnClient(t *testing.T, application *stubMessageApplication) messagev1.MessageServiceClient {
+	t.Helper()
+	serverAdapter, err := NewServer(application)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	serverAuth, err := grpcauth.NewUnaryServerInterceptor("test-secret", "dipole-core")
+	if err != nil {
+		t.Fatalf("new server auth interceptor: %v", err)
+	}
+	clientAuth, err := grpcauth.NewUnaryClientInterceptor(grpcauth.Credentials{Service: "dipole-core", Secret: "test-secret"})
+	if err != nil {
+		t.Fatalf("new client auth interceptor: %v", err)
+	}
+	listener := bufconn.Listen(1024 * 1024)
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(serverAuth))
+	messagev1.RegisterMessageServiceServer(grpcServer, serverAdapter)
+	go func() {
+		_ = grpcServer.Serve(listener)
+	}()
+	t.Cleanup(grpcServer.Stop)
+
+	connection, err := grpc.NewClient(
+		"passthrough:///bufconn",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(clientAuth),
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return listener.Dial() }),
 	)
 	if err != nil {

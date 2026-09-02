@@ -46,6 +46,7 @@ import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
 import type { AgentTaskActivities } from "../temporal/agent-task-activities.js";
+import { createInteractiveMessageExecutor } from "../mcp/mcp-message-write-projection.js";
 import { createReconnectingAgentCapabilityTransport } from "./reconnecting-agent-capability-transport.js";
 
 const shadowRuntimeConfigSchema = z.object({
@@ -67,6 +68,7 @@ const shadowRuntimeConfigSchema = z.object({
   subscriptionShadowEnabled: z.boolean(),
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
+  readScopeConfirmationTtlMs: z.number().int().min(1000).max(86_400_000),
   modelMode: z.enum(["metadata", "ai_sdk"]),
   modelProvider: modelProviderConfigSchema,
   modelRoutes: z.array(z.string().trim().min(1)),
@@ -74,6 +76,7 @@ const shadowRuntimeConfigSchema = z.object({
   memoryEnabled: z.boolean(),
   retrievalEnabled: z.boolean(),
   retrievalContextEnabled: z.boolean(),
+  interactiveMessageWritesEnabled: z.boolean(),
   modelContextProfiles: z.array(routeContextProfileSchema),
   modelBudget: z.object({
     maxCalls: z.number().int().min(1).max(10),
@@ -244,6 +247,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     subscriptionShadowEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED?.trim().toLowerCase() === "true",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
+    readScopeConfirmationTtlMs: Number.parseInt(env.DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS ?? "900000", 10),
     modelMode: env.DIPOLE_AGENT_MODEL_MODE?.trim().toLowerCase() || "metadata",
     modelProvider: loadModelProviderConfig(env),
     modelRoutes: (env.DIPOLE_AGENT_MODEL_ROUTES ?? "").split(",").map((route) => route.trim()).filter(Boolean),
@@ -251,6 +255,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     memoryEnabled: env.DIPOLE_AGENT_MEMORY_ENABLED?.trim().toLowerCase() === "true",
     retrievalEnabled: env.DIPOLE_AGENT_RETRIEVAL_ENABLED?.trim().toLowerCase() === "true",
     retrievalContextEnabled: env.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED?.trim().toLowerCase() === "true",
+    interactiveMessageWritesEnabled: env.DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED?.trim().toLowerCase() === "true",
     modelContextProfiles: parseRouteContextProfiles(env.DIPOLE_AGENT_MODEL_CONTEXT_PROFILES ?? ""),
     modelBudget: {
       maxCalls: Number.parseInt(env.DIPOLE_AGENT_MODEL_MAX_CALLS ?? "2", 10),
@@ -514,8 +519,12 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
       planner, audit, registry, trajectory: audit, stepLeaseMs: temporalStepLeaseMs,
       runtimeMode: config.runtimeMode,
       busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 },
+      readScopeConfirmationTtlMs: config.readScopeConfirmationTtlMs,
       ...(config.runtimeMode === "shadow" ? { artifacts: rpc.client } : {}),
       ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {}),
+      ...(config.runtimeMode === "active" && config.interactiveMessageWritesEnabled
+        ? { interactiveMessage: createInteractiveMessageExecutor(rpc.client) }
+        : {}),
       readPermissions: readCapabilityPermissions(config)
     }),
     client: rpc.client,

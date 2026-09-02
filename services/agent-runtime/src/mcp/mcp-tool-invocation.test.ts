@@ -98,6 +98,44 @@ describe("McpToolInvocationRunner", () => {
     )).toThrow(/Approval/);
   });
 
+  it("replays one identical completed terminal after an uncertain RPC response", async () => {
+    const finish = vi.fn(async () => {
+      if (finish.mock.calls.length === 1) throw Object.assign(new Error("response lost after commit"), { code: 14 });
+    });
+    const runner = new McpToolInvocationRunner(
+      { begin: vi.fn(async () => undefined), finish }, tracerFixture().tracer, () => "INV-REPLAY", monotonicClock(20, 29)
+    );
+
+    await expect(runner.execute(
+      { name: "dipole_message_send", capabilityId: "message.system.send", approvalId: "APR-1" },
+      { conversationId: "direct:U100:UAI", content: "notice" }, context,
+      async () => ({ messageId: "MSG-1" }),
+      output => ({ resourceType: "message", resourceId: (output as { messageId: string }).messageId, commandKind: "system_message", commandId: "CMD-1" })
+    )).resolves.toBe(JSON.stringify({ messageId: "MSG-1" }));
+
+    expect(finish).toHaveBeenCalledTimes(2);
+    expect(finish.mock.calls[0]).toEqual(finish.mock.calls[1]);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ invocationId: "INV-REPLAY", status: "completed" }));
+  });
+
+  it("never overwrites an uncertain completed terminal with a failed terminal", async () => {
+    const finish = vi.fn(async () => { throw Object.assign(new Error("Core unavailable"), { code: 14 }); });
+    const runner = new McpToolInvocationRunner(
+      { begin: vi.fn(async () => undefined), finish }, tracerFixture().tracer, () => "INV-UNCERTAIN", monotonicClock(20, 29)
+    );
+
+    await expect(runner.execute(
+      { name: "dipole_message_send", capabilityId: "message.system.send", approvalId: "APR-1" },
+      { conversationId: "direct:U100:UAI", content: "notice" }, context,
+      async () => ({ messageId: "MSG-1" }),
+      output => ({ resourceType: "message", resourceId: (output as { messageId: string }).messageId, commandKind: "system_message", commandId: "CMD-1" })
+    )).rejects.toThrow("Tool invocation failed");
+
+    expect(finish).toHaveBeenCalledTimes(2);
+    expect(finish).toHaveBeenCalledWith(expect.objectContaining({ invocationId: "INV-UNCERTAIN", status: "completed" }));
+    expect(finish).not.toHaveBeenCalledWith(expect.objectContaining({ status: "failed" }));
+  });
+
   it("does not execute without a durable begin and fails closed on oversized results", async () => {
     const execute = vi.fn(async () => ({ ok: true }));
     const begin = vi.fn(async () => { throw new Error("audit unavailable"); });

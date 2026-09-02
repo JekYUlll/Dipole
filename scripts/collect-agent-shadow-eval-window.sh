@@ -7,7 +7,9 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root_dir="$(cd "${script_dir}/.." && pwd)"
 project_name="${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME is required}"
 manifest_dir="${DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR:?DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_DIR is required}"
+manifest_set_sha256="${DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256:?DIPOLE_AGENT_SHADOW_EVAL_MANIFEST_SET_SHA256 is required}"
 output_dir="${DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR:?DIPOLE_AGENT_SHADOW_EVAL_WINDOW_DIR is required}"
+minimum_manifest_count="${DIPOLE_AGENT_SHADOW_EVAL_MIN_MANIFESTS:-1}"
 compose_env_file="${COMPOSE_ENV_FILE:-}"
 compose_overlays="${COMPOSE_OVERLAYS:-}"
 compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
@@ -15,6 +17,11 @@ started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 [[ -d "${manifest_dir}" ]] || { echo "reviewed manifest directory is missing" >&2; exit 2; }
 [[ ! -e "${output_dir}" ]] || { echo "Shadow Eval window output already exists" >&2; exit 2; }
+[[ "${manifest_set_sha256}" =~ ^[a-f0-9]{64}$ ]] || { echo "Shadow Eval manifest set SHA-256 is invalid" >&2; exit 2; }
+[[ "${minimum_manifest_count}" =~ ^[1-9][0-9]*$ ]] && (( minimum_manifest_count <= 1000 )) || {
+  echo "Shadow Eval minimum manifest count must be an integer between 1 and 1000" >&2
+  exit 2
+}
 
 compose_args=(-p "${project_name}" -f "${compose_file}")
 if [[ -n "${compose_env_file}" ]]; then
@@ -44,9 +51,19 @@ runtime_dirty="$(docker inspect --format '{{index .Config.Labels "io.dipole.sour
 
 mapfile -d '' manifests < <(find "${manifest_dir}" -maxdepth 1 -type f -name '*.json' -print0 | sort -z)
 (( ${#manifests[@]} > 0 )) || { echo "reviewed manifest directory has no JSON files" >&2; exit 2; }
+(( ${#manifests[@]} >= minimum_manifest_count )) || {
+  echo "reviewed Shadow Eval manifest count is below required minimum" >&2
+  exit 2
+}
+actual_manifest_set_sha256="$("${script_dir}/hash-agent-shadow-eval-manifest-set.sh" "${manifest_dir}")"
+[[ "${actual_manifest_set_sha256}" == "${manifest_set_sha256}" ]] || {
+  echo "Shadow Eval manifest set SHA-256 does not match reviewed input" >&2
+  exit 2
+}
 
 mkdir -p "${output_dir}/reports"
 index=0
+candidate_version=""
 for manifest in "${manifests[@]}"; do
   jq -e '
     .schemaVersion == "dipole.agent.shadow-eval-manifest.v1" and
@@ -54,6 +71,13 @@ for manifest in "${manifests[@]}"; do
     (.taskId | type == "string") and
     (.runId | type == "string")
   ' "${manifest}" >/dev/null || { echo "invalid reviewed Shadow Eval manifest: ${manifest}" >&2; exit 2; }
+  manifest_candidate_version="$(jq -r '.candidateVersion' "${manifest}")"
+  if [[ -z "${candidate_version}" ]]; then
+    candidate_version="${manifest_candidate_version}"
+  elif [[ "${candidate_version}" != "${manifest_candidate_version}" ]]; then
+    echo "reviewed Shadow Eval manifests must share one candidate version" >&2
+    exit 2
+  fi
 
   printf -v ordinal '%03d' "$((index + 1))"
   container_manifest="/tmp/dipole-shadow-eval-manifest-${ordinal}.json"
@@ -73,6 +97,13 @@ for manifest in "${manifests[@]}"; do
 done
 
 finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+jq -n \
+  --arg sha256 "${actual_manifest_set_sha256}" \
+  --arg candidate_version "${candidate_version}" \
+  --argjson manifest_count "${#manifests[@]}" \
+  --argjson minimum_manifest_count "${minimum_manifest_count}" \
+  '{schemaVersion: "dipole.agent.shadow-eval-manifest-set-receipt.v2", manifestSetSha256: $sha256, candidateVersion: $candidate_version, manifestCount: $manifest_count, minimumManifestCount: $minimum_manifest_count}' \
+  >"${output_dir}/manifest-set.json"
 jq -s \
   --arg revision "${runtime_revision}" \
   --arg started_at "${started_at}" \
@@ -89,7 +120,7 @@ if [[ "${summary_status}" != "0" && "${summary_status}" != "2" ]]; then
   echo "Shadow Eval summary failed closed" >&2
   exit "${summary_status}"
 fi
-jq -e '.schemaVersion == "dipole.agent.shadow-eval-summary-report.v1"' "${output_dir}/summary.json" >/dev/null
+jq -e '.schemaVersion == "dipole.agent.shadow-eval-summary-report.v2" and (has("traceIds") | not)' "${output_dir}/summary.json" >/dev/null
 
 printf 'Agent Shadow Eval window collected: reports=%s output=%s status=%s\n' "${index}" "${output_dir}" "${summary_status}"
 exit "${summary_status}"

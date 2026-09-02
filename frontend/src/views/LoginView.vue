@@ -47,8 +47,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import dipoleMark from '../../../docs/images/dipole-v3-im.svg'
-import dipoleAgentMark from '../../../docs/images/dipole-v3-agent.svg'
+import dipoleMark from '@/assets/brand/dipole-v3-im.svg'
+import dipoleAgentMark from '@/assets/brand/dipole-v3-agent.svg'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -94,8 +94,8 @@ const handleRegister = async () => {
   align-items: center;
   width: 100vw;
   min-height: 100vh;
-  background: var(--dp-v3-ivory);
-  color: var(--dp-v3-ink);
+  background: var(--dp-canvas);
+  color: var(--dp-ink);
   font-family: var(--dp-font-body);
 }
 .brand-panel {
@@ -105,8 +105,8 @@ const handleRegister = async () => {
   align-self: stretch;
   overflow: hidden;
   padding: clamp(36px, 6vw, 92px);
-  color: #fff;
-  background: var(--dp-v3-navy);
+  color: var(--dp-text-inverse);
+  background: var(--dp-rail);
 }
 .brand-panel::after {
   position: absolute;
@@ -114,7 +114,7 @@ const handleRegister = async () => {
   bottom: 10%;
   width: 150px;
   height: 150px;
-  border: 18px solid var(--dp-v3-red);
+  border: 18px solid var(--dp-accent);
   border-radius: 50%;
   content: '';
 }
@@ -123,19 +123,19 @@ const handleRegister = async () => {
 .brand-panel h1 { margin: 12px 0 18px; font: 800 clamp(32px, 4vw, 56px)/1.08 var(--dp-font-display); letter-spacing: -.055em; }
 .brand-description { max-width: 360px; color: #d4dfeb; font-size: 15px; line-height: 1.8; }
 .brand-boundary { position: absolute; bottom: 34px; z-index: 1; margin: 0; color: #9eb4c9; font: 700 9px/1.4 var(--dp-font-data); letter-spacing: .12em; }
-.orbit { position: absolute; width: 640px; height: 260px; border: 1px solid rgba(244, 176, 0, .7); border-radius: 50%; transform: rotate(-33deg); }
+.orbit { position: absolute; width: 640px; height: 260px; border: 1px solid color-mix(in srgb, var(--dp-agent) 70%, transparent); border-radius: 50%; transform: rotate(-33deg); }
 .orbit-one { top: -105px; right: -300px; }
 .orbit-two { top: -69px; right: -324px; width: 720px; height: 320px; opacity: .45; }
-.orbit-one::after { position: absolute; top: 48%; left: 15%; width: 12px; height: 12px; border-radius: 50%; background: var(--dp-v3-gold); content: ''; }
+.orbit-one::after { position: absolute; top: 48%; left: 15%; width: 12px; height: 12px; border-radius: 50%; background: var(--dp-agent); content: ''; }
 .login-card {
   width: min(100%, 475px);
   margin: 0 auto;
   padding: 48px 48px 44px;
-  background: var(--dp-v3-paper);
-  border: 1px solid rgba(9, 37, 69, .08);
+  background: var(--dp-surface);
+  border: 1px solid color-mix(in srgb, var(--dp-ink) 8%, transparent);
   border-radius: 0;
-  box-shadow: var(--dp-v3-shadow);
-  color: var(--dp-v3-ink);
+  box-shadow: var(--dp-shadow);
+  color: var(--dp-ink);
 }
 .brand-lockup {
   display: flex;
@@ -154,20 +154,20 @@ const handleRegister = async () => {
   font-size: 30px;
   line-height: 1;
   font-weight: 700;
-  color: var(--dp-v3-navy);
+  color: var(--dp-rail);
   font-family: var(--dp-font-display);
   margin: 0;
 }
 .brand-kicker {
   margin: 0;
-  color: var(--dp-v3-red);
+  color: var(--dp-accent);
   font: 800 9px/1.2 var(--dp-font-data);
   letter-spacing: .12em;
   text-transform: uppercase;
 }
 .tabs {
   display: flex;
-  border-bottom: 1px solid var(--dp-v3-line);
+  border-bottom: 1px solid var(--dp-line);
   margin-bottom: 24px;
 }
 .tab {
@@ -177,13 +177,13 @@ const handleRegister = async () => {
   border: none;
   cursor: pointer;
   font-size: 14px;
-  color: var(--dp-v3-muted);
+  color: var(--dp-ink-soft);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
 }
 .tab.active {
-  color: var(--dp-v3-navy);
-  border-bottom-color: var(--dp-v3-red);
+  color: var(--dp-rail);
+  border-bottom-color: var(--dp-accent);
   font-weight: 600;
 }
 .form {
@@ -193,19 +193,19 @@ const handleRegister = async () => {
 }
 .form input {
   padding: 10px 12px;
-  border: 1px solid var(--dp-v3-line);
+  border: 1px solid var(--dp-line);
   border-radius: 6px;
   font-size: 14px;
-  color: var(--dp-v3-ink);
-  background: #fff;
+  color: var(--dp-ink);
+  background: var(--dp-surface);
   font-family: inherit;
   outline: none;
   transition: border-color 0.2s;
 }
-.form input:focus { border-color: var(--dp-v3-focus); box-shadow: 0 0 0 3px rgba(242, 38, 42, .14); }
+.form input:focus { border-color: var(--dp-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dp-accent) 14%, transparent); }
 .form button {
   padding: 10px;
-  background: var(--dp-v3-red);
+  background: var(--dp-accent);
   color: var(--dp-text-inverse);
   border: none;
   border-radius: 6px;
@@ -213,11 +213,11 @@ const handleRegister = async () => {
   cursor: pointer;
   margin-top: 4px;
 }
-.form button:hover:not(:disabled) { background: var(--dp-v3-red-strong); }
+.form button:hover:not(:disabled) { background: var(--dp-accent-strong); }
 .form button:disabled { opacity: 0.6; cursor: not-allowed; }
 .error {
   margin-top: 12px;
-  color: var(--dp-v3-red-strong);
+  color: var(--dp-accent-strong);
   font-size: 13px;
   text-align: center;
 }

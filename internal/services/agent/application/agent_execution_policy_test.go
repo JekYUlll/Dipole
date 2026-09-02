@@ -539,6 +539,7 @@ func TestPersistentAgentRunAdmissionFinishesExactTerminalStatusIdempotently(t *t
 	} {
 		terminal := terminal
 		t.Run(string(terminal), func(t *testing.T) {
+			wantTaskStatus := application.AgentTaskStatusV1(terminal)
 			definition := activeAgentDefinitionV1(1, time.Now().Add(-time.Hour), []string{application.AgentPermissionConversationList})
 			store := policyStoreWithDefinitionV1(definition)
 			admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, time.Now)
@@ -563,6 +564,9 @@ func TestPersistentAgentRunAdmissionFinishesExactTerminalStatusIdempotently(t *t
 			}
 			if store.runs[run.RunUUID].Status != terminal || store.runs[run.RunUUID].LastError != lastError {
 				t.Fatalf("terminal Run = %+v, want status=%s error=%q", store.runs[run.RunUUID], terminal, lastError)
+			}
+			if store.tasks[run.TaskUUID].Status != wantTaskStatus {
+				t.Fatalf("terminal Task = %+v, want status=%s", store.tasks[run.TaskUUID], wantTaskStatus)
 			}
 			if err := admission.Finish(context.Background(), run.TaskUUID, run.RunUUID, "dipole-agent", "shadow", application.AgentRunStatusCompleted, ""); terminal != application.AgentRunStatusCompleted && !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 				t.Fatalf("conflicting terminal replay should be denied, got %v", err)

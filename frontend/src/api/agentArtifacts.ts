@@ -13,14 +13,22 @@ export interface AgentArtifactMetadata {
   createdAtUnixMs: number
 }
 
+export interface AgentArtifactContent {
+  artifactId: string
+  mediaType: string
+  content: string
+}
+
 export interface AgentArtifactClient {
   get(artifactId: string): Promise<AgentArtifactMetadata>
+  getContent(artifactId: string): Promise<AgentArtifactContent>
 }
 
 const artifactID = /^[a-f0-9]{64}$/
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/
 const mediaType = /^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+(?:;[A-Za-z0-9!#$&^_.+=-]+)?$/
 const keys = new Set(['artifactId', 'taskId', 'runId', 'artifactType', 'version', 'title', 'mediaType', 'contentSha256', 'sizeBytes', 'createdAtUnixMs'])
+const contentKeys = new Set(['artifactId', 'mediaType', 'content'])
 
 export function parseAgentArtifactMetadata(raw: unknown): AgentArtifactMetadata {
   if (!isRecord(raw) || !exactKeys(raw, keys) || typeof raw.artifactId !== 'string' || !artifactID.test(raw.artifactId) ||
@@ -47,10 +55,22 @@ export function parseAgentArtifactMetadata(raw: unknown): AgentArtifactMetadata 
   }
 }
 
+export function parseAgentArtifactContent(raw: unknown): AgentArtifactContent {
+  if (!isRecord(raw) || !exactKeys(raw, contentKeys) || typeof raw.artifactId !== 'string' || !artifactID.test(raw.artifactId) ||
+      typeof raw.mediaType !== 'string' || !mediaType.test(raw.mediaType) || !validText(raw.content, 1_048_576)) {
+    throw new Error('Agent Artifact content is invalid')
+  }
+  return { artifactId: raw.artifactId, mediaType: raw.mediaType, content: raw.content }
+}
+
 export const agentArtifactClient: AgentArtifactClient = {
   async get(artifactId) {
     if (!artifactID.test(artifactId)) throw new Error('Agent Artifact ID is invalid')
     return parseAgentArtifactMetadata(await api.get(`/api/v1/agent/artifacts/${encodeURIComponent(artifactId)}`))
+  },
+  async getContent(artifactId) {
+    if (!artifactID.test(artifactId)) throw new Error('Agent Artifact ID is invalid')
+    return parseAgentArtifactContent(await api.get(`/api/v1/agent/artifacts/${encodeURIComponent(artifactId)}/content`))
   },
 }
 

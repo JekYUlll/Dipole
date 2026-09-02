@@ -11,6 +11,7 @@ BREW_BIN="/home/linuxbrew/.linuxbrew/bin"
 export PATH="${BREW_BIN}:${PATH}"
 NPM_BIN="${NPM_BIN:-$(command -v npm || true)}"
 GO_BIN="${GO_BIN:-$(command -v go || true)}"
+FRONTEND_BUILD_MODE="${DIPOLE_FRONTEND_BUILD_MODE:-}"
 
 if [[ -z "${NPM_BIN}" && -x "${BREW_BIN}/npm" ]]; then
   NPM_BIN="${BREW_BIN}/npm"
@@ -39,6 +40,7 @@ usage() {
   echo "  NODE_SERVICES Space-separated node services to deploy/restart/log"
   echo "  GO_BUILD_FLAGS Additional flags passed to go build"
   echo "  DIPOLE_BUILD_CREATED Override the embedded RFC3339 build time"
+  echo "  DIPOLE_FRONTEND_BUILD_MODE Vite mode for an explicit frontend deployment profile"
 }
 
 freeze_source_metadata() {
@@ -69,7 +71,11 @@ cmd_frontend() {
   echo "==> Building frontend..."
   cd "${ROOT_DIR}/frontend"
   "${NPM_BIN}" ci --prefer-offline
-  "${NPM_BIN}" run build
+  if [[ -n "${FRONTEND_BUILD_MODE}" ]]; then
+    "${NPM_BIN}" run build -- --mode "${FRONTEND_BUILD_MODE}"
+  else
+    "${NPM_BIN}" run build
+  fi
   echo "==> Frontend built → internal/server/webapp/"
 }
 

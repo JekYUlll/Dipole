@@ -4,7 +4,9 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: drill-root
       MYSQL_DATABASE: dipole
-    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    # The disposable drill must tolerate the shared Remote GPU's constrained
+    # Linux AIO quota without changing the normal microservice topology.
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--innodb-use-native-aio=0"]
     ports:
       - "127.0.0.1:${DIPOLE_AGENT_DRILL_MYSQL_PORT:-23306}:3306"
     healthcheck:

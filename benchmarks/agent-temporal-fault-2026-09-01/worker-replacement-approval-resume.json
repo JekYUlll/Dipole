@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "dipole.agent.temporal-fault-receipt.v1",
+  "drillId": "worker_replacement_approval_resume",
+  "observedAt": "2026-09-01T04:08:35.762Z",
+  "workflow": {
+    "taskId": "task-recovery-1",
+    "runId": "run-recovery-1"
+  },
+  "outcome": "eligible",
+  "transitions": [
+    { "revision": 1, "status": "running" },
+    { "revision": 2, "status": "waiting_approval" },
+    { "revision": 3, "status": "running" },
+    { "revision": 4, "status": "completed" }
+  ],
+  "faults": {
+    "workerReplacements": 1,
+    "terminalWriteRetries": 1
+  },
+  "effects": {
+    "admissions": 1,
+    "stepExecutions": 4,
+    "approvalRequests": 1,
+    "approvalResolutions": 1,
+    "terminalWriteAttempts": 2,
+    "terminalPersistedWrites": 1,
+    "inputSignalsRejected": 0,
+    "inputResumptions": 0
+  },
+  "failures": [],
+  "receiptSha256": "e08b58b3958bcf32db40ab16a512810a6f194d49463def0b68ac20e3bb4e2bc7",
+  "receiptId": "TEMPORAL-FAULT-0c58b5888e9ab00a6ee5c61eae73cfbf9d2cff558ecbd9f97cdb0b3465e3d368"
+}

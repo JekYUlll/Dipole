@@ -70,6 +70,7 @@ message RequestApprovalRequest {
   string arguments_sha256 = 8;
   string nonce_sha256 = 9;
   int64 expires_at_unix_ms = 10;
+  string mode = 11;
 }
 
 message ResolveApprovalRequest {

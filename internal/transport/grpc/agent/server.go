@@ -12,10 +12,12 @@ import (
 	commonv1 "github.com/JekYUlll/Dipole/api/gen/go/common/v1"
 	messagev1 "github.com/JekYUlll/Dipole/api/gen/go/message/v1"
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
 	grpcauth "github.com/JekYUlll/Dipole/internal/transport/grpc/auth"
 	grpccommon "github.com/JekYUlll/Dipole/internal/transport/grpc/common"
 	grpcmapping "github.com/JekYUlll/Dipole/internal/transport/grpc/mapping"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -1569,6 +1571,13 @@ func (s *Server) FinishMcpToolInvocation(ctx context.Context, request *agentv1.F
 		}
 	}
 	if err := s.toolAudits.Finish(grpccommon.Correlation(ctx, request.GetContext()), finish); err != nil {
+		logger.Warn("Agent Tool invocation finish rejected",
+			zap.String("task_id", finish.TaskUUID),
+			zap.String("run_id", finish.RunUUID),
+			zap.String("invocation_id", finish.InvocationUUID),
+			zap.String("status", string(finish.Status)),
+			zap.Error(err),
+		)
 		return nil, mapAgentToolInvocationErrorV1(err)
 	}
 	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
@@ -1607,6 +1616,13 @@ func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.
 		Kind: application.AgentMessageCommandKindV1(request.GetCommandKind()), Content: request.GetContent(),
 	})
 	if err != nil {
+		logger.Error("Agent Message Command execution failed",
+			zap.String("task_id", request.GetTaskId()),
+			zap.String("run_id", request.GetRunId()),
+			zap.String("invocation_id", request.GetInvocationId()),
+			zap.String("command_kind", request.GetCommandKind()),
+			zap.Error(err),
+		)
 		switch {
 		case errors.Is(err, application.ErrAgentCommandDenied):
 			return nil, status.Error(codes.PermissionDenied, "Agent Message Command denied")
@@ -1681,7 +1697,7 @@ func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.
 			TaskUUID: request.GetTaskId(), WorkflowID: request.GetWorkflowId(), RunID: request.GetWorkflowRunId(),
 			Status: application.AgentTaskWorkflowStatusV1(request.GetWorkflowStatus()), Revision: request.GetWorkflowRevision(),
 		},
-		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent",
 	})
 	if err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
@@ -1731,11 +1747,15 @@ func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestAp
 	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err
 	}
-	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetResourceScope() == nil {
+	mode := request.GetMode()
+	if mode == "" {
+		mode = "shadow"
+	}
+	if s.approvals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetResourceScope() == nil || (mode != "shadow" && mode != "active") {
 		return nil, status.Error(codes.InvalidArgument, "Agent Approval request is invalid")
 	}
 	approval, err := s.approvals.Request(ctx, application.AgentApprovalRequestV1{
-		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: mode,
 		Approval: application.AgentApprovalV1{
 			ApprovalUUID: request.GetApprovalId(), TaskUUID: request.GetTaskId(), CapabilityID: request.GetCapabilityId(),
 			ResourceScope: application.AgentResourceScopeV1{ResourceType: request.GetResourceScope().GetResourceType(), ResourceID: request.GetResourceScope().GetResourceId(), Actions: request.GetResourceScope().GetActions()},
@@ -1762,7 +1782,7 @@ func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveAp
 		return nil, status.Error(codes.InvalidArgument, "Agent Approval resolution is invalid")
 	}
 	approval, err := s.approvals.Resolve(ctx, application.AgentApprovalResolutionV1{
-		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent",
 		ApprovalUUID: request.GetApprovalId(), ActorUUID: request.GetActorUserId(), Decision: application.AgentApprovalDecisionV1(request.GetDecision()),
 	})
 	if err != nil {

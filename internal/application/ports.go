@@ -45,6 +45,14 @@ type SystemMessageSender interface {
 	SendSystemGroupMessage(groupUUID, content string) error
 }
 
+// AgentMessageCommandSender is the trusted Message write boundary used after
+// Core has authorized an Agent capability invocation. Implementations preserve
+// the caller-provided client message ID for retries and receipt recovery.
+type AgentMessageCommandSender interface {
+	SendAssistantTextMessageContext(ctx context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+}
+
 type SyncPage struct {
 	Items   []*model.SyncMessage
 	NextSeq uint64

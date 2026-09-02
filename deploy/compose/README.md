@@ -13,7 +13,10 @@
 | `docker-compose.redis-cluster.yml` | Redis Sentinel 故障转移演练 |
 | `docker-compose.storage-lab.yml` | 隔离存储实验 |
 | `../microservices/agent-active.yml` | 默认不加载的 Agent user-gray 只读 overlay |
+| `../microservices/agent-interactive-active.yml` | 基于 user-gray 的显式审批交互消息候选 overlay |
 | `../microservices/agent-memory-promotion.yml` | 基于 user-gray 的 reviewed Memory receipt 提交 overlay |
+| `../microservices/agent-interactive-shadow.yml` | 隔离环境的只读 Agent Task 控制面 overlay |
+| `../microservices/agent-deepseek-v4-flash-shadow.yml` | DeepSeek V4 Flash 的 JSON-text 与关闭 reasoning 兼容 overlay |
 | `../microservices/remote-gpu-mysql-aio-compat.yml` | 仅限共享 Remote GPU 候选的 MySQL native AIO 兼容 overlay |
 
 从仓库根目录执行，例如：

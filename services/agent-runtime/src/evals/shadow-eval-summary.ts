@@ -4,7 +4,9 @@ import { offlineEvalCategories, type OfflineEvalReport } from "./offline-evaluat
 import { parseShadowEvalReport, type ShadowEvalReport } from "./shadow-eval-report.js";
 
 export const shadowEvalSummaryInputSchemaVersion = "dipole.agent.shadow-eval-summary-input.v1" as const;
-export const shadowEvalSummaryReportSchemaVersion = "dipole.agent.shadow-eval-summary-report.v1" as const;
+// V2 intentionally omits raw Trace IDs. They remain available only to the
+// protected evaluator input for deduplication and operational correlation.
+export const shadowEvalSummaryReportSchemaVersion = "dipole.agent.shadow-eval-summary-report.v2" as const;
 
 // Container provenance uses a Git revision today (40 hex characters), while
 // content-addressed build systems may provide a 64-character digest.
@@ -49,7 +51,6 @@ export interface ShadowEvalSummaryReport {
     }[];
   };
   readonly evaluationSuiteSha256: readonly string[];
-  readonly traceIds: readonly string[];
   readonly limitations: readonly string[];
 }
 
@@ -114,11 +115,10 @@ export function summarizeShadowEvalReports(input: ShadowEvalSummaryInput): Shado
       failureReasons
     },
     evaluationSuiteSha256: reports.map(report => report.evaluation.suiteSha256).sort(),
-    traceIds: reports.map(report => report.traceId).sort(),
     limitations: [
       "Only reviewed terminal Shadow Task/Run reports are included.",
       "This report does not establish production authority, active-runtime quality, or user impact.",
-      "Task, message, prompt, model output, tool arguments, artifact body, and principal identifiers are excluded."
+      "Task, Run, Trace, message, prompt, model output, tool arguments, artifact body, and principal identifiers are excluded."
     ]
   };
 }

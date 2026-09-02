@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "dipole.agent.shadow-eval-summary-report.v2",
+  "source": {
+    "kind": "reviewed_shadow",
+    "environment": "isolated",
+    "runtimeRevision": "d591bc7592b3974c6ec33425371f66fd9d3e29ea",
+    "windowStart": "2026-09-01T22:57:10Z",
+    "windowEnd": "2026-09-01T22:57:12Z"
+  },
+  "candidateVersion": "agent-runtime@d591bc7592b3974c6ec33425371f66fd9d3e29ea",
+  "summary": {
+    "evaluatedTasks": 2,
+    "succeededTasks": 2,
+    "failedTasks": 0,
+    "taskSuccessRatePercent": 100,
+    "categoryPassRates": {
+      "outcome": { "total": 2, "passed": 2, "passRatePercent": 100 },
+      "trajectory": { "total": 2, "passed": 2, "passRatePercent": 100 },
+      "permission": { "total": 2, "passed": 2, "passRatePercent": 100 },
+      "retrieval": { "total": 2, "passed": 2, "passRatePercent": 100 },
+      "cost": { "total": 2, "passed": 2, "passRatePercent": 100 }
+    },
+    "failureReasons": []
+  },
+  "evaluationSuiteSha256": [
+    "8908bd92687dc13e1baae9104f6f1666dd8c4a6e776ebfe729b28fd05857d349",
+    "b51dede5212e3f6384d9bf3082b0ebaec14a94dea110bb15c7e8328083decc5c"
+  ],
+  "limitations": [
+    "Only reviewed terminal Shadow Task/Run reports are included.",
+    "This report does not establish production authority, active-runtime quality, or user impact.",
+    "Task, Run, Trace, message, prompt, model output, tool arguments, artifact body, and principal identifiers are excluded."
+  ]
+}

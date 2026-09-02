@@ -16,7 +16,7 @@ const defaultClient = () => ({
 function mountTimeline(client: ReturnType<typeof defaultClient>) {
   return mount(AgentTaskTimeline, {
     props: { taskId: 'TASK-1', client },
-    global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
+    global: { stubs: { RouterLink: { props: ['to'], template: '<a :data-route-name="to.name"><slot /></a>' } } },
   })
 }
 
@@ -43,11 +43,32 @@ describe('AgentTaskTimeline', () => {
   })
 
   it('clears events and shows retry when the authoritative endpoint fails', async () => {
+    vi.useFakeTimers()
     const getTimeline = vi.fn().mockRejectedValue(new Error('unavailable'))
     const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
     await flushPromises()
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
     expect(wrapper.find('[data-agent-timeline-retry]').exists()).toBe(true)
     expect(wrapper.find('[data-event-seq]').exists()).toBe(false)
+    vi.useRealTimers()
+  })
+
+  it('retries the initial Timeline read once while a newly admitted Task is projected', async () => {
+    vi.useFakeTimers()
+    const getTimeline = vi.fn()
+      .mockRejectedValueOnce(new Error('not found yet'))
+      .mockResolvedValueOnce({ schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 1, events: [], nextCursor: '' })
+    const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
+
+    await flushPromises()
+    expect(getTimeline).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1_000)
+    await flushPromises()
+
+    expect(getTimeline).toHaveBeenCalledTimes(2)
+    expect(wrapper.attributes('data-state')).toBe('ready')
+    vi.useRealTimers()
   })
 
   it('links only validated Artifact events to the metadata surface', async () => {
@@ -55,5 +76,16 @@ describe('AgentTaskTimeline', () => {
     const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
     await flushPromises()
     expect(wrapper.get('.artifact-link').text()).toBe('查看 Artifact metadata')
+  })
+
+  it('links a waiting approval event to its owner-scoped approval surface', async () => {
+    const getTimeline = vi.fn().mockResolvedValue({
+      schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 2,
+      events: [{ eventSeq: '1', eventId: 'EV-1', taskId: 'TASK-1', runId: 'RUN-1', kind: 'approval', status: 'waiting_approval', approvalId: 'APPROVAL-1', occurredAtUnixMs: 1_000 }], nextCursor: '',
+    })
+    const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
+    await flushPromises()
+    expect(wrapper.get('.approval-link').text()).toBe('处理审批请求')
+    expect(wrapper.get('.approval-link').attributes('data-route-name')).toBe('agent-task-approval')
   })
 })

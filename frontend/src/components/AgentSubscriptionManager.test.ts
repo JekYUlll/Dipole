@@ -37,7 +37,8 @@ function definitions(): AgentDefinitionCatalogClient {
 describe('AgentSubscriptionManager', () => {
   it('uses the shared Pencil token theme', () => {
     expect(source).toContain('--paper:var(--dp-canvas)')
-    expect(source).toContain('--green:var(--dp-accent-strong)')
+    expect(source).toContain('--green:var(--dp-rail)')
+    expect(source).toContain('--green-soft:var(--dp-agent-soft)')
     expect(source).toContain('var(--dp-font-body)')
     expect(source).not.toContain('--paper:#f4f6f8')
   })

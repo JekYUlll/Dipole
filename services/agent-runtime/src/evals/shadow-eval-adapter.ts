@@ -61,6 +61,9 @@ export interface ShadowEvalObservation {
     readonly stepNo: number; readonly capabilityId: string; readonly status: string;
     readonly attemptCount: number; readonly latencyMs: number | null;
     readonly authorization: { readonly resourceType: string; readonly resourceId: string; readonly action: string; readonly decision: "allowed" } | null;
+    // This is the sole non-authorized terminal Step: a trusted list produced
+    // no target, so the dependent read was never prepared or invoked.
+    readonly skipReason?: "no_discovered_conversation";
   }[];
   readonly artifacts: readonly { readonly artifactType: string; readonly version: number }[];
   readonly modelCalls: readonly {
@@ -85,7 +88,7 @@ export function buildShadowEvalSuite(manifest: ShadowEvalManifest, observation: 
   const outputIds = [...artifactIds, `run:${observation.runStatus}`, `task:${evaluationTaskStatus(observation)}`].sort();
   const steps = [
     ...(observation.contextManifest.selected.length > 0 ? ["context.compile"] : []),
-    ...observation.steps.map(item => `capability:${item.capabilityId}:${item.status}`),
+    ...observation.steps.map(trajectoryStepId),
     ...artifactIds
   ];
   const decisions = labels.permission.map(label => {
@@ -132,7 +135,7 @@ function assertTerminal(observation: ShadowEvalObservation): void {
   if (invalidStep !== undefined) throw new Error(`Shadow evaluation Step ${invalidStep.stepNo} is not terminal`);
   const incompleteStep = observation.steps.find(item => item.latencyMs === null);
   if (incompleteStep !== undefined) throw new Error(`Shadow evaluation Step ${incompleteStep.stepNo} has incomplete latency`);
-  const missingAuthorization = observation.steps.find(item => item.authorization === null);
+  const missingAuthorization = observation.steps.find(item => item.authorization === null && !isTrustedNoDiscoverySkip(item));
   if (missingAuthorization !== undefined) throw new Error(`Shadow evaluation Step ${missingAuthorization.stepNo} has no persisted authorization`);
   const retriedStep = observation.steps.find(item => item.attemptCount !== 1);
   if (retriedStep !== undefined) throw new Error(`Shadow evaluation Step ${retriedStep.stepNo} lacks per-attempt latency evidence`);
@@ -207,7 +210,16 @@ function costMetrics(manifest: ShadowEvalManifest, observation: ShadowEvalObserv
   if (!Number.isSafeInteger(totalCostMicrousd)) throw new Error("Shadow evaluation cost exceeds the safe integer range");
   return {
     modelCalls: observation.modelCalls.length,
-    toolCalls: observation.steps.length + observation.toolCalls.length,
+    toolCalls: observation.steps.filter(step => !isTrustedNoDiscoverySkip(step)).length + observation.toolCalls.length,
     totalTokens, totalCostMicrousd, latencyMs, tokenMetrics
   };
+}
+
+function trajectoryStepId(step: ShadowEvalObservation["steps"][number]): string {
+  return `capability:${step.capabilityId}:${isTrustedNoDiscoverySkip(step) ? "skipped" : step.status}`;
+}
+
+export function isTrustedNoDiscoverySkip(step: ShadowEvalObservation["steps"][number]): boolean {
+  return step.capabilityId === "conversation.read" && step.status === "completed" &&
+    step.authorization === null && step.skipReason === "no_discovered_conversation";
 }

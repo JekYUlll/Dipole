@@ -10,6 +10,7 @@ REMOTE_COMPOSE_FILE="${DIPOLE_REMOTE_COMPOSE_FILE:-deploy/compose/docker-compose
 REMOTE_GO_ROOT="${DIPOLE_REMOTE_GO_ROOT:-}"
 REMOTE_GOPROXY="${DIPOLE_REMOTE_GOPROXY:-}"
 REMOTE_NODE_ROOT="${DIPOLE_REMOTE_NODE_ROOT:-/home/admin1/.local/node-22.12.0}"
+REMOTE_FRONTEND_PROFILE="${DIPOLE_REMOTE_FRONTEND_PROFILE:-}"
 REMOTE_K6_IMAGE="${DIPOLE_REMOTE_K6_IMAGE:-grafana/k6:0.57.0}"
 REMOTE_BUILD_CANDIDATE="${DIPOLE_REMOTE_BUILD_CANDIDATE:-0}"
 BENCH_SCENARIO_FILTER="${DIPOLE_BENCH_SCENARIO_FILTER:-}"
@@ -31,15 +32,17 @@ Usage: scripts/remote-dev.sh <sync|preflight|test|node-test|build|smoke-lite|web
 
 Environment: DIPOLE_REMOTE_HOST, DIPOLE_REMOTE_ROOT, DIPOLE_REMOTE_BRANCH,
   DIPOLE_REMOTE_PROJECT, DIPOLE_REMOTE_COMPOSE_FILE, DIPOLE_REMOTE_GO_ROOT,
-  DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT, DIPOLE_REMOTE_BUILD_CANDIDATE.
+  DIPOLE_REMOTE_GOPROXY, DIPOLE_REMOTE_NODE_ROOT, DIPOLE_REMOTE_BUILD_CANDIDATE,
+  DIPOLE_REMOTE_FRONTEND_PROFILE.
+  Frontend profiles: agent-interactive-shadow.
   Benchmark overrides: DIPOLE_BENCH_SCENARIO_FILTER, DIPOLE_BENCH_GROUP_MAX_DURATION,
   DIPOLE_BENCH_USER_COUNT, DIPOLE_BENCH_GROUP_SIZE, DIPOLE_BENCH_RUN_ID.
   DIPOLE_BENCH_HOT_GROUP_WARMUP_MESSAGES, DIPOLE_BENCH_HOT_GROUP_ACTIVATION_WAIT_MS.
   DIPOLE_BENCH_SCRIPT may select a repository-relative benchmark script.
   DIPOLE_BENCH_PHONE_PREFIX may select an isolated three-digit test namespace.
   DIPOLE_BENCH_HOT_GROUP_MEMBER_COUNT_THRESHOLD, DIPOLE_BENCH_HOT_GROUP_MESSAGE_THRESHOLD.
-  Active login sessions remain blocked unless DIPOLE_REMOTE_ALLOW_ACTIVE=1 is set.
-  Existing GPU tasks are recorded for resource planning and do not block CPU-only work.
+  Active login sessions and GPU tasks are recorded for resource planning.
+  They do not block authorized Dipole development work on the Remote GPU track.
 EOF
 }
 
@@ -65,8 +68,10 @@ sync_revision() {
   # A symbolic ref keeps the bundle non-empty while the remote still verifies
   # the immutable commit passed separately below.
   git bundle create "${bundle_path}" HEAD
-  scp -q -o BatchMode=yes -o ConnectTimeout="${DIPOLE_REMOTE_CONNECT_TIMEOUT:-8}" \
-    "${bundle_path}" "${REMOTE_HOST}:${remote_bundle}"
+  if ! scp -q -o BatchMode=yes -o ConnectTimeout="${DIPOLE_REMOTE_CONNECT_TIMEOUT:-8}" \
+    "${bundle_path}" "${REMOTE_HOST}:${remote_bundle}"; then
+    printf 'remote sync warning: bundle fallback upload failed; remote Git access is required\n' >&2
+  fi
   remote_tip="$(git ls-remote --heads origin "refs/heads/${REMOTE_BRANCH}" | awk 'NR == 1 { print $1 }')"
   if [[ "${REMOTE_BRANCH}" == "dipole-dev/"* && -n "${remote_tip}" ]]; then
     # Candidate refs are per-user, mutable pointers. The exact lease rejects
@@ -111,20 +116,11 @@ REMOTE_SYNC
 }
 
 guard_start() {
-  remote "guard" "${DIPOLE_REMOTE_ALLOW_ACTIVE:-0}" <<'REMOTE_GUARD'
+  remote "guard" <<'REMOTE_GUARD'
 set -euo pipefail
-approved="${4:-0}"
 users="$(who | wc -l | tr -d ' ')"
 gpu="$(nvidia-smi --query-compute-apps=pid --format=csv,noheader 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
-if [[ "$users" != "0" && "$approved" != "1" ]]; then
-  printf 'remote start refused: active_users=%s; set DIPOLE_REMOTE_ALLOW_ACTIVE=1 only with approval\n' "$users" >&2
-  exit 3
-fi
-if [[ "$gpu" != "0" ]]; then
-  printf 'remote start proceeding with existing GPU tasks: active_users=%s gpu_processes=%s\n' "$users" "$gpu" >&2
-else
-  printf 'remote start resource snapshot: active_users=%s gpu_processes=%s\n' "$users" "$gpu" >&2
-fi
+printf 'remote start resource snapshot: active_users=%s gpu_processes=%s\n' "$users" "$gpu" >&2
 REMOTE_GUARD
 }
 
@@ -132,6 +128,7 @@ run_remote() {
   local action="$1"
   local remote_k6_image="${REMOTE_K6_IMAGE:-$REMOTE_EMPTY_ARG}"
   local remote_node_root="${REMOTE_NODE_ROOT:-$REMOTE_EMPTY_ARG}"
+  local remote_frontend_profile="${REMOTE_FRONTEND_PROFILE:-$REMOTE_EMPTY_ARG}"
   local remote_go_root="${REMOTE_GO_ROOT:-$REMOTE_EMPTY_ARG}"
   local remote_go_proxy="${REMOTE_GOPROXY:-$REMOTE_EMPTY_ARG}"
   local bench_scenario_filter="${BENCH_SCENARIO_FILTER:-$REMOTE_EMPTY_ARG}"
@@ -148,7 +145,7 @@ run_remote() {
   remote "${remote_k6_image}" "${action}" "${remote_node_root}" "${remote_go_root}" "${remote_go_proxy}" \
     "${bench_scenario_filter}" "${bench_group_max_duration}" "${bench_user_count}" "${bench_group_size}" "${bench_run_id}" \
     "${bench_hot_group_warmup_messages}" "${bench_hot_group_activation_wait_ms}" "${bench_script}" "${bench_phone_prefix}" \
-    "${bench_hot_group_member_count_threshold}" "${bench_hot_group_message_threshold}" <<REMOTE_RUN
+    "${bench_hot_group_member_count_threshold}" "${bench_hot_group_message_threshold}" "${remote_frontend_profile}" <<REMOTE_RUN
 set -euo pipefail
 root="\$1"; project="\$2"
 k6_image="\${3:-}"
@@ -166,7 +163,8 @@ bench_script="\${15:-}"
 bench_phone_prefix="\${16:-}"
 bench_hot_group_member_count_threshold="\${17:-}"
 bench_hot_group_message_threshold="\${18:-}"
-for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id bench_hot_group_warmup_messages bench_hot_group_activation_wait_ms bench_script bench_phone_prefix bench_hot_group_member_count_threshold bench_hot_group_message_threshold; do
+frontend_profile="\${19:-}"
+for bench_arg in k6_image node_root go_root go_proxy bench_scenario_filter bench_group_max_duration bench_user_count bench_group_size bench_run_id bench_hot_group_warmup_messages bench_hot_group_activation_wait_ms bench_script bench_phone_prefix bench_hot_group_member_count_threshold bench_hot_group_message_threshold frontend_profile; do
   [[ "\${!bench_arg}" == "${REMOTE_EMPTY_ARG}" ]] && printf -v "\$bench_arg" '%s' ''
 done
 if [[ -z "\$go_root" ]]; then
@@ -268,6 +266,16 @@ case "${action}" in
     done
     ;;
   build)
+    case "\$frontend_profile" in
+      "") scripts/docker-build.sh frontend ;;
+      agent-interactive-shadow)
+        DIPOLE_FRONTEND_BUILD_MODE=agent-interactive-shadow scripts/docker-build.sh frontend
+        ;;
+      *)
+        echo "unsupported remote frontend profile: \$frontend_profile" >&2
+        exit 4
+        ;;
+    esac
     scripts/docker-build.sh backend
     scripts/docker-build-microservice-images.sh
     if [[ "${REMOTE_BUILD_CANDIDATE}" == "1" ]]; then

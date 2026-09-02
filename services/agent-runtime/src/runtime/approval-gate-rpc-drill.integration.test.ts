@@ -59,9 +59,12 @@ integration("Agent Approval gate mTLS drill", () => {
     await writeFile(requiredEnv("DIPOLE_AGENT_APPROVAL_DRILL_EVIDENCE"), `${JSON.stringify(createApprovalGateDrillEvidence({
       approved_effect_count: 1,
       denied_effect_count: 0,
+      denied_authorization_rejected: true,
       consumed_replay_effect_count: 0,
+      consumed_replay_rejected: true,
       failed_effect_count: 1,
       failed_replay_effect_count: 0,
+      failed_replay_rejected: true,
       core_rpc_type: "go_internal_grpc_mtls",
       core_rpc_authenticated: true
     }), null, 2)}\n`, { mode: 0o600 });

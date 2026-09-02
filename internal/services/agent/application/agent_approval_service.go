@@ -127,7 +127,9 @@ func (s *PersistentAgentApprovalServiceV1) boundTask(ctx context.Context, taskUU
 	if err != nil {
 		return nil, fmt.Errorf("get Agent Approval Run: %w", err)
 	}
-	if run == nil || run.TaskUUID != strings.TrimSpace(taskUUID) || run.RuntimeID != strings.TrimSpace(runtimeID) || run.Mode != strings.TrimSpace(mode) || run.Status != application.AgentRunStatusRunning {
+	requestedMode := strings.TrimSpace(mode)
+	// The persisted Run is authoritative when an older RPC omits its mode.
+	if run == nil || run.TaskUUID != strings.TrimSpace(taskUUID) || run.RuntimeID != strings.TrimSpace(runtimeID) || (requestedMode != "" && run.Mode != requestedMode) || run.Status != application.AgentRunStatusRunning {
 		return nil, fmt.Errorf("%w: Approval Run binding mismatch", application.ErrAgentApprovalDenied)
 	}
 	task, err := s.store.GetTask(ctx, run.TaskUUID)

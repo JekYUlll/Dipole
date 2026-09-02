@@ -30,8 +30,15 @@ describe("AgentCapabilityRPCClient", () => {
       callback(null, { runStatus: "failed" });
       return {};
     });
+    const requestApproval = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({
+        taskId: "TASK-1", runId: "RUN-1", approvalId: "APR-1", capabilityId: "message.system.send", mode: "active"
+      });
+      callback(null, { approvalId: input.approvalId, status: "pending" });
+      return {};
+    });
     const client = new AgentCapabilityRPCClient(
-      { admitRun, completeRun, finishRun } as unknown as IAgentCapabilityServiceClient,
+      { admitRun, completeRun, finishRun, requestApproval } as unknown as IAgentCapabilityServiceClient,
       "secret", 2_000, "active", "candidate-v1"
     );
 
@@ -41,6 +48,11 @@ describe("AgentCapabilityRPCClient", () => {
     })).resolves.toEqual({ taskId: "TASK-1", runId: "RUN-1", runStatus: "running" });
     await expect(client.complete("TASK-1", "RUN-1")).resolves.toBeUndefined();
     await expect(client.finish("TASK-1", "RUN-1", "failed", "failure")).resolves.toBeUndefined();
+    await expect(client.requestApproval("TASK-1", "RUN-1", {
+      approvalId: "APR-1", capabilityId: "message.system.send",
+      resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+      scopeSha256: "a".repeat(64), argumentsSha256: "b".repeat(64), nonceSha256: "c".repeat(64), expiresAtUnixMs: Date.UTC(2026, 7, 28)
+    })).resolves.toBeUndefined();
   });
 
   it("requires a candidate version for active RPC clients", () => {

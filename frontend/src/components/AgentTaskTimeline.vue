@@ -9,6 +9,7 @@ const events = ref<AgentTaskTimelineEvent[]>([])
 const nextCursor = ref('')
 const revision = ref<number | undefined>()
 const loadingMore = ref(false)
+const initialProjectionRetryMs = 1_000
 
 onMounted(() => { void load() })
 
@@ -17,8 +18,16 @@ async function load() {
   events.value = []
   nextCursor.value = ''
   try {
-    if (client.value.getTimeline === undefined) throw new Error('Agent Task Timeline is unavailable')
-    const page = await client.value.getTimeline(props.taskId)
+    const getTimeline = client.value.getTimeline
+    if (getTimeline === undefined) throw new Error('Agent Task Timeline is unavailable')
+    let page: Awaited<ReturnType<NonNullable<AgentTaskClient['getTimeline']>>>
+    try {
+      page = await getTimeline(props.taskId)
+    } catch {
+      // Task admission is asynchronous, so its Timeline projection can appear shortly after the redirect.
+      await new Promise<void>(resolve => window.setTimeout(resolve, initialProjectionRetryMs))
+      page = await getTimeline(props.taskId)
+    }
     events.value = page.events
     nextCursor.value = page.nextCursor
     revision.value = page.revision
@@ -59,6 +68,11 @@ function artifactRoute(event: AgentTaskTimelineEvent): { name: 'agent-artifact';
   if (event.kind !== 'artifact' || event.artifactId === undefined) return undefined
   return { name: 'agent-artifact', params: { artifactId: event.artifactId } }
 }
+
+function approvalRoute(event: AgentTaskTimelineEvent): { name: 'agent-task-approval'; params: { taskId: string } } | undefined {
+  if (event.kind !== 'approval' || event.status !== 'waiting_approval' || event.approvalId === undefined) return undefined
+  return { name: 'agent-task-approval', params: { taskId: props.taskId } }
+}
 </script>
 
 <template>
@@ -84,6 +98,7 @@ function artifactRoute(event: AgentTaskTimelineEvent): { name: 'agent-artifact';
           <p>{{ event.status }}</p>
           <small v-if="event.capabilityId">{{ event.capabilityId }}</small>
           <RouterLink v-if="artifactRoute(event)" class="artifact-link" :to="artifactRoute(event)!">查看 Artifact metadata</RouterLink>
+          <RouterLink v-if="approvalRoute(event)" class="approval-link" :to="approvalRoute(event)!">处理审批请求</RouterLink>
         </div>
       </li>
     </ol>
@@ -96,21 +111,21 @@ function artifactRoute(event: AgentTaskTimelineEvent): { name: 'agent-artifact';
 <style scoped>
 .timeline-shell { border: 1px solid var(--dp-line); border-radius: var(--dp-radius-md); padding: var(--dp-space-lg); background: var(--dp-surface); color: var(--dp-ink); font-family: var(--dp-font-body); }
 .timeline-header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-.eyebrow { margin: 0 0 .35rem; color: var(--dp-accent-strong); font: 700 .68rem/1.2 var(--dp-font-data); letter-spacing: .14em; }
+.eyebrow { margin: 0 0 .35rem; color: var(--dp-rail); font: 700 .68rem/1.2 var(--dp-font-data); letter-spacing: .14em; }
 h2 { margin: 0; color: var(--dp-ink); font: 700 1.2rem/1.25 var(--dp-font-display); }
 .revision { color: var(--dp-ink-soft); font: .7rem/1.4 var(--dp-font-data); }
 .timeline-state { display: flex; align-items: center; justify-content: space-between; min-height: 5rem; color: var(--dp-ink-soft); }
 .timeline-state-danger { color: var(--dp-danger); }
-.text-action, .load-more { border: 0; background: transparent; color: var(--dp-accent-strong); cursor: pointer; font: 600 .85rem/1.4 var(--dp-font-body); }
+.text-action, .load-more { border: 0; background: transparent; color: var(--dp-accent); cursor: pointer; font: 600 .85rem/1.4 var(--dp-font-body); }
 .timeline-list { position: relative; margin: 0; padding: .25rem 0 .25rem 1.25rem; list-style: none; }
 .timeline-list::before { position: absolute; top: .7rem; bottom: .7rem; left: .28rem; width: 1px; background: var(--dp-line); content: ''; }
 .timeline-item { position: relative; display: flex; gap: .8rem; padding: .65rem 0; }
-.timeline-dot { position: absolute; left: -.99rem; top: .85rem; width: .55rem; height: .55rem; border: 2px solid var(--dp-surface); border-radius: 50%; background: var(--dp-accent); box-shadow: 0 0 0 1px var(--dp-accent); }
+.timeline-dot { position: absolute; left: -.99rem; top: .85rem; width: .55rem; height: .55rem; border: 2px solid var(--dp-surface); border-radius: 50%; background: var(--dp-agent); box-shadow: 0 0 0 1px var(--dp-agent); }
 .timeline-copy { min-width: 0; flex: 1; }
 .timeline-meta { display: flex; justify-content: space-between; gap: 1rem; color: var(--dp-ink); }
 .timeline-meta time { color: var(--dp-ink-faint); font-size: .75rem; }
 .timeline-copy p { margin: .2rem 0 0; color: var(--dp-ink-soft); font-size: .85rem; }
-.timeline-copy small { display: block; margin-top: .3rem; color: var(--dp-accent-strong); font: .7rem/1.3 var(--dp-font-data); overflow-wrap: anywhere; }
-.artifact-link { display: inline-block; margin-top: .45rem; color: var(--dp-accent-strong); font: 600 .78rem/1.3 var(--dp-font-body); }
+.timeline-copy small { display: block; margin-top: .3rem; color: var(--dp-ink-soft); font: .7rem/1.3 var(--dp-font-data); overflow-wrap: anywhere; }
+.artifact-link, .approval-link { display: inline-block; margin-top: .45rem; color: var(--dp-accent); font: 600 .78rem/1.3 var(--dp-font-body); }
 .load-more { display: block; margin: .75rem auto 0; }
 </style>

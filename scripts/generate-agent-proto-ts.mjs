@@ -14,6 +14,7 @@ execFileSync(protoc, ["--version"], { cwd: root, stdio: "inherit" });
 const protobufInclude = await resolveProtobufInclude();
 execFileSync(protoc, [
   `--proto_path=${resolve(root, "api/proto")}`,
+  `--proto_path=${protobufInclude}`,
   `--plugin=protoc-gen-ts=${resolve(root, "services/agent-runtime/node_modules/.bin/protoc-gen-ts")}`,
   `--ts_out=${output}`,
   "--ts_opt=client_grpc1,long_type_bigint,ts_nocheck",

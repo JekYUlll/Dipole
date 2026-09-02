@@ -29,6 +29,7 @@ interface StepRow extends RowDataPacket {
   authorization_resource_id: string | null;
   authorization_action: string | null;
   authorization_decision: string | null;
+  output_json: unknown;
   latency_ms: number | string | null;
 }
 
@@ -83,11 +84,15 @@ export class MySQLShadowEvalObservationStore implements ShadowEvalObservationSto
       runId: header.run_uuid, runStatus: header.run_status,
       traceId: required(header.trace_id ?? "", "Trace ID"),
       contextManifest,
-      steps: steps.map(item => ({
-        stepNo: item.step_no, capabilityId: item.capability_id, status: item.status, attemptCount: item.attempt_count,
-        latencyMs: nullableSafeInteger(item.latency_ms, "Step latency"),
-        authorization: authorization(item)
-      })),
+      steps: steps.map(item => {
+        const reason = skipReason(item);
+        return {
+          stepNo: item.step_no, capabilityId: item.capability_id, status: item.status, attemptCount: item.attempt_count,
+          latencyMs: nullableSafeInteger(item.latency_ms, "Step latency"),
+          authorization: authorization(item),
+          ...(reason === undefined ? {} : { skipReason: reason })
+        };
+      }),
       artifacts: artifacts.map(item => ({ artifactType: item.artifact_type, version: item.version })),
       modelCalls: modelCalls.map(item => ({
         route: item.route, status: item.status, inputTokens: item.input_tokens,
@@ -96,6 +101,17 @@ export class MySQLShadowEvalObservationStore implements ShadowEvalObservationSto
       toolCalls: toolCalls.map(item => ({ status: item.status, latencyMs: nullableSafeInteger(item.latency_ms, "Tool latency") }))
     };
   }
+}
+
+function skipReason(row: StepRow): "no_discovered_conversation" | undefined {
+  if (row.capability_id !== "conversation.read" || row.status !== "completed") return undefined;
+  const decoded = decodedJSON(row.output_json);
+  if (decoded === null || typeof decoded !== "object" || Array.isArray(decoded)) return undefined;
+  const output = decoded as { readonly status?: unknown; readonly reason?: unknown };
+  if (output.status === "skipped" && output.reason === "no_discovered_conversation" && Object.keys(output).length === 2) {
+    return "no_discovered_conversation";
+  }
+  return undefined;
 }
 
 function authorization(row: StepRow) {

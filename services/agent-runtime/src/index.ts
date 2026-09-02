@@ -38,6 +38,7 @@ import {
 import type { ExternalMcpShadowProcess } from "./runtime/external-mcp-shadow-process.js";
 import { SubscriptionShadowMetrics } from "./observability/subscription-shadow-metrics.js";
 import { assertActiveReadProfileSurface } from "./runtime/active-read-profile.js";
+import { assertActiveInteractiveProfile } from "./runtime/active-interactive-profile.js";
 import { assertActiveMemoryPromotionProfile } from "./runtime/active-memory-promotion-profile.js";
 import { readFileSync } from "node:fs";
 import { assertActivePromotionBinding } from "./promotion/agent-release-manifest.js";
@@ -61,8 +62,8 @@ if (shadowConfig.runtimeMode === "active") {
 }
 const memoryPromotionCommitEnabled = process.env.DIPOLE_AGENT_MEMORY_PROMOTION_COMMIT_ENABLED?.trim().toLowerCase() === "true";
 const memoryPromotionAuthority = process.env.DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY?.trim() || "";
-if (shadowConfig.runtimeMode === "active" && temporalConfig.activityMode !== "read_active" && temporalConfig.activityMode !== "promotion_active") {
-	throw new Error("Active Agent Runtime requires read_active or promotion_active Temporal Activities");
+if (shadowConfig.runtimeMode === "active" && temporalConfig.activityMode !== "read_active" && temporalConfig.activityMode !== "interactive_active" && temporalConfig.activityMode !== "promotion_active") {
+	throw new Error("Active Agent Runtime requires read_active, interactive_active, or promotion_active Temporal Activities");
 }
 const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
 const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
@@ -86,6 +87,15 @@ if (memoryPromotionCommitEnabled || temporalConfig.activityMode === "promotion_a
     capabilityRPCTLS: shadowConfig.capabilityRpc.tls.enabled,
     commitEnabled: memoryPromotionCommitEnabled,
     authority: memoryPromotionAuthority,
+    ...activeReadSurface
+  });
+} else if (temporalConfig.activityMode === "interactive_active") {
+  assertActiveInteractiveProfile({
+    runtimeMode: shadowConfig.runtimeMode,
+    temporal: temporalConfig,
+    capabilityRPCEnabled: shadowConfig.capabilityRpc.enabled,
+    capabilityRPCTLS: shadowConfig.capabilityRpc.tls.enabled,
+    interactiveMessageWritesEnabled: shadowConfig.interactiveMessageWritesEnabled,
     ...activeReadSurface
   });
 } else {
@@ -124,11 +134,11 @@ let temporalRuntime: TemporalWorkerRuntime | undefined;
 let temporalRPC: ReturnType<typeof createAgentCapabilityRPC> | undefined;
 const controlRPC = controlEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
 const mcpRPC = mcpEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
-const temporalReadResources = temporalConfig.enabled && (temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active" || temporalConfig.activityMode === "promotion_active")
+const temporalReadResources = temporalConfig.enabled && (temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active" || temporalConfig.activityMode === "interactive_active" || temporalConfig.activityMode === "promotion_active")
   ? createTemporalReadActivityResources(shadowConfig)
   : undefined;
 let temporalDispatcher: TemporalTaskDispatchRuntime | undefined;
-if (temporalConfig.enabled && (((temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active" || temporalConfig.activityMode === "promotion_active") && shadowConfig.enabled) || controlEnabled)) {
+if (temporalConfig.enabled && (((temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active" || temporalConfig.activityMode === "interactive_active" || temporalConfig.activityMode === "promotion_active") && shadowConfig.enabled) || controlEnabled)) {
   temporalDispatcher = createTemporalTaskDispatchRuntime(temporalConfig);
 }
 const shadowRuntime = shadowConfig.enabled && !externalMcpShadowEnabled
@@ -285,7 +295,7 @@ if (temporalConfig.enabled && !externalMcpShadowEnabled) {
       ...foundationAgentTaskActivities,
       ...createPersistentAgentTaskLifecycleActivities(temporalRPC.client)
     };
-  } else if (temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active" || temporalConfig.activityMode === "promotion_active") {
+  } else if (temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active" || temporalConfig.activityMode === "interactive_active" || temporalConfig.activityMode === "promotion_active") {
     activities = {
       ...foundationAgentTaskActivities,
       ...createPersistentAgentTaskLifecycleActivities(temporalReadResources!.client),

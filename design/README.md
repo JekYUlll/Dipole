@@ -178,6 +178,10 @@ Vue 实现位于 `frontend/src/components/AgentDefinitionCatalog.vue`，路由�
 
 Vue 实现位于 `frontend/src/components/AgentArtifactMetadata.vue`，路由为 `/agent/artifacts/:artifactId`，由 `VITE_AGENT_ARTIFACTS_ENABLED=true` 显式启用。Timeline 只在 `kind=artifact` 和 64 位内容寻址 ID 同时成立时提供跳转；认证读取流程已在 Chromium、Firefox、WebKit 复核，Chromium visual baseline 只固定受控 metadata fixture，不能替代共享环境或下载授权验收。
 
+### Agent Artifact Digest Reader v2
+
+`conversation_digest` 且媒体类型为 `text/markdown` 的 Artifact 可通过认证 owner 的受限正文接口进入阅读区。metadata、完整性摘要与正文分别加载；正文不可用时保留已确认的 metadata 并提供重试。对象键、metadata JSON、公开 URL、通用下载、写控制和其他 Artifact 类型的正文仍不进入浏览器。Pencil 画布增量和导出以 `agent-artifact-digest-v2-brief.md` 为输入，完成后再登记至 export manifest；实现继续使用 `VITE_AGENT_ARTIFACTS_ENABLED=true`。
+
 ## Sync 交互契约
 
 - 客户端先展示已持久化的本地消息，再从本地安全 `sync_seq` 请求增量页面。

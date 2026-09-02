@@ -63,7 +63,7 @@ test("remote candidate tracking refs accept only the expected mutable update", (
 test("remote sync carries a commit-pinned bundle for outbound Git fallback", () => {
   assert.match(source, /git bundle create "\$\{bundle_path\}" HEAD/);
   assert.match(source, /remote "\$\{REMOTE_BRANCH\}" "\$\{commit\}" "\$\{remote_url\}" "\$\{remote_bundle\}"/);
-  assert.match(source, /scp -q -o BatchMode=yes -o ConnectTimeout=[\s\S]*?"\$\{bundle_path\}" "\$\{REMOTE_HOST\}:\$\{remote_bundle\}"/);
+  assert.match(source, /if ! scp -q -o BatchMode=yes -o ConnectTimeout=[\s\S]*?"\$\{bundle_path\}" "\$\{REMOTE_HOST\}:\$\{remote_bundle\}"; then[\s\S]*?bundle fallback upload failed/);
   assert.match(source, /git_timeout="\$\{DIPOLE_REMOTE_GIT_TIMEOUT:-20\}"/);
   assert.match(source, /if ! timeout "\$git_timeout" git clone "\$remote_url" "\$root"; then[\s\S]*?git clone "\$bundle" "\$root"/);
   assert.match(source, /git clone "\$bundle" "\$root"[\s\S]*?git -C "\$root" remote set-url origin "\$remote_url"/);
@@ -128,7 +128,7 @@ test("node verification preserves package locks and cleans generated webapp outp
   assert.match(source, /trap cleanup_webapp EXIT/);
 });
 
-test("remote destructive actions remain behind the active-user guard", () => {
+test("remote start actions collect one resource snapshot", () => {
   assert.match(source, /build\) sync_revision; guard_start; run_remote build/);
   assert.match(source, /smoke-lite\) sync_revision; guard_start; run_remote smoke-lite/);
   assert.match(source, /bench\) sync_revision; guard_start; run_remote bench/);
@@ -152,11 +152,10 @@ test("recovery entry uses candidate ports and a temporary report directory", () 
 
 test("existing GPU tasks are observed without blocking development actions", () => {
   assert.match(source, /active_users=.*gpu_processes=.*\\n/);
-  assert.match(source, /remote "guard" "\$\{DIPOLE_REMOTE_ALLOW_ACTIVE:-0\}"/);
-  assert.match(source, /approved="\$\{4:-0\}"/);
-  assert.match(source, /active_users.*DIPOLE_REMOTE_ALLOW_ACTIVE/);
+  assert.match(source, /remote "guard" <<'REMOTE_GUARD'/);
   assert.doesNotMatch(source, /if \[\[ "\$users" != "0" \|\| "\$gpu" != "0"/);
-  assert.match(source, /proceeding with existing GPU tasks/);
+  assert.doesNotMatch(source, /DIPOLE_REMOTE_ALLOW_ACTIVE/);
+  assert.doesNotMatch(source, /remote start refused/);
 });
 
 test("multipart smoke is isolated and does not require a GPU-free host", () => {
@@ -189,7 +188,10 @@ test("direct multipart smoke scripts honor an explicit remote Go toolchain", () 
 });
 
 test("remote image builds compile committed backend binaries first", () => {
-  assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh backend[\s\S]*?scripts\/docker-build-microservice-images\.sh/);
+  assert.ok(source.includes('REMOTE_FRONTEND_PROFILE="${DIPOLE_REMOTE_FRONTEND_PROFILE:-}"'));
+  assert.ok(source.includes('local remote_frontend_profile="${REMOTE_FRONTEND_PROFILE:-$REMOTE_EMPTY_ARG}"'));
+  assert.match(source, /agent-interactive-shadow\)[\s\S]*?DIPOLE_FRONTEND_BUILD_MODE=agent-interactive-shadow scripts\/docker-build\.sh frontend/);
+  assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh frontend[\s\S]*?scripts\/docker-build\.sh backend[\s\S]*?scripts\/docker-build-microservice-images\.sh/);
 });
 
 test("benchmark uses an explicit k6 binary and has a Docker fallback on remote hosts", () => {

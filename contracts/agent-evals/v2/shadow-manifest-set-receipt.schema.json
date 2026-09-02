@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v2/shadow-manifest-set-receipt.schema.json",
+  "title": "Dipole Agent Shadow Evaluation Manifest Set Receipt v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "manifestSetSha256", "candidateVersion", "manifestCount", "minimumManifestCount"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.shadow-eval-manifest-set-receipt.v2"},
+    "manifestSetSha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "candidateVersion": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"},
+    "manifestCount": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "minimumManifestCount": {"type": "integer", "minimum": 1, "maximum": 1000}
+  }
+}
