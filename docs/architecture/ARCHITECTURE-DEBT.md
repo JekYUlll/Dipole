@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-02：同修订 Core 重启 smoke 暴露 Shadow Planner 预取读取的参数语义漂移：它把事件 `target_uuid` 传给要求 canonical conversation key 的 Capability RPC，私聊在本地校验阶段失败并触发 Temporal 重试。修复后 Planner 仅传 `conversation_key`，Capability RPC 再从可信 principal 派生目标；group/direct 回归已通过。Remote GPU 的同修订重启 receipt 仍待以修复镜像复验，不能将当前故障窗口表述为恢复成功证据。
+- 2026-09-02：同修订 Core 重启 smoke 暴露 Shadow Planner 预取读取的参数语义漂移：它把事件 `target_uuid` 传给要求 canonical conversation key 的 Capability RPC，私聊在本地校验阶段失败并触发 Temporal 重试。修复后 Planner 仅传 `conversation_key`，Capability RPC 再从可信 principal 派生目标；group/direct 回归通过。Remote GPU 已以同修订 `3c3f403c` 复验 Core restart：Ledger、策略 Task、完成 Run、模型调用和 Digest Artifact 精确为 `1`，receipt SHA-256 为 `8cb9b34d96af831f5910af096f92ad85b795f5333b20292bec44cc0d17e0e2ae`。该单次 disposable Shadow 记录不关闭共享 tenant、Worker replacement、lease expiry、任务成功率或 active authority 门禁。
 
 - 2026-09-02：修复 Shadow Runtime 的 candidate-version admission 漂移。candidate version 只属于 active promotion binding；Shadow admission 现在固定传空值，避免 Core 在 Task 创建后拒绝无效的 Shadow Run。Remote GPU 已通过定向回归 `15/15`、typecheck、production build 和隔离 Compose 回归：认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，Run 为 `shadow / candidate_version=NULL / completed`，候选无可读会话，仅生成只读摘要 Artifact，消息写入数为零。该证据不扩大 shared 环境、active authority、写 Capability、MCP 或 Memory；这些继续由 `AD-009` 跟踪。
 

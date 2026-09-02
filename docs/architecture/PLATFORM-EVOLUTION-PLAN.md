@@ -500,6 +500,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] Context Compiler v2 接入 route-aware 最大输入窗口，按最小候选 route window 扣除最大输出预算，超出请求在编译前 fail closed；旧 v1 构造保持兼容。
   - [x] 在 RPC 边界拒绝超过请求 `limit` 的消息响应，并对 `found=false` 统一执行 target 一致性校验；Planner 保留独立的 20 条/8 KiB context 预算上限。
   - [x] Shadow Planner 预取会话证据统一传递事件的 canonical `conversation_key`；Capability RPC 在可信 ExecutionContext 内派生目标，避免私聊将裸 `target_uuid` 误作会话标识并在 Activity 重试中耗尽。
+  - [x] Remote GPU 同修订 `3c3f403c` disposable Compose 复验事件发布后 Core restart：Gateway 代理恢复，Ledger、策略 Task、完成 Run、模型调用和 Digest Artifact 均精确为 `1`；只读 Shadow 的 raw receipt 在 24 小时窗口后失效，不能外推为共享 tenant 或 active authority。
   - [x] Context Compiler capability section 接入 Registry descriptor 的 `id/risk/requiredPermission` 低敏元数据，按允许集合和 ID 稳定排序；输入 schema 与 route-specific tokenizer 继续保留为后续门禁。
   - [x] `conversation.list/read` descriptor 增加代码拥有的受限输入 Schema 摘要，Context Compiler 将类型、范围、默认值和额外字段策略注入 trusted capability section；运行时 Zod 校验保持最终约束。
   - [x] Capability Registry 注册阶段限制 Schema 摘要关键字、`properties` 嵌套和 4 KiB 大小，并覆盖未知字段/超限回归测试，防止 descriptor 成为未治理的模型输入通道。

@@ -54,6 +54,20 @@ raw artifact 的文件 SHA-256 为
 read-shadow 恢复路径；不构成共享环境、active authority、写 Capability、lease expiry
 或 Worker replacement 联合故障的证据。
 
+### Remote GPU record: 2026-09-02
+
+Remote GPU 在同修订 `3c3f403c74505749ff262a4713d80801e6fd9056` 的 disposable
+Compose 项目完成新的受控演练。发布事件后重启 Core，Core readiness 与 Gateway
+代理恢复；completed EventLedger、策略 Task、completed Shadow Run、completed 模型调用
+和 `conversation_digest` Artifact 的计数均为 `1`。Agent Planner 使用事件的 canonical
+`conversation_key` 作为预取读取标识，修复了私聊中裸 `target_uuid` 触发的本地校验失败。
+
+receipt 的 `collected_at` 为 `2026-09-02T00:19:22.484Z`，canonical `content_sha256`
+为 `8cb9b34d96af831f5910af096f92ad85b795f5333b20292bec44cc0d17e0e2ae`，有效期至
+`2026-09-03T00:19:22.484Z`。raw receipt 不入库；它只覆盖一次只读 Shadow 的 Core
+restart，不代表共享 tenant、任务成功率、active authority、写 Capability、Worker
+replacement 或 lease expiry 已验收。
+
 ## EventLedger lease reclaim evidence
 
 `event-lease-reclaim-evidence.schema.json` 记录 Agent Kafka 消费侧 MySQL

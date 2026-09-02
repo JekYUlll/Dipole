@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：Remote GPU 在同修订 `3c3f403c` 的 disposable Compose read-shadow 候选完成事件发布后的 Core restart 演练。Core readiness 与 Gateway 代理恢复后，同一事件的 completed EventLedger、策略 Task、completed Shadow Run、completed 模型调用和 `conversation_digest` Artifact 均精确为 `1`；低敏 receipt 的 canonical SHA-256 为 `8cb9b34d96af831f5910af096f92ad85b795f5333b20292bec44cc0d17e0e2ae`。该记录仅覆盖只读 Shadow 的单次开发期恢复，不代表共享 tenant、任务成功率、active authority、写 Capability、Worker replacement 或 lease expiry。
+
 - 2026-09-02：修复 Shadow Planner 的事件会话 hydration 参数语义。预取 `conversation.read` 现传递事件的 canonical `conversation_key`，由 Capability RPC 在可信 `ExecutionContext` 内派生实际目标；此前传递裸 `target_uuid` 会在私聊链路的会话键校验前失败并耗尽 Temporal Activity 重试。新增 direct conversation regression；写 Capability、active authority 与默认运行模式保持关闭。
 
 - 2026-09-02：修复 Interactive Agent Shadow 的持久 Run 准入版本漂移。Shadow Runtime 不再携带仅用于 active promotion 绑定的 candidate version，避免 Core 的 mode/version 约束在 Task 已创建后拒绝 Run admission 并导致任务停留在 `running`。Remote GPU 已通过定向 Vitest `15/15`、TypeScript typecheck、生产构建和隔离 Compose 回归：认证 Task 创建 `202` 后，Temporal Workflow 与持久 Run 均完成，Run 为 `shadow / candidate_version=NULL / completed`，只生成 `conversation_digest` Artifact，消息写入数为零。active authority、写 Capability、MCP、Memory 与默认部署边界保持关闭。
