@@ -66,7 +66,22 @@ docker compose \
   config --quiet
 ```
 
-`subscription_active` 是唯一可在 active Runtime 接受 `subscription` trigger 的 Temporal Activity mode。把 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 写入普通 `read_active` 配置会在启动前拒绝，以免绕开独立队列、受控 rollout 与回滚边界。该 overlay 不改变默认 Compose，也不把 Shadow Subscription 直接提升为主路径；共享环境启用前仍需归档同版本 matcher、Kafka、Temporal、Capability RPC、模型与回滚证据。
+`subscription_active` 是唯一可在 active Runtime 接受 `subscription` trigger 的 Temporal Activity mode。把 `DIPOLE_AGENT_TRIGGER_MODE=subscription` 写入普通 `read_active` 配置会在启动前拒绝，以免绕开独立队列、受控 rollout 与回滚边界。该 overlay 不改变默认 Compose，也不把 Shadow Subscription 直接提升为主路径；共享环境启用前仍需归档同版本 matcher、Kafka、Temporal、Capability RPC、模型与回滚证据。该 overlay 显式把 `DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED` 固定为 `false`，即订阅只读闭环默认不发消息。
+
+### Subscription Auto-Reply（默认关）
+
+`deploy/microservices/agent-subscription-autoreply.yml` 是叠加在 `agent-subscription-active.yml` 之上的显式 opt-in，仅把 `DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED` 翻成 `true`，让订阅只读闭环升级为自主回复。它不改动任何其他能力开关：subscription trigger、独立 Kafka group/Temporal 队列、指向 Core 的 Capability RPC（`core:9091`）均从下层 overlay 继承。Runtime 侧的 refinement 要求该 flag 必须与 `subscription_active` 同时开启，且与交互消息写入互斥；缺任一前置都会在启动前 fail closed。
+
+```bash
+docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-active.yml \
+  -f deploy/microservices/agent-subscription-active.yml \
+  -f deploy/microservices/agent-subscription-autoreply.yml \
+  config --quiet
+```
+
+与交互写入不同，自主回复没有 owner 手动 Signal：回复内容定案后由 agent-runtime 通过 `AuthorizeSubscriptionMessage` RPC 请求 Core 校验四项不变量（订阅触发、pinned Definition owner 一致并投影出 `message.system.send`、订阅 `created_by` 与 principal 一致、scope 恰为 owner direct Agent 会话）后直接铸造 `status=approved` 的写 grant，再走既有 resolve/consume 写链路。该 grant 对相同 `(eventId, occurredAtUnixMs, 回复正文)` 幂等，重试收敛到同一 grant。启用该 overlay 前仍需归档共享环境 receipt：审批消费恰一次、重放幂等、`agent_sent_messages=1`（见 AD-034 的 Remote smoke 后续切片）。
 
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 

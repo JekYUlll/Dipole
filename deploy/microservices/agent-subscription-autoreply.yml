@@ -1,0 +1,14 @@
+services:
+  agent:
+    environment:
+      # Explicit, default-off opt-in that turns the subscription-active read line
+      # into autonomous auto-reply. It only flips the write flag; every other
+      # invariant (subscription trigger, isolated Kafka group, Capability RPC to
+      # Core for the subscription-scoped auto-approval) is inherited from the
+      # agent-active + agent-subscription-active overlays. Layer as:
+      #   docker-compose.microservices.yml
+      #     + agent-active.yml
+      #     + agent-subscription-active.yml
+      #     + agent-subscription-autoreply.yml
+      # See AD-034 and docs/agent/AGENT-ACTIVE-DEPLOYMENT.md.
+      DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED: "true"

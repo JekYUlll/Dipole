@@ -11,6 +11,9 @@ services:
       DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: ${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE is required}
       DIPOLE_AGENT_CONTROL_ENABLED: "false"
       DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED: "false"
+      # Autonomous subscription replies stay read-only here. The opt-in lives in
+      # the explicit agent-subscription-autoreply overlay (default-off, AD-034).
+      DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED: "false"
       DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"
       DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
 
