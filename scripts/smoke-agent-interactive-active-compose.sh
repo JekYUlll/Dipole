@@ -222,7 +222,10 @@ expected_definition_record="${owner_uuid}"$'\tUAI000000000000000001\tconversatio
 [[ "${definition_record}" == "${expected_definition_record}" ]] || { printf 'Definition record diverged: %q\n' "${definition_record}" >&2; exit 1; }
 definition_count=$(mysql -e "SELECT COUNT(*) FROM agent_definition_versions WHERE tenant_id = 'dipole' AND owner_uuid = '${owner_uuid}' AND agent_uuid = '${agent_uuid}' AND version = 1")
 [[ "${definition_count}" == "1" ]] || { printf 'Definition replay created %s records\n' "${definition_count}" >&2; exit 1; }
-[[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]] && exit 0
+if [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]]; then
+  printf 'Agent Definition Compose smoke passed: project=%s\n' "${project_name}"
+  exit 0
+fi
 
 mysql <<SQL
 INSERT IGNORE INTO users (uuid, nickname, telephone, password_hash, status, created_at, updated_at) VALUES
