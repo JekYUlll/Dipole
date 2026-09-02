@@ -85,8 +85,12 @@ compose() { docker compose -p "${project_name}" "${compose_files[@]}" "$@"; }
 cleanup() {
   local status=$?
   compose exec -T mysql mysql -uroot -proot123 dipole -e "UPDATE agent_runtime_promotion_grants SET revoked_at = COALESCE(revoked_at, UTC_TIMESTAMP(3)) WHERE grant_uuid = '${grant_uuid}'" >/dev/null 2>&1 || true
-  if [[ "${KEEP_STACK:-0}" != "1" ]]; then compose down --volumes --remove-orphans >/dev/null 2>&1 || true; fi
-  rm -rf "${scratch_dir}"
+  if [[ "${KEEP_STACK:-0}" != "1" ]]; then
+    compose down --volumes --remove-orphans >/dev/null 2>&1 || true
+    rm -rf "${scratch_dir}"
+  else
+    printf 'Subscription active Compose stack retained: project=%s scratch=%s\n' "${project_name}" "${scratch_dir}" >&2
+  fi
   exit "${status}"
 }
 trap cleanup EXIT INT TERM
