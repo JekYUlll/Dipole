@@ -478,6 +478,25 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  // Autonomous subscription replies have no owner Signal; Core verifies the
+  // subscription ownership and mints an already-approved grant in one call.
+  async authorizeSubscriptionMessage(taskId: string, runId: string, approval: AgentApprovalBinding, context?: Pick<ExecutionContext, "requestId" | "traceId">): Promise<void> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.authorizeSubscriptionMessage({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId,
+        approvalId: approval.approvalId, capabilityId: approval.capabilityId,
+        resourceScope: { ...approval.resourceScope, actions: [...approval.resourceScope.actions] },
+        scopeSha256: approval.scopeSha256, argumentsSha256: approval.argumentsSha256,
+        nonceSha256: approval.nonceSha256, expiresAtUnixMs: BigInt(approval.expiresAtUnixMs), mode: this.mode
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Subscription message authorization returned no response"));
+        if (response.approvalId !== approval.approvalId || response.status !== "approved") return reject(new Error("Subscription message authorization returned a conflicting binding"));
+        resolve();
+      });
+    });
+  }
+
   async resolveApproval(taskId: string, runId: string, approvalId: string, decision: "approved" | "denied", actorUserId: string, context?: Pick<ExecutionContext, "requestId" | "traceId">): Promise<void> {
     const metadata = this.metadata(context?.requestId, context?.traceId);
     return new Promise((resolve, reject) => {

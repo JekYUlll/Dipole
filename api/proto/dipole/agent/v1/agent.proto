@@ -995,6 +995,11 @@ service AgentCapabilityService {
   rpc FinishRun(FinishRunRequest) returns (FinishRunResponse);
   rpc RequestApproval(RequestApprovalRequest) returns (ApprovalResponse);
   rpc ResolveApproval(ResolveApprovalRequest) returns (ApprovalResponse);
+  // AuthorizeSubscriptionMessage mints an already-approved write grant for an
+  // autonomous subscription reply, replacing the owner Signal with Core-side
+  // verification that the task is subscription-triggered, owner-consistent, and
+  // scoped to the owner's direct Agent conversation. Default-off (AD-034).
+  rpc AuthorizeSubscriptionMessage(RequestApprovalRequest) returns (ApprovalResponse);
   rpc ConsumeApproval(ConsumeApprovalRequest) returns (ConsumeApprovalResponse);
   rpc ResolveApprovalGrant(ResolveApprovalGrantRequest) returns (ResolveApprovalGrantResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);

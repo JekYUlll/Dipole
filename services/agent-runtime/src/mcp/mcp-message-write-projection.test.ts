@@ -148,9 +148,14 @@ describe("MCP Message write projection", () => {
     }));
   });
 
-  it("derives a distinct Tool Invocation namespace for the subscription executor", async () => {
+  it("mints a subscription-scoped grant and uses a distinct Tool Invocation namespace", async () => {
     const invocationIds: string[] = [];
     const makeClient = () => ({
+      authorizeSubscriptionMessage: vi.fn(async (_taskId: string, _runId: string, _binding: {
+        approvalId: string; capabilityId: string;
+        resourceScope: { resourceType: string; resourceId: string; actions: string[] };
+        scopeSha256: string; argumentsSha256: string; nonceSha256: string; expiresAtUnixMs: number;
+      }) => undefined),
       consumeApproval: vi.fn(async () => undefined),
       resolveApprovalGrant: vi.fn(async () => ({
         approvalId: "APR-1", capabilityId: "message.system.send",
@@ -166,10 +171,27 @@ describe("MCP Message write projection", () => {
         return { resourceType: "message" as const, resourceId: "MSG-1", commandKind: "system_message" as const, commandId: `tool:${input.invocationId}` };
       })
     });
-    const input = { conversationId: "direct:U100:UAI", content: "notice" };
 
-    await createInteractiveMessageExecutor(makeClient()).execute(input, context);
-    await createSubscriptionMessageExecutor(makeClient()).execute(input, context);
+    const interactiveClient = makeClient();
+    await createInteractiveMessageExecutor(interactiveClient).execute({ conversationId: "direct:U100:UAI", content: "notice" }, context);
+
+    const subscriptionClient = makeClient();
+    await createSubscriptionMessageExecutor(subscriptionClient).execute(
+      { conversationId: "direct:U100:UAI", content: "notice", eventId: "E-SUB-1", occurredAtUnixMs: 1_700_000_000_000 }, context
+    );
+
+    expect(subscriptionClient.authorizeSubscriptionMessage).toHaveBeenCalledOnce();
+    const mintArgs = subscriptionClient.authorizeSubscriptionMessage.mock.calls[0]!;
+    expect(mintArgs[0]).toBe("TASK-1");
+    expect(mintArgs[1]).toBe("RUN-1");
+    expect(mintArgs[2]).toMatchObject({
+      capabilityId: "message.system.send",
+      resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+      argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
+      expiresAtUnixMs: 1_700_000_000_000 + 30 * 60 * 1_000
+    });
+    expect(mintArgs[2].approvalId).toMatch(/^approval:[0-9a-f]{48}$/);
+    expect(interactiveClient.authorizeSubscriptionMessage).not.toHaveBeenCalled();
 
     expect(invocationIds).toHaveLength(2);
     expect(invocationIds[0]).not.toBe(invocationIds[1]);

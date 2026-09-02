@@ -37,6 +37,7 @@ const (
 	AgentCapabilityService_FinishRun_FullMethodName                             = "/dipole.agent.v1.AgentCapabilityService/FinishRun"
 	AgentCapabilityService_RequestApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/RequestApproval"
 	AgentCapabilityService_ResolveApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/ResolveApproval"
+	AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/AuthorizeSubscriptionMessage"
 	AgentCapabilityService_ConsumeApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/ConsumeApproval"
 	AgentCapabilityService_ResolveApprovalGrant_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ResolveApprovalGrant"
 	AgentCapabilityService_ListConversations_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
@@ -97,6 +98,11 @@ type AgentCapabilityServiceClient interface {
 	FinishRun(ctx context.Context, in *FinishRunRequest, opts ...grpc.CallOption) (*FinishRunResponse, error)
 	RequestApproval(ctx context.Context, in *RequestApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
 	ResolveApproval(ctx context.Context, in *ResolveApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
+	// AuthorizeSubscriptionMessage mints an already-approved write grant for an
+	// autonomous subscription reply, replacing the owner Signal with Core-side
+	// verification that the task is subscription-triggered, owner-consistent, and
+	// scoped to the owner's direct Agent conversation. Default-off (AD-034).
+	AuthorizeSubscriptionMessage(ctx context.Context, in *RequestApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
 	ConsumeApproval(ctx context.Context, in *ConsumeApprovalRequest, opts ...grpc.CallOption) (*ConsumeApprovalResponse, error)
 	ResolveApprovalGrant(ctx context.Context, in *ResolveApprovalGrantRequest, opts ...grpc.CallOption) (*ResolveApprovalGrantResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
@@ -317,6 +323,16 @@ func (c *agentCapabilityServiceClient) ResolveApproval(ctx context.Context, in *
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ApprovalResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_ResolveApproval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) AuthorizeSubscriptionMessage(ctx context.Context, in *RequestApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApprovalResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -705,6 +721,11 @@ type AgentCapabilityServiceServer interface {
 	FinishRun(context.Context, *FinishRunRequest) (*FinishRunResponse, error)
 	RequestApproval(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error)
 	ResolveApproval(context.Context, *ResolveApprovalRequest) (*ApprovalResponse, error)
+	// AuthorizeSubscriptionMessage mints an already-approved write grant for an
+	// autonomous subscription reply, replacing the owner Signal with Core-side
+	// verification that the task is subscription-triggered, owner-consistent, and
+	// scoped to the owner's direct Agent conversation. Default-off (AD-034).
+	AuthorizeSubscriptionMessage(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error)
 	ConsumeApproval(context.Context, *ConsumeApprovalRequest) (*ConsumeApprovalResponse, error)
 	ResolveApprovalGrant(context.Context, *ResolveApprovalGrantRequest) (*ResolveApprovalGrantResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
@@ -804,6 +825,9 @@ func (UnimplementedAgentCapabilityServiceServer) RequestApproval(context.Context
 }
 func (UnimplementedAgentCapabilityServiceServer) ResolveApproval(context.Context, *ResolveApprovalRequest) (*ApprovalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveApproval not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) AuthorizeSubscriptionMessage(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AuthorizeSubscriptionMessage not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ConsumeApproval(context.Context, *ConsumeApprovalRequest) (*ConsumeApprovalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ConsumeApproval not implemented")
@@ -1255,6 +1279,24 @@ func _AgentCapabilityService_ResolveApproval_Handler(srv interface{}, ctx contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).ResolveApproval(ctx, req.(*ResolveApprovalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_AuthorizeSubscriptionMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestApprovalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).AuthorizeSubscriptionMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).AuthorizeSubscriptionMessage(ctx, req.(*RequestApprovalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1985,6 +2027,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveApproval",
 			Handler:    _AgentCapabilityService_ResolveApproval_Handler,
+		},
+		{
+			MethodName: "AuthorizeSubscriptionMessage",
+			Handler:    _AgentCapabilityService_AuthorizeSubscriptionMessage_Handler,
 		},
 		{
 			MethodName: "ConsumeApproval",

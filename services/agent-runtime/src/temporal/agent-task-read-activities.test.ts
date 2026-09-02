@@ -159,7 +159,7 @@ describe("Temporal read Step Activities", () => {
     })).resolves.toEqual({ kind: "complete", output: { summary: "  digest for owner  ", stepCount: 0, replyMessageAction: "MSG-ACTION-1" } });
     expect(execute).toHaveBeenCalledOnce();
     expect(execute).toHaveBeenCalledWith(
-      { conversationId: "direct:U100:UAI", content: "digest for owner" },
+      { conversationId: "direct:U100:UAI", content: "digest for owner", eventId: "E-SUB-REPLY", occurredAtUnixMs: Date.parse("2026-08-27T08:00:00.000Z") },
       expect.objectContaining({ taskId, runId, mode: "active" })
     );
   });

@@ -258,9 +258,11 @@ type capabilityStub struct {
 }
 
 type approvalServiceStub struct {
-	requested application.AgentApprovalRequestV1
-	resolved  application.AgentApprovalResolutionV1
-	consumed  application.AgentApprovalConsumptionV1
+	requested            application.AgentApprovalRequestV1
+	resolved             application.AgentApprovalResolutionV1
+	consumed             application.AgentApprovalConsumptionV1
+	subscriptionApproved application.AgentApprovalRequestV1
+	subscriptionErr      error
 }
 
 type approvalGrantResolverStub struct {
@@ -354,6 +356,17 @@ func (s *approvalServiceStub) Resolve(_ context.Context, resolution application.
 func (s *approvalServiceStub) Consume(_ context.Context, consumption application.AgentApprovalConsumptionV1) error {
 	s.consumed = consumption
 	return nil
+}
+
+func (s *approvalServiceStub) AutoApproveSubscriptionMessage(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
+	s.subscriptionApproved = request
+	if s.subscriptionErr != nil {
+		return nil, s.subscriptionErr
+	}
+	approval := request.Approval
+	approval.Status = application.AgentApprovalStatusApproved
+	approval.ApprovedByUUID = "U100"
+	return &approval, nil
 }
 
 func (s *capabilityStub) ListConversations(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*model.Conversation, error) {
@@ -1271,6 +1284,46 @@ func TestConsumeApprovalRPCRequiresActiveModeAndExactClaim(t *testing.T) {
 	request.Context = grpccommon.RequestContext("", "dipole-gateway")
 	if _, err := server.ConsumeApproval(context.Background(), request); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("forged caller Approval consumption code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+}
+
+func TestAuthorizeSubscriptionMessageRPCRequiresAgentCallerAndActiveMode(t *testing.T) {
+	approvals := &approvalServiceStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{}, approvals)
+	timeline := &taskTimelineStub{}
+	server, _ = server.WithTaskTimeline(timeline)
+	subscriptionRequest := func() *agentv1.RequestApprovalRequest {
+		return &agentv1.RequestApprovalRequest{
+			Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "approval:sub-1",
+			CapabilityId: "message.system.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "direct:U100:UAI", Actions: []string{"write"}},
+			ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64),
+			ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(), Mode: "active",
+		}
+	}
+	response, err := server.AuthorizeSubscriptionMessage(context.Background(), subscriptionRequest())
+	if err != nil || response.GetStatus() != "approved" || response.GetApprovedByUserId() != "U100" ||
+		approvals.subscriptionApproved.RuntimeID != "dipole-agent" || approvals.subscriptionApproved.Mode != "active" ||
+		approvals.subscriptionApproved.Approval.ApprovalUUID != "approval:sub-1" {
+		t.Fatalf("authorize subscription message response=%+v request=%+v err=%v", response, approvals.subscriptionApproved, err)
+	}
+	if len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventApproval || timeline.events[0].Status != "approved" {
+		t.Fatalf("unexpected subscription Approval timeline: %+v", timeline.events)
+	}
+
+	shadow := subscriptionRequest()
+	shadow.Mode = "shadow"
+	if _, err := server.AuthorizeSubscriptionMessage(context.Background(), shadow); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("shadow subscription authorization code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+	forged := subscriptionRequest()
+	forged.Context = grpccommon.RequestContext("", "dipole-gateway")
+	if _, err := server.AuthorizeSubscriptionMessage(context.Background(), forged); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("forged caller subscription authorization code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	principalBound := subscriptionRequest()
+	principalBound.Context = grpccommon.RequestContext("U100", "dipole-agent")
+	if _, err := server.AuthorizeSubscriptionMessage(context.Background(), principalBound); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("principal-bound subscription authorization code = %s, want %s", status.Code(err), codes.InvalidArgument)
 	}
 }
 

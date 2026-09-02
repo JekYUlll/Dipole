@@ -28,6 +28,7 @@ type Server struct {
 	resolver               application.AgentInvocationResolverV1
 	admission              application.AgentRunAdmissionServiceV1
 	approvals              application.AgentApprovalServiceV1
+	subscriptionApprovals  application.AgentSubscriptionMessageApproverV1
 	approvalGrants         application.AgentApprovalGrantResolverV1
 	controls               application.AgentTaskControlAuthorizerV1
 	timeline               application.AgentTaskTimelineStoreV1
@@ -760,7 +761,13 @@ func NewServer(capability application.AgentCapabilityV1, resolver application.Ag
 	if len(approvals) > 0 {
 		approvalService = approvals[0]
 	}
-	return &Server{capability: capability, resolver: resolver, admission: admission, approvals: approvalService}, nil
+	server := &Server{capability: capability, resolver: resolver, admission: admission, approvals: approvalService}
+	if approvalService != nil {
+		if approver, ok := approvalService.(application.AgentSubscriptionMessageApproverV1); ok {
+			server.subscriptionApprovals = approver
+		}
+	}
+	return server, nil
 }
 
 func NewServerWithControl(capability application.AgentCapabilityV1, resolver application.AgentInvocationResolverV1, admission application.AgentRunAdmissionServiceV1, approvals application.AgentApprovalServiceV1, controls application.AgentTaskControlAuthorizerV1) (*Server, error) {
@@ -1818,6 +1825,37 @@ func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveAp
 	}
 	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
 		EventUUID: fmt.Sprintf("approval:%s:resolve", approval.ApprovalUUID), TaskUUID: approval.TaskUUID, RunUUID: request.GetRunId(),
+		Kind: application.AgentTaskTimelineEventApproval, Status: string(approval.Status), CapabilityID: approval.CapabilityID,
+		ApprovalUUID: approval.ApprovalUUID, OccurredAt: time.Now().UTC(),
+	})
+	return approvalResponse(approval), nil
+}
+
+func (s *Server) AuthorizeSubscriptionMessage(ctx context.Context, request *agentv1.RequestApprovalRequest) (*agentv1.ApprovalResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if caller != "dipole-agent" {
+		return nil, status.Error(codes.PermissionDenied, "Subscription message authorization caller is not allowed")
+	}
+	if s.subscriptionApprovals == nil || strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" || request.GetResourceScope() == nil || request.GetMode() != "active" {
+		return nil, status.Error(codes.InvalidArgument, "Subscription message authorization is invalid")
+	}
+	approval, err := s.subscriptionApprovals.AutoApproveSubscriptionMessage(ctx, application.AgentApprovalRequestV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: request.GetMode(),
+		Approval: application.AgentApprovalV1{
+			ApprovalUUID: request.GetApprovalId(), TaskUUID: request.GetTaskId(), CapabilityID: request.GetCapabilityId(),
+			ResourceScope: application.AgentResourceScopeV1{ResourceType: request.GetResourceScope().GetResourceType(), ResourceID: request.GetResourceScope().GetResourceId(), Actions: request.GetResourceScope().GetActions()},
+			ScopeSHA256:   request.GetScopeSha256(), ArgumentsSHA256: request.GetArgumentsSha256(), NonceSHA256: request.GetNonceSha256(),
+			ExpiresAt: time.UnixMilli(request.GetExpiresAtUnixMs()).UTC(),
+		},
+	})
+	if err != nil {
+		return nil, mapApprovalError(err)
+	}
+	s.appendTimelineEvent(ctx, application.AgentTaskTimelineEventV1{
+		EventUUID: fmt.Sprintf("approval:%s:subscription", approval.ApprovalUUID), TaskUUID: approval.TaskUUID, RunUUID: request.GetRunId(),
 		Kind: application.AgentTaskTimelineEventApproval, Status: string(approval.Status), CapabilityID: approval.CapabilityID,
 		ApprovalUUID: approval.ApprovalUUID, OccurredAt: time.Now().UTC(),
 	})

@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-import type { AgentCapabilityRPCClient, AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
+import type { AgentApprovalBinding, AgentCapabilityRPCClient, AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
+import { canonicalMcpJSON } from "./canonical-json.js";
 import type { DipoleMcpWriteExecutor, DipoleMcpWriteToolProjection } from "./dipole-mcp-server.js";
 import { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
 import {
@@ -76,23 +77,45 @@ export interface MessageExecutor {
   execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext): Promise<string>;
 }
 
+export interface SubscriptionMessageExecutor {
+  execute(
+    input: { readonly conversationId: string; readonly content: string; readonly eventId: string; readonly occurredAtUnixMs: number },
+    context: ExecutionContext
+  ): Promise<string>;
+}
+
 type MessageExecutorClient = Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">;
+type SubscriptionMessageExecutorClient = MessageExecutorClient & Pick<AgentCapabilityRPCClient, "authorizeSubscriptionMessage">;
 
 const interactiveMessageInvocationNamespace = "dipole.agent.interactive-message-invocation.v1";
 const subscriptionMessageInvocationNamespace = "dipole.agent.subscription-message-invocation.v1";
 
-// The owner Signal drives interactive writes; autonomous subscription replies
-// reuse the identical approval-bound write chain and only differ by a distinct
-// Tool Invocation namespace so the two paths never collide inside one task.
+// The owner Signal drives interactive writes.
 export function createInteractiveMessageExecutor(client: MessageExecutorClient): MessageExecutor {
-  return createMessageExecutor(client, interactiveMessageInvocationNamespace);
+  const projection = messageProjectionExecutor(client, interactiveMessageInvocationNamespace);
+  return { execute: (input, context) => projection(input, context) };
 }
 
-export function createSubscriptionMessageExecutor(client: MessageExecutorClient): MessageExecutor {
-  return createMessageExecutor(client, subscriptionMessageInvocationNamespace);
+// Autonomous subscription replies have no owner Signal, so the executor first
+// asks Core to mint an already-approved, subscription-scoped write grant, then
+// runs the identical approval-bound write chain under a distinct Tool
+// Invocation namespace so the two paths never collide inside one task.
+export function createSubscriptionMessageExecutor(client: SubscriptionMessageExecutorClient): SubscriptionMessageExecutor {
+  const projection = messageProjectionExecutor(client, subscriptionMessageInvocationNamespace);
+  return {
+    execute: async (input, context) => {
+      const request = { conversationId: input.conversationId, content: input.content };
+      const binding = subscriptionMessageApproval(context, input);
+      await client.authorizeSubscriptionMessage(context.taskId, context.runId, binding, context);
+      return projection(request, context);
+    }
+  };
 }
 
-function createMessageExecutor(client: MessageExecutorClient, invocationNamespace: string): MessageExecutor {
+function messageProjectionExecutor(
+  client: MessageExecutorClient,
+  invocationNamespace: string
+): (input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext) => Promise<string> {
   const registry = new CapabilityRegistry();
   registry.register({
     descriptor: {
@@ -110,20 +133,46 @@ function createMessageExecutor(client: MessageExecutorClient, invocationNamespac
     createMcpWriteApprovalConsumePort(client),
     createMcpWriteApprovalGrantResolver(client)
   );
+  return (input, context) => new McpMessageWriteProjection(
+    approvals,
+    new McpToolInvocationRunner(
+      { begin: begin => client.begin(begin), finish: finish => client.finishToolInvocation(finish) },
+      undefined,
+      () => messageInvocationID(invocationNamespace, context, input),
+      undefined,
+      undefined,
+      isUncertainMessageCommandFailure
+    ),
+    { executeMessageCommand: command => client.executeMessageCommand(command) }
+  ).execute(interactiveMessageTool, input, context);
+}
+
+// Deterministic so a retried reply mints an identical binding: the resolve gate
+// looks grants up by (task, capability, scope, argumentsSha256), while the id
+// and nonce stay stable across attempts for the same event and reply content.
+function subscriptionMessageApproval(
+  context: ExecutionContext,
+  input: { readonly conversationId: string; readonly content: string; readonly eventId: string; readonly occurredAtUnixMs: number }
+): AgentApprovalBinding {
+  if (!Number.isSafeInteger(input.occurredAtUnixMs)) throw new Error("Subscription Agent message event time is invalid");
+  if (!input.conversationId.trim() || !input.eventId.trim()) throw new Error("Subscription Agent message binding is incomplete");
+  const resourceScope = { resourceType: "conversation", resourceId: input.conversationId, actions: ["write"] };
+  const argumentsSha256 = messageDigest([canonicalMcpJSON({ conversationId: input.conversationId, content: input.content })]);
+  const scopeSha256 = messageDigest(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions]);
+  const approvalId = `approval:${messageDigest(["dipole.agent.subscription-message.v1", context.taskId, context.runId, input.eventId, argumentsSha256]).slice(0, 48)}`;
   return {
-    execute: (input, context) => new McpMessageWriteProjection(
-      approvals,
-      new McpToolInvocationRunner(
-        { begin: begin => client.begin(begin), finish: finish => client.finishToolInvocation(finish) },
-        undefined,
-        () => messageInvocationID(invocationNamespace, context, input),
-        undefined,
-        undefined,
-        isUncertainMessageCommandFailure
-      ),
-      { executeMessageCommand: command => client.executeMessageCommand(command) }
-    ).execute(interactiveMessageTool, input, context)
+    approvalId,
+    capabilityId: "message.system.send",
+    resourceScope,
+    scopeSha256,
+    argumentsSha256,
+    nonceSha256: messageDigest(["dipole.agent.subscription-message.nonce.v1", approvalId]),
+    expiresAtUnixMs: input.occurredAtUnixMs + 30 * 60 * 1_000
   };
+}
+
+function messageDigest(parts: readonly string[]): string {
+  return createHash("sha256").update(parts.join("\n"), "utf8").digest("hex");
 }
 
 function messageInvocationID(

@@ -209,6 +209,13 @@ type AgentApprovalServiceV1 interface {
 	Consume(ctx context.Context, consumption AgentApprovalConsumptionV1) error
 }
 
+// AgentSubscriptionMessageApproverV1 mints an already-approved write grant for
+// an autonomous subscription reply, replacing the owner Signal with Core-side
+// verification of subscription ownership and owner-conversation scope.
+type AgentSubscriptionMessageApproverV1 interface {
+	AutoApproveSubscriptionMessage(ctx context.Context, request AgentApprovalRequestV1) (*AgentApprovalV1, error)
+}
+
 func (d AgentDefinitionVersionV1) Validate() error {
 	if anyBlank(d.DefinitionUUID, d.TenantID, d.OwnerUUID, d.AgentUUID) || d.Version == 0 || d.ValidFrom.IsZero() ||
 		(d.Status != AgentDefinitionStatusActive && d.Status != AgentDefinitionStatusRevoked) || len(d.Permissions) == 0 || len(d.Scopes) == 0 {

@@ -21,6 +21,7 @@ import type { ExecutionContext } from "../runtime/execution-context.js";
 import { agentElicitationSchemaVersion, validateElicitationForm, type AgentElicitationForm } from "../task/agent-elicitation.js";
 import type { AgentTaskResume } from "../task/agent-task-state.js";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
+import type { SubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
 
 const readScopeConfirmationKind = "dipole.agent.read-scope-confirmation.v1";
 const readScopeFieldId = "conversation";
@@ -64,7 +65,7 @@ export function createTemporalReadStepActivities(
     readonly readPermissions?: readonly string[];
     readonly readScopeConfirmationTtlMs?: number;
     readonly interactiveMessage?: InteractiveMessageExecutor;
-    readonly subscriptionMessage?: InteractiveMessageExecutor;
+    readonly subscriptionMessage?: SubscriptionMessageExecutor;
   }
 ): AgentTaskActivities {
   return {
@@ -321,11 +322,11 @@ const maxSubscriptionReplyBytes = 16 * 1024;
 // reply surface wired. They deliver the model summary to the owner's direct
 // Agent conversation, reusing the audited approval-bound message write.
 async function maybeSendSubscriptionReply(
-  event: { readonly subscriptionId?: string | undefined },
+  event: { readonly subscriptionId?: string | undefined; readonly eventId: string; readonly occurredAt: string },
   context: ExecutionContext,
   plan: ShadowPlan,
   runtimeMode: AgentRuntimeMode,
-  dependencies: { readonly subscriptionMessage?: InteractiveMessageExecutor },
+  dependencies: { readonly subscriptionMessage?: SubscriptionMessageExecutor },
   telemetry: Pick<AgentTelemetry, "withSpan">
 ): Promise<string | undefined> {
   if (runtimeMode !== "active" || dependencies.subscriptionMessage === undefined || event.subscriptionId === undefined) {
@@ -333,12 +334,14 @@ async function maybeSendSubscriptionReply(
   }
   const content = plan.summary.trim().slice(0, maxSubscriptionReplyBytes);
   if (content.length === 0) return undefined;
+  const occurredAtUnixMs = Date.parse(event.occurredAt);
+  if (!Number.isSafeInteger(occurredAtUnixMs)) return undefined;
   const executor = dependencies.subscriptionMessage;
   return telemetry.withSpan("agent.message.reply", {
     taskId: context.taskId, runId: context.runId,
     attributes: { "dipole.agent.message.kind": "system_message" }
   }, () => executor.execute(
-    { conversationId: directConversationKey(context.principalUuid, context.agentUuid), content },
+    { conversationId: directConversationKey(context.principalUuid, context.agentUuid), content, eventId: event.eventId, occurredAtUnixMs },
     context
   ));
 }
