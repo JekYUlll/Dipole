@@ -12,6 +12,15 @@
 - 每个主轨道只保留一个活动 worktree；完成合并后保留提交和证据，及时登记为可回收 worktree，避免并行 worktree 无限增长。
 - Epic 分支在一个完整里程碑合并至 `master` 后批量同步，禁止在每个小变更后重复同步。
 
+## 分支与 Worktree 上限
+
+- 本地分支上限为 `12`。长期保留 `master`、当前 Epic 与正在进行的用户体验分支；短期 feature、fix、release、receipt 和 test 分支在合并后立即回收。
+- 一个可验收切片只使用一个工作分支。实现、回归测试、部署 receipt 和必要文档随该切片合并，禁止为单独的 retry、测试、文档或验收记录再开分支。
+- 每条本地分支只保留一个 worktree；合并后的 clean worktree 当轮移除。存在未提交修改的 worktree 受保护，先提交、转移或由 owner 明确放弃后才能清理。
+- `master` 只能通过普通 fast-forward 或带冲突复核的正常 merge 对齐 `origin/master`。禁止强制推送、重写共享历史或用临时 integration 分支长期替代主干。
+- 远端分支的删除须先确认没有共享 owner 和未合并提交；本地收敛不自动删除远端 ref。需要批量远端清理时，先生成可恢复 archive tag，再按已合并状态单独执行。
+- 每次治理收敛都记录保留分支、archive tag、已移除 worktree 与主干对齐结果。archive tag 只用于保全历史可达性，不代表这些分支的代码已被语义验收。
+
 ## GPU 任务并行策略
 
 Remote GPU 上存在其他 GPU 任务时，允许启动 Dipole 的开发构建、微服务 Compose、集成 Smoke 和负载测试，前提是：
