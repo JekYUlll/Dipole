@@ -84,6 +84,11 @@ Compose 的审批重放与异步 receipt 确认。Runtime 对 completed Tool ter
 替换、部分副作用 rollback、浏览器 HITL、共享 tenant 和容量结论继续由 `AD-009`
 管理。
 
+同一 smoke 会在认证 owner 上重放两次 `POST /api/v1/agent/definitions`，读取
+`GET /api/v1/agent/definitions`，并以 MySQL 复核唯一记录的 owner、Assistant、
+`conversation.read` 和 wildcard scope。该检查只覆盖固定只读 Definition 模板，
+不启用 Event Subscription 控制或 `subscription` trigger。
+
 ## 4. Reviewed Memory 提交扩展
 
 `deploy/microservices/agent-memory-promotion.yml` 是 `agent-active.yml` 之上的独立 overlay，默认不加载。它只允许为已审核的 receipt 增加 `promotion_active` Temporal Activity，同时打开 Core 的 receipt commit Adapter。该 overlay 不改变 candidate 生成、Memory 召回、消息发送、Control 或 MCP 的关闭状态。

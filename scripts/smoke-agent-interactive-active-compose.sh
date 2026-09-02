@@ -160,6 +160,45 @@ NODE
 
 verify_runtime_status
 
+verify_definition_catalog() {
+  compose exec -T agent node --input-type=module - "${owner_telephone}" <<'NODE'
+const [telephone] = process.argv.slice(2);
+const loginResponse = await fetch("http://core:8081/api/v1/auth/login", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ telephone, password: "smoke-pass-123" })
+});
+const loginBody = await loginResponse.json();
+const token = loginBody?.data?.token;
+if (loginResponse.status !== 200 || typeof token !== "string" || token.length === 0) {
+  throw new Error(`login for Definition catalog failed: ${loginResponse.status}`);
+}
+const headers = { authorization: `Bearer ${token}` };
+const created = [];
+for (let attempt = 0; attempt < 2; attempt += 1) {
+  const response = await fetch("http://gateway:8080/api/v1/agent/definitions", { method: "POST", headers });
+  const body = await response.json();
+  if (response.status !== 201 || typeof body?.definitionId !== "string" || body.version !== 1 ||
+      body.agentId !== "UAI000000000000000001" || JSON.stringify(body.conversationScopes) !== JSON.stringify(["*"])) {
+    throw new Error(`Definition create failed: ${response.status} ${JSON.stringify(body)}`);
+  }
+  created.push(body.definitionId);
+}
+if (created[0] !== created[1]) {
+  throw new Error("Definition create replay returned a different identity");
+}
+const listedResponse = await fetch("http://gateway:8080/api/v1/agent/definitions?limit=20", { headers });
+const listed = await listedResponse.json();
+if (listedResponse.status !== 200 || !Array.isArray(listed?.definitions) || listed.definitions.length !== 1 ||
+    listed.definitions[0]?.definitionId !== created[0] || JSON.stringify(listed.definitions[0]?.conversationScopes) !== JSON.stringify(["*"])) {
+  throw new Error(`Definition list failed: ${listedResponse.status} ${JSON.stringify(listed)}`);
+}
+process.stdout.write(created[0]);
+NODE
+}
+
+definition_uuid=$(verify_definition_catalog)
+
 canonical_direct_conversation() {
   local first=$1
   local second=$2
@@ -175,6 +214,12 @@ conversation_key=$(canonical_direct_conversation "${owner_uuid}" "${agent_uuid}"
 mysql() {
   compose exec -T mysql mysql -N -B -uroot -proot123 dipole "$@"
 }
+
+definition_record=$(mysql -e "SELECT owner_uuid, agent_uuid, JSON_UNQUOTE(JSON_EXTRACT(permissions_json, '$[0]')), JSON_UNQUOTE(JSON_EXTRACT(scopes_json, '$[0].resource_id')) FROM agent_definition_versions WHERE definition_uuid = '${definition_uuid}' AND version = 1")
+expected_definition_record="${owner_uuid}"$'\tUAI000000000000000001\tconversation.read\t*'
+[[ "${definition_record}" == "${expected_definition_record}" ]] || { printf 'Definition record diverged: %q\n' "${definition_record}" >&2; exit 1; }
+definition_count=$(mysql -e "SELECT COUNT(*) FROM agent_definition_versions WHERE tenant_id = 'dipole' AND owner_uuid = '${owner_uuid}' AND agent_uuid = '${agent_uuid}' AND version = 1")
+[[ "${definition_count}" == "1" ]] || { printf 'Definition replay created %s records\n' "${definition_count}" >&2; exit 1; }
 
 mysql <<SQL
 INSERT IGNORE INTO users (uuid, nickname, telephone, password_hash, status, created_at, updated_at) VALUES
