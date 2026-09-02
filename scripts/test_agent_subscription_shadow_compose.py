@@ -39,6 +39,14 @@ class AgentSubscriptionShadowComposeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED == "false"', profile)
         self.assertIn('DIPOLE_AGENT_MCP_SERVER_ENABLED == "false"', profile)
 
+    def test_smoke_establishes_an_authorized_owner_conversation(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-shadow-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('type: "chat.send"', smoke)
+        self.assertIn('target_uuid: agentUuid', smoke)
+        self.assertIn('/api/v1/agent/subscriptions/options?', smoke)
+        self.assertIn('bootstrap direct conversation did not become eligible for subscription', smoke)
+        self.assertLess(smoke.index('await sendBootstrapMessage();'), smoke.index('const subscriptionResponse ='))
+
 
 if __name__ == "__main__":
     unittest.main()

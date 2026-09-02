@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -11,6 +12,31 @@ import (
 	platformKafka "github.com/JekYUlll/Dipole/internal/platform/kafka"
 	messagedomain "github.com/JekYUlll/Dipole/internal/services/message/domain"
 )
+
+func TestConversationProjectionTopicsAreExplicitAndDefensivelyCopied(t *testing.T) {
+	t.Parallel()
+
+	want := []string{
+		"group.created",
+		"message.direct.created",
+		"message.group.created",
+		"group.updated",
+		"group.members.added",
+		"group.members.removed",
+		"group.dismissed",
+		"conversation.direct.read",
+		"session.force_logout",
+		"contact.friend.deleted",
+	}
+	got := ConversationProjectionTopics()
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected Core projection topics: got=%v want=%v", got, want)
+	}
+	got[0] = "mutated"
+	if ConversationProjectionTopics()[0] != want[0] {
+		t.Fatal("Core projection topics must not expose mutable shared state")
+	}
+}
 
 type projectionStub struct {
 	groupCalls  int
