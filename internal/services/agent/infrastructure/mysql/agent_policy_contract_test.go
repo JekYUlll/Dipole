@@ -56,9 +56,19 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err != nil || pinned == nil || pinned.Version != 1 || len(pinned.Permissions) != 2 {
 		t.Fatalf("pinned definition v1: %+v err=%v", pinned, err)
 	}
-	latest, err := store.GetLatestDefinition(context.Background(), "dipole", "UAI")
+	latest, err := store.GetLatestDefinition(context.Background(), "dipole", "U100", "UAI")
 	if err != nil || latest == nil || latest.Version != 2 || len(latest.Permissions) != 1 || len(latest.Scopes) != 1 {
 		t.Fatalf("latest definition: %+v err=%v", latest, err)
+	}
+	foreignDefinition := definition
+	foreignDefinition.DefinitionUUID = "DEF-2"
+	foreignDefinition.OwnerUUID = "U200"
+	if err := store.CreateDefinitionVersion(context.Background(), foreignDefinition); err != nil {
+		t.Fatalf("create same Agent version for foreign owner: %v", err)
+	}
+	foreignLatest, err := store.GetLatestDefinition(context.Background(), "dipole", "U200", "UAI")
+	if err != nil || foreignLatest == nil || foreignLatest.DefinitionUUID != foreignDefinition.DefinitionUUID || foreignLatest.OwnerUUID != "U200" {
+		t.Fatalf("foreign owner Definition lookup: %+v err=%v", foreignLatest, err)
 	}
 	catalog, err := store.ListOwnedActiveDefinitions(context.Background(), "dipole", "U100", "", 0, now, 10)
 	if err != nil || len(catalog) != 2 || catalog[0].Version != 1 || catalog[1].Version != 2 {
@@ -67,7 +77,7 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if err := store.RevokeDefinitionVersion(context.Background(), "DEF-1", 2, now.Add(time.Minute)); err != nil {
 		t.Fatalf("revoke definition: %v", err)
 	}
-	latest, err = store.GetLatestDefinition(context.Background(), "dipole", "UAI")
+	latest, err = store.GetLatestDefinition(context.Background(), "dipole", "U100", "UAI")
 	if err != nil || latest.Status != application.AgentDefinitionStatusRevoked || latest.RevokedAt == nil {
 		t.Fatalf("revoked definition: %+v err=%v", latest, err)
 	}

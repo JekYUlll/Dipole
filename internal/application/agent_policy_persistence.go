@@ -447,7 +447,7 @@ func sameAgentApprovalBinding(approval AgentApprovalV1, claim AgentApprovalClaim
 
 type AgentPolicyStoreV1 interface {
 	CreateDefinitionVersion(ctx context.Context, definition AgentDefinitionVersionV1) error
-	GetLatestDefinition(ctx context.Context, tenantID, agentUUID string) (*AgentDefinitionVersionV1, error)
+	GetLatestDefinition(ctx context.Context, tenantID, ownerUUID, agentUUID string) (*AgentDefinitionVersionV1, error)
 	GetDefinitionVersion(ctx context.Context, definitionUUID string, version uint64) (*AgentDefinitionVersionV1, error)
 	RevokeDefinitionVersion(ctx context.Context, definitionUUID string, version uint64, revokedAt time.Time) error
 	CreateTask(ctx context.Context, task AgentTaskV1) (bool, error)

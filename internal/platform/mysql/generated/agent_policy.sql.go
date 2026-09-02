@@ -656,20 +656,21 @@ func (q *Queries) GetAgentWorkflowRepairProposal(ctx context.Context, proposalUu
 	return i, err
 }
 
-const getLatestAgentDefinition = `-- name: GetLatestAgentDefinition :one
+const getLatestOwnedAgentDefinition = `-- name: GetLatestOwnedAgentDefinition :one
 SELECT id, definition_uuid, version, tenant_id, status, permissions_json, scopes_json, valid_from, expires_at, revoked_at, created_at, updated_at, owner_uuid, agent_uuid FROM agent_definition_versions
-WHERE tenant_id = ? AND agent_uuid = ?
+WHERE tenant_id = ? AND owner_uuid = ? AND agent_uuid = ?
 ORDER BY version DESC
 LIMIT 1
 `
 
-type GetLatestAgentDefinitionParams struct {
+type GetLatestOwnedAgentDefinitionParams struct {
 	TenantID  string
+	OwnerUuid string
 	AgentUuid string
 }
 
-func (q *Queries) GetLatestAgentDefinition(ctx context.Context, arg GetLatestAgentDefinitionParams) (AgentDefinitionVersion, error) {
-	row := q.db.QueryRowContext(ctx, getLatestAgentDefinition, arg.TenantID, arg.AgentUuid)
+func (q *Queries) GetLatestOwnedAgentDefinition(ctx context.Context, arg GetLatestOwnedAgentDefinitionParams) (AgentDefinitionVersion, error) {
+	row := q.db.QueryRowContext(ctx, getLatestOwnedAgentDefinition, arg.TenantID, arg.OwnerUuid, arg.AgentUuid)
 	var i AgentDefinitionVersion
 	err := row.Scan(
 		&i.ID,

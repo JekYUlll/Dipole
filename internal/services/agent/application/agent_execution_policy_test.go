@@ -15,6 +15,12 @@ import (
 
 type agentPolicyStoreStub struct {
 	latest        *application.AgentDefinitionVersionV1
+	latestByOwner map[string]*application.AgentDefinitionVersionV1
+	latestLookup  struct {
+		tenantID  string
+		ownerUUID string
+		agentUUID string
+	}
 	definitions   map[string]*application.AgentDefinitionVersionV1
 	tasks         map[string]*application.AgentTaskV1
 	runs          map[string]*application.AgentRunV1
@@ -42,8 +48,17 @@ func (s *agentPolicyStoreStub) CreateDefinitionVersion(_ context.Context, defini
 	return nil
 }
 
-func (s *agentPolicyStoreStub) GetLatestDefinition(context.Context, string, string) (*application.AgentDefinitionVersionV1, error) {
-	return cloneDefinitionV1(s.latest), nil
+func (s *agentPolicyStoreStub) GetLatestDefinition(_ context.Context, tenantID, ownerUUID, agentUUID string) (*application.AgentDefinitionVersionV1, error) {
+	s.latestLookup.tenantID = tenantID
+	s.latestLookup.ownerUUID = ownerUUID
+	s.latestLookup.agentUUID = agentUUID
+	if definition := s.latestByOwner[ownerUUID]; definition != nil {
+		return cloneDefinitionV1(definition), nil
+	}
+	if s.latest != nil && s.latest.TenantID == tenantID && s.latest.OwnerUUID == ownerUUID && s.latest.AgentUUID == agentUUID {
+		return cloneDefinitionV1(s.latest), nil
+	}
+	return nil, nil
 }
 
 func (s *agentPolicyStoreStub) GetDefinitionVersion(_ context.Context, uuid string, version uint64) (*application.AgentDefinitionVersionV1, error) {
@@ -259,6 +274,47 @@ func TestAgentTaskUUIDV1SeparatesEventSubscriptions(t *testing.T) {
 	second.SubscriptionUUID = "SUB-2"
 	if firstID, secondID := agentapplication.AgentTaskUUIDV1(first), agentapplication.AgentTaskUUIDV1(second); firstID == direct || secondID == direct || firstID == secondID {
 		t.Fatalf("subscription Task IDs must be distinct: direct=%q first=%q second=%q", direct, firstID, secondID)
+	}
+}
+
+func TestPersistentAgentExecutionPolicySelectsDefinitionByExecutionOwner(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 9, 2, 8, 0, 0, 0, time.UTC)
+	ownerDefinition := activeAgentDefinitionV1(3, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
+	ownerDefinition.DefinitionUUID = "DEF-U100"
+	ownerDefinition.OwnerUUID = "U100"
+	foreignDefinition := activeAgentDefinitionV1(9, now.Add(-time.Minute), []string{application.AgentPermissionMessageWrite})
+	foreignDefinition.DefinitionUUID = "DEF-U200"
+	foreignDefinition.OwnerUUID = "U200"
+	store := &agentPolicyStoreStub{
+		latestByOwner: map[string]*application.AgentDefinitionVersionV1{"U100": &ownerDefinition, "U200": &foreignDefinition},
+		definitions: map[string]*application.AgentDefinitionVersionV1{
+			definitionKeyV1(ownerDefinition.DefinitionUUID, ownerDefinition.Version):     &ownerDefinition,
+			definitionKeyV1(foreignDefinition.DefinitionUUID, foreignDefinition.Version): &foreignDefinition,
+		},
+		subscriptions: map[string]*application.AgentEventSubscriptionV1{
+			"SUB-U100": {
+				SubscriptionUUID: "SUB-U100", DefinitionUUID: ownerDefinition.DefinitionUUID, DefinitionVersion: ownerDefinition.Version,
+				TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
+				EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "*",
+				FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`), CreatedByUUID: "U100",
+			},
+		},
+	}
+	policy, err := agentapplication.NewPersistentAgentExecutionPolicyV1WithClock(store, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("new persistent policy: %v", err)
+	}
+	request := agentPolicyStartRequestV1()
+	request.SubscriptionUUID = "SUB-U100"
+	execution, err := policy.Start(context.Background(), request)
+	if err != nil {
+		t.Fatalf("start subscription policy: %v", err)
+	}
+	task := store.tasks[execution.TaskUUID]
+	if store.latestLookup.ownerUUID != "U100" || task == nil || task.DefinitionUUID != ownerDefinition.DefinitionUUID || task.DefinitionVersion != ownerDefinition.Version {
+		t.Fatalf("subscription execution selected foreign Definition: lookup=%+v task=%+v", store.latestLookup, task)
 	}
 }
 

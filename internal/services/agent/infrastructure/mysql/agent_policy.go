@@ -69,8 +69,8 @@ func (r *AgentPolicyRepository) CreateDefinitionVersion(ctx context.Context, def
 	return nil
 }
 
-func (r *AgentPolicyRepository) GetLatestDefinition(ctx context.Context, tenantID, agentUUID string) (*application.AgentDefinitionVersionV1, error) {
-	row, err := r.queries.GetLatestAgentDefinition(ctx, generated.GetLatestAgentDefinitionParams{TenantID: tenantID, AgentUuid: agentUUID})
+func (r *AgentPolicyRepository) GetLatestDefinition(ctx context.Context, tenantID, ownerUUID, agentUUID string) (*application.AgentDefinitionVersionV1, error) {
+	row, err := r.queries.GetLatestOwnedAgentDefinition(ctx, generated.GetLatestOwnedAgentDefinitionParams{TenantID: tenantID, OwnerUuid: ownerUUID, AgentUuid: agentUUID})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

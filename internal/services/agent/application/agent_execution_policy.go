@@ -162,7 +162,7 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	var task application.AgentTaskV1
 	activeAuthorized := false
 	if existingTask == nil {
-		latest, lookupErr := a.store.GetLatestDefinition(ctx, request.TenantID, request.AgentUUID)
+		latest, lookupErr := a.store.GetLatestDefinition(ctx, request.TenantID, executionDefinitionOwnerV1(request), request.AgentUUID)
 		if lookupErr != nil || authorizeDefinitionAtV1(latest, request, a.now()) != nil {
 			return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
 		}
@@ -437,7 +437,7 @@ func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.Agen
 	if tenantID == "" || agentUUID == "" || len(permissions) == 0 || len(scopes) == 0 {
 		return fmt.Errorf("ensure Embedded Agent Definition: identity, permissions, and scopes are required")
 	}
-	latest, err := store.GetLatestDefinition(ctx, tenantID, agentUUID)
+	latest, err := store.GetLatestDefinition(ctx, tenantID, agentUUID, agentUUID)
 	if err != nil {
 		return fmt.Errorf("get Embedded Agent Definition: %w", err)
 	}
@@ -457,12 +457,19 @@ func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.Agen
 	}
 	if err := store.CreateDefinitionVersion(ctx, definition); err != nil {
 		// A concurrent process may have initialized the same Agent.
-		latest, lookupErr := store.GetLatestDefinition(ctx, tenantID, agentUUID)
+		latest, lookupErr := store.GetLatestDefinition(ctx, tenantID, agentUUID, agentUUID)
 		if lookupErr != nil || latest == nil {
 			return fmt.Errorf("create Embedded Agent Definition: %w", err)
 		}
 	}
 	return nil
+}
+
+func executionDefinitionOwnerV1(request application.AgentExecutionPolicyStartV1) string {
+	if strings.TrimSpace(request.SubscriptionUUID) != "" {
+		return strings.TrimSpace(request.PrincipalUUID)
+	}
+	return strings.TrimSpace(request.AgentUUID)
 }
 
 func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request application.AgentExecutionPolicyStartV1) (*application.AgentPolicyExecutionV1, error) {
@@ -476,7 +483,7 @@ func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request ap
 	}
 	var task application.AgentTaskV1
 	if existingTask == nil {
-		latest, lookupErr := p.store.GetLatestDefinition(ctx, strings.TrimSpace(request.TenantID), strings.TrimSpace(request.AgentUUID))
+		latest, lookupErr := p.store.GetLatestDefinition(ctx, strings.TrimSpace(request.TenantID), executionDefinitionOwnerV1(request), strings.TrimSpace(request.AgentUUID))
 		if lookupErr != nil {
 			return nil, fmt.Errorf("get latest Agent policy: %w", lookupErr)
 		}

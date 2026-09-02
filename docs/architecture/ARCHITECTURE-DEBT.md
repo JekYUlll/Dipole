@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-02：Agent Definition 现按 `(tenant, owner, agent)` 查询，migration v58 允许不同 owner 为同一 Agent 使用相同 version。Subscription 的可信 principal 已与该 owner query 对齐；嵌入式 direct-target 保持 Agent owner。用户自助创建 Definition、Subscription 默认启用、真实 Shadow 观察窗口和 Runtime 灰度仍未完成，`AD-034` 保持处理中。
+
 - 2026-09-02：Event Subscription enforced Runtime 现已按 Subscription fan-out，可信执行主体改为记录的 `created_by_id`，Core 复核 owner 与 Definition/Subscription binding，Task/EventLedger 幂等键分别加入 subscription identity。定向 TypeScript 回归覆盖两个 owner 命中一条事件的独立派发、Temporal binding 与重复键分离；Go 回归待使用非 Xlings 工具链或 Remote GPU 复核。本机默认仍为 `direct_target`，subscription trigger 和共享环境切换保持关闭，须先完成 AD-034 的 reviewed corpus、Shadow 观察窗口、rollout gate 与受控部署证据。
 
 - 2026-09-02：同版本 `81d8da66` 的 Remote GPU 隔离 `interactive_active` Compose 已再次完整覆盖 active 写入与 Worker 替换：临时 `user_gray` manifest、mTLS、独立 Kafka/Temporal 和短期 grant 仅用于候选项目；Worker 在 `waiting_approval` 后重启并恢复，deny 维持零 Tool/Message，重复 approve 收敛为一次 Tool、一次 Message 和两条 Sync Inbox。退出后 grant、项目、卷和回环端口均已清理。该确定性 `/send` fixture 不调用模型，不能替代 browser HITL、shared tenant、Core/Message replacement、partial-effect rollback、容量或成功率证据，`AD-009` 保持处理中。

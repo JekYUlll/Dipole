@@ -6,6 +6,8 @@
 
 当后续在受控环境启用 `subscription` trigger mode 时，每个确定性命中的 Subscription 都独立派发。Runtime 将 Subscription 的 `created_by_id` 绑定为执行 principal，Core 会再次要求该 principal 同时拥有 pinned Definition 和 Subscription。Task ID 与 EventLedger key 都包含 Subscription identity，因此同一事件可服务多个 owner，同时每条 Subscription 的重复消费继续收敛为一次 Task/Run 副作用。
 
+Definition 选择同样以 owner 为边界：Core 按 `(tenant, created_by_id, agent_id)` 查询最新版本，数据库唯一键为 `(tenant, owner, agent, version)`。同一 Agent 的两位用户可以持有相同版本号而不发生覆盖；嵌入式 direct-target Definition 继续由 Agent 自身作为 owner 管理。
+
 该契约仅覆盖 Runtime 与 Core 的一致性门禁。默认 `direct_target` 模式、默认关闭的 subscription trigger、rollout gate 和 reviewed 观察窗口均保持不变。
 
 ## 启用前提

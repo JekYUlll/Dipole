@@ -5,9 +5,9 @@ INSERT INTO agent_definition_versions (
     created_at, updated_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(3), NOW(3));
 
--- name: GetLatestAgentDefinition :one
+-- name: GetLatestOwnedAgentDefinition :one
 SELECT * FROM agent_definition_versions
-WHERE tenant_id = ? AND agent_uuid = ?
+WHERE tenant_id = ? AND owner_uuid = ? AND agent_uuid = ?
 ORDER BY version DESC
 LIMIT 1;
 

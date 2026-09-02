@@ -139,7 +139,7 @@ type Querier interface {
 	GetGroupByUUID(ctx context.Context, uuid string) (Group, error)
 	GetGroupMember(ctx context.Context, arg GetGroupMemberParams) (GroupMember, error)
 	GetGroupSyncState(ctx context.Context, groupUuid string) (GetGroupSyncStateRow, error)
-	GetLatestAgentDefinition(ctx context.Context, arg GetLatestAgentDefinitionParams) (AgentDefinitionVersion, error)
+	GetLatestOwnedAgentDefinition(ctx context.Context, arg GetLatestOwnedAgentDefinitionParams) (AgentDefinitionVersion, error)
 	GetLatestUserSyncSequence(ctx context.Context, userUuid string) (int64, error)
 	GetMessageBySenderAndClientID(ctx context.Context, arg GetMessageBySenderAndClientIDParams) (Message, error)
 	GetMessageByUUID(ctx context.Context, uuid string) (Message, error)
