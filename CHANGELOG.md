@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-02：补齐 `agent-subscription-active.yml` 的 Compose 静态门禁。验收固定其独立的 Kafka consumer group 与 Temporal queue、显式 subscription trigger、mTLS Capability RPC 依赖和关闭的 Control、消息写入、MCP/External MCP 面；缺少 subscription group 时渲染必须失败。Remote GPU 的隔离 Node 22 环境已通过该 profile 的 `18/18` 定向运行时测试与 typecheck。此记录仅覆盖配置和运行时单测，不代表 Kafka、Temporal、模型调用或共享环境的端到端启用。
+
 - 2026-09-02：新增受控 `agent-subscription-active.yml`。该 Active Read overlay 使用显式 subscription trigger、独立 Kafka consumer group 与 Temporal queue，将 owner-scoped Event Subscription 交给 durable Task；Control、消息写入、Memory、MCP 和 External MCP 固定关闭。普通 `read_active` 配置若尝试使用 subscription trigger 会在启动前拒绝，基础 Compose 继续保持默认关闭。
 
 - 2026-09-02：新增显式 `agent-subscription-shadow.yml` 开发期 Compose profile。它保持 Shadow Runtime 的 `direct_target` 主路径，开启 Subscription matcher 对照与 owner 管理 API，同时固定 Task Control、Memory、MCP 与 External MCP 关闭；基础 Compose 默认值不变。
