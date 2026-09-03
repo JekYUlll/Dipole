@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-04：为 SQLC 数据访问迁移增加 GORM 防回归门禁。
+  - `go.mod` 与所有生产 Go 源的 import 均由 `internal/platform/mysql` 架构测试检查，任何 `gorm.io/*` 依赖都会使测试失败；当前生产路径已无 GORM。
+
 - 2026-09-04：修正真实 Provider 的 Subscription Active Smoke 调用次数边界。
   - 同一 Durable Task 允许一轮或多轮已完成模型调用；smoke 继续严格要求单一 owner-scoped Kafka 事件、单一 completed Task 和零 Agent 消息写入。
   - Remote GPU 在 `052d60c7` 使用受保护 Provider 环境文件完成隔离验收，项目自动清理，公共 `dipole-experience` 保持 11 个健康容器。该单场景回执不推导模型质量、泛化成功率或默认启用资格。
