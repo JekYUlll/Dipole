@@ -218,8 +218,8 @@ mysql() {
   compose exec -T mysql mysql -N -B -uroot -proot123 dipole "$@"
 }
 
-definition_record=$(mysql -e "SELECT owner_uuid, agent_uuid, JSON_UNQUOTE(JSON_EXTRACT(permissions_json, '\$[0]')), JSON_UNQUOTE(JSON_EXTRACT(scopes_json, '\$[0].resource_id')) FROM agent_definition_versions WHERE definition_uuid = '${definition_uuid}' AND version = 1")
-expected_definition_record="${owner_uuid}"$'\tUAI000000000000000001\tconversation.read\t*'
+definition_record=$(mysql -e "SELECT owner_uuid, agent_uuid, JSON_CONTAINS(permissions_json, JSON_QUOTE('conversation.list'), '\$'), JSON_CONTAINS(permissions_json, JSON_QUOTE('conversation.read'), '\$'), JSON_CONTAINS(scopes_json, JSON_OBJECT('resource_type', 'conversation', 'resource_id', '*', 'actions', JSON_ARRAY('list')), '\$'), JSON_CONTAINS(scopes_json, JSON_OBJECT('resource_type', 'conversation', 'resource_id', '*', 'actions', JSON_ARRAY('read')), '\$') FROM agent_definition_versions WHERE definition_uuid = '${definition_uuid}' AND version = 1")
+expected_definition_record="${owner_uuid}"$'\tUAI000000000000000001\t1\t1\t1\t1'
 [[ "${definition_record}" == "${expected_definition_record}" ]] || { printf 'Definition record diverged: %q\n' "${definition_record}" >&2; exit 1; }
 definition_count=$(mysql -e "SELECT COUNT(*) FROM agent_definition_versions WHERE tenant_id = 'dipole' AND owner_uuid = '${owner_uuid}' AND agent_uuid = '${agent_uuid}' AND version = 1")
 [[ "${definition_count}" == "1" ]] || { printf 'Definition replay created %s records\n' "${definition_count}" >&2; exit 1; }

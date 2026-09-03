@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-04：修正 Interactive Agent Active smoke 对默认只读 Definition 的能力校验。
+  - Smoke 现验证 `conversation.list`、`conversation.read` 与对应 conversation scope action 均存在，不再依赖 JSON 数组首项顺序；任务创建、审批和消息投影验收可继续覆盖当前 Definition profile。
+
 - 2026-09-04：补齐默认关闭的 OAuth callback handoff Core RPC 装配。
   - `Claim/Complete/ReleaseOAuthCallbackHandoff` 现仅在显式配置和内部 RPC mTLS 同时成立时注入 SQLC handoff Store，并只允许 `dipole-agent` 调用；默认配置继续关闭。
   - 本切片不注册浏览器 callback 路由，也未开启 Provider code exchange、token 持久化或刷新/撤销生命周期。
