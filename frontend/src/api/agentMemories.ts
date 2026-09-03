@@ -32,10 +32,29 @@ export interface AgentMemoryPage {
   nextCursor: string
 }
 
+export type AgentMemoryCandidateStatus = 'pending' | 'accepted' | 'rejected'
+
+export interface AgentMemoryCandidate {
+  candidateId: string
+  candidateSha256: string
+  summary: string
+  status: AgentMemoryCandidateStatus
+  reviewId?: string
+  promotedMemoryId?: string
+  observedAtUnixMs: number
+}
+
+export interface AgentMemoryCandidatePage {
+  candidates: AgentMemoryCandidate[]
+  nextCursor: string
+}
+
 export interface AgentMemoryClient {
   list(after?: string, limit?: number): Promise<AgentMemoryPage>
+  listCandidates(after?: string, limit?: number): Promise<AgentMemoryCandidatePage>
   revoke(memoryId: string, reason: string): Promise<AgentMemory>
   correct(memoryId: string, expectedVersion: number, content: string, compactContent: string, reason: string): Promise<AgentMemoryCorrection>
+  promoteCandidate(candidateId: string, candidateSha256: string, reviewId: string, targetMemoryType?: AgentMemoryType): Promise<AgentMemory>
 }
 
 export interface AgentMemoryCorrection {
@@ -111,6 +130,37 @@ export function parseAgentMemoryResponse(raw: unknown): AgentMemory {
   }
 }
 
+export function parseAgentMemoryCandidatePage(raw: unknown): AgentMemoryCandidatePage {
+  if (!isRecord(raw) || !exactKeys(raw, new Set(['candidates', 'nextCursor'])) || !Array.isArray(raw.candidates)) {
+    throw new Error('Agent Memory candidate page shape is invalid')
+  }
+  const nextCursor = raw.nextCursor === undefined || raw.nextCursor === '' ? '' : requireIdentifier(raw.nextCursor, 'cursor')
+  return { candidates: raw.candidates.map(parseAgentMemoryCandidate), nextCursor }
+}
+
+export function parseAgentMemoryCandidate(raw: unknown): AgentMemoryCandidate {
+  if (!isRecord(raw) || !exactKeys(raw, candidateKeys)) throw new Error('Agent Memory candidate shape is invalid')
+  if (raw.status !== 'pending' && raw.status !== 'accepted' && raw.status !== 'rejected') throw new Error('Agent Memory candidate status is invalid')
+  if (typeof raw.summary !== 'string' || raw.summary.trim() === '' || byteLength(raw.summary) > 4096) throw new Error('Agent Memory candidate summary is invalid')
+  if (typeof raw.candidateSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(raw.candidateSha256)) throw new Error('Agent Memory candidate digest is invalid')
+  const reviewId = optionalIdentifier(raw.reviewId, 'review')
+  const promotedMemoryId = optionalIdentifier(raw.promotedMemoryId, 'promoted memory')
+  if (raw.status === 'accepted' && reviewId === undefined) throw new Error('Agent Memory candidate review is required')
+  return {
+    candidateId: requireIdentifier(raw.candidateId, 'candidate'),
+    candidateSha256: raw.candidateSha256,
+    summary: raw.summary,
+    status: raw.status,
+    reviewId,
+    promotedMemoryId,
+    observedAtUnixMs: positiveInteger(raw.observedAtUnixMs, 'observed time'),
+  }
+}
+
+const candidateKeys = new Set([
+  'candidateId', 'candidateSha256', 'summary', 'status', 'reviewId', 'promotedMemoryId', 'observedAtUnixMs',
+])
+
 export const agentMemoryClient: AgentMemoryClient = {
   async list(after = '', limit = 50) {
     if (after) requireCursor(after)
@@ -118,6 +168,13 @@ export const agentMemoryClient: AgentMemoryClient = {
     const query = new URLSearchParams({ limit: String(limit) })
     if (after) query.set('after', after)
     return parseAgentMemoryPage(await api.get(`/api/v1/agent/memories?${query.toString()}`))
+  },
+  async listCandidates(after = '', limit = 50) {
+    if (after) requireIdentifier(after, 'cursor')
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Agent Memory candidate page limit is invalid')
+    const query = new URLSearchParams({ limit: String(limit) })
+    if (after) query.set('after', after)
+    return parseAgentMemoryCandidatePage(await api.get(`/api/v1/agent/memory-candidates?${query.toString()}`))
   },
   async revoke(memoryId, reason) {
     requireIdentifier(memoryId, 'identity')
@@ -135,6 +192,15 @@ export const agentMemoryClient: AgentMemoryClient = {
     return parseAgentMemoryCorrection(await api.post(`/api/v1/agent/memories/${encodeURIComponent(memoryId)}/correct`, {
       expectedVersion, content: normalizedContent, compactContent: normalizedCompact, reason: normalizedReason,
     }), memoryId, expectedVersion, normalizedContent, normalizedCompact, normalizedReason)
+  },
+  async promoteCandidate(candidateId, candidateSha256, reviewId, targetMemoryType = 'observational') {
+    requireIdentifier(candidateId, 'candidate')
+    if (!/^[a-f0-9]{64}$/.test(candidateSha256)) throw new Error('Agent Memory candidate digest is invalid')
+    requireIdentifier(reviewId, 'review')
+    if (!memoryTypes.has(targetMemoryType) || targetMemoryType === 'working') throw new Error('Agent Memory candidate target type is invalid')
+    return parseAgentMemoryResponse(await api.post(`/api/v1/agent/memory-candidates/${encodeURIComponent(candidateId)}/promote`, {
+      candidateSha256, reviewId, targetMemoryType,
+    }))
   },
 }
 

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import AgentMemoryManager from './AgentMemoryManager.vue'
-import type { AgentMemory, AgentMemoryClient } from '@/api/agentMemories'
+import type { AgentMemory, AgentMemoryCandidate, AgentMemoryClient } from '@/api/agentMemories'
 
 const source = readFileSync(resolve(import.meta.dirname, 'AgentMemoryManager.vue'), 'utf8')
 
@@ -15,9 +15,16 @@ const active: AgentMemory = {
   memoryRootId: 'MEM-1', memoryVersion: 1,
 }
 
+const acceptedCandidate: AgentMemoryCandidate = {
+  candidateId: 'CAND-1', candidateSha256: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  summary: 'API v2 Friday', status: 'accepted', reviewId: 'REV-1', observedAtUnixMs: 1_700_000_000_000,
+}
+
 function service(): AgentMemoryClient {
   return {
     list: vi.fn().mockResolvedValue({ memories: [active], nextCursor: '' }),
+    listCandidates: vi.fn().mockResolvedValue({ candidates: [], nextCursor: '' }),
+    promoteCandidate: vi.fn(),
     revoke: vi.fn().mockImplementation(async (_id: string, reason: string) => ({
       ...active, status: 'revoked', revokedAtUnixMs: 1_700_000_200_000, revokedById: 'U100', revokeReason: reason,
     })),
@@ -104,5 +111,24 @@ describe('AgentMemoryManager', () => {
     expect(wrapper.text()).toContain('记忆控制面暂时不可用')
     expect(wrapper.text()).not.toContain('private upstream detail')
     expect(wrapper.find('[data-agent-memory-revoke]').exists()).toBe(false)
+  })
+
+  it('promotes an accepted reviewed candidate using listed digest and review', async () => {
+    const client = service()
+    vi.mocked(client.listCandidates).mockResolvedValue({ candidates: [acceptedCandidate], nextCursor: '' })
+    vi.mocked(client.promoteCandidate).mockResolvedValue({
+      ...active, memoryId: 'MEM-CAND-1', memoryRootId: 'MEM-CAND-1', memoryType: 'observational',
+      content: acceptedCandidate.summary, compactContent: acceptedCandidate.summary,
+      provenance: { sourceType: 'memory_candidate', sourceId: 'CAND-1', sequence: 'REV-1' },
+    })
+    const wrapper = mount(AgentMemoryManager, { props: { client } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('API v2 Friday')
+    expect(wrapper.text()).toContain('READY TO PROMOTE')
+    await wrapper.get('[data-agent-memory-candidate-promote="CAND-1"]').trigger('click')
+    await flushPromises()
+    expect(client.promoteCandidate).toHaveBeenCalledWith('CAND-1', acceptedCandidate.candidateSha256, 'REV-1')
+    expect(wrapper.text()).toContain('已晋升 MEM-CAND-1')
+    expect(wrapper.text()).toContain('MEM-CAND-1')
   })
 })

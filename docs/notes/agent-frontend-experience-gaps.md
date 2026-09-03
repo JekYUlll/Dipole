@@ -22,7 +22,7 @@
 | 浏览 / 创建 Definition | `/agent/definitions` | `GET` + `POST` profile | 创建已接线。目录仍不暴露模型/Tool。空目录时订阅创建会停在「没有 active Definition」。 |
 | 创建 / 撤销订阅 | `/agent/subscriptions` | list / options / create / revoke | API 齐。订阅要先有 Definition + 可读 conversation。Runtime 默认 `direct_target`，列表 active 不会自动开共享事件触发；要另开 subscription overlay。 |
 | 查看 / 撤销 / 纠正记忆 | `/agent/memories` | list / revoke / correct | 页面不能写入 Observation。自动写入关着时列表会一直空。 |
-| 晋升记忆候选 | 无页面 | `GET /memory-candidates` + `POST /memory-candidates/:id/promote` | owner-scoped 分页 API 已齐，返回摘要、审核 ID 和晋级状态，不暴露 evidence。前端候选收件箱仍待接入。 |
+| 晋升记忆候选 | `/agent/memories` 候选区 | `GET /memory-candidates` + `POST /memory-candidates/:id/promote` | 记忆页已列出摘要并晋升 accepted+reviewId 行。pending 无 review 只展示。 |
 | 取消任务 | 时间线页取消按钮 | `POST /tasks/:id/cancel` | 已挂到 Timeline 头。终态任务再点会走 Runtime 既有错误。 |
 | 运行状态灯 | 无页面 | `GET /api/v1/agent/status` | 运维/装配探测，不是产品收件箱。 |
 | MCP / Repair / OAuth | 无 Vue 入口 | MCP HTTP、Repair Execute RPC、OAuth consume | 有意不进 SPA。Repair 是 mTLS 内部 RPC。 |
@@ -32,10 +32,8 @@
 1. **Waiting 任务通知前端消费**
    后端已发送低敏 `agent_task_waiting` WS locator；Chat 仍需订阅事件、按 Task/revision 去重并刷新 owner Inbox，断线重连后仍以列表补拉为准。
 
-2. **记忆候选收件箱页面**
-   owner 可读的 candidate 分页已接入 Gateway；前端还需要以摘要展示 pending/accepted/rejected，accepted 行携带 review ID 后才能调用既有晋升接口。
+2. **产物收件箱页面（次要）**
 
-3. **产物收件箱页面（次要）**
    `GET /artifacts` 已按 owner 与复合 cursor 分页，前端仍需展示 metadata、保留 Timeline 深链，并保持内容读取入口的现有 digest 限制。
 
 ## 后端已有、前端仍走不全的（开关 / 运行时，不是缺 RPC）

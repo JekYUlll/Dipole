@@ -12,9 +12,9 @@
 
 ### session-fad3064c
 
-- 正在做：补 owner 任务收件箱（GET /api/v1/agent/tasks + Vue 列表）
-- 在改：`api/proto/dipole/agent/v1/agent.proto`、Gateway task handlers、`frontend/src/api/agentTasks.ts`、任务列表页
-- 避开：MCP Server Shadow、Definition catalog 后端、Interactive/Active 回执文档
+- 正在做：把已合入的 owner 记忆候选 API 接到记忆页晋升入口
+- 在改：`frontend/src/api/agentMemories.ts`、`AgentMemoryManager.vue`、体验缺口笔记
+- 避开：Core/Gateway candidate catalog、artifact list、waiting WS 后端
 
 ## Code style
 

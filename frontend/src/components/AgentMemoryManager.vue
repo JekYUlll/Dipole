@@ -40,11 +40,41 @@
         <p class="state-code">AUTHORITY CHANGED</p><h2>记忆状态已经变化</h2><p>控制结果未被本地推断，请重新读取 Core 权威状态。</p>
         <button data-agent-memory-retry class="text-action warning-text" @click="load(true)">重新读取 →</button>
       </div>
-      <div v-else-if="memories.length === 0" class="state-card" role="status">
-        <p class="state-code success">EMPTY</p><h2>还没有长期记忆</h2><p>当前不会自动生成 Observation 或 Reflection。</p>
-      </div>
-
       <template v-else>
+        <div v-if="candidateError" class="state-card warning" role="alert">
+          <p class="state-code">CANDIDATES UNAVAILABLE</p><h2>记忆候选暂时不可读</h2><p>长期记忆仍可查看。晋升入口在候选列表恢复后开放。</p>
+          <button data-agent-memory-candidate-retry class="text-action warning-text" @click="loadCandidates">重新读取候选 →</button>
+        </div>
+        <template v-else>
+          <div class="list-heading"><h2>MEMORY CANDIDATES&nbsp; {{ String(candidates.length).padStart(2, '0') }}</h2><span>CREATED DESC ↓</span></div>
+          <div v-if="candidates.length === 0" class="state-card compact" role="status">
+            <p class="state-code success">EMPTY</p><h2>还没有记忆候选</h2><p>已审核且未晋升的候选会出现在这里，可直接写成长期记忆。</p>
+          </div>
+          <div v-else class="candidate-list">
+            <article v-for="item in candidates" :key="item.candidateId" class="memory-card" :data-agent-memory-candidate-id="item.candidateId">
+              <div class="card-top">
+                <div>
+                  <h3>{{ item.summary }}</h3>
+                  <p class="mono">{{ item.status.toUpperCase() }}<template v-if="item.reviewId"> · REVIEW {{ item.reviewId }}</template></p>
+                </div>
+                <span class="status-pill" :class="candidateStatusClass(item)"><i />{{ candidateStatusLabel(item) }}</span>
+              </div>
+              <div class="card-bottom">
+                <span class="mono">OBS {{ item.observedAtUnixMs }}</span>
+                <button v-if="canPromote(item)" :data-agent-memory-candidate-promote="item.candidateId" class="text-action" :disabled="busy" @click="promote(item)">晋升 →</button>
+                <span v-else-if="item.promotedMemoryId" class="audit-copy">已晋升 {{ item.promotedMemoryId }}</span>
+                <span v-else-if="item.status === 'pending'" class="audit-copy">等待审核</span>
+              </div>
+            </article>
+            <button v-if="candidateNextCursor" class="load-more" :disabled="busy" @click="loadMoreCandidates">加载下一页候选 →</button>
+          </div>
+        </template>
+
+        <div v-if="memories.length === 0" class="state-card" role="status">
+          <p class="state-code success">EMPTY</p><h2>还没有长期记忆</h2><p>当前不会自动生成 Observation 或 Reflection。</p>
+        </div>
+
+        <template v-else>
         <div class="list-heading"><h2>MEMORY RECORDS&nbsp; {{ String(memories.length).padStart(2, '0') }}</h2><span>CREATED DESC ↓</span></div>
         <div class="content-grid">
           <div class="memory-list">
@@ -78,6 +108,7 @@
             <div v-else class="correction-boundary"><strong>版本化纠正默认关闭</strong><br>当前不允许原地覆盖；显式启用后才开放追加纠正版本。</div>
           </aside>
         </div>
+        </template>
       </template>
     </main>
 
@@ -122,7 +153,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { agentMemoryClient, type AgentMemory, type AgentMemoryClient } from '@/api/agentMemories'
+import { agentMemoryClient, type AgentMemory, type AgentMemoryCandidate, type AgentMemoryClient } from '@/api/agentMemories'
 import { agentFlags, agentTaskRunTarget } from '@/config/agentFlags'
 
 const props = withDefaults(defineProps<{ client?: AgentMemoryClient, correctionEnabled?: boolean }>(), {
@@ -134,11 +165,14 @@ const nav = {
   subscriptions: agentFlags.subscriptions,
   taskRun: agentTaskRunTarget(),
 }
-type ViewState = 'loading' | 'ready' | 'unavailable' | 'revoking' | 'correcting' | 'conflict'
+type ViewState = 'loading' | 'ready' | 'unavailable' | 'revoking' | 'correcting' | 'promoting' | 'conflict'
 type DialogMode = 'revoke' | 'correct'
 const viewState = ref<ViewState>('loading')
 const memories = ref<AgentMemory[]>([])
 const nextCursor = ref('')
+const candidates = ref<AgentMemoryCandidate[]>([])
+const candidateNextCursor = ref('')
+const candidateError = ref(false)
 const selected = ref<AgentMemory>()
 const dialogMode = ref<DialogMode>()
 const reason = ref('')
@@ -148,13 +182,13 @@ const correctionContent = ref('')
 const correctionCompact = ref('')
 const correctionContentInput = ref<HTMLTextAreaElement>()
 const correctionEnabled = computed(() => props.correctionEnabled)
-const busy = computed(() => viewState.value === 'loading' || viewState.value === 'revoking' || viewState.value === 'correcting')
+const busy = computed(() => viewState.value === 'loading' || viewState.value === 'revoking' || viewState.value === 'correcting' || viewState.value === 'promoting')
 
 onMounted(() => load(false))
 
 async function load(reset: boolean) {
   viewState.value = 'loading'
-  if (reset) { memories.value = []; nextCursor.value = '' }
+  if (reset) { memories.value = []; nextCursor.value = ''; candidates.value = []; candidateNextCursor.value = ''; candidateError.value = false }
   try {
     const page = await props.client.list('', 50)
     memories.value = page.memories
@@ -163,8 +197,13 @@ async function load(reset: boolean) {
   } catch {
     memories.value = []
     nextCursor.value = ''
+    candidates.value = []
+    candidateNextCursor.value = ''
+    candidateError.value = false
     viewState.value = 'unavailable'
+    return
   }
+  await loadCandidates()
 }
 
 async function loadMore() {
@@ -182,6 +221,70 @@ async function loadMore() {
     nextCursor.value = ''
     viewState.value = 'unavailable'
   }
+}
+
+async function loadCandidates() {
+  try {
+    const page = await props.client.listCandidates('', 50)
+    candidates.value = page.candidates
+    candidateNextCursor.value = page.nextCursor
+    candidateError.value = false
+  } catch {
+    candidates.value = []
+    candidateNextCursor.value = ''
+    candidateError.value = true
+  }
+}
+
+async function loadMoreCandidates() {
+  if (!candidateNextCursor.value || busy.value) return
+  viewState.value = 'loading'
+  try {
+    const page = await props.client.listCandidates(candidateNextCursor.value, 50)
+    const seen = new Set(candidates.value.map(item => item.candidateId))
+    if (page.candidates.some(item => seen.has(item.candidateId))) throw new Error('duplicate Agent Memory candidate page')
+    candidates.value.push(...page.candidates)
+    candidateNextCursor.value = page.nextCursor
+    viewState.value = 'ready'
+  } catch {
+    candidates.value = []
+    candidateNextCursor.value = ''
+    candidateError.value = true
+    viewState.value = 'ready'
+  }
+}
+
+async function promote(item: AgentMemoryCandidate) {
+  if (!canPromote(item) || busy.value || !item.reviewId) return
+  viewState.value = 'promoting'
+  try {
+    const authoritative = await props.client.promoteCandidate(item.candidateId, item.candidateSha256, item.reviewId)
+    const index = candidates.value.findIndex(row => row.candidateId === item.candidateId)
+    if (index < 0 || authoritative.status !== 'active' || authoritative.provenance.sourceId !== item.candidateId) throw new Error('invalid authoritative promotion')
+    candidates.value[index] = { ...item, promotedMemoryId: authoritative.memoryId }
+    if (!memories.value.some(row => row.memoryId === authoritative.memoryId)) {
+      memories.value = [authoritative, ...memories.value]
+    }
+    viewState.value = 'ready'
+  } catch {
+    viewState.value = 'conflict'
+  }
+}
+
+function canPromote(item: AgentMemoryCandidate) {
+  return item.status === 'accepted' && !!item.reviewId && !item.promotedMemoryId
+}
+
+function candidateStatusLabel(item: AgentMemoryCandidate) {
+  if (item.promotedMemoryId) return 'PROMOTED'
+  if (item.status === 'accepted' && item.reviewId) return 'READY TO PROMOTE'
+  if (item.status === 'rejected') return 'REJECTED'
+  return 'WAITING REVIEW'
+}
+
+function candidateStatusClass(item: AgentMemoryCandidate) {
+  if (item.status === 'rejected') return 'status-danger'
+  return 'status-warning'
 }
 
 function openRevoke(item: AgentMemory) {
@@ -281,7 +384,7 @@ function statusClass(item: AgentMemory) { return inactive(item) ? 'status-danger
 
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@500;700&family=Manrope:wght@500;700;800&family=Noto+Sans+SC:wght@400;600;700&display=swap');
-.memory-shell{--ink:var(--dp-ink);--muted:var(--dp-ink-soft);--line:var(--dp-line);--panel:var(--dp-surface);--app:var(--dp-canvas);--rail:var(--dp-rail);--green:var(--dp-rail);--green-soft:var(--dp-agent-soft);--amber:var(--dp-warning);--amber-soft:var(--dp-warning-soft);--red:var(--dp-danger);--red-soft:var(--dp-danger-soft);min-height:100vh;background:var(--app);color:var(--ink);display:grid;grid-template-columns:256px 1fr;font-family:"Noto Sans SC",sans-serif}.control-rail{background:var(--rail);color:var(--dp-ink-faint);padding:34px 26px;display:flex;flex-direction:column;gap:20px}.brand{font:800 19px Manrope,sans-serif;letter-spacing:.12em;display:flex;align-items:center;gap:12px}.brand>span{width:12px;height:12px;border-radius:50%;background:var(--dp-agent)}.rail-kicker,.rail-boundary,.mono,.state-code{font-family:"Geist Mono",monospace}.rail-kicker{font-size:10px;color:var(--dp-ink-faint);letter-spacing:.12em;margin-top:8px}.rail-active,.rail-item{border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:center;font-size:13px}.rail-active{background:var(--dp-rail-soft);color:var(--dp-text-inverse);font-weight:700}.rail-item{color:var(--dp-ink-faint)}.rail-boundary{margin-top:auto;font-size:9px;line-height:1.9;color:var(--dp-ink-faint)}.memory-main{padding:36px 42px 64px;max-width:1420px;width:100%;margin:auto}.page-header{display:flex;justify-content:space-between;align-items:center;gap:24px}.eyebrow{color:var(--green);font:700 10px "Geist Mono",monospace;letter-spacing:.1em}.page-header h1{font:800 38px Manrope,sans-serif;letter-spacing:-.04em;margin:7px 0}.subtitle{color:var(--muted);font-size:13px}.auto-status{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 15px;font:10px "Geist Mono",monospace;color:var(--muted)}.trust-notice{margin:26px 0;background:var(--amber-soft);border-radius:11px;padding:14px 17px;display:flex;gap:18px;align-items:center;font-size:12px}.trust-notice strong{color:var(--amber);font:700 10px "Geist Mono",monospace;white-space:nowrap}.state-card{max-width:720px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:32px;margin:70px auto}.state-card h2{font:700 25px Manrope,sans-serif;margin:8px 0}.state-card>p:not(.state-code){color:var(--muted)}.state-card.danger{background:var(--red-soft);border-left:5px solid var(--red)}.state-card.warning{background:var(--amber-soft);border-left:5px solid var(--amber)}.state-code{font-size:10px;font-weight:700;color:var(--red)}.state-code.success{color:var(--green)}.spinner{display:block;width:24px;height:24px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.list-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.list-heading h2{font:700 11px "Geist Mono",monospace;color:var(--dp-ink-soft);letter-spacing:.08em}.list-heading span{font:700 9px "Geist Mono",monospace;color:var(--dp-ink-faint)}.content-grid{display:grid;grid-template-columns:minmax(0,1fr) 348px;gap:24px}.memory-list{display:grid;gap:14px}.memory-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px}.memory-card.inactive{opacity:.7}.card-top,.card-bottom{display:flex;justify-content:space-between;align-items:center;gap:18px}.card-top h3{font:800 17px Manrope,sans-serif;margin:0;max-width:560px}.mono{font-size:9px;color:var(--dp-ink-faint);margin-top:6px}.status-pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:9px 12px;font:700 9px "Geist Mono",monospace;white-space:nowrap}.status-pill i{width:7px;height:7px;border-radius:50%;background:currentColor}.status-warning{background:var(--amber-soft);color:var(--amber)}.status-danger{background:var(--red-soft);color:var(--red)}.preview{color:var(--muted);font-size:12px;line-height:1.6;margin:17px 0}.card-actions{display:flex;gap:14px}.text-action,.load-more{border:0;background:transparent;color:var(--green);font:700 11px inherit;cursor:pointer}.audit-copy{font-size:11px;color:var(--muted)}.authority-panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:23px;height:max-content}.authority-panel h2{font:800 21px Manrope,sans-serif;margin:8px 0}.authority-panel>p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.7}.authority-panel dl{display:grid;grid-template-columns:80px 1fr;gap:10px;padding:18px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:18px 0}.authority-panel dt{font:700 9px "Geist Mono",monospace;color:var(--dp-ink-faint)}.authority-panel dd{margin:0;font:600 10px "Geist Mono",monospace}.correction-boundary{background:var(--amber-soft);border-radius:10px;padding:14px;font-size:10px;line-height:1.6;color:var(--muted)}.correction-boundary strong{color:var(--amber)}.correction-boundary.enabled{background:var(--green-soft)}.correction-boundary.enabled strong{color:var(--green)}.dialog-backdrop{position:fixed;inset:0;background:rgba(11,20,17,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}.revoke-dialog{width:min(560px,calc(100% - 32px));background:var(--panel);border-radius:22px 22px 0 0;padding:18px 26px 28px}.sheet-handle{width:42px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 20px}.revoke-dialog h2{font:800 25px Manrope,sans-serif;margin:7px 0}.revoke-dialog>p:not(.eyebrow):not(.field-error){color:var(--muted);line-height:1.6}.revoke-dialog label{display:block;color:var(--dp-ink-faint);font:700 9px "Geist Mono",monospace;margin:20px 0 7px}.revoke-dialog textarea{width:100%;min-height:86px;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--dp-surface-muted);padding:12px;font:inherit}.correction-dialog{max-height:92vh;overflow:auto}.correction-dialog textarea{min-height:68px}.field-error,.danger-text{color:var(--red)}.warning-text{color:var(--amber)}.dialog-actions{display:flex;gap:10px;margin-top:20px}.dialog-actions button{flex:1;min-height:46px;border:0;border-radius:12px;font:700 13px inherit}.cancel-button{background:var(--dp-surface-muted);color:var(--ink)}.confirm-button{background:var(--red);color:white}.correction-button{background:var(--green);color:white}button:disabled{opacity:.6}.revoke-dialog textarea:focus-visible,button:focus-visible{outline:3px solid color-mix(in srgb, var(--dp-accent) 30%, transparent);outline-offset:3px}
+.memory-shell{--ink:var(--dp-ink);--muted:var(--dp-ink-soft);--line:var(--dp-line);--panel:var(--dp-surface);--app:var(--dp-canvas);--rail:var(--dp-rail);--green:var(--dp-rail);--green-soft:var(--dp-agent-soft);--amber:var(--dp-warning);--amber-soft:var(--dp-warning-soft);--red:var(--dp-danger);--red-soft:var(--dp-danger-soft);min-height:100vh;background:var(--app);color:var(--ink);display:grid;grid-template-columns:256px 1fr;font-family:"Noto Sans SC",sans-serif}.control-rail{background:var(--rail);color:var(--dp-ink-faint);padding:34px 26px;display:flex;flex-direction:column;gap:20px}.brand{font:800 19px Manrope,sans-serif;letter-spacing:.12em;display:flex;align-items:center;gap:12px}.brand>span{width:12px;height:12px;border-radius:50%;background:var(--dp-agent)}.rail-kicker,.rail-boundary,.mono,.state-code{font-family:"Geist Mono",monospace}.rail-kicker{font-size:10px;color:var(--dp-ink-faint);letter-spacing:.12em;margin-top:8px}.rail-active,.rail-item{border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:center;font-size:13px}.rail-active{background:var(--dp-rail-soft);color:var(--dp-text-inverse);font-weight:700}.rail-item{color:var(--dp-ink-faint)}.rail-boundary{margin-top:auto;font-size:9px;line-height:1.9;color:var(--dp-ink-faint)}.memory-main{padding:36px 42px 64px;max-width:1420px;width:100%;margin:auto}.page-header{display:flex;justify-content:space-between;align-items:center;gap:24px}.eyebrow{color:var(--green);font:700 10px "Geist Mono",monospace;letter-spacing:.1em}.page-header h1{font:800 38px Manrope,sans-serif;letter-spacing:-.04em;margin:7px 0}.subtitle{color:var(--muted);font-size:13px}.auto-status{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 15px;font:10px "Geist Mono",monospace;color:var(--muted)}.trust-notice{margin:26px 0;background:var(--amber-soft);border-radius:11px;padding:14px 17px;display:flex;gap:18px;align-items:center;font-size:12px}.trust-notice strong{color:var(--amber);font:700 10px "Geist Mono",monospace;white-space:nowrap}.state-card{max-width:720px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:32px;margin:70px auto}.state-card.compact{margin:0 0 24px;padding:22px}.candidate-list{display:grid;gap:14px;margin-bottom:28px}.state-card h2{font:700 25px Manrope,sans-serif;margin:8px 0}.state-card>p:not(.state-code){color:var(--muted)}.state-card.danger{background:var(--red-soft);border-left:5px solid var(--red)}.state-card.warning{background:var(--amber-soft);border-left:5px solid var(--amber)}.state-code{font-size:10px;font-weight:700;color:var(--red)}.state-code.success{color:var(--green)}.spinner{display:block;width:24px;height:24px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.list-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.list-heading h2{font:700 11px "Geist Mono",monospace;color:var(--dp-ink-soft);letter-spacing:.08em}.list-heading span{font:700 9px "Geist Mono",monospace;color:var(--dp-ink-faint)}.content-grid{display:grid;grid-template-columns:minmax(0,1fr) 348px;gap:24px}.memory-list{display:grid;gap:14px}.memory-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px}.memory-card.inactive{opacity:.7}.card-top,.card-bottom{display:flex;justify-content:space-between;align-items:center;gap:18px}.card-top h3{font:800 17px Manrope,sans-serif;margin:0;max-width:560px}.mono{font-size:9px;color:var(--dp-ink-faint);margin-top:6px}.status-pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:9px 12px;font:700 9px "Geist Mono",monospace;white-space:nowrap}.status-pill i{width:7px;height:7px;border-radius:50%;background:currentColor}.status-warning{background:var(--amber-soft);color:var(--amber)}.status-danger{background:var(--red-soft);color:var(--red)}.preview{color:var(--muted);font-size:12px;line-height:1.6;margin:17px 0}.card-actions{display:flex;gap:14px}.text-action,.load-more{border:0;background:transparent;color:var(--green);font:700 11px inherit;cursor:pointer}.audit-copy{font-size:11px;color:var(--muted)}.authority-panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:23px;height:max-content}.authority-panel h2{font:800 21px Manrope,sans-serif;margin:8px 0}.authority-panel>p:not(.eyebrow){color:var(--muted);font-size:12px;line-height:1.7}.authority-panel dl{display:grid;grid-template-columns:80px 1fr;gap:10px;padding:18px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:18px 0}.authority-panel dt{font:700 9px "Geist Mono",monospace;color:var(--dp-ink-faint)}.authority-panel dd{margin:0;font:600 10px "Geist Mono",monospace}.correction-boundary{background:var(--amber-soft);border-radius:10px;padding:14px;font-size:10px;line-height:1.6;color:var(--muted)}.correction-boundary strong{color:var(--amber)}.correction-boundary.enabled{background:var(--green-soft)}.correction-boundary.enabled strong{color:var(--green)}.dialog-backdrop{position:fixed;inset:0;background:rgba(11,20,17,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}.revoke-dialog{width:min(560px,calc(100% - 32px));background:var(--panel);border-radius:22px 22px 0 0;padding:18px 26px 28px}.sheet-handle{width:42px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 20px}.revoke-dialog h2{font:800 25px Manrope,sans-serif;margin:7px 0}.revoke-dialog>p:not(.eyebrow):not(.field-error){color:var(--muted);line-height:1.6}.revoke-dialog label{display:block;color:var(--dp-ink-faint);font:700 9px "Geist Mono",monospace;margin:20px 0 7px}.revoke-dialog textarea{width:100%;min-height:86px;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--dp-surface-muted);padding:12px;font:inherit}.correction-dialog{max-height:92vh;overflow:auto}.correction-dialog textarea{min-height:68px}.field-error,.danger-text{color:var(--red)}.warning-text{color:var(--amber)}.dialog-actions{display:flex;gap:10px;margin-top:20px}.dialog-actions button{flex:1;min-height:46px;border:0;border-radius:12px;font:700 13px inherit}.cancel-button{background:var(--dp-surface-muted);color:var(--ink)}.confirm-button{background:var(--red);color:white}.correction-button{background:var(--green);color:white}button:disabled{opacity:.6}.revoke-dialog textarea:focus-visible,button:focus-visible{outline:3px solid color-mix(in srgb, var(--dp-accent) 30%, transparent);outline-offset:3px}
 .memory-shell { --ink: var(--dp-ink); --muted: var(--dp-ink-soft); --line: var(--dp-line); --panel: var(--dp-surface); --app: var(--dp-canvas); --rail: var(--dp-rail); --green: var(--dp-rail); --green-soft: var(--dp-agent-soft); --amber: var(--dp-warning); --amber-soft: var(--dp-warning-soft); --red: var(--dp-danger); --red-soft: var(--dp-danger-soft); font-family: var(--dp-font-body); }
 .memory-shell .brand, .memory-shell h1, .memory-shell h2, .memory-shell h3 { font-family: var(--dp-font-display); }
 .memory-shell .rail-kicker, .memory-shell .rail-boundary, .memory-shell .mono, .memory-shell .state-code { font-family: var(--dp-font-data); }

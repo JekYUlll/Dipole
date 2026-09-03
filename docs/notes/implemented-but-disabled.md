@@ -60,4 +60,5 @@ Search、预签名、Sync、Elicitation、Approval、Timeline、Task Create、Ar
 1. ~~Workflow Repair Execute~~：已挂到默认关的 Core 启动链。
 2. ~~MCP Elicitation continuation~~：已随 `external_mcp_shadow` 进入生产 Worker；第一方 Timeline 入口已挂。
 3. 可 opt-in 项只补门禁/证据，不改默认。AD-036 剩余多轮与敏感授权。
-4. ~~Owner 任务收件箱~~：`GET /api/v1/agent/tasks` + Vue `/agent/tasks` 已齐，随 Task Control / Timeline 开关。下一步是 waiting 通知，其次是 memory candidate 列表。
+4. ~~Owner 任务收件箱~~：`GET /api/v1/agent/tasks` + Vue `/agent/tasks` 已齐，随 Task Control / Timeline 开关。
+5. ~~Owner 记忆候选列表~~：Gateway API 已齐；记忆页晋升入口已挂，随 `VITE_AGENT_MEMORIES_ENABLED`。下一步是 waiting 通知前端消费，其次是产物收件箱页。

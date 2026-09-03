@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：记忆页接上已有 owner 候选列表，accepted 且带 reviewId 的行可直接晋升。
+  - Vue `/agent/memories` 读取 `GET /api/v1/agent/memory-candidates`，用列表返回的 sha256 与 reviewId 调用既有 promote。
+  - 无 review 的 pending 行只展示「等待审核」。生产 `VITE_*` 仍默认关。
+
 - 2026-09-03：Agent 等待输入/审批现可通过 Kafka 与跨节点 WebSocket 向任务 owner 发送实时 locator。
   - Core 在可信 Runtime workflow projection 落库后，仅对 `waiting_input` / `waiting_approval` 发布 `agent.task.waiting`，事件包含 owner、task、等待类型和 revision，不含目标文本、模型内容、表单或审批参数。
   - Gateway 消费该事件并复用 Presence + Pub/Sub WebSocket 路由发送 `agent_task_waiting`；客户端收到后必须通过现有认证 Task API 补拉详情，Task Inbox 保持权威恢复路径。

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseAgentMemoryPage, parseAgentMemoryResponse } from './agentMemories'
+import { parseAgentMemoryCandidatePage, parseAgentMemoryPage, parseAgentMemoryResponse } from './agentMemories'
 
 const active = {
   memoryId: 'MEM-1', agentId: 'UAI', memoryType: 'semantic', status: 'active',
@@ -34,5 +34,22 @@ describe('Agent Memory response parser', () => {
     expect(parseAgentMemoryResponse(corrected)).toMatchObject({ memoryVersion: 2, supersedesMemoryId: 'MEM-1' })
     expect(() => parseAgentMemoryResponse({ ...corrected, supersedesMemoryId: 'MEM-X' })).toThrow(/lineage/i)
     expect(() => parseAgentMemoryResponse({ ...active, memoryVersion: 2 })).toThrow(/lineage/i)
+  })
+
+  it('accepts owned candidates with optional review and rejects injected fields', () => {
+    const candidate = {
+      candidateId: 'CAND-1', candidateSha256: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      summary: 'API v2 Friday', status: 'accepted', reviewId: 'REV-1', observedAtUnixMs: 1_000,
+    }
+    expect(parseAgentMemoryCandidatePage({ candidates: [candidate], nextCursor: '' })).toMatchObject({
+      candidates: [{ candidateId: 'CAND-1', reviewId: 'REV-1' }],
+    })
+    expect(parseAgentMemoryCandidatePage({
+      candidates: [{ candidateId: 'CAND-2', candidateSha256: candidate.candidateSha256, summary: 'later', status: 'pending', observedAtUnixMs: 2_000 }],
+      nextCursor: '',
+    }).candidates[0].status).toBe('pending')
+    expect(() => parseAgentMemoryCandidatePage({ candidates: [{ ...candidate, principalUserId: 'U999' }], nextCursor: '' })).toThrow(/shape/i)
+    expect(() => parseAgentMemoryCandidatePage({ candidates: [{ ...candidate, candidateSha256: 'ZZ' }], nextCursor: '' })).toThrow(/digest/i)
+    expect(() => parseAgentMemoryCandidatePage({ candidates: [{ ...candidate, reviewId: undefined }], nextCursor: '' })).toThrow(/review/i)
   })
 })
