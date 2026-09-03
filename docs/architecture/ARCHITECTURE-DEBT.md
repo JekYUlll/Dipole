@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：Interactive Shadow Compose smoke 已在 `bdacc817` 完成真实权限内的只读两步轨迹：认证 owner 的 Gateway Task 幂等、跨 owner 查询拒绝、`conversation.list → conversation.read`、Task/Run completed 与零 Agent 消息写入均在隔离 Remote GPU project 以 `0` 验证，容器已清理，公共 `dipole-experience` 为 11 个健康容器。多会话选择与 `waiting_input` 的持久化恢复仍由 Temporal 集成回归和既有 read-scope receipt 覆盖；真实 Provider 已证实可调用，但规划路径具有模型非确定性，仍需固定样本和人工评审后才能提出质量或成功率结论。
+
 - 2026-09-04：当前主线 `4d48a9d3` 已在全新、隔离的 Agent Interactive Active Compose project 复跑确定性 `/send` 验收并以 `0` 退出：owner WebSocket 收到 waiting locator，拒绝无持久副作用，Worker 重启后的重复批准仅产生一次 Tool invocation、一条 Agent 消息和两条 Sync Inbox 投影。验收容器已清理，公共 `dipole-experience` 仍为 11 个健康容器。该证据仅覆盖开发期窄写入路径；默认公开 authority、浏览器 HITL、外部 OAuth/MCP 写入、共享租户、容量和任务成功率仍未成立。
 
 - 2026-09-04：Remote GPU 隔离 Web Sync observability smoke 在首次拉取 Prometheus 镜像时出现无进度下载，公共 `dipole-experience` 未受影响且隔离 project 已清理。smoke 现将 `up --wait` 限定为 30 至 1800 秒的可配置时限，默认 300 秒；超时只结束本次隔离验收并执行既有清理，不修改 Docker daemon、入口隧道、公共 Compose project 或客户端默认模式。该治理减少验证任务长期占用，Prometheus/Alertmanager 完整 smoke 与真实 24 小时观察窗口仍待可用镜像源和独立运行证据。

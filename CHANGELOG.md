@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：收紧 Interactive Agent 只读 Compose Smoke，使其覆盖真实权限内的两步读取轨迹。
+  - 本地桩模型固定生成 `conversation.list → conversation.read`，Smoke 以认证 owner 的 Agent 私聊作为唯一可读会话，验证幂等创建、跨 owner 拒绝、两条已完成 Shadow Step 与零 Agent 消息写入。
+  - Remote GPU 在 `bdacc817` 通过 Node 22 typecheck、18 项 Planner 测试及隔离 Compose smoke；项目容器自动清理，公共 `dipole-experience` 保持 11 个健康容器。真实 Provider 已验证调用可达，但其规划输出仍属于非确定性行为，不以本回执推导模型质量或成功率。
+
 - 2026-09-04：复跑当前主线的 Agent Interactive Active 隔离验收。
   - Remote GPU 在 `4d48a9d3` 的全新隔离 Compose project 中复验 `/send`：owner WebSocket 收到等待定位，拒绝路径保持零副作用，Worker 重启后的重复批准精确收敛为一次 Tool invocation、一条 Agent 消息与两条 Sync Inbox 投影，smoke 退出码为 `0`。
   - 验收清理后无该隔离项目容器，公共 `dipole-experience` 保持 11 个健康容器。该回执只覆盖开发期窄写入闭环，默认公开 authority、浏览器审批、外部 OAuth/MCP 写入与性能结论继续关闭。
