@@ -258,15 +258,19 @@ function parseAgentTaskTimelineEvent(raw: unknown): AgentTaskTimelineEvent {
       typeof raw.kind !== 'string' || raw.kind.length === 0 || raw.kind.length > 64 || typeof raw.status !== 'string' ||
       raw.status.length === 0 || raw.status.length > 64 || !Number.isSafeInteger(raw.occurredAtUnixMs) ||
       (raw.occurredAtUnixMs as number) <= 0) throw new Error('Agent Task Timeline event is invalid')
-  if (raw.capabilityId !== undefined && !validIdentity(raw.capabilityId)) throw new Error('Agent Task Timeline capability is invalid')
-  if (raw.approvalId !== undefined && !validIdentity(raw.approvalId)) throw new Error('Agent Task Timeline approval is invalid')
-  if (raw.artifactId !== undefined && (typeof raw.artifactId !== 'string' || raw.kind !== 'artifact' || !/^[a-f0-9]{64}$/.test(raw.artifactId))) throw new Error('Agent Task Timeline Artifact is invalid')
+  // Backend may emit empty strings for absent optional identifiers; treat them as undefined.
+  const capabilityId = typeof raw.capabilityId === 'string' && raw.capabilityId.length > 0 ? raw.capabilityId : undefined
+  const approvalId = typeof raw.approvalId === 'string' && raw.approvalId.length > 0 ? raw.approvalId : undefined
+  const artifactId = typeof raw.artifactId === 'string' && raw.artifactId.length > 0 ? raw.artifactId : undefined
+  if (capabilityId !== undefined && !validIdentity(capabilityId)) throw new Error('Agent Task Timeline capability is invalid')
+  if (approvalId !== undefined && !validIdentity(approvalId)) throw new Error('Agent Task Timeline approval is invalid')
+  if (artifactId !== undefined && (raw.kind !== 'artifact' || !/^[a-f0-9]{64}$/.test(artifactId))) throw new Error('Agent Task Timeline Artifact is invalid')
   return {
     eventSeq: raw.eventSeq as string, eventId: raw.eventId as string, taskId: raw.taskId as string, runId: raw.runId as string,
     kind: raw.kind as string, status: raw.status as string,
-    ...(raw.capabilityId === undefined ? {} : { capabilityId: raw.capabilityId as string }),
-    ...(raw.approvalId === undefined ? {} : { approvalId: raw.approvalId as string }),
-    ...(raw.artifactId === undefined ? {} : { artifactId: raw.artifactId as string }),
+    ...(capabilityId === undefined ? {} : { capabilityId }),
+    ...(approvalId === undefined ? {} : { approvalId }),
+    ...(artifactId === undefined ? {} : { artifactId }),
     occurredAtUnixMs: raw.occurredAtUnixMs as number,
   }
 }
