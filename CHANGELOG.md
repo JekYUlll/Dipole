@@ -1,5 +1,28 @@
 # 更新日志
 
+- 2026-09-03：修复 chunked Agent Task 取消请求丢失原因的问题。
+  - Gateway 对未知 `Content-Length` 的取消 JSON 现会在同一 `4 KiB` 上限内解析并转发原因；空 body 与超限 body 的既有行为不变。
+
+- 2026-09-03：统一 Agent Task 写入口的请求体边界。
+  - 取消与审批接口现与创建、输入接口一致，在 JSON 解码前限制 `4 KiB` body；超限请求以 `400` 结束且不会调用 Runtime。
+
+- 2026-09-03：收口 Gateway Agent Memory 的 HTTP 控制面实现。
+  - 列表、候选审核、撤销、更正与晋升 handler 已从通用 `server.go` 迁至 `agent_memory_handler.go`；既有路由、严格输入校验、owner scope 和错误映射保持不变。
+
+- 2026-09-03：完成兼容层说明的后端治理勘误。
+  - 架构索引已移除已退役的 `internal/compat/service` 与 `internal/data/mysql/repository` 描述，并标明共享 Gin handler 当前仅服务于 Core embedded 回滚路径。
+
+- 2026-09-03：将 Gateway Message HTTP handler 收口到服务边界。
+  - 独立 Gateway 的单聊、群聊与旧离线消息读取路由现由 `internal/services/gateway/server` 专属 handler 处理，保留 `before_id`、`before_seq`、`after_id`、`after_seq` 的兼容语义。
+  - Core embedded 继续持有共享 handler 作为回滚实现；结构门禁将阻止独立 Gateway 再次装配该兼容实现。
+
+- 2026-09-03：移除 Gateway 对共享 HTTP handler 的最后一处生产依赖。
+  - Search handler 改用 Gateway 自有响应封装；结构门禁覆盖整个 Gateway server 目录，防止后续资源域重新导入 `internal/gateway/http`。
+
+- 2026-09-03：将 Gateway Sync HTTP handler 收口到服务边界。
+  - 独立 Gateway 的 `/sync`、设备 checkpoint、群 checkpoint 与 comparison 路由现由 `internal/services/gateway/server` 专属 handler 处理，协议和默认行为保持不变。
+  - Core embedded 回滚路径暂保留共享 handler；结构门禁禁止 Gateway 回流到该兼容实现，后续按资源域继续迁移其余公共 HTTP handler。
+
 - 2026-09-03：恢复 Cassandra 缺行回退的双向集成覆盖。
   - 隔离 read-routing smoke 现在同时验证 `after_seq` 和 `before_seq` 页面在 Cassandra Timeline 缺行时回退 MySQL，避免基准夹具重构缩窄原有集成断言。
 

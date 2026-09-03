@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/middleware"
 	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/cache"
 	coreauth "github.com/JekYUlll/Dipole/internal/services/core/domain/auth"
@@ -144,10 +146,10 @@ func (s *gatewayAgentDefinitionStub) CreateDefinition(_ context.Context, princip
 }
 
 type gatewayAgentMemoryStub struct {
-	principal, after, memoryID, reason                        string
-	content, compactContent                                   string
-	targetMemoryType                                          string
-	expectedVersion                                           uint32
+	principal, after, memoryID, reason                                     string
+	content, compactContent                                                string
+	targetMemoryType                                                       string
+	expectedVersion                                                        uint32
 	limit, listCalls, revokeCalls, correctCalls, promoteCalls, reviewCalls int
 }
 
@@ -830,6 +832,55 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 	gateway.Engine().ServeHTTP(startResponse, startRequest)
 	if startResponse.Code != http.StatusAccepted || tasks.principal != "U100" || tasks.clientRequestID != "client-1" || tasks.goal != "Summarize unread work" {
 		t.Fatalf("interactive Agent Task: code=%d tasks=%+v body=%s", startResponse.Code, tasks, startResponse.Body.String())
+	}
+}
+
+func TestAgentTaskControlHandlersRejectOversizedJSONBeforeRuntime(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		path    string
+		body    string
+		handler func(AgentTaskControlApplication) gin.HandlerFunc
+	}{
+		{
+			name: "cancel", path: "/api/v1/agent/tasks/TASK-1/cancel",
+			body:    `{"reason":"` + strings.Repeat("x", 4096) + `"}`,
+			handler: agentTaskCancelHandler,
+		},
+		{
+			name: "approval", path: "/api/v1/agent/tasks/TASK-1/approvals/APR-1",
+			body:    `{"decision":"approved","padding":"` + strings.Repeat("x", 4096) + `"}`,
+			handler: agentTaskApprovalHandler,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			tasks := &gatewayAgentTaskStub{}
+			recorder := httptest.NewRecorder()
+			context, _ := gin.CreateTestContext(recorder)
+			context.Request = httptest.NewRequest(http.MethodPost, test.path, strings.NewReader(test.body))
+			context.Params = gin.Params{{Key: "task_id", Value: "TASK-1"}, {Key: "approval_id", Value: "APR-1"}}
+			context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+			test.handler(tasks)(context)
+			if recorder.Code != http.StatusBadRequest || tasks.principal != "" {
+				t.Fatalf("oversized %s reached Runtime: code=%d tasks=%+v", test.name, recorder.Code, tasks)
+			}
+		})
+	}
+}
+
+func TestAgentTaskCancelHandlerReadsChunkedReason(t *testing.T) {
+	tasks := &gatewayAgentTaskStub{}
+	recorder := httptest.NewRecorder()
+	context, _ := gin.CreateTestContext(recorder)
+	context.Request = httptest.NewRequest(http.MethodPost, "/api/v1/agent/tasks/TASK-1/cancel", strings.NewReader(`{"reason":"defer until tomorrow"}`))
+	context.Request.ContentLength = -1 // Chunked requests have no known body length.
+	context.Params = gin.Params{{Key: "task_id", Value: "TASK-1"}}
+	context.Set(middleware.ContextUserKey, &model.User{UUID: "U100"})
+
+	agentTaskCancelHandler(tasks)(context)
+	if recorder.Code != http.StatusAccepted || tasks.principal != "U100" || tasks.taskID != "TASK-1" || tasks.reason != "defer until tomorrow" {
+		t.Fatalf("chunked cancellation: code=%d tasks=%+v", recorder.Code, tasks)
 	}
 }
 

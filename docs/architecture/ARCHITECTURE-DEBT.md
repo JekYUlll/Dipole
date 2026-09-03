@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：Gateway 已拥有 Sync HTTP handler，独立进程不再通过共享 `internal/gateway/http` 装配 `/sync`、设备与群 checkpoint、comparison 路由。Core embedded 仍使用共享 handler 作为本地回滚兼容层；Message、Core 资源域 handler 的同类迁移需按域切片，不能在未完成 Web Sync 观察窗口时删除旧 Offline 兼容 API。
+
 - 2026-09-03：Cassandra read-routing 集成 smoke 的缺行回退已恢复双向断言：`after_seq` 与 `before_seq` 都必须返回 MySQL 页面。此前基准夹具重构期间只保留 `after_seq` 集成检查，虽有单元覆盖，仍缺真实存储组合证据；本次补齐后默认主读比例和回退语义不变。
 
 - 2026-09-03：已在隔离 Remote GPU 上采集第一份 Timeline Reader 基线，详见 [`cassandra-timeline-reader-2026-09-03`](../../benchmarks/cassandra-timeline-reader-2026-09-03/)。100 条连续消息、每 reader 1 秒的 Go benchmark 得到 SQLC/MySQL `696874 ns/op`、Cassandra `2391275 ns/op`；同次 smoke 实际覆盖 Cassandra 页面读取、payload mismatch 与缺行回退。结果只代表该主机的串行吞吐型样本，尚未覆盖并发、page-size sweep、端到端或 P99，简历性能占位符继续保留。
@@ -1828,3 +1830,15 @@
 
 - **2026-08-30 兼容性补充：** promotion receipt v2 将 observational candidate 与显式目标类型一起绑定至 canonical hash；历史 v1 receipt 保持原语义可读，但因没有目标类型而在 replay 阶段 fail-closed。External MCP Shadow 对 partial enablement 增加零进程启动回归，默认关闭路径继续不构造 Worker、RPC 或网络资源。
 - 2026-09-03：Interactive Agent Task 的 admission 与首次可查询状态之间存在短暂最终一致性窗口。Remote GPU 多会话 scope-confirmation 验收中，`POST /api/v1/agent/tasks` 已返回 `202`，但首个 owner `GET` 在 Core Task 授权记录和 Temporal 投影落库前得到 `404`；约一秒后的有界查询得到 `waiting_input`，精确 input 后收敛 `completed` 并产生 Artifact。前端任务创建页应在提交后的有限时间内仅对 owner 的该 Task 将 `404` 当作 pending admission 重试，超时后保留真实错误；不要把无限重试或跨 owner 的 `404` 隐藏为加载态。该问题不改变读写授权边界，active write、MCP 和 OAuth 继续独立受控。
+### AD-062：Gateway 与 embedded Core 共享 HTTP handler 的迁移边界
+
+- **优先级：** P2
+- **状态：** 进行中
+- **发现日期：** 2026-09-03
+- **影响范围：** 独立 Gateway 的 HTTP 装配与 embedded Core 回滚路径
+- **本轮进展：** Gateway 已接管 Sync、Message 与 Search 的 HTTP 边界；独立进程不再导入或经共享 `internal/gateway/http` 装配这些资源域。Message 的 `before_id` / `after_id` 保留为 A6 客户端观察窗口兼容契约，待真实 Sync 客户端观测完成后再评估退役。
+- **治理勘误：** 已移除架构索引对退役 `internal/compat/service` 和 `internal/data/mysql/repository` 的描述；共享 handler 当前仅由 Core embedded 回滚组合使用。
+- **本轮进展：** Gateway 的 Agent Memory HTTP 控制面已按资源域从通用 server 装配文件收口到专属 handler，降低 Agent 治理功能与服务生命周期代码的耦合；API 与 Core RPC 契约未改。
+- **本轮进展：** Agent Task 的取消与审批 JSON 入口已补齐与创建、输入相同的前置 body 上限；超限输入在 Gateway 截止，不会消耗 Runtime 或 Temporal 控制面资源。
+- **本轮进展：** 取消入口现兼容代理传输的未知 `Content-Length` body，在同一上限内保留 owner 提供的取消原因，避免 chunked 请求退化为无理由取消。
+- **下一步：** Core embedded 保留原 handler 以支持回滚，其他共享 HTTP 资源域继续按资源域迁移；每次迁移均需结构门禁禁止独立 Gateway 回流到兼容实现。

@@ -39,10 +39,8 @@ HTTP/WebSocket → Gateway → Service Application → Domain → SQLC Repositor
 **Key packages:**
 - `internal/services/core/bootstrap/embedded` — Core-owned embedded aggregate initialization and rollback composition
 - `internal/services/<service>` — service-owned application, domain, and infrastructure implementations
-- `internal/compat/service` — legacy package-path aliases and construction forwards kept for rollback
-- `internal/data/mysql/repository` — compatibility adapters only; new SQLC implementations belong to service infrastructure
 - `internal/services/gateway/server` — Gateway-owned HTTP/WS server and Agent/Search edge composition
-- `internal/gateway/http` — shared Gin edge handlers used by the Core embedded compatibility server and Gateway server
+- `internal/gateway/http` — shared Gin edge handlers retained only by the Core embedded compatibility server
 - `internal/transport/ws` — WebSocket hub, client lifecycle, message dispatcher, presence integration
 - `internal/services/agent/legacy` — Go/Eino compatibility baseline; TypeScript Agent Runtime is the target runtime
 - `internal/platform` — infrastructure abstractions: Kafka publisher, Redis cache, MinIO storage, bloom filters, rate limiter, presence tracker
