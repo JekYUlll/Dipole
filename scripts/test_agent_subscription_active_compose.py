@@ -53,6 +53,14 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('entrypoint: ["/bin/sh", "-ec"]', overlay)
         self.assertIn('node /app/model-stub.mjs & exec node dist/index.js', overlay)
 
+    def test_provider_mode_uses_a_protected_env_file_and_read_only_overlays(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('model_source="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_SOURCE:-stub}"', smoke)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE is required for provider mode', smoke)
+        self.assertIn('agent-ai-sdk-shadow.yml', smoke)
+        self.assertIn('agent-deepseek-v4-flash-shadow.yml', smoke)
+        self.assertIn('docker compose "${env_args[@]}" -p "${project_name}"', smoke)
+
 
 if __name__ == "__main__":
     unittest.main()

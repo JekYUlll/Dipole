@@ -10,9 +10,15 @@ scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-subscription-active.XXXXXX
 owner_telephone="13900000004"
 agent_uuid="UAI000000000000000001"
 grant_uuid="PROMOTION-SUBSCRIPTION-ACTIVE-${RANDOM}-$$"
+model_source="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_SOURCE:-stub}"
 
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
 command -v openssl >/dev/null 2>&1 || { printf 'openssl is required\n' >&2; exit 2; }
+[[ "${model_source}" == "stub" || "${model_source}" == "provider" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
+if [[ "${model_source}" == "provider" ]]; then
+  : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE is required for provider mode}"
+  [[ -f "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE}" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE must name a file\n' >&2; exit 2; }
+fi
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   "${root_dir}/scripts/docker-build.sh" backend
@@ -49,26 +55,30 @@ export DIPOLE_GATEWAY_BIND_ADDRESS DIPOLE_GATEWAY_PORT DIPOLE_AGENT_SUBSCRIPTION
 export DIPOLE_AGENT_RELEASE_MANIFEST_FILE="${scratch_dir}/release-manifest.json"
 export DIPOLE_INTERNAL_CERT_DIR="${scratch_dir}/certs"
 export INTERNAL_CERT_DIR="${DIPOLE_INTERNAL_CERT_DIR}"
-export DIPOLE_AGENT_MODEL_PROVIDER_NAME="compose-smoke"
-export DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"
-export DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"
-export DIPOLE_AGENT_MODEL_ROUTES="compose-smoke/deterministic"
-export DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"compose-smoke/deterministic","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]'
-export DIPOLE_AGENT_MODEL_OUTPUT_MODE="json_text"
-export DIPOLE_AGENT_MODEL_MAX_CALLS="1"
-export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="5000"
-export DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS="256"
-export DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE="${scratch_dir}/model-stub.mjs"
+model_env_file=""
+if [[ "${model_source}" == "stub" ]]; then
+  export DIPOLE_AGENT_MODEL_PROVIDER_NAME="compose-smoke"
+  export DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"
+  export DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"
+  export DIPOLE_AGENT_MODEL_ROUTES="compose-smoke/deterministic"
+  export DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"compose-smoke/deterministic","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]'
+  export DIPOLE_AGENT_MODEL_OUTPUT_MODE="json_text"
+  export DIPOLE_AGENT_MODEL_MAX_CALLS="1"
+  export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="5000"
+  export DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS="256"
+  export DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE="${scratch_dir}/model-stub.mjs"
+else
+  model_env_file="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE}"
+fi
 
 model_summary="subscription active smoke"
-if [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]]; then
-  model_summary="subscription autonomous reply smoke"
-fi
+[[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "0" ]] || model_summary="subscription autonomous reply smoke"
 
 cat >"${DIPOLE_AGENT_RELEASE_MANIFEST_FILE}" <<EOF
 {"schemaVersion":"dipole.agent.release-manifest.v1","candidateVersion":"${DIPOLE_AGENT_CANDIDATE_VERSION}","runtimeId":"dipole-agent","stage":"user_gray","components":{"model":{"version":"v1","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"prompt":{"version":"v1","sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"capabilitySchema":{"version":"v1","sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"memoryPolicy":{"version":"v1","sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}},"offlineEvalSuiteSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","createdAt":"2026-09-02T00:00:00.000Z"}
 EOF
 
+if [[ "${model_source}" == "stub" ]]; then
 cat >"${DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE}" <<NODE
 import http from "node:http";
 const body = JSON.stringify({ id: "subscription-active-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"summary":"${model_summary}","steps":[]}' } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
@@ -77,6 +87,7 @@ http.createServer((request, response) => {
   request.resume(); request.on("end", () => response.writeHead(200, { "content-type": "application/json" }).end(body));
 }).listen(8089, "0.0.0.0");
 NODE
+fi
 
 compose_files=(
   -f "${root_dir}/deploy/compose/docker-compose.microservices.yml"
@@ -84,11 +95,22 @@ compose_files=(
   -f "${root_dir}/deploy/microservices/agent-subscription-shadow.yml"
   -f "${root_dir}/deploy/microservices/agent-active.yml"
   -f "${root_dir}/deploy/microservices/agent-subscription-active.yml"
-  -f "${root_dir}/deploy/microservices/agent-subscription-active-smoke.yml"
 )
+if [[ "${model_source}" == "stub" ]]; then
+  compose_files+=( -f "${root_dir}/deploy/microservices/agent-subscription-active-smoke.yml" )
+else
+  compose_files+=(
+    -f "${root_dir}/deploy/microservices/agent-ai-sdk-shadow.yml"
+    -f "${root_dir}/deploy/microservices/agent-deepseek-v4-flash-shadow.yml"
+  )
+fi
 [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "0" ]] || compose_files+=( -f "${root_dir}/deploy/microservices/agent-subscription-autoreply.yml" )
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" ]] || compose_files+=( -f "${root_dir}/deploy/microservices/remote-gpu-mysql-aio-compat.yml" )
-compose() { docker compose -p "${project_name}" "${compose_files[@]}" "$@"; }
+compose() {
+  local env_args=()
+  [[ -z "${model_env_file}" ]] || env_args=(--env-file "${model_env_file}")
+  docker compose "${env_args[@]}" -p "${project_name}" "${compose_files[@]}" "$@"
+}
 
 cleanup() {
   local status=$?
