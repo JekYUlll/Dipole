@@ -318,6 +318,47 @@ func TestPersistentAgentExecutionPolicySelectsDefinitionByExecutionOwner(t *test
 	}
 }
 
+func TestPersistentAgentRunAdmissionSelectsPrincipalDefinitionForInteractiveTask(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 9, 3, 8, 0, 0, 0, time.UTC)
+	principalDefinition := activeAgentDefinitionV1(2, now.Add(-time.Hour), []string{application.AgentPermissionMessageWrite})
+	principalDefinition.DefinitionUUID = "DEF-U100"
+	principalDefinition.OwnerUUID = "U100"
+	embeddedDefinition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
+	embeddedDefinition.DefinitionUUID = "embedded:UAI"
+	embeddedDefinition.OwnerUUID = "UAI"
+	store := &agentPolicyStoreStub{
+		latestByOwner: map[string]*application.AgentDefinitionVersionV1{
+			"U100": &principalDefinition,
+			"UAI":  &embeddedDefinition,
+		},
+		definitions: map[string]*application.AgentDefinitionVersionV1{
+			definitionKeyV1(principalDefinition.DefinitionUUID, principalDefinition.Version): &principalDefinition,
+			definitionKeyV1(embeddedDefinition.DefinitionUUID, embeddedDefinition.Version):   &embeddedDefinition,
+		},
+	}
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("new Run admission: %v", err)
+	}
+	request := application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
+			TenantID: "dipole", PrincipalUUID: "U100", DelegatedByUUID: "U100", AgentUUID: "UAI",
+			TriggerType: "agent.interactive.requested", TriggerRef: "interactive:request-1", EventID: "interactive:request-1",
+		},
+		RuntimeID: "dipole-agent", Mode: "shadow",
+	}
+	result, err := admission.Admit(context.Background(), request)
+	if err != nil {
+		t.Fatalf("admit interactive Agent Task: %v", err)
+	}
+	task := store.tasks[result.TaskUUID]
+	if store.latestLookup.ownerUUID != "U100" || task == nil || task.DefinitionUUID != principalDefinition.DefinitionUUID || task.DefinitionVersion != principalDefinition.Version {
+		t.Fatalf("interactive admission selected embedded Definition: lookup=%+v task=%+v", store.latestLookup, task)
+	}
+}
+
 func TestAgentRunUUIDV1MatchesLanguageNeutralGoldenVector(t *testing.T) {
 	t.Parallel()
 

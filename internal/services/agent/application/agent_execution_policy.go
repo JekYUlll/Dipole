@@ -14,6 +14,7 @@ import (
 
 const embeddedAgentDefinitionVersionV1 uint64 = 1
 const embeddedAgentRuntimeIDV1 = "dipole-eino"
+const interactiveAgentTriggerTypeV1 = "agent.interactive.requested"
 
 type agentPolicyClockV1 func() time.Time
 
@@ -466,7 +467,7 @@ func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.Agen
 }
 
 func executionDefinitionOwnerV1(request application.AgentExecutionPolicyStartV1) string {
-	if strings.TrimSpace(request.SubscriptionUUID) != "" {
+	if strings.TrimSpace(request.SubscriptionUUID) != "" || strings.TrimSpace(request.TriggerType) == interactiveAgentTriggerTypeV1 {
 		return strings.TrimSpace(request.PrincipalUUID)
 	}
 	return strings.TrimSpace(request.AgentUUID)
