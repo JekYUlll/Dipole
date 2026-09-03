@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static contract for the default-off interactive Agent shadow overlay."""
+"""Static safety contract for the interactive Agent Task Compose smoke."""
 
 from pathlib import Path
 import unittest
@@ -8,37 +8,39 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class InteractiveAgentShadowComposeTest(unittest.TestCase):
-    def test_overlay_only_opens_control_over_read_shadow(self) -> None:
-        overlay = (ROOT / "deploy/microservices/agent-interactive-shadow.yml").read_text(encoding="utf-8")
-        self.assertIn("DIPOLE_AGENT_RUNTIME_MODE: shadow", overlay)
-        self.assertIn("DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: read_shadow", overlay)
-        self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED: "true"', overlay)
-        self.assertIn("DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS: ${DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS:-900000}", overlay)
-        self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"', overlay)
-        self.assertIn('DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: "true"', overlay)
-        self.assertIn('DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"', overlay)
-        self.assertIn('DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"', overlay)
-        self.assertIn('DIPOLE_AGENT_MEMORY_ENABLED: "false"', overlay)
+class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
+    def test_smoke_isolated_and_loopback_only(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-shadow-', smoke)
+        self.assertIn('DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1', smoke)
+        self.assertIn('DIPOLE_AGENT_TEMPORAL_ADDRESS:=temporal:7233', smoke)
+        self.assertIn('DIPOLE_AGENT_KAFKA_GROUP_ID:=dipole-agent-shadow-interactive-', smoke)
+        self.assertIn('DIPOLE_MYSQL_AIO_COMPAT:=0', smoke)
+        self.assertIn('remote-gpu-mysql-aio-compat.yml', smoke)
+        self.assertIn('agent-interactive-shadow-smoke.yml', smoke)
+        self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
+        self.assertIn('compose down --volumes --remove-orphans', smoke)
 
-    def test_deepseek_overlay_keeps_the_interactive_profile_read_only(self) -> None:
-        overlay = (ROOT / "deploy/microservices/agent-deepseek-v4-flash-shadow.yml").read_text(encoding="utf-8")
-        self.assertIn('DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS: "false"', overlay)
-        self.assertIn("DIPOLE_AGENT_MODEL_OUTPUT_MODE: json_text", overlay)
-        self.assertIn("DIPOLE_AGENT_MODEL_THINKING_MODE: disabled", overlay)
-        self.assertNotIn("gateway:", overlay)
+    def test_smoke_uses_gateway_task_controls_and_owner_boundaries(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('request("POST", "http://gateway:8080/api/v1/agent/tasks"', smoke)
+        self.assertIn('request("GET", `http://gateway:8080/api/v1/agent/tasks/${taskId}`', smoke)
+        self.assertIn('request("POST", `http://gateway:8080/api/v1/agent/tasks/${taskId}/cancel`', smoke)
+        self.assertIn('duplicate task start diverged', smoke)
+        self.assertIn('foreign owner read was not rejected', smoke)
+        self.assertIn('interactive task did not enter waiting_input', smoke)
+        self.assertIn('interactive task did not cancel', smoke)
+        self.assertIn('interactive read task wrote', smoke)
 
-    def test_compose_gate_checks_the_effective_profile(self) -> None:
-        checker = (ROOT / "scripts/check-compose.sh").read_text(encoding="utf-8")
-        self.assertIn("agent-interactive-shadow.yml", checker)
-        self.assertIn("interactive_shadow_config", checker)
-        self.assertIn('DIPOLE_AGENT_RUNTIME_MODE == "shadow"', checker)
-        self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED == "true"', checker)
-        self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"', checker)
-        self.assertIn('DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"', checker)
-        self.assertIn('DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "false"', checker)
-        interactive_shadow = checker.split("interactive_shadow_config", 1)[1].split("interactive_active_config", 1)[0]
-        self.assertIn("DIPOLE_GATEWAY_AGENT_CONTROL_SECRET=compose-check-control-secret", interactive_shadow)
+    def test_model_stub_stays_inside_the_compose_project(self) -> None:
+        overlay = (ROOT / "deploy/microservices/agent-interactive-shadow-smoke.yml").read_text(encoding="utf-8")
+        self.assertIn('DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_STUB_FILE', overlay)
+        self.assertIn('entrypoint: ["/bin/sh", "-ec"]', overlay)
+        self.assertIn('node /app/model-stub.mjs & exec node dist/index.js', overlay)
+        self.assertIn('DIPOLE_AGENT_KAFKA_GROUP_ID:', overlay)
+        self.assertIn('DIPOLE_AGENT_MODEL_PROVIDER: openai_compatible', overlay)
+        self.assertIn('DIPOLE_AGENT_MODEL_ROUTES:', overlay)
+        self.assertIn('DIPOLE_AGENT_INTERACTIVE_SHADOW_TASK_QUEUE', overlay)
 
 
 if __name__ == "__main__":
