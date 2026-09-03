@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { agentFlags, agentTaskCreatePageEnabled, agentTaskInboxEnabled } from '@/config/agentFlags'
 
 const router = createRouter({
   history: createWebHistory('/app/'),
@@ -50,90 +51,70 @@ const router = createRouter({
       name: 'agent-task-inbox',
       component: () => import('@/views/AgentTaskInboxView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentTaskInboxEnabled || { name: 'chat' },
     },
     {
       path: '/agent/tasks/new',
       name: 'agent-task-create',
       component: () => import('@/views/AgentTaskCreateView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED === 'true' && import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentTaskCreatePageEnabled || { name: 'chat' },
     },
     {
       path: '/agent/tasks/:taskId/input',
       name: 'agent-task-input',
       component: () => import('@/views/AgentElicitationView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentFlags.elicitation || { name: 'chat' },
     },
     {
       path: '/agent/tasks/:taskId/approval',
       name: 'agent-task-approval',
       component: () => import('@/views/AgentApprovalView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentFlags.approval || { name: 'chat' },
     },
     {
       path: '/agent/tasks/:taskId/timeline',
       name: 'agent-task-timeline',
       component: () => import('@/views/AgentTaskTimelineView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentFlags.timeline || { name: 'chat' },
     },
     {
       path: '/agent/artifacts',
       name: 'agent-artifact-inbox',
       component: () => import('@/views/AgentArtifactInboxView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentFlags.artifacts || { name: 'chat' },
     },
     {
       path: '/agent/artifacts/:artifactId',
       name: 'agent-artifact',
       component: () => import('@/views/AgentArtifactView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentFlags.artifacts || { name: 'chat' },
     },
     {
       path: '/agent/subscriptions',
       name: 'agent-subscriptions',
       component: () => import('@/views/AgentSubscriptionsView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentFlags.subscriptions || { name: 'chat' },
     },
     {
       path: '/agent/definitions',
       name: 'agent-definitions',
       component: () => import('@/views/AgentDefinitionsView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentFlags.definitions || { name: 'chat' },
     },
     {
       path: '/agent/memories',
       name: 'agent-memories',
       component: () => import('@/views/AgentMemoriesView.vue'),
       meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_MEMORIES_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      beforeEnter: () => agentFlags.memories || { name: 'chat' },
     },
   ],
 })
