@@ -269,6 +269,22 @@ describe("shadow runtime composition", () => {
     expect(fixture.audit.append).not.toHaveBeenCalled();
   });
 
+  it("ignores a Runtime Agent's own message before subscription matching", async () => {
+    const fixture = runtimeFixture();
+    const subscriptions = subscriptionAdmission([subscription("SUB-1", "all", {})]);
+    const runtime = buildKafkaShadowRuntime(
+      subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger, undefined, subscriptions
+    );
+
+    await runtime.start();
+    await fixture.eachMessage()(payload(messageEnvelope("U100", "E-SELF", "UAI")));
+
+    expect(subscriptions.matchEventSubscriptions).not.toHaveBeenCalled();
+    expect(subscriptions.admit).not.toHaveBeenCalled();
+    expect(fixture.ledger.claim).not.toHaveBeenCalled();
+    expect(fixture.planner.plan).not.toHaveBeenCalled();
+  });
+
   it("stops before the ledger when the enforced subscription rollout is blocked", async () => {
     const fixture = runtimeFixture();
     const subscriptions = subscriptionAdmission([subscription("SUB-1", "all", {})]);
@@ -499,14 +515,14 @@ function subscription(subscriptionId: string, filterKind: "all" | "message_conta
   };
 }
 
-function messageEnvelope(targetUuid = "UAI", eventId = "E1"): object {
+function messageEnvelope(targetUuid = "UAI", eventId = "E1", senderUuid = "U100"): object {
   return {
     event_id: eventId, request_id: "R1", trace_id: "T1",
     event_type: "message.direct.created", version: "v1", source: "dipole",
     occurred_at: "2026-08-27T08:00:00.000Z",
     payload: {
-      mutation_type: "created", revision: 1, actor_uuid: "U100", message_id: "M100",
-      conversation_key: "direct:U100:UAI", message_seq: 1, sender_uuid: "U100", target_uuid: targetUuid,
+      mutation_type: "created", revision: 1, actor_uuid: senderUuid, message_id: "M100",
+      conversation_key: "direct:U100:UAI", message_seq: 1, sender_uuid: senderUuid, target_uuid: targetUuid,
       target_type: 0, message_type: 0, content: "hello", sent_at: "2026-08-27T08:00:00.000Z"
     }
   };

@@ -81,7 +81,7 @@ docker compose \
   config --quiet
 ```
 
-与交互写入不同，自主回复没有 owner 手动 Signal：回复内容定案后由 agent-runtime 通过 `AuthorizeSubscriptionMessage` RPC 请求 Core 校验四项不变量（订阅触发、pinned Definition owner 一致并投影出 `message.system.send`、订阅 `created_by` 与 principal 一致、scope 恰为 owner direct Agent 会话）后直接铸造 `status=approved` 的写 grant，再走既有 resolve/consume 写链路。该 grant 对相同 `(eventId, occurredAtUnixMs, 回复正文)` 幂等，重试收敛到同一 grant。启用该 overlay 前仍需归档共享环境 receipt：审批消费恰一次、重放幂等、`agent_sent_messages=1`（见 AD-034 的 Remote smoke 后续切片）。
+与交互写入相比，自主回复没有 owner 手动 Signal：回复内容定案后由 agent-runtime 通过 `AuthorizeSubscriptionMessage` RPC 请求 Core 校验四项不变量（订阅触发、pinned Definition owner 一致并投影出 `message.system.send`、订阅 `created_by` 与 principal 一致、scope 恰为 owner direct Agent 会话）后直接铸造 `status=approved` 的写 grant，再走既有 resolve/consume 写链路。该 grant 对相同 `(eventId, occurredAtUnixMs, 回复正文)` 幂等，重试收敛到同一 grant。Runtime 会在 Kafka 解码后、订阅查询前丢弃当前 Agent 自身发送的消息，防止自动回复重新触发同一 Agent 的订阅任务。启用该 overlay 前仍需归档共享环境 receipt：审批消费恰一次、重放幂等、`agent_sent_messages=1`（见 AD-034）。
 
 认证 owner 需先创建显式自动回复 Definition：
 
@@ -96,10 +96,15 @@ Content-Type: application/json
 
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 
-开发期可用隔离 smoke 复跑这条只读闭环：脚本以认证 owner 创建固定 Definition 和 Subscription，再通过 Gateway WebSocket 的 `chat.send` 产生真实消息。消息经 Core/Message/Sync、Kafka matcher 和 Temporal 后必须收敛为一个 completed Task、一次 completed model run、零条 Agent 发送消息，并在退出前撤销临时 grant。
+开发期可用隔离 smoke 复跑 Subscription Active 链路：脚本以认证 owner 创建 Definition 和 Subscription，再通过 Gateway WebSocket 的 `chat.send` 产生真实消息。默认模式验证只读闭环：消息经 Core/Message/Sync、Kafka matcher 和 Temporal 后收敛为一个 completed Task、一次 completed model run、零条 Agent 发送消息。显式开启 Auto-Reply 时，额外断言恰好一次 completed `message.system.send` Tool Invocation、一次 consumed approval、一条 owner-Agent 回复、一个稳定 client message ID 和两条 Sync Inbox 投影。两种模式都会在退出前撤销临时 grant。
 
 ```bash
 BUILD_IMAGE=1 DIPOLE_MYSQL_AIO_COMPAT=1 \
+  scripts/smoke-agent-subscription-active-compose.sh
+```
+
+```bash
+BUILD_IMAGE=1 DIPOLE_MYSQL_AIO_COMPAT=1 DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY=1 \
   scripts/smoke-agent-subscription-active-compose.sh
 ```
 

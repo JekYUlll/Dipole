@@ -373,6 +373,10 @@ export function buildKafkaShadowRuntime(
       throw new PermanentKafkaEventError(error);
     }
     const directTargetAccepted = decoded.targetUuid === config.agentUuid;
+    // Agent-authored messages can be delivered back through the same Kafka
+    // topic. Excluding them before subscription lookup prevents autonomous
+    // replies from recursively creating more Agent Tasks.
+    if (decoded.principalUuid === config.agentUuid) return;
     const identity: AgentIdentity = {
       tenantId: config.tenantId,
       principalUuid: decoded.principalUuid,
