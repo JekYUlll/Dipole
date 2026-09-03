@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：同版本 Remote GPU Active Agent 候选完成公开 Gateway 的受控写入闭环。
+  - 独立 Compose project `dipole-agent-active-649cf110` 以 `649cf110` 的干净 Core、Gateway、Message、Sync 与 TypeScript Runtime 镜像运行在 `18121`；所有服务健康，`interactive_active` 与交互消息写入开关已由认证状态接口确认。
+  - 临时 owner 经公开 Gateway 完成 `/send` Task 的创建、`waiting_approval`、批准和终态读取。Timeline 返回 5 个事件，持久化收据为恰好一次完成 Tool Invocation、一次审批消费和一条 Agent `system_message`。同一候选的拒绝路径收敛为 `cancelled`，没有新增 Tool、消息或审批消费。
+  - 该开发候选只保留直属 Agent 会话的短期、精确 scope，演练结束后 grant 已撤销。浏览器创建/审批/Timeline 页面仍由前端构建期开关控制，真实 UI 体验验收等待前端分支显式启用，详见 [Interactive Active Current Receipt](docs/agent/AGENT-INTERACTIVE-ACTIVE-CURRENT-RECEIPT.md)。
+
 - 2026-09-03：Remote GPU 的 Agent Interactive Shadow 候选完成多会话用户确认闭环。
   - 临时 owner 通过 Gateway 联系人 API 与认证 WebSocket 创建两条私聊；只读 Task 返回两个 owner-scoped 会话选项，精确提交一个 `waiting_input` 请求后由 Temporal 恢复为 `completed`，并在 Timeline 中写入 `conversation_digest` Artifact。
   - 验收同时发现 admission 的短暂一致性窗口：`POST /api/v1/agent/tasks` 返回 `202` 后，首个 `GET` 可能在 Core 授权记录落库前返回 `404`；后续有界查询会收敛。该前端体验重试需求已记入架构债务，未将此候选表述为强一致首读、active authority 或生产发布。
