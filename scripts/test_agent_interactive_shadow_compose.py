@@ -21,6 +21,19 @@ class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
         self.assertIn('compose down --volumes --remove-orphans', smoke)
 
+    def test_provider_mode_requires_an_env_file_and_keeps_shadow_overlays(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('model_source="${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE:-stub}"', smoke)
+        self.assertIn('DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE must be stub or provider', smoke)
+        self.assertIn('DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE is required for provider mode', smoke)
+        self.assertLess(
+            smoke.index('DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE must be stub or provider'),
+            smoke.index('scratch_dir=$(mktemp -d')
+        )
+        self.assertIn('agent-ai-sdk-shadow.yml', smoke)
+        self.assertIn('agent-deepseek-v4-flash-shadow.yml', smoke)
+        self.assertIn('docker compose "${env_args[@]}" -p "${project_name}"', smoke)
+
     def test_smoke_uses_gateway_task_controls_and_owner_boundaries(self) -> None:
         smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
         self.assertIn('request("POST", "http://gateway:8080/api/v1/agent/tasks"', smoke)

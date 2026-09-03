@@ -6,13 +6,19 @@ set -euo pipefail
 
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-shadow-${RANDOM}-$$}"
-scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-interactive-shadow.XXXXXX")
+model_source="${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE:-stub}"
 owner_telephone="13900000005"
 foreign_telephone="13900000006"
 agent_uuid="UAI000000000000000001"
 
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
 command -v openssl >/dev/null 2>&1 || { printf 'openssl is required\n' >&2; exit 2; }
+[[ "${model_source}" == "stub" || "${model_source}" == "provider" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
+if [[ "${model_source}" == "provider" ]]; then
+  : "${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE:?DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE is required for provider mode}"
+  [[ -f "${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE}" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE must name a file\n' >&2; exit 2; }
+fi
+scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-interactive-shadow.XXXXXX")
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   "${root_dir}/scripts/docker-build.sh" backend
@@ -42,18 +48,20 @@ export DIPOLE_AGENT_INTERACTIVE_SHADOW_TASK_QUEUE DIPOLE_AGENT_TEMPORAL_ADDRESS 
 export DIPOLE_GATEWAY_BIND_ADDRESS DIPOLE_GATEWAY_PORT
 export DIPOLE_INTERNAL_CERT_DIR="${scratch_dir}/certs"
 export INTERNAL_CERT_DIR="${DIPOLE_INTERNAL_CERT_DIR}"
-export DIPOLE_AGENT_MODEL_PROVIDER_NAME="compose-smoke"
-export DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"
-export DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"
-export DIPOLE_AGENT_MODEL_ROUTES="compose-smoke/deterministic"
-export DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"compose-smoke/deterministic","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]'
-export DIPOLE_AGENT_MODEL_OUTPUT_MODE="json_text"
-export DIPOLE_AGENT_MODEL_MAX_CALLS="1"
-export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="5000"
-export DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS="256"
-export DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_STUB_FILE="${scratch_dir}/model-stub.mjs"
+model_env_file=""
+if [[ "${model_source}" == "stub" ]]; then
+  export DIPOLE_AGENT_MODEL_PROVIDER_NAME="compose-smoke"
+  export DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"
+  export DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"
+  export DIPOLE_AGENT_MODEL_ROUTES="compose-smoke/deterministic"
+  export DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"compose-smoke/deterministic","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]'
+  export DIPOLE_AGENT_MODEL_OUTPUT_MODE="json_text"
+  export DIPOLE_AGENT_MODEL_MAX_CALLS="1"
+  export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="5000"
+  export DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS="256"
+  export DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_STUB_FILE="${scratch_dir}/model-stub.mjs"
 
-cat >"${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_STUB_FILE}" <<'NODE'
+  cat >"${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_STUB_FILE}" <<'NODE'
 import http from "node:http";
 const body = JSON.stringify({ id: "interactive-shadow-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"summary":"interactive shadow smoke","steps":[]}' } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
 http.createServer((request, response) => {
@@ -61,15 +69,29 @@ http.createServer((request, response) => {
   request.resume(); request.on("end", () => response.writeHead(200, { "content-type": "application/json" }).end(body));
 }).listen(8089, "0.0.0.0");
 NODE
+else
+  model_env_file="${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE}"
+fi
 
 compose_files=(
   -f "${root_dir}/deploy/compose/docker-compose.microservices.yml"
   -f "${root_dir}/deploy/microservices/agent-temporal-read-shadow.yml"
   -f "${root_dir}/deploy/microservices/agent-interactive-shadow.yml"
-  -f "${root_dir}/deploy/microservices/agent-interactive-shadow-smoke.yml"
 )
+if [[ "${model_source}" == "stub" ]]; then
+  compose_files+=( -f "${root_dir}/deploy/microservices/agent-interactive-shadow-smoke.yml" )
+else
+  compose_files+=(
+    -f "${root_dir}/deploy/microservices/agent-ai-sdk-shadow.yml"
+    -f "${root_dir}/deploy/microservices/agent-deepseek-v4-flash-shadow.yml"
+  )
+fi
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" ]] || compose_files+=( -f "${root_dir}/deploy/microservices/remote-gpu-mysql-aio-compat.yml" )
-compose() { docker compose -p "${project_name}" "${compose_files[@]}" "$@"; }
+compose() {
+  local env_args=()
+  [[ -z "${model_env_file}" ]] || env_args=(--env-file "${model_env_file}")
+  docker compose "${env_args[@]}" -p "${project_name}" "${compose_files[@]}" "$@"
+}
 
 cleanup() {
   local status=$?

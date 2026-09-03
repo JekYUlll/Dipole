@@ -127,6 +127,19 @@ wildcard 策略，不会打开 Subscription 控制或 trigger。Memory、检索�
 DeepSeek overlay 固定 `json_text` 与 `thinking=disabled`，避免不支持 JSON
 Schema response format 或仅返回 reasoning 的兼容性失败。
 
+同一只读交互 Smoke 可在不复制凭据到 shell 的情况下复用候选 `.env`。显式选择
+`provider` 后，脚本只将该文件传给 Compose interpolation，且不会输出其内容；默认
+`stub` 路径与离线回归保持不变。两种模式均固定 Shadow、自动取消 Task，且不会启用
+Agent 写 Capability：
+
+```bash
+DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE=provider \
+DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE="${DIPOLE_ROOT}/.env" \
+DIPOLE_MYSQL_AIO_COMPAT=1 \
+COMPOSE_PROJECT_NAME="dipole-agent-provider-shadow-<id>" \
+scripts/smoke-agent-interactive-shadow-compose.sh
+```
+
 复用长驻候选并单独重建 Core 或 Gateway 时，必须显式保留
 `DIPOLE_INTERNAL_CERT_DIR`，且该目录需要包含对应服务的 `.pem` 与 `-key.pem`
 文件。候选 `.env` 仅托管其配置与模型凭据，不能替代该宿主证书目录；缺失变量
