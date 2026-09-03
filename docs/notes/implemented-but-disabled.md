@@ -30,7 +30,8 @@
 | Gateway Definition/Subscription/Artifact/Memory HTTP | `gateway.agent_*_enabled` | 可 opt-in | AD-036 / AD-044 |
 | Timeline Repair Worker | Compose profile `agent-timeline-repair` | 可 opt-in | AD-046 operator 灰度 |
 | Workflow Repair Execute/Rollback | `internal_rpc.agent_workflow_repair_execute_enabled`；overlay `agent-workflow-repair-execute.yml` | 可 opt-in | AD-009 operator grant / 共享环境演练。启动链已挂，默认关 + mTLS |
-| MCP Elicitation continuation | 无生产开关 | **缺接线** | AD-036：未装配进生产 Temporal Activity |
+| MCP Elicitation continuation | `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow`；overlay `agent-external-mcp-shadow.yml` | 可 opt-in | AD-036 多轮 / 敏感授权 / 共享环境。单轮 continuation 已在该 Worker 的 `executeMcpDispatch` |
+| 第一方 Elicitation Timeline 入口 | `VITE_AGENT_ELICITATION_ENABLED` | 可 opt-in | 投影已写 `input_request`，Timeline 已链接；页面默认关 |
 | OAuth callback consume | `agent_oauth_authorization_transaction_consume_enabled` | 可 opt-in | mTLS + callback + 密钥评审 |
 
 ## 存储 / Sync / 文件
@@ -57,5 +58,5 @@ Search、预签名、Sync、Elicitation、Approval、Timeline、Task Create、Ar
 ## 本轮开发顺序
 
 1. ~~Workflow Repair Execute~~：已挂到默认关的 Core 启动链。
-2. 仍缺接线：MCP Elicitation 装配进生产 Temporal Activity（AD-036）。
-3. 可 opt-in 项只补门禁/证据，不改默认。
+2. ~~MCP Elicitation continuation~~：已随 `external_mcp_shadow` 进入生产 Worker；第一方 Timeline 入口已挂。
+3. 可 opt-in 项只补门禁/证据，不改默认。AD-036 剩余多轮与敏感授权。

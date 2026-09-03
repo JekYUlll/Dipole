@@ -2,6 +2,8 @@ package agentgrpc
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -1743,10 +1745,22 @@ func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.
 		}
 		return nil, status.Error(codes.Internal, "Agent Task Workflow projection failed")
 	}
+	if projection.Status == application.AgentTaskWorkflowStatusWaitingInput {
+		s.appendTimelineEvent(ctx, inputRequestTimelineEvent(projection.TaskUUID, request.GetRunId(), projection.Revision))
+	}
 	return &agentv1.ProjectTaskWorkflowStateResponse{
 		TaskId: projection.TaskUUID, WorkflowId: projection.WorkflowID, WorkflowRunId: projection.RunID,
 		WorkflowStatus: string(projection.Status), WorkflowRevision: projection.Revision,
 	}, nil
+}
+
+func inputRequestTimelineEvent(taskUUID, runUUID string, revision uint64) application.AgentTaskTimelineEventV1 {
+	digest := sha256.Sum256([]byte(fmt.Sprintf("dipole.agent.timeline.input_request.v1\n%s\n%s\n%d", taskUUID, runUUID, revision)))
+	return application.AgentTaskTimelineEventV1{
+		EventUUID: hex.EncodeToString(digest[:]), TaskUUID: taskUUID, RunUUID: runUUID,
+		Kind: application.AgentTaskTimelineEventInputRequest, Status: string(application.AgentTaskWorkflowStatusWaitingInput),
+		OccurredAt: time.Now().UTC(),
+	}
 }
 
 func (s *Server) ListTaskWorkflowProjectionSnapshots(ctx context.Context, request *agentv1.ListTaskWorkflowProjectionSnapshotsRequest) (*agentv1.ListTaskWorkflowProjectionSnapshotsResponse, error) {

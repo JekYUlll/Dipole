@@ -799,6 +799,54 @@ func TestProjectTaskWorkflowStateUsesFixedRuntimeBindingWithoutModeDefault(t *te
 	}
 }
 
+func TestProjectTaskWorkflowStateAppendsDeterministicInputRequestTimeline(t *testing.T) {
+	projection := &taskWorkflowProjectionStub{result: application.AgentTaskWorkflowProjectionV1{
+		TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1",
+		Status: application.AgentTaskWorkflowStatusWaitingInput, Revision: 2,
+	}}
+	timeline := &taskTimelineStub{}
+	server, err := NewServerWithControlAndProjection(
+		&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, &taskControlAuthorizerStub{}, projection,
+	)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	if _, err = server.WithTaskTimeline(timeline); err != nil {
+		t.Fatalf("inject timeline: %v", err)
+	}
+	request := &agentv1.ProjectTaskWorkflowStateRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
+		WorkflowId: "dipole-agent-task/TASK-1", WorkflowRunId: "temporal-run-1", WorkflowStatus: "waiting_input", WorkflowRevision: 2,
+	}
+	if _, err := server.ProjectTaskWorkflowState(context.Background(), request); err != nil {
+		t.Fatalf("first waiting_input projection: %v", err)
+	}
+	if _, err := server.ProjectTaskWorkflowState(context.Background(), request); err != nil {
+		t.Fatalf("replay waiting_input projection: %v", err)
+	}
+	if len(timeline.events) != 2 {
+		t.Fatalf("timeline events = %d, want 2", len(timeline.events))
+	}
+	first, replay := timeline.events[0], timeline.events[1]
+	if first.Kind != application.AgentTaskTimelineEventInputRequest || first.Status != "waiting_input" || first.TaskUUID != "TASK-1" || first.RunUUID != "RUN-1" {
+		t.Fatalf("input event = %+v", first)
+	}
+	if len(first.EventUUID) != 64 || first.EventUUID != replay.EventUUID {
+		t.Fatalf("input event UUID first=%s replay=%s", first.EventUUID, replay.EventUUID)
+	}
+
+	projection.result.Status = application.AgentTaskWorkflowStatusRunning
+	projection.result.Revision = 3
+	request.WorkflowStatus = "running"
+	request.WorkflowRevision = 3
+	if _, err := server.ProjectTaskWorkflowState(context.Background(), request); err != nil {
+		t.Fatalf("running projection: %v", err)
+	}
+	if len(timeline.events) != 2 {
+		t.Fatalf("running projection appended timeline events = %d", len(timeline.events))
+	}
+}
+
 func TestProjectTaskWorkflowStateRejectsClientPrincipalAndConflict(t *testing.T) {
 	projection := &taskWorkflowProjectionStub{err: application.ErrAgentWorkflowProjectionConflict}
 	server, _ := NewServerWithControlAndProjection(

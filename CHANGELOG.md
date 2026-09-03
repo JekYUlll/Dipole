@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：把第一方 Elicitation 接到 Timeline 产品入口。
+  - `waiting_input` 投影会幂等写入 `input_request` Timeline 事件；Vue Timeline 把该事件链到已有 `/agent/tasks/:taskId/input`。页面仍由 `VITE_AGENT_ELICITATION_ENABLED` 默认关。
+  - MCP 单轮 continuation 已随 `external_mcp_shadow` 进入生产 Worker；AD-036 剩余是多轮、敏感授权和共享环境证据。
+
 - 2026-09-03：整理「已实现但未启用」清单，并把 Workflow Repair Execute 接到默认关的生产启动链。
   - 台账：`docs/notes/implemented-but-disabled.md`。默认拓扑仍是 Shadow + 写能力全关；可 opt-in 的 Agent/存储/前端面与真正缺接线项（MCP Elicitation 生产 Activity）分开列。
   - Workflow Repair：`PersistentAgentWorkflowRepairExecutorV1` 与 Gateway-only Execute/Rollback RPC 早已齐，但启动链从不调用 `WithWorkflowRepairExecutor`，生产永远 `Unavailable`。现用 `internal_rpc.agent_workflow_repair_execute_enabled`（默认 `false`，env `DIPOLE_INTERNAL_RPC_AGENT_WORKFLOW_REPAIR_EXECUTE_ENABLED`）在 standalone/embedded Core 注入执行器；开启必须 mTLS。仓库组合补齐 `RepairExecutions`/`RepairTransactions`。默认 Compose 钉死 `false`，opt-in overlay `deploy/microservices/agent-workflow-repair-execute.yml` 只翻这一项。

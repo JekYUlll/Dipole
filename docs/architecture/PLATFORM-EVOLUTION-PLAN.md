@@ -557,7 +557,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
   - [x] 增加 active-only Approval grant resolution：Core/sqlc 唯一 exact 查询返回持久摘要，TS 独立复核后连接 write gate；生产 Registry、write executor 和 active context 继续缺席。
   - [x] 增加 active ExecutionContext fail-closed seam：active Run admission 必须经过注入式 promotion authorizer，MCP context 使用 Core 持久 Run 的权威 mode；生产未注入 authorizer且公开 admission 固定 shadow。
   - [x] migration v32 增加 durable Runtime promotion grant：双人签署并绑定 candidate/Definition/promotion v2/evidence/Eval Suite；active Run 持久 candidate，每次 context resolve 重查撤销状态，生产签发与装配继续关闭。
-  - [x] 增加默认关闭的 durable MCP Elicitation adapter 与单轮 MRTR continuation：受限 form 转为现有 Temporal `wait_input`，checkpoint 绑定 Request/Server/Tool/Invocation/deadline、原 Tool 参数与 opaque `requestState`；现代 Client 显式锁定 `2026-07-28` 并可在新连接中生成精确续接请求。生产 Activity/Transport Factory 装配、多轮与敏感授权仍关闭。
+  - [x] 增加默认关闭的 durable MCP Elicitation adapter 与单轮 MRTR continuation：受限 form 转为现有 Temporal `wait_input`，checkpoint 绑定 Request/Server/Tool/Invocation/deadline、原 Tool 参数与 opaque `requestState`；现代 Client 显式锁定 `2026-07-28` 并可在新连接中生成精确续接请求。单轮 continuation 已随默认关的 `external_mcp_shadow` Worker 进入生产 Activity；多轮与敏感授权仍关闭。
   - [x] 增加默认关闭的 Activity-safe round runner 与 External Profile adapter：每轮使用全新现代 Client/Transport，tenant/profile/server/tool 漂移、取消、握手失败和第二轮 input request 均 fail closed；生产 Worker mode 与外部 Provider 装配仍关闭。
   - [x] migration v35 与 Resolve RPC 持久化外部 MCP Tool command，绑定 running Task/Run/Invocation、canonical 参数摘要和无凭据 Profile/Server；Worker mode 仍需 round receipt/idempotency 处理远端成功后 Activity completion 丢失窗口。
   - [x] migration v36 与 Core/TS RPC 增加 durable MCP round receipt：确定性请求绑定、原子 Claim、owner-only terminal write、completed/failed replay 和无 reclaim 的 ambiguous fail-closed 语义已接入 Activity；生产 Worker、外部 Provider 与网络开关继续关闭。
@@ -640,7 +640,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 
 - [x] F1：建立 `design/dipole-ui.pen`、design tokens、核心组件，以及 Login/Chat desktop/mobile 设计。
 - [ ] F2：Search 四态、Vue 工作区、Sync 状态矩阵、desktop/mobile 恢复稿、标题栏状态、Contact、Group、File、Device 与 Settings 的只读或受确认流程均已完成。Settings 已固定 canonical Pencil desktop/mobile/四态画板、批准导出、Chromium 视觉基线与 Remote GPU Firefox 功能证据，仅复用签名、同步状态、Device Security 入口和退出边界；WebKit 依赖共享宿主系统库维护窗口。Group 目录从认证会话投影派生范围、逐项读取权威群投影，热群保持 `notify + pull`，所有群管理写操作继续关闭。Device 的跨浏览器执行、像素基线与真实 Presence 踢出继续作为环境切片。
-- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval、普通 Elicitation Form、Task Timeline、Definition、Subscription、Memory 和 Artifact 的 desktop/mobile/state matrix 已完成；相应默认关闭或只读 Vue 页面已按认证与低敏边界接入，Definition/Subscription/Artifact 的受控跨浏览器读取证据已归档。MCP 单轮 continuation 已具备 Runtime 契约但尚未装配生产 Activity；多轮、敏感授权、产品入口编排与其余视觉回归仍由 AD-036 跟踪。
+- [ ] F3：Agent Workflow Repair proposal/evidence/双人 approval、普通 Elicitation Form、Task Timeline、Definition、Subscription、Memory 和 Artifact 的 desktop/mobile/state matrix 已完成；相应默认关闭或只读 Vue 页面已按认证与低敏边界接入，Definition/Subscription/Artifact 的受控跨浏览器读取证据已归档。MCP 单轮 continuation 已随 `external_mcp_shadow` 进入生产 Worker；第一方 `waiting_input` 已写入 Timeline 并链到 Form 页。多轮、敏感授权与其余视觉回归仍由 AD-036 跟踪。
 - [ ] F4：已建立 Pencil 增量更新、设计日志、Vite 8/Vitest 4 工具链契约、Vue token 映射、核心页面流程、组件测试和 Playwright IndexedDB/跨浏览器功能回归；真实 Pencil CLI 增量编辑与 Agent Timeline Chromium 截图基线已通过小批次完成，截图级全页面视觉基线和未覆盖平台场景仍待完成。
   - [x] 增加无网络 `.pen` 结构门禁，校验 canonical 设计变量、核心 desktop/mobile frame、可复用组件和 placeholder/未命名节点；该门禁不替代 Pencil 视觉评审。
   - [x] App 壳层、Login、Search 工作区、Agent Task Timeline 组件及其路由页面、Agent Event Subscription 和 Agent Memory 管理页已引用共享 `--dp-*` token，并由 Vitest 契约测试和 Timeline Playwright 流程校验 Pencil variables、路由和核心样式边界。

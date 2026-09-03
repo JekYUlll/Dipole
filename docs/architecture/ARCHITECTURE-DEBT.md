@@ -1,7 +1,9 @@
 # 架构债务台账
 
+- 2026-09-03：第一方 Elicitation 补上 Timeline 产品入口。`waiting_input` 投影幂等写入 `input_request`；Vue Timeline 链到已有 Form 页。MCP 单轮 continuation 已随 `external_mcp_shadow` 进入生产 Worker。AD-036 剩余多轮、敏感授权 URL mode、视觉回归和共享环境证据。
+
 - 2026-09-03：已实现但未启用的能力收成台账，并补上 Workflow Repair Execute 的生产启动接线（仍默认关）。
-  - 台账：`docs/notes/implemented-but-disabled.md`。Agent 主线多数是 overlay 可 opt-in、卡观察窗口；真正缺接线的剩 MCP Elicitation 生产 Activity（AD-036）。
+  - 台账：`docs/notes/implemented-but-disabled.md`。Agent 主线多数是 overlay 可 opt-in、卡观察窗口。
   - Repair Execute：Core 新增默认关 `agent_workflow_repair_execute_enabled`，standalone/embedded 在 mTLS 下注入已有 `PersistentAgentWorkflowRepairExecutorV1`。未开仍返回 `Unavailable`。operator grant、共享环境故障演练、Vue 恢复界面继续由 AD-009 跟踪，禁止当默认生产开关。
 
 - 2026-09-03：Subscription Auto-Reply 的 owner Definition 已从 Compose smoke 专用 SQL 升级为公开、认证的 profile 契约。Gateway 仅转发固定 `subscription_autoreply` profile，Core 从可信 owner/tenant/Agent identity 构造确定性 Definition，并固定 `conversation.read + message.write` 与 wildcard conversation `read + write` scope；空 profile 和 `read_only` 保持既有只读行为，未知 profile fail closed。隔离 smoke 通过 API 创建该 Definition，后续 Remote GPU 回归需继续验证其跨服务持久化和一次回复副作用；共享环境启用仍需 AD-034 的 reviewed 观察窗口。
@@ -1070,11 +1072,12 @@
 - **状态：** 处理中
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Human-in-the-loop、Web 客户端、MCP 集成、凭据与第三方授权
-- **现状：** `dipole.agent.elicitation.v1` 已固定 text/select/multiselect/boolean Form、动态响应校验、大小上限和绝对截止时间；Gateway JWT API 经 Core Task owner 复核后发送精确 request ID 的 Temporal Signal，Worker 替换可恢复同一等待点和 Timer，到期自动以 `input_expired` 取消。默认关闭的 MCP adapter 已将受限 form mode 映射为 `wait_input`，以 checkpoint 绑定 untrusted Server/Tool/Invocation/Form/deadline，并拒绝 URL、敏感字段与有损 schema。MCP `2026-07-28` Client seam 显式声明 Form Elicitation 并关闭进程内自动 fulfilment；手工 MRTR continuation 只接受一个 input request，将原 Tool 参数、请求键、可选 opaque `requestState` 和 lineage 绑定到完整性 checkpoint，并可在新连接中精确生成下一次 `tools/call`。真实 SDK Streamable HTTP 双轮契约已通过。canonical Pencil 与默认关闭的 Vue 页面覆盖 desktop/mobile 普通 Form、来源披露和七态，经 authenticated Task query/input/cancel API 精确提交当前 Task/request；Runtime 与 Web 均拒绝凭据类字段。Chromium、Firefox、WebKit 已验证精确请求绑定、首次失败后的 stale Form 清理与恢复、键盘错误聚焦、ARIA 关系和移动端单列布局。当前尚未把 continuation 装配进生产 Temporal Activity/外部 Transport Factory，也未交付多轮、敏感授权 URL mode、产品入口编排和视觉回归基线。
+- **现状：** `dipole.agent.elicitation.v1` 已固定 text/select/multiselect/boolean Form、动态响应校验、大小上限和绝对截止时间；Gateway JWT API 经 Core Task owner 复核后发送精确 request ID 的 Temporal Signal，Worker 替换可恢复同一等待点和 Timer，到期自动以 `input_expired` 取消。默认关闭的 MCP adapter 已将受限 form mode 映射为 `wait_input`，以 checkpoint 绑定 untrusted Server/Tool/Invocation/Form/deadline，并拒绝 URL、敏感字段与有损 schema。MCP `2026-07-28` Client seam 显式声明 Form Elicitation 并关闭进程内自动 fulfilment；手工 MRTR continuation 只接受一个 input request，将原 Tool 参数、请求键、可选 opaque `requestState` 和 lineage 绑定到完整性 checkpoint，并可在新连接中精确生成下一次 `tools/call`。真实 SDK Streamable HTTP 双轮契约已通过。canonical Pencil 与默认关闭的 Vue 页面覆盖 desktop/mobile 普通 Form、来源披露和七态，经 authenticated Task query/input/cancel API 精确提交当前 Task/request；Runtime 与 Web 均拒绝凭据类字段。Chromium、Firefox、WebKit 已验证精确请求绑定、首次失败后的 stale Form 清理与恢复、键盘错误聚焦、ARIA 关系和移动端单列布局。单轮 continuation 已随默认关的 `external_mcp_shadow` Worker 进入生产 Activity；第一方 `waiting_input` 已写入 Timeline 并链到 Form 页。多轮、敏感授权 URL mode 和视觉回归基线仍未交付。
 - **风险：** 浏览器闭环只能恢复已进入 `waiting_input` 的 Task；MCP Server 仍无法在 durable input 完成后恢复原 Tool 调用。将密码、Token 或 OAuth 信息放入普通 Form 会进入 HTTP、日志或 Workflow history，扩大敏感数据暴露面；未来生产接线仍需处理连接丢失、用户取消和 Server 无恢复能力等差异。
-- **建议方向：** 保持普通 Form 的字段白名单和默认关闭灰度，后续补充 Pencil 视觉回归与产品入口编排。Activity-safe runner 已能跨实例重开现代 Client、校验 tenant-owned Profile 并关闭失败资源；下一步将其接入独立默认关闭的 Worker mode，并固定持久 Tool invocation、progress/cancel 和审计映射。第三方授权继续采用独立 URL mode、短期 challenge 与回调绑定。
+- **建议方向：** 保持普通 Form 的字段白名单和默认关闭灰度，后续补充 Pencil 视觉回归。Activity-safe runner 已接入独立默认关闭的 `external_mcp_shadow` Worker；下一步固定共享环境 Tool invocation、progress/cancel 和审计映射。第三方授权继续采用独立 URL mode、短期 challenge 与回调绑定。
 - **处理门槛：** Project Guardian 的普通 Form UI 已完成并保持默认关闭；任何凭据、支付、OAuth 或外部 MCP Elicitation 上线前完成独立敏感输入隔离、continuation 和威胁建模。
 - **本轮进展：** 第一方 Form Elicitation 已首次由生产 read Activity 产出：多会话发现在 claim 读取 Step 前返回 `wait_input`，Form 只含单个 select 字段与不可信会话候选，恢复时按确定性 request ID 与 checkpoint 候选集合双重校验。该路径不涉及 MCP continuation、URL mode 或凭据字段，敏感授权隔离与外部 Server 恢复仍未开放。
+- **本轮进展：** `waiting_input` 投影会幂等写入 `input_request` Timeline 事件，Vue Timeline 将其链到已有 Elicitation 页；MCP 单轮 continuation 已随默认关的 `external_mcp_shadow` Worker 进入生产 Activity。多轮、URL mode 与共享环境证据仍开放。
 
 ### AD-035：Memory foundation 缺少受控写入、版本纠正与压缩治理
 

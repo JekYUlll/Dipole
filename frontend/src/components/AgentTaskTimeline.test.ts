@@ -78,6 +78,17 @@ describe('AgentTaskTimeline', () => {
     expect(wrapper.get('.artifact-link').text()).toBe('查看 Artifact metadata')
   })
 
+  it('links a waiting input_request event to its owner-scoped elicitation surface', async () => {
+    const getTimeline = vi.fn().mockResolvedValue({
+      schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 2,
+      events: [{ eventSeq: '1', eventId: 'EV-1', taskId: 'TASK-1', runId: 'RUN-1', kind: 'input_request', status: 'waiting_input', occurredAtUnixMs: 1_000 }], nextCursor: '',
+    })
+    const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
+    await flushPromises()
+    expect(wrapper.get('.input-link').text()).toBe('补充任务信息')
+    expect(wrapper.get('.input-link').attributes('data-route-name')).toBe('agent-task-input')
+  })
+
   it('links a waiting approval event to its owner-scoped approval surface', async () => {
     const getTimeline = vi.fn().mockResolvedValue({
       schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 2,
