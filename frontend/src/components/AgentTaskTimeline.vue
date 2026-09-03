@@ -70,7 +70,8 @@ function artifactRoute(event: AgentTaskTimelineEvent): { name: 'agent-artifact';
 }
 
 function approvalRoute(event: AgentTaskTimelineEvent): { name: 'agent-task-approval'; params: { taskId: string } } | undefined {
-  if (event.kind !== 'approval' || event.status !== 'waiting_approval' || event.approvalId === undefined) return undefined
+  if (event.kind !== 'approval' || event.approvalId === undefined) return undefined
+  if (event.status !== 'waiting_approval' && event.status !== 'pending') return undefined
   return { name: 'agent-task-approval', params: { taskId: props.taskId } }
 }
 

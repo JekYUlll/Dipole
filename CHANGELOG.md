@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-03：Timeline 审批入口同时识别 Core 写入的 `pending` 状态。此前链接只认 `waiting_approval`，生产事件对不上。
+
 - 2026-09-03：把第一方 Elicitation 接到 Timeline 产品入口。
   - `waiting_input` 投影会幂等写入 `input_request` Timeline 事件；Vue Timeline 把该事件链到已有 `/agent/tasks/:taskId/input`。页面仍由 `VITE_AGENT_ELICITATION_ENABLED` 默认关。
   - MCP 单轮 continuation 已随 `external_mcp_shadow` 进入生产 Worker；AD-036 剩余是多轮、敏感授权和共享环境证据。
