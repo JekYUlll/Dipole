@@ -8,17 +8,12 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
-	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
 type HighWatermarkReader interface {
 	LatestConversationSequence(conversationKey string) (uint64, error)
-}
-
-type TimelineRangeReader interface {
-	ListRange(ctx context.Context, conversationKey string, firstSeq, lastSeq uint64) ([]cassandraData.TimelineRecord, error)
 }
 
 type ReadObservation struct {
@@ -37,7 +32,7 @@ type ReadObservation struct {
 type MessageStore struct {
 	application.MessageStore
 	highWatermark    HighWatermarkReader
-	timeline         TimelineRangeReader
+	timeline         application.ConversationTimelineReader
 	percentage       int
 	verifyPercentage int
 	observe          func(ReadObservation)
@@ -65,11 +60,11 @@ func (s *MessageStore) GetMetadataBySenderAndClientMessageID(senderUUID, clientM
 	return model.MetadataFromMessage(message), err
 }
 
-func NewMessageStore(primary application.MessageStore, highWatermark HighWatermarkReader, timeline TimelineRangeReader, percentage int, observe func(ReadObservation)) *MessageStore {
+func NewMessageStore(primary application.MessageStore, highWatermark HighWatermarkReader, timeline application.ConversationTimelineReader, percentage int, observe func(ReadObservation)) *MessageStore {
 	return NewMessageStoreWithVerification(primary, highWatermark, timeline, percentage, 0, observe)
 }
 
-func NewMessageStoreWithVerification(primary application.MessageStore, highWatermark HighWatermarkReader, timeline TimelineRangeReader, percentage, verifyPercentage int, observe func(ReadObservation)) *MessageStore {
+func NewMessageStoreWithVerification(primary application.MessageStore, highWatermark HighWatermarkReader, timeline application.ConversationTimelineReader, percentage, verifyPercentage int, observe func(ReadObservation)) *MessageStore {
 	if percentage < 0 {
 		percentage = 0
 	}
@@ -133,7 +128,7 @@ func (s *MessageStore) ListByConversationSeqAfter(conversationKey string, afterS
 	if uint64(limit) < highWatermark-afterSeq {
 		lastSeq = afterSeq + uint64(limit)
 	}
-	records, err := s.timeline.ListRange(context.Background(), conversationKey, afterSeq+1, lastSeq)
+	records, err := s.timeline.ListConversationRange(context.Background(), conversationKey, afterSeq+1, lastSeq)
 	if err != nil {
 		return s.fallback(conversationKey, afterSeq, limit, observation, "cassandra_error", startedAt)
 	}
@@ -141,7 +136,7 @@ func (s *MessageStore) ListByConversationSeqAfter(conversationKey string, afterS
 		return s.fallback(conversationKey, afterSeq, limit, observation, "incomplete_page", startedAt)
 	}
 
-	return s.completeAfter(conversationKey, afterSeq, limit, recordsToMessages(records), observation, startedAt)
+	return s.completeAfter(conversationKey, afterSeq, limit, records, observation, startedAt)
 }
 
 func (s *MessageStore) ListByConversationSeqBefore(conversationKey string, beforeSeq uint64, limit int) ([]*model.Message, error) {
@@ -179,14 +174,14 @@ func (s *MessageStore) ListByConversationSeqBefore(conversationKey string, befor
 	if uint64(limit) < lastSeq {
 		firstSeq = lastSeq - uint64(limit) + 1
 	}
-	records, err := s.timeline.ListRange(context.Background(), conversationKey, firstSeq, lastSeq)
+	records, err := s.timeline.ListConversationRange(context.Background(), conversationKey, firstSeq, lastSeq)
 	if err != nil {
 		return s.fallbackBefore(conversationKey, beforeSeq, limit, observation, "cassandra_error", startedAt)
 	}
 	if !continuous(records, firstSeq, lastSeq) {
 		return s.fallbackBefore(conversationKey, beforeSeq, limit, observation, "incomplete_page", startedAt)
 	}
-	return s.completeBefore(conversationKey, beforeSeq, limit, recordsToMessages(records), observation, startedAt)
+	return s.completeBefore(conversationKey, beforeSeq, limit, records, observation, startedAt)
 }
 
 func (s *MessageStore) completeAfter(conversationKey string, afterSeq uint64, limit int, page []*model.Message, observation ReadObservation, startedAt time.Time) ([]*model.Message, error) {
@@ -297,34 +292,16 @@ func equalTimePointer(left, right *time.Time) bool {
 	return left.Equal(*right)
 }
 
-func continuous(records []cassandraData.TimelineRecord, firstSeq, lastSeq uint64) bool {
+func continuous(records []*model.Message, firstSeq, lastSeq uint64) bool {
 	if uint64(len(records)) != lastSeq-firstSeq+1 {
 		return false
 	}
 	for index, record := range records {
-		if record.Projection.MessageSeq != firstSeq+uint64(index) {
+		if record == nil || record.Seq != firstSeq+uint64(index) {
 			return false
 		}
 	}
 	return true
-}
-
-func recordsToMessages(records []cassandraData.TimelineRecord) []*model.Message {
-	messages := make([]*model.Message, len(records))
-	for index, record := range records {
-		projection := record.Projection
-		messages[index] = &model.Message{
-			UUID: projection.MessageUUID, ClientMessageID: projection.ClientMessageID,
-			ConversationKey: projection.ConversationKey, Seq: projection.MessageSeq,
-			SenderUUID: projection.SenderUUID, TargetType: projection.TargetType,
-			TargetUUID: projection.TargetUUID, MessageType: projection.MessageType,
-			Content: projection.Content, FileID: projection.FileID, FileName: projection.FileName,
-			FileSize: projection.FileSize, FileURL: projection.FileURL,
-			FileContentType: projection.FileContentType, FileExpiresAt: projection.FileExpiresAt,
-			SentAt: projection.SentAt,
-		}
-	}
-	return messages
 }
 
 func conversationInCohort(conversationKey string, percentage int) bool {

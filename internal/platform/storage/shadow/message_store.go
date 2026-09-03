@@ -8,13 +8,8 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/logger"
 	"github.com/JekYUlll/Dipole/internal/model"
-	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	"go.uber.org/zap"
 )
-
-type TimelineRangeReader interface {
-	ListRange(ctx context.Context, conversationKey string, firstSeq, lastSeq uint64) ([]cassandraData.TimelineRecord, error)
-}
 
 type MessageComparison struct {
 	Operation    string
@@ -31,7 +26,7 @@ type MessageComparison struct {
 
 type MessageStore struct {
 	primary  application.MessageStore
-	timeline TimelineRangeReader
+	timeline application.ConversationTimelineReader
 	observe  func(MessageComparison)
 	slots    chan struct{}
 	work     sync.WaitGroup
@@ -42,11 +37,11 @@ const defaultMaxConcurrentComparisons = 32
 var _ application.MessageStore = (*MessageStore)(nil)
 var _ application.MessageMetadataStore = (*MessageStore)(nil)
 
-func NewMessageStore(primary application.MessageStore, timeline TimelineRangeReader, observe func(MessageComparison)) *MessageStore {
+func NewMessageStore(primary application.MessageStore, timeline application.ConversationTimelineReader, observe func(MessageComparison)) *MessageStore {
 	return newMessageStore(primary, timeline, observe, defaultMaxConcurrentComparisons)
 }
 
-func newMessageStore(primary application.MessageStore, timeline TimelineRangeReader, observe func(MessageComparison), maxConcurrent int) *MessageStore {
+func newMessageStore(primary application.MessageStore, timeline application.ConversationTimelineReader, observe func(MessageComparison), maxConcurrent int) *MessageStore {
 	if observe == nil {
 		observe = logComparison
 	}
@@ -173,12 +168,12 @@ func (s *MessageStore) compare(operation, conversationKey string, page []*model.
 	go func() {
 		defer s.work.Done()
 		defer func() { <-s.slots }()
-		records, err := s.timeline.ListRange(context.Background(), conversationKey, comparison.FirstSeq, comparison.LastSeq)
-		comparison.ShadowCount = len(records)
+		shadowPage, err := s.timeline.ListConversationRange(context.Background(), conversationKey, comparison.FirstSeq, comparison.LastSeq)
+		comparison.ShadowCount = len(shadowPage)
 		if err != nil {
 			comparison.ShadowError = err.Error()
 		} else {
-			comparison.Match = equalPage(snapshot, records)
+			comparison.Match = equalPage(snapshot, shadowPage)
 		}
 		s.observe(comparison)
 	}()
@@ -225,35 +220,35 @@ func sequenceBounds(messages []*model.Message) (uint64, uint64, bool) {
 	return first, last, true
 }
 
-func equalPage(primary []*model.Message, shadow []cassandraData.TimelineRecord) bool {
+func equalPage(primary, shadow []*model.Message) bool {
 	if len(primary) != len(shadow) {
 		return false
 	}
 	for index, message := range primary {
-		if message == nil || !equalProjection(message, shadow[index].Projection) {
+		if message == nil || shadow[index] == nil || !equalMessage(message, shadow[index]) {
 			return false
 		}
 	}
 	return true
 }
 
-func equalProjection(message *model.Message, projection cassandraData.TimelineProjection) bool {
-	return message.UUID == projection.MessageUUID &&
-		message.ClientMessageID == projection.ClientMessageID &&
-		message.ConversationKey == projection.ConversationKey &&
-		message.Seq == projection.MessageSeq &&
-		message.SenderUUID == projection.SenderUUID &&
-		message.TargetType == projection.TargetType &&
-		message.TargetUUID == projection.TargetUUID &&
-		message.MessageType == projection.MessageType &&
-		message.Content == projection.Content &&
-		message.FileID == projection.FileID &&
-		message.FileName == projection.FileName &&
-		message.FileSize == projection.FileSize &&
-		message.FileURL == projection.FileURL &&
-		message.FileContentType == projection.FileContentType &&
-		equalOptionalTime(message.FileExpiresAt, projection.FileExpiresAt) &&
-		message.SentAt.Equal(projection.SentAt)
+func equalMessage(left, right *model.Message) bool {
+	return left.UUID == right.UUID &&
+		left.ClientMessageID == right.ClientMessageID &&
+		left.ConversationKey == right.ConversationKey &&
+		left.Seq == right.Seq &&
+		left.SenderUUID == right.SenderUUID &&
+		left.TargetType == right.TargetType &&
+		left.TargetUUID == right.TargetUUID &&
+		left.MessageType == right.MessageType &&
+		left.Content == right.Content &&
+		left.FileID == right.FileID &&
+		left.FileName == right.FileName &&
+		left.FileSize == right.FileSize &&
+		left.FileURL == right.FileURL &&
+		left.FileContentType == right.FileContentType &&
+		equalOptionalTime(left.FileExpiresAt, right.FileExpiresAt) &&
+		left.SentAt.Equal(right.SentAt)
 }
 
 func equalOptionalTime(left, right *time.Time) bool {

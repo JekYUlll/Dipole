@@ -8,7 +8,6 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
-	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 	"github.com/prometheus/client_golang/prometheus"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 )
@@ -76,17 +75,17 @@ func (r *highWaterReader) LatestConversationSequence(string) (uint64, error) {
 }
 
 type timelineReader struct {
-	records []cassandraData.TimelineRecord
+	records []*model.Message
 	err     error
 	calls   int
 	first   uint64
 	last    uint64
 }
 
-func (r *timelineReader) ListRange(_ context.Context, _ string, first, last uint64) ([]cassandraData.TimelineRecord, error) {
+func (r *timelineReader) ListConversationRange(_ context.Context, _ string, first, last uint64) ([]*model.Message, error) {
 	r.calls++
 	r.first, r.last = first, last
-	return r.records, r.err
+	return cloneTimelineMessages(r.records), r.err
 }
 
 func TestCassandraReadRouterKeepsZeroPercentOnMySQL(t *testing.T) {
@@ -113,7 +112,7 @@ func TestCassandraReadRouterServesCompleteContinuousPage(t *testing.T) {
 		t.Run(conversationKey, func(t *testing.T) {
 			primary := &primaryStore{page: []*model.Message{{Seq: 2, Content: "mysql"}}}
 			highWater := &highWaterReader{sequence: 4}
-			timeline := &timelineReader{records: []cassandraData.TimelineRecord{
+			timeline := &timelineReader{records: []*model.Message{
 				timelineRecord(2, "two"), timelineRecord(3, "three"), timelineRecord(4, "four"),
 			}}
 			observations := make(chan ReadObservation, 1)
@@ -145,7 +144,7 @@ func TestCassandraReadRouterServesLatestAndEarlierBeforeSequencePages(t *testing
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			primary := &primaryStore{page: []*model.Message{{Seq: test.last, Content: "mysql"}}}
-			timeline := &timelineReader{records: []cassandraData.TimelineRecord{
+			timeline := &timelineReader{records: []*model.Message{
 				timelineRecord(test.first, "first"), timelineRecord(test.first+1, "middle"), timelineRecord(test.last, "last"),
 			}}
 			observations := make(chan ReadObservation, 1)
@@ -168,7 +167,7 @@ func TestCassandraReadRouterServesLatestAndEarlierBeforeSequencePages(t *testing
 
 func TestCassandraReadRouterBeforeSequenceFallsBackAsOnePage(t *testing.T) {
 	primary := &primaryStore{page: []*model.Message{{ID: 10, Seq: 3, Content: "mysql-three"}, {ID: 11, Seq: 4, Content: "mysql-four"}}}
-	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "two"), timelineRecord(4, "four")}}
+	timeline := &timelineReader{records: []*model.Message{timelineRecord(2, "two"), timelineRecord(4, "four")}}
 	observations := make(chan ReadObservation, 1)
 	store := NewMessageStore(primary, &highWaterReader{sequence: 5}, timeline, 100, func(observation ReadObservation) { observations <- observation })
 
@@ -208,8 +207,8 @@ func TestCassandraReadRouterBeforeSequenceEmptyBoundariesAvoidTimelineRead(t *te
 }
 
 func TestCassandraReadRouterVerificationMatchesMySQLPayload(t *testing.T) {
-	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "same")}}
-	mysqlMessage := recordsToMessages(timeline.records)[0]
+	timeline := &timelineReader{records: []*model.Message{timelineRecord(2, "same")}}
+	mysqlMessage := cloneTimelineMessages(timeline.records)[0]
 	mysqlMessage.ID = 21
 	primary := &primaryStore{page: []*model.Message{mysqlMessage}}
 	observations := make(chan ReadObservation, 1)
@@ -226,8 +225,8 @@ func TestCassandraReadRouterVerificationMatchesMySQLPayload(t *testing.T) {
 }
 
 func TestCassandraReadRouterVerificationFallsBackOnPayloadMismatch(t *testing.T) {
-	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "corrupt")}}
-	mysqlMessage := recordsToMessages(timeline.records)[0]
+	timeline := &timelineReader{records: []*model.Message{timelineRecord(2, "corrupt")}}
+	mysqlMessage := cloneTimelineMessages(timeline.records)[0]
 	mysqlMessage.ID = 21
 	mysqlMessage.Content = "mysql"
 	primary := &primaryStore{page: []*model.Message{mysqlMessage}}
@@ -246,7 +245,7 @@ func TestCassandraReadRouterVerificationFallsBackOnPayloadMismatch(t *testing.T)
 
 func TestCassandraReadRouterVerificationErrorKeepsAvailableCassandraPage(t *testing.T) {
 	primary := &primaryStore{err: errors.New("mysql unavailable")}
-	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "available")}}
+	timeline := &timelineReader{records: []*model.Message{timelineRecord(2, "available")}}
 	observations := make(chan ReadObservation, 1)
 	store := NewMessageStoreWithVerification(primary, &highWaterReader{sequence: 2}, timeline, 100, 100, func(observation ReadObservation) { observations <- observation })
 
@@ -261,8 +260,8 @@ func TestCassandraReadRouterVerificationErrorKeepsAvailableCassandraPage(t *test
 }
 
 func TestCassandraReadRouterVerifiesBeforeSequenceWithSameCursor(t *testing.T) {
-	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(4, "cassandra")}}
-	mysqlMessage := recordsToMessages(timeline.records)[0]
+	timeline := &timelineReader{records: []*model.Message{timelineRecord(4, "cassandra")}}
+	mysqlMessage := cloneTimelineMessages(timeline.records)[0]
 	mysqlMessage.ID = 41
 	mysqlMessage.Content = "mysql"
 	primary := &primaryStore{page: []*model.Message{mysqlMessage}}
@@ -283,12 +282,12 @@ func TestCassandraReadRouterFallsBackForEveryUnsafeOutcome(t *testing.T) {
 		name    string
 		headErr error
 		readErr error
-		records []cassandraData.TimelineRecord
+		records []*model.Message
 		reason  string
 	}{
 		{name: "metadata", headErr: errors.New("head unavailable"), reason: "high_watermark_error"},
 		{name: "cassandra", readErr: errors.New("Cassandra unavailable"), reason: "cassandra_error"},
-		{name: "missing", records: []cassandraData.TimelineRecord{timelineRecord(2, "two"), timelineRecord(4, "four")}, reason: "incomplete_page"},
+		{name: "missing", records: []*model.Message{timelineRecord(2, "two"), timelineRecord(4, "four")}, reason: "incomplete_page"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -355,8 +354,8 @@ func TestCassandraReadRouterExportsRouteMetrics(t *testing.T) {
 }
 
 func TestCassandraReadRouterExportsVerificationMetrics(t *testing.T) {
-	timeline := &timelineReader{records: []cassandraData.TimelineRecord{timelineRecord(2, "same")}}
-	mysqlMessage := recordsToMessages(timeline.records)[0]
+	timeline := &timelineReader{records: []*model.Message{timelineRecord(2, "same")}}
+	mysqlMessage := cloneTimelineMessages(timeline.records)[0]
 	mysqlMessage.ID = 21
 	store := NewMessageStoreWithVerification(
 		&primaryStore{page: []*model.Message{mysqlMessage}}, &highWaterReader{sequence: 2},
@@ -394,10 +393,19 @@ func metricHasLabels(labels []*io_prometheus_client.LabelPair, expected map[stri
 	return len(labels) == len(expected)
 }
 
-func timelineRecord(seq uint64, content string) cassandraData.TimelineRecord {
-	return cassandraData.TimelineRecord{Projection: cassandraData.TimelineProjection{
-		ConversationKey: "group:G1", MessageSeq: seq, MessageUUID: content,
+func timelineRecord(seq uint64, content string) *model.Message {
+	return &model.Message{
+		ConversationKey: "group:G1", Seq: seq, UUID: content,
 		TargetType: model.MessageTargetGroup, TargetUUID: "G1", Content: content,
 		SentAt: time.Date(2026, 8, 27, 12, int(seq), 0, 0, time.UTC),
-	}}
+	}
+}
+
+func cloneTimelineMessages(messages []*model.Message) []*model.Message {
+	cloned := make([]*model.Message, 0, len(messages))
+	for _, message := range messages {
+		copy := *message
+		cloned = append(cloned, &copy)
+	}
+	return cloned
 }

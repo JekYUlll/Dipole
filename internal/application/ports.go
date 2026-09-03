@@ -145,6 +145,13 @@ type MessageMetadataStore interface {
 	GetMetadataBySenderAndClientMessageID(senderUUID, clientMessageID string) (*model.MessageMetadata, error)
 }
 
+// ConversationTimelineReader is the storage-neutral Seq range contract used by
+// read routing and storage benchmarks. Implementations must preserve ascending
+// conversation sequence order; callers verify page continuity before serving it.
+type ConversationTimelineReader interface {
+	ListConversationRange(ctx context.Context, conversationKey string, firstSeq, lastSeq uint64) ([]*model.Message, error)
+}
+
 type SearchIndex interface {
 	Apply(mutation *model.MessageSearchMutation) error
 	Search(query model.MessageSearchQuery) ([]*model.MessageSearchDocument, error)

@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：收敛 Cassandra/MySQL Timeline 读取的可插拔存储边界。
+  - 新增应用层 `ConversationTimelineReader`：以 `(conversation_key, first_seq, last_seq)` 的升序消息范围作为统一契约；Cassandra Timeline 与当前 SQLC/MySQL `MessageStore` 适配器均实现该契约。
+  - Cassandra 灰度路由和影子读仅依赖该契约，移除对 Cassandra 投影类型的编译期依赖；后续新增存储实现、同输入对照与基准采样无需改动路由逻辑。
+  - MySQL 仍是默认读写主路径，既有 Cassandra 百分比灰度、影子核验与回退语义保持不变。真实跨存储验证改为 `go test -tags=integration ./internal/platform/storage/routing`，避免日常单元门禁隐式连接外部驱动和服务。
+
 - 2026-09-03：记忆页补上 owner 候选审核，pending 行可直接通过或拒绝。
   - Core/Gateway 新增 `ReviewMemoryCandidate`：会话派生 owner，写入既有 v46 review 账本并更新候选状态；精确重放幂等，决策冲突 fail closed。
   - Vue `/agent/memories` 对 pending 行调用 `POST /memory-candidates/:id/review`，通过后沿用已有晋升。理由使用固定 `owner accepted` / `owner rejected`，不含正文。生产 `VITE_*` 仍默认关。

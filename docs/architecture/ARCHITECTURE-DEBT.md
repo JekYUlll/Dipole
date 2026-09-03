@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：Cassandra/MySQL Timeline 读路径已收敛到 `application.ConversationTimelineReader`，Cassandra `TimelineStore` 和 SQLC `MessageStoreReader` 使用相同的闭区间 Seq 查询契约。读灰度和影子校验不再认识 Cassandra 的内部投影类型，后续可接入额外存储实现并复用同一组输入作性能对比。默认仍由 MySQL 承担读写 authority；Cassandra 主读比例扩大前仍需远端 `go test -tags=integration ./internal/platform/storage/routing`、影子观察和回退证据，不能由此抽象层推导切流完成。
+
 - 2026-09-03：Remote GPU 上的 Active Interactive 候选 `dipole-agent-active-649cf110` 仍返回 Web 路由 `200` 且 Agent `/readyz` 健康，但其一次性验收 grant 已按设计撤销。后续 Task 的 Core admission 因此返回 `PERMISSION_DENIED: Agent Run admission denied`。将 HTTP `200`、容器 health 与可执行 Agent 体验区分为独立证据：体验验收至少需要有效的 owner-scoped promotion grant、认证 Task admission、浏览器创建/审批/Timeline 闭环和终态副作用断言。该候选不得继续作为可体验 URL 对外引用。
 
 - 2026-09-03：Remote GPU 当前保留多个历史 `dipole-agent-*` Compose project，存在重复公网/loopback Gateway 端口，且 `dipole-agent-wait-notify-82032ffa-mysql-1` 处于重启循环。新体验栈部署前需要按 project 归属、端口、revision、有效 grant 和活跃使用者完成清点，再经确认定向回收已过期 smoke/demo 项目；禁止使用全局 Docker prune 或改动仍在使用的前端 V3 项目。

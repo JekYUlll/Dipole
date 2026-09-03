@@ -9,7 +9,6 @@ import (
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
-	cassandraData "github.com/JekYUlll/Dipole/internal/platform/cassandra"
 )
 
 type primaryMessageStore struct {
@@ -59,7 +58,7 @@ func (s *primaryMessageStore) GetBySenderAndClientMessageID(string, string) (*mo
 
 type timelineRangeReader struct {
 	mu       sync.Mutex
-	records  []cassandraData.TimelineRecord
+	records  []*model.Message
 	err      error
 	calls    int
 	key      string
@@ -70,21 +69,21 @@ type timelineRangeReader struct {
 type blockingTimelineRangeReader struct {
 	started chan struct{}
 	release chan struct{}
-	record  cassandraData.TimelineRecord
+	record  *model.Message
 }
 
-func (r *blockingTimelineRangeReader) ListRange(context.Context, string, uint64, uint64) ([]cassandraData.TimelineRecord, error) {
+func (r *blockingTimelineRangeReader) ListConversationRange(context.Context, string, uint64, uint64) ([]*model.Message, error) {
 	close(r.started)
 	<-r.release
-	return []cassandraData.TimelineRecord{r.record}, nil
+	return clonePage([]*model.Message{r.record}), nil
 }
 
-func (r *timelineRangeReader) ListRange(_ context.Context, key string, firstSeq, lastSeq uint64) ([]cassandraData.TimelineRecord, error) {
+func (r *timelineRangeReader) ListConversationRange(_ context.Context, key string, firstSeq, lastSeq uint64) ([]*model.Message, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.calls++
 	r.key, r.firstSeq, r.lastSeq = key, firstSeq, lastSeq
-	return r.records, r.err
+	return clonePage(r.records), r.err
 }
 
 func (r *timelineRangeReader) snapshot() (int, string, uint64, uint64) {
@@ -99,7 +98,7 @@ func TestMessageStoreReturnsPrimaryPageAndComparesExactSequenceRange(t *testing.
 		message(42, 9, "M9", "second"),
 	}
 	primary := &primaryMessageStore{page: primaryPage}
-	timeline := &timelineRangeReader{records: []cassandraData.TimelineRecord{
+	timeline := &timelineRangeReader{records: []*model.Message{
 		record(primaryPage[0]),
 		record(primaryPage[1]),
 	}}
@@ -128,7 +127,7 @@ func TestMessageStoreReportsMismatchWithoutChangingPrimaryResult(t *testing.T) {
 	comparisons := make(chan MessageComparison, 1)
 	store := NewMessageStore(
 		&primaryMessageStore{page: primaryPage},
-		&timelineRangeReader{records: []cassandraData.TimelineRecord{record(&shadowMessage)}},
+		&timelineRangeReader{records: []*model.Message{record(&shadowMessage)}},
 		func(comparison MessageComparison) { comparisons <- comparison },
 	)
 
@@ -259,14 +258,16 @@ func message(id uint, seq uint64, uuid, content string) *model.Message {
 	}
 }
 
-func record(message *model.Message) cassandraData.TimelineRecord {
-	return cassandraData.TimelineRecord{Projection: cassandraData.TimelineProjection{
-		ConversationKey: message.ConversationKey, MessageSeq: message.Seq,
-		MessageUUID: message.UUID, ClientMessageID: message.ClientMessageID,
-		SenderUUID: message.SenderUUID, TargetType: message.TargetType, TargetUUID: message.TargetUUID,
-		MessageType: message.MessageType, Content: message.Content,
-		FileID: message.FileID, FileName: message.FileName, FileSize: message.FileSize,
-		FileURL: message.FileURL, FileContentType: message.FileContentType,
-		FileExpiresAt: message.FileExpiresAt, SentAt: message.SentAt,
-	}}
+func record(message *model.Message) *model.Message {
+	copy := *message
+	return &copy
+}
+
+func clonePage(messages []*model.Message) []*model.Message {
+	cloned := make([]*model.Message, 0, len(messages))
+	for _, message := range messages {
+		copy := *message
+		cloned = append(cloned, &copy)
+	}
+	return cloned
 }

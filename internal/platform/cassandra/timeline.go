@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/apache/cassandra-gocql-driver/v2"
 )
 
@@ -58,6 +60,8 @@ type TimelineStore struct {
 	session    *gocql.Session
 	bucketSize uint64
 }
+
+var _ application.ConversationTimelineReader = (*TimelineStore)(nil)
 
 func NewTimelineStore(session *gocql.Session, bucketSize uint64) (*TimelineStore, error) {
 	if session == nil {
@@ -245,6 +249,25 @@ WHERE conversation_key = ? AND bucket = ? AND message_seq >= ? AND message_seq <
 		return records[left].Projection.MessageSeq < records[right].Projection.MessageSeq
 	})
 	return records, nil
+}
+
+// ListConversationRange exposes Timeline records through the storage-neutral
+// application contract used by MySQL/Cassandra routing and benchmarks.
+func (s *TimelineStore) ListConversationRange(ctx context.Context, conversationKey string, firstSeq, lastSeq uint64) ([]*model.Message, error) {
+	records, err := s.ListRange(ctx, conversationKey, firstSeq, lastSeq)
+	if err != nil {
+		return nil, err
+	}
+	messages := make([]*model.Message, len(records))
+	for index, record := range records {
+		projection := record.Projection
+		messages[index] = &model.Message{UUID: projection.MessageUUID, ClientMessageID: projection.ClientMessageID,
+			ConversationKey: projection.ConversationKey, Seq: projection.MessageSeq, SenderUUID: projection.SenderUUID,
+			TargetType: projection.TargetType, TargetUUID: projection.TargetUUID, MessageType: projection.MessageType,
+			Content: projection.Content, FileID: projection.FileID, FileName: projection.FileName, FileSize: projection.FileSize,
+			FileURL: projection.FileURL, FileContentType: projection.FileContentType, FileExpiresAt: projection.FileExpiresAt, SentAt: projection.SentAt}
+	}
+	return messages, nil
 }
 
 func bucketsForRange(firstSeq, lastSeq, bucketSize uint64) ([]int64, error) {
