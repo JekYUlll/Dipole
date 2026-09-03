@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-04：允许微服务镜像构建器显式选择 `agent`。
+  - `DIPOLE_MICROSERVICE_IMAGE_SERVICES=agent` 现只运行 TypeScript Agent Runtime 镜像构建，不再因 Go 服务白名单校验失败而被迫附带 Core 构建；既有 Go 服务选择仍保持同时构建 Agent 镜像的行为。
+
 - 2026-09-04：收紧 Interactive Agent 只读 Compose Smoke，使其覆盖真实权限内的两步读取轨迹。
   - 本地桩模型固定生成 `conversation.list → conversation.read`，Smoke 以认证 owner 的 Agent 私聊作为唯一可读会话，验证幂等创建、跨 owner 拒绝、两条已完成 Shadow Step 与零 Agent 消息写入。
   - Remote GPU 在 `bdacc817` 通过 Node 22 typecheck、18 项 Planner 测试及桩模型、DeepSeek Provider 两次隔离 Compose smoke；两次项目均自动清理，公共 `dipole-experience` 保持 11 个健康容器。Provider 的单一受控样本不推导模型质量或成功率。

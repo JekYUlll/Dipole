@@ -28,6 +28,8 @@ test("Go microservice images cache base dependencies before service-specific bui
 });
 
 test("microservice image builds include the TypeScript Agent Runtime at the same revision", () => {
+  assert.match(script, /agent_service="agent"/);
+  assert.match(script, /\[\[ "\$\{requested_service\}" != "\$\{agent_service\}" \]\] \|\| found=true/);
   assert.match(script, /agent_image=\$\{DIPOLE_AGENT_IMAGE:-dipole-agent:latest\}/);
   assert.match(script, /--file services\/agent-runtime\/Dockerfile[\s\S]*?services\/agent-runtime/);
   assert.match(script, /--build-arg "DIPOLE_VCS_REVISION=\$\{revision\}"/);

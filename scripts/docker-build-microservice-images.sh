@@ -32,6 +32,7 @@ declare -a services=(
   "search-indexer:dipole-search-indexer"
   "agent-timeline-repair:dipole-agent-task-timeline-repair"
 )
+agent_service="agent"
 
 selected_services="${DIPOLE_MICROSERVICE_IMAGE_SERVICES:-}"
 if [[ -n "${selected_services}" ]]; then
@@ -45,6 +46,7 @@ if [[ -n "${selected_services}" ]]; then
         break
       fi
     done
+    [[ "${requested_service}" != "${agent_service}" ]] || found=true
     if [[ "${found}" != "true" ]]; then
       echo "Unknown microservice image: ${requested_service}" >&2
       exit 2
