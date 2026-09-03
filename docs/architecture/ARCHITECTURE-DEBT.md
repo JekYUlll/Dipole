@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：Cassandra read-routing smoke 在集成测试改为 `integration` build tag 后遗漏传入 `-tags=integration`，导致一次隔离运行显示 `no tests to run` 后仍打印成功。该结果已明确作废；脚本现强制标签，后续验收必须确认真实测试执行并覆盖 Cassandra 页面、payload mismatch 与缺行回退。默认 MySQL authority 与 Cassandra 灰度开关不变。
+
 - 2026-09-03：Cassandra/MySQL Timeline 读路径已收敛到 `application.ConversationTimelineReader`，Cassandra `TimelineStore` 和 SQLC `MessageStoreReader` 使用相同的闭区间 Seq 查询契约。读灰度和影子校验不再认识 Cassandra 的内部投影类型，后续可接入额外存储实现并复用同一组输入作性能对比。默认仍由 MySQL 承担读写 authority；Cassandra 主读比例扩大前仍需远端 `go test -tags=integration ./internal/platform/storage/routing`、影子观察和回退证据，不能由此抽象层推导切流完成。
 
 - 2026-09-03：Remote GPU 上的 Active Interactive 候选 `dipole-agent-active-649cf110` 仍返回 Web 路由 `200` 且 Agent `/readyz` 健康，但其一次性验收 grant 已按设计撤销。后续 Task 的 Core admission 因此返回 `PERMISSION_DENIED: Agent Run admission denied`。将 HTTP `200`、容器 health 与可执行 Agent 体验区分为独立证据：体验验收至少需要有效的 owner-scoped promotion grant、认证 Task admission、浏览器创建/审批/Timeline 闭环和终态副作用断言。该候选不得继续作为可体验 URL 对外引用。

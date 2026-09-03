@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：修正 Cassandra read-routing smoke 在集成测试标签后的执行契约。
+  - 集成测试标记为 `integration` 后，smoke 显式传入 `-tags=integration`，避免过滤后零测试运行却输出成功。
+  - 先前该脚本的无测试结果已作废；新的 MySQL/Cassandra 隔离回退验证必须实际执行 payload corruption 与 missing-row 两条回退断言。
+
 - 2026-09-03：收敛 Cassandra/MySQL Timeline 读取的可插拔存储边界。
   - 新增应用层 `ConversationTimelineReader`：以 `(conversation_key, first_seq, last_seq)` 的升序消息范围作为统一契约；Cassandra Timeline 与当前 SQLC/MySQL `MessageStore` 适配器均实现该契约。
   - Cassandra 灰度路由和影子读仅依赖该契约，移除对 Cassandra 投影类型的编译期依赖；后续新增存储实现、同输入对照与基准采样无需改动路由逻辑。
