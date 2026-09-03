@@ -47,6 +47,7 @@ type Server struct {
 	definitionCatalog      application.AgentDefinitionCatalogServiceV1
 	memories               application.AgentMemoryContextResolverV1
 	memoryControls         application.AgentMemoryOwnerControlServiceV1
+	memoryCandidates       application.AgentMemoryCandidateCatalogServiceV1
 	memoryPromotions       application.AgentMemoryCandidatePromotionServiceV1
 	memoryPromotionCommits application.AgentMemoryPromotionReceiptCommitServiceV1
 	toolAudits             application.AgentToolInvocationAuditServiceV1
@@ -187,6 +188,14 @@ func (s *Server) WithMemoryOwnerControls(controls application.AgentMemoryOwnerCo
 	return s, nil
 }
 
+func (s *Server) WithMemoryCandidateCatalog(catalog application.AgentMemoryCandidateCatalogServiceV1) (*Server, error) {
+	if s == nil || catalog == nil {
+		return nil, errors.New("Agent Memory candidate catalog service is required")
+	}
+	s.memoryCandidates = catalog
+	return s, nil
+}
+
 func (s *Server) WithMemoryCandidatePromotions(promotions application.AgentMemoryCandidatePromotionServiceV1) (*Server, error) {
 	if s == nil || promotions == nil {
 		return nil, errors.New("Agent Memory candidate promotion service is required")
@@ -290,6 +299,35 @@ func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.Pr
 	return agentOwnedMemoryResponseV1(*item), nil
 }
 
+func (s *Server) ListOwnedMemoryCandidates(ctx context.Context, request *agentv1.ListOwnedMemoryCandidatesRequest) (*agentv1.ListOwnedMemoryCandidatesResponse, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.memoryCandidates == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory candidate catalog is unavailable")
+	}
+	page, err := s.memoryCandidates.ListOwnedCandidates(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryCandidateCatalogRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, AfterCandidateUUID: request.GetAfterCandidateId(), Limit: int(request.GetLimit()),
+	})
+	if err != nil {
+		return nil, agentMemoryCandidateCatalogErrorV1(err)
+	}
+	response := &agentv1.ListOwnedMemoryCandidatesResponse{
+		Candidates: make([]*agentv1.AgentMemoryCandidateSummary, 0, len(page.Items)),
+		NextCursor: page.NextCursor,
+	}
+	for _, item := range page.Items {
+		candidate := item.Candidate
+		response.Candidates = append(response.Candidates, &agentv1.AgentMemoryCandidateSummary{
+			CandidateId: candidate.CandidateUUID, CandidateSha256: candidate.CandidateSHA256, Summary: candidate.Summary,
+			Status: candidate.Status, ReviewId: item.ReviewUUID, PromotedMemoryId: candidate.PromotedMemoryUUID,
+			ObservedAtUnixMs: candidate.ObservedAt.UnixMilli(),
+		})
+	}
+	return response, nil
+}
+
 func (s *Server) CommitMemoryPromotionReceipt(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
 	return commitMemoryPromotionReceiptV1(ctx, request, s.memoryPromotionCommits)
 }
@@ -358,6 +396,13 @@ func agentMemoryCandidatePromotionErrorV1(err error) error {
 	default:
 		return status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
 	}
+}
+
+func agentMemoryCandidateCatalogErrorV1(err error) error {
+	if errors.Is(err, application.ErrAgentMemoryCandidateInvalid) {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return status.Error(codes.Unavailable, "Agent Memory candidate catalog is unavailable")
 }
 
 func agentMemoryPromotionReceiptCommitErrorV1(err error) error {

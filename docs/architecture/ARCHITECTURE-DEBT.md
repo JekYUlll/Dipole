@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：Memory Candidate 已具备 owner-scoped 的 Core/Gateway 只读分页面。`ListOwnedMemoryCandidates` 只允许经认证的 `dipole-gateway` 代表当前 principal 调用，SQLC 查询按 tenant、owner 与 candidate UUID 分页；公开返回严格限定为摘要、哈希、候选状态、审核 ID、已晋级 Memory ID 和观察时间，evidence、资源 URI 与原始内容不离开 Core。embedded 与 standalone Core 都显式装配 owner control、catalog 与 promotion service，避免微服务部署出现未接线的 `Unavailable`。应用、MySQL 合约、Core RPC 和 Gateway 验证均已覆盖 owner 隔离与拒绝伪造回包。Vue 候选收件箱、默认自动 Memory 写入和共享 active authority 仍分别由前端体验缺口与 AD-035/AD-061 跟踪。
+
 - 2026-09-03：第一方 MCP 认证体验补齐可复跑的无依赖客户端 smoke，详见 [Agent MCP 授权边界](../agent/agent-mcp-authorization.md#开发期体验验收)。Remote GPU 隔离 `shadow/read_shadow` 候选从 Task/Run 绑定、consent 到 `initialize`、`tools/list`、只读会话列表均通过；服务当前无 `Mcp-Session-Id`，按无状态 Streamable HTTP 处理。会话生命周期、第三方 OAuth Host、写 Capability 与共享环境发布边界继续由 AD-036/AD-037 管理。
 
 - 2026-09-03：第一方 Elicitation 补上 Timeline 产品入口。`waiting_input` 投影幂等写入 `input_request`；Vue Timeline 链到已有 Form 页。MCP 单轮 continuation 已随 `external_mcp_shadow` 进入生产 Worker。AD-036 剩余多轮、敏感授权 URL mode、视觉回归和共享环境证据。

@@ -8,6 +8,8 @@ package generated
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"time"
 )
 
 const getAgentMemoryCandidateForPromotion = `-- name: GetAgentMemoryCandidateForPromotion :one
@@ -81,6 +83,101 @@ func (q *Queries) GetAgentMemoryCandidateReviewForPromotion(ctx context.Context,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listOwnedAgentMemoryCandidates = `-- name: ListOwnedAgentMemoryCandidates :many
+SELECT c.id, c.candidate_uuid, c.tenant_id, c.principal_uuid, c.agent_uuid, c.resource_type, c.resource_id, c.candidate_type, c.source_id, c.evidence_ids_json, c.summary, c.policy_version, c.candidate_sha256, c.status, c.observed_at, c.created_at, c.promoted_memory_uuid, c.promoted_at, r.review_uuid, r.decision AS review_decision, r.reviewed_at
+FROM agent_memory_candidates AS c
+LEFT JOIN agent_memory_candidate_reviews AS r
+  ON r.candidate_uuid = c.candidate_uuid
+ AND r.reviewer_uuid = c.principal_uuid
+ AND r.decision = 'accepted'
+WHERE c.tenant_id = ?
+  AND c.principal_uuid = ?
+  AND c.candidate_uuid > ?
+ORDER BY c.candidate_uuid ASC, r.reviewed_at DESC
+LIMIT ?
+`
+
+type ListOwnedAgentMemoryCandidatesParams struct {
+	TenantID           string
+	PrincipalUuid      string
+	AfterCandidateUuid string
+	Limit              int32
+}
+
+type ListOwnedAgentMemoryCandidatesRow struct {
+	ID                 uint64
+	CandidateUuid      string
+	TenantID           string
+	PrincipalUuid      string
+	AgentUuid          string
+	ResourceType       string
+	ResourceID         string
+	CandidateType      string
+	SourceID           string
+	EvidenceIdsJson    json.RawMessage
+	Summary            string
+	PolicyVersion      string
+	CandidateSha256    string
+	Status             string
+	ObservedAt         time.Time
+	CreatedAt          time.Time
+	PromotedMemoryUuid sql.NullString
+	PromotedAt         sql.NullTime
+	ReviewUuid         sql.NullString
+	ReviewDecision     sql.NullString
+	ReviewedAt         sql.NullTime
+}
+
+func (q *Queries) ListOwnedAgentMemoryCandidates(ctx context.Context, arg ListOwnedAgentMemoryCandidatesParams) ([]ListOwnedAgentMemoryCandidatesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnedAgentMemoryCandidates,
+		arg.TenantID,
+		arg.PrincipalUuid,
+		arg.AfterCandidateUuid,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListOwnedAgentMemoryCandidatesRow{}
+	for rows.Next() {
+		var i ListOwnedAgentMemoryCandidatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CandidateUuid,
+			&i.TenantID,
+			&i.PrincipalUuid,
+			&i.AgentUuid,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.CandidateType,
+			&i.SourceID,
+			&i.EvidenceIdsJson,
+			&i.Summary,
+			&i.PolicyVersion,
+			&i.CandidateSha256,
+			&i.Status,
+			&i.ObservedAt,
+			&i.CreatedAt,
+			&i.PromotedMemoryUuid,
+			&i.PromotedAt,
+			&i.ReviewUuid,
+			&i.ReviewDecision,
+			&i.ReviewedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const promoteAgentMemoryCandidate = `-- name: PromoteAgentMemoryCandidate :execrows

@@ -67,6 +67,32 @@ type AgentMemoryCandidatePromotionStoreV1 interface {
 	PromoteCandidate(ctx context.Context, candidate AgentMemoryCandidateV1, review AgentMemoryCandidateReviewV1, memory AgentMemoryV1) (*AgentMemoryV1, error)
 }
 
+type AgentMemoryCandidateCatalogItemV1 struct {
+	Candidate  AgentMemoryCandidateV1
+	ReviewUUID string
+	ReviewedAt *time.Time
+}
+
+type AgentMemoryCandidateCatalogStoreV1 interface {
+	ListOwnedCandidates(ctx context.Context, tenantID, principalUUID, afterCandidateUUID string, limit int) ([]AgentMemoryCandidateCatalogItemV1, error)
+}
+
+type AgentMemoryCandidateCatalogRequestV1 struct {
+	TenantID           string
+	PrincipalUUID      string
+	AfterCandidateUUID string
+	Limit              int
+}
+
+type AgentMemoryCandidateCatalogPageV1 struct {
+	Items      []AgentMemoryCandidateCatalogItemV1
+	NextCursor string
+}
+
+type AgentMemoryCandidateCatalogServiceV1 interface {
+	ListOwnedCandidates(ctx context.Context, request AgentMemoryCandidateCatalogRequestV1) (*AgentMemoryCandidateCatalogPageV1, error)
+}
+
 type AgentMemoryCandidatePromotionServiceV1 interface {
 	Promote(ctx context.Context, request AgentMemoryCandidatePromotionRequestV1) (*AgentMemoryV1, error)
 }

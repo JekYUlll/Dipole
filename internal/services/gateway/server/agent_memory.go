@@ -65,8 +65,24 @@ type AgentMemoryPage struct {
 	NextCursor string        `json:"nextCursor,omitempty"`
 }
 
+type AgentMemoryCandidate struct {
+	CandidateID      string `json:"candidateId"`
+	CandidateSHA256  string `json:"candidateSha256"`
+	Summary          string `json:"summary"`
+	Status           string `json:"status"`
+	ReviewID         string `json:"reviewId,omitempty"`
+	PromotedMemoryID string `json:"promotedMemoryId,omitempty"`
+	ObservedAtUnixMS int64  `json:"observedAtUnixMs"`
+}
+
+type AgentMemoryCandidatePage struct {
+	Candidates []AgentMemoryCandidate `json:"candidates"`
+	NextCursor string                 `json:"nextCursor,omitempty"`
+}
+
 type AgentMemoryControlApplication interface {
 	List(ctx context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error)
+	ListCandidates(ctx context.Context, principalUUID, after string, limit int) (*AgentMemoryCandidatePage, error)
 	Revoke(ctx context.Context, principalUUID, memoryID, reason string) (*AgentMemory, error)
 	Correct(ctx context.Context, principalUUID, memoryID string, expectedVersion uint32, content, compactContent, reason string) (*AgentMemoryCorrection, error)
 	PromoteCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, reviewID, targetMemoryType string) (*AgentMemory, error)
@@ -74,9 +90,37 @@ type AgentMemoryControlApplication interface {
 
 type agentMemoryRPC interface {
 	ListOwnedMemories(context.Context, *agentv1.ListOwnedMemoriesRequest, ...grpc.CallOption) (*agentv1.ListOwnedMemoriesResponse, error)
+	ListOwnedMemoryCandidates(context.Context, *agentv1.ListOwnedMemoryCandidatesRequest, ...grpc.CallOption) (*agentv1.ListOwnedMemoryCandidatesResponse, error)
 	RevokeOwnedMemory(context.Context, *agentv1.RevokeOwnedMemoryRequest, ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error)
 	CorrectOwnedMemory(context.Context, *agentv1.CorrectOwnedMemoryRequest, ...grpc.CallOption) (*agentv1.CorrectOwnedMemoryResponse, error)
 	PromoteMemoryCandidate(context.Context, *agentv1.PromoteMemoryCandidateRequest, ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error)
+}
+
+func (c *AgentMemoryControlClient) ListCandidates(ctx context.Context, principalUUID, after string, limit int) (*AgentMemoryCandidatePage, error) {
+	principalUUID, after = strings.TrimSpace(principalUUID), strings.TrimSpace(after)
+	if principalUUID == "" || (after != "" && !validAgentSubscriptionPublicID(after, 72)) || limit < 1 || limit > 100 {
+		return nil, ErrAgentMemoryInvalid
+	}
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.ListOwnedMemoryCandidates(callCtx, &agentv1.ListOwnedMemoryCandidatesRequest{
+		Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID, AfterCandidateId: after, Limit: uint32(limit),
+	})
+	if err != nil {
+		return nil, mapAgentMemoryRPCError(err)
+	}
+	if response == nil || (response.GetNextCursor() != "" && !validAgentSubscriptionPublicID(response.GetNextCursor(), 72)) {
+		return nil, ErrAgentMemoryUnavailable
+	}
+	page := &AgentMemoryCandidatePage{Candidates: make([]AgentMemoryCandidate, 0, len(response.GetCandidates())), NextCursor: response.GetNextCursor()}
+	for _, raw := range response.GetCandidates() {
+		candidate, mapErr := agentMemoryCandidateFromProto(raw)
+		if mapErr != nil {
+			return nil, ErrAgentMemoryUnavailable
+		}
+		page.Candidates = append(page.Candidates, candidate)
+	}
+	return page, nil
 }
 
 type AgentMemoryControlClient struct {
@@ -214,6 +258,31 @@ func (c *AgentMemoryControlClient) PromoteCandidate(ctx context.Context, princip
 func validPersistentAgentMemoryType(value string) bool {
 	switch value {
 	case "episodic", "semantic", "procedural", "observational":
+		return true
+	default:
+		return false
+	}
+}
+
+func agentMemoryCandidateFromProto(raw *agentv1.AgentMemoryCandidateSummary) (AgentMemoryCandidate, error) {
+	if raw == nil || !validAgentSubscriptionPublicID(raw.GetCandidateId(), 72) || len(raw.GetCandidateSha256()) != 64 || !isLowerHex(raw.GetCandidateSha256()) ||
+		strings.TrimSpace(raw.GetSummary()) == "" || len(raw.GetSummary()) > 4096 || !validAgentMemoryCandidateStatus(raw.GetStatus()) || raw.GetObservedAtUnixMs() <= 0 ||
+		(raw.GetReviewId() != "" && !validAgentSubscriptionPublicID(raw.GetReviewId(), 72)) ||
+		(raw.GetPromotedMemoryId() != "" && !validAgentSubscriptionPublicID(raw.GetPromotedMemoryId(), 64)) {
+		return AgentMemoryCandidate{}, ErrAgentMemoryUnavailable
+	}
+	if raw.GetStatus() == "accepted" && raw.GetReviewId() == "" {
+		return AgentMemoryCandidate{}, ErrAgentMemoryUnavailable
+	}
+	return AgentMemoryCandidate{
+		CandidateID: raw.GetCandidateId(), CandidateSHA256: raw.GetCandidateSha256(), Summary: raw.GetSummary(), Status: raw.GetStatus(),
+		ReviewID: raw.GetReviewId(), PromotedMemoryID: raw.GetPromotedMemoryId(), ObservedAtUnixMS: raw.GetObservedAtUnixMs(),
+	}, nil
+}
+
+func validAgentMemoryCandidateStatus(value string) bool {
+	switch value {
+	case "pending", "accepted", "rejected":
 		return true
 	default:
 		return false

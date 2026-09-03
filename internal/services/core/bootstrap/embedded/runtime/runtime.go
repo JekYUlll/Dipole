@@ -240,6 +240,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory owner control: %w", composeErr)
 		}
+		memoryCandidates, composeErr := agentapplication.NewPersistentAgentMemoryCandidateCatalogV1(agentRepos.MemoryCandidates)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Memory candidate catalog: %w", composeErr)
+		}
 		memoryPromotions, composeErr := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(agentRepos.MemoryPromotions, time.Now)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Memory candidate promotion service: %w", composeErr)
@@ -306,7 +310,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = corerpc.NewWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryPromotions, agentRepos.TaskTimeline, memoryPromotionCommits, workflowRepairExecutor, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryCandidates, memoryPromotions, agentRepos.TaskTimeline, memoryPromotionCommits, workflowRepairExecutor, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

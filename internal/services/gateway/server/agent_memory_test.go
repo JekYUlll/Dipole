@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,14 +12,21 @@ import (
 )
 
 type gatewayAgentMemoryRPCStub struct {
-	listRequest     *agentv1.ListOwnedMemoriesRequest
-	revokeRequest   *agentv1.RevokeOwnedMemoryRequest
-	correctRequest  *agentv1.CorrectOwnedMemoryRequest
-	listResponse    *agentv1.ListOwnedMemoriesResponse
-	revokeResponse  *agentv1.AgentOwnedMemory
-	correctResponse *agentv1.CorrectOwnedMemoryResponse
-	promoteRequest  *agentv1.PromoteMemoryCandidateRequest
-	promoteResponse *agentv1.AgentOwnedMemory
+	listRequest       *agentv1.ListOwnedMemoriesRequest
+	revokeRequest     *agentv1.RevokeOwnedMemoryRequest
+	correctRequest    *agentv1.CorrectOwnedMemoryRequest
+	listResponse      *agentv1.ListOwnedMemoriesResponse
+	revokeResponse    *agentv1.AgentOwnedMemory
+	correctResponse   *agentv1.CorrectOwnedMemoryResponse
+	promoteRequest    *agentv1.PromoteMemoryCandidateRequest
+	promoteResponse   *agentv1.AgentOwnedMemory
+	candidateRequest  *agentv1.ListOwnedMemoryCandidatesRequest
+	candidateResponse *agentv1.ListOwnedMemoryCandidatesResponse
+}
+
+func (s *gatewayAgentMemoryRPCStub) ListOwnedMemoryCandidates(_ context.Context, request *agentv1.ListOwnedMemoryCandidatesRequest, _ ...grpc.CallOption) (*agentv1.ListOwnedMemoryCandidatesResponse, error) {
+	s.candidateRequest = request
+	return s.candidateResponse, nil
 }
 
 func (s *gatewayAgentMemoryRPCStub) ListOwnedMemories(_ context.Context, request *agentv1.ListOwnedMemoriesRequest, _ ...grpc.CallOption) (*agentv1.ListOwnedMemoriesResponse, error) {
@@ -114,6 +122,29 @@ func TestAgentMemoryControlClientPromotesCandidateWithBoundPrincipal(t *testing.
 	item, err := client.PromoteCandidate(context.Background(), "U100", "CAND-1", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "REV-1", "semantic")
 	if err != nil || item.MemoryID != "MEM-CAND-1" || rpc.promoteRequest.GetContext().GetPrincipalUserId() != "U100" || rpc.promoteRequest.GetCandidateSha256() == "" || rpc.promoteRequest.GetTargetMemoryType() != "semantic" {
 		t.Fatalf("promotion item=%+v request=%+v err=%v", item, rpc.promoteRequest, err)
+	}
+}
+
+func TestAgentMemoryControlClientListsOwnerCandidatesWithoutEvidence(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	rpc := &gatewayAgentMemoryRPCStub{candidateResponse: &agentv1.ListOwnedMemoryCandidatesResponse{
+		Candidates: []*agentv1.AgentMemoryCandidateSummary{{
+			CandidateId: "CAND-1", CandidateSha256: strings.Repeat("a", 64), Summary: "Database migration may slip", Status: "accepted", ReviewId: "REV-1", ObservedAtUnixMs: now.UnixMilli(),
+		}},
+		NextCursor: "CAND-1",
+	}}
+	client, err := NewAgentMemoryControlClient(rpc, "dipole", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := client.ListCandidates(context.Background(), "U100", "", 20)
+	if err != nil || len(page.Candidates) != 1 || page.Candidates[0].ReviewID != "REV-1" || page.NextCursor != "CAND-1" || rpc.candidateRequest.GetContext().GetPrincipalUserId() != "U100" {
+		t.Fatalf("candidate page=%+v request=%+v err=%v", page, rpc.candidateRequest, err)
+	}
+	rpc.candidateResponse.Candidates[0].Status = "accepted"
+	rpc.candidateResponse.Candidates[0].ReviewId = ""
+	if _, err = client.ListCandidates(context.Background(), "U100", "", 20); !errors.Is(err, ErrAgentMemoryUnavailable) {
+		t.Fatalf("forged accepted candidate error=%v", err)
 	}
 }
 

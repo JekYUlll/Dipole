@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：补上 owner-scoped Memory Candidate 收件箱 API，前端可读取候选后再发起既有晋升操作。
+  - Core 新增 `ListOwnedMemoryCandidates`，以认证的 `dipole-gateway` 身份恢复 owner，返回候选摘要、审核 ID、晋级 Memory ID 和观察时间；原始 evidence ID、资源 URI 和正文不越过该 API 边界。
+  - Gateway 新增 `GET /api/v1/agent/memory-candidates?after=&limit=`，严格从登录会话派生 principal，并复核候选哈希、状态、审核与分页游标。
+  - SQLC 查询按 tenant/owner/candidate UUID 稳定分页；embedded 与 standalone Core 均装配 owner Memory 控制、candidate catalog 和 promotion 服务。MySQL 合约测试覆盖跨 owner 隔离、审核关联和游标。Vue 收件箱页面由独立前端分支后续接入。
+
 - 2026-09-03：补上 owner 任务收件箱，关闭「创建后只能靠当场记住 taskId」的缺口。
   - Core 新增 `ListOwnedAgentTasks`：按当前 Gateway principal 从 `agent_tasks` 投影分页，公开状态优先用 workflow_status，`waiting_input`/`waiting_approval` 带 `pendingKind`。
   - Gateway 在 `GET /api/v1/agent/tasks`（注册在 `/:task_id` 之前）返回 `{ tasks, nextCursor }`；只允许认证会话，不接受请求体里的伪造 principal。

@@ -219,6 +219,7 @@ type Querier interface {
 	ListOwnedActiveAgentDefinitions(ctx context.Context, arg ListOwnedActiveAgentDefinitionsParams) ([]AgentDefinitionVersion, error)
 	ListOwnedAgentEventSubscriptions(ctx context.Context, arg ListOwnedAgentEventSubscriptionsParams) ([]AgentEventSubscription, error)
 	ListOwnedAgentMemories(ctx context.Context, arg ListOwnedAgentMemoriesParams) ([]AgentMemory, error)
+	ListOwnedAgentMemoryCandidates(ctx context.Context, arg ListOwnedAgentMemoryCandidatesParams) ([]ListOwnedAgentMemoryCandidatesRow, error)
 	ListOwnedAgentMemoryRootForUpdate(ctx context.Context, arg ListOwnedAgentMemoryRootForUpdateParams) ([]AgentMemory, error)
 	ListOwnedAgentTasks(ctx context.Context, arg ListOwnedAgentTasksParams) ([]AgentTask, error)
 	ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error)

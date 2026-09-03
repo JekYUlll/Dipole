@@ -13,6 +13,31 @@ import (
 )
 
 var _ application.AgentMemoryCandidatePromotionStoreV1 = (*AgentMemoryRepository)(nil)
+var _ application.AgentMemoryCandidateCatalogStoreV1 = (*AgentMemoryRepository)(nil)
+
+func (r *AgentMemoryRepository) ListOwnedCandidates(ctx context.Context, tenantID, principalUUID, afterCandidateUUID string, limit int) ([]application.AgentMemoryCandidateCatalogItemV1, error) {
+	if tenantID == "" || principalUUID == "" || limit < 1 || limit > 101 {
+		return nil, application.ErrAgentMemoryCandidateInvalid
+	}
+	rows, err := r.queries.ListOwnedAgentMemoryCandidates(ctx, generated.ListOwnedAgentMemoryCandidatesParams{TenantID: tenantID, PrincipalUuid: principalUUID, AfterCandidateUuid: afterCandidateUUID, Limit: int32(limit)})
+	if err != nil {
+		return nil, fmt.Errorf("list owned Agent Memory candidates: %w", err)
+	}
+	result := make([]application.AgentMemoryCandidateCatalogItemV1, 0, len(rows))
+	for _, row := range rows {
+		candidate, mapErr := mapAgentMemoryCandidate(generated.AgentMemoryCandidate{ID: row.ID, CandidateUuid: row.CandidateUuid, TenantID: row.TenantID, PrincipalUuid: row.PrincipalUuid, AgentUuid: row.AgentUuid, ResourceType: row.ResourceType, ResourceID: row.ResourceID, CandidateType: row.CandidateType, SourceID: row.SourceID, EvidenceIdsJson: row.EvidenceIdsJson, Summary: row.Summary, PolicyVersion: row.PolicyVersion, CandidateSha256: row.CandidateSha256, Status: row.Status, ObservedAt: row.ObservedAt, CreatedAt: row.CreatedAt, PromotedMemoryUuid: row.PromotedMemoryUuid, PromotedAt: row.PromotedAt})
+		if mapErr != nil {
+			return nil, mapErr
+		}
+		item := application.AgentMemoryCandidateCatalogItemV1{Candidate: candidate, ReviewUUID: row.ReviewUuid.String}
+		if row.ReviewedAt.Valid {
+			reviewed := row.ReviewedAt.Time
+			item.ReviewedAt = &reviewed
+		}
+		result = append(result, item)
+	}
+	return result, nil
+}
 
 func (r *AgentMemoryRepository) GetCandidateForPromotion(ctx context.Context, tenantID, principalUUID, candidateUUID string) (*application.AgentMemoryCandidateV1, error) {
 	row, err := r.queries.GetAgentMemoryCandidateForPromotion(ctx, generated.GetAgentMemoryCandidateForPromotionParams{TenantID: tenantID, PrincipalUuid: principalUUID, CandidateUuid: candidateUUID})

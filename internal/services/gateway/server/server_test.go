@@ -168,6 +168,12 @@ func (s *gatewayAgentMemoryStub) List(_ context.Context, principalUUID, after st
 	return &AgentMemoryPage{Memories: []AgentMemory{{MemoryID: "MEM-1", Status: "active", Content: "Owner is Alice"}}, NextCursor: "CURSOR-1"}, nil
 }
 
+func (s *gatewayAgentMemoryStub) ListCandidates(_ context.Context, principalUUID, after string, limit int) (*AgentMemoryCandidatePage, error) {
+	s.principal, s.after, s.limit = principalUUID, after, limit
+	s.listCalls++
+	return &AgentMemoryCandidatePage{Candidates: []AgentMemoryCandidate{{CandidateID: "CAND-1", CandidateSHA256: strings.Repeat("a", 64), Summary: "Database migration may slip", Status: "pending", ObservedAtUnixMS: 1_700_000_000_000}}, NextCursor: "CAND-1"}, nil
+}
+
 func (s *gatewayAgentMemoryStub) Revoke(_ context.Context, principalUUID, memoryID, reason string) (*AgentMemory, error) {
 	s.principal, s.memoryID, s.reason = principalUUID, memoryID, reason
 	s.revokeCalls++

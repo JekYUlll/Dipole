@@ -132,6 +132,11 @@ type agentMemoryCandidatePromotionStub struct {
 	item    application.AgentMemoryV1
 }
 
+type agentMemoryCandidateCatalogStub struct {
+	request application.AgentMemoryCandidateCatalogRequestV1
+	page    application.AgentMemoryCandidateCatalogPageV1
+}
+
 type agentMemoryPromotionReceiptCommitStub struct {
 	request application.AgentMemoryPromotionReceiptCommitRequestV1
 	item    application.AgentMemoryV1
@@ -147,6 +152,12 @@ func (s *agentMemoryCandidatePromotionStub) Promote(_ context.Context, request a
 	s.request = request
 	item := s.item
 	return &item, nil
+}
+
+func (s *agentMemoryCandidateCatalogStub) ListOwnedCandidates(_ context.Context, request application.AgentMemoryCandidateCatalogRequestV1) (*application.AgentMemoryCandidateCatalogPageV1, error) {
+	s.request = request
+	copy := s.page
+	return &copy, nil
 }
 
 func (s *agentMemoryOwnerControlStub) ListOwnedMemories(_ context.Context, request application.AgentMemoryOwnerListRequestV1) (*application.AgentMemoryOwnerPageV1, error) {
@@ -1223,6 +1234,32 @@ func TestPromoteMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent candidate promotion code = %s", status.Code(err))
+	}
+}
+
+func TestListOwnedMemoryCandidatesBindsGatewayPrincipal(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	catalog := &agentMemoryCandidateCatalogStub{page: application.AgentMemoryCandidateCatalogPageV1{Items: []application.AgentMemoryCandidateCatalogItemV1{{
+		Candidate:  application.AgentMemoryCandidateV1{CandidateUUID: "CAND-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", ResourceType: "conversation", ResourceID: "group:G1", CandidateType: application.AgentMemoryCandidateTypeMessage, SourceID: "MSG-1", EvidenceIDs: []string{"MSG-1"}, Summary: "Database migration may slip", PolicyVersion: "memory-v1", CandidateSHA256: strings.Repeat("a", 64), Status: application.AgentMemoryCandidateStatusAccepted, ObservedAt: now},
+		ReviewUUID: "REV-1",
+	}}, NextCursor: "CAND-1"}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMemoryCandidateCatalog(catalog)
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ListOwnedMemoryCandidates(ctx, &agentv1.ListOwnedMemoryCandidatesRequest{Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", Limit: 20})
+	})
+	if err != nil {
+		t.Fatalf("list candidates: %v", err)
+	}
+	page := response.(*agentv1.ListOwnedMemoryCandidatesResponse)
+	if catalog.request.PrincipalUUID != "U100" || catalog.request.TenantID != "dipole" || len(page.GetCandidates()) != 1 || page.GetCandidates()[0].GetReviewId() != "REV-1" || page.GetCandidates()[0].GetSummary() != "Database migration may slip" {
+		t.Fatalf("request=%+v response=%+v", catalog.request, page)
+	}
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ListOwnedMemoryCandidates(ctx, &agentv1.ListOwnedMemoryCandidatesRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent candidate list code=%s", status.Code(err))
 	}
 }
 

@@ -242,6 +242,21 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Definition catalog: %w", composeErr)
 		}
+		memoryControls, composeErr := agentapplication.NewPersistentAgentMemoryOwnerControlV1(agentRepos.MemoryOwners, time.Now)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Memory owner control: %w", composeErr)
+		}
+		memoryCandidates, composeErr := agentapplication.NewPersistentAgentMemoryCandidateCatalogV1(agentRepos.MemoryCandidates)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Memory candidate catalog: %w", composeErr)
+		}
+		memoryPromotions, composeErr := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(agentRepos.MemoryPromotions, time.Now)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Memory candidate promotion: %w", composeErr)
+		}
 		agentServer, composeErr := agentgrpc.NewServerWithControlAndProjection(
 			capability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit,
 		)
@@ -260,6 +275,18 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		if _, composeErr = agentServer.WithDefinitionCatalog(definitionCatalog); composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("configure standalone Agent Definition catalog rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithMemoryOwnerControls(memoryControls); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Memory owner control rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithMemoryCandidateCatalog(memoryCandidates); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Memory candidate catalog rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithMemoryCandidatePromotions(memoryPromotions); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Memory candidate promotion rpc adapter: %w", composeErr)
 		}
 		if _, composeErr = agentServer.WithTaskTimeline(agentRepos.TaskTimeline); composeErr != nil {
 			cleanup()

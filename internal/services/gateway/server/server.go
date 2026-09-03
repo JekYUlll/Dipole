@@ -147,6 +147,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 	}
 	if dependencies.AgentMemories != nil {
 		engine.GET("/api/v1/agent/memories", auth, agentMemoryListHandler(dependencies.AgentMemories))
+		engine.GET("/api/v1/agent/memory-candidates", auth, agentMemoryCandidateListHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/revoke", auth, agentMemoryRevokeHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/correct", auth, agentMemoryCorrectHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/promote", auth, agentMemoryCandidatePromoteHandler(dependencies.AgentMemories))
@@ -231,6 +232,33 @@ func agentMemoryListHandler(memories AgentMemoryControlApplication) gin.HandlerF
 			limit = parsed
 		}
 		page, err := memories.List(c.Request.Context(), user.UUID, after, limit)
+		writeAgentMemoryResult(c, page, err)
+	}
+}
+
+func agentMemoryCandidateListHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		rawAfter, hasAfter := c.GetQuery("after")
+		after := strings.TrimSpace(rawAfter)
+		if hasAfter && (after != rawAfter || !validAgentSubscriptionPublicID(after, 72)) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory candidate cursor"})
+			return
+		}
+		limit := 50
+		if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+			parsed, err := strconv.Atoi(raw)
+			if err != nil || parsed < 1 || parsed > 100 {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory candidate limit must be between 1 and 100"})
+				return
+			}
+			limit = parsed
+		}
+		page, err := memories.ListCandidates(c.Request.Context(), user.UUID, after, limit)
 		writeAgentMemoryResult(c, page, err)
 	}
 }

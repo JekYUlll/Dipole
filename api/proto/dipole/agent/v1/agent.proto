@@ -940,6 +940,28 @@ message PromoteMemoryCandidateRequest {
   string target_memory_type = 6;
 }
 
+message ListOwnedMemoryCandidatesRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string after_candidate_id = 3;
+  uint32 limit = 4;
+}
+
+message AgentMemoryCandidateSummary {
+  string candidate_id = 1;
+  string candidate_sha256 = 2;
+  string summary = 3;
+  string status = 4;
+  string review_id = 5;
+  string promoted_memory_id = 6;
+  int64 observed_at_unix_ms = 7;
+}
+
+message ListOwnedMemoryCandidatesResponse {
+  repeated AgentMemoryCandidateSummary candidates = 1;
+  string next_cursor = 2;
+}
+
 message CommitMemoryPromotionReceiptRequest {
   dipole.common.v1.RequestContext context = 1;
   string receipt_id = 2;
@@ -1017,6 +1039,7 @@ service AgentCapabilityService {
   rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
   rpc CorrectOwnedMemory(CorrectOwnedMemoryRequest) returns (CorrectOwnedMemoryResponse);
   rpc PromoteMemoryCandidate(PromoteMemoryCandidateRequest) returns (AgentOwnedMemory);
+  rpc ListOwnedMemoryCandidates(ListOwnedMemoryCandidatesRequest) returns (ListOwnedMemoryCandidatesResponse);
   rpc CommitMemoryPromotionReceipt(CommitMemoryPromotionReceiptRequest) returns (CommitMemoryPromotionReceiptResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);
   rpc CompleteRun(CompleteRunRequest) returns (CompleteRunResponse);
