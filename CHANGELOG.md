@@ -2,6 +2,7 @@
 
 - 2026-09-04：修正 Web Sync observability preflight 的 target 与清理边界。
   - Smoke 仅校验本次实际启动的 `dipole-required` Prometheus scrape pool，避免未启动的可选服务导致误报；退出时显式带 `observability` profile 清理 Prometheus 与 Alertmanager。
+  - Remote GPU 在 `e04c2e28` 的独立 loopback Compose 项目验证 Gateway、Prometheus、Alertmanager 与四项必需服务指标均健康；验收结束后项目容器为零，公共 `dipole-experience` 保持 11 个健康容器。
   - 默认客户端模式与真实 24 小时观察窗口保持不变。
 
 - 2026-09-04：为 SQLC 数据访问迁移增加 GORM 防回归门禁。
