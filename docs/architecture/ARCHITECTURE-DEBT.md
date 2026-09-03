@@ -141,7 +141,9 @@
 
 ### 本轮进展
 
-- 2026-09-03：第一方只读 MCP 的 owner Task 读取已补齐 `mcp_run_id` 协议字段。Core 仅在持久化 `dipole-agent/shadow` Run 绑定正确且仍为 `running` 时返回该字段，TypeScript Runtime 将它透传到受认证 Task 状态；MCP bearer token、Gateway 可信头和 Core `ResolveMcpContext` 继续分别验证。真实 Remote GPU 客户端仍需使用该字段完成 `initialize -> tools/list -> tools/call` 证据，默认 profile 与写能力保持关闭。
+- 2026-09-03：隔离 Remote GPU 候选 `9120b521` 已用真实认证 owner 验证第一方 MCP Shadow：Gateway 创建 Task 后 owner 查询获得 `mcpRunId`，consent token 完成 `initialize -> tools/list -> dipole_conversation_list`。当前 Streamable HTTP 返回未建立 MCP session header，因此该验收按无状态请求处理；后续如引入 server-side session 依赖，须单独补 session lifecycle、重连和回收证据。写 Capability、外部 MCP、Memory、默认 profile 和共享 tenant 均未启用。
+
+- 2026-09-03：第一方只读 MCP 的 owner Task 读取已补齐 `mcp_run_id` 协议字段。Core 仅在持久化 `dipole-agent/shadow` Run 绑定正确且仍为 `running` 时返回该字段，TypeScript Runtime 将它透传到受认证 Task 状态；MCP bearer token、Gateway 可信头和 Core `ResolveMcpContext` 继续分别验证。默认 profile 与写能力保持关闭。
 
 - 2026-09-03：第一方只读 MCP Server 已具备默认关闭的 `agent-mcp-server-shadow.yml` 组合入口，Runtime 与 Gateway 同时显式启用，外部 MCP、Memory、检索和写 Capability 保持关闭。该覆盖层仅增加 MCP 开关，避免叠加 Interactive Shadow 时覆盖 Task Control、Definition 与 Artifact；静态 Compose 同时覆盖单独和合成 profile。仍需在隔离 Remote GPU 候选上使用认证 MCP client 验证 running Task/Run 的 Context 绑定、JWT consent、限流和回滚，再将其表述为可体验 MCP 功能。
 
