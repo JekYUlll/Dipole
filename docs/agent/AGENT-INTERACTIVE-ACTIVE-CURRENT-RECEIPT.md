@@ -3,9 +3,10 @@
 ## Public Gateway Acceptance (2026-09-03)
 
 This development-only Remote GPU candidate runs the `649cf110` source
-revision in an isolated Compose project. Gateway is published at port `18121`;
-Core, Gateway, Message, Sync, Kafka, Temporal, MySQL, Redis, MinIO, and the
-TypeScript Agent Runtime were all healthy during the acceptance run.
+revision in an isolated Compose project. Gateway is published on the host at
+port `18121`; Core, Gateway, Message, Sync, Kafka, Temporal, MySQL, Redis,
+MinIO, and the TypeScript Agent Runtime were all healthy during the acceptance
+run.
 
 The runtime used the explicit `interactive_active` profile. It enabled the
 authenticated Agent Task control API and the narrow `/send <content>` path for
@@ -29,12 +30,19 @@ runtime secrets are intentionally absent from this receipt.
 
 ## Experience Boundary
 
-The server-side experience is available through the public Agent Task API and
-the candidate Web application is reachable. Current Vue Agent routes are
-guarded by build-time `VITE_AGENT_*_ENABLED` flags. Until the independently
-maintained frontend build enables the create, approval, and Timeline flags and
-passes browser tests, this receipt demonstrates the authenticated API and
-durable execution path, not a completed browser Human-in-the-loop release.
+The server-side experience is available through the Gateway API and the
+candidate Web application is reachable from the Remote GPU host. A direct
+probe from outside the host returned an upstream `404` while the host's own
+public-address probe returned `200`; this points to a network layer outside
+the Compose project. No firewall, route, Docker daemon, or cloud network
+change was made. A user-facing URL must be verified after the external routing
+owner is identified.
+
+Current Vue Agent routes are guarded by build-time `VITE_AGENT_*_ENABLED`
+flags. Until the independently maintained frontend build enables the create,
+approval, and Timeline flags and passes browser tests, this receipt
+demonstrates the authenticated API and durable execution path, not a completed
+browser Human-in-the-loop release.
 
 The first task read may briefly return `404` while the asynchronous admission
 record is being projected. Browser code must retry only the just-created,
