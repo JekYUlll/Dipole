@@ -143,7 +143,7 @@
 
 ### 本轮进展
 
-- 2026-09-03：Interactive Active Compose 复跑发现，未绑定 subscription 的交互请求会按既有规则选择 embedded Definition，与 owner 创建的 Active promotion grant 产生 definition/version 漂移，Core 正确拒绝 admission。现已将稳定触发 `agent.interactive.requested` 归属到 authenticated principal，并以应用层 Run admission 回归测试锁定。新镜像的远程批准、拒绝、重放和副作用收据仍待复验，历史候选不作为该修复后的证据。
+- 2026-09-03：Interactive Active Compose 复跑发现，未绑定 subscription 的交互请求会按既有规则选择 embedded Definition，与 owner 创建的 Active promotion grant 产生 definition/version 漂移，Core 正确拒绝 admission。现已将稳定触发 `agent.interactive.requested` 归属到 authenticated principal，并以应用层 Run admission 回归测试锁定。`a0f44e99` 的隔离 Remote GPU 复验已确认两条 Task 都固定到 owner Definition `v2`；deny 零副作用，approve 重放经 Worker restart 后收敛为一次 Tool、一次消息和两条 Inbox。收据见 [Interactive Active Remote Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)，共享 tenant、浏览器 HITL、模型质量与性能证据继续开放。
 
 - 2026-09-03：隔离 Remote GPU 候选 `9120b521` 已用真实认证 owner 验证第一方 MCP Shadow：Gateway 创建 Task 后 owner 查询获得 `mcpRunId`，consent token 完成 `initialize -> tools/list -> dipole_conversation_list`。当前 Streamable HTTP 返回未建立 MCP session header，因此该验收按无状态请求处理；后续如引入 server-side session 依赖，须单独补 session lifecycle、重连和回收证据。写 Capability、外部 MCP、Memory、默认 profile 和共享 tenant 均未启用。
 

@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：Remote GPU 隔离 Compose 复验通过 Interactive Active 的 owner Definition 修复。
+  - `a0f44e99` Core 将两条交互 Task 都绑定到临时 owner 的 Definition `v2`；拒绝路径收敛为 `cancelled` 且零副作用，批准重放在 Worker 重启后收敛为一次 Tool、一次消息和两条 Sync Inbox。
+  - 验证使用 loopback-only 项目与确定性 `/send` fixture；共享 tenant、浏览器 HITL、模型质量和性能结论仍未开启，详见 `docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md`。
+
 - 2026-09-03：以前端为主线打开 Agent 体验开关，并反推后端缺口。
   - 新增 `frontend/.env.agent-experience` / `npm run dev:agent`，Settings / Chat / 侧栏可到达定义、订阅、记忆和创建任务。生产 `VITE_*` 默认仍关。
   - Definition 目录接上已有 `POST /api/v1/agent/definitions`（`subscription_autoreply`）。

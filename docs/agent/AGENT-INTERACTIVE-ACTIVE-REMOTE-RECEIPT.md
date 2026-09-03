@@ -1,5 +1,30 @@
 # Interactive Active Remote Receipt
 
+## Owner Definition Binding And Approval Recovery (2026-09-03)
+
+This development-only Remote GPU run used Core revision
+`a0f44e9941cd6653716085e305410adfeff12753` in the isolated Compose project
+`dipole-agent-verify-a0f44e99`. It specifically revalidated the interactive
+owner-definition selection after the Active admission path previously selected
+the embedded Agent definition. The Runtime, Gateway, Message, Sync, Kafka,
+Temporal, MySQL, Redis, and MinIO containers reached their healthy states;
+the Gateway bound to a generated loopback-only port.
+
+| Scenario | Result |
+| --- | --- |
+| Definition binding | Both interactive Tasks pinned the temporary owner's Definition version `2` |
+| Denied replay | Task reached `cancelled`; no Tool Invocation, message, or approval consumption was created |
+| Approved replay | Task reached `completed` after duplicate owner approval requests |
+| Worker replacement | The Agent Worker restarted at `waiting_approval` and resumed the same durable Task |
+| Approved durable effects | One completed Tool Invocation, one consumed approval, one Agent message, and two Sync Inbox entries |
+| Cleanup | Script revokes the temporary grant and removes its isolated project resources on exit |
+
+The deterministic `/send` fixture does not call an external model provider.
+This receipt establishes the corrected owner Definition binding and the narrow
+development-only approval path. Browser HITL, shared-tenant authority, model
+quality, throughput, latency, Core/Message replacement, and partial-effect
+rollback remain outside its scope.
+
 ## Active Write And Worker Recovery Smoke (2026-09-02)
 
 This development-only Remote GPU run used source revision
