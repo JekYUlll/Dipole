@@ -50,6 +50,19 @@ Content-Type: application/json
 
 回滚时先关闭 Gateway MCP 开关，再关闭 Runtime MCP 开关。该变更没有数据迁移；既有 session JWT 仍兼容，已签发的短期 MCP token 最多 15 分钟后自然失效。
 
+## 开发期体验验收
+
+仓库提供无第三方依赖的第一方 MCP 客户端 smoke：它临时注册 owner、创建只读 Definition 与 Task，轮询 owner-bound `mcpRunId`，完成显式 consent 后按 Streamable HTTP 顺序调用 `initialize`、`tools/list` 和 `dipole_conversation_list`。
+
+```bash
+DIPOLE_MCP_BASE_URL=http://127.0.0.1:18122 \
+  node scripts/smoke-agent-mcp-client.mjs
+```
+
+2026-09-03，该命令在 Remote GPU 的隔离 `shadow/read_shadow` 候选通过，结果确认 Task 受理、Run 绑定、协议初始化、工具发现和会话列表调用均成功。脚本只输出脱敏结果，不打印 session 或 MCP access token。当前服务未返回 `Mcp-Session-Id`，客户端按无状态 Streamable HTTP 请求运行；若后续增加会话生命周期，需单独增加 session create/delete 与断连回收验收。
+
+这条 smoke 只覆盖第一方只读 MCP。写 Capability、外部 MCP、Memory 写入和默认 profile 仍保持关闭，不能据此推导通用 OAuth Host 互操作性或共享环境发布结论。
+
 ## 后续门槛
 
 面向通用 MCP Host 前仍需实现 RFC 9728 Protected Resource Metadata、OAuth 2.1 Authorization Code + PKCE 和客户端注册策略。`oauth-discovery-pkce.ts` 已提供默认关闭的基础：按 RFC 8414 派生 authorization-server metadata URI，要求 issuer 精确匹配、HTTPS 与 `S256`，并只生成 Authorization Code + PKCE 的 verifier/challenge/state 材料。`discoverAuthorizationServerMetadata` 仅通过调用方显式注入的 fetch 访问该精确 URL，固定禁止重定向，限制超时、64 KiB JSON 响应和错误状态；它没有接入 Runtime 默认 composition。

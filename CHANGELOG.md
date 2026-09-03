@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：新增可复跑的第一方 MCP 认证客户端 smoke，并在 Remote GPU 隔离候选完成实测。
+  - `scripts/smoke-agent-mcp-client.mjs` 从临时 owner 的登录、Definition/Task 创建、`mcpRunId` 绑定与 consent grant 走到 `initialize`、`tools/list`、`dipole_conversation_list`；结果只输出脱敏状态。
+  - 实测保持 `shadow/read_shadow`，MCP Streamable HTTP 未返回 `Mcp-Session-Id`，客户端按无状态请求完成调用。写工具、外部 MCP、Memory 写入与默认 profile 继续关闭。
+
 - 2026-09-03：Remote GPU 隔离候选 `9120b521` 完成第一方只读 MCP 的认证体验验收。
   - 临时 owner 通过 Gateway 创建 Definition 与 Task，Task 状态返回 owner-bound `mcpRunId`；MCP consent grant 随后完成 `initialize`、`tools/list` 与 `dipole_conversation_list` 调用。
   - 候选保持 `shadow/read_shadow`，只读工具唯一暴露为会话列表。该 Streamable HTTP 探测未返回会话头，按无状态请求处理；写 Capability、外部 MCP、Memory 和默认 profile 保持关闭。

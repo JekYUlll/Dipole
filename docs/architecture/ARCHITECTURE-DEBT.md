@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：第一方 MCP 认证体验补齐可复跑的无依赖客户端 smoke，详见 [Agent MCP 授权边界](../agent/agent-mcp-authorization.md#开发期体验验收)。Remote GPU 隔离 `shadow/read_shadow` 候选从 Task/Run 绑定、consent 到 `initialize`、`tools/list`、只读会话列表均通过；服务当前无 `Mcp-Session-Id`，按无状态 Streamable HTTP 处理。会话生命周期、第三方 OAuth Host、写 Capability 与共享环境发布边界继续由 AD-036/AD-037 管理。
+
 - 2026-09-03：第一方 Elicitation 补上 Timeline 产品入口。`waiting_input` 投影幂等写入 `input_request`；Vue Timeline 链到已有 Form 页。MCP 单轮 continuation 已随 `external_mcp_shadow` 进入生产 Worker。AD-036 剩余多轮、敏感授权 URL mode、视觉回归和共享环境证据。
 
 - 2026-09-03：已实现但未启用的能力收成台账，并补上 Workflow Repair Execute 的生产启动接线（仍默认关）。
