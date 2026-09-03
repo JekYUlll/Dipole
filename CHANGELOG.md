@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-03：恢复 Cassandra 缺行回退的双向集成覆盖。
+  - 隔离 read-routing smoke 现在同时验证 `after_seq` 和 `before_seq` 页面在 Cassandra Timeline 缺行时回退 MySQL，避免基准夹具重构缩窄原有集成断言。
+
 - 2026-09-03：归档首份 MySQL/Cassandra Timeline Reader 隔离基线。
   - 100 条连续消息、1 秒/reader 的单机 Go benchmark 中，SQLC/MySQL 为 `696874 ns/op`，Cassandra 为 `2391275 ns/op`；原始输出与环境记录于 `benchmarks/cassandra-timeline-reader-2026-09-03/`。
   - 该样本只用于后续调优和回归对照，不表示并发负载、端到端延迟或 P99。

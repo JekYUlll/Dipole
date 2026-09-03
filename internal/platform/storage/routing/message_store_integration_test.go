@@ -66,6 +66,11 @@ func TestCassandraReadRouterMySQLFallbackContract(t *testing.T) {
 	if err != nil || len(page) != 2 || page[0].ID == 0 || observation.Route != "mysql_fallback" || observation.FallbackReason != "incomplete_page" {
 		t.Fatalf("missing-row fallback page=%+v observation=%+v err=%v", page, observation, err)
 	}
+	page, err = router.ListByConversationSeqBefore(fixture.key, 0, 2)
+	observation = <-observations
+	if err != nil || len(page) != 2 || page[0].ID == 0 || observation.Route != "mysql_fallback" || observation.FallbackReason != "incomplete_page" {
+		t.Fatalf("missing-row before fallback page=%+v observation=%+v err=%v", page, observation, err)
+	}
 }
 
 func BenchmarkConversationTimelineReaders(b *testing.B) {
