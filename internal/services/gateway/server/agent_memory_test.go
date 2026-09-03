@@ -22,6 +22,8 @@ type gatewayAgentMemoryRPCStub struct {
 	promoteResponse   *agentv1.AgentOwnedMemory
 	candidateRequest  *agentv1.ListOwnedMemoryCandidatesRequest
 	candidateResponse *agentv1.ListOwnedMemoryCandidatesResponse
+	reviewRequest     *agentv1.ReviewMemoryCandidateRequest
+	reviewResponse    *agentv1.AgentMemoryCandidateSummary
 }
 
 func (s *gatewayAgentMemoryRPCStub) ListOwnedMemoryCandidates(_ context.Context, request *agentv1.ListOwnedMemoryCandidatesRequest, _ ...grpc.CallOption) (*agentv1.ListOwnedMemoryCandidatesResponse, error) {
@@ -47,6 +49,11 @@ func (s *gatewayAgentMemoryRPCStub) CorrectOwnedMemory(_ context.Context, reques
 func (s *gatewayAgentMemoryRPCStub) PromoteMemoryCandidate(_ context.Context, request *agentv1.PromoteMemoryCandidateRequest, _ ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error) {
 	s.promoteRequest = request
 	return s.promoteResponse, nil
+}
+
+func (s *gatewayAgentMemoryRPCStub) ReviewMemoryCandidate(_ context.Context, request *agentv1.ReviewMemoryCandidateRequest, _ ...grpc.CallOption) (*agentv1.AgentMemoryCandidateSummary, error) {
+	s.reviewRequest = request
+	return s.reviewResponse, nil
 }
 
 func TestAgentMemoryControlClientBindsPrincipalAndCanonicalCursor(t *testing.T) {
@@ -145,6 +152,22 @@ func TestAgentMemoryControlClientListsOwnerCandidatesWithoutEvidence(t *testing.
 	rpc.candidateResponse.Candidates[0].ReviewId = ""
 	if _, err = client.ListCandidates(context.Background(), "U100", "", 20); !errors.Is(err, ErrAgentMemoryUnavailable) {
 		t.Fatalf("forged accepted candidate error=%v", err)
+	}
+}
+
+func TestAgentMemoryControlClientReviewsCandidateWithBoundPrincipal(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	rpc := &gatewayAgentMemoryRPCStub{reviewResponse: &agentv1.AgentMemoryCandidateSummary{
+		CandidateId: "CAND-1", CandidateSha256: strings.Repeat("a", 64), Summary: "API v2 Friday", Status: "accepted", ReviewId: "REV-1", ObservedAtUnixMs: now.UnixMilli(),
+	}}
+	client, _ := NewAgentMemoryControlClient(rpc, "dipole", time.Second)
+	item, err := client.ReviewCandidate(context.Background(), "U100", "CAND-1", strings.Repeat("a", 64), "accepted", "owner confirmed")
+	if err != nil || item.ReviewID != "REV-1" || rpc.reviewRequest.GetContext().GetPrincipalUserId() != "U100" || rpc.reviewRequest.GetDecision() != "accepted" {
+		t.Fatalf("review item=%+v request=%+v err=%v", item, rpc.reviewRequest, err)
+	}
+	rpc.reviewResponse.Status = "rejected"
+	if _, err = client.ReviewCandidate(context.Background(), "U100", "CAND-1", strings.Repeat("a", 64), "accepted", "owner confirmed"); !errors.Is(err, ErrAgentMemoryUnavailable) {
+		t.Fatalf("forged review status error=%v", err)
 	}
 }
 

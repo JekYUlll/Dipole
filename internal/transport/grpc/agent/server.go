@@ -300,6 +300,24 @@ func (s *Server) PromoteMemoryCandidate(ctx context.Context, request *agentv1.Pr
 	return agentOwnedMemoryResponseV1(*item), nil
 }
 
+func (s *Server) ReviewMemoryCandidate(ctx context.Context, request *agentv1.ReviewMemoryCandidateRequest) (*agentv1.AgentMemoryCandidateSummary, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.memoryPromotions == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
+	}
+	item, err := s.memoryPromotions.Review(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryCandidateReviewRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, CandidateUUID: request.GetCandidateId(),
+		CandidateSHA256: request.GetCandidateSha256(), Decision: request.GetDecision(), Reason: request.GetReason(),
+	})
+	if err != nil {
+		return nil, agentMemoryCandidatePromotionErrorV1(err)
+	}
+	return agentMemoryCandidateSummaryV1(*item), nil
+}
+
 func (s *Server) ListOwnedMemoryCandidates(ctx context.Context, request *agentv1.ListOwnedMemoryCandidatesRequest) (*agentv1.ListOwnedMemoryCandidatesResponse, error) {
 	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
 	if err != nil {
@@ -319,12 +337,7 @@ func (s *Server) ListOwnedMemoryCandidates(ctx context.Context, request *agentv1
 		NextCursor: page.NextCursor,
 	}
 	for _, item := range page.Items {
-		candidate := item.Candidate
-		response.Candidates = append(response.Candidates, &agentv1.AgentMemoryCandidateSummary{
-			CandidateId: candidate.CandidateUUID, CandidateSha256: candidate.CandidateSHA256, Summary: candidate.Summary,
-			Status: candidate.Status, ReviewId: item.ReviewUUID, PromotedMemoryId: candidate.PromotedMemoryUUID,
-			ObservedAtUnixMs: candidate.ObservedAt.UnixMilli(),
-		})
+		response.Candidates = append(response.Candidates, agentMemoryCandidateSummaryV1(item))
 	}
 	return response, nil
 }
@@ -396,6 +409,15 @@ func agentMemoryCandidatePromotionErrorV1(err error) error {
 		return status.Error(codes.Aborted, err.Error())
 	default:
 		return status.Error(codes.Unavailable, "Agent Memory candidate promotion is unavailable")
+	}
+}
+
+func agentMemoryCandidateSummaryV1(item application.AgentMemoryCandidateCatalogItemV1) *agentv1.AgentMemoryCandidateSummary {
+	candidate := item.Candidate
+	return &agentv1.AgentMemoryCandidateSummary{
+		CandidateId: candidate.CandidateUUID, CandidateSha256: candidate.CandidateSHA256, Summary: candidate.Summary,
+		Status: candidate.Status, ReviewId: item.ReviewUUID, PromotedMemoryId: candidate.PromotedMemoryUUID,
+		ObservedAtUnixMs: candidate.ObservedAt.UnixMilli(),
 	}
 }
 

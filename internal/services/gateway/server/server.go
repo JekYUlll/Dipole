@@ -151,6 +151,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		engine.POST("/api/v1/agent/memories/:memory_id/revoke", auth, agentMemoryRevokeHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memories/:memory_id/correct", auth, agentMemoryCorrectHandler(dependencies.AgentMemories))
 		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/promote", auth, agentMemoryCandidatePromoteHandler(dependencies.AgentMemories))
+		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/review", auth, agentMemoryCandidateReviewHandler(dependencies.AgentMemories))
 	}
 	if dependencies.AgentArtifacts != nil {
 		engine.GET("/api/v1/agent/artifacts", auth, agentArtifactListHandler(dependencies.AgentArtifacts))
@@ -361,6 +362,40 @@ func agentMemoryCandidatePromoteHandler(memories AgentMemoryControlApplication) 
 			return
 		}
 		item, err := memories.PromoteCandidate(c.Request.Context(), user.UUID, candidateID, body.CandidateSHA256, body.ReviewID, body.TargetMemoryType)
+		writeAgentMemoryResult(c, item, err)
+	}
+}
+
+func agentMemoryCandidateReviewHandler(memories AgentMemoryControlApplication) gin.HandlerFunc {
+	type requestBody struct {
+		CandidateSHA256 string `json:"candidateSha256"`
+		Decision        string `json:"decision"`
+		Reason          string `json:"reason"`
+	}
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		candidateID := strings.TrimSpace(c.Param("candidate_id"))
+		if !validAgentSubscriptionPublicID(candidateID, 72) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory candidate identity"})
+			return
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4*1024)
+		var body requestBody
+		if decodeStrictAgentSubscriptionBody(c.Request.Body, &body) != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Memory candidate review request"})
+			return
+		}
+		body.CandidateSHA256, body.Decision, body.Reason = strings.TrimSpace(body.CandidateSHA256), strings.TrimSpace(body.Decision), strings.TrimSpace(body.Reason)
+		if len(body.CandidateSHA256) != 64 || !isLowerHex(body.CandidateSHA256) || (body.Decision != "accepted" && body.Decision != "rejected") ||
+			body.Reason == "" || utf8.RuneCountInString(body.Reason) > 1000 || strings.IndexFunc(body.Reason, unicode.IsControl) >= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Memory candidate review request is invalid"})
+			return
+		}
+		item, err := memories.ReviewCandidate(c.Request.Context(), user.UUID, candidateID, body.CandidateSHA256, body.Decision, body.Reason)
 		writeAgentMemoryResult(c, item, err)
 	}
 }

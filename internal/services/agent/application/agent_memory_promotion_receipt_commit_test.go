@@ -97,6 +97,10 @@ func (s *receiptPromotionService) Promote(_ context.Context, request application
 	return &application.AgentMemoryV1{MemoryUUID: "MEM-CAND-1", TenantID: request.TenantID, PrincipalUUID: request.PrincipalUUID, AgentUUID: "UAI", MemoryType: request.TargetMemoryType, Status: application.AgentMemoryStatusActive, ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60, Provenance: application.AgentMemoryProvenanceV1{SourceType: "memory_candidate", SourceID: request.CandidateUUID, Sequence: request.ReviewUUID}, ValidFrom: time.Unix(1, 0).UTC()}, nil
 }
 
+func (s *receiptPromotionService) Review(context.Context, application.AgentMemoryCandidateReviewRequestV1) (*application.AgentMemoryCandidateCatalogItemV1, error) {
+	return nil, application.ErrAgentMemoryCandidateInvalid
+}
+
 func activePromotionInvocation() application.AgentInvocationV1 {
 	return application.AgentInvocationV1{TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", RuntimeID: "dipole-agent", Mode: "active"}
 }

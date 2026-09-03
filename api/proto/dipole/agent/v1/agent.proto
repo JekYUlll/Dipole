@@ -954,6 +954,16 @@ message PromoteMemoryCandidateRequest {
   string target_memory_type = 6;
 }
 
+message ReviewMemoryCandidateRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  string candidate_id = 3;
+  string candidate_sha256 = 4;
+  // accepted or rejected. Core derives owner, review id, and review hash.
+  string decision = 5;
+  string reason = 6;
+}
+
 message ListOwnedMemoryCandidatesRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -1053,6 +1063,7 @@ service AgentCapabilityService {
   rpc RevokeOwnedMemory(RevokeOwnedMemoryRequest) returns (AgentOwnedMemory);
   rpc CorrectOwnedMemory(CorrectOwnedMemoryRequest) returns (CorrectOwnedMemoryResponse);
   rpc PromoteMemoryCandidate(PromoteMemoryCandidateRequest) returns (AgentOwnedMemory);
+  rpc ReviewMemoryCandidate(ReviewMemoryCandidateRequest) returns (AgentMemoryCandidateSummary);
   rpc ListOwnedMemoryCandidates(ListOwnedMemoryCandidatesRequest) returns (ListOwnedMemoryCandidatesResponse);
   rpc CommitMemoryPromotionReceipt(CommitMemoryPromotionReceiptRequest) returns (CommitMemoryPromotionReceiptResponse);
   rpc AdmitRun(AdmitRunRequest) returns (AdmitRunResponse);

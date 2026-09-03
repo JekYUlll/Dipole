@@ -4,6 +4,14 @@
 默认拓扑是 Agent Shadow + Temporal 关 + 全部写能力关 + Cassandra/Web Sync/预签名直传关。
 共享环境启用前仍要各自的观察窗口证据，本表不改变默认路径。
 
+## 和「缺页面 / 重复实现」的边界
+
+2026-09-03 台账勘误：waiting Vue、产物收件箱、记忆候选晋升已在 HEAD。CHANGELOG 同日更早的「前端后续接入」行是当时切片边界，被后文覆盖。
+
+本表列的是 **flag-off**，不是缺实现。Gateway `agent_*_enabled` 与前端 `VITE_*` 是两层门禁，同一能力各守一层。Go/Eino 在 `internal/services/agent/legacy/`，只有 embedded Kafka composition 可引用，这是回滚面，不是第二套产品。
+
+Pencil 侧栏「审批记录」没有路由和 API，已从任务/记忆/定义/订阅四页控制轨删除。审批走 `/approval` 单次决定。
+
 ## 怎么读
 
 - **可 opt-in**：compose overlay / 显式 flag 就能跑隔离栈，缺的是共享环境证据。
@@ -64,3 +72,4 @@ Search、预签名、Sync、Elicitation、Approval、Timeline、Task Create、Ar
 5. ~~Owner 记忆候选列表~~：Gateway API 已齐；记忆页晋升入口已挂，随 `VITE_AGENT_MEMORIES_ENABLED`。
 6. ~~Waiting 任务 Chat 提示~~：`agent_task_waiting` 已在 Chat 去重并链到收件箱，重连以任务列表为准。
 7. ~~产物收件箱页~~：`GET /api/v1/agent/artifacts` 已挂到 Vue `/agent/artifacts`，随 `VITE_AGENT_ARTIFACTS_ENABLED`。列表只展示 metadata，正文仍走既有 digest 详情页。
+8. ~~Owner 记忆候选审核~~：`POST /api/v1/agent/memory-candidates/:id/review` + 记忆页通过/拒绝已齐，随 `VITE_AGENT_MEMORIES_ENABLED`。

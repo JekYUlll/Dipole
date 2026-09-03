@@ -101,6 +101,7 @@ type Querier interface {
 	GetAgentMemoryBackfillReference(ctx context.Context, arg GetAgentMemoryBackfillReferenceParams) (string, error)
 	GetAgentMemoryBySupersedes(ctx context.Context, arg GetAgentMemoryBySupersedesParams) (AgentMemory, error)
 	GetAgentMemoryCandidateForPromotion(ctx context.Context, arg GetAgentMemoryCandidateForPromotionParams) (AgentMemoryCandidate, error)
+	GetAgentMemoryCandidateReviewByCandidate(ctx context.Context, candidateUuid string) (AgentMemoryCandidateReview, error)
 	GetAgentMemoryCandidateReviewForPromotion(ctx context.Context, arg GetAgentMemoryCandidateReviewForPromotionParams) (AgentMemoryCandidateReview, error)
 	GetAgentMemoryDerivedImpact(ctx context.Context, arg GetAgentMemoryDerivedImpactParams) (GetAgentMemoryDerivedImpactRow, error)
 	GetAgentMemoryLineageBackfillHighWatermark(ctx context.Context) (int64, error)
@@ -171,6 +172,7 @@ type Querier interface {
 	InsertAgentMCPReadinessEvidence(ctx context.Context, arg InsertAgentMCPReadinessEvidenceParams) (int64, error)
 	InsertAgentMCPToolRound(ctx context.Context, arg InsertAgentMCPToolRoundParams) (int64, error)
 	InsertAgentMemory(ctx context.Context, arg InsertAgentMemoryParams) error
+	InsertAgentMemoryCandidateReview(ctx context.Context, arg InsertAgentMemoryCandidateReviewParams) error
 	InsertAgentMemoryTaskLineage(ctx context.Context, arg InsertAgentMemoryTaskLineageParams) error
 	InsertAgentModelCall(ctx context.Context, arg InsertAgentModelCallParams) error
 	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
@@ -262,6 +264,7 @@ type Querier interface {
 	ReleaseAgentEvent(ctx context.Context, arg ReleaseAgentEventParams) (int64, error)
 	ReleaseAgentOAuthCallbackHandoff(ctx context.Context, arg ReleaseAgentOAuthCallbackHandoffParams) (int64, error)
 	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error
+	ReviewAgentMemoryCandidate(ctx context.Context, arg ReviewAgentMemoryCandidateParams) (int64, error)
 	RevokeAgentApproval(ctx context.Context, arg RevokeAgentApprovalParams) (int64, error)
 	RevokeAgentDefinitionVersion(ctx context.Context, arg RevokeAgentDefinitionVersionParams) (int64, error)
 	RevokeAgentEventSubscription(ctx context.Context, arg RevokeAgentEventSubscriptionParams) (int64, error)

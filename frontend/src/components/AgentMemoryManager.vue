@@ -12,7 +12,6 @@
       <div v-else class="rail-item">☷ <span>任务运行</span></div>
       <RouterLink v-if="nav.artifacts" class="rail-item" :to="{ name: 'agent-artifact-inbox' }">▦ <span>任务产物</span></RouterLink>
       <div v-else class="rail-item">▦ <span>任务产物</span></div>
-      <div class="rail-item">♢ <span>审批记录</span></div>
       <p class="rail-boundary">OWNER GOVERNANCE<br>AUTO OBSERVATION: OFF<br>RETRIEVAL: CONTEXT ONLY</p>
     </aside>
 
@@ -50,7 +49,7 @@
         <template v-else>
           <div class="list-heading"><h2>MEMORY CANDIDATES&nbsp; {{ String(candidates.length).padStart(2, '0') }}</h2><span>CREATED DESC ↓</span></div>
           <div v-if="candidates.length === 0" class="state-card compact" role="status">
-            <p class="state-code success">EMPTY</p><h2>还没有记忆候选</h2><p>已审核且未晋升的候选会出现在这里，可直接写成长期记忆。</p>
+            <p class="state-code success">EMPTY</p><h2>还没有记忆候选</h2><p>待审候选可以在这里通过或拒绝。通过后即可晋升为长期记忆。</p>
           </div>
           <div v-else class="candidate-list">
             <article v-for="item in candidates" :key="item.candidateId" class="memory-card" :data-agent-memory-candidate-id="item.candidateId">
@@ -64,8 +63,12 @@
               <div class="card-bottom">
                 <span class="mono">OBS {{ item.observedAtUnixMs }}</span>
                 <button v-if="canPromote(item)" :data-agent-memory-candidate-promote="item.candidateId" class="text-action" :disabled="busy" @click="promote(item)">晋升 →</button>
+                <div v-else-if="canReview(item)" class="card-actions">
+                  <button :data-agent-memory-candidate-accept="item.candidateId" class="text-action" :disabled="busy" @click="review(item, 'accepted')">通过 →</button>
+                  <button :data-agent-memory-candidate-reject="item.candidateId" class="text-action danger-text" :disabled="busy" @click="review(item, 'rejected')">拒绝 →</button>
+                </div>
                 <span v-else-if="item.promotedMemoryId" class="audit-copy">已晋升 {{ item.promotedMemoryId }}</span>
-                <span v-else-if="item.status === 'pending'" class="audit-copy">等待审核</span>
+                <span v-else-if="item.status === 'rejected'" class="audit-copy">已拒绝</span>
               </div>
             </article>
             <button v-if="candidateNextCursor" class="load-more" :disabled="busy" @click="loadMoreCandidates">加载下一页候选 →</button>
@@ -257,6 +260,27 @@ async function loadMoreCandidates() {
   }
 }
 
+async function review(item: AgentMemoryCandidate, decision: 'accepted' | 'rejected') {
+  if (!canReview(item) || busy.value) return
+  viewState.value = 'promoting'
+  try {
+    const authoritative = await props.client.reviewCandidate(
+      item.candidateId,
+      item.candidateSha256,
+      decision,
+      decision === 'accepted' ? 'owner accepted' : 'owner rejected',
+    )
+    const index = candidates.value.findIndex(row => row.candidateId === item.candidateId)
+    if (index < 0 || authoritative.candidateId !== item.candidateId || authoritative.status !== decision || !authoritative.reviewId) {
+      throw new Error('invalid authoritative review')
+    }
+    candidates.value[index] = { ...item, ...authoritative }
+    viewState.value = 'ready'
+  } catch {
+    viewState.value = 'conflict'
+  }
+}
+
 async function promote(item: AgentMemoryCandidate) {
   if (!canPromote(item) || busy.value || !item.reviewId) return
   viewState.value = 'promoting'
@@ -272,6 +296,10 @@ async function promote(item: AgentMemoryCandidate) {
   } catch {
     viewState.value = 'conflict'
   }
+}
+
+function canReview(item: AgentMemoryCandidate) {
+  return item.status === 'pending' && !item.reviewId && !item.promotedMemoryId
 }
 
 function canPromote(item: AgentMemoryCandidate) {

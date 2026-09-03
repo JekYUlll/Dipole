@@ -1,8 +1,17 @@
 # 更新日志
 
+- 2026-09-03：记忆页补上 owner 候选审核，pending 行可直接通过或拒绝。
+  - Core/Gateway 新增 `ReviewMemoryCandidate`：会话派生 owner，写入既有 v46 review 账本并更新候选状态；精确重放幂等，决策冲突 fail closed。
+  - Vue `/agent/memories` 对 pending 行调用 `POST /memory-candidates/:id/review`，通过后沿用已有晋升。理由使用固定 `owner accepted` / `owner rejected`，不含正文。生产 `VITE_*` 仍默认关。
+
 - 2026-09-03：校正 Remote GPU Agent Interactive Active 候选的体验口径。
   - `dipole-agent-active-649cf110` 的 Gateway 路由与 Runtime 健康探针仍可访问，但原隔离验收结束时已撤销临时 owner 的 promotion grant；后续真实 Task 因 `Agent Run admission denied` 被拒绝。
   - 因此端口 `18121` 只能作为历史 API receipt，不能作为当前可体验 Agent 环境。下一次体验部署必须以新隔离项目、已验证的前端 `agent-experience` 构建、有效且精确 scope 的演示 grant，以及创建、审批、Timeline 的浏览器验收共同确认。
+
+- 2026-09-03：清理 Agent 体验债务表述，并去掉控制轨上无路由的「审批记录」。
+  - 台账勘误 waiting / 产物 / 记忆候选「前端未接」；这三项页面已在 HEAD。AD-034/AD-035 补一条「本轮进展」指向剩余观察窗口与自动写入，不改默认开关。
+  - 任务、记忆、定义、订阅四页侧栏删除 Pencil 遗留的审批记录死入口。审批仍走任务行的 `/approval`。
+  - 未改生产 `VITE_*` 与 Compose 默认；Go/Eino legacy 继续只给 embedded Kafka 回滚用。详见 `docs/notes/implemented-but-disabled.md`。
 
 - 2026-09-03：补上 owner 产物收件箱页，认证用户可从 `/agent/artifacts` 找回历史任务 metadata。
   - Vue 读取既有 `GET /api/v1/agent/artifacts`，按 `createdAtUnixMs:artifactId` 分页；列表不请求正文或对象位置。

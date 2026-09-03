@@ -86,6 +86,7 @@ type AgentMemoryControlApplication interface {
 	Revoke(ctx context.Context, principalUUID, memoryID, reason string) (*AgentMemory, error)
 	Correct(ctx context.Context, principalUUID, memoryID string, expectedVersion uint32, content, compactContent, reason string) (*AgentMemoryCorrection, error)
 	PromoteCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, reviewID, targetMemoryType string) (*AgentMemory, error)
+	ReviewCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, decision, reason string) (*AgentMemoryCandidate, error)
 }
 
 type agentMemoryRPC interface {
@@ -94,6 +95,7 @@ type agentMemoryRPC interface {
 	RevokeOwnedMemory(context.Context, *agentv1.RevokeOwnedMemoryRequest, ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error)
 	CorrectOwnedMemory(context.Context, *agentv1.CorrectOwnedMemoryRequest, ...grpc.CallOption) (*agentv1.CorrectOwnedMemoryResponse, error)
 	PromoteMemoryCandidate(context.Context, *agentv1.PromoteMemoryCandidateRequest, ...grpc.CallOption) (*agentv1.AgentOwnedMemory, error)
+	ReviewMemoryCandidate(context.Context, *agentv1.ReviewMemoryCandidateRequest, ...grpc.CallOption) (*agentv1.AgentMemoryCandidateSummary, error)
 }
 
 func (c *AgentMemoryControlClient) ListCandidates(ctx context.Context, principalUUID, after string, limit int) (*AgentMemoryCandidatePage, error) {
@@ -250,6 +252,29 @@ func (c *AgentMemoryControlClient) PromoteCandidate(ctx context.Context, princip
 		expectedMemoryType = "observational"
 	}
 	if err != nil || item.Provenance.SourceType != "memory_candidate" || item.Provenance.SourceID != candidateID || item.Provenance.Sequence != reviewID || item.Status != "active" || item.MemoryType != expectedMemoryType {
+		return nil, ErrAgentMemoryUnavailable
+	}
+	return &item, nil
+}
+
+func (c *AgentMemoryControlClient) ReviewCandidate(ctx context.Context, principalUUID, candidateID, candidateSHA256, decision, reason string) (*AgentMemoryCandidate, error) {
+	principalUUID, candidateID, candidateSHA256 = strings.TrimSpace(principalUUID), strings.TrimSpace(candidateID), strings.TrimSpace(candidateSHA256)
+	decision, reason = strings.TrimSpace(decision), strings.TrimSpace(reason)
+	if principalUUID == "" || !validAgentSubscriptionPublicID(candidateID, 72) || len(candidateSHA256) != 64 || !isLowerHex(candidateSHA256) ||
+		(decision != "accepted" && decision != "rejected") || reason == "" || utf8.RuneCountInString(reason) > 1000 || strings.IndexFunc(reason, unicode.IsControl) >= 0 {
+		return nil, ErrAgentMemoryInvalid
+	}
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.ReviewMemoryCandidate(callCtx, &agentv1.ReviewMemoryCandidateRequest{
+		Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID,
+		CandidateId: candidateID, CandidateSha256: candidateSHA256, Decision: decision, Reason: reason,
+	})
+	if err != nil {
+		return nil, mapAgentMemoryRPCError(err)
+	}
+	item, err := agentMemoryCandidateFromProto(response)
+	if err != nil || item.CandidateID != candidateID || item.CandidateSHA256 != candidateSHA256 || item.Status != decision || item.ReviewID == "" {
 		return nil, ErrAgentMemoryUnavailable
 	}
 	return &item, nil

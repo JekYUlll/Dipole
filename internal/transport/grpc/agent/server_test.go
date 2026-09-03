@@ -128,8 +128,10 @@ type agentMemoryOwnerControlStub struct {
 }
 
 type agentMemoryCandidatePromotionStub struct {
-	request application.AgentMemoryCandidatePromotionRequestV1
-	item    application.AgentMemoryV1
+	request       application.AgentMemoryCandidatePromotionRequestV1
+	reviewRequest application.AgentMemoryCandidateReviewRequestV1
+	item          application.AgentMemoryV1
+	reviewed      application.AgentMemoryCandidateCatalogItemV1
 }
 
 type agentMemoryCandidateCatalogStub struct {
@@ -151,6 +153,12 @@ func (s *agentMemoryPromotionReceiptCommitStub) CommitMemoryPromotionReceipt(_ c
 func (s *agentMemoryCandidatePromotionStub) Promote(_ context.Context, request application.AgentMemoryCandidatePromotionRequestV1) (*application.AgentMemoryV1, error) {
 	s.request = request
 	item := s.item
+	return &item, nil
+}
+
+func (s *agentMemoryCandidatePromotionStub) Review(_ context.Context, request application.AgentMemoryCandidateReviewRequestV1) (*application.AgentMemoryCandidateCatalogItemV1, error) {
+	s.reviewRequest = request
+	item := s.reviewed
 	return &item, nil
 }
 
@@ -1234,6 +1242,40 @@ func TestPromoteMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
 	})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent candidate promotion code = %s", status.Code(err))
+	}
+}
+
+func TestReviewMemoryCandidateBindsGatewayPrincipal(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	promotion := &agentMemoryCandidatePromotionStub{reviewed: application.AgentMemoryCandidateCatalogItemV1{
+		Candidate: application.AgentMemoryCandidateV1{
+			CandidateUUID: "CAND-1", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI",
+			ResourceType: "conversation", ResourceID: "group:G1", CandidateType: application.AgentMemoryCandidateTypeMessage,
+			SourceID: "MSG-1", EvidenceIDs: []string{"MSG-1"}, Summary: "API v2 Friday", PolicyVersion: "memory-v1",
+			CandidateSHA256: strings.Repeat("a", 64), Status: application.AgentMemoryCandidateStatusAccepted, ObservedAt: now,
+		},
+		ReviewUUID: "REV-1",
+	}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	server, _ = server.WithMemoryCandidatePromotions(promotion)
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ReviewMemoryCandidate(ctx, &agentv1.ReviewMemoryCandidateRequest{
+			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", CandidateId: "CAND-1",
+			CandidateSha256: strings.Repeat("a", 64), Decision: "accepted", Reason: "owner confirmed",
+		})
+	})
+	if err != nil {
+		t.Fatalf("review candidate: %v", err)
+	}
+	item := response.(*agentv1.AgentMemoryCandidateSummary)
+	if promotion.reviewRequest.PrincipalUUID != "U100" || promotion.reviewRequest.Decision != "accepted" || item.GetReviewId() != "REV-1" || item.GetStatus() != "accepted" {
+		t.Fatalf("unexpected review request=%+v response=%+v", promotion.reviewRequest, item)
+	}
+	_, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ReviewMemoryCandidate(ctx, &agentv1.ReviewMemoryCandidateRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent candidate review code = %s", status.Code(err))
 	}
 }
 

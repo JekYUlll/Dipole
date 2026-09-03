@@ -1,7 +1,11 @@
 package application
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -61,10 +65,20 @@ type AgentMemoryCandidatePromotionRequestV1 struct {
 	TargetMemoryType AgentMemoryTypeV1
 }
 
+type AgentMemoryCandidateReviewRequestV1 struct {
+	TenantID        string
+	PrincipalUUID   string
+	CandidateUUID   string
+	CandidateSHA256 string
+	Decision        string
+	Reason          string
+}
+
 type AgentMemoryCandidatePromotionStoreV1 interface {
 	GetCandidateForPromotion(ctx context.Context, tenantID, principalUUID, candidateUUID string) (*AgentMemoryCandidateV1, error)
 	GetCandidateReview(ctx context.Context, candidateUUID, reviewUUID string) (*AgentMemoryCandidateReviewV1, error)
 	PromoteCandidate(ctx context.Context, candidate AgentMemoryCandidateV1, review AgentMemoryCandidateReviewV1, memory AgentMemoryV1) (*AgentMemoryV1, error)
+	ReviewCandidate(ctx context.Context, candidate AgentMemoryCandidateV1, review AgentMemoryCandidateReviewV1) (*AgentMemoryCandidateCatalogItemV1, error)
 }
 
 type AgentMemoryCandidateCatalogItemV1 struct {
@@ -95,6 +109,7 @@ type AgentMemoryCandidateCatalogServiceV1 interface {
 
 type AgentMemoryCandidatePromotionServiceV1 interface {
 	Promote(ctx context.Context, request AgentMemoryCandidatePromotionRequestV1) (*AgentMemoryV1, error)
+	Review(ctx context.Context, request AgentMemoryCandidateReviewRequestV1) (*AgentMemoryCandidateCatalogItemV1, error)
 }
 
 func (candidate AgentMemoryCandidateV1) Validate() error {
@@ -115,6 +130,72 @@ func (candidate AgentMemoryCandidateV1) Validate() error {
 		seen[evidence] = struct{}{}
 	}
 	return nil
+}
+
+func NormalizeAgentMemoryCandidateReviewReason(reason string) (string, error) {
+	normalized := strings.TrimSpace(reason)
+	if normalized == "" || len([]rune(normalized)) > 1000 || strings.IndexFunc(normalized, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
+		return "", ErrAgentMemoryCandidateInvalid
+	}
+	lower := strings.ToLower(normalized)
+	for _, marker := range []string{"password", "passwd", "token", "secret", "authorization", "bearer", "api_key", "api-key", "api key"} {
+		if index := strings.Index(lower, marker); index >= 0 {
+			rest := strings.TrimLeft(normalized[index+len(marker):], " \t")
+			if strings.HasPrefix(rest, "=") || strings.HasPrefix(rest, ":") {
+				return "", ErrAgentMemoryCandidateInvalid
+			}
+		}
+	}
+	return normalized, nil
+}
+
+func BuildAgentMemoryCandidateReviewV1(candidateUUID, candidateSHA256, reviewerUUID, decision, reason string, reviewedAt time.Time) (AgentMemoryCandidateReviewV1, error) {
+	normalized, err := NormalizeAgentMemoryCandidateReviewReason(reason)
+	if err != nil {
+		return AgentMemoryCandidateReviewV1{}, err
+	}
+	candidateUUID, candidateSHA256, reviewerUUID, decision = strings.TrimSpace(candidateUUID), strings.TrimSpace(candidateSHA256), strings.TrimSpace(reviewerUUID), strings.TrimSpace(decision)
+	if anyBlank(candidateUUID, candidateSHA256, reviewerUUID) || len(candidateSHA256) != 64 || !isHex(candidateSHA256) || (decision != AgentMemoryCandidateReviewDecisionAccepted && decision != AgentMemoryCandidateReviewDecisionRejected) || reviewedAt.IsZero() {
+		return AgentMemoryCandidateReviewV1{}, ErrAgentMemoryCandidateInvalid
+	}
+	reviewedAt = reviewedAt.UTC().Truncate(time.Millisecond)
+	reviewedAtText := reviewedAt.Format("2006-01-02T15:04:05.000Z")
+	canonical, err := marshalAgentMemoryCandidateReviewCanonicalV1(candidateUUID, candidateSHA256, reviewerUUID, decision, normalized, reviewedAtText)
+	if err != nil {
+		return AgentMemoryCandidateReviewV1{}, err
+	}
+	digest := sha256.Sum256(canonical)
+	hash := hex.EncodeToString(digest[:])
+	review := AgentMemoryCandidateReviewV1{
+		ReviewUUID: "REVIEW-" + hash, CandidateUUID: candidateUUID, CandidateSHA256: candidateSHA256,
+		ReviewerUUID: reviewerUUID, Decision: decision, Reason: normalized, ReviewSHA256: hash, ReviewedAt: reviewedAt,
+	}
+	if err := review.Validate(); err != nil {
+		return AgentMemoryCandidateReviewV1{}, err
+	}
+	return review, nil
+}
+
+func marshalAgentMemoryCandidateReviewCanonicalV1(candidateUUID, candidateSHA256, reviewerUUID, decision, reason, reviewedAt string) ([]byte, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(struct {
+		SchemaVersion   string `json:"schemaVersion"`
+		CandidateID     string `json:"candidateId"`
+		CandidateSHA256 string `json:"candidateSha256"`
+		ReviewerID      string `json:"reviewerId"`
+		Decision        string `json:"decision"`
+		Reason          string `json:"reason"`
+		ReviewedAt      string `json:"reviewedAt"`
+	}{
+		SchemaVersion: "dipole.agent.memory-candidate-review.v1", CandidateID: candidateUUID, CandidateSHA256: candidateSHA256,
+		ReviewerID: reviewerUUID, Decision: decision, Reason: reason, ReviewedAt: reviewedAt,
+	}); err != nil {
+		return nil, err
+	}
+	canonical := bytes.TrimRight(buffer.Bytes(), "\n")
+	return canonical, nil
 }
 
 func (review AgentMemoryCandidateReviewV1) Validate() error {

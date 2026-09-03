@@ -55,6 +55,7 @@ export interface AgentMemoryClient {
   revoke(memoryId: string, reason: string): Promise<AgentMemory>
   correct(memoryId: string, expectedVersion: number, content: string, compactContent: string, reason: string): Promise<AgentMemoryCorrection>
   promoteCandidate(candidateId: string, candidateSha256: string, reviewId: string, targetMemoryType?: AgentMemoryType): Promise<AgentMemory>
+  reviewCandidate(candidateId: string, candidateSha256: string, decision: 'accepted' | 'rejected', reason: string): Promise<AgentMemoryCandidate>
 }
 
 export interface AgentMemoryCorrection {
@@ -200,6 +201,15 @@ export const agentMemoryClient: AgentMemoryClient = {
     if (!memoryTypes.has(targetMemoryType) || targetMemoryType === 'working') throw new Error('Agent Memory candidate target type is invalid')
     return parseAgentMemoryResponse(await api.post(`/api/v1/agent/memory-candidates/${encodeURIComponent(candidateId)}/promote`, {
       candidateSha256, reviewId, targetMemoryType,
+    }))
+  },
+  async reviewCandidate(candidateId, candidateSha256, decision, reason) {
+    requireIdentifier(candidateId, 'candidate')
+    if (!/^[a-f0-9]{64}$/.test(candidateSha256)) throw new Error('Agent Memory candidate digest is invalid')
+    if (decision !== 'accepted' && decision !== 'rejected') throw new Error('Agent Memory candidate decision is invalid')
+    const normalizedReason = normalizeReason(reason, 'review')
+    return parseAgentMemoryCandidate(await api.post(`/api/v1/agent/memory-candidates/${encodeURIComponent(candidateId)}/review`, {
+      candidateSha256, decision, reason: normalizedReason,
     }))
   },
 }

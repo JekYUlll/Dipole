@@ -25,6 +25,7 @@ function service(): AgentMemoryClient {
     list: vi.fn().mockResolvedValue({ memories: [active], nextCursor: '' }),
     listCandidates: vi.fn().mockResolvedValue({ candidates: [], nextCursor: '' }),
     promoteCandidate: vi.fn(),
+    reviewCandidate: vi.fn(),
     revoke: vi.fn().mockImplementation(async (_id: string, reason: string) => ({
       ...active, status: 'revoked', revokedAtUnixMs: 1_700_000_200_000, revokedById: 'U100', revokeReason: reason,
     })),
@@ -130,5 +131,44 @@ describe('AgentMemoryManager', () => {
     expect(client.promoteCandidate).toHaveBeenCalledWith('CAND-1', acceptedCandidate.candidateSha256, 'REV-1')
     expect(wrapper.text()).toContain('已晋升 MEM-CAND-1')
     expect(wrapper.text()).toContain('MEM-CAND-1')
+  })
+
+  it('reviews a pending candidate then exposes promotion', async () => {
+    const pending: AgentMemoryCandidate = {
+      candidateId: 'CAND-2', candidateSha256: acceptedCandidate.candidateSha256,
+      summary: 'Need a Friday cutoff', status: 'pending', observedAtUnixMs: 1_700_000_000_000,
+    }
+    const client = service()
+    vi.mocked(client.listCandidates).mockResolvedValue({ candidates: [pending], nextCursor: '' })
+    vi.mocked(client.reviewCandidate).mockResolvedValue({
+      ...pending, status: 'accepted', reviewId: 'REV-2',
+    })
+    const wrapper = mount(AgentMemoryManager, { props: { client } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('WAITING REVIEW')
+    await wrapper.get('[data-agent-memory-candidate-accept="CAND-2"]').trigger('click')
+    await flushPromises()
+    expect(client.reviewCandidate).toHaveBeenCalledWith('CAND-2', pending.candidateSha256, 'accepted', 'owner accepted')
+    expect(wrapper.text()).toContain('READY TO PROMOTE')
+    expect(wrapper.find('[data-agent-memory-candidate-promote="CAND-2"]').exists()).toBe(true)
+  })
+
+  it('rejects a pending candidate without exposing promotion', async () => {
+    const pending: AgentMemoryCandidate = {
+      candidateId: 'CAND-3', candidateSha256: acceptedCandidate.candidateSha256,
+      summary: 'Skip this one', status: 'pending', observedAtUnixMs: 1_700_000_000_000,
+    }
+    const client = service()
+    vi.mocked(client.listCandidates).mockResolvedValue({ candidates: [pending], nextCursor: '' })
+    vi.mocked(client.reviewCandidate).mockResolvedValue({
+      ...pending, status: 'rejected', reviewId: 'REV-3',
+    })
+    const wrapper = mount(AgentMemoryManager, { props: { client } })
+    await flushPromises()
+    await wrapper.get('[data-agent-memory-candidate-reject="CAND-3"]').trigger('click')
+    await flushPromises()
+    expect(client.reviewCandidate).toHaveBeenCalledWith('CAND-3', pending.candidateSha256, 'rejected', 'owner rejected')
+    expect(wrapper.text()).toContain('已拒绝')
+    expect(wrapper.find('[data-agent-memory-candidate-promote="CAND-3"]').exists()).toBe(false)
   })
 })

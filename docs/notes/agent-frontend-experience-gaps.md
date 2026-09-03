@@ -4,6 +4,17 @@
 
 本地走查：`cd frontend && npm run dev:agent`。
 
+## 债务审计（2026-09-03）
+
+Owner SPA 控制面已经齐：定义、订阅、记忆（含候选审核与晋升）、建任务、任务收件箱、时间线、审批、输入、产物列表/详情、Chat 等待提示。台账早期「Vue 未接」指的是当日尚未合入的切片，HEAD 已有页面。
+
+剩余分两类：
+
+1. **默认关**：生产 `VITE_*`、Gateway `agent_*_enabled`、Memory 自动写入、订阅 overlay。页面在，默认路径进不去。
+2. **有意不做**：MCP / Repair / OAuth 不进 SPA；Pencil「审批记录」没有路由和 API，已从四页侧栏删除。单次审批仍走 `/approval`。
+
+侧栏开关关闭时显示的灰色标签是 flag fallback，不是死入口。任务/产物收件箱 CSS 相近，是各自页面副本，本轮不抽公共组件。
+
 ## 本轮已补的前端可达性
 
 - Settings「Agent 控制」按开关列出定义 / 订阅 / 记忆 / 创建任务。
@@ -22,7 +33,8 @@
 | 浏览 / 创建 Definition | `/agent/definitions` | `GET` + `POST` profile | 创建已接线。目录仍不暴露模型/Tool。空目录时订阅创建会停在「没有 active Definition」。 |
 | 创建 / 撤销订阅 | `/agent/subscriptions` | list / options / create / revoke | API 齐。订阅要先有 Definition + 可读 conversation。Runtime 默认 `direct_target`，列表 active 不会自动开共享事件触发；要另开 subscription overlay。 |
 | 查看 / 撤销 / 纠正记忆 | `/agent/memories` | list / revoke / correct | 页面不能写入 Observation。自动写入关着时列表会一直空。 |
-| 晋升记忆候选 | `/agent/memories` 候选区 | `GET /memory-candidates` + `POST /memory-candidates/:id/promote` | 记忆页已列出摘要并晋升 accepted+reviewId 行。pending 无 review 只展示。 |
+| 审核记忆候选 | `/agent/memories` 候选区 | `POST /memory-candidates/:id/review` | pending 行可接受/拒绝。理由固定为 owner accepted/rejected。 |
+| 晋升记忆候选 | `/agent/memories` 候选区 | `GET /memory-candidates` + `POST /memory-candidates/:id/promote` | 记忆页已列出摘要并晋升 accepted+reviewId 行。 |
 | 取消任务 | 时间线页取消按钮 | `POST /tasks/:id/cancel` | 已挂到 Timeline 头。终态任务再点会走 Runtime 既有错误。 |
 | 运行状态灯 | 无页面 | `GET /api/v1/agent/status` | 运维/装配探测，不是产品收件箱。 |
 | MCP / Repair / OAuth | 无 Vue 入口 | MCP HTTP、Repair Execute RPC、OAuth consume | 有意不进 SPA。Repair 是 mTLS 内部 RPC。 |

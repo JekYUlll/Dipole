@@ -54,6 +54,31 @@ func (q *Queries) GetAgentMemoryCandidateForPromotion(ctx context.Context, arg G
 	return i, err
 }
 
+const getAgentMemoryCandidateReviewByCandidate = `-- name: GetAgentMemoryCandidateReviewByCandidate :one
+SELECT id, review_uuid, candidate_uuid, candidate_sha256, reviewer_uuid, decision, reason, review_sha256, reviewed_at, created_at
+FROM agent_memory_candidate_reviews
+WHERE candidate_uuid = ?
+LIMIT 1
+`
+
+func (q *Queries) GetAgentMemoryCandidateReviewByCandidate(ctx context.Context, candidateUuid string) (AgentMemoryCandidateReview, error) {
+	row := q.db.QueryRowContext(ctx, getAgentMemoryCandidateReviewByCandidate, candidateUuid)
+	var i AgentMemoryCandidateReview
+	err := row.Scan(
+		&i.ID,
+		&i.ReviewUuid,
+		&i.CandidateUuid,
+		&i.CandidateSha256,
+		&i.ReviewerUuid,
+		&i.Decision,
+		&i.Reason,
+		&i.ReviewSha256,
+		&i.ReviewedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getAgentMemoryCandidateReviewForPromotion = `-- name: GetAgentMemoryCandidateReviewForPromotion :one
 SELECT id, review_uuid, candidate_uuid, candidate_sha256, reviewer_uuid, decision, reason, review_sha256, reviewed_at, created_at
 FROM agent_memory_candidate_reviews
@@ -85,13 +110,46 @@ func (q *Queries) GetAgentMemoryCandidateReviewForPromotion(ctx context.Context,
 	return i, err
 }
 
+const insertAgentMemoryCandidateReview = `-- name: InsertAgentMemoryCandidateReview :exec
+INSERT INTO agent_memory_candidate_reviews (
+  review_uuid, candidate_uuid, candidate_sha256, reviewer_uuid, decision, reason, review_sha256, reviewed_at
+) VALUES (
+  ?, ?, ?, ?,
+  ?, ?, ?, ?
+)
+`
+
+type InsertAgentMemoryCandidateReviewParams struct {
+	ReviewUuid      string
+	CandidateUuid   string
+	CandidateSha256 string
+	ReviewerUuid    string
+	Decision        string
+	Reason          string
+	ReviewSha256    string
+	ReviewedAt      time.Time
+}
+
+func (q *Queries) InsertAgentMemoryCandidateReview(ctx context.Context, arg InsertAgentMemoryCandidateReviewParams) error {
+	_, err := q.db.ExecContext(ctx, insertAgentMemoryCandidateReview,
+		arg.ReviewUuid,
+		arg.CandidateUuid,
+		arg.CandidateSha256,
+		arg.ReviewerUuid,
+		arg.Decision,
+		arg.Reason,
+		arg.ReviewSha256,
+		arg.ReviewedAt,
+	)
+	return err
+}
+
 const listOwnedAgentMemoryCandidates = `-- name: ListOwnedAgentMemoryCandidates :many
 SELECT c.id, c.candidate_uuid, c.tenant_id, c.principal_uuid, c.agent_uuid, c.resource_type, c.resource_id, c.candidate_type, c.source_id, c.evidence_ids_json, c.summary, c.policy_version, c.candidate_sha256, c.status, c.observed_at, c.created_at, c.promoted_memory_uuid, c.promoted_at, r.review_uuid, r.decision AS review_decision, r.reviewed_at
 FROM agent_memory_candidates AS c
 LEFT JOIN agent_memory_candidate_reviews AS r
   ON r.candidate_uuid = c.candidate_uuid
  AND r.reviewer_uuid = c.principal_uuid
- AND r.decision = 'accepted'
 WHERE c.tenant_id = ?
   AND c.principal_uuid = ?
   AND c.candidate_uuid > ?
@@ -205,6 +263,38 @@ func (q *Queries) PromoteAgentMemoryCandidate(ctx context.Context, arg PromoteAg
 	result, err := q.db.ExecContext(ctx, promoteAgentMemoryCandidate,
 		arg.PromotedMemoryUuid,
 		arg.PromotedAt,
+		arg.TenantID,
+		arg.PrincipalUuid,
+		arg.CandidateUuid,
+		arg.CandidateSha256,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const reviewAgentMemoryCandidate = `-- name: ReviewAgentMemoryCandidate :execrows
+UPDATE agent_memory_candidates
+SET status = ?
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND candidate_uuid = ?
+  AND candidate_sha256 = ?
+  AND status = 'pending'
+`
+
+type ReviewAgentMemoryCandidateParams struct {
+	Status          string
+	TenantID        string
+	PrincipalUuid   string
+	CandidateUuid   string
+	CandidateSha256 string
+}
+
+func (q *Queries) ReviewAgentMemoryCandidate(ctx context.Context, arg ReviewAgentMemoryCandidateParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, reviewAgentMemoryCandidate,
+		arg.Status,
 		arg.TenantID,
 		arg.PrincipalUuid,
 		arg.CandidateUuid,

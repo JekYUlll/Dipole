@@ -66,6 +66,70 @@ func (r *AgentMemoryRepository) GetCandidateReview(ctx context.Context, candidat
 	return &review, nil
 }
 
+func (r *AgentMemoryRepository) ReviewCandidate(ctx context.Context, candidate application.AgentMemoryCandidateV1, review application.AgentMemoryCandidateReviewV1) (*application.AgentMemoryCandidateCatalogItemV1, error) {
+	if r.store == nil || candidate.Validate() != nil || review.Validate() != nil || review.CandidateUUID != candidate.CandidateUUID || review.CandidateSHA256 != candidate.CandidateSHA256 || review.ReviewerUUID != candidate.PrincipalUUID {
+		return nil, application.ErrAgentMemoryCandidateInvalid
+	}
+	var stored *application.AgentMemoryCandidateCatalogItemV1
+	err := r.store.WithinTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted}, func(queries *generated.Queries) error {
+		row, err := queries.GetAgentMemoryCandidateForPromotion(ctx, generated.GetAgentMemoryCandidateForPromotionParams{TenantID: candidate.TenantID, PrincipalUuid: candidate.PrincipalUUID, CandidateUuid: candidate.CandidateUUID})
+		if errors.Is(err, sql.ErrNoRows) {
+			return application.ErrAgentMemoryCandidateConflict
+		}
+		if err != nil {
+			return fmt.Errorf("lock Agent Memory candidate for review: %w", err)
+		}
+		locked, err := mapAgentMemoryCandidate(row)
+		if err != nil || locked.CandidateSHA256 != candidate.CandidateSHA256 || locked.PrincipalUUID != candidate.PrincipalUUID {
+			return application.ErrAgentMemoryCandidateConflict
+		}
+		existing, existingErr := queries.GetAgentMemoryCandidateReviewByCandidate(ctx, candidate.CandidateUUID)
+		if existingErr == nil {
+			lockedReview := mapAgentMemoryCandidateReview(existing)
+			if lockedReview.ReviewSHA256 != review.ReviewSHA256 || lockedReview.Decision != review.Decision {
+				return application.ErrAgentMemoryCandidateConflict
+			}
+			locked.Status = lockedReview.Decision
+			reviewed := lockedReview.ReviewedAt
+			stored = &application.AgentMemoryCandidateCatalogItemV1{Candidate: locked, ReviewUUID: lockedReview.ReviewUUID, ReviewedAt: &reviewed}
+			return nil
+		}
+		if !errors.Is(existingErr, sql.ErrNoRows) {
+			return fmt.Errorf("get Agent Memory candidate review: %w", existingErr)
+		}
+		if locked.Status != application.AgentMemoryCandidateStatusPending {
+			return application.ErrAgentMemoryCandidateConflict
+		}
+		if err := queries.InsertAgentMemoryCandidateReview(ctx, generated.InsertAgentMemoryCandidateReviewParams{
+			ReviewUuid: review.ReviewUUID, CandidateUuid: review.CandidateUUID, CandidateSha256: review.CandidateSHA256,
+			ReviewerUuid: review.ReviewerUUID, Decision: review.Decision, Reason: review.Reason, ReviewSha256: review.ReviewSHA256, ReviewedAt: review.ReviewedAt,
+		}); err != nil {
+			if mysqlData.IsDuplicateKey(err) {
+				return application.ErrAgentMemoryCandidateConflict
+			}
+			return fmt.Errorf("insert Agent Memory candidate review: %w", err)
+		}
+		rows, err := queries.ReviewAgentMemoryCandidate(ctx, generated.ReviewAgentMemoryCandidateParams{
+			Status: review.Decision, TenantID: candidate.TenantID, PrincipalUuid: candidate.PrincipalUUID,
+			CandidateUuid: candidate.CandidateUUID, CandidateSha256: candidate.CandidateSHA256,
+		})
+		if err != nil {
+			return fmt.Errorf("update Agent Memory candidate review status: %w", err)
+		}
+		if rows != 1 {
+			return application.ErrAgentMemoryCandidateConflict
+		}
+		locked.Status = review.Decision
+		reviewed := review.ReviewedAt
+		stored = &application.AgentMemoryCandidateCatalogItemV1{Candidate: locked, ReviewUUID: review.ReviewUUID, ReviewedAt: &reviewed}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return stored, nil
+}
+
 func (r *AgentMemoryRepository) PromoteCandidate(ctx context.Context, candidate application.AgentMemoryCandidateV1, review application.AgentMemoryCandidateReviewV1, memory application.AgentMemoryV1) (*application.AgentMemoryV1, error) {
 	if r.store == nil || candidate.Validate() != nil || review.Validate() != nil || memory.Validate() != nil {
 		return nil, application.ErrAgentMemoryCandidateInvalid

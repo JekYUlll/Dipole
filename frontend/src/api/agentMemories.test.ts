@@ -48,6 +48,10 @@ describe('Agent Memory response parser', () => {
       candidates: [{ candidateId: 'CAND-2', candidateSha256: candidate.candidateSha256, summary: 'later', status: 'pending', observedAtUnixMs: 2_000 }],
       nextCursor: '',
     }).candidates[0].status).toBe('pending')
+    expect(parseAgentMemoryCandidatePage({
+      candidates: [{ candidateId: 'CAND-3', candidateSha256: candidate.candidateSha256, summary: 'no', status: 'rejected', reviewId: 'REV-3', observedAtUnixMs: 3_000 }],
+      nextCursor: '',
+    }).candidates[0]).toMatchObject({ status: 'rejected', reviewId: 'REV-3' })
     expect(() => parseAgentMemoryCandidatePage({ candidates: [{ ...candidate, principalUserId: 'U999' }], nextCursor: '' })).toThrow(/shape/i)
     expect(() => parseAgentMemoryCandidatePage({ candidates: [{ ...candidate, candidateSha256: 'ZZ' }], nextCursor: '' })).toThrow(/digest/i)
     expect(() => parseAgentMemoryCandidatePage({ candidates: [{ ...candidate, reviewId: undefined }], nextCursor: '' })).toThrow(/review/i)

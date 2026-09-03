@@ -136,6 +136,21 @@ func (s *candidatePromotionStore) GetCandidateReview(context.Context, string, st
 	return &copy, nil
 }
 
+func (s *candidatePromotionStore) ReviewCandidate(_ context.Context, candidate application.AgentMemoryCandidateV1, review application.AgentMemoryCandidateReviewV1) (*application.AgentMemoryCandidateCatalogItemV1, error) {
+	if s.review != nil && s.review.ReviewSHA256 != review.ReviewSHA256 {
+		return nil, application.ErrAgentMemoryCandidateConflict
+	}
+	if candidate.Status != application.AgentMemoryCandidateStatusPending && (s.review == nil || s.review.ReviewSHA256 != review.ReviewSHA256) {
+		return nil, application.ErrAgentMemoryCandidateConflict
+	}
+	copyReview := review
+	s.review = &copyReview
+	candidate.Status = review.Decision
+	s.candidate = &candidate
+	reviewed := review.ReviewedAt
+	return &application.AgentMemoryCandidateCatalogItemV1{Candidate: candidate, ReviewUUID: review.ReviewUUID, ReviewedAt: &reviewed}, nil
+}
+
 func (s *candidatePromotionStore) PromoteCandidate(_ context.Context, _ application.AgentMemoryCandidateV1, _ application.AgentMemoryCandidateReviewV1, memory application.AgentMemoryV1) (*application.AgentMemoryV1, error) {
 	if s.memory != nil {
 		copy := *s.memory

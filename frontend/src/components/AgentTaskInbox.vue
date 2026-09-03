@@ -11,7 +11,6 @@
       <RouterLink v-if="nav.artifacts" class="rail-item" :to="{ name: 'agent-artifact-inbox' }">▦ <span>任务产物</span></RouterLink>
       <div v-else class="rail-item">▦ <span>任务产物</span></div>
       <RouterLink v-if="nav.taskCreate" class="rail-item" :to="{ name: 'agent-task-create' }">＋ <span>创建任务</span></RouterLink>
-      <div class="rail-item">♢ <span>审批记录</span></div>
       <p class="rail-boundary">OWNER INBOX<br>HITL: LIST FIRST<br>CREATE STAYS SEPARATE</p>
     </aside>
 

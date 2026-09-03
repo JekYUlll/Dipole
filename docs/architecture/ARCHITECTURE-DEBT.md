@@ -6,11 +6,15 @@
 
 - 2026-09-03：Agent active Compose smoke 曾全量构建 Search、Indexer 和 Timeline Repair，远端候选验收在真正启动 Kafka/Temporal 前消耗大量无关镜像构建时间。构建入口现接受严格的服务白名单；Interactive 与 Subscription smoke 仅声明自身实际依赖的 `migrate/core/gateway/message/sync`，Agent Runtime 仍必建。未设置白名单的既有调用继续全量构建，未知服务在任何构建前拒绝。此优化不改变 Compose 拓扑、默认能力开关或验收断言。
 
-- 2026-09-03：Agent Task waiting notification 已有默认可用的 Kafka-to-WebSocket locator 链路。Core 仅在可信 `dipole-agent` 投影持久化 `waiting_input` / `waiting_approval` 后发布 `agent.task.waiting`；Gateway 通过已有 Presence/PubSub 定向 owner 推送 `agent_task_waiting`，公开字段固定为 Task ID、pending kind 与 revision。Remote GPU 隔离 Compose 已以 Gateway JWT 和 Node WebSocket probe 验证 owner 收到同一 Task 的 `approval` locator，并继续通过拒绝零副作用、Worker 重启后的批准重放和 Sync Inbox 断言。Task Inbox 是权威补拉源，因此 Kafka/WS 延迟或丢失不会丢失 Task 状态。Vue 消费、按 revision 去重、重连后的 Inbox refresh、告警指标和浏览器体验仍待单独验收，不能将本切片表述为端到端浏览器通知保证。
+- 2026-09-03：owner 记忆候选审核已接到公开 Gateway。`ReviewMemoryCandidate` 只接受 `dipole-gateway` 会话 principal，在同一事务写入 v46 review 并更新 `pending → accepted|rejected`；精确重放返回既有 review，决策/哈希漂移 fail closed。Vue 记忆页 pending 行可审核后再走既有晋升。自动写入、Temporal commit 和共享语料仍由 AD-035 跟踪。
 
-- 2026-09-03：Artifact owner 收件箱已补齐 Core/Gateway 的默认关闭 metadata seam。`ListOwnedArtifacts` 以 Gateway mTLS 身份和会话 principal 绑定 owner，以 `(created_at, artifact_uuid)` 复合游标查询任务归属 Artifact；列表可在 Artifact blob storage 未装配时工作。传输层清除 `metadata_json`，Gateway 对任何非空字段 fail closed，且公开模型没有 object bucket/key 或正文。默认 `gateway.agent_artifact_enabled=false`；Vue 列表页、产物下载授权、实时通知、跨环境运行证据和 blob lifecycle 仍需独立切片，不能由该只读 API 推导为默认暴露或 MinIO 可用性结论。
+- 2026-09-03：勘误三条同日「前端未接」条目。Vue 已消费 `agent_task_waiting`（Chat 去重 + 列表权威）、`GET /artifacts` 收件箱和记忆候选晋升。剩余债是默认关、观察窗口、产物下载授权、blob lifecycle 与 AD-035 自动写入/检索，不再把这三块写成缺页面。
 
-- 2026-09-03：Memory Candidate 已具备 owner-scoped 的 Core/Gateway 只读分页面。`ListOwnedMemoryCandidates` 只允许经认证的 `dipole-gateway` 代表当前 principal 调用，SQLC 查询按 tenant、owner 与 candidate UUID 分页；公开返回严格限定为摘要、哈希、候选状态、审核 ID、已晋级 Memory ID 和观察时间，evidence、资源 URI 与原始内容不离开 Core。embedded 与 standalone Core 都显式装配 owner control、catalog 与 promotion service，避免微服务部署出现未接线的 `Unavailable`。应用、MySQL 合约、Core RPC 和 Gateway 验证均已覆盖 owner 隔离与拒绝伪造回包。Vue 候选收件箱、默认自动 Memory 写入和共享 active authority 仍分别由前端体验缺口与 AD-035/AD-061 跟踪。
+- 2026-09-03：Agent Task waiting notification 已有默认可用的 Kafka-to-WebSocket locator 链路。Core 仅在可信 `dipole-agent` 投影持久化 `waiting_input` / `waiting_approval` 后发布 `agent.task.waiting`；Gateway 通过已有 Presence/PubSub 定向 owner 推送 `agent_task_waiting`，公开字段固定为 Task ID、pending kind 与 revision。Remote GPU 隔离 Compose 已以 Gateway JWT 和 Node WebSocket probe 验证 owner 收到同一 Task 的 `approval` locator，并继续通过拒绝零副作用、Worker 重启后的批准重放和 Sync Inbox 断言。Task Inbox 是权威补拉源，因此 Kafka/WS 延迟或丢失不会丢失 Task 状态。Vue 已按 Task/revision 去重并在重连后用 Inbox 覆盖；告警指标和共享环境浏览器窗口仍待单独验收，不能将本切片表述为默认生产通知保证。
+
+- 2026-09-03：Artifact owner 收件箱已补齐 Core/Gateway 的默认关闭 metadata seam。`ListOwnedArtifacts` 以 Gateway mTLS 身份和会话 principal 绑定 owner，以 `(created_at, artifact_uuid)` 复合游标查询任务归属 Artifact；列表可在 Artifact blob storage 未装配时工作。传输层清除 `metadata_json`，Gateway 对任何非空字段 fail closed，且公开模型没有 object bucket/key 或正文。默认 `gateway.agent_artifact_enabled=false`；Vue `/agent/artifacts` 已列出 metadata。产物下载授权、实时通知、跨环境运行证据和 blob lifecycle 仍需独立切片，不能由该只读 API 推导为默认暴露或 MinIO 可用性结论。
+
+- 2026-09-03：Memory Candidate 已具备 owner-scoped 的 Core/Gateway 只读分页面。`ListOwnedMemoryCandidates` 只允许经认证的 `dipole-gateway` 代表当前 principal 调用，SQLC 查询按 tenant、owner 与 candidate UUID 分页；公开返回严格限定为摘要、哈希、候选状态、审核 ID、已晋级 Memory ID 和观察时间，evidence、资源 URI 与原始内容不离开 Core。embedded 与 standalone Core 都显式装配 owner control、catalog 与 promotion service，避免微服务部署出现未接线的 `Unavailable`。应用、MySQL 合约、Core RPC 和 Gateway 验证均已覆盖 owner 隔离与拒绝伪造回包。Vue 记忆页已列出候选并晋升 accepted+reviewId 行。默认自动 Memory 写入和共享 active authority 仍由 AD-035/AD-061 跟踪。
 
 - 2026-09-03：第一方 MCP 认证体验补齐可复跑的无依赖客户端 smoke，详见 [Agent MCP 授权边界](../agent/agent-mcp-authorization.md#开发期体验验收)。Remote GPU 隔离 `shadow/read_shadow` 候选从 Task/Run 绑定、consent 到 `initialize`、`tools/list`、只读会话列表均通过；服务当前无 `Mcp-Session-Id`，按无状态 Streamable HTTP 处理。会话生命周期、第三方 OAuth Host、写 Capability 与共享环境发布边界继续由 AD-036/AD-037 管理。
 
@@ -1109,6 +1113,8 @@
 - **风险：** v42 已消除受管 Model planner 的 Context 到模型调用归因窗口，逐域策略也已可离线判定，但尚未证明字段级副本或实现 Shadow plan summary、Step input/output、Artifact body/metadata、Agent Message 与 Temporal history 的擦除/到期执行器。历史回填虽已具备可验证的有界索引链路，仍未获得共享环境 rollout 证据，任何旁路/旧 Runtime 产生的无 lineage 模型结果仍会阻断完整声明。真实多次纠正、语义冲突和 retrieval ranking 标注语料仍缺失，仅按 priority 的精确 scope 检索无法衡量生产 recall、precision 和 context 成本。
 - **建议方向：** 下一步定义 owner 可见的派生治理收据和有界历史 lineage 回填，再按逐域策略分别设计字段级执行器与故障恢复；在执行能力启用前归档真实 correction/retrieval corpus并增加离线 Observation/Reflection Worker。写入策略要求来源证据、置信度、TTL、幂等键和冲突合并；基于 retrieval Eval 比较 MySQL 精确检索、Elasticsearch hybrid/vector 与 reranker。
 - **处理门槛：** 在共享环境自动写入消息 Memory、启用跨 Task 长期召回、开放 owner 擦除 API或根据 Memory 自动执行动作前，完成派生域删除语义、历史索引完整性、Temporal/对象存储治理、真实 owner correction/retrieval 验收及安全评审；当前仅允许受控 seed、Shadow 读取、只读影响审计及默认关闭的 owner 查看、撤销和追加纠正，内部擦除方法没有外部调用路径。
+- **本轮进展：** owner 候选审核 RPC/HTTP 与 Vue 通过/拒绝已齐。下方早期「人工评审仍未接线」不再代表 HEAD 的 owner 单人审核。AD-035 剩余自动写入、Temporal 自动 commit、hybrid/vector 检索、字段级擦除执行器和共享环境语料。
+- **本轮进展：** owner 候选列表、Gateway promote 与 Vue 记忆页晋升已齐。下方早期「公开 RPC / Vue 仍未接线」进展条不再代表现状。AD-035 剩余自动写入、hybrid/vector 检索、字段级擦除执行器和共享环境语料。
 - **本轮进展：** Observation/Reflection worker 的幂等键已从裸事件/窗口 ID 收敛为 tenant、principal、Agent、资源与 ID 的完整 scope；跨租户和跨资源复用标识的回归测试通过，避免候选被错误去重。其 shadow-only、人工评审和真实语料门禁保持不变。
 - **本轮进展：** 新增默认 shadow-only 的 Observation/Reflection worker 与 `memory-candidate.v1` 严格契约。Observation 以事件 ID 幂等提取决定、任务和风险片段，Reflection 仅聚合同租户/主体/Agent/资源范围内的唯一 evidence window；两者都不访问模型、数据库、Kafka 或 Memory sink。超限、凭据模式、跨范围和重复窗口均 fail closed，后续仍需 candidate ledger、人工评审、Temporal durable 编排和真实 reviewed corpus。
 - **本轮进展：** migration v45 与 TS MySQL ledger 持久化候选摘要、来源/证据 ID、策略版本、规范哈希和 `pending|accepted|rejected` 状态；重复候选必须通过 exact hash，冲突 fail closed，完整 candidate content 不进入 SQL 参数。ledger 仍不授予 `agent_memories` 写权限，人工评审、accepted 投影、Temporal receipt 和真实 corpus 继续待完成。
@@ -1132,6 +1138,7 @@
 
 - **优先级：** P1
 - **状态：** 处理中
+- **本轮进展：** owner Vue 订阅页、Definition 目录与 Auto-Reply 四项执行债（Core 自动审批、overlay、Remote smoke、durable-step 幂等）已齐。标题里的「缺少用户界面」与 2026-09-02「未接线回复合成」、处理门槛「完成用户管理界面」不再代表 HEAD。AD-034 剩余共享环境观察窗口、语义预筛语料与默认 `direct_target`。
 - **发现日期：** 2026-08-27
 - **影响范围：** Agent Trigger Engine、Definition 授权、模型成本、Gateway/前端配置与 Project Guardian 演示
 - **现状：** migration v28 与 v34、sqlc Store、Core resolver 和受认证 RPC 已持久化精确 Definition version 订阅，并提供 Gateway principal 派生 owner 的创建、历史分页与可审计撤销。TS Runtime 可在 EventLedger、Temporal 和模型前确定性过滤。canonical Pencil 和默认关闭的 Gateway/Vue 页面已交付 owner list/create/revoke：创建候选由 Core 对 authenticated readable conversation 与 Definition scope 求交集，Gateway 从会话派生 principal/tenant 并从 conversation key 派生 event/resource，Core 在写入前再次复核；前端严格解析候选和权威结果，拒绝静默截断关键词。默认关闭的在线 Shadow 对照可在 direct-target 主路径进入 EventLedger 前调用同一 matcher，仅记录六种低基数结果和候选总数；matcher error 不阻断主路径，Prometheus 已提供 error/drift 告警。语言中立 prefilter Eval 已支持有界标签 corpus、三类 candidate evidence、分类/延迟/成本指标和生产规则基线；corpus review v1 要求双 reviewer 完整标签与第三方分歧裁决。Compose 与默认配置继续使用 `direct_target` 且 Shadow 关闭。

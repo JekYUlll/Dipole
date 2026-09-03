@@ -148,7 +148,7 @@ type gatewayAgentMemoryStub struct {
 	content, compactContent                                   string
 	targetMemoryType                                          string
 	expectedVersion                                           uint32
-	limit, listCalls, revokeCalls, correctCalls, promoteCalls int
+	limit, listCalls, revokeCalls, correctCalls, promoteCalls, reviewCalls int
 }
 
 type gatewayAgentTaskInboxStub struct {
@@ -194,6 +194,12 @@ func (s *gatewayAgentMemoryStub) PromoteCandidate(_ context.Context, principalUU
 	s.principal, s.targetMemoryType = principalUUID, targetMemoryType
 	s.promoteCalls++
 	return &AgentMemory{MemoryID: "MEM-CAND-1", AgentID: "UAI", MemoryType: "observational", Status: "active", ResourceType: "conversation", ResourceID: "group:G1", Content: "Decision", CompactContent: "Decision", Priority: 60, Provenance: AgentMemoryProvenance{SourceType: "memory_candidate", SourceID: candidateID, Sequence: reviewID}, ValidFromUnixMS: 1700000000000, CreatedAtUnixMS: 1700000000000, MemoryRootID: "MEM-CAND-1", MemoryVersion: 1}, nil
+}
+
+func (s *gatewayAgentMemoryStub) ReviewCandidate(_ context.Context, principalUUID, candidateID, candidateSHA256, decision, reason string) (*AgentMemoryCandidate, error) {
+	s.principal, s.reason = principalUUID, reason
+	s.reviewCalls++
+	return &AgentMemoryCandidate{CandidateID: candidateID, CandidateSHA256: candidateSHA256, Summary: "API v2 Friday", Status: decision, ReviewID: "REV-1", ObservedAtUnixMS: 1_700_000_000_000}, nil
 }
 
 func (s *gatewayAgentDefinitionStub) ListDefinitions(_ context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error) {
@@ -609,6 +615,22 @@ func TestGatewayOwnsAuthenticatedAgentMemoryControl(t *testing.T) {
 	gateway.Engine().ServeHTTP(workingResponse, working)
 	if workingResponse.Code != http.StatusBadRequest || memories.promoteCalls != 1 {
 		t.Fatalf("working promotion code=%d calls=%d body=%s", workingResponse.Code, memories.promoteCalls, workingResponse.Body.String())
+	}
+	review := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memory-candidates/CAND-1/review", strings.NewReader(`{"candidateSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","decision":"accepted","reason":"owner confirmed"}`))
+	review.Header.Set("Authorization", "Bearer "+token)
+	review.Header.Set("Content-Type", "application/json")
+	reviewResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(reviewResponse, review)
+	if reviewResponse.Code != http.StatusOK || memories.reviewCalls != 1 || memories.principal != "U100" || memories.reason != "owner confirmed" {
+		t.Fatalf("review code=%d stub=%+v body=%s", reviewResponse.Code, memories, reviewResponse.Body.String())
+	}
+	forgedReview := httptest.NewRequest(http.MethodPost, "/api/v1/agent/memory-candidates/CAND-1/review", strings.NewReader(`{"candidateSha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","decision":"accepted","reason":"owner confirmed","principalUserId":"U999"}`))
+	forgedReview.Header.Set("Authorization", "Bearer "+token)
+	forgedReview.Header.Set("Content-Type", "application/json")
+	forgedReviewResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(forgedReviewResponse, forgedReview)
+	if forgedReviewResponse.Code != http.StatusBadRequest || memories.reviewCalls != 1 {
+		t.Fatalf("forged review code=%d calls=%d body=%s", forgedReviewResponse.Code, memories.reviewCalls, forgedReviewResponse.Body.String())
 	}
 }
 
