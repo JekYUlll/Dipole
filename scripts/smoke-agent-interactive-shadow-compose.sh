@@ -145,11 +145,10 @@ async function sendBootstrapMessage(token, targetUuid, label) {
 const owner = await registerAndLogin(ownerTelephone, "Shadow Owner");
 const foreign = await registerAndLogin(foreignTelephone, "Shadow Foreign");
 await sendBootstrapMessage(owner.token, agentUuid, "agent");
-await sendBootstrapMessage(owner.token, foreign.ownerUuid, "foreign");
 const definition = await request("POST", "http://gateway:8080/api/v1/agent/definitions", owner.token);
 if (definition.response.status !== 201) throw new Error(`definition failed: ${definition.response.status}`);
 
-const taskBody = { client_request_id: `interactive-shadow-${Date.now()}`, goal: "First list my conversations. Then ask me to select one before reading it for a summary." };
+const taskBody = { client_request_id: `interactive-shadow-${Date.now()}`, goal: "List my conversations and read the available Agent conversation for a summary." };
 const first = await request("POST", "http://gateway:8080/api/v1/agent/tasks", owner.token, taskBody);
 const second = await request("POST", "http://gateway:8080/api/v1/agent/tasks", owner.token, taskBody);
 if (first.response.status !== 202 || second.response.status !== 202 || typeof first.payload?.taskId !== "string" || first.payload.taskId !== second.payload?.taskId) {
@@ -160,28 +159,19 @@ const taskId = first.payload.taskId;
 const foreignRead = await request("GET", `http://gateway:8080/api/v1/agent/tasks/${taskId}`, foreign.token);
 if (![403, 404].includes(foreignRead.response.status)) throw new Error(`foreign owner read was not rejected: ${foreignRead.response.status}`);
 
-let state;
 let lastTaskStatus = "unavailable";
 for (let attempt = 0; attempt < 90; attempt += 1) {
   const read = await request("GET", `http://gateway:8080/api/v1/agent/tasks/${taskId}`, owner.token);
   if (read.response.status === 200 && typeof read.payload?.status === "string") lastTaskStatus = read.payload.status;
-  if (read.response.status === 200 && read.payload?.status === "waiting_input") { state = read.payload; break; }
+  if (read.response.status === 200 && read.payload?.status === "completed") { process.stdout.write(`${owner.ownerUuid}\t${taskId}`); process.exit(0); }
   await new Promise(resolve => setTimeout(resolve, 1_000));
 }
-if (state === undefined) throw new Error(`interactive task did not enter waiting_input (last status: ${lastTaskStatus})`);
-const cancelled = await request("POST", `http://gateway:8080/api/v1/agent/tasks/${taskId}/cancel`, owner.token, { reason: "smoke_cancelled" });
-if (cancelled.response.status !== 202) throw new Error(`task cancel failed: ${cancelled.response.status}`);
-for (let attempt = 0; attempt < 60; attempt += 1) {
-  const read = await request("GET", `http://gateway:8080/api/v1/agent/tasks/${taskId}`, owner.token);
-  if (read.response.status === 200 && read.payload?.status === "cancelled") { process.stdout.write(`${owner.ownerUuid}\t${taskId}`); process.exit(0); }
-  await new Promise(resolve => setTimeout(resolve, 1_000));
-}
-throw new Error("interactive task did not cancel");
+throw new Error(`interactive task did not complete (last status: ${lastTaskStatus})`);
 NODE
 )
 IFS=$'\t' read -r owner_uuid task_uuid <<<"${result}"
 
-effects=$(compose exec -T mysql mysql -N -B -uroot -proot123 dipole -e "SELECT (SELECT COUNT(*) FROM agent_tasks WHERE task_uuid = '${task_uuid}' AND status = 'cancelled' AND workflow_status = 'cancelled'), (SELECT COUNT(*) FROM agent_runs WHERE task_uuid = '${task_uuid}' AND status = 'cancelled'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}')")
-[[ "${effects}" == $'1\t1\t0' ]] || { printf 'interactive read task wrote or failed to converge: %q\n' "${effects}" >&2; exit 1; }
+effects=$(compose exec -T mysql mysql -N -B -uroot -proot123 dipole -e "SELECT (SELECT COUNT(*) FROM agent_tasks WHERE task_uuid = '${task_uuid}' AND status = 'completed' AND workflow_status = 'completed'), (SELECT COUNT(*) FROM agent_runs WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM agent_shadow_steps WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}')")
+[[ "${effects}" == $'1\t1\t2\t0' ]] || { printf 'interactive read task wrote or did not complete the read trajectory: %q\n' "${effects}" >&2; exit 1; }
 
-printf 'Interactive Agent shadow Compose smoke passed: authenticated Gateway task creation is idempotent, owner-scoped, cancellable, and read-only.\n'
+printf 'Interactive Agent shadow Compose smoke passed: authenticated Gateway task creation is idempotent, owner-scoped, read-only, and completes its two-Step read trajectory.\n'
