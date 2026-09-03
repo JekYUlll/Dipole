@@ -114,7 +114,7 @@ compose up -d --wait
 register_owner() {
   owner_uuid=$(compose exec -T agent node --input-type=module - "${owner_telephone}" <<'NODE'
 const [telephone] = process.argv.slice(2);
-const response = await fetch("http://core:8081/api/v1/auth/register", {
+const response = await fetch("http://gateway:8080/api/v1/auth/register", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({ nickname: "Active Smoke Owner", telephone, password: "smoke-pass-123" })
@@ -134,7 +134,7 @@ register_owner
 verify_runtime_status() {
   compose exec -T agent node --input-type=module - "${owner_telephone}" <<'NODE'
 const [telephone] = process.argv.slice(2);
-const loginResponse = await fetch("http://core:8081/api/v1/auth/login", {
+const loginResponse = await fetch("http://gateway:8080/api/v1/auth/login", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({ telephone, password: "smoke-pass-123" })
@@ -165,7 +165,7 @@ verify_runtime_status
 verify_definition_catalog() {
   compose exec -T agent node --input-type=module - "${owner_telephone}" <<'NODE'
 const [telephone] = process.argv.slice(2);
-const loginResponse = await fetch("http://core:8081/api/v1/auth/login", {
+const loginResponse = await fetch("http://gateway:8080/api/v1/auth/login", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({ telephone, password: "smoke-pass-123" })
