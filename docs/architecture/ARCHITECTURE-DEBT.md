@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：Subscription Active 的真实 Provider 隔离回执已在 `052d60c7` 通过。单一 owner-scoped Kafka 事件收敛为单一 completed Durable Task，任务内出现一轮或多轮 completed model run 均被记录为合法执行，且 Agent 消息表保持零写入；项目自动清理后公共 `dipole-experience` 为 11 个健康容器。该受控 read-only 场景没有覆盖多样本质量、共享环境、自动写入或默认启用，相关门禁继续保持关闭。
+
 - 2026-09-04：Interactive Shadow Compose smoke 已在 `bdacc817` 完成真实权限内的只读两步轨迹：认证 owner 的 Gateway Task 幂等、跨 owner 查询拒绝、`conversation.list → conversation.read`、Task/Run completed 与零 Agent 消息写入均由桩模型和真实 DeepSeek Provider 验证；Provider 又在 3 个独立隔离 Remote GPU project 顺序重复通过，容器均已清理，公共 `dipole-experience` 为 11 个健康容器。多会话选择与 `waiting_input` 的持久化恢复仍由 Temporal 集成回归和既有 read-scope receipt 覆盖；当前窗口固定为同一受控场景，仍需多场景固定样本和人工评审后才能提出质量或成功率结论。
 
 - 2026-09-04：当前主线 `4d48a9d3` 已在全新、隔离的 Agent Interactive Active Compose project 复跑确定性 `/send` 验收并以 `0` 退出：owner WebSocket 收到 waiting locator，拒绝无持久副作用，Worker 重启后的重复批准仅产生一次 Tool invocation、一条 Agent 消息和两条 Sync Inbox 投影。验收容器已清理，公共 `dipole-experience` 仍为 11 个健康容器。该证据仅覆盖开发期窄写入路径；默认公开 authority、浏览器 HITL、外部 OAuth/MCP 写入、共享租户、容量和任务成功率仍未成立。

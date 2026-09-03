@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：修正真实 Provider 的 Subscription Active Smoke 调用次数边界。
+  - 同一 Durable Task 允许一轮或多轮已完成模型调用；smoke 继续严格要求单一 owner-scoped Kafka 事件、单一 completed Task 和零 Agent 消息写入。
+  - Remote GPU 在 `052d60c7` 使用受保护 Provider 环境文件完成隔离验收，项目自动清理，公共 `dipole-experience` 保持 11 个健康容器。该单场景回执不推导模型质量、泛化成功率或默认启用资格。
+
 - 2026-09-04：允许微服务镜像构建器显式选择 `agent`。
   - `DIPOLE_MICROSERVICE_IMAGE_SERVICES=agent` 现只运行 TypeScript Agent Runtime 镜像构建，不再因 Go 服务白名单校验失败而被迫附带 Core 构建；既有 Go 服务选择仍保持同时构建 Agent 镜像的行为。
 
