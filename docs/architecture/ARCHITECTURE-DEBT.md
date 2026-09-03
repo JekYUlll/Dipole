@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：Agent active Compose smoke 曾全量构建 Search、Indexer 和 Timeline Repair，远端候选验收在真正启动 Kafka/Temporal 前消耗大量无关镜像构建时间。构建入口现接受严格的服务白名单；Interactive 与 Subscription smoke 仅声明自身实际依赖的 `migrate/core/gateway/message/sync`，Agent Runtime 仍必建。未设置白名单的既有调用继续全量构建，未知服务在任何构建前拒绝。此优化不改变 Compose 拓扑、默认能力开关或验收断言。
+
 - 2026-09-03：Agent Task waiting notification 已有默认可用的 Kafka-to-WebSocket locator 链路。Core 仅在可信 `dipole-agent` 投影持久化 `waiting_input` / `waiting_approval` 后发布 `agent.task.waiting`；Gateway 通过已有 Presence/PubSub 定向 owner 推送 `agent_task_waiting`，公开字段固定为 Task ID、pending kind 与 revision。Remote GPU 隔离 Compose 已以 Gateway JWT 和 Node WebSocket probe 验证 owner 收到同一 Task 的 `approval` locator，并继续通过拒绝零副作用、Worker 重启后的批准重放和 Sync Inbox 断言。Task Inbox 是权威补拉源，因此 Kafka/WS 延迟或丢失不会丢失 Task 状态。Vue 消费、按 revision 去重、重连后的 Inbox refresh、告警指标和浏览器体验仍待单独验收，不能将本切片表述为端到端浏览器通知保证。
 
 - 2026-09-03：Artifact owner 收件箱已补齐 Core/Gateway 的默认关闭 metadata seam。`ListOwnedArtifacts` 以 Gateway mTLS 身份和会话 principal 绑定 owner，以 `(created_at, artifact_uuid)` 复合游标查询任务归属 Artifact；列表可在 Artifact blob storage 未装配时工作。传输层清除 `metadata_json`，Gateway 对任何非空字段 fail closed，且公开模型没有 object bucket/key 或正文。默认 `gateway.agent_artifact_enabled=false`；Vue 列表页、产物下载授权、实时通知、跨环境运行证据和 blob lifecycle 仍需独立切片，不能由该只读 API 推导为默认暴露或 MinIO 可用性结论。

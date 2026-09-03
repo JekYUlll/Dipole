@@ -19,7 +19,8 @@ command -v openssl >/dev/null 2>&1 || { printf 'openssl is required\n' >&2; exit
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   "${root_dir}/scripts/docker-build.sh" backend
-  "${root_dir}/scripts/docker-build-microservice-images.sh"
+  DIPOLE_MICROSERVICE_IMAGE_SERVICES="migrate,core,gateway,message,sync" \
+    "${root_dir}/scripts/docker-build-microservice-images.sh"
 fi
 
 : "${DIPOLE_MIGRATE_IMAGE:=dipole-migrate:latest}"

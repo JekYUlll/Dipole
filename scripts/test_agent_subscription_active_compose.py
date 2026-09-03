@@ -20,6 +20,7 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('agent-subscription-active-smoke.yml', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_API_KEY="compose-smoke-no-network"', smoke)
+        self.assertIn('DIPOLE_MICROSERVICE_IMAGE_SERVICES="migrate,core,gateway,message,sync"', smoke)
         self.assertIn('device=smoke-subscription', smoke)
         self.assertNotIn('from "kafkajs"', smoke)
         self.assertIn('compose down --volumes --remove-orphans', smoke)

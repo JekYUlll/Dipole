@@ -33,8 +33,30 @@ declare -a services=(
   "agent-timeline-repair:dipole-agent-task-timeline-repair"
 )
 
+selected_services="${DIPOLE_MICROSERVICE_IMAGE_SERVICES:-}"
+if [[ -n "${selected_services}" ]]; then
+  selected_services=",${selected_services// /},"
+  normalized_selected_services=${selected_services//,/ }
+  for requested_service in ${normalized_selected_services}; do
+    found=false
+    for service_binary in "${services[@]}"; do
+      if [[ "${service_binary%%:*}" == "${requested_service}" ]]; then
+        found=true
+        break
+      fi
+    done
+    if [[ "${found}" != "true" ]]; then
+      echo "Unknown microservice image: ${requested_service}" >&2
+      exit 2
+    fi
+  done
+fi
+
 for service_binary in "${services[@]}"; do
   service=${service_binary%%:*}
+  if [[ -n "${selected_services}" && "${selected_services}" != *",${service},"* ]]; then
+    continue
+  fi
   binary=${service_binary#*:}
   case "${service}" in
     search-indexer) image_variable=DIPOLE_SEARCH_INDEXER_IMAGE ;;

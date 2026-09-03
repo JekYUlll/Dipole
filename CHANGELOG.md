@@ -8,6 +8,10 @@
   - 前端按 `task_uuid` + `revision` 去重；非法或带额外字段的帧丢弃，不渲染目标文本。
   - `connected` 后用 `GET /api/v1/agent/tasks` 覆盖提示，列表仍是权威恢复路径。生产 `VITE_*` 仍默认关。
 
+- 2026-09-03：缩小 Agent active Compose smoke 的首次镜像构建范围。
+  - `docker-build-microservice-images.sh` 支持受校验的 `DIPOLE_MICROSERVICE_IMAGE_SERVICES` 白名单，未设置时仍构建全部微服务镜像；未知服务在构建前失败。
+  - Interactive 与 Subscription smoke 显式只构建 `migrate/core/gateway/message/sync` 和 Agent Runtime，跳过未参与该拓扑的 Search 与 Timeline Repair 镜像，减少远端验收等待时间。
+
 - 2026-09-03：补强默认关闭的 Subscription Auto-Reply 体验闭环。
   - Active subscription smoke 新增显式 `DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY=1` 路径，验证一条 owner 事件收敛为一次 `message.system.send` 调用、一次 grant consume、一条 Agent 回复与两条 Sync Inbox 投影；未开启时继续断言只读路径零消息副作用。
   - Runtime 在 Kafka 解码后、订阅匹配前丢弃当前 Agent 自身发送的消息，避免自主回复回流创建递归 Task。Go Gateway/Core 门禁、Compose 契约、Runtime typecheck 与自触发回归测试已通过；Remote GPU 隔离 Compose 已验证一条 owner Kafka 事件收敛为一个 Durable Task、一次模型调用、一次 Core 签发并消费的 grant、一条回复和两条 Sync Inbox 投影，项目容器与卷已清理。默认路径与共享环境仍保持关闭。

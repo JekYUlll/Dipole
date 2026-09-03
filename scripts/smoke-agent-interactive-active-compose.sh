@@ -22,7 +22,8 @@ command -v node >/dev/null 2>&1 || { printf 'Node.js is required\n' >&2; exit 2;
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   "${script_dir}/docker-build.sh" backend
-  "${script_dir}/docker-build-microservice-images.sh"
+  DIPOLE_MICROSERVICE_IMAGE_SERVICES="migrate,core,gateway,message,sync" \
+    "${script_dir}/docker-build-microservice-images.sh"
 fi
 
 : "${DIPOLE_MIGRATE_IMAGE:=dipole-migrate:latest}"
