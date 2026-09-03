@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：修复 MCP Shadow 与 Interactive Shadow 的 Compose 组合冲突。
+  - MCP 覆盖层改为增量开启第一方只读 MCP 面，不再覆写上游的 Task Control、Definition 和 Artifact 开关；单独加载仍由基础 Compose 保持这些面关闭。
+  - `check-compose.sh` 新增两层 profile 的合成断言，防止 Gateway 暴露 Definition 路由却未装配对应 Core client 而返回 `500`。Remote GPU 认证 MCP client 验收继续进行。
+
 - 2026-09-03：新增默认关闭的第一方 MCP Server Shadow Compose profile。
   - `agent-mcp-server-shadow.yml` 只开启 Agent MCP Server 与 Gateway Streamable HTTP 代理，复用既有 JWT、Core Context 复核和 Redis principal 限流；外部 MCP、Task Control、Memory、retrieval、Artifact 与消息写入保持关闭。
   - 新增静态 profile 门禁，并通过 MCP HTTP/协议定向测试。真实 Remote GPU 认证 MCP client 验收和浏览器入口继续独立推进。
