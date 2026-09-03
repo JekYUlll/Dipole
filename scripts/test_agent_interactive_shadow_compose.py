@@ -50,6 +50,9 @@ class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
         self.assertIn('last status: ${lastTaskStatus}', smoke)
         self.assertIn('interactive task did not cancel', smoke)
         self.assertIn('interactive read task wrote', smoke)
+        self.assertIn('foreign.ownerUuid', smoke)
+        self.assertIn('conversationId":"$discovered.previous', smoke)
+        self.assertIn('ask me to select one before reading it', smoke)
 
     def test_model_stub_stays_inside_the_compose_project(self) -> None:
         overlay = (ROOT / "deploy/microservices/agent-interactive-shadow-smoke.yml").read_text(encoding="utf-8")

@@ -245,6 +245,7 @@ describe("ModelShadowPlanner", () => {
     ] });
     const request = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]?.[0];
     expect(request?.prompt).toContain("never construct a conversation identifier");
+    expect(request?.prompt).toContain("do not return an empty plan for that request");
   });
 
   it("exposes only the trusted discovery marker in the model plan schema", async () => {

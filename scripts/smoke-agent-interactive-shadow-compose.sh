@@ -63,7 +63,7 @@ if [[ "${model_source}" == "stub" ]]; then
 
   cat >"${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_STUB_FILE}" <<'NODE'
 import http from "node:http";
-const body = JSON.stringify({ id: "interactive-shadow-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"summary":"interactive shadow smoke","steps":[]}' } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+const body = JSON.stringify({ id: "interactive-shadow-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"summary":"select a conversation before reading it","steps":[{"capabilityId":"conversation.list","input":{"limit":20}},{"capabilityId":"conversation.read","input":{"conversationId":"$discovered.previous","limit":20}}]}' } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
 http.createServer((request, response) => {
   if (request.method !== "POST" || request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
   request.resume(); request.on("end", () => response.writeHead(200, { "content-type": "application/json" }).end(body));
@@ -128,11 +128,11 @@ async function registerAndLogin(telephone, nickname) {
   if (login.status !== 200 || typeof token !== "string") throw new Error(`login failed: ${login.status}`);
   return { ownerUuid, token };
 }
-async function sendBootstrapMessage(token) {
+async function sendBootstrapMessage(token, targetUuid, label) {
   const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=interactive-shadow-smoke`);
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("bootstrap message timeout")), 15_000);
-    socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: agentUuid, content: "establish interactive Agent scope", client_message_id: `interactive-bootstrap-${Date.now()}` } })));
+    socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: targetUuid, content: "establish interactive Agent scope", client_message_id: `interactive-bootstrap-${label}-${Date.now()}` } })));
     socket.addEventListener("message", ({ data }) => {
       const event = JSON.parse(String(data));
       if (event?.type === "chat.sent") { clearTimeout(timer); socket.close(); resolve(); }
@@ -144,11 +144,12 @@ async function sendBootstrapMessage(token) {
 
 const owner = await registerAndLogin(ownerTelephone, "Shadow Owner");
 const foreign = await registerAndLogin(foreignTelephone, "Shadow Foreign");
-await sendBootstrapMessage(owner.token);
+await sendBootstrapMessage(owner.token, agentUuid, "agent");
+await sendBootstrapMessage(owner.token, foreign.ownerUuid, "foreign");
 const definition = await request("POST", "http://gateway:8080/api/v1/agent/definitions", owner.token);
 if (definition.response.status !== 201) throw new Error(`definition failed: ${definition.response.status}`);
 
-const taskBody = { client_request_id: `interactive-shadow-${Date.now()}`, goal: "Summarize my current Agent conversation and ask before reading it." };
+const taskBody = { client_request_id: `interactive-shadow-${Date.now()}`, goal: "First list my conversations. Then ask me to select one before reading it for a summary." };
 const first = await request("POST", "http://gateway:8080/api/v1/agent/tasks", owner.token, taskBody);
 const second = await request("POST", "http://gateway:8080/api/v1/agent/tasks", owner.token, taskBody);
 if (first.response.status !== 202 || second.response.status !== 202 || typeof first.payload?.taskId !== "string" || first.payload.taskId !== second.payload?.taskId) {
