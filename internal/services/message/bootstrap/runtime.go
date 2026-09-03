@@ -47,7 +47,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 	if !rpcCfg.Enabled {
 		return nil, fmt.Errorf("message service requires internal_rpc.enabled")
 	}
-	if err := validateCassandraShadowConfig(messageCfg, cassandraCfg); err != nil {
+	if err := validateCassandraTimelineConfig(messageCfg, cassandraCfg); err != nil {
 		return nil, err
 	}
 	if err := platformmysql.InitMySQLWithConfig(config.MessageMySQLConfig()); err != nil {
@@ -95,7 +95,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		runtime.cassandra, err = cassandraData.OpenSession(cassandraCfg)
 		if err != nil {
 			runtime.Close()
-			return nil, fmt.Errorf("open Cassandra shadow-read session: %w", err)
+			return nil, fmt.Errorf("open Cassandra message timeline session: %w", err)
 		}
 		if err := cassandraData.ValidateTimelineSchema(ctx, runtime.cassandra, cassandraCfg.Keyspace); err != nil {
 			runtime.Close()
@@ -104,7 +104,7 @@ func Initialize(ctx context.Context) (*MessageRuntime, error) {
 		timeline, err := cassandraData.NewTimelineStore(runtime.cassandra, cassandraCfg.TimelineBucketSize)
 		if err != nil {
 			runtime.Close()
-			return nil, fmt.Errorf("create Cassandra shadow timeline reader: %w", err)
+			return nil, fmt.Errorf("create Cassandra message timeline store: %w", err)
 		}
 		if messageCfg.CassandraDuplicateHydration {
 			runtime.duplicateHydration = platformObservability.NewDuplicateHydrationCollector()
@@ -216,7 +216,7 @@ func messageOwnedKafkaTopics() []string {
 	}
 }
 
-func validateCassandraShadowConfig(messageCfg config.Message, cassandraCfg config.Cassandra) error {
+func validateCassandraTimelineConfig(messageCfg config.Message, cassandraCfg config.Cassandra) error {
 	if messageCfg.CassandraReadPercent < 0 || messageCfg.CassandraReadPercent > 100 {
 		return fmt.Errorf("message.cassandra_read_percentage must be between 0 and 100")
 	}

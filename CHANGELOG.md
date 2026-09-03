@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：补齐 Cassandra/MySQL Timeline 的真实对比基准入口。
+  - `BenchmarkConversationTimelineReaders` 在同一隔离 fixture 中以相同 `(conversation_key, 1, last_seq)` 范围分别调用 SQLC/MySQL 与 Cassandra；写入、连接与清理由计时窗口外完成。
+  - `scripts/smoke-cassandra-read-routing.sh` 在显式设置 `DIPOLE_TIMELINE_BENCH_MESSAGES` 时执行该基准，可用 `DIPOLE_TIMELINE_BENCH_TIME` 控制采样时长。默认 smoke 和生产读写路径不变。
+  - Message 启动校验重命名为 `validateCassandraTimelineConfig`，覆盖影子读、主读 cohort 与 duplicate hydration，避免将所有 Cassandra 迁移模式误称为 shadow。
+
 - 2026-09-03：修正 Cassandra read-routing smoke 在集成测试标签后的执行契约。
   - 集成测试标记为 `integration` 后，smoke 显式传入 `-tags=integration`，避免过滤后零测试运行却输出成功。
   - 先前该脚本的无测试结果已作废；新的 MySQL/Cassandra 隔离回退验证必须实际执行 payload corruption 与 missing-row 两条回退断言。

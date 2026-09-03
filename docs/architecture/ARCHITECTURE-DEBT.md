@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：Cassandra/MySQL Timeline 现有同 fixture 的真实查询基准入口：`DIPOLE_TIMELINE_BENCH_MESSAGES=<N> DIPOLE_TIMELINE_BENCH_TIME=<duration> scripts/smoke-cassandra-read-routing.sh`。fixture 在计时前写入同一会话的连续 Seq，随后分别通过 SQLC/MySQL adapter 与 Cassandra Timeline 读取 `[1,N]`，连接、写入和清理由计时外完成。该入口尚未生成受控硬件、样本量和 P99 报告，不能据此填写简历性能占位符；远端基线与重复采样仍待归档。
+
 - 2026-09-03：Cassandra read-routing smoke 在集成测试改为 `integration` build tag 后遗漏传入 `-tags=integration`，导致一次隔离运行显示 `no tests to run` 后仍打印成功。该结果已明确作废；脚本现强制标签，后续验收必须确认真实测试执行并覆盖 Cassandra 页面、payload mismatch 与缺行回退。默认 MySQL authority 与 Cassandra 灰度开关不变。
 
 - 2026-09-03：Cassandra/MySQL Timeline 读路径已收敛到 `application.ConversationTimelineReader`，Cassandra `TimelineStore` 和 SQLC `MessageStoreReader` 使用相同的闭区间 Seq 查询契约。读灰度和影子校验不再认识 Cassandra 的内部投影类型，后续可接入额外存储实现并复用同一组输入作性能对比。默认仍由 MySQL 承担读写 authority；Cassandra 主读比例扩大前仍需远端 `go test -tags=integration ./internal/platform/storage/routing`、影子观察和回退证据，不能由此抽象层推导切流完成。
