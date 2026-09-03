@@ -42,6 +42,17 @@
           <IconLoadMore :size="22" />
         </button>
         <button
+          v-if="agentArtifactInboxEnabled"
+          class="icon-btn"
+          type="button"
+          title="任务产物"
+          aria-label="打开任务产物"
+          data-agent-artifact-inbox-entry
+          @click="router.push({ name: 'agent-artifact-inbox' })"
+        >
+          <IconDownload :size="22" />
+        </button>
+        <button
           v-if="agentTaskCreateEnabled"
           class="icon-btn"
           type="button"
@@ -73,6 +84,20 @@
         <button v-if="messageSearchEnabled" class="message-search-btn" type="button" title="搜索消息" aria-label="搜索消息" @click="openMessageSearch">
           <IconSearch :size="15" />
         </button>
+      </div>
+      <div
+        v-if="taskWaitingHeadline"
+        class="agent-waiting-banner"
+        data-agent-task-waiting
+      >
+        <span class="chat-notice-icon">!</span>
+        <span>{{ taskWaitingHeadline }}</span>
+        <button
+          type="button"
+          class="agent-waiting-link"
+          data-agent-task-waiting-inbox
+          @click="router.push({ name: 'agent-task-inbox' })"
+        >打开收件箱</button>
       </div>
 
       <!-- 消息列表 -->
@@ -641,8 +666,10 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
+import { useAgentTaskWaiting } from '@/composables/useAgentTaskWaiting'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
-import { agentControlHome as agentControlHomeRoute, agentTaskCreatePageEnabled, agentTaskInboxEnabled as agentTaskInboxFlag } from '@/config/agentFlags'
+import { agentControlHome as agentControlHomeRoute, agentFlags, agentTaskCreatePageEnabled, agentTaskInboxEnabled as agentTaskInboxFlag } from '@/config/agentFlags'
+import { agentTaskClient } from '@/api/agentTasks'
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
 import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPartWithRefresh } from '@/upload/multipartUpload'
@@ -654,7 +681,13 @@ const chat = useChatStore()
 const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
 const agentTaskCreateEnabled = agentTaskCreatePageEnabled
 const agentTaskInboxEnabled = agentTaskInboxFlag
+const agentArtifactInboxEnabled = agentFlags.artifacts
 const agentControlHome = agentControlHomeRoute()
+const taskWaiting = useAgentTaskWaiting({
+  enabled: agentTaskInboxEnabled,
+  list: () => agentTaskClient.list!('', 50),
+})
+const taskWaitingHeadline = taskWaiting.headline
 const presignedMultipartEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_ENABLED === 'true'
 const presignedMultipartProxyEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_PROXY_ENABLED === 'true'
 
@@ -1959,6 +1992,10 @@ const handleWsPacket = async (packet: WsPacket) => {
 	  await Promise.allSettled([chat.fetchConversations(), chat.fetchDevices(), chat.fetchApplications()])
 	  await chat.syncMessages().catch(() => {})
 	  await chat.recoverGroupMessages().catch(() => {})
+      if (agentTaskInboxEnabled) await taskWaiting.refreshFromInbox('replace')
+      break
+    case 'agent_task_waiting':
+      taskWaiting.acceptLocator(data)
       break
     case 'chat.message':
     case 'chat.sent': {
@@ -2546,6 +2583,28 @@ onBeforeUnmount(() => {
   background: var(--dp-line);
   font-size: 13px;
   outline: none;
+}
+
+.agent-waiting-banner {
+  margin: 0 10px 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--dp-warning-soft);
+  color: var(--dp-warning);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.agent-waiting-link {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: 700 11px inherit;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .message-search-btn {

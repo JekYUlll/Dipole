@@ -1,5 +1,13 @@
 # 更新日志
 
+- 2026-09-03：补上 owner 产物收件箱页，认证用户可从 `/agent/artifacts` 找回历史任务 metadata。
+  - Vue 读取既有 `GET /api/v1/agent/artifacts`，按 `createdAtUnixMs:artifactId` 分页；列表不请求正文或对象位置。
+  - 行链到既有摘要页；时间线开关打开时同时链到任务时间线。Gateway 成功包改为 `code: 0`，与 SPA 拦截器对齐。生产 `VITE_*` 仍默认关。
+
+- 2026-09-03：Chat 消费 `agent_task_waiting` locator，任务等待审批或输入时提示并链到收件箱。
+  - 前端按 `task_uuid` + `revision` 去重；非法或带额外字段的帧丢弃，不渲染目标文本。
+  - `connected` 后用 `GET /api/v1/agent/tasks` 覆盖提示，列表仍是权威恢复路径。生产 `VITE_*` 仍默认关。
+
 - 2026-09-03：补强默认关闭的 Subscription Auto-Reply 体验闭环。
   - Active subscription smoke 新增显式 `DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY=1` 路径，验证一条 owner 事件收敛为一次 `message.system.send` 调用、一次 grant consume、一条 Agent 回复与两条 Sync Inbox 投影；未开启时继续断言只读路径零消息副作用。
   - Runtime 在 Kafka 解码后、订阅匹配前丢弃当前 Agent 自身发送的消息，避免自主回复回流创建递归 Task。Go Gateway/Core 门禁、Compose 契约、Runtime typecheck 与自触发回归测试已通过；Remote GPU 隔离 Compose 已验证一条 owner Kafka 事件收敛为一个 Durable Task、一次模型调用、一次 Core 签发并消费的 grant、一条回复和两条 Sync Inbox 投影，项目容器与卷已清理。默认路径与共享环境仍保持关闭。

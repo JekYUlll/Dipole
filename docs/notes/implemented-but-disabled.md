@@ -61,4 +61,6 @@ Search、预签名、Sync、Elicitation、Approval、Timeline、Task Create、Ar
 2. ~~MCP Elicitation continuation~~：已随 `external_mcp_shadow` 进入生产 Worker；第一方 Timeline 入口已挂。
 3. 可 opt-in 项只补门禁/证据，不改默认。AD-036 剩余多轮与敏感授权。
 4. ~~Owner 任务收件箱~~：`GET /api/v1/agent/tasks` + Vue `/agent/tasks` 已齐，随 Task Control / Timeline 开关。
-5. ~~Owner 记忆候选列表~~：Gateway API 已齐；记忆页晋升入口已挂，随 `VITE_AGENT_MEMORIES_ENABLED`。下一步是 waiting 通知前端消费，其次是产物收件箱页。
+5. ~~Owner 记忆候选列表~~：Gateway API 已齐；记忆页晋升入口已挂，随 `VITE_AGENT_MEMORIES_ENABLED`。
+6. ~~Waiting 任务 Chat 提示~~：`agent_task_waiting` 已在 Chat 去重并链到收件箱，重连以任务列表为准。
+7. ~~产物收件箱页~~：`GET /api/v1/agent/artifacts` 已挂到 Vue `/agent/artifacts`，随 `VITE_AGENT_ARTIFACTS_ENABLED`。列表只展示 metadata，正文仍走既有 digest 详情页。

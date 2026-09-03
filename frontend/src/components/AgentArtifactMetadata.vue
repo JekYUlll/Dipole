@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { agentArtifactClient, type AgentArtifactClient, type AgentArtifactContent, type AgentArtifactMetadata } from '@/api/agentArtifacts'
+import { agentFlags } from '@/config/agentFlags'
 
 const props = withDefaults(defineProps<{ artifactId: string; client?: AgentArtifactClient }>(), { client: undefined })
 const client = computed(() => props.client ?? agentArtifactClient)
@@ -9,6 +11,7 @@ const artifact = ref<AgentArtifactMetadata>()
 const contentState = ref<'idle' | 'loading' | 'ready' | 'unavailable' | 'unsupported'>('idle')
 const content = ref<AgentArtifactContent>()
 const isConversationDigest = computed(() => artifact.value?.artifactType === 'conversation_digest' && artifact.value.mediaType === 'text/markdown')
+const inboxEnabled = agentFlags.artifacts
 
 onMounted(() => { void load() })
 
@@ -60,7 +63,10 @@ function shortID(value: string): string { return `${value.slice(0, 12)}...${valu
         <h1>Artifact digest</h1>
         <p class="subtitle">认证 owner 可读取任务摘要；下载与对象存储信息保持关闭。</p>
       </div>
-      <span class="metadata-badge">OWNER READ</span>
+      <div class="header-actions">
+        <RouterLink v-if="inboxEnabled" class="inbox-link" :to="{ name: 'agent-artifact-inbox' }" data-agent-artifact-inbox>返回产物列表 →</RouterLink>
+        <span class="metadata-badge">OWNER READ</span>
+      </div>
     </header>
 
     <div v-if="state === 'loading'" class="artifact-state" role="status">正在读取 Artifact metadata</div>
@@ -107,6 +113,8 @@ function shortID(value: string): string { return `${value.slice(0, 12)}...${valu
 .eyebrow, .artifact-type, .integrity p, .disclosure p { margin: 0 0 .45rem; color: var(--dp-rail); font: 700 .7rem/1.25 var(--dp-font-data); letter-spacing: .1em; }
 .artifact-header h1 { margin: 0; font: 800 clamp(1.7rem, 4vw, 2.4rem)/1.15 var(--dp-font-display); }
 .subtitle { margin: .45rem 0 0; color: var(--dp-ink-soft); font-size: .9rem; }
+.header-actions { display: flex; align-items: center; gap: .75rem; }
+.inbox-link { color: var(--dp-accent); font: 700 .72rem var(--dp-font-body); text-decoration: none; white-space: nowrap; }
 .metadata-badge { padding: .5rem .7rem; border-radius: 99px; background: var(--dp-agent-soft); color: var(--dp-rail); font: 700 .68rem/1 var(--dp-font-data); white-space: nowrap; }
 .artifact-state, .artifact-summary, .metadata-grid > div, .integrity, .disclosure, .digest { border: 1px solid var(--dp-line); border-radius: var(--dp-radius-md); background: var(--dp-surface); }
 .artifact-state { min-height: 7rem; padding: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: var(--dp-ink-soft); }

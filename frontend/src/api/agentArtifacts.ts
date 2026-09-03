@@ -19,16 +19,24 @@ export interface AgentArtifactContent {
   content: string
 }
 
+export interface AgentArtifactPage {
+  artifacts: AgentArtifactMetadata[]
+  nextCursor: string
+}
+
 export interface AgentArtifactClient {
+  list?(after?: string, limit?: number): Promise<AgentArtifactPage>
   get(artifactId: string): Promise<AgentArtifactMetadata>
   getContent(artifactId: string): Promise<AgentArtifactContent>
 }
 
 const artifactID = /^[a-f0-9]{64}$/
+const artifactCursor = /^[1-9][0-9]{0,19}:[a-fA-F0-9]{64}$/
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/
 const mediaType = /^[A-Za-z0-9!#$&^_.+-]+\/[A-Za-z0-9!#$&^_.+-]+(?:;[A-Za-z0-9!#$&^_.+=-]+)?$/
 const keys = new Set(['artifactId', 'taskId', 'runId', 'artifactType', 'version', 'title', 'mediaType', 'contentSha256', 'sizeBytes', 'createdAtUnixMs'])
 const contentKeys = new Set(['artifactId', 'mediaType', 'content'])
+const pageKeys = new Set(['artifacts', 'nextCursor'])
 
 export function parseAgentArtifactMetadata(raw: unknown): AgentArtifactMetadata {
   if (!isRecord(raw) || !exactKeys(raw, keys) || typeof raw.artifactId !== 'string' || !artifactID.test(raw.artifactId) ||
@@ -55,6 +63,14 @@ export function parseAgentArtifactMetadata(raw: unknown): AgentArtifactMetadata 
   }
 }
 
+export function parseAgentArtifactPage(raw: unknown): AgentArtifactPage {
+  if (!isRecord(raw) || !exactKeys(raw, pageKeys, ['nextCursor']) || !Array.isArray(raw.artifacts) || raw.artifacts.length > 100) {
+    throw new Error('Agent Artifact catalog is invalid')
+  }
+  const nextCursor = raw.nextCursor === undefined || raw.nextCursor === '' ? '' : requireCursor(raw.nextCursor)
+  return { artifacts: raw.artifacts.map(parseAgentArtifactMetadata), nextCursor }
+}
+
 export function parseAgentArtifactContent(raw: unknown): AgentArtifactContent {
   if (!isRecord(raw) || !exactKeys(raw, contentKeys) || typeof raw.artifactId !== 'string' || !artifactID.test(raw.artifactId) ||
       typeof raw.mediaType !== 'string' || !mediaType.test(raw.mediaType) || !validText(raw.content, 1_048_576)) {
@@ -64,6 +80,13 @@ export function parseAgentArtifactContent(raw: unknown): AgentArtifactContent {
 }
 
 export const agentArtifactClient: AgentArtifactClient = {
+  async list(after = '', limit = 50) {
+    if (after) requireCursor(after)
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Agent Artifact catalog limit is invalid')
+    const query = new URLSearchParams({ limit: String(limit) })
+    if (after) query.set('after', after)
+    return parseAgentArtifactPage(await api.get(`/api/v1/agent/artifacts?${query.toString()}`))
+  },
   async get(artifactId) {
     if (!artifactID.test(artifactId)) throw new Error('Agent Artifact ID is invalid')
     return parseAgentArtifactMetadata(await api.get(`/api/v1/agent/artifacts/${encodeURIComponent(artifactId)}`))
@@ -78,8 +101,14 @@ function validText(value: unknown, maxLength: number): value is string {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength
 }
 
-function exactKeys(value: Record<string, unknown>, allowed: Set<string>): boolean {
-  return Object.keys(value).every(key => allowed.has(key))
+function requireCursor(raw: unknown): string {
+  if (typeof raw !== 'string' || !artifactCursor.test(raw)) throw new Error('Agent Artifact catalog cursor is invalid')
+  return raw
+}
+
+function exactKeys(value: Record<string, unknown>, allowed: Set<string>, optional: string[] = []): boolean {
+  const keysPresent = Object.keys(value)
+  return keysPresent.every(key => allowed.has(key)) && [...allowed].every(key => optional.includes(key) || key in value)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

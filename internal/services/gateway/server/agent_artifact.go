@@ -148,7 +148,7 @@ func agentArtifactListHandler(artifacts AgentArtifactApplication) gin.HandlerFun
 			c.JSON(code, gin.H{"code": code, "message": "Agent Artifact catalog is unavailable"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"code": http.StatusOK, "data": page})
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": page})
 	}
 }
 
@@ -240,7 +240,7 @@ func agentArtifactGetHandler(artifacts AgentArtifactApplication) gin.HandlerFunc
 			c.JSON(agentArtifactHTTPStatus(err), gin.H{"code": agentArtifactHTTPStatus(err), "message": "Agent Artifact is unavailable"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"code": http.StatusOK, "data": artifact})
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": artifact})
 	}
 }
 
@@ -261,7 +261,7 @@ func agentArtifactContentHandler(artifacts AgentArtifactApplication) gin.Handler
 			c.JSON(agentArtifactHTTPStatus(err), gin.H{"code": agentArtifactHTTPStatus(err), "message": "Agent Artifact content is unavailable"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"code": http.StatusOK, "data": artifact})
+		c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": artifact})
 	}
 }
 

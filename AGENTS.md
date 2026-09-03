@@ -12,9 +12,7 @@
 
 ### session-fad3064c
 
-- 正在做：把已合入的 owner 记忆候选 API 接到记忆页晋升入口
-- 在改：`frontend/src/api/agentMemories.ts`、`AgentMemoryManager.vue`、体验缺口笔记
-- 避开：Core/Gateway candidate catalog、artifact list、waiting WS 后端
+空闲
 
 ## Code style
 

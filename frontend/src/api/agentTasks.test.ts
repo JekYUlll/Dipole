@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import api from './index'
-import { agentTaskClient, parseAgentTaskInboxPage, parseAgentTaskResponse, parseAgentTaskStartResponse } from './agentTasks'
+import { agentTaskClient, parseAgentTaskInboxPage, parseAgentTaskResponse, parseAgentTaskStartResponse, parseAgentTaskWaitingEvent } from './agentTasks'
 
 const waitingTask = {
   taskId: 'TASK-1', status: 'waiting_input', revision: 22, persistentStatus: 'running',
@@ -68,6 +68,15 @@ describe('Agent Task response parser', () => {
     expect(post).toHaveBeenCalledWith('/api/v1/agent/tasks', { client_request_id: 'local:001', goal: 'Summarize unread work' })
     await expect(agentTaskClient.startTask!({ clientRequestId: 'bad id', goal: 'work' })).rejects.toThrow(/start request/i)
     expect(() => parseAgentTaskStartResponse({ taskId: 'TASK-1', status: 'running' })).toThrow(/start response/i)
+  })
+
+  it('parses a low-sensitivity waiting locator and rejects extra fields', () => {
+    expect(parseAgentTaskWaitingEvent({ task_uuid: 'TASK-1', pending_kind: 'approval', revision: 2 }))
+      .toEqual({ taskId: 'TASK-1', pendingKind: 'approval', revision: 2 })
+    expect(() => parseAgentTaskWaitingEvent({ task_uuid: 'TASK-1', pending_kind: 'approval', revision: 0 })).toThrow(/waiting locator/i)
+    expect(() => parseAgentTaskWaitingEvent({
+      task_uuid: 'TASK-1', pending_kind: 'approval', revision: 2, summary: 'secret',
+    })).toThrow(/waiting locator/i)
   })
 
   it('lists owner-scoped inbox tasks and rejects pending-kind drift', async () => {

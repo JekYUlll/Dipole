@@ -34,6 +34,7 @@ export function agentSettingsLinks(): AgentSettingsLink[] {
   if (agentFlags.definitions) links.push({ id: 'definitions', label: 'Agent 定义', to: { name: 'agent-definitions' } })
   if (agentFlags.subscriptions) links.push({ id: 'subscriptions', label: '事件订阅', to: { name: 'agent-subscriptions' } })
   if (agentFlags.memories) links.push({ id: 'memories', label: '长期记忆', to: { name: 'agent-memories' } })
+  if (agentFlags.artifacts) links.push({ id: 'artifacts', label: '任务产物', to: { name: 'agent-artifact-inbox' } })
   if (agentTaskInboxEnabled) links.push({ id: 'inbox', label: '任务运行', to: { name: 'agent-task-inbox' } })
   if (agentTaskCreatePageEnabled) links.push({ id: 'create', label: '创建任务', to: { name: 'agent-task-create' } })
   return links

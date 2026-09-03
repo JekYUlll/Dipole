@@ -8,6 +8,8 @@
       <RouterLink v-if="nav.subscriptions" class="rail-item" :to="{ name: 'agent-subscriptions' }">⌁ <span>事件订阅</span></RouterLink>
       <div v-else class="rail-item">⌁ <span>事件订阅</span></div>
       <div class="rail-active">☷ <span>任务运行</span></div>
+      <RouterLink v-if="nav.artifacts" class="rail-item" :to="{ name: 'agent-artifact-inbox' }">▦ <span>任务产物</span></RouterLink>
+      <div v-else class="rail-item">▦ <span>任务产物</span></div>
       <RouterLink v-if="nav.taskCreate" class="rail-item" :to="{ name: 'agent-task-create' }">＋ <span>创建任务</span></RouterLink>
       <div class="rail-item">♢ <span>审批记录</span></div>
       <p class="rail-boundary">OWNER INBOX<br>HITL: LIST FIRST<br>CREATE STAYS SEPARATE</p>
@@ -70,6 +72,7 @@ const props = withDefaults(defineProps<{ client?: AgentTaskClient }>(), {
 const nav = {
   definitions: agentFlags.definitions,
   subscriptions: agentFlags.subscriptions,
+  artifacts: agentFlags.artifacts,
   taskCreate: agentTaskCreatePageEnabled,
 }
 type ViewState = 'loading' | 'ready' | 'unavailable'

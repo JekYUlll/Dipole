@@ -12,6 +12,7 @@ describe('Agent route security contract', () => {
       'agent-task-input',
       'agent-task-approval',
       'agent-task-timeline',
+      'agent-artifact-inbox',
       'agent-artifact',
       'agent-subscriptions',
       'agent-definitions',

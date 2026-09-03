@@ -177,7 +177,7 @@ func TestGatewayOwnsAuthenticatedAgentArtifactCatalog(t *testing.T) {
 	request.Header.Set("Authorization", "Bearer "+token)
 	response := httptest.NewRecorder()
 	server.Engine().ServeHTTP(response, request)
-	if response.Code != http.StatusOK || artifacts.principal != "U100" || !strings.Contains(response.Body.String(), `"artifacts"`) {
+	if response.Code != http.StatusOK || artifacts.principal != "U100" || !strings.Contains(response.Body.String(), `"artifacts"`) || !strings.Contains(response.Body.String(), `"code":0`) {
 		t.Fatalf("response=%d artifact=%+v body=%s", response.Code, artifacts, response.Body.String())
 	}
 }

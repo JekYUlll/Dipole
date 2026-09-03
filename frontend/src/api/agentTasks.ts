@@ -63,6 +63,12 @@ export interface AgentTaskInboxPage {
   nextCursor: string
 }
 
+export interface AgentTaskWaitingLocator {
+  taskId: string
+  pendingKind: AgentTaskInboxPendingKind
+  revision: number
+}
+
 export interface AgentTaskClient {
   list?(after?: string, limit?: number): Promise<AgentTaskInboxPage>
   startTask?(request: AgentTaskStartRequest): Promise<AgentTaskStartResult>
@@ -140,6 +146,15 @@ export function parseAgentTaskInboxPage(raw: unknown): AgentTaskInboxPage {
   }
   const nextCursor = raw.nextCursor === undefined || raw.nextCursor === '' ? '' : requireInboxCursor(raw.nextCursor)
   return { tasks: raw.tasks.map(parseAgentOwnedTask), nextCursor }
+}
+
+export function parseAgentTaskWaitingEvent(raw: unknown): AgentTaskWaitingLocator {
+  if (!isRecord(raw) || Object.keys(raw).some(key => !['task_uuid', 'pending_kind', 'revision'].includes(key)) ||
+      !validIdentity(raw.task_uuid) || (raw.pending_kind !== 'input' && raw.pending_kind !== 'approval') ||
+      !Number.isSafeInteger(raw.revision) || (raw.revision as number) < 1) {
+    throw new Error('Agent Task waiting locator is invalid')
+  }
+  return { taskId: raw.task_uuid as string, pendingKind: raw.pending_kind, revision: raw.revision as number }
 }
 
 export function parseAgentOwnedTask(raw: unknown): AgentOwnedTask {

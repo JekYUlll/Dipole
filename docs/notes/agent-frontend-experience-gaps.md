@@ -16,9 +16,9 @@
 | 体验 | 前端页面 | 后端已有 | 走不通的原因 |
 | --- | --- | --- | --- |
 | 创建任务 → 时间线 | `/agent/tasks/new` → `/agent/tasks` → `/timeline` | `POST /tasks`、`GET /tasks`、`GET /tasks/:id`、`GET /timeline` | Owner 收件箱已接上。关页面后可从 `/agent/tasks` 找回。`ListTaskWorkflowProjectionSnapshots` 仍是 Runtime 服务身份分页，不给用户用。 |
-| 处理审批 | Inbox / Timeline → `/approval` | `GET /tasks`、`GET /tasks/:id` + `POST /approvals/:id` | 收件箱能列出 `pendingKind=approval` 的行。页面仍要 `status=waiting_approval` 且 `pending.kind=approval`。没有 Chat/WS 推送，用户仍要自己打开列表。 |
+| 处理审批 | Inbox / Timeline → `/approval` | `GET /tasks`、`GET /tasks/:id` + `POST /approvals/:id` | 收件箱能列出 `pendingKind=approval` 的行。页面仍要 `status=waiting_approval` 且 `pending.kind=approval`。Chat 已消费 `agent_task_waiting` locator，按 Task/revision 去重后提示并链到收件箱；详情仍以列表/GET 为准。 |
 | 补充输入 | Inbox / Timeline → `/input` | `GET /tasks`、`GET /tasks/:id` + `POST /inputs/:id` | 收件箱能列出 `pendingKind=input` 的行。进入页面后仍要 GET task 拿 form/requestId。 |
-| 查看产物 | Timeline → `/artifacts/:id` | `GET /artifacts`、`GET /artifacts/:id` + `/content` | owner-scoped metadata 分页 API 已齐，Vue 收件箱页面仍待接入。列表不返回正文、对象位置或 metadata JSON。 |
+| 查看产物 | Inbox `/agent/artifacts` → `/artifacts/:id` | `GET /artifacts`、`GET /artifacts/:id` + `/content` | 收件箱已列出低敏 metadata 并链到摘要页。列表不拉正文；digest 内容仍只在详情页按既有限制读取。 |
 | 浏览 / 创建 Definition | `/agent/definitions` | `GET` + `POST` profile | 创建已接线。目录仍不暴露模型/Tool。空目录时订阅创建会停在「没有 active Definition」。 |
 | 创建 / 撤销订阅 | `/agent/subscriptions` | list / options / create / revoke | API 齐。订阅要先有 Definition + 可读 conversation。Runtime 默认 `direct_target`，列表 active 不会自动开共享事件触发；要另开 subscription overlay。 |
 | 查看 / 撤销 / 纠正记忆 | `/agent/memories` | list / revoke / correct | 页面不能写入 Observation。自动写入关着时列表会一直空。 |
@@ -29,12 +29,9 @@
 
 ## 后端缺的能力（按阻塞排序）
 
-1. **Waiting 任务通知前端消费**
-   后端已发送低敏 `agent_task_waiting` WS locator；Chat 仍需订阅事件、按 Task/revision 去重并刷新 owner Inbox，断线重连后仍以列表补拉为准。
+当前前端可走的 owner 控制面缺口已接上。剩下的是默认关的运行时 overlay、以及有意不进 SPA 的 MCP / Repair / OAuth。
 
-2. **产物收件箱页面（次要）**
-
-   `GET /artifacts` 已按 owner 与复合 cursor 分页，前端仍需展示 metadata、保留 Timeline 深链，并保持内容读取入口的现有 digest 限制。
+Chat 已消费 `agent_task_waiting`：会话栏提示、按 Task/revision 去重、`connected` 后以 `GET /tasks` 覆盖 locator。产物收件箱已接 `GET /artifacts`，详情页 digest 限制未改。
 
 ## 后端已有、前端仍走不全的（开关 / 运行时，不是缺 RPC）
 

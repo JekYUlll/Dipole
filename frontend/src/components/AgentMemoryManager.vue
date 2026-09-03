@@ -10,6 +10,8 @@
       <div v-else class="rail-item">⌁ <span>事件订阅</span></div>
       <RouterLink v-if="nav.taskRun" class="rail-item" :to="nav.taskRun">☷ <span>任务运行</span></RouterLink>
       <div v-else class="rail-item">☷ <span>任务运行</span></div>
+      <RouterLink v-if="nav.artifacts" class="rail-item" :to="{ name: 'agent-artifact-inbox' }">▦ <span>任务产物</span></RouterLink>
+      <div v-else class="rail-item">▦ <span>任务产物</span></div>
       <div class="rail-item">♢ <span>审批记录</span></div>
       <p class="rail-boundary">OWNER GOVERNANCE<br>AUTO OBSERVATION: OFF<br>RETRIEVAL: CONTEXT ONLY</p>
     </aside>
@@ -163,6 +165,7 @@ const props = withDefaults(defineProps<{ client?: AgentMemoryClient, correctionE
 const nav = {
   definitions: agentFlags.definitions,
   subscriptions: agentFlags.subscriptions,
+  artifacts: agentFlags.artifacts,
   taskRun: agentTaskRunTarget(),
 }
 type ViewState = 'loading' | 'ready' | 'unavailable' | 'revoking' | 'correcting' | 'promoting' | 'conflict'

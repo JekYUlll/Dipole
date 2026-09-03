@@ -31,7 +31,7 @@
       <div class="card-heading">
         <div><p class="eyebrow">AGENT CONTROL</p><h2 id="agent-title">Agent 控制</h2></div>
       </div>
-      <p class="card-copy">打开当前账号已启用的 Agent 页面。等待处理的任务可以从任务运行列表进入时间线、审批和补充信息。</p>
+      <p class="card-copy">打开当前账号已启用的 Agent 页面。等待处理的任务可以从任务运行列表进入时间线、审批和补充信息。历史产物从任务产物列表进入摘要页。</p>
       <ul class="agent-links">
         <li v-for="link in agentLinks" :key="link.id">
           <RouterLink class="secondary-link" :to="link.to">{{ link.label }}</RouterLink>
