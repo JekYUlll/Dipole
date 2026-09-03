@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-04：收紧 Go/Eino legacy Agent 的生产依赖边界。
+  - 新增结构门禁，生产代码仅允许 Core embedded Kafka 回滚路径导入 legacy Agent；独立服务与新业务代码重新引入该包会使测试失败。
+
 - 2026-09-04：复验当前主线的 MinIO Multipart 生命周期故障矩阵。
   - Remote GPU 使用校验后的用户态 Go `1.26.0` 通过 cleanup、Gateway 限流、代理超时、7 条 Prometheus 规则、MinIO/Redis 对账与 Redis 重启恢复；随机命名的临时容器全部清理，公共 `dipole-experience` 保持 11 个健康容器。
   - 此回执只覆盖隔离开发验证；默认上传模式继续为 `relay`，预签名直传默认切流仍受独立 24 小时证据门禁约束。
