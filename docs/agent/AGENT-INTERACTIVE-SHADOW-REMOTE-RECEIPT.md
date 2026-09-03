@@ -1,5 +1,38 @@
 # Agent Interactive Shadow Remote Receipt
 
+## Multi-Conversation Scope Confirmation (2026-09-03)
+
+The long-running development-only Remote GPU candidate on `18120` was
+rechecked with its Gateway, Core, Message, Sync, Kafka, Temporal, and Agent
+containers healthy. The candidate remained in `shadow + read_shadow` mode
+with the DeepSeek V4 Flash JSON-text adapter. It did not enable write
+Capabilities, external MCP, OAuth, or Memory writes.
+
+The probe used temporary owner and peer accounts through the public Gateway.
+It accepted two contact applications, sent one direct message to each peer via
+the authenticated WebSocket protocol, then created one owner-scoped Agent Task
+through `POST /api/v1/agent/tasks`.
+
+| Check | Result |
+| --- | --- |
+| Two direct conversations created through WS | passed |
+| Interactive Task admission | `202` |
+| Owner-confirmed read scope | `waiting_input` with exactly two owner-visible conversation options |
+| Exact public input submission | `202` |
+| Durable resumed Task | `completed` |
+| Task Timeline | task, run, and Artifact events returned |
+| Digest Artifact | one `conversation_digest` Artifact event returned |
+
+The first task query can race Temporal admission and briefly return `404`
+before the owner-authorized task record exists. A later bounded query in this
+run returned the pending form and the terminal result. The client experience
+therefore needs a finite post-create retry window; this receipt does not claim
+that the first query is strongly consistent.
+
+Temporary identities, credentials, JWTs, task/request IDs, conversation
+identifiers, message contents, model output, and provider credentials were not
+archived.
+
 ## Same-Revision Acceptance (2026-09-02)
 
 This development-only Remote GPU run used a fresh Compose project with its

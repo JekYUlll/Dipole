@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：Remote GPU 的 Agent Interactive Shadow 候选完成多会话用户确认闭环。
+  - 临时 owner 通过 Gateway 联系人 API 与认证 WebSocket 创建两条私聊；只读 Task 返回两个 owner-scoped 会话选项，精确提交一个 `waiting_input` 请求后由 Temporal 恢复为 `completed`，并在 Timeline 中写入 `conversation_digest` Artifact。
+  - 验收同时发现 admission 的短暂一致性窗口：`POST /api/v1/agent/tasks` 返回 `202` 后，首个 `GET` 可能在 Core 授权记录落库前返回 `404`；后续有界查询会收敛。该前端体验重试需求已记入架构债务，未将此候选表述为强一致首读、active authority 或生产发布。
+
 - 2026-09-03：Remote GPU 的最新 `master` Agent Interactive Shadow 候选完成真实体验闭环。
   - 同一 revision 的 Core、Gateway、Message、Sync 与 TypeScript Agent Runtime 在独立 Compose 项目中全部通过健康检查；认证用户可创建只读 Task，经 Gateway、Temporal 和 DeepSeek V4 Flash 执行后得到 `completed` Run、一次已完成模型调用和一份 `conversation_digest` Artifact。
   - 候选启动文档补充了隔离 mTLS 证书生成步骤。干净工作树若仅设置证书目录，Docker 会把缺失的文件挂载点创建为目录，导致 Core 与 Message 无法加载证书；现在先通过 `generate-internal-certs.sh` 生成受限开发证书再渲染 Compose。
