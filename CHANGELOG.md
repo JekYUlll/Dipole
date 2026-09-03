@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：校正 Remote GPU Agent Interactive Active 候选的体验口径。
+  - `dipole-agent-active-649cf110` 的 Gateway 路由与 Runtime 健康探针仍可访问，但原隔离验收结束时已撤销临时 owner 的 promotion grant；后续真实 Task 因 `Agent Run admission denied` 被拒绝。
+  - 因此端口 `18121` 只能作为历史 API receipt，不能作为当前可体验 Agent 环境。下一次体验部署必须以新隔离项目、已验证的前端 `agent-experience` 构建、有效且精确 scope 的演示 grant，以及创建、审批、Timeline 的浏览器验收共同确认。
+
 - 2026-09-03：补上 owner 产物收件箱页，认证用户可从 `/agent/artifacts` 找回历史任务 metadata。
   - Vue 读取既有 `GET /api/v1/agent/artifacts`，按 `createdAtUnixMs:artifactId` 分页；列表不请求正文或对象位置。
   - 行链到既有摘要页；时间线开关打开时同时链到任务时间线。Gateway 成功包改为 `code: 0`，与 SPA 拦截器对齐。生产 `VITE_*` 仍默认关。

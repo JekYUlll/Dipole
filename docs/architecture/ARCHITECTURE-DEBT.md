@@ -1,5 +1,9 @@
 # 架构债务台账
 
+- 2026-09-03：Remote GPU 上的 Active Interactive 候选 `dipole-agent-active-649cf110` 仍返回 Web 路由 `200` 且 Agent `/readyz` 健康，但其一次性验收 grant 已按设计撤销。后续 Task 的 Core admission 因此返回 `PERMISSION_DENIED: Agent Run admission denied`。将 HTTP `200`、容器 health 与可执行 Agent 体验区分为独立证据：体验验收至少需要有效的 owner-scoped promotion grant、认证 Task admission、浏览器创建/审批/Timeline 闭环和终态副作用断言。该候选不得继续作为可体验 URL 对外引用。
+
+- 2026-09-03：Remote GPU 当前保留多个历史 `dipole-agent-*` Compose project，存在重复公网/loopback Gateway 端口，且 `dipole-agent-wait-notify-82032ffa-mysql-1` 处于重启循环。新体验栈部署前需要按 project 归属、端口、revision、有效 grant 和活跃使用者完成清点，再经确认定向回收已过期 smoke/demo 项目；禁止使用全局 Docker prune 或改动仍在使用的前端 V3 项目。
+
 - 2026-09-03：Agent active Compose smoke 曾全量构建 Search、Indexer 和 Timeline Repair，远端候选验收在真正启动 Kafka/Temporal 前消耗大量无关镜像构建时间。构建入口现接受严格的服务白名单；Interactive 与 Subscription smoke 仅声明自身实际依赖的 `migrate/core/gateway/message/sync`，Agent Runtime 仍必建。未设置白名单的既有调用继续全量构建，未知服务在任何构建前拒绝。此优化不改变 Compose 拓扑、默认能力开关或验收断言。
 
 - 2026-09-03：Agent Task waiting notification 已有默认可用的 Kafka-to-WebSocket locator 链路。Core 仅在可信 `dipole-agent` 投影持久化 `waiting_input` / `waiting_approval` 后发布 `agent.task.waiting`；Gateway 通过已有 Presence/PubSub 定向 owner 推送 `agent_task_waiting`，公开字段固定为 Task ID、pending kind 与 revision。Remote GPU 隔离 Compose 已以 Gateway JWT 和 Node WebSocket probe 验证 owner 收到同一 Task 的 `approval` locator，并继续通过拒绝零副作用、Worker 重启后的批准重放和 Sync Inbox 断言。Task Inbox 是权威补拉源，因此 Kafka/WS 延迟或丢失不会丢失 Task 状态。Vue 消费、按 revision 去重、重连后的 Inbox refresh、告警指标和浏览器体验仍待单独验收，不能将本切片表述为端到端浏览器通知保证。
