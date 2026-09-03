@@ -1,3 +1,21 @@
+## 并行 Session 当前工作
+
+多路编码助手（Cursor、Codex 或其他）同时改本仓时，**每一路必须独立改本文件**，用自己的小节通报此刻在做什么。读本节再动手，避免抢同一路径。工作区根 `AGENTS.md` 不管这件事。
+
+规则：
+
+- 只写**当前正在着手**的事：目标、正在碰的路径。不要写已完成项、changelog、待办堆。
+- **覆盖写，不追加。** 换任务或停手时，整节替换成新内容或 `空闲`。禁止在旧内容下面追加。
+- 只改自己的 `### session-<id>` 小节。不准改别人的小节，也不准把多人内容合成一段。
+- `<id>` 由本路自选并保持稳定：对话 id 前 8 位（小写 hex），或本路自报短名（如 `codex-gpu`）。选定后不要换。没有自己的小节时，在本节**末尾新建一块**，不要占用已有块。
+- 动手改代码前先更新自己的小节；停手或改去做别的时再覆盖一次。
+
+### session-fad3064c
+
+- 正在做：已实现未启用能力整理；Workflow Repair Execute 默认关启动接线（未提交，未 rebase 到 `origin/master`）
+- 在改：`internal/services/core/bootstrap/**`、`internal/config/**`、`deploy/microservices/agent-workflow-repair-execute.yml`、`docs/notes/implemented-but-disabled.md`
+- 避开：Definition catalog、Gateway definitions API、`agent.proto`、autoreply smoke、Remote 部署手册（另一路已推 `a3f18071` / `57f2a9d1`）
+
 ## Code style
 
 - 在开始不要过度设计，留出可以扩展的空间，循循渐进进行开发。
