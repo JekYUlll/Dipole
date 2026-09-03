@@ -9,6 +9,11 @@ import (
 var ErrAgentDefinitionCatalogInvalid = errors.New("Agent Definition catalog request is invalid")
 var ErrAgentDefinitionCatalogConflict = errors.New("Agent Definition catalog authority changed")
 
+const (
+	AgentDefinitionCatalogProfileReadOnly              = "read_only"
+	AgentDefinitionCatalogProfileSubscriptionAutoReply = "subscription_autoreply"
+)
+
 type AgentDefinitionCatalogItemV1 struct {
 	DefinitionUUID     string
 	Version            uint64
@@ -29,6 +34,7 @@ type AgentDefinitionCatalogListRequestV1 struct {
 
 type AgentDefinitionCatalogCreateRequestV1 struct {
 	TenantID string
+	Profile  string
 }
 
 type AgentDefinitionCatalogPageV1 struct {

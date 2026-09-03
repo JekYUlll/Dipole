@@ -93,7 +93,7 @@ type AgentSubscriptionControlApplication interface {
 }
 
 type AgentDefinitionCatalogApplication interface {
-	CreateDefinition(ctx context.Context, principalUUID string) (*AgentDefinitionCatalogItem, error)
+	CreateDefinition(ctx context.Context, principalUUID, profile string) (*AgentDefinitionCatalogItem, error)
 	ListDefinitions(ctx context.Context, principalUUID, after string, limit int) (*AgentDefinitionCatalogPage, error)
 }
 
@@ -106,10 +106,10 @@ type agentSubscriptionRPC interface {
 	ListAgentDefinitions(context.Context, *agentv1.ListAgentDefinitionsRequest, ...grpc.CallOption) (*agentv1.ListAgentDefinitionsResponse, error)
 }
 
-func (c *AgentSubscriptionControlClient) CreateDefinition(ctx context.Context, principalUUID string) (*AgentDefinitionCatalogItem, error) {
+func (c *AgentSubscriptionControlClient) CreateDefinition(ctx context.Context, principalUUID, profile string) (*AgentDefinitionCatalogItem, error) {
 	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
-	response, err := c.rpc.CreateAgentDefinition(callCtx, &agentv1.CreateAgentDefinitionRequest{Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID})
+	response, err := c.rpc.CreateAgentDefinition(callCtx, &agentv1.CreateAgentDefinitionRequest{Context: grpccommon.RequestContextFrom(ctx, principalUUID, "dipole-gateway"), TenantId: c.tenantID, Profile: profile})
 	if err != nil {
 		return nil, mapAgentSubscriptionRPCError(err)
 	}

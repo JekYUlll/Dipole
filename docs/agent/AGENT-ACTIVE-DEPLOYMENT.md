@@ -83,6 +83,17 @@ docker compose \
 
 与交互写入不同，自主回复没有 owner 手动 Signal：回复内容定案后由 agent-runtime 通过 `AuthorizeSubscriptionMessage` RPC 请求 Core 校验四项不变量（订阅触发、pinned Definition owner 一致并投影出 `message.system.send`、订阅 `created_by` 与 principal 一致、scope 恰为 owner direct Agent 会话）后直接铸造 `status=approved` 的写 grant，再走既有 resolve/consume 写链路。该 grant 对相同 `(eventId, occurredAtUnixMs, 回复正文)` 幂等，重试收敛到同一 grant。启用该 overlay 前仍需归档共享环境 receipt：审批消费恰一次、重放幂等、`agent_sent_messages=1`（见 AD-034 的 Remote smoke 后续切片）。
 
+认证 owner 需先创建显式自动回复 Definition：
+
+```http
+POST /api/v1/agent/definitions
+Content-Type: application/json
+
+{"profile":"subscription_autoreply"}
+```
+
+省略 `profile` 或使用 `read_only` 保持只读模板。客户端不能指定 tenant、owner、Agent、权限或 scope；未知 profile 会被拒绝。
+
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 
 开发期可用隔离 smoke 复跑这条只读闭环：脚本以认证 owner 创建固定 Definition 和 Subscription，再通过 Gateway WebSocket 的 `chat.send` 产生真实消息。消息经 Core/Message/Sync、Kafka matcher 和 Temporal 后必须收敛为一个 completed Task、一次 completed model run、零条 Agent 发送消息，并在退出前撤销临时 grant。

@@ -37,19 +37,33 @@ func (s *PersistentAgentDefinitionCatalogV1) Create(ctx context.Context, princip
 	if principalUUID == "" || request.TenantID == "" || utf8.RuneCountInString(principalUUID) > 24 || utf8.RuneCountInString(request.TenantID) > 64 {
 		return nil, application.ErrAgentDefinitionCatalogInvalid
 	}
-	definition := userReadDefinitionV1(request.TenantID, principalUUID, s.agentUUID, s.now().UTC())
+	definition, err := userDefinitionForProfileV1(request.TenantID, principalUUID, s.agentUUID, strings.TrimSpace(request.Profile), s.now().UTC())
+	if err != nil {
+		return nil, application.ErrAgentDefinitionCatalogInvalid
+	}
 	if err := s.store.CreateDefinitionVersion(ctx, definition); err != nil {
 		existing, lookupErr := s.store.GetDefinitionVersion(ctx, definition.DefinitionUUID, definition.Version)
-		if lookupErr != nil || existing == nil || !sameUserReadDefinitionV1(*existing, definition) {
+		if lookupErr != nil || existing == nil || !sameUserDefinitionV1(*existing, definition) {
 			return nil, application.ErrAgentDefinitionCatalogConflict
 		}
 		return existing, nil
 	}
 	stored, err := s.store.GetDefinitionVersion(ctx, definition.DefinitionUUID, definition.Version)
-	if err != nil || stored == nil || !sameUserReadDefinitionV1(*stored, definition) {
+	if err != nil || stored == nil || !sameUserDefinitionV1(*stored, definition) {
 		return nil, application.ErrAgentDefinitionCatalogConflict
 	}
 	return stored, nil
+}
+
+func userDefinitionForProfileV1(tenantID, ownerUUID, agentUUID, profile string, validFrom time.Time) (application.AgentDefinitionVersionV1, error) {
+	switch profile {
+	case "", application.AgentDefinitionCatalogProfileReadOnly:
+		return userReadDefinitionV1(tenantID, ownerUUID, agentUUID, validFrom), nil
+	case application.AgentDefinitionCatalogProfileSubscriptionAutoReply:
+		return userSubscriptionAutoReplyDefinitionV1(tenantID, ownerUUID, agentUUID, validFrom), nil
+	default:
+		return application.AgentDefinitionVersionV1{}, application.ErrAgentDefinitionCatalogInvalid
+	}
 }
 
 func userReadDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.Time) application.AgentDefinitionVersionV1 {
@@ -62,10 +76,41 @@ func userReadDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.
 	}
 }
 
-func sameUserReadDefinitionV1(left, right application.AgentDefinitionVersionV1) bool {
-	return left.DefinitionUUID == right.DefinitionUUID && left.Version == right.Version && left.TenantID == right.TenantID && left.OwnerUUID == right.OwnerUUID && left.AgentUUID == right.AgentUUID &&
-		left.Status == right.Status && left.RevokedAt == nil && right.RevokedAt == nil && len(left.Permissions) == 1 && left.Permissions[0] == application.AgentPermissionConversationRead &&
-		len(left.Scopes) == 1 && left.Scopes[0].ResourceType == application.AgentResourceTypeConversation && left.Scopes[0].ResourceID == application.AgentResourceWildcard && len(left.Scopes[0].Actions) == 1 && left.Scopes[0].Actions[0] == application.AgentResourceActionRead
+func userSubscriptionAutoReplyDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.Time) application.AgentDefinitionVersionV1 {
+	digest := sha256.Sum256([]byte("dipole.agent.user-subscription-autoreply-definition.v1\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
+	return application.AgentDefinitionVersionV1{
+		DefinitionUUID: "user:" + hex.EncodeToString(digest[:])[:59], Version: 1, TenantID: tenantID, OwnerUUID: ownerUUID, AgentUUID: agentUUID,
+		Status:      application.AgentDefinitionStatusActive,
+		Permissions: []string{application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
+		Scopes: []application.AgentResourceScopeV1{{
+			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
+			Actions: []string{application.AgentResourceActionRead, application.AgentResourceActionWrite},
+		}},
+		ValidFrom: validFrom,
+	}
+}
+
+func sameUserDefinitionV1(left, right application.AgentDefinitionVersionV1) bool {
+	if left.DefinitionUUID != right.DefinitionUUID || left.Version != right.Version || left.TenantID != right.TenantID || left.OwnerUUID != right.OwnerUUID || left.AgentUUID != right.AgentUUID ||
+		left.Status != right.Status || left.RevokedAt != nil || right.RevokedAt != nil || len(left.Permissions) != len(right.Permissions) || len(left.Scopes) != len(right.Scopes) {
+		return false
+	}
+	for index := range left.Permissions {
+		if left.Permissions[index] != right.Permissions[index] {
+			return false
+		}
+	}
+	for index := range left.Scopes {
+		if left.Scopes[index].ResourceType != right.Scopes[index].ResourceType || left.Scopes[index].ResourceID != right.Scopes[index].ResourceID || len(left.Scopes[index].Actions) != len(right.Scopes[index].Actions) {
+			return false
+		}
+		for actionIndex := range left.Scopes[index].Actions {
+			if left.Scopes[index].Actions[actionIndex] != right.Scopes[index].Actions[actionIndex] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (s *PersistentAgentDefinitionCatalogV1) List(ctx context.Context, principalUUID string, request application.AgentDefinitionCatalogListRequestV1) (*application.AgentDefinitionCatalogPageV1, error) {

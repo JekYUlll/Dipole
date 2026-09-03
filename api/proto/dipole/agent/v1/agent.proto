@@ -796,6 +796,9 @@ message AgentDefinitionCatalogItem {
 message CreateAgentDefinitionRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
+  // Empty preserves read_only for existing clients. subscription_autoreply
+  // grants only the bounded owner-to-Agent reply Definition.
+  string profile = 3;
 }
 
 message ListAgentDefinitionsRequest {

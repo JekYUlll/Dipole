@@ -14,17 +14,31 @@ import (
 )
 
 type agentSubscriptionRPCStub struct {
-	createRequest     *agentv1.CreateEventSubscriptionRequest
-	optionsRequest    *agentv1.ListEligibleSubscriptionConversationsRequest
-	listRequest       *agentv1.ListEventSubscriptionsRequest
-	revokeRequest     *agentv1.RevokeEventSubscriptionRequest
-	listError         error
-	nilList           bool
-	definitionRequest *agentv1.ListAgentDefinitionsRequest
+	createRequest           *agentv1.CreateEventSubscriptionRequest
+	optionsRequest          *agentv1.ListEligibleSubscriptionConversationsRequest
+	listRequest             *agentv1.ListEventSubscriptionsRequest
+	revokeRequest           *agentv1.RevokeEventSubscriptionRequest
+	listError               error
+	nilList                 bool
+	definitionRequest       *agentv1.ListAgentDefinitionsRequest
+	createDefinitionRequest *agentv1.CreateAgentDefinitionRequest
 }
 
-func (*agentSubscriptionRPCStub) CreateAgentDefinition(_ context.Context, request *agentv1.CreateAgentDefinitionRequest, _ ...grpc.CallOption) (*agentv1.AgentDefinitionCatalogItem, error) {
+func (s *agentSubscriptionRPCStub) CreateAgentDefinition(_ context.Context, request *agentv1.CreateAgentDefinitionRequest, _ ...grpc.CallOption) (*agentv1.AgentDefinitionCatalogItem, error) {
+	s.createDefinitionRequest = request
 	return &agentv1.AgentDefinitionCatalogItem{DefinitionId: "DEF-CREATED", Version: 1, AgentId: "UAI", ConversationScopes: []string{"*"}, ValidFromUnixMs: 1_000, CreatedAtUnixMs: 1_000, UpdatedAtUnixMs: 1_000}, nil
+}
+
+func TestAgentDefinitionCatalogClientForwardsExplicitCreateProfile(t *testing.T) {
+	rpc := &agentSubscriptionRPCStub{}
+	client, err := NewAgentSubscriptionControlClient(rpc, "dipole", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, err := client.CreateDefinition(context.Background(), "U100", "subscription_autoreply")
+	if err != nil || item.DefinitionID != "DEF-CREATED" || rpc.createDefinitionRequest == nil || rpc.createDefinitionRequest.GetProfile() != "subscription_autoreply" || rpc.createDefinitionRequest.GetTenantId() != "dipole" || rpc.createDefinitionRequest.GetContext().GetPrincipalUserId() != "U100" {
+		t.Fatalf("unexpected create Definition request=%+v item=%+v err=%v", rpc.createDefinitionRequest, item, err)
+	}
 }
 
 func (s *agentSubscriptionRPCStub) CreateEventSubscription(_ context.Context, request *agentv1.CreateEventSubscriptionRequest, _ ...grpc.CallOption) (*agentv1.AgentEventSubscription, error) {

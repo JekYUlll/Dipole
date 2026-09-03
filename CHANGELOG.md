@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：Subscription Auto-Reply 的 Definition 已可由认证用户通过公开 API 显式创建。
+  - `POST /api/v1/agent/definitions` 支持可选 `{ "profile": "subscription_autoreply" }`，生成确定性的 owner-scoped Definition，仅含 `conversation.read`、`message.write` 与直属 Agent 会话所需的 wildcard conversation scope；省略 profile 或传入 `read_only` 继续保持原只读模板。
+  - 未知 profile、跨 owner 访问及任意自定义权限仍由 Gateway/Core 拒绝。自动回复 Compose smoke 也改为调用该 API，不再直接修改 Definition 权限。
+
 - 2026-09-03：为 Subscription Auto-Reply 补上 activity 重试幂等,收尾 AD-034 最后一项。
   - 缺口：自主回复内联走「铸 grant→resolve→consume→send」,grant 单次消费。若 Temporal 在回复已写库后重试整个 read activity,重试的 resolve 会因 grant 已消费而失败,把整个 Task 拖垮(旧行为)。send 本身已由确定性 `invocationId` 在 Core 幂等去重,缺的只是「重试识别到已交付则跳过」。
   - 修法：把幂等收敛到 `services/agent-runtime/src/mcp/mcp-message-write-projection.ts` 的 `createSubscriptionMessageExecutor`。正常路径不变(mint→projection);**只在失败时**用 Core 只读的 `ResolveMcpToolCommand` 探测那条确定性 Tool Invocation——已 `completed` 即视为已交付,返回 `subscriptionReplyReplayMarker` 跳过,绝不双发;其余情形(无 completed invocation)一律 rethrow,真错(如上一批修的 `PERMISSION_DENIED`)仍会大声失败、不被掩盖。回复写在 grant 消费之前落库,故 completed invocation 是交付的充分证据。

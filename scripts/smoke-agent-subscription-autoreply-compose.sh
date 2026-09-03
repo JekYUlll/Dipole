@@ -117,7 +117,9 @@ const login = await fetch("http://core:8081/api/v1/auth/login", { method: "POST"
 const token = (await login.json())?.data?.token;
 if (login.status !== 200 || typeof token !== "string") throw new Error(`login failed: ${login.status}`);
 const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
-const definitionResponse = await fetch("http://gateway:8080/api/v1/agent/definitions", { method: "POST", headers });
+const definitionResponse = await fetch("http://gateway:8080/api/v1/agent/definitions", {
+  method: "POST", headers, body: JSON.stringify({ profile: "subscription_autoreply" })
+});
 const definition = await definitionResponse.json();
 if (definitionResponse.status !== 201 || typeof definition?.definitionId !== "string" || definition.version !== 1) throw new Error(`definition failed: ${definitionResponse.status}`);
 const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=smoke`);
@@ -134,16 +136,9 @@ NODE
 )
 IFS=$'\t' read -r owner_uuid definition_uuid subscription_uuid conversation_key owner_token <<<"${binding}"
 
-# Upgrade the pinned Definition version in place so it projects message.system.send:
-# subscription eligibility still holds (conversation.read + read scope), while the
-# added message.write permission and conversation write scope let Core mint the
-# autonomous reply grant. Seed the matching promotion grant so the active runtime
-# admits the subscription Task.
+# The public Definition profile carries the bounded message.write scope. Seed the
+# matching promotion grant so the active runtime admits the subscription Task.
 mysql <<SQL
-UPDATE agent_definition_versions
-SET permissions_json = JSON_ARRAY('conversation.read', 'message.write'),
-    scopes_json = JSON_ARRAY(JSON_OBJECT('resource_type', 'conversation', 'resource_id', '*', 'actions', JSON_ARRAY('read', 'write')))
-WHERE definition_uuid = '${definition_uuid}' AND version = 1;
 INSERT INTO agent_runtime_promotion_grants (grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version, policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at) VALUES ('${grant_uuid}', 'dipole', 'dipole-agent', '${DIPOLE_AGENT_CANDIDATE_VERSION}', '${definition_uuid}', 1, 'dipole.agent.shadow-promotion-policy.v2', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'U-SMOKE-GRANTOR', 'U-SMOKE-REVIEWER', DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE), DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 15 MINUTE));
 SQL
 

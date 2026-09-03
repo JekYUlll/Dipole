@@ -42,6 +42,12 @@ class SubscriptionAutoReplyComposeTest(unittest.TestCase):
         )
         self.assertIn('DIPOLE_AGENT_CAPABILITY_RPC_TARGET == "core:9091"', checker)
 
+    def test_smoke_uses_the_public_autoreply_definition_profile(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-autoreply-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('profile: "subscription_autoreply"', smoke)
+        self.assertIn('JSON.stringify({ profile: "subscription_autoreply" })', smoke)
+        self.assertNotIn('UPDATE agent_definition_versions', smoke)
+
 
 if __name__ == "__main__":
     unittest.main()

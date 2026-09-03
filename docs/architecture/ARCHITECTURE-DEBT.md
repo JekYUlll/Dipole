@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：Subscription Auto-Reply 的 owner Definition 已从 Compose smoke 专用 SQL 升级为公开、认证的 profile 契约。Gateway 仅转发固定 `subscription_autoreply` profile，Core 从可信 owner/tenant/Agent identity 构造确定性 Definition，并固定 `conversation.read + message.write` 与 wildcard conversation `read + write` scope；空 profile 和 `read_only` 保持既有只读行为，未知 profile fail closed。隔离 smoke 通过 API 创建该 Definition，后续 Remote GPU 回归需继续验证其跨服务持久化和一次回复副作用；共享环境启用仍需 AD-034 的 reviewed 观察窗口。
+
 - 2026-09-03：Subscription Auto-Reply 的 activity 重试幂等已落地，AD-034 该项收尾。
   - 修法：幂等收敛在 `services/agent-runtime/src/mcp/mcp-message-write-projection.ts` 的 `createSubscriptionMessageExecutor` 内,不动共享审批闸/runner/Core。正常路径不变(mint→projection);**仅失败时**用 Core 只读 `ResolveMcpToolCommand` 探测确定性 Tool Invocation——已 `completed` 视为已交付,返回 `subscriptionReplyReplayMarker` 跳过(绝不双发);无 completed invocation 一律 rethrow,真错仍大声失败不被掩盖。回复写库先于 grant 消费,故 completed invocation 是交付的充分证据。选择 executor 内闭包幂等而非新增独立 Temporal step,是因为拆步不改变 activity 级重试语义(Temporal 仍会重跑单个 activity),真正的幂等必须靠外部状态(Core 确定性 invocation),故直接以 Core 只读探测实现,面更小、风险更低。
   - 语义边界:自主回复现为幂等 + happy-path exactly-once;残留 at-most-once 仅限「grant 已消费且 send 恰好瞬断并始终无法完成」的极端窗口——此时不再重驱(需绕过审批闸重发,属安全敏感面,不做),但也不再无限重试拖垮 Task。对无人值守最佳努力回复合理,如需严格 exactly-once 再另立小债(Core 侧对同一 claim 幂等 re-consume)。
