@@ -1,0 +1,10 @@
+goos: linux
+goarch: amd64
+pkg: github.com/JekYUlll/Dipole/internal/platform/storage/routing
+cpu: Intel(R) Xeon(R) Platinum 8481C
+BenchmarkConversationTimelineReaders/mysql_sqlc-224          1762   696874 ns/op   192808 B/op   1953 allocs/op
+BenchmarkConversationTimelineReaders/cassandra-224            483  2391275 ns/op   227071 B/op   1170 allocs/op
+PASS
+
+Smoke contract: Cassandra page read passed; payload mismatch and missing row
+both fell back to MySQL. Temporary Compose containers and volumes were removed.

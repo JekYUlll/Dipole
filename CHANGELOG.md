@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：归档首份 MySQL/Cassandra Timeline Reader 隔离基线。
+  - 100 条连续消息、1 秒/reader 的单机 Go benchmark 中，SQLC/MySQL 为 `696874 ns/op`，Cassandra 为 `2391275 ns/op`；原始输出与环境记录于 `benchmarks/cassandra-timeline-reader-2026-09-03/`。
+  - 该样本只用于后续调优和回归对照，不表示并发负载、端到端延迟或 P99。
+
 - 2026-09-03：补齐 Cassandra/MySQL Timeline 的真实对比基准入口。
   - `BenchmarkConversationTimelineReaders` 在同一隔离 fixture 中以相同 `(conversation_key, 1, last_seq)` 范围分别调用 SQLC/MySQL 与 Cassandra；写入、连接与清理由计时窗口外完成。
   - `scripts/smoke-cassandra-read-routing.sh` 在显式设置 `DIPOLE_TIMELINE_BENCH_MESSAGES` 时执行该基准，可用 `DIPOLE_TIMELINE_BENCH_TIME` 控制采样时长。默认 smoke 和生产读写路径不变。

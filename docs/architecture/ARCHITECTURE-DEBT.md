@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：已在隔离 Remote GPU 上采集第一份 Timeline Reader 基线，详见 [`cassandra-timeline-reader-2026-09-03`](../../benchmarks/cassandra-timeline-reader-2026-09-03/)。100 条连续消息、每 reader 1 秒的 Go benchmark 得到 SQLC/MySQL `696874 ns/op`、Cassandra `2391275 ns/op`；同次 smoke 实际覆盖 Cassandra 页面读取、payload mismatch 与缺行回退。结果只代表该主机的串行吞吐型样本，尚未覆盖并发、page-size sweep、端到端或 P99，简历性能占位符继续保留。
+
 - 2026-09-03：Cassandra/MySQL Timeline 现有同 fixture 的真实查询基准入口：`DIPOLE_TIMELINE_BENCH_MESSAGES=<N> DIPOLE_TIMELINE_BENCH_TIME=<duration> scripts/smoke-cassandra-read-routing.sh`。fixture 在计时前写入同一会话的连续 Seq，随后分别通过 SQLC/MySQL adapter 与 Cassandra Timeline 读取 `[1,N]`，连接、写入和清理由计时外完成。该入口尚未生成受控硬件、样本量和 P99 报告，不能据此填写简历性能占位符；远端基线与重复采样仍待归档。
 
 - 2026-09-03：Cassandra read-routing smoke 在集成测试改为 `integration` build tag 后遗漏传入 `-tags=integration`，导致一次隔离运行显示 `no tests to run` 后仍打印成功。该结果已明确作废；脚本现强制标签，后续验收必须确认真实测试执行并覆盖 Cassandra 页面、payload mismatch 与缺行回退。默认 MySQL authority 与 Cassandra 灰度开关不变。
