@@ -4,21 +4,37 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 )
 
 type PersistentAgentTaskControlAuthorizerV1 struct {
 	store application.AgentPolicyStoreV1
+	inbox application.AgentTaskOwnerInboxStoreV1
+	now   func() time.Time
 }
 
 var _ application.AgentTaskControlAuthorizerV1 = (*PersistentAgentTaskControlAuthorizerV1)(nil)
+var _ application.AgentTaskOwnerInboxServiceV1 = (*PersistentAgentTaskControlAuthorizerV1)(nil)
 
 func NewPersistentAgentTaskControlAuthorizerV1(store application.AgentPolicyStoreV1) (*PersistentAgentTaskControlAuthorizerV1, error) {
+	return NewPersistentAgentTaskControlAuthorizerV1WithNow(store, time.Now)
+}
+
+func NewPersistentAgentTaskControlAuthorizerV1WithNow(store application.AgentPolicyStoreV1, now func() time.Time) (*PersistentAgentTaskControlAuthorizerV1, error) {
 	if store == nil {
 		return nil, fmt.Errorf("persistent Agent Task control authorizer requires store")
 	}
-	return &PersistentAgentTaskControlAuthorizerV1{store: store}, nil
+	if now == nil {
+		now = time.Now
+	}
+	authorizer := &PersistentAgentTaskControlAuthorizerV1{store: store, now: now}
+	if inbox, ok := store.(application.AgentTaskOwnerInboxStoreV1); ok {
+		authorizer.inbox = inbox
+	}
+	return authorizer, nil
 }
 
 func (a *PersistentAgentTaskControlAuthorizerV1) AuthorizeTaskControl(ctx context.Context, taskUUID, principalUUID string) (*application.AgentTaskControlAuthorizationV1, error) {
@@ -57,4 +73,58 @@ func (a *PersistentAgentTaskControlAuthorizerV1) AuthorizeTaskControl(ctx contex
 		authorization.Workflow = &workflow
 	}
 	return authorization, nil
+}
+
+func (a *PersistentAgentTaskControlAuthorizerV1) ListOwnedTasks(ctx context.Context, request application.AgentTaskOwnerInboxListRequestV1) (*application.AgentTaskOwnerInboxPageV1, error) {
+	if a.inbox == nil {
+		return nil, application.ErrAgentTaskInboxUnavailable
+	}
+	request.TenantID, request.PrincipalUUID, request.AfterTaskUUID = strings.TrimSpace(request.TenantID), strings.TrimSpace(request.PrincipalUUID), strings.TrimSpace(request.AfterTaskUUID)
+	if request.TenantID == "" || request.PrincipalUUID == "" || utf8.RuneCountInString(request.TenantID) > 64 ||
+		utf8.RuneCountInString(request.PrincipalUUID) > 64 || utf8.RuneCountInString(request.AfterTaskUUID) > 64 ||
+		request.Limit < 0 || request.Limit > 100 || (request.AfterUpdatedAt.IsZero() != (request.AfterTaskUUID == "")) {
+		return nil, application.ErrAgentTaskInboxInvalid
+	}
+	if request.Limit == 0 {
+		request.Limit = 50
+	}
+	if request.AfterUpdatedAt.IsZero() {
+		request.AfterUpdatedAt = a.now().UTC()
+	} else {
+		request.AfterUpdatedAt = request.AfterUpdatedAt.UTC()
+	}
+	storeRequest := request
+	storeRequest.Limit++
+	items, err := a.inbox.ListOwnedTasks(ctx, storeRequest)
+	if err != nil {
+		return nil, err
+	}
+	for index, item := range items {
+		if strings.TrimSpace(item.TaskUUID) == "" || item.UpdatedAt.IsZero() {
+			return nil, application.ErrAgentTaskInboxConflict
+		}
+		if item.TenantID != request.TenantID || item.PrincipalUUID != request.PrincipalUUID {
+			return nil, application.ErrAgentTaskInboxDenied
+		}
+		if index > 0 && !agentTaskInboxOrderV1(items[index-1], item) {
+			return nil, application.ErrAgentTaskInboxConflict
+		}
+	}
+	page := &application.AgentTaskOwnerInboxPageV1{Tasks: make([]application.AgentTaskInboxItemV1, 0, len(items))}
+	if len(items) > request.Limit {
+		items = items[:request.Limit]
+		last := items[len(items)-1]
+		page.NextUpdatedAt, page.NextTaskUUID = last.UpdatedAt.UTC(), last.TaskUUID
+	}
+	for _, item := range items {
+		page.Tasks = append(page.Tasks, application.AgentTaskInboxItemFromTaskV1(item))
+	}
+	return page, nil
+}
+
+func agentTaskInboxOrderV1(previous, current application.AgentTaskV1) bool {
+	if previous.UpdatedAt.Equal(current.UpdatedAt) {
+		return previous.TaskUUID > current.TaskUUID
+	}
+	return previous.UpdatedAt.After(current.UpdatedAt)
 }

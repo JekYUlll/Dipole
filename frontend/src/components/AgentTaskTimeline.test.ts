@@ -100,6 +100,17 @@ describe('AgentTaskTimeline', () => {
     expect(wrapper.get('.approval-link').attributes('data-route-name')).toBe('agent-task-approval')
   })
 
+  it('cancels the current task from the timeline header', async () => {
+    const getTimeline = vi.fn().mockResolvedValue({ schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 2, events: [], nextCursor: '' })
+    const cancelTask = vi.fn().mockResolvedValue(undefined)
+    const wrapper = mountTimeline({ ...defaultClient(), getTimeline, cancelTask })
+    await flushPromises()
+    await wrapper.get('[data-agent-timeline-cancel]').trigger('click')
+    await flushPromises()
+    expect(cancelTask).toHaveBeenCalledWith('TASK-1')
+    expect(getTimeline).toHaveBeenCalledTimes(2)
+  })
+
   it('links a waiting approval event to its owner-scoped approval surface', async () => {
     const getTimeline = vi.fn().mockResolvedValue({
       schemaVersion: 'dipole.agent.task_timeline.v1', taskId: 'TASK-1', revision: 2,

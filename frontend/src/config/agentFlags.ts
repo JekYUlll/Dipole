@@ -15,6 +15,13 @@ export const agentFlags = {
 }
 
 export const agentTaskCreatePageEnabled = agentFlags.taskCreate && agentFlags.timeline
+export const agentTaskInboxEnabled = agentFlags.timeline
+
+export function agentTaskRunTarget(): { name: string } | undefined {
+  if (agentTaskInboxEnabled) return { name: 'agent-task-inbox' }
+  if (agentTaskCreatePageEnabled) return { name: 'agent-task-create' }
+  return undefined
+}
 
 export interface AgentSettingsLink {
   id: string
@@ -27,6 +34,7 @@ export function agentSettingsLinks(): AgentSettingsLink[] {
   if (agentFlags.definitions) links.push({ id: 'definitions', label: 'Agent 定义', to: { name: 'agent-definitions' } })
   if (agentFlags.subscriptions) links.push({ id: 'subscriptions', label: '事件订阅', to: { name: 'agent-subscriptions' } })
   if (agentFlags.memories) links.push({ id: 'memories', label: '长期记忆', to: { name: 'agent-memories' } })
+  if (agentTaskInboxEnabled) links.push({ id: 'inbox', label: '任务运行', to: { name: 'agent-task-inbox' } })
   if (agentTaskCreatePageEnabled) links.push({ id: 'create', label: '创建任务', to: { name: 'agent-task-create' } })
   return links
 }

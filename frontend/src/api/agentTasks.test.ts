@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import api from './index'
-import { agentTaskClient, parseAgentTaskResponse, parseAgentTaskStartResponse } from './agentTasks'
+import { agentTaskClient, parseAgentTaskInboxPage, parseAgentTaskResponse, parseAgentTaskStartResponse } from './agentTasks'
 
 const waitingTask = {
   taskId: 'TASK-1', status: 'waiting_input', revision: 22, persistentStatus: 'running',
@@ -68,6 +68,21 @@ describe('Agent Task response parser', () => {
     expect(post).toHaveBeenCalledWith('/api/v1/agent/tasks', { client_request_id: 'local:001', goal: 'Summarize unread work' })
     await expect(agentTaskClient.startTask!({ clientRequestId: 'bad id', goal: 'work' })).rejects.toThrow(/start request/i)
     expect(() => parseAgentTaskStartResponse({ taskId: 'TASK-1', status: 'running' })).toThrow(/start response/i)
+  })
+
+  it('lists owner-scoped inbox tasks and rejects pending-kind drift', async () => {
+    const get = vi.spyOn(api, 'get').mockResolvedValue({
+      tasks: [{ taskId: 'TASK-1', status: 'waiting_approval', revision: 2, pendingKind: 'approval', goal: 'Summarize unread work', updatedAtUnixMs: 1_700_000_000_000 }],
+      nextCursor: 'CURSOR-1',
+    } as never)
+    await expect(agentTaskClient.list!('CURSOR-0', 20)).resolves.toMatchObject({ tasks: [{ taskId: 'TASK-1', pendingKind: 'approval' }], nextCursor: 'CURSOR-1' })
+    expect(get).toHaveBeenCalledWith('/api/v1/agent/tasks?limit=20&after=CURSOR-0')
+    expect(() => parseAgentTaskInboxPage({
+      tasks: [{ taskId: 'TASK-1', status: 'waiting_input', revision: 1, pendingKind: 'approval', goal: 'Need input', updatedAtUnixMs: 1_700_000_000_000 }],
+      nextCursor: '',
+    })).toThrow(/pending kind/i)
+    await expect(agentTaskClient.list!('bad cursor', 20)).rejects.toThrow(/cursor/i)
+    await expect(agentTaskClient.list!('', 101)).rejects.toThrow(/limit/i)
   })
 
   it('fetches and validates an owner-scoped timeline page', async () => {

@@ -220,6 +220,7 @@ type Querier interface {
 	ListOwnedAgentEventSubscriptions(ctx context.Context, arg ListOwnedAgentEventSubscriptionsParams) ([]AgentEventSubscription, error)
 	ListOwnedAgentMemories(ctx context.Context, arg ListOwnedAgentMemoriesParams) ([]AgentMemory, error)
 	ListOwnedAgentMemoryRootForUpdate(ctx context.Context, arg ListOwnedAgentMemoryRootForUpdateParams) ([]AgentMemory, error)
+	ListOwnedAgentTasks(ctx context.Context, arg ListOwnedAgentTasksParams) ([]AgentTask, error)
 	ListSearchConversationKeysByUser(ctx context.Context, arg ListSearchConversationKeysByUserParams) ([]string, error)
 	ListSyncInboxBaselineEntries(ctx context.Context, jobName string) ([]ListSyncInboxBaselineEntriesRow, error)
 	ListSyncInboxLocatorsByMessageUUID(ctx context.Context, messageUuid string) ([]ListSyncInboxLocatorsByMessageUUIDRow, error)

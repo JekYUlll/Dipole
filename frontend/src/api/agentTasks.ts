@@ -47,7 +47,24 @@ export interface AgentTaskState {
 
 export type AgentElicitationValue = Record<string, string | boolean | string[]>
 
+export type AgentTaskInboxPendingKind = 'input' | 'approval'
+
+export interface AgentOwnedTask {
+  taskId: string
+  status: AgentTaskStatus
+  revision: number
+  pendingKind?: AgentTaskInboxPendingKind
+  goal: string
+  updatedAtUnixMs: number
+}
+
+export interface AgentTaskInboxPage {
+  tasks: AgentOwnedTask[]
+  nextCursor: string
+}
+
 export interface AgentTaskClient {
+  list?(after?: string, limit?: number): Promise<AgentTaskInboxPage>
   startTask?(request: AgentTaskStartRequest): Promise<AgentTaskStartResult>
   getTask(taskId: string): Promise<AgentTaskState>
   getTimeline?(taskId: string, after?: string, limit?: number): Promise<AgentTaskTimelinePage>
@@ -88,6 +105,7 @@ export interface AgentTaskTimelinePage {
 }
 
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/
+const inboxCursor = /^[A-Za-z0-9_-]{1,256}$/
 const fieldIdentifier = /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/
 const statuses = new Set<AgentTaskStatus>(['created', 'running', 'waiting_input', 'waiting_approval', 'completed', 'failed', 'cancelled'])
 const outcomes = new Set(['match', 'missing', 'stale', 'ahead', 'conflict'])
@@ -116,7 +134,42 @@ export function parseAgentTaskResponse(raw: unknown): AgentTaskState {
   return state
 }
 
+export function parseAgentTaskInboxPage(raw: unknown): AgentTaskInboxPage {
+  if (!isRecord(raw) || !Array.isArray(raw.tasks) || raw.tasks.length > 100) {
+    throw new Error('Agent Task inbox page is invalid')
+  }
+  const nextCursor = raw.nextCursor === undefined || raw.nextCursor === '' ? '' : requireInboxCursor(raw.nextCursor)
+  return { tasks: raw.tasks.map(parseAgentOwnedTask), nextCursor }
+}
+
+export function parseAgentOwnedTask(raw: unknown): AgentOwnedTask {
+  if (!isRecord(raw) || !validIdentity(raw.taskId) || !statuses.has(raw.status as AgentTaskStatus) ||
+      !Number.isSafeInteger(raw.revision) || (raw.revision as number) < 0 || typeof raw.goal !== 'string' ||
+      Array.from(raw.goal).length > 200 || !Number.isSafeInteger(raw.updatedAtUnixMs) || (raw.updatedAtUnixMs as number) <= 0) {
+    throw new Error('Agent Task inbox item is invalid')
+  }
+  const pendingKind = raw.pendingKind === undefined || raw.pendingKind === '' ? undefined : raw.pendingKind
+  if (pendingKind !== undefined && pendingKind !== 'input' && pendingKind !== 'approval') {
+    throw new Error('Agent Task inbox pending kind is invalid')
+  }
+  if ((raw.status === 'waiting_input' && pendingKind !== 'input') || (raw.status === 'waiting_approval' && pendingKind !== 'approval')) {
+    throw new Error('Agent Task inbox pending kind is inconsistent')
+  }
+  return {
+    taskId: raw.taskId as string, status: raw.status as AgentTaskStatus, revision: raw.revision as number,
+    goal: raw.goal, updatedAtUnixMs: raw.updatedAtUnixMs as number,
+    ...(pendingKind === undefined ? {} : { pendingKind }),
+  }
+}
+
 export const agentTaskClient: AgentTaskClient = {
+  async list(after = '', limit = 50) {
+    if (after) requireInboxCursor(after)
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Agent Task inbox limit is invalid')
+    const query = new URLSearchParams({ limit: String(limit) })
+    if (after) query.set('after', after)
+    return parseAgentTaskInboxPage(await api.get(`/api/v1/agent/tasks?${query.toString()}`))
+  },
   async startTask(request) {
     const input = validateAgentTaskStartRequest(request.clientRequestId, request.goal)
     return parseAgentTaskStartResponse(await api.post('/api/v1/agent/tasks', {
@@ -301,6 +354,11 @@ function validIdentity(value: unknown): boolean {
 
 function requireIdentity(value: string, label: string): void {
   if (!validIdentity(value)) throw new Error(`Agent ${label} identity is invalid`)
+}
+
+function requireInboxCursor(raw: unknown): string {
+  if (typeof raw !== 'string' || !inboxCursor.test(raw)) throw new Error('Agent Task inbox cursor is invalid')
+  return raw
 }
 
 function byteLength(value: unknown): number {

@@ -204,6 +204,29 @@ message AuthorizeTaskControlResponse {
   string mcp_run_id = 7;
 }
 
+message ListOwnedAgentTasksRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  int64 after_updated_at_unix_ms = 3;
+  string after_task_id = 4;
+  uint32 limit = 5;
+}
+
+message AgentOwnedTask {
+  string task_id = 1;
+  string status = 2;
+  uint64 revision = 3;
+  string pending_kind = 4;
+  string goal = 5;
+  int64 updated_at_unix_ms = 6;
+}
+
+message ListOwnedAgentTasksResponse {
+  repeated AgentOwnedTask tasks = 1;
+  int64 next_updated_at_unix_ms = 2;
+  string next_task_id = 3;
+}
+
 message ListAgentTaskTimelineRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -1011,6 +1034,7 @@ service AgentCapabilityService {
   rpc ReadConversation(ReadConversationRequest) returns (ReadConversationResponse);
   rpc SearchConversations(SearchConversationsRequest) returns (SearchConversationsResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
+  rpc ListOwnedAgentTasks(ListOwnedAgentTasksRequest) returns (ListOwnedAgentTasksResponse);
   rpc ListAgentTaskTimeline(ListAgentTaskTimelineRequest) returns (ListAgentTaskTimelineResponse);
   rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);

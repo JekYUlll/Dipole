@@ -20,7 +20,7 @@
 | Interactive `/send` | `DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED`；`agent-interactive-active.yml` | 可 opt-in | AD-009 浏览器 HITL、shared tenant、联合故障 |
 | Active Read | `DIPOLE_AGENT_RUNTIME_MODE=remote` + Temporal；`agent-active.yml` | 可 opt-in | AD-009 |
 | Temporal Worker | `DIPOLE_AGENT_TEMPORAL_ENABLED` | 可 opt-in | 默认 `foundation`，只在 overlay 开 |
-| Task Control + 交互创建 | `DIPOLE_AGENT_CONTROL_ENABLED` / Gateway 同名 | 可 opt-in | AD-009 |
+| Task Control + 交互创建 + owner 收件箱 | `DIPOLE_AGENT_CONTROL_ENABLED` / Gateway 同名；前端 `VITE_AGENT_TIMELINE_ENABLED` | 可 opt-in | AD-009。收件箱随 Control 装配，页面随 Timeline 开关 |
 | 多会话 `wait_input` | 无独立开关，随 Temporal read | 可 opt-in | AD-009 E2E |
 | Memory 观察写入 | `DIPOLE_AGENT_MEMORY_ENABLED` | 可 opt-in | AD-009 / AD-061 |
 | Memory Promotion Commit | Core `agent_memory_promotion_receipt_commit_enabled` + Runtime commit flag | 可 opt-in | AD-009 联合 revoke/rollback |
@@ -60,4 +60,4 @@ Search、预签名、Sync、Elicitation、Approval、Timeline、Task Create、Ar
 1. ~~Workflow Repair Execute~~：已挂到默认关的 Core 启动链。
 2. ~~MCP Elicitation continuation~~：已随 `external_mcp_shadow` 进入生产 Worker；第一方 Timeline 入口已挂。
 3. 可 opt-in 项只补门禁/证据，不改默认。AD-036 剩余多轮与敏感授权。
-4. 前端体验走查后，后端最大缺口是 owner 任务列表 / HITL 收件箱，其次是 memory candidate 列表。
+4. ~~Owner 任务收件箱~~：`GET /api/v1/agent/tasks` + Vue `/agent/tasks` 已齐，随 Task Control / Timeline 开关。下一步是 waiting 通知，其次是 memory candidate 列表。

@@ -633,6 +633,77 @@ export interface AuthorizeTaskControlResponse {
     mcpRunId: string;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ListOwnedAgentTasksRequest
+ */
+export interface ListOwnedAgentTasksRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: int64 after_updated_at_unix_ms = 3
+     */
+    afterUpdatedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string after_task_id = 4
+     */
+    afterTaskId: string;
+    /**
+     * @generated from protobuf field: uint32 limit = 5
+     */
+    limit: number;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.AgentOwnedTask
+ */
+export interface AgentOwnedTask {
+    /**
+     * @generated from protobuf field: string task_id = 1
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string status = 2
+     */
+    status: string;
+    /**
+     * @generated from protobuf field: uint64 revision = 3
+     */
+    revision: bigint;
+    /**
+     * @generated from protobuf field: string pending_kind = 4
+     */
+    pendingKind: string;
+    /**
+     * @generated from protobuf field: string goal = 5
+     */
+    goal: string;
+    /**
+     * @generated from protobuf field: int64 updated_at_unix_ms = 6
+     */
+    updatedAtUnixMs: bigint;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ListOwnedAgentTasksResponse
+ */
+export interface ListOwnedAgentTasksResponse {
+    /**
+     * @generated from protobuf field: repeated dipole.agent.v1.AgentOwnedTask tasks = 1
+     */
+    tasks: AgentOwnedTask[];
+    /**
+     * @generated from protobuf field: int64 next_updated_at_unix_ms = 2
+     */
+    nextUpdatedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string next_task_id = 3
+     */
+    nextTaskId: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.ListAgentTaskTimelineRequest
  */
 export interface ListAgentTaskTimelineRequest {
@@ -5014,6 +5085,234 @@ class AuthorizeTaskControlResponse$Type extends MessageType<AuthorizeTaskControl
  * @generated MessageType for protobuf message dipole.agent.v1.AuthorizeTaskControlResponse
  */
 export const AuthorizeTaskControlResponse = new AuthorizeTaskControlResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListOwnedAgentTasksRequest$Type extends MessageType<ListOwnedAgentTasksRequest> {
+    constructor() {
+        super("dipole.agent.v1.ListOwnedAgentTasksRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "after_updated_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 4, name: "after_task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "limit", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListOwnedAgentTasksRequest>): ListOwnedAgentTasksRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.afterUpdatedAtUnixMs = 0n;
+        message.afterTaskId = "";
+        message.limit = 0;
+        if (value !== undefined)
+            reflectionMergePartial<ListOwnedAgentTasksRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListOwnedAgentTasksRequest): ListOwnedAgentTasksRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* int64 after_updated_at_unix_ms */ 3:
+                    message.afterUpdatedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string after_task_id */ 4:
+                    message.afterTaskId = reader.string();
+                    break;
+                case /* uint32 limit */ 5:
+                    message.limit = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListOwnedAgentTasksRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* int64 after_updated_at_unix_ms = 3; */
+        if (message.afterUpdatedAtUnixMs !== 0n)
+            writer.tag(3, WireType.Varint).int64(message.afterUpdatedAtUnixMs);
+        /* string after_task_id = 4; */
+        if (message.afterTaskId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.afterTaskId);
+        /* uint32 limit = 5; */
+        if (message.limit !== 0)
+            writer.tag(5, WireType.Varint).uint32(message.limit);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListOwnedAgentTasksRequest
+ */
+export const ListOwnedAgentTasksRequest = new ListOwnedAgentTasksRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class AgentOwnedTask$Type extends MessageType<AgentOwnedTask> {
+    constructor() {
+        super("dipole.agent.v1.AgentOwnedTask", [
+            { no: 1, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "revision", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 4, name: "pending_kind", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "goal", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "updated_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+        ]);
+    }
+    create(value?: PartialMessage<AgentOwnedTask>): AgentOwnedTask {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.status = "";
+        message.revision = 0n;
+        message.pendingKind = "";
+        message.goal = "";
+        message.updatedAtUnixMs = 0n;
+        if (value !== undefined)
+            reflectionMergePartial<AgentOwnedTask>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: AgentOwnedTask): AgentOwnedTask {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string task_id */ 1:
+                    message.taskId = reader.string();
+                    break;
+                case /* string status */ 2:
+                    message.status = reader.string();
+                    break;
+                case /* uint64 revision */ 3:
+                    message.revision = reader.uint64().toBigInt();
+                    break;
+                case /* string pending_kind */ 4:
+                    message.pendingKind = reader.string();
+                    break;
+                case /* string goal */ 5:
+                    message.goal = reader.string();
+                    break;
+                case /* int64 updated_at_unix_ms */ 6:
+                    message.updatedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: AgentOwnedTask, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string task_id = 1; */
+        if (message.taskId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.taskId);
+        /* string status = 2; */
+        if (message.status !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.status);
+        /* uint64 revision = 3; */
+        if (message.revision !== 0n)
+            writer.tag(3, WireType.Varint).uint64(message.revision);
+        /* string pending_kind = 4; */
+        if (message.pendingKind !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.pendingKind);
+        /* string goal = 5; */
+        if (message.goal !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.goal);
+        /* int64 updated_at_unix_ms = 6; */
+        if (message.updatedAtUnixMs !== 0n)
+            writer.tag(6, WireType.Varint).int64(message.updatedAtUnixMs);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.AgentOwnedTask
+ */
+export const AgentOwnedTask = new AgentOwnedTask$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListOwnedAgentTasksResponse$Type extends MessageType<ListOwnedAgentTasksResponse> {
+    constructor() {
+        super("dipole.agent.v1.ListOwnedAgentTasksResponse", [
+            { no: 1, name: "tasks", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => AgentOwnedTask },
+            { no: 2, name: "next_updated_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 3, name: "next_task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListOwnedAgentTasksResponse>): ListOwnedAgentTasksResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tasks = [];
+        message.nextUpdatedAtUnixMs = 0n;
+        message.nextTaskId = "";
+        if (value !== undefined)
+            reflectionMergePartial<ListOwnedAgentTasksResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListOwnedAgentTasksResponse): ListOwnedAgentTasksResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated dipole.agent.v1.AgentOwnedTask tasks */ 1:
+                    message.tasks.push(AgentOwnedTask.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                case /* int64 next_updated_at_unix_ms */ 2:
+                    message.nextUpdatedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string next_task_id */ 3:
+                    message.nextTaskId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListOwnedAgentTasksResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated dipole.agent.v1.AgentOwnedTask tasks = 1; */
+        for (let i = 0; i < message.tasks.length; i++)
+            AgentOwnedTask.internalBinaryWrite(message.tasks[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* int64 next_updated_at_unix_ms = 2; */
+        if (message.nextUpdatedAtUnixMs !== 0n)
+            writer.tag(2, WireType.Varint).int64(message.nextUpdatedAtUnixMs);
+        /* string next_task_id = 3; */
+        if (message.nextTaskId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.nextTaskId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListOwnedAgentTasksResponse
+ */
+export const ListOwnedAgentTasksResponse = new ListOwnedAgentTasksResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class ListAgentTaskTimelineRequest$Type extends MessageType<ListAgentTaskTimelineRequest> {
     constructor() {
@@ -12399,6 +12698,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ReadConversation", options: {}, I: ReadConversationRequest, O: ReadConversationResponse },
     { name: "SearchConversations", options: {}, I: SearchConversationsRequest, O: SearchConversationsResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
+    { name: "ListOwnedAgentTasks", options: {}, I: ListOwnedAgentTasksRequest, O: ListOwnedAgentTasksResponse },
     { name: "ListAgentTaskTimeline", options: {}, I: ListAgentTaskTimelineRequest, O: ListAgentTaskTimelineResponse },
     { name: "AppendAgentTaskTimelineEvent", options: {}, I: AppendAgentTaskTimelineEventRequest, O: AppendAgentTaskTimelineEventResponse },
     { name: "ResolveMcpContext", options: {}, I: ResolveMcpContextRequest, O: ResolveMcpContextResponse },

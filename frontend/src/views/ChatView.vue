@@ -31,6 +31,17 @@
           <IconAgent :size="22" />
         </button>
         <button
+          v-if="agentTaskInboxEnabled"
+          class="icon-btn"
+          type="button"
+          title="任务运行"
+          aria-label="打开任务运行"
+          data-agent-task-inbox-entry
+          @click="router.push({ name: 'agent-task-inbox' })"
+        >
+          <IconLoadMore :size="22" />
+        </button>
+        <button
           v-if="agentTaskCreateEnabled"
           class="icon-btn"
           type="button"
@@ -631,7 +642,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
-import { agentControlHome as agentControlHomeRoute, agentTaskCreatePageEnabled } from '@/config/agentFlags'
+import { agentControlHome as agentControlHomeRoute, agentTaskCreatePageEnabled, agentTaskInboxEnabled as agentTaskInboxFlag } from '@/config/agentFlags'
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
 import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresignedPartWithRefresh } from '@/upload/multipartUpload'
@@ -642,6 +653,7 @@ const auth = useAuthStore()
 const chat = useChatStore()
 const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
 const agentTaskCreateEnabled = agentTaskCreatePageEnabled
+const agentTaskInboxEnabled = agentTaskInboxFlag
 const agentControlHome = agentControlHomeRoute()
 const presignedMultipartEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_ENABLED === 'true'
 const presignedMultipartProxyEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_PROXY_ENABLED === 'true'

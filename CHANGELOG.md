@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：补上 owner 任务收件箱，关闭「创建后只能靠当场记住 taskId」的缺口。
+  - Core 新增 `ListOwnedAgentTasks`：按当前 Gateway principal 从 `agent_tasks` 投影分页，公开状态优先用 workflow_status，`waiting_input`/`waiting_approval` 带 `pendingKind`。
+  - Gateway 在 `GET /api/v1/agent/tasks`（注册在 `/:task_id` 之前）返回 `{ tasks, nextCursor }`；只允许认证会话，不接受请求体里的伪造 principal。
+  - Vue `/agent/tasks` 列出任务并链到时间线；等待行在对应开关打开时链到审批/补充信息。时间线增加取消按钮。生产 `VITE_*` 仍默认关。
+
 - 2026-09-03：Remote GPU 隔离 Compose 复验通过 Interactive Active 的 owner Definition 修复。
   - `a0f44e99` Core 将两条交互 Task 都绑定到临时 owner 的 Definition `v2`；拒绝路径收敛为 `cancelled` 且零副作用，批准重放在 Worker 重启后收敛为一次 Tool、一次消息和两条 Sync Inbox。
   - 验证使用 loopback-only 项目与确定性 `/send` fixture；共享 tenant、浏览器 HITL、模型质量和性能结论仍未开启，详见 `docs/agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md`。

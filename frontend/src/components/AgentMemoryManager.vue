@@ -8,7 +8,7 @@
       <div v-else class="rail-item">▣ <span>Agent 定义</span></div>
       <RouterLink v-if="nav.subscriptions" class="rail-item" :to="{ name: 'agent-subscriptions' }">⌁ <span>事件订阅</span></RouterLink>
       <div v-else class="rail-item">⌁ <span>事件订阅</span></div>
-      <RouterLink v-if="nav.taskCreate" class="rail-item" :to="{ name: 'agent-task-create' }">☷ <span>任务运行</span></RouterLink>
+      <RouterLink v-if="nav.taskRun" class="rail-item" :to="nav.taskRun">☷ <span>任务运行</span></RouterLink>
       <div v-else class="rail-item">☷ <span>任务运行</span></div>
       <div class="rail-item">♢ <span>审批记录</span></div>
       <p class="rail-boundary">OWNER GOVERNANCE<br>AUTO OBSERVATION: OFF<br>RETRIEVAL: CONTEXT ONLY</p>
@@ -123,7 +123,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { agentMemoryClient, type AgentMemory, type AgentMemoryClient } from '@/api/agentMemories'
-import { agentFlags, agentTaskCreatePageEnabled } from '@/config/agentFlags'
+import { agentFlags, agentTaskRunTarget } from '@/config/agentFlags'
 
 const props = withDefaults(defineProps<{ client?: AgentMemoryClient, correctionEnabled?: boolean }>(), {
   client: () => agentMemoryClient,
@@ -132,7 +132,7 @@ const props = withDefaults(defineProps<{ client?: AgentMemoryClient, correctionE
 const nav = {
   definitions: agentFlags.definitions,
   subscriptions: agentFlags.subscriptions,
-  taskCreate: agentTaskCreatePageEnabled,
+  taskRun: agentTaskRunTarget(),
 }
 type ViewState = 'loading' | 'ready' | 'unavailable' | 'revoking' | 'correcting' | 'conflict'
 type DialogMode = 'revoke' | 'correct'

@@ -7,6 +7,7 @@ const source = readFileSync(resolve(import.meta.dirname, 'index.ts'), 'utf8')
 describe('Agent route security contract', () => {
   it('keeps every Agent page authenticated and independently flag-gated', () => {
     for (const routeName of [
+      'agent-task-inbox',
       'agent-task-create',
       'agent-task-input',
       'agent-task-approval',

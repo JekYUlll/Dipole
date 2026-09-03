@@ -9,6 +9,7 @@ const events = ref<AgentTaskTimelineEvent[]>([])
 const nextCursor = ref('')
 const revision = ref<number | undefined>()
 const loadingMore = ref(false)
+const cancelling = ref(false)
 const initialProjectionRetryMs = 1_000
 
 onMounted(() => { void load() })
@@ -79,6 +80,19 @@ function inputRoute(event: AgentTaskTimelineEvent): { name: 'agent-task-input'; 
   if (event.kind !== 'input_request' || event.status !== 'waiting_input') return undefined
   return { name: 'agent-task-input', params: { taskId: props.taskId } }
 }
+
+async function cancel() {
+  if (cancelling.value || state.value !== 'ready') return
+  cancelling.value = true
+  try {
+    await client.value.cancelTask(props.taskId)
+    await load()
+  } catch {
+    state.value = 'unavailable'
+  } finally {
+    cancelling.value = false
+  }
+}
 </script>
 
 <template>
@@ -88,7 +102,12 @@ function inputRoute(event: AgentTaskTimelineEvent): { name: 'agent-task-input'; 
         <p class="eyebrow">AGENT TASK / TIMELINE</p>
         <h2>执行轨迹</h2>
       </div>
-      <span v-if="revision !== undefined" class="revision">REV {{ revision }}</span>
+      <div class="header-actions">
+        <button v-if="state === 'ready'" type="button" class="text-action" data-agent-timeline-cancel :disabled="cancelling" @click="cancel">
+          {{ cancelling ? '正在取消' : '取消任务' }}
+        </button>
+        <span v-if="revision !== undefined" class="revision">REV {{ revision }}</span>
+      </div>
     </header>
     <div v-if="state === 'loading'" class="timeline-state">正在读取任务事件</div>
     <div v-else-if="state === 'unavailable'" class="timeline-state timeline-state-danger">
@@ -120,6 +139,7 @@ function inputRoute(event: AgentTaskTimelineEvent): { name: 'agent-task-input'; 
 .timeline-header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .eyebrow { margin: 0 0 .35rem; color: var(--dp-rail); font: 700 .68rem/1.2 var(--dp-font-data); letter-spacing: .14em; }
 h2 { margin: 0; color: var(--dp-ink); font: 700 1.2rem/1.25 var(--dp-font-display); }
+.header-actions { display: flex; align-items: center; gap: .75rem; }
 .revision { color: var(--dp-ink-soft); font: .7rem/1.4 var(--dp-font-data); }
 .timeline-state { display: flex; align-items: center; justify-content: space-between; min-height: 5rem; color: var(--dp-ink-soft); }
 .timeline-state-danger { color: var(--dp-danger); }

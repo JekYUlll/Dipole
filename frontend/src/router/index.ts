@@ -46,6 +46,15 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/agent/tasks',
+      name: 'agent-task-inbox',
+      component: () => import('@/views/AgentTaskInboxView.vue'),
+      meta: { requiresAuth: true },
+      beforeEnter: () => import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
+        ? true
+        : { name: 'chat' },
+    },
+    {
       path: '/agent/tasks/new',
       name: 'agent-task-create',
       component: () => import('@/views/AgentTaskCreateView.vue'),

@@ -1390,6 +1390,77 @@ func (q *Queries) ListOwnedAgentEventSubscriptions(ctx context.Context, arg List
 	return items, nil
 }
 
+const listOwnedAgentTasks = `-- name: ListOwnedAgentTasks :many
+SELECT id, task_uuid, definition_uuid, definition_version, tenant_id, status, trigger_type, trigger_ref, goal, created_at, updated_at, principal_uuid, agent_uuid, workflow_id, workflow_run_id, workflow_status, workflow_revision, workflow_updated_at, trigger_subscription_uuid
+FROM agent_tasks
+WHERE tenant_id = ?
+  AND principal_uuid = ?
+  AND (
+    updated_at < ?
+    OR (updated_at = ? AND task_uuid < ?)
+  )
+ORDER BY updated_at DESC, task_uuid DESC
+LIMIT ?
+`
+
+type ListOwnedAgentTasksParams struct {
+	TenantID       string
+	PrincipalUuid  string
+	AfterUpdatedAt time.Time
+	AfterTaskUuid  string
+	Limit          int32
+}
+
+func (q *Queries) ListOwnedAgentTasks(ctx context.Context, arg ListOwnedAgentTasksParams) ([]AgentTask, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnedAgentTasks,
+		arg.TenantID,
+		arg.PrincipalUuid,
+		arg.AfterUpdatedAt,
+		arg.AfterUpdatedAt,
+		arg.AfterTaskUuid,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentTask{}
+	for rows.Next() {
+		var i AgentTask
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskUuid,
+			&i.DefinitionUuid,
+			&i.DefinitionVersion,
+			&i.TenantID,
+			&i.Status,
+			&i.TriggerType,
+			&i.TriggerRef,
+			&i.Goal,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PrincipalUuid,
+			&i.AgentUuid,
+			&i.WorkflowID,
+			&i.WorkflowRunID,
+			&i.WorkflowStatus,
+			&i.WorkflowRevision,
+			&i.WorkflowUpdatedAt,
+			&i.TriggerSubscriptionUuid,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAgentWorkflowRepairExecutionRolledBack = `-- name: MarkAgentWorkflowRepairExecutionRolledBack :execrows
 UPDATE agent_workflow_repair_executions
 SET status = 'rolled_back', finished_at = ?, updated_at = UTC_TIMESTAMP()

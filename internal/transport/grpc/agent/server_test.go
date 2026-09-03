@@ -337,6 +337,18 @@ func (s *taskControlAuthorizerStub) AuthorizeTaskControl(_ context.Context, task
 	return &s.result, nil
 }
 
+type agentTaskInboxAuthorizerStub struct {
+	taskControlAuthorizerStub
+	listRequest application.AgentTaskOwnerInboxListRequestV1
+	page        application.AgentTaskOwnerInboxPageV1
+}
+
+func (s *agentTaskInboxAuthorizerStub) ListOwnedTasks(_ context.Context, request application.AgentTaskOwnerInboxListRequestV1) (*application.AgentTaskOwnerInboxPageV1, error) {
+	s.listRequest = request
+	copy := s.page
+	return &copy, nil
+}
+
 func (s *approvalServiceStub) Request(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
 	s.requested = request
 	approval := request.Approval
@@ -490,6 +502,40 @@ func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	if err != nil || response.GetTaskId() != "TASK-1" || response.GetTaskStatus() != "waiting_approval" || response.GetMcpRunId() != "run:mcp-shadow-1" || response.GetWorkflowRevision() != 2 ||
 		response.GetWorkflowStatus() != "waiting_approval" || controls.taskUUID != "TASK-1" || controls.principalUUID != "U100" {
 		t.Fatalf("unexpected authorization: response=%+v controls=%+v err=%v", response, controls, err)
+	}
+}
+
+func TestListOwnedAgentTasksUsesAuthenticatedGatewayPrincipal(t *testing.T) {
+	now := time.UnixMilli(1_700_000_000_000).UTC()
+	controls := &agentTaskInboxAuthorizerStub{page: application.AgentTaskOwnerInboxPageV1{
+		Tasks: []application.AgentTaskInboxItemV1{{
+			TaskUUID: "TASK-1", Status: "waiting_approval", Revision: 2, PendingKind: application.AgentTaskInboxPendingApproval,
+			Goal: "Summarize unread work", UpdatedAt: now.Add(-time.Minute),
+		}},
+		NextUpdatedAt: now.Add(-time.Minute), NextTaskUUID: "TASK-1",
+	}}
+	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ListOwnedAgentTasks(ctx, &agentv1.ListOwnedAgentTasksRequest{
+			Context: grpccommon.RequestContext("U100", "dipole-gateway"), TenantId: "dipole", Limit: 20,
+		})
+	})
+	if err != nil {
+		t.Fatalf("list owned tasks: %v", err)
+	}
+	listed := response.(*agentv1.ListOwnedAgentTasksResponse)
+	if controls.listRequest.PrincipalUUID != "U100" || controls.listRequest.TenantID != "dipole" || controls.listRequest.Limit != 20 ||
+		len(listed.GetTasks()) != 1 || listed.GetTasks()[0].GetTaskId() != "TASK-1" || listed.GetTasks()[0].GetPendingKind() != "approval" ||
+		listed.GetNextTaskId() != "TASK-1" {
+		t.Fatalf("unexpected inbox request=%+v response=%+v", controls.listRequest, listed)
+	}
+	if _, err = invokeAuthenticatedAgentRPC(t, "dipole-agent", func(ctx context.Context) (any, error) {
+		return server.ListOwnedAgentTasks(ctx, &agentv1.ListOwnedAgentTasksRequest{Context: grpccommon.RequestContext("U100", "dipole-agent"), TenantId: "dipole"})
+	}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("Agent data-plane owner Task inbox code = %s", status.Code(err))
 	}
 }
 

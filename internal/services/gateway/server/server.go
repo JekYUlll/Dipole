@@ -36,6 +36,7 @@ type Dependencies struct {
 	Core                   application.CoreCapability
 	Search                 application.SearchApplication
 	AgentTasks             AgentTaskControlApplication
+	AgentTaskInbox         AgentTaskInboxApplication
 	AgentSubscriptions     AgentSubscriptionControlApplication
 	AgentDefinitions       AgentDefinitionCatalogApplication
 	AgentMemories          AgentMemoryControlApplication
@@ -125,6 +126,9 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 	if dependencies.AgentTasks != nil {
 		engine.GET("/api/v1/agent/status", auth, agentRuntimeStatusHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks", auth, agentTaskStartHandler(dependencies.AgentTasks))
+		if dependencies.AgentTaskInbox != nil {
+			engine.GET("/api/v1/agent/tasks", auth, agentTaskInboxListHandler(dependencies.AgentTaskInbox))
+		}
 		engine.GET("/api/v1/agent/tasks/:task_id", auth, agentTaskGetHandler(dependencies.AgentTasks))
 		engine.GET("/api/v1/agent/tasks/:task_id/timeline", auth, agentTaskTimelineHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
@@ -564,6 +568,60 @@ func agentMCPHandler(proxy AgentMCPApplication, limiter AgentMCPRateLimiter) gin
 			}
 		}
 		proxy.ServeMCP(c.Writer, c.Request, user.UUID, c.Param("task_id"), c.Param("run_id"))
+	}
+}
+
+func agentTaskInboxListHandler(inbox AgentTaskInboxApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := middleware.CurrentUser(c)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": http.StatusUnauthorized, "message": "user session is invalid"})
+			return
+		}
+		rawAfter, hasAfter := c.GetQuery("after")
+		after := strings.TrimSpace(rawAfter)
+		if hasAfter && (after != rawAfter || !validAgentSubscriptionPublicID(after, 256)) {
+			c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "invalid Agent Task inbox cursor"})
+			return
+		}
+		limit := 50
+		if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+			parsed, err := strconv.Atoi(raw)
+			if err != nil || parsed < 1 || parsed > 100 {
+				c.JSON(http.StatusBadRequest, gin.H{"code": http.StatusBadRequest, "message": "Agent Task inbox limit must be between 1 and 100"})
+				return
+			}
+			limit = parsed
+		}
+		page, err := inbox.List(c.Request.Context(), user.UUID, after, limit)
+		writeAgentTaskInboxResult(c, page, err)
+	}
+}
+
+func writeAgentTaskInboxResult(c *gin.Context, value any, err error) {
+	if err != nil || value == nil {
+		statusCode := AgentTaskInboxHTTPStatus(err)
+		message := "Agent Task inbox is unavailable"
+		switch statusCode {
+		case http.StatusBadRequest:
+			message = "Agent Task inbox request is invalid"
+		case http.StatusForbidden:
+			message = "Agent Task inbox access denied"
+		}
+		c.JSON(statusCode, gin.H{"code": statusCode, "message": message})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": value})
+}
+
+func AgentTaskInboxHTTPStatus(err error) int {
+	switch {
+	case errors.Is(err, ErrAgentTaskInboxInvalid):
+		return http.StatusBadRequest
+	case errors.Is(err, ErrAgentTaskInboxDenied):
+		return http.StatusForbidden
+	default:
+		return http.StatusServiceUnavailable
 	}
 }
 

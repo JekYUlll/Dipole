@@ -1233,6 +1233,64 @@ func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.Auth
 	return response, nil
 }
 
+func (s *Server) ListOwnedAgentTasks(ctx context.Context, request *agentv1.ListOwnedAgentTasksRequest) (*agentv1.ListOwnedAgentTasksResponse, error) {
+	principal, err := agentTaskInboxOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	inbox, ok := s.controls.(application.AgentTaskOwnerInboxServiceV1)
+	if !ok || inbox == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Task inbox is unavailable")
+	}
+	var afterUpdatedAt time.Time
+	if request.GetAfterUpdatedAtUnixMs() > 0 {
+		afterUpdatedAt = time.UnixMilli(request.GetAfterUpdatedAtUnixMs()).UTC()
+	}
+	page, err := inbox.ListOwnedTasks(grpccommon.Correlation(ctx, request.GetContext()), application.AgentTaskOwnerInboxListRequestV1{
+		TenantID: request.GetTenantId(), PrincipalUUID: principal, AfterUpdatedAt: afterUpdatedAt,
+		AfterTaskUUID: request.GetAfterTaskId(), Limit: int(request.GetLimit()),
+	})
+	if err != nil {
+		return nil, agentTaskInboxErrorV1(err)
+	}
+	response := &agentv1.ListOwnedAgentTasksResponse{Tasks: make([]*agentv1.AgentOwnedTask, 0, len(page.Tasks))}
+	for _, item := range page.Tasks {
+		response.Tasks = append(response.Tasks, &agentv1.AgentOwnedTask{
+			TaskId: item.TaskUUID, Status: item.Status, Revision: item.Revision,
+			PendingKind: string(item.PendingKind), Goal: item.Goal, UpdatedAtUnixMs: item.UpdatedAt.UnixMilli(),
+		})
+	}
+	if !page.NextUpdatedAt.IsZero() {
+		response.NextUpdatedAtUnixMs = page.NextUpdatedAt.UnixMilli()
+		response.NextTaskId = page.NextTaskUUID
+	}
+	return response, nil
+}
+
+func agentTaskInboxOwnerV1(ctx context.Context, requestContext *commonv1.RequestContext) (string, error) {
+	authenticated, ok := grpcauth.CallerService(ctx)
+	if !ok || authenticated != "dipole-gateway" || strings.TrimSpace(requestContext.GetCallerService()) != authenticated {
+		return "", status.Error(codes.PermissionDenied, "only the authenticated Gateway may list Agent Tasks")
+	}
+	if _, err := grpccommon.Caller(ctx, requestContext); err != nil {
+		return "", err
+	}
+	return grpccommon.Principal(requestContext)
+}
+
+func agentTaskInboxErrorV1(err error) error {
+	switch {
+	case errors.Is(err, application.ErrAgentTaskInboxDenied):
+		return status.Error(codes.PermissionDenied, "Agent Task inbox access denied")
+	case errors.Is(err, application.ErrAgentTaskInboxInvalid):
+		return status.Error(codes.FailedPrecondition, "Agent Task inbox request is invalid")
+	case errors.Is(err, application.ErrAgentTaskInboxUnavailable):
+		return status.Error(codes.Unavailable, "Agent Task inbox is unavailable")
+	default:
+		return status.Error(codes.Internal, "Agent Task inbox failed")
+	}
+}
+
 func (s *Server) ListAgentTaskTimeline(ctx context.Context, request *agentv1.ListAgentTaskTimelineRequest) (*agentv1.ListAgentTaskTimelineResponse, error) {
 	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
 		return nil, err

@@ -213,6 +213,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		runtime.searchConn = searchConnection
 	}
 	var agentTasks gateway.AgentTaskControlApplication
+	var agentTaskInbox *gateway.AgentTaskInboxClient
 	if gatewayCfg.AgentControlEnabled {
 		agentTasks, err = gateway.NewAgentTaskControlClient(
 			gatewayCfg.AgentControlTarget, agentControlSecret(gatewayCfg.AgentControlSecret, rpcCfg.SharedSecret),
@@ -221,6 +222,21 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Agent Task control client: %w", err)
+		}
+		inboxTenant := gatewayCfg.AgentMemoryTenantID
+		if inboxTenant == "" {
+			inboxTenant = gatewayCfg.AgentSubscriptionTenantID
+		}
+		if inboxTenant == "" {
+			inboxTenant = "dipole"
+		}
+		agentTaskInbox, err = gateway.NewAgentTaskInboxClient(
+			agentv1.NewAgentCapabilityServiceClient(coreConn), inboxTenant,
+			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent Task inbox client: %w", err)
 		}
 	}
 	var agentMCP gateway.AgentMCPApplication
@@ -304,6 +320,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		Core:                   core,
 		Search:                 search,
 		AgentTasks:             agentTasks,
+		AgentTaskInbox:         agentTaskInbox,
 		AgentSubscriptions:     agentSubscriptions,
 		AgentDefinitions:       agentDefinitions,
 		AgentMemories:          agentMemories,

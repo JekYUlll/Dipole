@@ -109,6 +109,18 @@ INSERT IGNORE INTO agent_tasks (
 -- name: GetAgentTask :one
 SELECT * FROM agent_tasks WHERE task_uuid = ? LIMIT 1;
 
+-- name: ListOwnedAgentTasks :many
+SELECT *
+FROM agent_tasks
+WHERE tenant_id = sqlc.arg(tenant_id)
+  AND principal_uuid = sqlc.arg(principal_uuid)
+  AND (
+    updated_at < sqlc.arg(after_updated_at)
+    OR (updated_at = sqlc.arg(after_updated_at) AND task_uuid < sqlc.arg(after_task_uuid))
+  )
+ORDER BY updated_at DESC, task_uuid DESC
+LIMIT ?;
+
 -- name: TransitionAgentTaskStatus :execrows
 UPDATE agent_tasks
 SET status = ?, updated_at = NOW(3)

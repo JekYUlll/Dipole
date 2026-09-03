@@ -151,6 +151,17 @@ type gatewayAgentMemoryStub struct {
 	limit, listCalls, revokeCalls, correctCalls, promoteCalls int
 }
 
+type gatewayAgentTaskInboxStub struct {
+	principal, after string
+	limit, listCalls int
+}
+
+func (s *gatewayAgentTaskInboxStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentTaskInboxPage, error) {
+	s.principal, s.after, s.limit = principalUUID, after, limit
+	s.listCalls++
+	return &AgentTaskInboxPage{Tasks: []AgentOwnedTask{{TaskID: "TASK-1", Status: "waiting_approval", Revision: 2, PendingKind: "approval", Goal: "Summarize unread work", UpdatedAtUnixMS: 1_700_000_000_000}}, NextCursor: "CURSOR-1"}, nil
+}
+
 func (s *gatewayAgentMemoryStub) List(_ context.Context, principalUUID, after string, limit int) (*AgentMemoryPage, error) {
 	s.principal, s.after, s.limit = principalUUID, after, limit
 	s.listCalls++
@@ -696,6 +707,37 @@ func TestGatewayRejectsInvalidAgentSubscriptionControlInput(t *testing.T) {
 	}
 	if subscriptions.optionsCalls != 0 || subscriptions.createCalls != 0 {
 		t.Fatalf("invalid create authority reached application: %+v", subscriptions)
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentTaskInbox(t *testing.T) {
+	t.Chdir("../../../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	inbox := &gatewayAgentTaskInboxStub{}
+	tasks := &gatewayAgentTaskStub{}
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentTasks: tasks, AgentTaskInbox: inbox, Limiter: gatewayLimiterStub{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/tasks", nil))
+	if unauthorized.Code != http.StatusUnauthorized || inbox.listCalls != 0 {
+		t.Fatalf("unauthorized inbox code=%d calls=%d", unauthorized.Code, inbox.listCalls)
+	}
+	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/v1/agent/tasks?after=CURSOR-0&limit=20", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+token)
+	listResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(listResponse, listRequest)
+	if listResponse.Code != http.StatusOK || inbox.principal != "U100" || inbox.after != "CURSOR-0" || inbox.limit != 20 ||
+		!strings.Contains(listResponse.Body.String(), `"taskId":"TASK-1"`) {
+		t.Fatalf("inbox list code=%d stub=%+v body=%s", listResponse.Code, inbox, listResponse.Body.String())
 	}
 }
 

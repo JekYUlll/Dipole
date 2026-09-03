@@ -7,7 +7,7 @@
       <div v-else class="rail-active">⌁ <span>事件订阅</span></div>
       <RouterLink v-if="nav.definitions" class="rail-item" :to="{ name: 'agent-definitions' }">▣ <span>Agent 定义</span></RouterLink>
       <div v-else class="rail-item">▣ <span>Agent 定义</span></div>
-      <RouterLink v-if="nav.taskCreate" class="rail-item" :to="{ name: 'agent-task-create' }">☷ <span>任务运行</span></RouterLink>
+      <RouterLink v-if="nav.taskRun" class="rail-item" :to="nav.taskRun">☷ <span>任务运行</span></RouterLink>
       <div v-else class="rail-item">☷ <span>任务运行</span></div>
       <div class="rail-item">♢ <span>审批记录</span></div>
       <p class="rail-boundary">OWNER CONTROL<br>RUNTIME: DIRECT_TARGET<br>高成本模型调用未启用</p>
@@ -179,7 +179,7 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { agentDefinitionCatalogClient, type AgentDefinitionCatalogClient, type AgentDefinitionCatalogItem } from '@/api/agentDefinitions'
-import { agentFlags, agentTaskCreatePageEnabled } from '@/config/agentFlags'
+import { agentFlags, agentTaskRunTarget } from '@/config/agentFlags'
 import { agentSubscriptionClient, type AgentSubscription, type AgentSubscriptionClient, type AgentSubscriptionConversationOption, type AgentSubscriptionFilterKind } from '@/api/agentSubscriptions'
 
 const props = withDefaults(defineProps<{ client?: AgentSubscriptionClient, definitionClient?: AgentDefinitionCatalogClient }>(), {
@@ -189,7 +189,7 @@ const props = withDefaults(defineProps<{ client?: AgentSubscriptionClient, defin
 const nav = {
   definitions: agentFlags.definitions,
   subscriptions: agentFlags.subscriptions,
-  taskCreate: agentTaskCreatePageEnabled,
+  taskRun: agentTaskRunTarget(),
 }
 type ViewState = 'loading' | 'ready' | 'unavailable' | 'definition_stale' | 'revoking'
 const viewState = ref<ViewState>('loading')

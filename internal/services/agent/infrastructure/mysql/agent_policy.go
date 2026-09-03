@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
@@ -23,6 +24,7 @@ type AgentPolicyRepository struct {
 }
 
 var _ application.AgentPolicyStoreV1 = (*AgentPolicyRepository)(nil)
+var _ application.AgentTaskOwnerInboxStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentDefinitionCatalogStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentApprovalGrantStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentRuntimePromotionGrantStoreV1 = (*AgentPolicyRepository)(nil)
@@ -369,6 +371,29 @@ func (r *AgentPolicyRepository) GetTask(ctx context.Context, taskUUID string) (*
 	if err != nil {
 		return nil, fmt.Errorf("get Agent Task: %w", err)
 	}
+	return agentTaskFromRow(row), nil
+}
+
+func (r *AgentPolicyRepository) ListOwnedTasks(ctx context.Context, request application.AgentTaskOwnerInboxListRequestV1) ([]application.AgentTaskV1, error) {
+	if strings.TrimSpace(request.TenantID) == "" || strings.TrimSpace(request.PrincipalUUID) == "" || request.AfterUpdatedAt.IsZero() ||
+		request.Limit < 1 || request.Limit > 101 || (request.AfterTaskUUID != "" && utf8.RuneCountInString(request.AfterTaskUUID) > 64) {
+		return nil, application.ErrAgentTaskInboxInvalid
+	}
+	rows, err := r.queries.ListOwnedAgentTasks(ctx, generated.ListOwnedAgentTasksParams{
+		TenantID: request.TenantID, PrincipalUuid: request.PrincipalUUID, AfterUpdatedAt: request.AfterUpdatedAt,
+		AfterTaskUuid: request.AfterTaskUUID, Limit: int32(request.Limit),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list owned Agent Tasks: %w", err)
+	}
+	items := make([]application.AgentTaskV1, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, *agentTaskFromRow(row))
+	}
+	return items, nil
+}
+
+func agentTaskFromRow(row generated.AgentTask) *application.AgentTaskV1 {
 	task := &application.AgentTaskV1{
 		TaskUUID: row.TaskUuid, DefinitionUUID: row.DefinitionUuid, DefinitionVersion: row.DefinitionVersion,
 		TenantID: row.TenantID, PrincipalUUID: row.PrincipalUuid, AgentUUID: row.AgentUuid,
@@ -383,7 +408,7 @@ func (r *AgentPolicyRepository) GetTask(ctx context.Context, taskUUID string) (*
 			UpdatedAt: row.WorkflowUpdatedAt.Time,
 		}
 	}
-	return task, nil
+	return task
 }
 
 func (r *AgentPolicyRepository) TransitionTaskStatus(ctx context.Context, taskUUID string, from, to application.AgentTaskStatusV1) (bool, error) {
