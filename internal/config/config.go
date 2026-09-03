@@ -176,6 +176,7 @@ type InternalRPC struct {
 	AgentConversationSearchEnabled                   bool   `mapstructure:"agent_conversation_search_enabled"`
 	AgentMemoryPromotionReceiptCommitEnabled         bool   `mapstructure:"agent_memory_promotion_receipt_commit_enabled"`
 	AgentOAuthAuthorizationTransactionConsumeEnabled bool   `mapstructure:"agent_oauth_authorization_transaction_consume_enabled"`
+	AgentOAuthCallbackHandoffEnabled                 bool   `mapstructure:"agent_oauth_callback_handoff_enabled"`
 	AgentWorkflowRepairExecuteEnabled                bool   `mapstructure:"agent_workflow_repair_execute_enabled"`
 	DeliveryObservationEnabled                       bool   `mapstructure:"delivery_observation_enabled"`
 	DeliveryObservationListenAddress                 string `mapstructure:"delivery_observation_listen_address"`
@@ -1070,6 +1071,7 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.AgentConversationSearchEnabled = cfg.GetBool("internal_rpc.agent_conversation_search_enabled")
 	internalRPC.AgentMemoryPromotionReceiptCommitEnabled = cfg.GetBool("internal_rpc.agent_memory_promotion_receipt_commit_enabled")
 	internalRPC.AgentOAuthAuthorizationTransactionConsumeEnabled = cfg.GetBool("internal_rpc.agent_oauth_authorization_transaction_consume_enabled")
+	internalRPC.AgentOAuthCallbackHandoffEnabled = cfg.GetBool("internal_rpc.agent_oauth_callback_handoff_enabled")
 	internalRPC.AgentWorkflowRepairExecuteEnabled = cfg.GetBool("internal_rpc.agent_workflow_repair_execute_enabled")
 	internalRPC.DeliveryObservationEnabled = cfg.GetBool("internal_rpc.delivery_observation_enabled")
 	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))

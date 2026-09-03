@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：补齐默认关闭的 OAuth callback handoff Core RPC 装配。
+  - `Claim/Complete/ReleaseOAuthCallbackHandoff` 现仅在显式配置和内部 RPC mTLS 同时成立时注入 SQLC handoff Store，并只允许 `dipole-agent` 调用；默认配置继续关闭。
+  - 本切片不注册浏览器 callback 路由，也未开启 Provider code exchange、token 持久化或刷新/撤销生命周期。
+
 - 2026-09-04：收紧 Go/Eino legacy Agent 的生产依赖边界。
   - 新增结构门禁，生产代码仅允许 Core embedded Kafka 回滚路径导入 legacy Agent；独立服务与新业务代码重新引入该包会使测试失败。
 

@@ -431,6 +431,34 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 				}
 			}
 		}
+		if rpcCfg.AgentOAuthCallbackHandoffEnabled {
+			if !rpcCfg.TLSEnabled {
+				cleanup()
+				return nil, fmt.Errorf("Agent OAuth callback handoff requires internal RPC mTLS")
+			}
+			agentRepos, composeErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent repositories: %w", composeErr)
+			}
+			if searchAdapter, ok := agentAdapter.(*agentgrpc.Server); ok {
+				if _, composeErr = searchAdapter.WithOAuthCallbackHandoffs(agentRepos.OAuthCallbackHandoffs); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth callback handoff rpc adapter: %w", composeErr)
+				}
+			} else if restrictedAdapter, ok := agentAdapter.(*agentgrpc.RestrictedServer); ok {
+				if _, composeErr = restrictedAdapter.WithOAuthCallbackHandoffs(agentRepos.OAuthCallbackHandoffs); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth callback handoff rpc adapter: %w", composeErr)
+				}
+			} else {
+				agentAdapter, composeErr = agentgrpc.NewOAuthCallbackHandoffServer(agentRepos.OAuthCallbackHandoffs)
+				if composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("compose standalone Agent OAuth callback handoff rpc adapter: %w", composeErr)
+				}
+			}
+		}
 		runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core, agentAdapter)
 		if err != nil {
 			cleanup()

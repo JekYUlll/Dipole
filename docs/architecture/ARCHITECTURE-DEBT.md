@@ -337,6 +337,7 @@
 
 - 2026-08-31：Agent Capability RPC 的重连包装器改为在每次方法调用时解析当前 gRPC channel。Core `UNAVAILABLE` 后，即使上层缓存了方法引用，下一次事件级调用也会进入 replacement channel；transport 继续不重放失败调用，Kafka/EventLedger 仍负责幂等重试。隔离 Core 重启/Temporal 收敛演练继续待补。
 
+- 2026-09-04：Core 现可在 `agent_oauth_callback_handoff_enabled=true` 与内部 RPC mTLS 同时成立时装配 SQLC OAuth handoff Store，并仅允许 `dipole-agent` 调用 claim/complete/release；默认配置保持关闭。浏览器 callback、Provider code exchange、token 持久化和 refresh/revoke 生命周期仍由 OAuth release gate 限制。
 - 2026-08-31：默认关闭的 Agent OAuth callback handoff executor 在私钥解封前和 Provider processor 前均复核 durable handoff 的 lease/expiry。过期检查失败会在产生外部副作用前释放 lease；processor 或 completion 结果不确定时保留 lease，避免把不确定副作用重新排队。callback HTTP、Provider exchange、token 生命周期和默认运行时装配仍由 OAuth release gate 限制。
 
 - 2026-08-31：Cassandra read-rollout 已可把不可覆盖的 Message Service Prometheus 起止快照转换为 evidence v1。转换器拒绝 route/verification counter 回退、未知标签、histogram bucket 漂移和延迟覆盖缺口，`mysql_fallback` 同时归入 MySQL 最终路径与 fallback 比例。真实共享环境观察、责任人审核和读比例扩大仍由 AD-043 的运行证据门槛约束。

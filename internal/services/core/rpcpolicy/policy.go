@@ -66,6 +66,9 @@ func isAgentServiceMethodAllowed(method string) bool {
 		agentv1.AgentCapabilityService_MatchEventSubscriptions_FullMethodName,
 		agentv1.AgentCapabilityService_ListContextMemories_FullMethodName,
 		agentv1.AgentCapabilityService_CommitMemoryPromotionReceipt_FullMethodName,
+		agentv1.AgentCapabilityService_ClaimOAuthCallbackHandoff_FullMethodName,
+		agentv1.AgentCapabilityService_CompleteOAuthCallbackHandoff_FullMethodName,
+		agentv1.AgentCapabilityService_ReleaseOAuthCallbackHandoff_FullMethodName,
 		agentv1.AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName,
 		agentv1.AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName,
 		healthv1.Health_Check_FullMethodName:

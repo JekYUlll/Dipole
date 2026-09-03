@@ -203,6 +203,8 @@ internal_rpc:
   agent_memory_promotion_receipt_commit_enabled: false
   # OAuth callback transaction consumption stays disabled until mTLS, callback routing, and Runtime key handling are reviewed.
   agent_oauth_authorization_transaction_consume_enabled: false
+  # OAuth callback handoff transitions stay disabled until the callback route, provider exchange, and token lifecycle are reviewed.
+  agent_oauth_callback_handoff_enabled: false
   # Workflow Repair execute/rollback stays disabled until operator grants and shared-environment drills are reviewed.
   agent_workflow_repair_execute_enabled: false
   # C2 shadow receiver only records validated node batches; it never delivers to WebSocket clients.

@@ -36,6 +36,13 @@ func NewOAuthAuthorizationTransactionServer(transactions application.AgentOAuthA
 	return &RestrictedServer{oauthTransactions: transactions}, nil
 }
 
+func NewOAuthCallbackHandoffServer(handoffs application.AgentOAuthCallbackHandoffStoreV1) (*RestrictedServer, error) {
+	if handoffs == nil {
+		return nil, errors.New("Agent OAuth callback handoff store is required")
+	}
+	return &RestrictedServer{oauthCallbackHandoffs: handoffs}, nil
+}
+
 func (s *RestrictedServer) WithMemoryPromotionReceiptCommits(commits application.AgentMemoryPromotionReceiptCommitServiceV1) (*RestrictedServer, error) {
 	if s == nil || commits == nil {
 		return nil, errors.New("Agent Memory promotion receipt commit service is required")

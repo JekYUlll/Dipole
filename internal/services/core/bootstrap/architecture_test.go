@@ -38,6 +38,24 @@ func TestCoreRuntimeKeepsOAuthCallbackConsumptionExplicitAndMTLSBound(t *testing
 	}
 }
 
+func TestCoreRuntimeKeepsOAuthCallbackHandoffExplicitAndMTLSBound(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("runtime.go"))
+	if err != nil {
+		t.Fatalf("read Core runtime: %v", err)
+	}
+	text := string(source)
+	for _, requirement := range []string{
+		"rpcCfg.AgentOAuthCallbackHandoffEnabled",
+		"Agent OAuth callback handoff requires internal RPC mTLS",
+		"WithOAuthCallbackHandoffs",
+		"NewOAuthCallbackHandoffServer",
+	} {
+		if !strings.Contains(text, requirement) {
+			t.Fatalf("Core OAuth callback handoff composition must include %q", requirement)
+		}
+	}
+}
+
 func TestCoreRuntimeKeepsWorkflowRepairExecuteExplicitAndMTLSBound(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("runtime.go"))
 	if err != nil {

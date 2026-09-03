@@ -16,6 +16,11 @@ func TestAgentServiceMethodAllowlistIncludesRuntimeMethods(t *testing.T) {
 	if !isAgentServiceMethodAllowed(agentv1.AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName) {
 		t.Fatal("subscription auto-reply approval must be available to the Agent Runtime")
 	}
+	if !isAgentServiceMethodAllowed(agentv1.AgentCapabilityService_ClaimOAuthCallbackHandoff_FullMethodName) ||
+		!isAgentServiceMethodAllowed(agentv1.AgentCapabilityService_CompleteOAuthCallbackHandoff_FullMethodName) ||
+		!isAgentServiceMethodAllowed(agentv1.AgentCapabilityService_ReleaseOAuthCallbackHandoff_FullMethodName) {
+		t.Fatal("OAuth callback handoff transitions must be available only to the Agent Runtime")
+	}
 	if isAgentServiceMethodAllowed("/dipole.agent.v1.AgentCapabilityService/Unknown") {
 		t.Fatal("unknown Agent capability must remain denied")
 	}
