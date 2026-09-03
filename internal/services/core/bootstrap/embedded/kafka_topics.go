@@ -14,5 +14,6 @@ func ManagedKafkaTopics() []string {
 		"group.dismissed",
 		"contact.friend.deleted",
 		"session.force_logout",
+		"agent.task.waiting",
 	}
 }

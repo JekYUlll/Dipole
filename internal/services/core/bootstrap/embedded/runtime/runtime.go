@@ -204,6 +204,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow projection: %w", composeErr)
 		}
+		workflowProjection.WithEvents(messageEvents)
 		workflowRepairAudit, composeErr := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(agentRepos.Policy, agentRepos.Repairs)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Task Workflow repair audit: %w", composeErr)

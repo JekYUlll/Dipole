@@ -18,6 +18,7 @@ func TestKafkaManagedTopicsHaveVersionedContracts(t *testing.T) {
 		"contracts/events/domain/v1/conversation-direct-read.schema.json",
 		"contracts/events/domain/v1/contact-friend-deleted.schema.json",
 		"contracts/events/domain/v1/session-force-logout.schema.json",
+		"contracts/events/agent/v1/agent-task-waiting.schema.json",
 	}
 	covered := make(map[string]string)
 	for _, contract := range contracts {

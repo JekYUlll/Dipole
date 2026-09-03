@@ -119,7 +119,8 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		return nil, fmt.Errorf("register Core Kafka projections: %w", err)
 	}
 	if platformKafka.Client != nil {
-		if err := platformKafka.Client.EnsureTopics(corekafka.ConversationProjectionTopics()); err != nil {
+		topics := append(corekafka.ConversationProjectionTopics(), applicationPort.AgentTaskWaitingEventTypeV1)
+		if err := platformKafka.Client.EnsureTopics(topics); err != nil {
 			cleanup()
 			return nil, fmt.Errorf("ensure Core Kafka projection topics: %w", err)
 		}
@@ -222,6 +223,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Task Workflow projection: %w", composeErr)
 		}
+		workflowProjection.WithEvents(events)
 		workflowRepairAudit, composeErr := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(agentRepos.Policy, agentRepos.Repairs)
 		if composeErr != nil {
 			cleanup()

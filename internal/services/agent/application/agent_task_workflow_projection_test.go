@@ -9,6 +9,19 @@ import (
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 )
 
+type taskWaitingPublisherStub struct {
+	topic, key, eventType string
+	payload               any
+}
+
+func (s *taskWaitingPublisherStub) PublishJSON(context.Context, string, string, any, map[string]string) error {
+	return nil
+}
+func (s *taskWaitingPublisherStub) PublishEvent(_ context.Context, topic, key, eventType string, payload any, _ map[string]string) error {
+	s.topic, s.key, s.eventType, s.payload = topic, key, eventType, payload
+	return nil
+}
+
 func TestPersistentAgentTaskWorkflowProjectionServiceBindsTaskRunAndRevision(t *testing.T) {
 	store := &agentPolicyStoreStub{
 		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100", Status: application.AgentTaskStatusRunning}},
@@ -51,6 +64,26 @@ func TestPersistentAgentTaskWorkflowProjectionServiceDerivesModeFromPersistedAct
 	})
 	if err != nil || projection.Status != application.AgentTaskWorkflowStatusWaitingApproval {
 		t.Fatalf("project active run: projection=%+v err=%v", projection, err)
+	}
+}
+
+func TestPersistentAgentTaskWorkflowProjectionPublishesOwnerWaitingLocator(t *testing.T) {
+	store := &agentPolicyStoreStub{
+		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", TenantID: "dipole", PrincipalUUID: "U100", Status: application.AgentTaskStatusRunning}},
+		runs:  map[string]*application.AgentRunV1{"RUN-1": {RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning}},
+	}
+	publisher := &taskWaitingPublisherStub{}
+	service, _ := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(store)
+	service.WithEvents(publisher)
+	_, err := service.Project(context.Background(), application.AgentTaskWorkflowProjectionRequestV1{Projection: application.AgentTaskWorkflowProjectionV1{
+		TaskUUID: "TASK-1", WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1", Status: application.AgentTaskWorkflowStatusWaitingApproval, Revision: 2,
+	}, RunUUID: "RUN-1", RuntimeID: "dipole-agent", Mode: "shadow"})
+	if err != nil || publisher.topic != application.AgentTaskWaitingEventTypeV1 || publisher.key != "TASK-1" || publisher.eventType != application.AgentTaskWaitingEventTypeV1 {
+		t.Fatalf("publish topic=%q key=%q type=%q err=%v", publisher.topic, publisher.key, publisher.eventType, err)
+	}
+	payload, ok := publisher.payload.(application.AgentTaskWaitingNotificationV1)
+	if !ok || payload.PrincipalUUID != "U100" || payload.PendingKind != "approval" || payload.Revision != 2 {
+		t.Fatalf("payload=%#v", publisher.payload)
 	}
 }
 

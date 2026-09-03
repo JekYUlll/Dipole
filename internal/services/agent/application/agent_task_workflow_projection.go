@@ -12,7 +12,13 @@ import (
 const agentTaskWorkflowPrefixV1 = "dipole-agent-task/"
 
 type PersistentAgentTaskWorkflowProjectionServiceV1 struct {
-	store application.AgentPolicyStoreV1
+	store  application.AgentPolicyStoreV1
+	events application.EventPublisher
+}
+
+func (s *PersistentAgentTaskWorkflowProjectionServiceV1) WithEvents(events application.EventPublisher) *PersistentAgentTaskWorkflowProjectionServiceV1 {
+	s.events = events
+	return s
 }
 
 var _ application.AgentTaskWorkflowProjectionServiceV1 = (*PersistentAgentTaskWorkflowProjectionServiceV1)(nil)
@@ -63,6 +69,17 @@ func (s *PersistentAgentTaskWorkflowProjectionServiceV1) Project(ctx context.Con
 		return nil, fmt.Errorf("%w: projected Agent Task state did not converge", application.ErrAgentWorkflowProjectionConflict)
 	}
 	result := *current.Workflow
+	if s.events != nil && (result.Status == application.AgentTaskWorkflowStatusWaitingInput || result.Status == application.AgentTaskWorkflowStatusWaitingApproval) {
+		pendingKind := "input"
+		if result.Status == application.AgentTaskWorkflowStatusWaitingApproval {
+			pendingKind = "approval"
+		}
+		if err := s.events.PublishEvent(ctx, application.AgentTaskWaitingEventTypeV1, current.TaskUUID, application.AgentTaskWaitingEventTypeV1, application.AgentTaskWaitingNotificationV1{
+			TenantID: current.TenantID, PrincipalUUID: current.PrincipalUUID, TaskUUID: current.TaskUUID, PendingKind: pendingKind, Revision: result.Revision,
+		}, nil); err != nil {
+			return nil, fmt.Errorf("publish Agent Task waiting notification: %w", err)
+		}
+	}
 	return &result, nil
 }
 

@@ -127,6 +127,18 @@ type AgentTaskWorkflowProjectionServiceV1 interface {
 	ListProjectionSnapshots(ctx context.Context, afterTaskUUID string, limit int) (*AgentTaskWorkflowProjectionPageV1, error)
 }
 
+const AgentTaskWaitingEventTypeV1 = "agent.task.waiting"
+
+// AgentTaskWaitingNotificationV1 is a low-sensitivity locator. Clients must
+// load the task through the authenticated owner API before rendering details.
+type AgentTaskWaitingNotificationV1 struct {
+	TenantID      string `json:"tenant_id"`
+	PrincipalUUID string `json:"principal_uuid"`
+	TaskUUID      string `json:"task_uuid"`
+	PendingKind   string `json:"pending_kind"`
+	Revision      uint64 `json:"revision"`
+}
+
 type AgentTaskWorkflowProjectionSnapshotV1 struct {
 	TaskUUID string                         `json:"task_uuid"`
 	Workflow *AgentTaskWorkflowProjectionV1 `json:"workflow,omitempty"`

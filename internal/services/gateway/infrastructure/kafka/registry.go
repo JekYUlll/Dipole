@@ -56,6 +56,7 @@ func RegisterHandlers(hub RealtimeHub, authority realtimeDelivery.Authority, fen
 	}))
 	platformKafka.Subscriber.Register("session.force_logout", NewSessionKickHandler(hub))
 	platformKafka.Subscriber.Register("contact.friend.deleted", NewContactFriendDeletedHandler(hub))
+	platformKafka.Subscriber.Register(application.AgentTaskWaitingEventTypeV1, NewAgentTaskWaitingHandler(hub))
 	return nil
 }
 

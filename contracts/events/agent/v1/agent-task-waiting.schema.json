@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.dev/contracts/events/agent/v1/agent-task-waiting.schema.json",
+  "title": "Dipole Agent Task Waiting v1",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["event_id", "event_type", "version", "source", "occurred_at", "payload"],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {"type": "string", "const": "agent.task.waiting"},
+    "version": {"type": "string", "pattern": "^v1(?:\\.[0-9]+)*$"},
+    "source": {"type": "string", "const": "dipole"},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "payload": {"$ref": "#/$defs/payload"}
+  },
+  "$defs": {
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "principal_uuid", "task_uuid", "pending_kind", "revision"],
+      "properties": {
+        "tenant_id": {"type": "string", "minLength": 1, "maxLength": 64},
+        "principal_uuid": {"type": "string", "minLength": 1, "maxLength": 64},
+        "task_uuid": {"type": "string", "minLength": 1, "maxLength": 64},
+        "pending_kind": {"type": "string", "enum": ["input", "approval"]},
+        "revision": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

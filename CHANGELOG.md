@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：Agent 等待输入/审批现可通过 Kafka 与跨节点 WebSocket 向任务 owner 发送实时 locator。
+  - Core 在可信 Runtime workflow projection 落库后，仅对 `waiting_input` / `waiting_approval` 发布 `agent.task.waiting`，事件包含 owner、task、等待类型和 revision，不含目标文本、模型内容、表单或审批参数。
+  - Gateway 消费该事件并复用 Presence + Pub/Sub WebSocket 路由发送 `agent_task_waiting`；客户端收到后必须通过现有认证 Task API 补拉详情，Task Inbox 保持权威恢复路径。
+  - Kafka 不可用时不会改变 Task 持久化语义；该提示事件的远程 Compose 体验验收和前端消费由后续切片跟踪。
+
 - 2026-09-03：补上 owner-scoped Artifact metadata 收件箱 API，认证用户可分页找回历史任务产物。
   - Core 新增 `ListOwnedArtifacts`，SQLC 按 tenant、任务 owner、创建时间和 Artifact ID 复合游标稳定分页；embedded 与 standalone Core 均从 MySQL catalog 装配，列表不依赖 MinIO 可用性。
   - Gateway 新增 `GET /api/v1/agent/artifacts?after=<createdAtUnixMs:artifactId>&limit=`，仅从登录会话派生 owner，并在转发前后复核 tenant、分页 cursor 和 Artifact metadata。

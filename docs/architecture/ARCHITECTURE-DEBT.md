@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：Agent Task waiting notification 已有默认可用的 Kafka-to-WebSocket locator 链路。Core 仅在可信 `dipole-agent` 投影持久化 `waiting_input` / `waiting_approval` 后发布 `agent.task.waiting`；Gateway 通过已有 Presence/PubSub 定向 owner 推送 `agent_task_waiting`，公开字段固定为 Task ID、pending kind 与 revision。Task Inbox 是权威补拉源，因此 Kafka/WS 延迟或丢失不会丢失 Task 状态。前端消费、去重、重连后的 inbox refresh、Remote GPU Compose 体验和告警指标仍待单独验收，不能将本切片表述为端到端浏览器通知保证。
+
 - 2026-09-03：Artifact owner 收件箱已补齐 Core/Gateway 的默认关闭 metadata seam。`ListOwnedArtifacts` 以 Gateway mTLS 身份和会话 principal 绑定 owner，以 `(created_at, artifact_uuid)` 复合游标查询任务归属 Artifact；列表可在 Artifact blob storage 未装配时工作。传输层清除 `metadata_json`，Gateway 对任何非空字段 fail closed，且公开模型没有 object bucket/key 或正文。默认 `gateway.agent_artifact_enabled=false`；Vue 列表页、产物下载授权、实时通知、跨环境运行证据和 blob lifecycle 仍需独立切片，不能由该只读 API 推导为默认暴露或 MinIO 可用性结论。
 
 - 2026-09-03：Memory Candidate 已具备 owner-scoped 的 Core/Gateway 只读分页面。`ListOwnedMemoryCandidates` 只允许经认证的 `dipole-gateway` 代表当前 principal 调用，SQLC 查询按 tenant、owner 与 candidate UUID 分页；公开返回严格限定为摘要、哈希、候选状态、审核 ID、已晋级 Memory ID 和观察时间，evidence、资源 URI 与原始内容不离开 Core。embedded 与 standalone Core 都显式装配 owner control、catalog 与 promotion service，避免微服务部署出现未接线的 `Unavailable`。应用、MySQL 合约、Core RPC 和 Gateway 验证均已覆盖 owner 隔离与拒绝伪造回包。Vue 候选收件箱、默认自动 Memory 写入和共享 active authority 仍分别由前端体验缺口与 AD-035/AD-061 跟踪。

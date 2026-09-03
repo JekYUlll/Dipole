@@ -82,7 +82,8 @@ func TestCoreRuntimeWaitsForConversationProjectionKafkaAssignment(t *testing.T) 
 	}
 	text := string(source)
 	for _, requirement := range []string{
-		"EnsureTopics(corekafka.ConversationProjectionTopics())",
+		"append(corekafka.ConversationProjectionTopics(), applicationPort.AgentTaskWaitingEventTypeV1)",
+		"EnsureTopics(topics)",
 		"KafkaConsumerReadinessProbe(\"kafka-assignment\", platformKafka.Subscriber)",
 	} {
 		if !strings.Contains(text, requirement) {

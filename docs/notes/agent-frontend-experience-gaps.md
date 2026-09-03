@@ -29,8 +29,8 @@
 
 ## 后端缺的能力（按阻塞排序）
 
-1. **Waiting 任务通知**  
-   收件箱 API 和页面已齐。Chat 仍没有「有任务在等你」的推送，用户要自己打开任务运行。下一步是会话内通知或 WS 事件（`waiting_input` / `waiting_approval`）。
+1. **Waiting 任务通知前端消费**
+   后端已发送低敏 `agent_task_waiting` WS locator；Chat 仍需订阅事件、按 Task/revision 去重并刷新 owner Inbox，断线重连后仍以列表补拉为准。
 
 2. **记忆候选收件箱页面**
    owner 可读的 candidate 分页已接入 Gateway；前端还需要以摘要展示 pending/accepted/rejected，accepted 行携带 review ID 后才能调用既有晋升接口。

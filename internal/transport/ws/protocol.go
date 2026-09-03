@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	TypeAgentTaskWaiting     = "agent_task_waiting"
 	TypeConnected            = "connected"
 	TypeError                = "error"
 	TypePing                 = "ping"
@@ -62,6 +63,12 @@ type ConnectedEventData struct {
 	UserUUID        string `json:"user_uuid"`
 	ConnectionCount int    `json:"connection_count"`
 	OnlineUserCount int    `json:"online_user_count"`
+}
+
+type AgentTaskWaitingEventData struct {
+	TaskUUID    string `json:"task_uuid"`
+	PendingKind string `json:"pending_kind"`
+	Revision    uint64 `json:"revision"`
 }
 
 type PongData struct {
