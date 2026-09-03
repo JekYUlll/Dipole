@@ -171,6 +171,8 @@
 
 ### 本轮进展
 
+- 2026-09-04：当前 `master` `a3fc9c45` 已在 Remote GPU 以独立 MySQL AIO Compose 项目复验 Interactive Active。owner WebSocket 等待定位、拒绝零副作用、Agent Worker 重启后的重复批准单次 Tool/Message 与两条 Sync Inbox 均通过；临时 grant、项目和 volumes 已清理。Node 22.18.0 下 TypeScript Runtime typecheck 与离线 Vitest 为 `162` 文件、`858` 测试通过。该 receipt 不扩大运行中 `dipole-experience` 的 shadow 权限，浏览器 HITL、共享 tenant、真实模型质量、容量与成功率仍由 `AD-009` 跟踪。
+
 - 2026-09-03：Interactive Active Compose 复跑发现，未绑定 subscription 的交互请求会按既有规则选择 embedded Definition，与 owner 创建的 Active promotion grant 产生 definition/version 漂移，Core 正确拒绝 admission。现已将稳定触发 `agent.interactive.requested` 归属到 authenticated principal，并以应用层 Run admission 回归测试锁定。`a0f44e99` 的隔离 Remote GPU 复验已确认两条 Task 都固定到 owner Definition `v2`；deny 零副作用，approve 重放经 Worker restart 后收敛为一次 Tool、一次消息和两条 Inbox。收据见 [Interactive Active Remote Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)，共享 tenant、浏览器 HITL、模型质量与性能证据继续开放。
 
 - 2026-09-03：隔离 Remote GPU 候选 `9120b521` 已用真实认证 owner 验证第一方 MCP Shadow：Gateway 创建 Task 后 owner 查询获得 `mcpRunId`，consent token 完成 `initialize -> tools/list -> dipole_conversation_list`。当前 Streamable HTTP 返回未建立 MCP session header，因此该验收按无状态请求处理；后续如引入 server-side session 依赖，须单独补 session lifecycle、重连和回收证据。写 Capability、外部 MCP、Memory、默认 profile 和共享 tenant 均未启用。

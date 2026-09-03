@@ -1,5 +1,29 @@
 # Agent Interactive Active Current Receipt
 
+## Same-Revision Isolated Acceptance (2026-09-04)
+
+Remote GPU reran the deterministic `interactive_active` Compose smoke from
+`a3fc9c45`. The isolated project used the MySQL AIO compatibility overlay,
+unique Kafka and Temporal identities, temporary mTLS material, and a temporary
+owner-scoped promotion grant. It did not call an external model provider or
+alter the running `dipole-experience` project.
+
+| Check | Result |
+| --- | --- |
+| Runtime and dependency readiness | Core, Gateway, Message, Sync, Agent, Temporal, Kafka, MySQL, Redis, and MinIO became healthy |
+| Waiting notification | The authenticated owner WebSocket received the low-sensitivity approval locator |
+| Denied `/send` Task | No Tool invocation, message, or approval consumption was created |
+| Approved replay after Agent restart | Duplicate approval converged to one completed Tool invocation, one Agent message, and two Sync Inbox entries |
+| Cleanup | The temporary grant was revoked and the isolated Compose project and volumes were removed |
+
+The same revision also passed Agent Runtime typecheck and the offline Vitest
+suite under Node 22.18.0: `162` test files and `858` tests passed, while
+explicit integration cases without their external dependencies remained
+skipped. This receipt verifies the development-only active write boundary; it
+does not enable the public experience deployment or establish browser
+human-in-the-loop, shared-tenant, model-quality, capacity, or success-rate
+claims.
+
 ## Public Gateway Acceptance (2026-09-03)
 
 This development-only Remote GPU candidate runs the `649cf110` source

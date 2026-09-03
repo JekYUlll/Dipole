@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：复验当前主线的 Agent Interactive Active 隔离闭环。
+  - Remote GPU 在 `a3fc9c45` 以独立 Compose 项目运行 deterministic `/send` smoke；全部服务健康后，owner WebSocket 收到等待定位，拒绝路径保持零副作用，Worker 重启后的重复批准收敛为一次 Tool invocation、一条消息与两条 Sync Inbox 投影。
+  - 同一 revision 的 TypeScript Agent Runtime 已在 Node 22.18.0 环境通过 typecheck 与 `162` 个测试文件、`858` 项测试；外部依赖集成用例继续按显式条件跳过。
+
 - 2026-09-03：修复 chunked Agent Task 取消请求丢失原因的问题。
   - Gateway 对未知 `Content-Length` 的取消 JSON 现会在同一 `4 KiB` 上限内解析并转发原因；空 body 与超限 body 的既有行为不变。
 
