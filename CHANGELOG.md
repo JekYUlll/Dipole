@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：第一方 MCP Shadow 的 owner Task 查询现在返回经 Core 持久化绑定确认的 `mcpRunId`。
+  - 该字段只在 `dipole-agent/shadow` Run 仍为 `running` 时出现，供认证 MCP Client 构造 Task/Run 路径；终态 Run 不返回该值。
+  - Runtime 仍需 MCP consent token，并由 Core 重新解析可信执行上下文；这次变更未开启默认 MCP profile，也未扩大 Tool、消息写入或跨用户资源访问范围。
+
 - 2026-09-03：Timeline 审批入口同时识别 Core 写入的 `pending` 状态。此前链接只认 `waiting_approval`，生产事件对不上。
 
 - 2026-09-03：把第一方 Elicitation 接到 Timeline 产品入口。

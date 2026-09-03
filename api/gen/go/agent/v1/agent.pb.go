@@ -1795,8 +1795,10 @@ type AuthorizeTaskControlResponse struct {
 	WorkflowRunId    string                 `protobuf:"bytes,4,opt,name=workflow_run_id,json=workflowRunId,proto3" json:"workflow_run_id,omitempty"`
 	WorkflowStatus   string                 `protobuf:"bytes,5,opt,name=workflow_status,json=workflowStatus,proto3" json:"workflow_status,omitempty"`
 	WorkflowRevision uint64                 `protobuf:"varint,6,opt,name=workflow_revision,json=workflowRevision,proto3" json:"workflow_revision,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// A currently executable dipole-agent shadow run for the owner-scoped MCP endpoint.
+	McpRunId      string `protobuf:"bytes,7,opt,name=mcp_run_id,json=mcpRunId,proto3" json:"mcp_run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AuthorizeTaskControlResponse) Reset() {
@@ -1869,6 +1871,13 @@ func (x *AuthorizeTaskControlResponse) GetWorkflowRevision() uint64 {
 		return x.WorkflowRevision
 	}
 	return 0
+}
+
+func (x *AuthorizeTaskControlResponse) GetMcpRunId() string {
+	if x != nil {
+		return x.McpRunId
+	}
+	return ""
 }
 
 type ListAgentTaskTimelineRequest struct {
@@ -9206,7 +9215,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x1bAuthorizeTaskControlRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12*\n" +
-	"\x11principal_user_id\x18\x03 \x01(\tR\x0fprincipalUserId\"\xf7\x01\n" +
+	"\x11principal_user_id\x18\x03 \x01(\tR\x0fprincipalUserId\"\x95\x02\n" +
 	"\x1cAuthorizeTaskControlResponse\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x1f\n" +
 	"\vtask_status\x18\x02 \x01(\tR\n" +
@@ -9215,7 +9224,9 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"workflowId\x12&\n" +
 	"\x0fworkflow_run_id\x18\x04 \x01(\tR\rworkflowRunId\x12'\n" +
 	"\x0fworkflow_status\x18\x05 \x01(\tR\x0eworkflowStatus\x12+\n" +
-	"\x11workflow_revision\x18\x06 \x01(\x04R\x10workflowRevision\"\xd2\x01\n" +
+	"\x11workflow_revision\x18\x06 \x01(\x04R\x10workflowRevision\x12\x1c\n" +
+	"\n" +
+	"mcp_run_id\x18\a \x01(\tR\bmcpRunId\"\xd2\x01\n" +
 	"\x1cListAgentTaskTimelineRequest\x12:\n" +
 	"\acontext\x18\x01 \x01(\v2 .dipole.common.v1.RequestContextR\acontext\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12*\n" +

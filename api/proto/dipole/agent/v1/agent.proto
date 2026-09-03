@@ -200,6 +200,8 @@ message AuthorizeTaskControlResponse {
   string workflow_run_id = 4;
   string workflow_status = 5;
   uint64 workflow_revision = 6;
+  // A currently executable dipole-agent shadow run for the owner-scoped MCP endpoint.
+  string mcp_run_id = 7;
 }
 
 message ListAgentTaskTimelineRequest {

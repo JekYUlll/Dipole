@@ -13,14 +13,38 @@ func TestPersistentAgentTaskControlAuthorizerUsesStoredPrincipal(t *testing.T) {
 	store := &agentPolicyStoreStub{tasks: map[string]*application.AgentTaskV1{
 		"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100", Status: application.AgentTaskStatusWaitingApproval},
 	}}
+	mcpRunUUID, err := application.AgentRunUUIDV1("TASK-1", "dipole-agent", "shadow")
+	if err != nil {
+		t.Fatalf("derive MCP Run UUID: %v", err)
+	}
+	store.runs = map[string]*application.AgentRunV1{mcpRunUUID: {
+		RunUUID: mcpRunUUID, TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning,
+	}}
 	authorizer, err := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(store)
 	if err != nil {
 		t.Fatalf("new authorizer: %v", err)
 	}
 
 	authorization, err := authorizer.AuthorizeTaskControl(context.Background(), " TASK-1 ", " U100 ")
-	if err != nil || authorization.TaskUUID != "TASK-1" || authorization.Status != application.AgentTaskStatusWaitingApproval {
+	if err != nil || authorization.TaskUUID != "TASK-1" || authorization.Status != application.AgentTaskStatusWaitingApproval || authorization.MCPRunUUID != mcpRunUUID {
 		t.Fatalf("unexpected authorization: authorization=%+v err=%v", authorization, err)
+	}
+}
+
+func TestPersistentAgentTaskControlAuthorizerOmitsTerminalMCPRun(t *testing.T) {
+	mcpRunUUID, err := application.AgentRunUUIDV1("TASK-1", "dipole-agent", "shadow")
+	if err != nil {
+		t.Fatalf("derive MCP Run UUID: %v", err)
+	}
+	store := &agentPolicyStoreStub{
+		tasks: map[string]*application.AgentTaskV1{"TASK-1": {TaskUUID: "TASK-1", PrincipalUUID: "U100", Status: application.AgentTaskStatusCompleted}},
+		runs:  map[string]*application.AgentRunV1{mcpRunUUID: {RunUUID: mcpRunUUID, TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusCompleted}},
+	}
+	authorizer, _ := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(store)
+
+	authorization, err := authorizer.AuthorizeTaskControl(context.Background(), "TASK-1", "U100")
+	if err != nil || authorization.MCPRunUUID != "" {
+		t.Fatalf("terminal MCP Run must be omitted: authorization=%+v err=%v", authorization, err)
 	}
 }
 

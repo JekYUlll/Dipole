@@ -5,7 +5,7 @@ import { AgentTaskControlError, AgentTaskControlService } from "./agent-task-con
 describe("AgentTaskControlService", () => {
   it("authorizes every query and returns the bound Workflow state", async () => {
     const authorizeTaskControl = vi.fn(async () => ({
-      taskId: "TASK-1", taskStatus: "running",
+      taskId: "TASK-1", taskStatus: "running", mcpRunId: "run:mcp-shadow-1",
       workflow: {
         taskId: "TASK-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
         workflowStatus: "running", workflowRevision: 2
@@ -15,7 +15,7 @@ describe("AgentTaskControlService", () => {
     const service = new AgentTaskControlService({ authorizeTaskControl }, { query, cancel: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() });
 
     await expect(service.getTask({ taskId: "TASK-1", principalUserId: "U100", requestId: "R1", traceId: "T1" })).resolves.toEqual({
-      taskId: "TASK-1", status: "running", revision: 2, persistentStatus: "running",
+      taskId: "TASK-1", status: "running", revision: 2, persistentStatus: "running", mcpRunId: "run:mcp-shadow-1",
       workflowProjection: { outcome: "match", status: "running", revision: 2 }
     });
     expect(authorizeTaskControl).toHaveBeenCalledWith("TASK-1", "U100", { requestId: "R1", traceId: "T1" });

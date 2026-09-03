@@ -62,6 +62,7 @@ export class AgentTaskControlService {
 
   async getTask(input: AgentTaskControlIdentity): Promise<AgentTaskState & {
     persistentStatus: string;
+    mcpRunId?: string;
     workflowProjection: { outcome: "match" | "missing" | "stale" | "ahead" | "conflict"; status?: string; revision?: number };
   }> {
     const authorization = await this.authorize(input);
@@ -79,6 +80,7 @@ export class AgentTaskControlService {
     return {
       ...state,
       persistentStatus: authorization.taskStatus,
+      ...(authorization.mcpRunId === undefined ? {} : { mcpRunId: authorization.mcpRunId }),
       workflowProjection: reconcileWorkflowProjection(authorization, state)
     };
   }

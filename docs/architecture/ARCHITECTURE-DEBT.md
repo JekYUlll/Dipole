@@ -141,6 +141,8 @@
 
 ### 本轮进展
 
+- 2026-09-03：第一方只读 MCP 的 owner Task 读取已补齐 `mcp_run_id` 协议字段。Core 仅在持久化 `dipole-agent/shadow` Run 绑定正确且仍为 `running` 时返回该字段，TypeScript Runtime 将它透传到受认证 Task 状态；MCP bearer token、Gateway 可信头和 Core `ResolveMcpContext` 继续分别验证。真实 Remote GPU 客户端仍需使用该字段完成 `initialize -> tools/list -> tools/call` 证据，默认 profile 与写能力保持关闭。
+
 - 2026-09-03：第一方只读 MCP Server 已具备默认关闭的 `agent-mcp-server-shadow.yml` 组合入口，Runtime 与 Gateway 同时显式启用，外部 MCP、Memory、检索和写 Capability 保持关闭。该覆盖层仅增加 MCP 开关，避免叠加 Interactive Shadow 时覆盖 Task Control、Definition 与 Artifact；静态 Compose 同时覆盖单独和合成 profile。仍需在隔离 Remote GPU 候选上使用认证 MCP client 验证 running Task/Run 的 Context 绑定、JWT consent、限流和回滚，再将其表述为可体验 MCP 功能。
 
 - 2026-09-03：同版本 Remote GPU Interactive Shadow 候选暴露了干净工作树的 mTLS 启动前置缺口：仅提供不存在的 `DIPOLE_INTERNAL_CERT_DIR` 时，Docker 会将单文件 bind mount 变为目录，Core/Message 随后因证书读取失败重启。运行手册现固定先生成隔离开发 CA 与服务证书；这只修复候选可复现性，证书轮换、受管 PKI 与生产身份仍由部署治理处理。最新候选已用真实 DeepSeek V4 Flash 完成认证 Task 到持久 Run、模型审计与 Artifact 的只读闭环，外部 MCP、OAuth callback、写 Capability、共享观察窗口和成功率统计继续开放。

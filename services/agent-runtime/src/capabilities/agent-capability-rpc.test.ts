@@ -412,7 +412,7 @@ describe("AgentCapabilityRPCClient", () => {
       expect(input).toMatchObject({ taskId: "TASK-1", principalUserId: "U100" });
       expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
       callback(null, {
-        taskId: "TASK-1", taskStatus: "running", workflowId: "dipole-agent-task/TASK-1",
+        taskId: "TASK-1", taskStatus: "running", mcpRunId: "run:mcp-shadow-1", workflowId: "dipole-agent-task/TASK-1",
         workflowRunId: "temporal-run-1", workflowStatus: "waiting_approval", workflowRevision: 2n
       });
       return {};
@@ -562,7 +562,7 @@ describe("AgentCapabilityRPCClient", () => {
       { resourceType: "conversation", resourceId: "G1", actions: ["write"] }, "b".repeat(64), identity
     )).resolves.toMatchObject({ approvalId: "APR-1", nonceSha256: "c".repeat(64) });
     await expect(client.authorizeTaskControl("TASK-1", "U100", identity)).resolves.toEqual({
-      taskId: "TASK-1", taskStatus: "running",
+      taskId: "TASK-1", taskStatus: "running", mcpRunId: "run:mcp-shadow-1",
       workflow: {
         taskId: "TASK-1", workflowId: "dipole-agent-task/TASK-1", workflowRunId: "temporal-run-1",
         workflowStatus: "waiting_approval", workflowRevision: 2

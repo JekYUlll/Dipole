@@ -37,9 +37,10 @@ type AgentInvocationResolverV1 interface {
 }
 
 type AgentTaskControlAuthorizationV1 struct {
-	TaskUUID string
-	Status   AgentTaskStatusV1
-	Workflow *AgentTaskWorkflowProjectionV1
+	TaskUUID   string
+	Status     AgentTaskStatusV1
+	MCPRunUUID string
+	Workflow   *AgentTaskWorkflowProjectionV1
 }
 
 type AgentTaskControlAuthorizerV1 interface {

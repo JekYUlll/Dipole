@@ -477,7 +477,7 @@ func TestSearchConversationsRejectsClientPrincipalAndInvalidBounds(t *testing.T)
 
 func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	controls := &taskControlAuthorizerStub{result: application.AgentTaskControlAuthorizationV1{
-		TaskUUID: "TASK-1", Status: application.AgentTaskStatusWaitingApproval,
+		TaskUUID: "TASK-1", Status: application.AgentTaskStatusWaitingApproval, MCPRunUUID: "run:mcp-shadow-1",
 		Workflow: &application.AgentTaskWorkflowProjectionV1{WorkflowID: "dipole-agent-task/TASK-1", RunID: "temporal-run-1", Status: application.AgentTaskWorkflowStatusWaitingApproval, Revision: 2},
 	}}
 	server, err := NewServerWithControl(&capabilityStub{}, resolverStub{}, &admissionStub{}, &approvalServiceStub{}, controls)
@@ -487,7 +487,7 @@ func TestAuthorizeTaskControlUsesExplicitAuthenticatedPrincipal(t *testing.T) {
 	response, err := server.AuthorizeTaskControl(context.Background(), &agentv1.AuthorizeTaskControlRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", PrincipalUserId: "U100",
 	})
-	if err != nil || response.GetTaskId() != "TASK-1" || response.GetTaskStatus() != "waiting_approval" || response.GetWorkflowRevision() != 2 ||
+	if err != nil || response.GetTaskId() != "TASK-1" || response.GetTaskStatus() != "waiting_approval" || response.GetMcpRunId() != "run:mcp-shadow-1" || response.GetWorkflowRevision() != 2 ||
 		response.GetWorkflowStatus() != "waiting_approval" || controls.taskUUID != "TASK-1" || controls.principalUUID != "U100" {
 		t.Fatalf("unexpected authorization: response=%+v controls=%+v err=%v", response, controls, err)
 	}

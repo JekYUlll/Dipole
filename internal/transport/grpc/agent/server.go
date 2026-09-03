@@ -1223,7 +1223,7 @@ func (s *Server) AuthorizeTaskControl(ctx context.Context, request *agentv1.Auth
 		}
 		return nil, status.Error(codes.Internal, "Agent Task control authorization failed")
 	}
-	response := &agentv1.AuthorizeTaskControlResponse{TaskId: authorization.TaskUUID, TaskStatus: string(authorization.Status)}
+	response := &agentv1.AuthorizeTaskControlResponse{TaskId: authorization.TaskUUID, TaskStatus: string(authorization.Status), McpRunId: authorization.MCPRunUUID}
 	if authorization.Workflow != nil {
 		response.WorkflowId = authorization.Workflow.WorkflowID
 		response.WorkflowRunId = authorization.Workflow.RunID

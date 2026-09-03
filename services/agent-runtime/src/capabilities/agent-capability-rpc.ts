@@ -164,6 +164,7 @@ export interface ConversationSearchEvidenceResult {
 export interface AgentTaskControlAuthorization {
   readonly taskId: string;
   readonly taskStatus: string;
+  readonly mcpRunId?: string;
   readonly workflow?: AgentTaskWorkflowProjection;
 }
 
@@ -712,7 +713,10 @@ export class AgentCapabilityRPCClient {
           workflowStatus: response.workflowStatus,
           workflowRevision: safeRevision(response.workflowRevision)
         };
-        resolve({ taskId: response.taskId, taskStatus: response.taskStatus, ...(workflow === undefined ? {} : { workflow }) });
+        const mcpRunId = response.mcpRunId.trim();
+        resolve({ taskId: response.taskId, taskStatus: response.taskStatus,
+          ...(mcpRunId.length === 0 ? {} : { mcpRunId }),
+          ...(workflow === undefined ? {} : { workflow }) });
       });
     });
   }

@@ -625,6 +625,12 @@ export interface AuthorizeTaskControlResponse {
      * @generated from protobuf field: uint64 workflow_revision = 6
      */
     workflowRevision: bigint;
+    /**
+     * A currently executable dipole-agent shadow run for the owner-scoped MCP endpoint.
+     *
+     * @generated from protobuf field: string mcp_run_id = 7
+     */
+    mcpRunId: string;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.ListAgentTaskTimelineRequest
@@ -4922,7 +4928,8 @@ class AuthorizeTaskControlResponse$Type extends MessageType<AuthorizeTaskControl
             { no: 3, name: "workflow_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 4, name: "workflow_run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 5, name: "workflow_status", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 6, name: "workflow_revision", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ }
+            { no: 6, name: "workflow_revision", kind: "scalar", T: 4 /*ScalarType.UINT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 7, name: "mcp_run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<AuthorizeTaskControlResponse>): AuthorizeTaskControlResponse {
@@ -4933,6 +4940,7 @@ class AuthorizeTaskControlResponse$Type extends MessageType<AuthorizeTaskControl
         message.workflowRunId = "";
         message.workflowStatus = "";
         message.workflowRevision = 0n;
+        message.mcpRunId = "";
         if (value !== undefined)
             reflectionMergePartial<AuthorizeTaskControlResponse>(this, message, value);
         return message;
@@ -4959,6 +4967,9 @@ class AuthorizeTaskControlResponse$Type extends MessageType<AuthorizeTaskControl
                     break;
                 case /* uint64 workflow_revision */ 6:
                     message.workflowRevision = reader.uint64().toBigInt();
+                    break;
+                case /* string mcp_run_id */ 7:
+                    message.mcpRunId = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -4990,6 +5001,9 @@ class AuthorizeTaskControlResponse$Type extends MessageType<AuthorizeTaskControl
         /* uint64 workflow_revision = 6; */
         if (message.workflowRevision !== 0n)
             writer.tag(6, WireType.Varint).uint64(message.workflowRevision);
+        /* string mcp_run_id = 7; */
+        if (message.mcpRunId !== "")
+            writer.tag(7, WireType.LengthDelimited).string(message.mcpRunId);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
