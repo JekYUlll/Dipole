@@ -103,7 +103,12 @@ overlay。模型凭据继续仅由候选 `.env` 托管；不要将其写入命�
 ```bash
 export DIPOLE_PROJECT=dipole-agent-<your-id>
 export DIPOLE_AGENT_IMAGE="dipole-agent:${IMAGE_TAG}"
-export DIPOLE_INTERNAL_CERT_DIR=/home/admin1/workspaces/Dipole/certs/internal
+export DIPOLE_INTERNAL_CERT_DIR="${DIPOLE_ROOT}/.runtime/${DIPOLE_PROJECT}/internal-certs"
+
+# Each isolated Compose project needs real files for these file mounts. Generate
+# a short-lived development CA before Docker renders the service volumes.
+mkdir -p "${DIPOLE_INTERNAL_CERT_DIR}"
+INTERNAL_CERT_DIR="${DIPOLE_INTERNAL_CERT_DIR}" scripts/generate-internal-certs.sh
 
 docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
   -f deploy/compose/docker-compose.microservices.yml \

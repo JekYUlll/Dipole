@@ -135,6 +135,8 @@
 
 ### 本轮进展
 
+- 2026-09-03：同版本 Remote GPU Interactive Shadow 候选暴露了干净工作树的 mTLS 启动前置缺口：仅提供不存在的 `DIPOLE_INTERNAL_CERT_DIR` 时，Docker 会将单文件 bind mount 变为目录，Core/Message 随后因证书读取失败重启。运行手册现固定先生成隔离开发 CA 与服务证书；这只修复候选可复现性，证书轮换、受管 PKI 与生产身份仍由部署治理处理。最新候选已用真实 DeepSeek V4 Flash 完成认证 Task 到持久 Run、模型审计与 Artifact 的只读闭环，外部 MCP、OAuth callback、写 Capability、共享观察窗口和成功率统计继续开放。
+
 - 2026-09-01：Remote GPU 已在 `f0dcf98a` 运行并归档 [Approval v2 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)。denied grant、consumed grant replay 与 failed-operation replay 都被拒绝，三类路径均未产生新增 effect；同次 MCP drill 继续验证本地 Tool/Artifact、EventLedger 去重、过期 readiness 与 mTLS identity denial。审批 UI、共享服务、真实外部 MCP、凭据生命周期与 active authority 继续开放。
 
 - 2026-09-01：Approval gate drill receipt 升级为 v2，将已拒绝 grant、已消费 grant 重放和失败操作后的重放作为独立布尔断言，并继续绑定相应的零副作用计数。v1 保留为历史 evidence；v2 Remote GPU receipt、审批 UI 与共享环境验证仍待完成。

@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：Remote GPU 的最新 `master` Agent Interactive Shadow 候选完成真实体验闭环。
+  - 同一 revision 的 Core、Gateway、Message、Sync 与 TypeScript Agent Runtime 在独立 Compose 项目中全部通过健康检查；认证用户可创建只读 Task，经 Gateway、Temporal 和 DeepSeek V4 Flash 执行后得到 `completed` Run、一次已完成模型调用和一份 `conversation_digest` Artifact。
+  - 候选启动文档补充了隔离 mTLS 证书生成步骤。干净工作树若仅设置证书目录，Docker 会把缺失的文件挂载点创建为目录，导致 Core 与 Message 无法加载证书；现在先通过 `generate-internal-certs.sh` 生成受限开发证书再渲染 Compose。
+  - 本次验证保持 `shadow + read_shadow`，消息写入、外部 MCP、OAuth callback、Memory 写入与 active authority 未开启；公共入口和模型凭据均不进入仓库记录。
+
 - 2026-09-03：Subscription Auto-Reply 的 Definition 已可由认证用户通过公开 API 显式创建。
   - `POST /api/v1/agent/definitions` 支持可选 `{ "profile": "subscription_autoreply" }`，生成确定性的 owner-scoped Definition，仅含 `conversation.read`、`message.write` 与直属 Agent 会话所需的 wildcard conversation scope；省略 profile 或传入 `read_only` 继续保持原只读模板。
   - 未知 profile、跨 owner 访问及任意自定义权限仍由 Gateway/Core 拒绝。自动回复 Compose smoke 也改为调用该 API，不再直接修改 Definition 权限。
