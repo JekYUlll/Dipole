@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：为隔离 Web Sync observability smoke 增加受限启动时限。
+  - `scripts/smoke-web-sync-observability.sh` 以 `DIPOLE_WEB_SYNC_OBSERVABILITY_STARTUP_TIMEOUT_SECONDS` 约束仅限隔离 Compose 的 `up --wait`，默认 300 秒，接受 30 至 1800 秒；缺少 `timeout` 或非法值会在启动任何服务前失败。
+  - 此改动来自 Remote GPU 首次拉取观测镜像的下载阻塞。清理 trap、回环端口与默认客户端模式保持不变；超时只终止本次隔离 smoke，不作为真实客户端 24 小时观察或 Cassandra 切流证据。
+
 - 2026-09-04：复验当前主线的 Agent Interactive Active 隔离闭环。
   - Remote GPU 在 `a3fc9c45` 以独立 Compose 项目运行 deterministic `/send` smoke；全部服务健康后，owner WebSocket 收到等待定位，拒绝路径保持零副作用，Worker 重启后的重复批准收敛为一次 Tool invocation、一条消息与两条 Sync Inbox 投影。
   - 同一 revision 的 TypeScript Agent Runtime 已在 Node 22.18.0 环境通过 typecheck 与 `162` 个测试文件、`858` 项测试；外部依赖集成用例继续按显式条件跳过。

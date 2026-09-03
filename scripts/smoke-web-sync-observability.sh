@@ -13,6 +13,16 @@ ALERTMANAGER_PORT="${DIPOLE_ALERTMANAGER_PORT:-9093}"
 GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:${GATEWAY_PORT}}"
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://127.0.0.1:${PROMETHEUS_PORT}}"
 ALERTMANAGER_URL="${ALERTMANAGER_URL:-http://127.0.0.1:${ALERTMANAGER_PORT}}"
+startup_timeout_seconds="${DIPOLE_WEB_SYNC_OBSERVABILITY_STARTUP_TIMEOUT_SECONDS:-300}"
+
+if ! [[ "${startup_timeout_seconds}" =~ ^[0-9]+$ ]] || (( startup_timeout_seconds < 30 || startup_timeout_seconds > 1800 )); then
+  echo "Web Sync observability startup timeout must be between 30 and 1800 seconds" >&2
+  exit 2
+fi
+if ! command -v timeout >/dev/null 2>&1; then
+  echo "Web Sync observability smoke requires the timeout command" >&2
+  exit 2
+fi
 
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
@@ -34,7 +44,7 @@ trap cleanup EXIT
 "${SCRIPT_DIR}/check-dev-host.sh" "${DIPOLE_HOST_PROFILE:-remote-gpu}"
 "${SCRIPT_DIR}/generate-internal-certs.sh"
 compose --profile observability config --quiet
-compose --profile observability up -d --wait gateway prometheus alertmanager
+timeout --preserve-status "${startup_timeout_seconds}s" docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" --profile observability up -d --wait gateway prometheus alertmanager
 
 for _ in $(seq 1 30); do
   if curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/-/ready" >/dev/null 2>&1; then

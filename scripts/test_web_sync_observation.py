@@ -64,6 +64,13 @@ def clean_archive():
 
 
 class WebSyncObservationTest(unittest.TestCase):
+    def test_observability_smoke_bounds_isolated_compose_startup(self):
+        smoke = Path("scripts/smoke-web-sync-observability.sh").read_text(encoding="utf-8")
+        self.assertIn('DIPOLE_WEB_SYNC_OBSERVABILITY_STARTUP_TIMEOUT_SECONDS', smoke)
+        self.assertIn('command -v timeout', smoke)
+        self.assertIn('timeout --preserve-status "${startup_timeout_seconds}s" docker compose', smoke)
+        self.assertIn('startup timeout must be between 30 and 1800 seconds', smoke)
+
     def test_language_neutral_contracts_are_strict_and_versioned(self):
         root = Path("contracts/web-sync-observation/v1")
         session_schema = json.loads((root / "session.schema.json").read_text(encoding="utf-8"))
