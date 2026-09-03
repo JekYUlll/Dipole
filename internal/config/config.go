@@ -175,6 +175,7 @@ type InternalRPC struct {
 	AgentConversationSearchEnabled                   bool   `mapstructure:"agent_conversation_search_enabled"`
 	AgentMemoryPromotionReceiptCommitEnabled         bool   `mapstructure:"agent_memory_promotion_receipt_commit_enabled"`
 	AgentOAuthAuthorizationTransactionConsumeEnabled bool   `mapstructure:"agent_oauth_authorization_transaction_consume_enabled"`
+	AgentWorkflowRepairExecuteEnabled                bool   `mapstructure:"agent_workflow_repair_execute_enabled"`
 	DeliveryObservationEnabled                       bool   `mapstructure:"delivery_observation_enabled"`
 	DeliveryObservationListenAddress                 string `mapstructure:"delivery_observation_listen_address"`
 	DeliveryObservationCapacity                      int    `mapstructure:"delivery_observation_capacity"`
@@ -465,6 +466,7 @@ func Load() error {
 		v.SetDefault("internal_rpc.sync_listen_address", "127.0.0.1:9094")
 		v.SetDefault("internal_rpc.sync_target", "127.0.0.1:9094")
 		v.SetDefault("internal_rpc.agent_memory_promotion_receipt_commit_enabled", false)
+		v.SetDefault("internal_rpc.agent_workflow_repair_execute_enabled", false)
 		v.SetDefault("internal_rpc.delivery_observation_enabled", false)
 		v.SetDefault("internal_rpc.delivery_observation_listen_address", "127.0.0.1:9095")
 		v.SetDefault("internal_rpc.delivery_observation_capacity", 1024)
@@ -660,6 +662,7 @@ func Load() error {
 			"internal_rpc.sync_listen_address",
 			"internal_rpc.sync_target",
 			"internal_rpc.agent_memory_promotion_receipt_commit_enabled",
+			"internal_rpc.agent_workflow_repair_execute_enabled",
 			"internal_rpc.delivery_observation_enabled",
 			"internal_rpc.delivery_observation_listen_address",
 			"internal_rpc.delivery_observation_capacity",
@@ -1065,6 +1068,7 @@ func InternalRPCConfig() InternalRPC {
 	internalRPC.AgentConversationSearchEnabled = cfg.GetBool("internal_rpc.agent_conversation_search_enabled")
 	internalRPC.AgentMemoryPromotionReceiptCommitEnabled = cfg.GetBool("internal_rpc.agent_memory_promotion_receipt_commit_enabled")
 	internalRPC.AgentOAuthAuthorizationTransactionConsumeEnabled = cfg.GetBool("internal_rpc.agent_oauth_authorization_transaction_consume_enabled")
+	internalRPC.AgentWorkflowRepairExecuteEnabled = cfg.GetBool("internal_rpc.agent_workflow_repair_execute_enabled")
 	internalRPC.DeliveryObservationEnabled = cfg.GetBool("internal_rpc.delivery_observation_enabled")
 	internalRPC.DeliveryObservationListenAddress = strings.TrimSpace(cfg.GetString("internal_rpc.delivery_observation_listen_address"))
 	internalRPC.DeliveryObservationCapacity = cfg.GetInt("internal_rpc.delivery_observation_capacity")

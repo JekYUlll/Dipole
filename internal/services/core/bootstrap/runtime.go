@@ -277,6 +277,23 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("configure standalone Agent Message Command rpc adapter: %w", composeErr)
 		}
+		if rpcCfg.AgentWorkflowRepairExecuteEnabled {
+			if !rpcCfg.TLSEnabled {
+				cleanup()
+				return nil, fmt.Errorf("Agent Workflow repair execute requires internal RPC mTLS")
+			}
+			workflowRepairExecutor, composeErr := agentapplication.NewPersistentAgentWorkflowRepairExecutorV1(
+				agentRepos.Policy, agentRepos.Repairs, agentRepos.RepairExecutions, agentRepos.RepairTransactions,
+			)
+			if composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose standalone Agent Workflow repair executor: %w", composeErr)
+			}
+			if _, composeErr = agentServer.WithWorkflowRepairExecutor(workflowRepairExecutor); composeErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("configure standalone Agent Workflow repair executor rpc adapter: %w", composeErr)
+			}
+		}
 		storageCfg := config.StorageConfig()
 		if storageCfg.ArtifactEnabled {
 			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{

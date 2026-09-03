@@ -14,9 +14,8 @@ const (
 	repairFailureCommitV1       = "projection_commit_failed"
 )
 
-// PersistentAgentWorkflowRepairExecutorV1 is deliberately not exposed by a
-// transport yet. It provides the application seam for a future operator-only
-// command while keeping authorization and mutation in one controlled flow.
+// PersistentAgentWorkflowRepairExecutorV1 is the operator-only execute/rollback
+// seam. Core injects it only when the default-off execute flag is on.
 type PersistentAgentWorkflowRepairExecutorV1 struct {
 	policies    application.AgentPolicyStoreV1
 	repairs     application.AgentWorkflowRepairAuditStoreV1

@@ -29,6 +29,7 @@ var _ application.AgentRuntimePromotionGrantStoreV1 = (*AgentPolicyRepository)(n
 var _ application.AgentEventSubscriptionStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentWorkflowRepairAuditStoreV1 = (*AgentPolicyRepository)(nil)
 var _ application.AgentWorkflowRepairExecutionStoreV1 = (*AgentPolicyRepository)(nil)
+var _ application.AgentWorkflowRepairTransactionalStoreV1 = (*AgentPolicyRepository)(nil)
 
 func NewAgentPolicyRepository(queries generated.Querier) (*AgentPolicyRepository, error) {
 	if queries == nil {
@@ -481,7 +482,7 @@ func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.A
 		_, err := q.InsertAgentRun(ctx, generated.InsertAgentRunParams{
 			RunUuid: run.RunUUID, TaskUuid: run.TaskUUID, RuntimeID: run.RuntimeID,
 			CandidateVersion: sql.NullString{String: run.CandidateVersion, Valid: run.CandidateVersion != ""},
-			TraceID: sql.NullString{String: run.TraceID, Valid: run.TraceID != ""}, Mode: run.Mode,
+			TraceID:          sql.NullString{String: run.TraceID, Valid: run.TraceID != ""}, Mode: run.Mode,
 		})
 		if err == nil {
 			_, err = appendAgentTaskTimelineEvent(ctx, q, timelineEvent(run.TaskUUID, run.RunUUID, application.AgentTaskTimelineEventRun, string(application.AgentRunStatusRunning)))

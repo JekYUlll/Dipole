@@ -1398,6 +1398,32 @@ func TestWorkflowRepairExecutionRPCIsOptInAndGatewayBound(t *testing.T) {
 	}
 }
 
+func TestWorkflowRepairExecutionRPCUsesInjectedExecutor(t *testing.T) {
+	execution := &application.AgentWorkflowRepairExecutionV1{
+		ExecutionUUID: "repair-execution:" + strings.Repeat("a", 64), PlanID: "repair-plan:" + strings.Repeat("b", 64),
+		ProposalUUID: "repair:" + strings.Repeat("c", 64), TaskUUID: "TASK-1", ExecutorUUID: "U-OPS",
+		ExecutorGrantVersion: 7, TargetSHA256: strings.Repeat("d", 64), Status: application.AgentWorkflowRepairExecutionStatusCommitted,
+	}
+	executor := &workflowRepairExecutorStub{execution: execution}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithWorkflowRepairExecutor(executor); err != nil {
+		t.Fatalf("inject executor: %v", err)
+	}
+	request := &agentv1.ExecuteWorkflowRepairRequest{
+		Context: grpccommon.RequestContext("U-OPS", "dipole-gateway"), ExecutionId: execution.ExecutionUUID, TaskId: "TASK-1",
+	}
+	response, err := invokeAuthenticatedAgentRPC(t, "dipole-gateway", func(ctx context.Context) (any, error) {
+		return server.ExecuteWorkflowRepair(ctx, request)
+	})
+	if err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	got := response.(*agentv1.WorkflowRepairExecutionResponse)
+	if got.GetExecutionId() != execution.ExecutionUUID || got.GetStatus() != "committed" || executor.executor != "U-OPS" {
+		t.Fatalf("response=%+v executor=%s", got, executor.executor)
+	}
+}
+
 func TestRuntimePromotionControlRPCUsesAuthenticatedGatewayPrincipal(t *testing.T) {
 	controls := &runtimePromotionControlServiceStub{proposal: &application.AgentRuntimePromotionProposalV1{ProposalUUID: strings.Repeat("a", 64), TenantID: "dipole", RuntimeID: "dipole-agent", CandidateVersion: "candidate-v1", DefinitionUUID: "DEF-1", DefinitionVersion: 1, EvidenceArtifactUUID: strings.Repeat("1", 64), EvidenceSHA256: strings.Repeat("2", 64), EvalSuiteSHA256: strings.Repeat("3", 64), ProposerUUID: "U-OPS", Status: application.AgentRuntimePromotionProposalProposed, ProposedAt: time.Unix(1, 0), ExpiresAt: time.Unix(2, 0), GrantValidFrom: time.Unix(1, 0), GrantExpiresAt: time.Unix(3, 0)}}
 	evidence := &runtimePromotionEvidenceServiceStub{review: &application.AgentRuntimePromotionEvidenceReviewV1{
@@ -1661,4 +1687,19 @@ func (s *workflowRepairAuditServiceStub) Decide(_ context.Context, operator, _ s
 func (s *workflowRepairAuditServiceStub) Get(_ context.Context, operator, _ string) (*application.AgentWorkflowRepairProposalV1, error) {
 	s.operator = operator
 	return s.proposal, nil
+}
+
+type workflowRepairExecutorStub struct {
+	execution *application.AgentWorkflowRepairExecutionV1
+	executor  string
+}
+
+func (s *workflowRepairExecutorStub) Execute(_ context.Context, request application.AgentWorkflowRepairExecuteRequestV1) (*application.AgentWorkflowRepairExecutionV1, error) {
+	s.executor = request.ExecutorUUID
+	return s.execution, nil
+}
+
+func (s *workflowRepairExecutorStub) Rollback(_ context.Context, request application.AgentWorkflowRepairRollbackRequestV1) (*application.AgentWorkflowRepairExecutionV1, error) {
+	s.executor = request.ExecutorUUID
+	return s.execution, nil
 }

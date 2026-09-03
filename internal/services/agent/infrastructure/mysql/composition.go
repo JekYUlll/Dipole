@@ -23,6 +23,8 @@ type ProcessRepositories struct {
 	ReadinessEvidence     application.AgentMCPReadinessEvidenceStoreV1
 	Subscriptions         application.AgentEventSubscriptionStoreV1
 	Repairs               application.AgentWorkflowRepairAuditStoreV1
+	RepairExecutions      application.AgentWorkflowRepairExecutionStoreV1
+	RepairTransactions    application.AgentWorkflowRepairTransactionalStoreV1
 	Artifacts             application.AgentArtifactStoreV1
 	Memories              application.AgentMemoryStoreV1
 	MemoryOwners          application.AgentMemoryOwnerStoreV1
@@ -85,7 +87,7 @@ func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
 	return &ProcessRepositories{
 		AICallLogs: aiCallLogs, Policy: policy, TaskTimeline: policy,
 		DefinitionCatalog: policy, ApprovalGrants: policy, Promotions: policy,
-		Subscriptions: policy, Repairs: policy, Artifacts: artifacts,
+		Subscriptions: policy, Repairs: policy, RepairExecutions: policy, RepairTransactions: policy, Artifacts: artifacts,
 		Memories: memories, MemoryOwners: memories, MemoryPromotions: memories,
 		ToolAudits: toolAudits, ToolRounds: toolRounds, OAuthTransactions: oauthTransactions, OAuthCallbackHandoffs: oauthCallbackHandoffs,
 		PromotionControls: promotionControls, ReadinessEvidence: readinessEvidence,

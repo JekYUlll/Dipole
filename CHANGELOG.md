@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：整理「已实现但未启用」清单，并把 Workflow Repair Execute 接到默认关的生产启动链。
+  - 台账：`docs/notes/implemented-but-disabled.md`。默认拓扑仍是 Shadow + 写能力全关；可 opt-in 的 Agent/存储/前端面与真正缺接线项（MCP Elicitation 生产 Activity）分开列。
+  - Workflow Repair：`PersistentAgentWorkflowRepairExecutorV1` 与 Gateway-only Execute/Rollback RPC 早已齐，但启动链从不调用 `WithWorkflowRepairExecutor`，生产永远 `Unavailable`。现用 `internal_rpc.agent_workflow_repair_execute_enabled`（默认 `false`，env `DIPOLE_INTERNAL_RPC_AGENT_WORKFLOW_REPAIR_EXECUTE_ENABLED`）在 standalone/embedded Core 注入执行器；开启必须 mTLS。仓库组合补齐 `RepairExecutions`/`RepairTransactions`。默认 Compose 钉死 `false`，opt-in overlay `deploy/microservices/agent-workflow-repair-execute.yml` 只翻这一项。
+  - 共享环境、operator grant 再授权、故障演练仍关。不改默认路径。
+
 - 2026-09-03：修复 MCP Shadow 与 Interactive Shadow 的 Compose 组合冲突。
   - MCP 覆盖层改为增量开启第一方只读 MCP 面，不再覆写上游的 Task Control、Definition 和 Artifact 开关；单独加载仍由基础 Compose 保持这些面关闭。
   - `check-compose.sh` 新增两层 profile 的合成断言，防止 Gateway 暴露 Definition 路由却未装配对应 Core client 而返回 `500`。Remote GPU 认证 MCP client 验收继续进行。

@@ -1,5 +1,9 @@
 # 架构债务台账
 
+- 2026-09-03：已实现但未启用的能力收成台账，并补上 Workflow Repair Execute 的生产启动接线（仍默认关）。
+  - 台账：`docs/notes/implemented-but-disabled.md`。Agent 主线多数是 overlay 可 opt-in、卡观察窗口；真正缺接线的剩 MCP Elicitation 生产 Activity（AD-036）。
+  - Repair Execute：Core 新增默认关 `agent_workflow_repair_execute_enabled`，standalone/embedded 在 mTLS 下注入已有 `PersistentAgentWorkflowRepairExecutorV1`。未开仍返回 `Unavailable`。operator grant、共享环境故障演练、Vue 恢复界面继续由 AD-009 跟踪，禁止当默认生产开关。
+
 - 2026-09-03：Subscription Auto-Reply 的 owner Definition 已从 Compose smoke 专用 SQL 升级为公开、认证的 profile 契约。Gateway 仅转发固定 `subscription_autoreply` profile，Core 从可信 owner/tenant/Agent identity 构造确定性 Definition，并固定 `conversation.read + message.write` 与 wildcard conversation `read + write` scope；空 profile 和 `read_only` 保持既有只读行为，未知 profile fail closed。隔离 smoke 通过 API 创建该 Definition，后续 Remote GPU 回归需继续验证其跨服务持久化和一次回复副作用；共享环境启用仍需 AD-034 的 reviewed 观察窗口。
 
 - 2026-09-03：Subscription Auto-Reply 的 activity 重试幂等已落地，AD-034 该项收尾。
@@ -1341,7 +1345,7 @@
 - **本轮进展：** read Activity 已从单步扩展为「发现 + owner 确认读取」两步，首次让持久 `waiting_input` 出现在真实读取路径上：暂停发生在 claim 读取 Step 之前，恢复由确定性 request ID、checkpoint 候选集合与 Core 授权三重约束。到期沿用既有 `input_expired` 定时器，无新增状态。Remote GPU 候选 `aec1b867` 已归档由生产 read Activity 驱动的 approve/deny/expire 三份 receipt：确认路径在伪造 request 被拒绝后只读取被确认的会话，拒绝与到期路径的会话读取计数为零。共享环境窗口、该路径的 outcome/trajectory/permission 评测和多于一对 discovery 的编排仍未完成。
 - **本轮进展：** `interactive_active` 已在干净同版本、loopback-only 的 Remote GPU Compose 内完成真实 Core/Message/Temporal 回执：owner deny 重放无 Tool/Message，owner approve 重放精确收敛为一次 approval consume、一次完成 Tool/action reference 与一条 Message。测试开发 grant 已撤销，完整范围与排除项见 [Interactive Active Remote Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-REMOTE-RECEIPT.md)。这不替代 Shared 环境、浏览器 HITL、故障恢复、部分副作用回滚、MCP、性能和成功率门禁。
 - **本轮进展：** `subscription_active` 也已在干净同版本的 Remote GPU Compose 中验证真实 Gateway、Kafka、Temporal 和只读 Active capability 串联：owner 事件只创建一个完成 Task 和一次模型调用，Agent 发送消息为零，临时 grant 已撤销。该开发期收据只覆盖固定订阅与 loopback model；共享事件窗口、Provider、评测、MCP、Memory、性能和默认 authority 仍是 AD-009 的开放门槛。
-- **风险：** v24 projection 保持 shadow 观察属性，尚未接管原 `agent_tasks.status`；当前 `read_shadow` 只允许 `conversation.list`，也没有 Memory 或真实任务终态 outcome Eval。v25 的 `approved` 只保存审计结论；execution plan v1 仍只允许带 CAS/回滚证据的 dry-run，应用 Executor 已具备 commit/rollback 语义但尚未接入公开控制面、生产启动链和共享环境。操作员授权仍需要受控 SQL 配置，Temporal Worker 停止时 Query 会归类为 unavailable。eligible 决策不能自动切换 active。
+- **风险：** v24 projection 保持 shadow 观察属性，尚未接管原 `agent_tasks.status`；当前 `read_shadow` 只允许 `conversation.list`，也没有 Memory 或真实任务终态 outcome Eval。v25 的 `approved` 只保存审计结论；execution plan v1 仍只允许带 CAS/回滚证据的 dry-run。应用 Executor 已接入默认关的生产启动链（`agent_workflow_repair_execute_enabled`，需 mTLS），共享环境故障演练与 operator 再授权仍关。操作员授权仍需要受控 SQL 配置，Temporal Worker 停止时 Query 会归类为 unavailable。eligible 决策不能自动切换 active。
 - **基线证据：** 真实 Temporal Server 已验证 admission/Approval 历史恢复、单调 revision 投影、取消投影、完成态 Query/Describe 对账和 Activity 丢失完成 ACK 后的模型/Step 重放；真实 MySQL 8.4 已验证 v25 全链升降级、16 路同审批人重放仅一票、两位独立审批后批准，以及原 projection 并发与 shadow cohort keyset 契约。TypeScript/Go canonical evidence SHA-256 使用黄金向量对齐；gRPC 测试验证 Gateway principal 绑定和 Agent 最小权限拒绝。Kafka Shadow 与 Go/Eino 权威业务路径保持不变。
 - **建议方向：** canonical Pencil 已维护 Repair evidence review、六态审计矩阵和 desktop/mobile 双人审批边界；下一步为 Executor 增加公开控制面前的 operator 再授权、共享环境故障注入和审计 receipt，再按该契约实现 Vue 恢复界面。完成真实 outcome/trajectory/permission Eval 证据后才评审权威 Task 与回复流量迁移。
 - **处理门槛：** 上线 Durable Task 或 Event-driven Agent 前完成。

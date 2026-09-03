@@ -38,6 +38,23 @@ func TestCoreRuntimeKeepsOAuthCallbackConsumptionExplicitAndMTLSBound(t *testing
 	}
 }
 
+func TestCoreRuntimeKeepsWorkflowRepairExecuteExplicitAndMTLSBound(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("runtime.go"))
+	if err != nil {
+		t.Fatalf("read Core runtime: %v", err)
+	}
+	text := string(source)
+	if !strings.Contains(text, "rpcCfg.AgentWorkflowRepairExecuteEnabled") {
+		t.Fatal("Core Workflow repair executor injection must require an explicit gate")
+	}
+	if !strings.Contains(text, "Agent Workflow repair execute requires internal RPC mTLS") {
+		t.Fatal("Core Workflow repair executor injection must require mTLS")
+	}
+	if !strings.Contains(text, "WithWorkflowRepairExecutor") {
+		t.Fatal("Core must inject the Workflow repair executor into the Agent adapter")
+	}
+}
+
 func TestCoreRuntimeComposesAgentDefinitionAndSubscriptionControlPlane(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("runtime.go"))
 	if err != nil {

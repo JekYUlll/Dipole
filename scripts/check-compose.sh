@@ -103,6 +103,7 @@ jq -e '
   and .services.core.environment.DIPOLE_AI_ENABLED == "true"
   and .services.core.environment.DIPOLE_AI_RUNTIME_MODE == "remote"
   and .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_CONVERSATION_SEARCH_ENABLED == "false"
+  and .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_WORKFLOW_REPAIR_EXECUTE_ENABLED == "false"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "false"

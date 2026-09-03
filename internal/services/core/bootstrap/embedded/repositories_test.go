@@ -46,6 +46,12 @@ func TestNewAgentProcessRepositoriesOwnsAgentStores(t *testing.T) {
 	if _, ok := repos.Policy.(*agentmysql.AgentPolicyRepository); !ok {
 		t.Fatalf("expected sqlc Agent Policy repository, got %T", repos.Policy)
 	}
+	if _, ok := repos.RepairExecutions.(*agentmysql.AgentPolicyRepository); !ok {
+		t.Fatalf("expected sqlc Agent Policy repository for repair executions, got %T", repos.RepairExecutions)
+	}
+	if _, ok := repos.RepairTransactions.(*agentmysql.AgentPolicyRepository); !ok {
+		t.Fatalf("expected sqlc Agent Policy repository for repair transactions, got %T", repos.RepairTransactions)
+	}
 	if _, ok := repos.Artifacts.(*agentmysql.AgentArtifactRepository); !ok {
 		t.Fatalf("expected sqlc Agent Artifact repository, got %T", repos.Artifacts)
 	}

@@ -1,0 +1,5 @@
+services:
+  core:
+    environment:
+      # Default-off operator execute/rollback. Requires mTLS (already on in this stack).
+      DIPOLE_INTERNAL_RPC_AGENT_WORKFLOW_REPAIR_EXECUTE_ENABLED: "true"
