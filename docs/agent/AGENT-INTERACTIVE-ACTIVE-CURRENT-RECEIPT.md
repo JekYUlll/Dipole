@@ -1,5 +1,25 @@
 # Agent Interactive Active Current Receipt
 
+## Current Mainline Revalidation (2026-09-04)
+
+Remote GPU reran the deterministic `interactive_active` Compose smoke at
+`4d48a9d3`. This revision only changes the isolated Web Sync observability
+smoke startup bound; the Agent Runtime and Go service sources are unchanged
+from the preceding Agent acceptance revision. The run therefore reused the
+matching cached service images in a new, isolated Compose project and did not
+modify the public `dipole-experience` deployment.
+
+The smoke exited with status `0`. It again verified the owner WebSocket
+waiting locator, denial with zero durable effects, and a Worker restart before
+duplicate approval. The approval replay converged to exactly one Tool
+invocation, one Agent message, and two Sync Inbox entries. Cleanup left no
+containers for the isolated project; the public development project remained
+at eleven healthy containers.
+
+This is a repeatable development acceptance receipt. Default public Agent
+authority, browser Human-in-the-loop, external OAuth/MCP writes, capacity, and
+success-rate claims remain outside its scope.
+
 ## Same-Revision Isolated Acceptance (2026-09-04)
 
 Remote GPU reran the deterministic `interactive_active` Compose smoke from

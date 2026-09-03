@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：复跑当前主线的 Agent Interactive Active 隔离验收。
+  - Remote GPU 在 `4d48a9d3` 的全新隔离 Compose project 中复验 `/send`：owner WebSocket 收到等待定位，拒绝路径保持零副作用，Worker 重启后的重复批准精确收敛为一次 Tool invocation、一条 Agent 消息与两条 Sync Inbox 投影，smoke 退出码为 `0`。
+  - 验收清理后无该隔离项目容器，公共 `dipole-experience` 保持 11 个健康容器。该回执只覆盖开发期窄写入闭环，默认公开 authority、浏览器审批、外部 OAuth/MCP 写入与性能结论继续关闭。
+
 - 2026-09-04：为隔离 Web Sync observability smoke 增加受限启动时限。
   - `scripts/smoke-web-sync-observability.sh` 以 `DIPOLE_WEB_SYNC_OBSERVABILITY_STARTUP_TIMEOUT_SECONDS` 约束仅限隔离 Compose 的 `up --wait`，默认 300 秒，接受 30 至 1800 秒；缺少 `timeout` 或非法值会在启动任何服务前失败。
   - 此改动来自 Remote GPU 首次拉取观测镜像的下载阻塞。清理 trap、回环端口与默认客户端模式保持不变；超时只终止本次隔离 smoke，不作为真实客户端 24 小时观察或 Cassandra 切流证据。

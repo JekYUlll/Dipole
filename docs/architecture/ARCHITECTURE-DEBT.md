@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：当前主线 `4d48a9d3` 已在全新、隔离的 Agent Interactive Active Compose project 复跑确定性 `/send` 验收并以 `0` 退出：owner WebSocket 收到 waiting locator，拒绝无持久副作用，Worker 重启后的重复批准仅产生一次 Tool invocation、一条 Agent 消息和两条 Sync Inbox 投影。验收容器已清理，公共 `dipole-experience` 仍为 11 个健康容器。该证据仅覆盖开发期窄写入路径；默认公开 authority、浏览器 HITL、外部 OAuth/MCP 写入、共享租户、容量和任务成功率仍未成立。
+
 - 2026-09-04：Remote GPU 隔离 Web Sync observability smoke 在首次拉取 Prometheus 镜像时出现无进度下载，公共 `dipole-experience` 未受影响且隔离 project 已清理。smoke 现将 `up --wait` 限定为 30 至 1800 秒的可配置时限，默认 300 秒；超时只结束本次隔离验收并执行既有清理，不修改 Docker daemon、入口隧道、公共 Compose project 或客户端默认模式。该治理减少验证任务长期占用，Prometheus/Alertmanager 完整 smoke 与真实 24 小时观察窗口仍待可用镜像源和独立运行证据。
 
 - 2026-09-03：Gateway 已拥有 Sync HTTP handler，独立进程不再通过共享 `internal/gateway/http` 装配 `/sync`、设备与群 checkpoint、comparison 路由。Core embedded 仍使用共享 handler 作为本地回滚兼容层；Message、Core 资源域 handler 的同类迁移需按域切片，不能在未完成 Web Sync 观察窗口时删除旧 Offline 兼容 API。
