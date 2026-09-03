@@ -11,6 +11,7 @@
 - 2026-09-04：Subscription Active 的真实 Provider 隔离回执已在 `052d60c7` 通过。单一 owner-scoped Kafka 事件收敛为单一 completed Durable Task，任务内出现一轮或多轮 completed model run 均被记录为合法执行，且 Agent 消息表保持零写入；项目自动清理后公共 `dipole-experience` 为 11 个健康容器。该受控 read-only 场景没有覆盖多样本质量、共享环境、自动写入或默认启用，相关门禁继续保持关闭。
 
 - 2026-09-04：Interactive Active Compose smoke 的默认 read-only Definition 断言已从 JSON 数组首项比较改为验证 `conversation.list`、`conversation.read` 与对应 scope action 的集合存在性。此前 profile 正确返回 `conversation.list` 为首项时会被误报为失败；该修复不扩张 Definition 权限、Active 写入范围或默认开关。
+  - 同 revision `1504dd0f` 已在 Remote GPU 的全新隔离 Compose project 复验通过：owner WebSocket waiting locator、拒绝零副作用、Agent Worker 重启后的重复批准幂等，以及一次 Tool invocation、一条 Agent 消息和两条 Sync Inbox 投影均成立。退出码为 `0`，隔离容器为零，公共 `dipole-experience` 仍为 11 个健康容器；该回执仅覆盖开发期受控写入闭环。
 
 - 2026-09-04：Interactive Shadow Compose smoke 已在 `bdacc817` 完成真实权限内的只读两步轨迹：认证 owner 的 Gateway Task 幂等、跨 owner 查询拒绝、`conversation.list → conversation.read`、Task/Run completed 与零 Agent 消息写入均由桩模型和真实 DeepSeek Provider 验证；Provider 又在 3 个独立隔离 Remote GPU project 顺序重复通过，容器均已清理，公共 `dipole-experience` 为 11 个健康容器。多会话选择与 `waiting_input` 的持久化恢复仍由 Temporal 集成回归和既有 read-scope receipt 覆盖；当前窗口固定为同一受控场景，仍需多场景固定样本和人工评审后才能提出质量或成功率结论。
 

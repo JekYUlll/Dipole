@@ -2,6 +2,7 @@
 
 - 2026-09-04：修正 Interactive Agent Active smoke 对默认只读 Definition 的能力校验。
   - Smoke 现验证 `conversation.list`、`conversation.read` 与对应 conversation scope action 均存在，不再依赖 JSON 数组首项顺序；任务创建、审批和消息投影验收可继续覆盖当前 Definition profile。
+  - Remote GPU 在 `1504dd0f` 的全新隔离 Compose project 以退出码 `0` 完成复验：owner WebSocket 收到 waiting locator，拒绝路径零副作用，重启 Agent Worker 后重复批准收敛为一次 Tool invocation、一条 Agent 消息与两条 Sync Inbox 投影。项目清理后无容器残留，公共 `dipole-experience` 保持 11 个健康容器。
 
 - 2026-09-04：补齐默认关闭的 OAuth callback handoff Core RPC 装配。
   - `Claim/Complete/ReleaseOAuthCallbackHandoff` 现仅在显式配置和内部 RPC mTLS 同时成立时注入 SQLC handoff Store，并只允许 `dipole-agent` 调用；默认配置继续关闭。
