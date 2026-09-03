@@ -117,6 +117,12 @@ func TestAgentDefinitionCatalogCreatesOwnerScopedReadDefinitionIdempotently(t *t
 	if err != nil || first.DefinitionUUID != replayed.DefinitionUUID || len(store.items) != 1 || first.OwnerUUID != "U100" || first.AgentUUID != "UAI" {
 		t.Fatalf("owner Definition replay drifted: first=%+v replay=%+v items=%+v err=%v", first, replayed, store.items, err)
 	}
+	if len(first.Permissions) != 2 || first.Permissions[0] != application.AgentPermissionConversationList || first.Permissions[1] != application.AgentPermissionConversationRead {
+		t.Fatalf("read-only permissions = %#v", first.Permissions)
+	}
+	if len(first.Scopes) != 1 || first.Scopes[0].ResourceType != application.AgentResourceTypeConversation || first.Scopes[0].ResourceID != application.AgentResourceWildcard || len(first.Scopes[0].Actions) != 2 || first.Scopes[0].Actions[0] != application.AgentResourceActionList || first.Scopes[0].Actions[1] != application.AgentResourceActionRead {
+		t.Fatalf("read-only scopes = %#v", first.Scopes)
+	}
 	foreign, err := service.Create(context.Background(), "U200", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole"})
 	if err != nil || foreign.DefinitionUUID == first.DefinitionUUID || len(store.items) != 2 {
 		t.Fatalf("foreign owner Definition isolation failed: foreign=%+v items=%+v err=%v", foreign, store.items, err)
