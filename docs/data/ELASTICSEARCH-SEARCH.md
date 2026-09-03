@@ -49,7 +49,7 @@ PUT /dipole-messages-write/_doc/{message_id}
 | revision 相同但 hash 不同 | 返回 `ErrProjectionConflict` |
 | 当前 revision 更低 | 返回异常状态错误，不确认事件 |
 
-`SearchIndex.Apply(MessageSearchMutation)` 是统一写契约。created/edited 生成 `searchable=true` 的完整状态；recalled/deleted 生成 `searchable=false` 的最小 tombstone，并通过相同 external revision 规则长期阻挡旧正文事件复活。MySQL 逻辑索引使用 `000007_versioned_search_mutations` 提供相同状态机。
+`SearchIndex.Apply(MessageSearchMutation)` 是统一写契约。created/edited 生成 `searchable=true` 的完整状态；recalled/deleted 生成 `searchable=false` 的最小 tombstone，并通过相同 external revision 规则长期阻挡旧正文事件复活。`000007_versioned_search_mutations` 保留了早期 MySQL 逻辑索引的可重建数据表；该 adapter 已从运行时退役，表清理由独立的数据保留迁移处理。
 
 ## Scoped Search
 

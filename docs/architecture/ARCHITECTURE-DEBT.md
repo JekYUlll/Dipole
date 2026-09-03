@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-03：MySQL `message_search_documents` 已完成从 Search 运行时的 adapter 退役。Search Indexer、查询服务与运维回填均使用 Elasticsearch，SQLC adapter、查询和专属契约测试已删除并由结构门禁阻止回流。已发布表保留到独立的数据保留/清理迁移，当前不能因代码退役推导为生产数据已删除。
+
 - 2026-09-03：Cassandra read-routing 集成 smoke 的缺行回退已恢复双向断言：`after_seq` 与 `before_seq` 都必须返回 MySQL 页面。此前基准夹具重构期间只保留 `after_seq` 集成检查，虽有单元覆盖，仍缺真实存储组合证据；本次补齐后默认主读比例和回退语义不变。
 
 - 2026-09-03：已在隔离 Remote GPU 上采集第一份 Timeline Reader 基线，详见 [`cassandra-timeline-reader-2026-09-03`](../../benchmarks/cassandra-timeline-reader-2026-09-03/)。100 条连续消息、每 reader 1 秒的 Go benchmark 得到 SQLC/MySQL `696874 ns/op`、Cassandra `2391275 ns/op`；同次 smoke 实际覆盖 Cassandra 页面读取、payload mismatch 与缺行回退。结果只代表该主机的串行吞吐型样本，尚未覆盖并发、page-size sweep、端到端或 P99，简历性能占位符继续保留。

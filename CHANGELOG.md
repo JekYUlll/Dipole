@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：退役无运行调用方的 MySQL Search Index adapter。
+  - Search Indexer、Search Service、回填和查询已统一使用 Elasticsearch；移除只被自身契约测试构造的 SQLC adapter 与查询生成物，并增加结构门禁阻止 Search runtime 重新依赖 MySQL。
+  - 已发布的 `message_search_documents` migration 和数据表暂不删除，后续经数据保留确认后以独立 DDL 迁移处理。
+
 - 2026-09-03：恢复 Cassandra 缺行回退的双向集成覆盖。
   - 隔离 read-routing smoke 现在同时验证 `after_seq` 和 `before_seq` 页面在 Cassandra Timeline 缺行时回退 MySQL，避免基准夹具重构缩窄原有集成断言。
 

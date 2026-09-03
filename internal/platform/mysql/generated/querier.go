@@ -23,7 +23,6 @@ type Querier interface {
 	AgentArtifactExistsByObjectKey(ctx context.Context, arg AgentArtifactExistsByObjectKeyParams) (bool, error)
 	ApplyAgentWorkflowRepairProjectionExpectedCurrent(ctx context.Context, arg ApplyAgentWorkflowRepairProjectionExpectedCurrentParams) (int64, error)
 	ApplyAgentWorkflowRepairProjectionMissingCurrent(ctx context.Context, arg ApplyAgentWorkflowRepairProjectionMissingCurrentParams) (int64, error)
-	ApplyMessageSearchState(ctx context.Context, arg ApplyMessageSearchStateParams) error
 	ApproveAgentApproval(ctx context.Context, arg ApproveAgentApprovalParams) (int64, error)
 	ApproveAgentRuntimePromotionProposal(ctx context.Context, arg ApproveAgentRuntimePromotionProposalParams) (int64, error)
 	ApproveAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
@@ -146,7 +145,6 @@ type Querier interface {
 	GetMessageByUUID(ctx context.Context, uuid string) (Message, error)
 	GetMessageMetadataBySenderAndClientID(ctx context.Context, arg GetMessageMetadataBySenderAndClientIDParams) (MessageMetadatum, error)
 	GetMessageMetadataByUUID(ctx context.Context, messageUuid string) (MessageMetadatum, error)
-	GetMessageSearchState(ctx context.Context, messageUuid string) (GetMessageSearchStateRow, error)
 	GetOwnedAgentMemory(ctx context.Context, arg GetOwnedAgentMemoryParams) (AgentMemory, error)
 	GetOwnedAgentMemoryForUpdate(ctx context.Context, arg GetOwnedAgentMemoryForUpdateParams) (AgentMemory, error)
 	GetSearchBackfillHighWatermark(ctx context.Context) (uint64, error)
@@ -273,7 +271,6 @@ type Querier interface {
 	RevokeOwnedAgentMemory(ctx context.Context, arg RevokeOwnedAgentMemoryParams) (int64, error)
 	RollbackAgentWorkflowRepairProjection(ctx context.Context, arg RollbackAgentWorkflowRepairProjectionParams) (int64, error)
 	SearchActiveUsers(ctx context.Context, arg SearchActiveUsersParams) ([]User, error)
-	SearchMessageDocuments(ctx context.Context, arg SearchMessageDocumentsParams) ([]SearchMessageDocumentsRow, error)
 	SelectClaimableAgentTaskTimelineRepairs(ctx context.Context, arg SelectClaimableAgentTaskTimelineRepairsParams) ([]SelectClaimableAgentTaskTimelineRepairsRow, error)
 	SelectClaimableOutboxEvents(ctx context.Context, arg SelectClaimableOutboxEventsParams) ([]OutboxEvent, error)
 	SupersedeOwnedAgentMemory(ctx context.Context, arg SupersedeOwnedAgentMemoryParams) (int64, error)
