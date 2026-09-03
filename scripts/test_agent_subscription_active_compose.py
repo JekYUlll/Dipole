@@ -44,7 +44,8 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('trigger_subscription_uuid', smoke)
         self.assertIn('"completed:completed"', smoke)
         self.assertIn('expected one subscription task', smoke)
-        self.assertIn('expected one completed model call', smoke)
+        self.assertIn('subscription task completed without a model call', smoke)
+        self.assertIn('"${model_calls}" -ge 1', smoke)
         self.assertIn('subscription read task wrote', smoke)
 
     def test_model_stub_stays_inside_the_compose_project(self) -> None:

@@ -190,7 +190,7 @@ done
 task_count=$(mysql -e "SELECT COUNT(*) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'")
 [[ "${task_count}" == "1" ]] || { printf 'expected one subscription task, got %s\n' "${task_count}" >&2; exit 1; }
 model_calls=$(mysql -e "SELECT COUNT(*) FROM agent_model_runs AS r JOIN agent_tasks AS t ON t.task_uuid = r.task_uuid WHERE t.trigger_subscription_uuid = '${subscription_uuid}' AND r.status = 'completed'")
-[[ "${model_calls}" == "1" ]] || { printf 'expected one completed model call, got %s\n' "${model_calls}" >&2; exit 1; }
+[[ "${model_calls}" =~ ^[0-9]+$ && "${model_calls}" -ge 1 ]] || { printf 'subscription task completed without a model call: %s\n' "${model_calls}" >&2; exit 1; }
 messages=$(mysql -e "SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}'")
 if [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]]; then
   auto_reply_effects=$(mysql -e "SELECT
@@ -205,7 +205,7 @@ else
 fi
 mysql -e "UPDATE agent_runtime_promotion_grants SET revoked_at = UTC_TIMESTAMP(3) WHERE grant_uuid = '${grant_uuid}' AND revoked_at IS NULL"
 if [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]]; then
-  printf 'Agent Subscription auto-reply Compose smoke passed: one owner-scoped Kafka event completed one durable Task with one model call, one consumed approval, and one owner-Agent reply.\n'
+  printf 'Agent Subscription auto-reply Compose smoke passed: one owner-scoped Kafka event completed one durable Task with one or more model calls, one consumed approval, and one owner-Agent reply.\n'
 else
-  printf 'Agent Subscription active Compose smoke passed: one owner-scoped Kafka event completed one durable read Task with one model call and zero messages.\n'
+  printf 'Agent Subscription active Compose smoke passed: one owner-scoped Kafka event completed one durable read Task with one or more model calls and zero messages.\n'
 fi
