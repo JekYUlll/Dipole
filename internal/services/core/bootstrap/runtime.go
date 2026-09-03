@@ -113,7 +113,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		messageReceipts = coreAgentToolReceiptQuery(messaging.Messages, runtime.messageSender)
 	}
 	cleanup := func() { runtime.Close() }
-	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
+	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{
+		Messaging:      messaging,
+		SystemMessages: systemMessages,
+		FrontendFlags:  server.FrontendFlagsFromEnv(),
+	})
 	if err := corekafka.RegisterConversationProjections(messaging.Conversations); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register Core Kafka projections: %w", err)

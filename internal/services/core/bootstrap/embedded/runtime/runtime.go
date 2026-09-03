@@ -350,6 +350,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		Sync:           syncFlow.Application,
 		SyncComparison: syncComparisonMetrics,
 		Messaging:      localMessaging,
+		FrontendFlags:  server.FrontendFlagsFromEnv(),
 	})
 
 	// 跨节点 WS 路由：仅在 Kafka + Presence 同时启用时激活。

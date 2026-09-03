@@ -1,17 +1,35 @@
-function enabled(value: string | undefined): boolean {
-  return value === 'true'
+interface RuntimeFlags {
+  elicitation?: boolean
+  approval?: boolean
+  subscriptions?: boolean
+  definitions?: boolean
+  memories?: boolean
+  memoryCorrection?: boolean
+  taskCreate?: boolean
+  timeline?: boolean
+  artifacts?: boolean
+}
+
+declare global {
+  interface Window { __DIPOLE_FLAGS__?: RuntimeFlags }
+}
+
+function flag(runtimeKey: keyof RuntimeFlags, viteEnv: string | undefined): boolean {
+  const runtime = window.__DIPOLE_FLAGS__
+  if (runtime && runtimeKey in runtime) return runtime[runtimeKey] === true
+  return viteEnv === 'true'
 }
 
 export const agentFlags = {
-  elicitation: enabled(import.meta.env.VITE_AGENT_ELICITATION_ENABLED),
-  approval: enabled(import.meta.env.VITE_AGENT_APPROVAL_ENABLED),
-  subscriptions: enabled(import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED),
-  definitions: enabled(import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED),
-  memories: enabled(import.meta.env.VITE_AGENT_MEMORIES_ENABLED),
-  memoryCorrection: enabled(import.meta.env.VITE_AGENT_MEMORY_CORRECTION_ENABLED),
-  taskCreate: enabled(import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED),
-  timeline: enabled(import.meta.env.VITE_AGENT_TIMELINE_ENABLED),
-  artifacts: enabled(import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED),
+  elicitation: flag('elicitation', import.meta.env.VITE_AGENT_ELICITATION_ENABLED),
+  approval: flag('approval', import.meta.env.VITE_AGENT_APPROVAL_ENABLED),
+  subscriptions: flag('subscriptions', import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED),
+  definitions: flag('definitions', import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED),
+  memories: flag('memories', import.meta.env.VITE_AGENT_MEMORIES_ENABLED),
+  memoryCorrection: flag('memoryCorrection', import.meta.env.VITE_AGENT_MEMORY_CORRECTION_ENABLED),
+  taskCreate: flag('taskCreate', import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED),
+  timeline: flag('timeline', import.meta.env.VITE_AGENT_TIMELINE_ENABLED),
+  artifacts: flag('artifacts', import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED),
 }
 
 export const agentTaskCreatePageEnabled = agentFlags.taskCreate && agentFlags.timeline
