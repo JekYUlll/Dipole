@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Static safety contract for the interactive Agent Task Compose smoke."""
 
+import os
 from pathlib import Path
 import unittest
 
@@ -9,6 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
+    def test_smoke_is_executable_from_documented_command(self) -> None:
+        self.assertTrue(os.access(ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh", os.X_OK))
+
     def test_smoke_isolated_and_loopback_only(self) -> None:
         smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
         self.assertIn('project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-shadow-', smoke)
