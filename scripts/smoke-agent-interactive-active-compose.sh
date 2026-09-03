@@ -277,6 +277,86 @@ process.stdout.write(body.taskId);
 NODE
 }
 
+start_task_and_wait_for_locator() {
+  local client_request_id=$1
+  local goal=$2
+  compose exec -T agent node --input-type=module - "${owner_telephone}" "${owner_uuid}" "${client_request_id}" "${goal}" <<'NODE'
+const [telephone, ownerUuid, clientRequestId, goal] = process.argv.slice(2);
+
+const loginResponse = await fetch("http://gateway:8080/api/v1/auth/login", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ telephone, password: "smoke-pass-123" })
+});
+const loginBody = await loginResponse.json();
+const token = loginBody?.data?.token;
+if (loginResponse.status !== 200 || typeof token !== "string" || token.length === 0) {
+  throw new Error(`login for WebSocket locator failed: ${loginResponse.status}`);
+}
+
+const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=smoke`);
+let taskId = "";
+let connected = false;
+let resolveWaiting;
+let rejectWaiting;
+const waiting = new Promise((resolve, reject) => {
+  resolveWaiting = resolve;
+  rejectWaiting = reject;
+});
+
+socket.onmessage = event => {
+  const packet = JSON.parse(String(event.data));
+  if (packet?.type === "connected") {
+    connected = true;
+    return;
+  }
+  if (packet?.type !== "agent_task_waiting" || !taskId) return;
+  const data = packet.data;
+  if (data?.task_uuid === taskId && data.pending_kind === "approval" && Number.isInteger(data.revision) && data.revision > 0) {
+    resolveWaiting(data);
+  }
+};
+socket.onerror = () => rejectWaiting(new Error("WebSocket locator connection failed"));
+
+for (let attempt = 0; attempt < 50 && !connected; attempt += 1) {
+  await new Promise(resolve => setTimeout(resolve, 100));
+}
+if (!connected) {
+  socket.close();
+  throw new Error("WebSocket locator did not receive connected event");
+}
+
+const response = await fetch("http://127.0.0.1:8091/internal/v1/agent/tasks", {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    "x-dipole-caller-service": "dipole-gateway",
+    "x-dipole-service-token": process.env.DIPOLE_AGENT_CONTROL_SECRET,
+    "x-dipole-principal-user-id": ownerUuid,
+    "x-request-id": `REQ-${clientRequestId}`,
+    "x-trace-id": `TRACE-${clientRequestId}`
+  },
+  body: JSON.stringify({ clientRequestId, goal })
+});
+const body = await response.json();
+if (response.status !== 202 || typeof body.taskId !== "string") {
+  socket.close();
+  throw new Error(`start task for WebSocket locator failed: ${response.status} ${JSON.stringify(body)}`);
+}
+taskId = body.taskId;
+
+try {
+  await Promise.race([
+    waiting,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`timed out waiting for WebSocket locator: ${taskId}`)), 30_000))
+  ]);
+} finally {
+  socket.close();
+}
+process.stdout.write(taskId);
+NODE
+}
+
 wait_for_approval() {
   local task_id=$1
   local approval_id=""
@@ -348,7 +428,7 @@ wait_for_workflow() {
   [[ "${result}" == "${wanted_status}" ]] || { printf 'Workflow status did not converge: task=%s got=%s want=%s\n' "${task_id}" "${result}" "${wanted_status}" >&2; return 1; }
 }
 
-denied_task=$(start_task "deny-$(openssl rand -hex 6)" "/send This message must stay uncommitted.")
+denied_task=$(start_task_and_wait_for_locator "deny-$(openssl rand -hex 6)" "/send This message must stay uncommitted.")
 denied_approval=$(wait_for_approval "${denied_task}")
 resolve_twice "${denied_task}" "${denied_approval}" denied >/dev/null
 wait_for_workflow "${denied_task}" cancelled
@@ -372,4 +452,4 @@ approved_effects=$(mysql -e "SELECT
 revoked=$(mysql -e "UPDATE agent_runtime_promotion_grants SET revoked_at = UTC_TIMESTAMP(3) WHERE grant_uuid = '${grant_uuid}' AND revoked_at IS NULL; SELECT ROW_COUNT();")
 [[ "${revoked}" == "1" ]] || { printf 'Temporary promotion grant revocation failed: %q\n' "${revoked}" >&2; exit 1; }
 
-printf 'Interactive Agent active Compose smoke passed: deny has zero effects; duplicate approval converged to one Tool invocation, one message, and two Sync inbox entries.\n'
+printf 'Interactive Agent active Compose smoke passed: owner WebSocket received the waiting locator; deny has zero effects; duplicate approval converged to one Tool invocation, one message, and two Sync inbox entries.\n'

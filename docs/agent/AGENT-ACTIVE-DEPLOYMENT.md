@@ -121,7 +121,8 @@ grant 并删除该 project 的 volumes。`/send` 场景不调用模型，因此�
 BUILD_IMAGE=1 scripts/smoke-agent-interactive-active-compose.sh
 ```
 
-验收分为两条确定性路径：并发 `denied` 重放必须收敛为零 Tool/Message
+验收先以 Gateway JWT 建立 owner WebSocket，再创建拒绝路径 Task；连接必须收到该 Task 的
+低敏 `agent_task_waiting` locator（`approval` 与正 revision），随后分为两条确定性路径：并发 `denied` 重放必须收敛为零 Tool/Message
 副作用；并发 `approved` 重放必须收敛为一次 approval consume、一次完成的
 Tool Invocation、一个稳定 client message ID、一条 Message 和两条收件人
 Sync Timeline 项。Message command 通过 Kafka 持久化时，Core 只会对临时
@@ -134,6 +135,10 @@ Compose 的审批重放与异步 receipt 确认。Runtime 对 completed Tool ter
 单测覆盖，但本 smoke 不注入该 RPC 故障，因此真实 Core/Message 响应丢失、Worker
 替换、部分副作用 rollback、浏览器 HITL、共享 tenant 和容量结论继续由 `AD-009`
 管理。
+
+Remote GPU 若 MySQL 初始化日志出现 `io_setup() failed with EAGAIN`，可在隔离项目中显式设置
+`DIPOLE_MYSQL_AIO_COMPAT=1` 后复跑；该兼容项仅改变 MySQL 容器的 AIO 策略，不改变 Agent
+Capability、Temporal、Kafka 或默认部署 profile。
 
 同一 smoke 会在认证 owner 上重放两次 `POST /api/v1/agent/definitions`，读取
 `GET /api/v1/agent/definitions`，并以 MySQL 复核唯一记录的 owner、Assistant、
