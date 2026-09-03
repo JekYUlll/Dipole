@@ -128,7 +128,7 @@ function inputRoute(item: AgentOwnedTask): { name: 'agent-task-input'; params: {
 function statusLabel(item: AgentOwnedTask) {
   if (item.pendingKind === 'approval') return 'WAITING APPROVAL'
   if (item.pendingKind === 'input') return 'WAITING INPUT'
-  return item.status.replaceAll('_', ' ').toUpperCase()
+  return (item.status as string).replace(/_/g, ' ').toUpperCase()
 }
 
 function statusClass(item: AgentOwnedTask) {
