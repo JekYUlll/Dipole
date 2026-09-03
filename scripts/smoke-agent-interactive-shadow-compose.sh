@@ -160,12 +160,14 @@ const foreignRead = await request("GET", `http://gateway:8080/api/v1/agent/tasks
 if (![403, 404].includes(foreignRead.response.status)) throw new Error(`foreign owner read was not rejected: ${foreignRead.response.status}`);
 
 let state;
+let lastTaskStatus = "unavailable";
 for (let attempt = 0; attempt < 90; attempt += 1) {
   const read = await request("GET", `http://gateway:8080/api/v1/agent/tasks/${taskId}`, owner.token);
+  if (read.response.status === 200 && typeof read.payload?.status === "string") lastTaskStatus = read.payload.status;
   if (read.response.status === 200 && read.payload?.status === "waiting_input") { state = read.payload; break; }
   await new Promise(resolve => setTimeout(resolve, 1_000));
 }
-if (state === undefined) throw new Error("interactive task did not enter waiting_input");
+if (state === undefined) throw new Error(`interactive task did not enter waiting_input (last status: ${lastTaskStatus})`);
 const cancelled = await request("POST", `http://gateway:8080/api/v1/agent/tasks/${taskId}/cancel`, owner.token, { reason: "smoke_cancelled" });
 if (cancelled.response.status !== 202) throw new Error(`task cancel failed: ${cancelled.response.status}`);
 for (let attempt = 0; attempt < 60; attempt += 1) {

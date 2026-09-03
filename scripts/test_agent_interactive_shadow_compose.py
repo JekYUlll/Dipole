@@ -46,6 +46,8 @@ class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
         self.assertIn('duplicate task start diverged', smoke)
         self.assertIn('foreign owner read was not rejected', smoke)
         self.assertIn('interactive task did not enter waiting_input', smoke)
+        self.assertIn('lastTaskStatus = "unavailable"', smoke)
+        self.assertIn('last status: ${lastTaskStatus}', smoke)
         self.assertIn('interactive task did not cancel', smoke)
         self.assertIn('interactive read task wrote', smoke)
 
