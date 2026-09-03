@@ -66,6 +66,28 @@ type AgentArtifactStoreV1 interface {
 	GetAgentArtifactByTaskTypeVersion(context.Context, string, string, uint32) (*AgentArtifactV1, error)
 }
 
+type AgentArtifactCatalogStoreV1 interface {
+	ListOwnedAgentArtifacts(context.Context, string, string, time.Time, string, int) ([]AgentArtifactV1, error)
+}
+
+type AgentArtifactCatalogRequestV1 struct {
+	TenantID        string
+	PrincipalUUID   string
+	AfterCreatedAt  time.Time
+	AfterArtifactID string
+	Limit           int
+}
+
+type AgentArtifactCatalogPageV1 struct {
+	Artifacts      []AgentArtifactV1
+	NextCreatedAt  time.Time
+	NextArtifactID string
+}
+
+type AgentArtifactCatalogServiceV1 interface {
+	ListForPrincipal(context.Context, AgentArtifactCatalogRequestV1) (*AgentArtifactCatalogPageV1, error)
+}
+
 type AgentArtifactBlobStoreV1 interface {
 	PutImmutable(context.Context, string, string, []byte, string) (AgentArtifactBlobReceiptV1, error)
 	Open(context.Context, AgentArtifactBlobReceiptV1) (io.ReadCloser, error)

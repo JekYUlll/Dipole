@@ -74,6 +74,7 @@ const (
 	AgentCapabilityService_RevokeRuntimePromotion_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/RevokeRuntimePromotion"
 	AgentCapabilityService_CreateArtifact_FullMethodName                        = "/dipole.agent.v1.AgentCapabilityService/CreateArtifact"
 	AgentCapabilityService_GetArtifact_FullMethodName                           = "/dipole.agent.v1.AgentCapabilityService/GetArtifact"
+	AgentCapabilityService_ListOwnedArtifacts_FullMethodName                    = "/dipole.agent.v1.AgentCapabilityService/ListOwnedArtifacts"
 	AgentCapabilityService_PublishMcpReadinessEvidence_FullMethodName           = "/dipole.agent.v1.AgentCapabilityService/PublishMcpReadinessEvidence"
 	AgentCapabilityService_ResolveFreshMcpReadinessEvidence_FullMethodName      = "/dipole.agent.v1.AgentCapabilityService/ResolveFreshMcpReadinessEvidence"
 )
@@ -141,6 +142,7 @@ type AgentCapabilityServiceClient interface {
 	RevokeRuntimePromotion(ctx context.Context, in *RevokeRuntimePromotionRequest, opts ...grpc.CallOption) (*RuntimePromotionGrantResponse, error)
 	CreateArtifact(ctx context.Context, in *CreateArtifactRequest, opts ...grpc.CallOption) (*CreateArtifactResponse, error)
 	GetArtifact(ctx context.Context, in *GetArtifactRequest, opts ...grpc.CallOption) (*GetArtifactResponse, error)
+	ListOwnedArtifacts(ctx context.Context, in *ListOwnedArtifactsRequest, opts ...grpc.CallOption) (*ListOwnedArtifactsResponse, error)
 	PublishMcpReadinessEvidence(ctx context.Context, in *PublishMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*PublishMcpReadinessEvidenceResponse, error)
 	ResolveFreshMcpReadinessEvidence(ctx context.Context, in *ResolveFreshMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*ResolveFreshMcpReadinessEvidenceResponse, error)
 }
@@ -703,6 +705,16 @@ func (c *agentCapabilityServiceClient) GetArtifact(ctx context.Context, in *GetA
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) ListOwnedArtifacts(ctx context.Context, in *ListOwnedArtifactsRequest, opts ...grpc.CallOption) (*ListOwnedArtifactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListOwnedArtifactsResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListOwnedArtifacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) PublishMcpReadinessEvidence(ctx context.Context, in *PublishMcpReadinessEvidenceRequest, opts ...grpc.CallOption) (*PublishMcpReadinessEvidenceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PublishMcpReadinessEvidenceResponse)
@@ -786,6 +798,7 @@ type AgentCapabilityServiceServer interface {
 	RevokeRuntimePromotion(context.Context, *RevokeRuntimePromotionRequest) (*RuntimePromotionGrantResponse, error)
 	CreateArtifact(context.Context, *CreateArtifactRequest) (*CreateArtifactResponse, error)
 	GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error)
+	ListOwnedArtifacts(context.Context, *ListOwnedArtifactsRequest) (*ListOwnedArtifactsResponse, error)
 	PublishMcpReadinessEvidence(context.Context, *PublishMcpReadinessEvidenceRequest) (*PublishMcpReadinessEvidenceResponse, error)
 	ResolveFreshMcpReadinessEvidence(context.Context, *ResolveFreshMcpReadinessEvidenceRequest) (*ResolveFreshMcpReadinessEvidenceResponse, error)
 	mustEmbedUnimplementedAgentCapabilityServiceServer()
@@ -962,6 +975,9 @@ func (UnimplementedAgentCapabilityServiceServer) CreateArtifact(context.Context,
 }
 func (UnimplementedAgentCapabilityServiceServer) GetArtifact(context.Context, *GetArtifactRequest) (*GetArtifactResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetArtifact not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ListOwnedArtifacts(context.Context, *ListOwnedArtifactsRequest) (*ListOwnedArtifactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListOwnedArtifacts not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) PublishMcpReadinessEvidence(context.Context, *PublishMcpReadinessEvidenceRequest) (*PublishMcpReadinessEvidenceResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PublishMcpReadinessEvidence not implemented")
@@ -1981,6 +1997,24 @@ func _AgentCapabilityService_GetArtifact_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_ListOwnedArtifacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOwnedArtifactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListOwnedArtifacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListOwnedArtifacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListOwnedArtifacts(ctx, req.(*ListOwnedArtifactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_PublishMcpReadinessEvidence_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PublishMcpReadinessEvidenceRequest)
 	if err := dec(in); err != nil {
@@ -2243,6 +2277,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetArtifact",
 			Handler:    _AgentCapabilityService_GetArtifact_Handler,
+		},
+		{
+			MethodName: "ListOwnedArtifacts",
+			Handler:    _AgentCapabilityService_ListOwnedArtifacts_Handler,
 		},
 		{
 			MethodName: "PublishMcpReadinessEvidence",

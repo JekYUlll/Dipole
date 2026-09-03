@@ -13,6 +13,17 @@ SELECT * FROM agent_artifacts
 WHERE task_uuid = ? AND artifact_type = ? AND version = ?
 LIMIT 1;
 
+-- name: ListOwnedAgentArtifactMetadata :many
+SELECT a.*
+FROM agent_artifacts AS a
+JOIN agent_tasks AS t ON t.task_uuid = a.task_uuid
+WHERE t.tenant_id = sqlc.arg(tenant_id)
+  AND t.principal_uuid = sqlc.arg(principal_uuid)
+  AND (a.created_at < sqlc.arg(after_created_at)
+       OR (a.created_at = sqlc.arg(after_created_at) AND a.artifact_uuid < sqlc.arg(after_artifact_uuid)))
+ORDER BY a.created_at DESC, a.artifact_uuid DESC
+LIMIT ?;
+
 -- name: AgentArtifactExistsByObjectKey :one
 SELECT EXISTS(
     SELECT 1 FROM agent_artifacts

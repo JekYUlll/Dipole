@@ -278,8 +278,18 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 	}
 	var agentArtifacts *gateway.AgentArtifactClient
 	if gatewayCfg.AgentArtifactEnabled {
+		artifactTenant := gatewayCfg.AgentArtifactTenantID
+		if artifactTenant == "" {
+			artifactTenant = gatewayCfg.AgentMemoryTenantID
+		}
+		if artifactTenant == "" {
+			artifactTenant = gatewayCfg.AgentSubscriptionTenantID
+		}
+		if artifactTenant == "" {
+			artifactTenant = "dipole"
+		}
 		agentArtifacts, err = gateway.NewAgentArtifactClient(
-			agentv1.NewAgentCapabilityServiceClient(coreConn), time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+			agentv1.NewAgentCapabilityServiceClient(coreConn), artifactTenant, time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
 		)
 		if err != nil {
 			cleanup()

@@ -287,6 +287,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
 		}
 		var artifactService applicationPort.AgentArtifactServiceV1
+		artifactCatalog, artifactErr := agentapplication.NewPersistentAgentArtifactCatalogV1(agentRepos.ArtifactCatalog)
+		if artifactErr != nil {
+			return nil, fmt.Errorf("compose Agent Artifact catalog: %w", artifactErr)
+		}
 		var promotionEvidence applicationPort.AgentRuntimePromotionEvidenceReviewServiceV1
 		if storageCfg.ArtifactEnabled {
 			artifactBlobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{
@@ -310,7 +314,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = corerpc.NewWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryCandidates, memoryPromotions, agentRepos.TaskTimeline, memoryPromotionCommits, workflowRepairExecutor, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, artifactCatalog, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryCandidates, memoryPromotions, agentRepos.TaskTimeline, memoryPromotionCommits, workflowRepairExecutor, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

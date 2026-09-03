@@ -18,7 +18,7 @@
 | 创建任务 → 时间线 | `/agent/tasks/new` → `/agent/tasks` → `/timeline` | `POST /tasks`、`GET /tasks`、`GET /tasks/:id`、`GET /timeline` | Owner 收件箱已接上。关页面后可从 `/agent/tasks` 找回。`ListTaskWorkflowProjectionSnapshots` 仍是 Runtime 服务身份分页，不给用户用。 |
 | 处理审批 | Inbox / Timeline → `/approval` | `GET /tasks`、`GET /tasks/:id` + `POST /approvals/:id` | 收件箱能列出 `pendingKind=approval` 的行。页面仍要 `status=waiting_approval` 且 `pending.kind=approval`。没有 Chat/WS 推送，用户仍要自己打开列表。 |
 | 补充输入 | Inbox / Timeline → `/input` | `GET /tasks`、`GET /tasks/:id` + `POST /inputs/:id` | 收件箱能列出 `pendingKind=input` 的行。进入页面后仍要 GET task 拿 form/requestId。 |
-| 查看产物 | Timeline → `/artifacts/:id` | `GET /artifacts/:id` + `/content` | 没有「我的产物」列表。Artifact 只能从时间线带 `artifactId` 的事件进去。 |
+| 查看产物 | Timeline → `/artifacts/:id` | `GET /artifacts`、`GET /artifacts/:id` + `/content` | owner-scoped metadata 分页 API 已齐，Vue 收件箱页面仍待接入。列表不返回正文、对象位置或 metadata JSON。 |
 | 浏览 / 创建 Definition | `/agent/definitions` | `GET` + `POST` profile | 创建已接线。目录仍不暴露模型/Tool。空目录时订阅创建会停在「没有 active Definition」。 |
 | 创建 / 撤销订阅 | `/agent/subscriptions` | list / options / create / revoke | API 齐。订阅要先有 Definition + 可读 conversation。Runtime 默认 `direct_target`，列表 active 不会自动开共享事件触发；要另开 subscription overlay。 |
 | 查看 / 撤销 / 纠正记忆 | `/agent/memories` | list / revoke / correct | 页面不能写入 Observation。自动写入关着时列表会一直空。 |
@@ -35,8 +35,8 @@
 2. **记忆候选收件箱页面**
    owner 可读的 candidate 分页已接入 Gateway；前端还需要以摘要展示 pending/accepted/rejected，accepted 行携带 review ID 后才能调用既有晋升接口。
 
-3. **产物列表（次要）**  
-   有 metadata/content，缺 `GET /artifacts`。时间线能深链时够用；关页面后找不到历史产物。
+3. **产物收件箱页面（次要）**
+   `GET /artifacts` 已按 owner 与复合 cursor 分页，前端仍需展示 metadata、保留 Timeline 深链，并保持内容读取入口的现有 digest 限制。
 
 ## 后端已有、前端仍走不全的（开关 / 运行时，不是缺 RPC）
 

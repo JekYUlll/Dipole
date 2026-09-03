@@ -727,6 +727,20 @@ message GetArtifactResponse {
   bytes content = 2;
 }
 
+message ListOwnedArtifactsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string tenant_id = 2;
+  int64 after_created_at_unix_ms = 3;
+  string after_artifact_id = 4;
+  uint32 limit = 5;
+}
+
+message ListOwnedArtifactsResponse {
+  repeated AgentArtifact artifacts = 1;
+  int64 next_created_at_unix_ms = 2;
+  string next_artifact_id = 3;
+}
+
 message MatchEventSubscriptionsRequest {
   dipole.common.v1.RequestContext context = 1;
   string tenant_id = 2;
@@ -1086,6 +1100,7 @@ service AgentCapabilityService {
   rpc RevokeRuntimePromotion(RevokeRuntimePromotionRequest) returns (RuntimePromotionGrantResponse);
   rpc CreateArtifact(CreateArtifactRequest) returns (CreateArtifactResponse);
   rpc GetArtifact(GetArtifactRequest) returns (GetArtifactResponse);
+  rpc ListOwnedArtifacts(ListOwnedArtifactsRequest) returns (ListOwnedArtifactsResponse);
   rpc PublishMcpReadinessEvidence(PublishMcpReadinessEvidenceRequest) returns (PublishMcpReadinessEvidenceResponse);
   rpc ResolveFreshMcpReadinessEvidence(ResolveFreshMcpReadinessEvidenceRequest) returns (ResolveFreshMcpReadinessEvidenceResponse);
 }

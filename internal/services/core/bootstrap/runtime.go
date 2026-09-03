@@ -257,6 +257,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Memory candidate promotion: %w", composeErr)
 		}
+		artifactCatalog, composeErr := agentapplication.NewPersistentAgentArtifactCatalogV1(agentRepos.ArtifactCatalog)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Artifact catalog: %w", composeErr)
+		}
 		agentServer, composeErr := agentgrpc.NewServerWithControlAndProjection(
 			capability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit,
 		)
@@ -287,6 +292,10 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		if _, composeErr = agentServer.WithMemoryCandidatePromotions(memoryPromotions); composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("configure standalone Agent Memory candidate promotion rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithArtifactCatalog(artifactCatalog); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Artifact catalog rpc adapter: %w", composeErr)
 		}
 		if _, composeErr = agentServer.WithTaskTimeline(agentRepos.TaskTimeline); composeErr != nil {
 			cleanup()

@@ -217,6 +217,7 @@ type Querier interface {
 	ListOfflineMessagesByUser(ctx context.Context, arg ListOfflineMessagesByUserParams) ([]Message, error)
 	ListOutgoingContactApplications(ctx context.Context, applicantUuid string) ([]ContactApplication, error)
 	ListOwnedActiveAgentDefinitions(ctx context.Context, arg ListOwnedActiveAgentDefinitionsParams) ([]AgentDefinitionVersion, error)
+	ListOwnedAgentArtifactMetadata(ctx context.Context, arg ListOwnedAgentArtifactMetadataParams) ([]AgentArtifact, error)
 	ListOwnedAgentEventSubscriptions(ctx context.Context, arg ListOwnedAgentEventSubscriptionsParams) ([]AgentEventSubscription, error)
 	ListOwnedAgentMemories(ctx context.Context, arg ListOwnedAgentMemoriesParams) ([]AgentMemory, error)
 	ListOwnedAgentMemoryCandidates(ctx context.Context, arg ListOwnedAgentMemoryCandidatesParams) ([]ListOwnedAgentMemoryCandidatesRow, error)

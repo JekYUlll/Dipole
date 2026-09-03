@@ -32,6 +32,7 @@ gateway:
   agent_memory_tenant_id: dipole
   # Exposes owner-scoped digest metadata and Markdown content. Object keys and metadata JSON remain internal.
   agent_artifact_enabled: false
+  agent_artifact_tenant_id: ""
   # Exposes MCP only through Gateway JWT authentication and Core Task/Run authorization.
   agent_mcp_enabled: false
   agent_mcp_target: http://127.0.0.1:8091

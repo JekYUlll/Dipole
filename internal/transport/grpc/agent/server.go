@@ -42,6 +42,7 @@ type Server struct {
 	readinessPublisher     application.AgentMCPReadinessEvidencePublisherV1
 	readinessResolver      application.AgentMCPReadinessEvidenceResolverV1
 	artifacts              application.AgentArtifactServiceV1
+	artifactCatalog        application.AgentArtifactCatalogServiceV1
 	subscriptions          application.AgentEventSubscriptionResolverV1
 	subscriptionControls   application.AgentEventSubscriptionControlServiceV1
 	definitionCatalog      application.AgentDefinitionCatalogServiceV1
@@ -705,6 +706,49 @@ func (s *Server) WithArtifacts(artifacts application.AgentArtifactServiceV1) (*S
 	}
 	s.artifacts = artifacts
 	return s, nil
+}
+
+func (s *Server) WithArtifactCatalog(catalog application.AgentArtifactCatalogServiceV1) (*Server, error) {
+	if s == nil || catalog == nil {
+		return nil, errors.New("Agent Artifact catalog service is required")
+	}
+	s.artifactCatalog = catalog
+	return s, nil
+}
+
+func (s *Server) ListOwnedArtifacts(ctx context.Context, request *agentv1.ListOwnedArtifactsRequest) (*agentv1.ListOwnedArtifactsResponse, error) {
+	principal, err := agentMemoryOwnerV1(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	if s.artifactCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Artifact catalog is unavailable")
+	}
+	var after time.Time
+	if request.GetAfterCreatedAtUnixMs() > 0 {
+		after = time.UnixMilli(request.GetAfterCreatedAtUnixMs()).UTC()
+	}
+	page, err := s.artifactCatalog.ListForPrincipal(grpccommon.Correlation(ctx, request.GetContext()), application.AgentArtifactCatalogRequestV1{TenantID: request.GetTenantId(), PrincipalUUID: principal, AfterCreatedAt: after, AfterArtifactID: request.GetAfterArtifactId(), Limit: int(request.GetLimit())})
+	if err != nil {
+		if errors.Is(err, application.ErrAgentArtifactInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "Agent Artifact catalog request is invalid")
+		}
+		return nil, status.Error(codes.Unavailable, "Agent Artifact catalog is unavailable")
+	}
+	response := &agentv1.ListOwnedArtifactsResponse{Artifacts: make([]*agentv1.AgentArtifact, 0, len(page.Artifacts))}
+	for index := range page.Artifacts {
+		response.Artifacts = append(response.Artifacts, agentArtifactMetadataResponseV1(&page.Artifacts[index]))
+	}
+	if !page.NextCreatedAt.IsZero() {
+		response.NextCreatedAtUnixMs, response.NextArtifactId = page.NextCreatedAt.UnixMilli(), page.NextArtifactID
+	}
+	return response, nil
+}
+
+func agentArtifactMetadataResponseV1(item *application.AgentArtifactV1) *agentv1.AgentArtifact {
+	response := agentArtifactResponseV1(item)
+	response.MetadataJson = nil
+	return response
 }
 
 func (s *Server) CreateArtifact(ctx context.Context, request *agentv1.CreateArtifactRequest) (*agentv1.CreateArtifactResponse, error) {

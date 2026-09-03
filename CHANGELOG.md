@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：补上 owner-scoped Artifact metadata 收件箱 API，认证用户可分页找回历史任务产物。
+  - Core 新增 `ListOwnedArtifacts`，SQLC 按 tenant、任务 owner、创建时间和 Artifact ID 复合游标稳定分页；embedded 与 standalone Core 均从 MySQL catalog 装配，列表不依赖 MinIO 可用性。
+  - Gateway 新增 `GET /api/v1/agent/artifacts?after=<createdAtUnixMs:artifactId>&limit=`，仅从登录会话派生 owner，并在转发前后复核 tenant、分页 cursor 和 Artifact metadata。
+  - 列表响应只包含低敏 metadata；正文、对象 bucket/key 和 `metadata_json` 均被 Core 清除且由 Gateway 二次拒绝。现有单个 Artifact digest 内容读取语义未改变，Vue 收件箱页面由独立前端分支接入。
+
 - 2026-09-03：补上 owner-scoped Memory Candidate 收件箱 API，前端可读取候选后再发起既有晋升操作。
   - Core 新增 `ListOwnedMemoryCandidates`，以认证的 `dipole-gateway` 身份恢复 owner，返回候选摘要、审核 ID、晋级 Memory ID 和观察时间；原始 evidence ID、资源 URI 和正文不越过该 API 边界。
   - Gateway 新增 `GET /api/v1/agent/memory-candidates?after=&limit=`，严格从登录会话派生 principal，并复核候选哈希、状态、审核与分页游标。

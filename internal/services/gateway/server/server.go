@@ -153,6 +153,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		engine.POST("/api/v1/agent/memory-candidates/:candidate_id/promote", auth, agentMemoryCandidatePromoteHandler(dependencies.AgentMemories))
 	}
 	if dependencies.AgentArtifacts != nil {
+		engine.GET("/api/v1/agent/artifacts", auth, agentArtifactListHandler(dependencies.AgentArtifacts))
 		engine.GET("/api/v1/agent/artifacts/:artifact_id", auth, agentArtifactGetHandler(dependencies.AgentArtifacts))
 		engine.GET("/api/v1/agent/artifacts/:artifact_id/content", auth, agentArtifactContentHandler(dependencies.AgentArtifacts))
 	}

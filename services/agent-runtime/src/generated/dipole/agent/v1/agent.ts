@@ -2291,6 +2291,48 @@ export interface GetArtifactResponse {
     content: Uint8Array;
 }
 /**
+ * @generated from protobuf message dipole.agent.v1.ListOwnedArtifactsRequest
+ */
+export interface ListOwnedArtifactsRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string tenant_id = 2
+     */
+    tenantId: string;
+    /**
+     * @generated from protobuf field: int64 after_created_at_unix_ms = 3
+     */
+    afterCreatedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string after_artifact_id = 4
+     */
+    afterArtifactId: string;
+    /**
+     * @generated from protobuf field: uint32 limit = 5
+     */
+    limit: number;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ListOwnedArtifactsResponse
+ */
+export interface ListOwnedArtifactsResponse {
+    /**
+     * @generated from protobuf field: repeated dipole.agent.v1.AgentArtifact artifacts = 1
+     */
+    artifacts: AgentArtifact[];
+    /**
+     * @generated from protobuf field: int64 next_created_at_unix_ms = 2
+     */
+    nextCreatedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string next_artifact_id = 3
+     */
+    nextArtifactId: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.MatchEventSubscriptionsRequest
  */
 export interface MatchEventSubscriptionsRequest {
@@ -10108,6 +10150,147 @@ class GetArtifactResponse$Type extends MessageType<GetArtifactResponse> {
  */
 export const GetArtifactResponse = new GetArtifactResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class ListOwnedArtifactsRequest$Type extends MessageType<ListOwnedArtifactsRequest> {
+    constructor() {
+        super("dipole.agent.v1.ListOwnedArtifactsRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "tenant_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "after_created_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 4, name: "after_artifact_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "limit", kind: "scalar", T: 13 /*ScalarType.UINT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListOwnedArtifactsRequest>): ListOwnedArtifactsRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.tenantId = "";
+        message.afterCreatedAtUnixMs = 0n;
+        message.afterArtifactId = "";
+        message.limit = 0;
+        if (value !== undefined)
+            reflectionMergePartial<ListOwnedArtifactsRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListOwnedArtifactsRequest): ListOwnedArtifactsRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string tenant_id */ 2:
+                    message.tenantId = reader.string();
+                    break;
+                case /* int64 after_created_at_unix_ms */ 3:
+                    message.afterCreatedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string after_artifact_id */ 4:
+                    message.afterArtifactId = reader.string();
+                    break;
+                case /* uint32 limit */ 5:
+                    message.limit = reader.uint32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListOwnedArtifactsRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string tenant_id = 2; */
+        if (message.tenantId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.tenantId);
+        /* int64 after_created_at_unix_ms = 3; */
+        if (message.afterCreatedAtUnixMs !== 0n)
+            writer.tag(3, WireType.Varint).int64(message.afterCreatedAtUnixMs);
+        /* string after_artifact_id = 4; */
+        if (message.afterArtifactId !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.afterArtifactId);
+        /* uint32 limit = 5; */
+        if (message.limit !== 0)
+            writer.tag(5, WireType.Varint).uint32(message.limit);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListOwnedArtifactsRequest
+ */
+export const ListOwnedArtifactsRequest = new ListOwnedArtifactsRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ListOwnedArtifactsResponse$Type extends MessageType<ListOwnedArtifactsResponse> {
+    constructor() {
+        super("dipole.agent.v1.ListOwnedArtifactsResponse", [
+            { no: 1, name: "artifacts", kind: "message", repeat: 2 /*RepeatType.UNPACKED*/, T: () => AgentArtifact },
+            { no: 2, name: "next_created_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 3, name: "next_artifact_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ListOwnedArtifactsResponse>): ListOwnedArtifactsResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.artifacts = [];
+        message.nextCreatedAtUnixMs = 0n;
+        message.nextArtifactId = "";
+        if (value !== undefined)
+            reflectionMergePartial<ListOwnedArtifactsResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ListOwnedArtifactsResponse): ListOwnedArtifactsResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* repeated dipole.agent.v1.AgentArtifact artifacts */ 1:
+                    message.artifacts.push(AgentArtifact.internalBinaryRead(reader, reader.uint32(), options));
+                    break;
+                case /* int64 next_created_at_unix_ms */ 2:
+                    message.nextCreatedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string next_artifact_id */ 3:
+                    message.nextArtifactId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ListOwnedArtifactsResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* repeated dipole.agent.v1.AgentArtifact artifacts = 1; */
+        for (let i = 0; i < message.artifacts.length; i++)
+            AgentArtifact.internalBinaryWrite(message.artifacts[i], writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* int64 next_created_at_unix_ms = 2; */
+        if (message.nextCreatedAtUnixMs !== 0n)
+            writer.tag(2, WireType.Varint).int64(message.nextCreatedAtUnixMs);
+        /* string next_artifact_id = 3; */
+        if (message.nextArtifactId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.nextArtifactId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ListOwnedArtifactsResponse
+ */
+export const ListOwnedArtifactsResponse = new ListOwnedArtifactsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class MatchEventSubscriptionsRequest$Type extends MessageType<MatchEventSubscriptionsRequest> {
     constructor() {
         super("dipole.agent.v1.MatchEventSubscriptionsRequest", [
@@ -13015,6 +13198,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "RevokeRuntimePromotion", options: {}, I: RevokeRuntimePromotionRequest, O: RuntimePromotionGrantResponse },
     { name: "CreateArtifact", options: {}, I: CreateArtifactRequest, O: CreateArtifactResponse },
     { name: "GetArtifact", options: {}, I: GetArtifactRequest, O: GetArtifactResponse },
+    { name: "ListOwnedArtifacts", options: {}, I: ListOwnedArtifactsRequest, O: ListOwnedArtifactsResponse },
     { name: "PublishMcpReadinessEvidence", options: {}, I: PublishMcpReadinessEvidenceRequest, O: PublishMcpReadinessEvidenceResponse },
     { name: "ResolveFreshMcpReadinessEvidence", options: {}, I: ResolveFreshMcpReadinessEvidenceRequest, O: ResolveFreshMcpReadinessEvidenceResponse }
 ]);

@@ -8,6 +8,7 @@ package generated
 import (
 	"context"
 	"encoding/json"
+	"time"
 )
 
 const agentArtifactExistsByObjectKey = `-- name: AgentArtifactExistsByObjectKey :one
@@ -135,4 +136,70 @@ func (q *Queries) InsertAgentArtifact(ctx context.Context, arg InsertAgentArtifa
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const listOwnedAgentArtifactMetadata = `-- name: ListOwnedAgentArtifactMetadata :many
+SELECT a.id, a.artifact_uuid, a.schema_version, a.task_uuid, a.run_uuid, a.artifact_type, a.version, a.title, a.media_type, a.object_bucket, a.object_key, a.content_sha256, a.size_bytes, a.metadata_json, a.created_at
+FROM agent_artifacts AS a
+JOIN agent_tasks AS t ON t.task_uuid = a.task_uuid
+WHERE t.tenant_id = ?
+  AND t.principal_uuid = ?
+  AND (a.created_at < ?
+       OR (a.created_at = ? AND a.artifact_uuid < ?))
+ORDER BY a.created_at DESC, a.artifact_uuid DESC
+LIMIT ?
+`
+
+type ListOwnedAgentArtifactMetadataParams struct {
+	TenantID          string
+	PrincipalUuid     string
+	AfterCreatedAt    time.Time
+	AfterArtifactUuid string
+	Limit             int32
+}
+
+func (q *Queries) ListOwnedAgentArtifactMetadata(ctx context.Context, arg ListOwnedAgentArtifactMetadataParams) ([]AgentArtifact, error) {
+	rows, err := q.db.QueryContext(ctx, listOwnedAgentArtifactMetadata,
+		arg.TenantID,
+		arg.PrincipalUuid,
+		arg.AfterCreatedAt,
+		arg.AfterCreatedAt,
+		arg.AfterArtifactUuid,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentArtifact{}
+	for rows.Next() {
+		var i AgentArtifact
+		if err := rows.Scan(
+			&i.ID,
+			&i.ArtifactUuid,
+			&i.SchemaVersion,
+			&i.TaskUuid,
+			&i.RunUuid,
+			&i.ArtifactType,
+			&i.Version,
+			&i.Title,
+			&i.MediaType,
+			&i.ObjectBucket,
+			&i.ObjectKey,
+			&i.ContentSha256,
+			&i.SizeBytes,
+			&i.MetadataJson,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

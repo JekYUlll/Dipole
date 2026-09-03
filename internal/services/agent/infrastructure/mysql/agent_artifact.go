@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/platform/mysql/generated"
@@ -15,6 +16,7 @@ import (
 type AgentArtifactRepository struct{ queries generated.Querier }
 
 var _ application.AgentArtifactStoreV1 = (*AgentArtifactRepository)(nil)
+var _ application.AgentArtifactCatalogStoreV1 = (*AgentArtifactRepository)(nil)
 
 func NewAgentArtifactRepository(queries generated.Querier) (*AgentArtifactRepository, error) {
 	if queries == nil {
@@ -62,6 +64,21 @@ func (r *AgentArtifactRepository) GetAgentArtifactByTaskTypeVersion(ctx context.
 		return nil, fmt.Errorf("get Agent Artifact version: %w", err)
 	}
 	return mapAgentArtifactV1(row), nil
+}
+
+func (r *AgentArtifactRepository) ListOwnedAgentArtifacts(ctx context.Context, tenantID, principalUUID string, afterCreatedAt time.Time, afterArtifactID string, limit int) ([]application.AgentArtifactV1, error) {
+	if tenantID == "" || principalUUID == "" || afterCreatedAt.IsZero() || limit < 1 || limit > 101 {
+		return nil, application.ErrAgentArtifactInvalid
+	}
+	rows, err := r.queries.ListOwnedAgentArtifactMetadata(ctx, generated.ListOwnedAgentArtifactMetadataParams{TenantID: tenantID, PrincipalUuid: principalUUID, AfterCreatedAt: afterCreatedAt, AfterArtifactUuid: afterArtifactID, Limit: int32(limit)})
+	if err != nil {
+		return nil, fmt.Errorf("list owned Agent Artifacts: %w", err)
+	}
+	result := make([]application.AgentArtifactV1, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, *mapAgentArtifactV1(row))
+	}
+	return result, nil
 }
 
 func (r *AgentArtifactRepository) ExistsByObjectKey(ctx context.Context, bucket, objectKey string) (bool, error) {

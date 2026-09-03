@@ -21,8 +21,15 @@ import (
 )
 
 type gatewayAgentArtifactRPCStub struct {
-	request  *agentv1.GetArtifactRequest
-	response *agentv1.GetArtifactResponse
+	request     *agentv1.GetArtifactRequest
+	listRequest *agentv1.ListOwnedArtifactsRequest
+	response    *agentv1.GetArtifactResponse
+	list        *agentv1.ListOwnedArtifactsResponse
+}
+
+func (s *gatewayAgentArtifactRPCStub) ListOwnedArtifacts(_ context.Context, request *agentv1.ListOwnedArtifactsRequest, _ ...grpc.CallOption) (*agentv1.ListOwnedArtifactsResponse, error) {
+	s.listRequest = request
+	return s.list, nil
 }
 
 func (s *gatewayAgentArtifactRPCStub) GetArtifact(_ context.Context, request *agentv1.GetArtifactRequest, _ ...grpc.CallOption) (*agentv1.GetArtifactResponse, error) {
@@ -41,7 +48,7 @@ func artifactResponse(body []byte) *agentv1.GetArtifactResponse {
 
 func TestAgentArtifactClientBindsPrincipalAndLimitsContentToConversationDigests(t *testing.T) {
 	rpc := &gatewayAgentArtifactRPCStub{response: artifactResponse([]byte("private artifact body"))}
-	client, err := NewAgentArtifactClient(rpc, time.Second)
+	client, err := NewAgentArtifactClient(rpc, "dipole", time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,10 +77,39 @@ func TestAgentArtifactClientBindsPrincipalAndLimitsContentToConversationDigests(
 	}
 }
 
+func TestAgentArtifactClientListsOnlyOwnerMetadata(t *testing.T) {
+	artifactID := strings.Repeat("a", 64)
+	nextID := strings.Repeat("b", 64)
+	rpc := &gatewayAgentArtifactRPCStub{list: &agentv1.ListOwnedArtifactsResponse{Artifacts: []*agentv1.AgentArtifact{{
+		ArtifactId: artifactID, TaskId: "TASK-1", RunId: "RUN-1", ArtifactType: "conversation_digest", Version: 1, Title: "Daily digest", MediaType: "text/markdown", ContentSha256: strings.Repeat("c", 64), SizeBytes: 12, CreatedAtUnixMs: 1_700_000_000_000,
+	}}, NextCreatedAtUnixMs: 1_699_000_000_000, NextArtifactId: nextID}}
+	client, err := NewAgentArtifactClient(rpc, "tenant-a", time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := client.List(context.Background(), "U100", "", 20)
+	if err != nil || len(page.Artifacts) != 1 || page.NextCursor != "1699000000000:"+nextID || rpc.listRequest.GetTenantId() != "tenant-a" || rpc.listRequest.GetContext().GetPrincipalUserId() != "U100" {
+		t.Fatalf("page=%+v request=%+v err=%v", page, rpc.listRequest, err)
+	}
+	_, err = client.List(context.Background(), "U100", page.NextCursor, 20)
+	if err != nil || rpc.listRequest.GetAfterCreatedAtUnixMs() != 1_699_000_000_000 || rpc.listRequest.GetAfterArtifactId() != nextID {
+		t.Fatalf("cursor request=%+v err=%v", rpc.listRequest, err)
+	}
+	rpc.list.Artifacts[0].MetadataJson = []byte(`{"private":"detail"}`)
+	if _, err := client.List(context.Background(), "U100", "", 20); err != ErrAgentArtifactUnavailable {
+		t.Fatalf("metadata leakage error=%v", err)
+	}
+}
+
 type gatewayAgentArtifactStub struct {
 	principal string
 	artifact  string
 	calls     int
+}
+
+func (s *gatewayAgentArtifactStub) List(_ context.Context, principalUUID, _ string, _ int) (*AgentArtifactPage, error) {
+	s.principal, s.calls = principalUUID, s.calls+1
+	return &AgentArtifactPage{}, nil
 }
 
 func (s *gatewayAgentArtifactStub) Get(_ context.Context, principalUUID, artifactID string) (*AgentArtifact, error) {
@@ -112,6 +148,36 @@ func TestGatewayOwnsAuthenticatedAgentArtifactMetadata(t *testing.T) {
 	response := httptest.NewRecorder()
 	server.Engine().ServeHTTP(response, request)
 	if response.Code != http.StatusOK || artifacts.principal != "U100" || !strings.Contains(response.Body.String(), `"artifactId"`) || strings.Contains(response.Body.String(), "private") {
+		t.Fatalf("response=%d artifact=%+v body=%s", response.Code, artifacts, response.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentArtifactCatalog(t *testing.T) {
+	t.Chdir("../../../..")
+	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	artifacts := &gatewayAgentArtifactStub{}
+	server, err := newTestGatewayServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentArtifacts: artifacts, Limiter: gatewayLimiterStub{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	unauthorized := httptest.NewRecorder()
+	server.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodGet, "/api/v1/agent/artifacts", nil))
+	if unauthorized.Code != http.StatusUnauthorized || artifacts.calls != 0 {
+		t.Fatalf("unauthorized code=%d calls=%d", unauthorized.Code, artifacts.calls)
+	}
+	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/agent/artifacts?limit=20", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+	server.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || artifacts.principal != "U100" || !strings.Contains(response.Body.String(), `"artifacts"`) {
 		t.Fatalf("response=%d artifact=%+v body=%s", response.Code, artifacts, response.Body.String())
 	}
 }
