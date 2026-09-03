@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：修正 Web Sync observability preflight 的 target 与清理边界。
+  - Smoke 仅校验本次实际启动的 `dipole-required` Prometheus scrape pool，避免未启动的可选服务导致误报；退出时显式带 `observability` profile 清理 Prometheus 与 Alertmanager。
+  - 默认客户端模式与真实 24 小时观察窗口保持不变。
+
 - 2026-09-04：为 SQLC 数据访问迁移增加 GORM 防回归门禁。
   - `go.mod` 与所有生产 Go 源的 import 均由 `internal/platform/mysql` 架构测试检查，任何 `gorm.io/*` 依赖都会使测试失败；当前生产路径已无 GORM。
 

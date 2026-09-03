@@ -70,6 +70,8 @@ class WebSyncObservationTest(unittest.TestCase):
         self.assertIn('command -v timeout', smoke)
         self.assertIn('timeout --preserve-status "${startup_timeout_seconds}s" docker compose', smoke)
         self.assertIn('startup timeout must be between 30 and 1800 seconds', smoke)
+        self.assertIn('compose --profile observability down -v --remove-orphans', smoke)
+        self.assertIn('api/v1/targets?state=active&scrapePool=dipole-required', smoke)
 
     def test_language_neutral_contracts_are_strict_and_versioned(self):
         root = Path("contracts/web-sync-observation/v1")

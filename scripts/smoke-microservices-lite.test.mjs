@@ -45,7 +45,8 @@ test("web sync observability smoke stays isolated and does not claim promotion",
     "DIPOLE_ALERTMANAGER_PORT:-9093",
     "${ALERTMANAGER_URL}/-/ready",
     "dipole-core dipole-message dipole-sync dipole-gateway",
-    "api/v1/targets?state=active",
+    "api/v1/targets?state=active&scrapePool=dipole-required",
+    "compose --profile observability down -v --remove-orphans",
     "does not start a Web Sync promotion observation window",
   ]) {
     assert.match(script, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));

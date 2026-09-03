@@ -36,7 +36,7 @@ compose() {
 
 cleanup() {
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
-    compose down -v --remove-orphans >/dev/null 2>&1 || true
+    compose --profile observability down -v --remove-orphans >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
@@ -66,7 +66,7 @@ for service in core message sync gateway; do
   compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/metrics | grep -q '^#'
 done
 
-targets="$(curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/api/v1/targets?state=active")"
+targets="$(curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/api/v1/targets?state=active&scrapePool=dipole-required")"
 for service in dipole-core dipole-message dipole-sync dipole-gateway; do
   grep -q "\"service\":\"${service}\"" <<<"${targets}"
 done

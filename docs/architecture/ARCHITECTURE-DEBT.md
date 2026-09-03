@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：Web Sync observability preflight 发现并修正两个隔离环境边界：可选 scrape target 不参与仅启动 Gateway 依赖闭包的健康判定，profile 容器由 cleanup 显式回收。修复后的 Smoke 继续只验证 `dipole-required` 指标链路；它不构成真实客户端观察、Cassandra hydration 主读或默认同步模式切换证据。
+
 - 2026-09-04：SQLC 迁移的生产依赖审计确认 `go.mod` 与全部非测试 Go 源均不再包含 GORM；新增仓库级 import 门禁防止后续回流。`internal/compat` 仅保留迁移回归辅助，Go/Eino 旧 Agent 仅由 Core embedded Kafka 回滚路径使用，两者均不构成 GORM 运行依赖。
 
 - 2026-09-04：Subscription Active 的真实 Provider 隔离回执已在 `052d60c7` 通过。单一 owner-scoped Kafka 事件收敛为单一 completed Durable Task，任务内出现一轮或多轮 completed model run 均被记录为合法执行，且 Agent 消息表保持零写入；项目自动清理后公共 `dipole-experience` 为 11 个健康容器。该受控 read-only 场景没有覆盖多样本质量、共享环境、自动写入或默认启用，相关门禁继续保持关闭。
