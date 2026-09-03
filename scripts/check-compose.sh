@@ -367,6 +367,26 @@ jq -e '
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "false"
 ' <<<"${interactive_active_config}" >/dev/null
 
+mcp_server_shadow_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+    docker compose -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/agent-mcp-server-shadow.yml config --format json
+})"
+jq -e '
+  .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
+  and .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_MEMORY_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_MCP_ENABLED == "true"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED == "false"
+' <<<"${mcp_server_shadow_config}" >/dev/null
+
 remote_gpu_mysql_aio_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
     docker compose \

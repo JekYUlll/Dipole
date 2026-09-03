@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-03：新增默认关闭的第一方 MCP Server Shadow Compose profile。
+  - `agent-mcp-server-shadow.yml` 只开启 Agent MCP Server 与 Gateway Streamable HTTP 代理，复用既有 JWT、Core Context 复核和 Redis principal 限流；外部 MCP、Task Control、Memory、retrieval、Artifact 与消息写入保持关闭。
+  - 新增静态 profile 门禁，并通过 MCP HTTP/协议定向测试。真实 Remote GPU 认证 MCP client 验收和浏览器入口继续独立推进。
+
 - 2026-09-03：同版本 Remote GPU Active Agent 候选完成公开 Gateway 的受控写入闭环。
   - 独立 Compose project `dipole-agent-active-649cf110` 以 `649cf110` 的干净 Core、Gateway、Message、Sync 与 TypeScript Runtime 镜像运行在 `18121`；所有服务健康，`interactive_active` 与交互消息写入开关已由认证状态接口确认。远端本机可访问该端口，宿主外直连仍返回上游 `404`，因此暂不将其作为可公开浏览器访问的 URL。
   - 临时 owner 经公开 Gateway 完成 `/send` Task 的创建、`waiting_approval`、批准和终态读取。Timeline 返回 5 个事件，持久化收据为恰好一次完成 Tool Invocation、一次审批消费和一条 Agent `system_message`。同一候选的拒绝路径收敛为 `cancelled`，没有新增 Tool、消息或审批消费。

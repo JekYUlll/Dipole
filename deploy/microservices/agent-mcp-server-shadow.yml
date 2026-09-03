@@ -1,0 +1,19 @@
+services:
+  agent:
+    environment:
+      # Expose only the first-party, read-only MCP server through Gateway.
+      # External MCP connections and Agent Task controls stay disabled.
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "true"
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
+      DIPOLE_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_AGENT_MEMORY_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"
+
+  gateway:
+    environment:
+      DIPOLE_GATEWAY_AGENT_MCP_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: "false"
+      DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED: "false"
+      DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED: "false"

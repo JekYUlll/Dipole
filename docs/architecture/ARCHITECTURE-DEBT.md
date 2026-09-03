@@ -135,6 +135,8 @@
 
 ### 本轮进展
 
+- 2026-09-03：第一方只读 MCP Server 已具备默认关闭的 `agent-mcp-server-shadow.yml` 组合入口，Runtime 与 Gateway 同时显式启用，外部 MCP、控制面、Memory、检索、Artifact 和写 Capability 仍固定关闭。静态 Compose/MCP HTTP 组合测试已通过；仍需在隔离 Remote GPU 候选上使用认证 MCP client 验证 running Task/Run 的 Context 绑定、JWT consent、限流和回滚，再将其表述为可体验 MCP 功能。
+
 - 2026-09-03：同版本 Remote GPU Interactive Shadow 候选暴露了干净工作树的 mTLS 启动前置缺口：仅提供不存在的 `DIPOLE_INTERNAL_CERT_DIR` 时，Docker 会将单文件 bind mount 变为目录，Core/Message 随后因证书读取失败重启。运行手册现固定先生成隔离开发 CA 与服务证书；这只修复候选可复现性，证书轮换、受管 PKI 与生产身份仍由部署治理处理。最新候选已用真实 DeepSeek V4 Flash 完成认证 Task 到持久 Run、模型审计与 Artifact 的只读闭环，外部 MCP、OAuth callback、写 Capability、共享观察窗口和成功率统计继续开放。
 
 - 2026-09-03：Remote GPU 的 `649cf110` Active Interactive 候选已用公开 Gateway 验证 `/send` 的批准与拒绝 API 闭环，含一次写入和零副作用拒绝。当前前端路由仍以 `VITE_AGENT_TASK_CREATE_ENABLED`、`VITE_AGENT_APPROVAL_ENABLED` 与 `VITE_AGENT_TIMELINE_ENABLED` 为构建期开关；在对应静态资源显式开启并经浏览器验收前，不能把该候选表述为完整的浏览器 Human-in-the-loop 体验。前端启用后需复验 post-create 有界 `404` 重试、创建、批准、拒绝、Timeline 及移动端路径；API receipt 见 [Interactive Active Current Receipt](../agent/AGENT-INTERACTIVE-ACTIVE-CURRENT-RECEIPT.md)。

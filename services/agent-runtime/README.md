@@ -46,6 +46,17 @@ DIPOLE_AGENT_MCP_TOOL_TIMEOUT_MS=5000
 DIPOLE_GATEWAY_AGENT_MCP_ENABLED=true
 ```
 
+开发期可叠加 `deploy/microservices/agent-mcp-server-shadow.yml`，它只开启
+第一方只读 MCP Server 和 Gateway 代理，保持外部 MCP、Task Control、Memory、
+retrieval、Artifact 与消息写入关闭：
+
+```bash
+docker compose \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-mcp-server-shadow.yml \
+  config --quiet
+```
+
 客户端访问 `/api/v1/agent/tasks/{task_id}/runs/{run_id}/mcp`。Gateway 支持 Streamable HTTP 的 GET/POST/DELETE，先验证现有 JWT，再以内部服务身份调用 Runtime；Runtime 通过 Core `ResolveMcpContext` 复核 Task owner、运行中的 Run、固定 Definition、权限和 scope。当前只注册 `dipole_conversation_list`，不开启外部 Server、write/destructive Tool。
 
 启用入口前先应用 migration v30 并滚动 Core，再滚动 Runtime/Gateway。每次 Tool 调用必须先通过 Core 持久化 begin；审计只记录参数/结果 SHA-256、结果大小、耗时、终态和稳定错误码。`@opentelemetry/api` 会创建低敏 ToolCall span；Exporter 总开关默认关闭。回滚先关闭 Gateway 开关，再关闭 Runtime 开关；确认没有 `running` 调用后才可执行 v30 down，降级会删除 Tool 审计历史。
