@@ -49,7 +49,7 @@
 ## 前端（全部 `VITE_*=false`）
 
 Search、预签名、Sync、Elicitation、Approval、Timeline、Task Create、Artifacts、Subscriptions、Definitions、Memories、Memory correction。
-页面与契约已在，缺的是对应 Gateway/Runtime 开关和视觉/HITL 证据。
+页面与契约已在。走查用 `frontend/.env.agent-experience` / `npm run dev:agent`，默认生产路径不变。入口已挂到 Settings / Chat / 侧栏。按页缺口见 `docs/notes/agent-frontend-experience-gaps.md`。
 
 ## C++ 数据面（暂缓）
 
@@ -60,3 +60,4 @@ Search、预签名、Sync、Elicitation、Approval、Timeline、Task Create、Ar
 1. ~~Workflow Repair Execute~~：已挂到默认关的 Core 启动链。
 2. ~~MCP Elicitation continuation~~：已随 `external_mcp_shadow` 进入生产 Worker；第一方 Timeline 入口已挂。
 3. 可 opt-in 项只补门禁/证据，不改默认。AD-036 剩余多轮与敏感授权。
+4. 前端体验走查后，后端最大缺口是 owner 任务列表 / HITL 收件箱，其次是 memory candidate 列表。

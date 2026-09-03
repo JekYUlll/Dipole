@@ -4,9 +4,12 @@
       <div class="brand"><span />DIPOLE</div>
       <p class="rail-kicker">AGENT CONTROL</p>
       <div class="rail-active">◉ <span>长期记忆</span></div>
-      <div class="rail-item">▣ <span>Agent 定义</span></div>
-      <div class="rail-item">⌁ <span>事件订阅</span></div>
-      <div class="rail-item">☷ <span>任务运行</span></div>
+      <RouterLink v-if="nav.definitions" class="rail-item" :to="{ name: 'agent-definitions' }">▣ <span>Agent 定义</span></RouterLink>
+      <div v-else class="rail-item">▣ <span>Agent 定义</span></div>
+      <RouterLink v-if="nav.subscriptions" class="rail-item" :to="{ name: 'agent-subscriptions' }">⌁ <span>事件订阅</span></RouterLink>
+      <div v-else class="rail-item">⌁ <span>事件订阅</span></div>
+      <RouterLink v-if="nav.taskCreate" class="rail-item" :to="{ name: 'agent-task-create' }">☷ <span>任务运行</span></RouterLink>
+      <div v-else class="rail-item">☷ <span>任务运行</span></div>
       <div class="rail-item">♢ <span>审批记录</span></div>
       <p class="rail-boundary">OWNER GOVERNANCE<br>AUTO OBSERVATION: OFF<br>RETRIEVAL: CONTEXT ONLY</p>
     </aside>
@@ -118,12 +121,19 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { agentMemoryClient, type AgentMemory, type AgentMemoryClient } from '@/api/agentMemories'
+import { agentFlags, agentTaskCreatePageEnabled } from '@/config/agentFlags'
 
 const props = withDefaults(defineProps<{ client?: AgentMemoryClient, correctionEnabled?: boolean }>(), {
   client: () => agentMemoryClient,
   correctionEnabled: import.meta.env.VITE_AGENT_MEMORY_CORRECTION_ENABLED === 'true',
 })
+const nav = {
+  definitions: agentFlags.definitions,
+  subscriptions: agentFlags.subscriptions,
+  taskCreate: agentTaskCreatePageEnabled,
+}
 type ViewState = 'loading' | 'ready' | 'unavailable' | 'revoking' | 'correcting' | 'conflict'
 type DialogMode = 'revoke' | 'correct'
 const viewState = ref<ViewState>('loading')
@@ -277,4 +287,5 @@ function statusClass(item: AgentMemory) { return inactive(item) ? 'status-danger
 .memory-shell .rail-kicker, .memory-shell .rail-boundary, .memory-shell .mono, .memory-shell .state-code { font-family: var(--dp-font-data); }
 @media(max-width:900px){.memory-shell{grid-template-columns:1fr}.control-rail{display:none}.memory-main{padding:26px 20px 60px}.content-grid{grid-template-columns:1fr}.authority-panel{order:-1}.page-header{align-items:flex-start}.trust-notice{align-items:flex-start;flex-direction:column;gap:6px}}
 @media(max-width:560px){.memory-main{padding:20px 16px 48px}.page-header h1{font-size:34px}.auto-status{font-size:8px}.authority-panel{display:none}.memory-card{padding:17px}.card-top{align-items:flex-start}.card-top h3{font-size:16px}.status-pill{padding:7px 9px}.card-bottom{align-items:flex-end}.revoke-dialog{width:100%;padding:14px 20px 24px}.trust-notice{margin:22px 0}}
+a.rail-item,a.rail-active{text-decoration:none;color:inherit}
 </style>

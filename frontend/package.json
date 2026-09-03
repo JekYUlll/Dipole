@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:agent": "vite --mode agent-experience",
     "typecheck": "vue-tsc --noEmit",
     "build": "vue-tsc && vite build",
     "test": "vitest run",

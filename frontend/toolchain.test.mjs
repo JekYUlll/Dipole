@@ -25,6 +25,26 @@ test('frontend exposes the documented typecheck command', async () => {
   assert.equal(packageJSON.scripts.typecheck, 'vue-tsc --noEmit')
 })
 
+test('experience Agent build profile opens the Vue Agent surfaces without changing production defaults', async () => {
+  const profile = await readFile(resolve(projectRoot, '.env.agent-experience'), 'utf8')
+  const values = Object.fromEntries(profile
+    .split(/\r?\n/)
+    .filter((line) => line.includes('='))
+    .map((line) => line.split('=', 2)))
+
+  assert.deepEqual(values, {
+    VITE_AGENT_TASK_CREATE_ENABLED: 'true',
+    VITE_AGENT_TIMELINE_ENABLED: 'true',
+    VITE_AGENT_APPROVAL_ENABLED: 'true',
+    VITE_AGENT_ELICITATION_ENABLED: 'true',
+    VITE_AGENT_ARTIFACTS_ENABLED: 'true',
+    VITE_AGENT_SUBSCRIPTIONS_ENABLED: 'true',
+    VITE_AGENT_DEFINITIONS_ENABLED: 'true',
+    VITE_AGENT_MEMORIES_ENABLED: 'true',
+    VITE_AGENT_MEMORY_CORRECTION_ENABLED: 'true',
+  })
+})
+
 test('interactive Agent build profile exposes only the read-only demo surface', async () => {
   const profile = await readFile(resolve(projectRoot, '.env.agent-interactive-shadow'), 'utf8')
   const values = Object.fromEntries(profile

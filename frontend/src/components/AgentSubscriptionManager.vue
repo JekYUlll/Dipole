@@ -3,9 +3,12 @@
     <aside class="control-rail" aria-label="Agent control navigation">
       <div class="brand"><span class="brand-dot" />DIPOLE</div>
       <p class="rail-kicker">AGENT CONTROL</p>
-      <div class="rail-active">⌁ <span>事件订阅</span></div>
-      <div class="rail-item">▣ <span>Agent 定义</span></div>
-      <div class="rail-item">☷ <span>任务运行</span></div>
+      <RouterLink v-if="nav.subscriptions" class="rail-active" :to="{ name: 'agent-subscriptions' }">⌁ <span>事件订阅</span></RouterLink>
+      <div v-else class="rail-active">⌁ <span>事件订阅</span></div>
+      <RouterLink v-if="nav.definitions" class="rail-item" :to="{ name: 'agent-definitions' }">▣ <span>Agent 定义</span></RouterLink>
+      <div v-else class="rail-item">▣ <span>Agent 定义</span></div>
+      <RouterLink v-if="nav.taskCreate" class="rail-item" :to="{ name: 'agent-task-create' }">☷ <span>任务运行</span></RouterLink>
+      <div v-else class="rail-item">☷ <span>任务运行</span></div>
       <div class="rail-item">♢ <span>审批记录</span></div>
       <p class="rail-boundary">OWNER CONTROL<br>RUNTIME: DIRECT_TARGET<br>高成本模型调用未启用</p>
     </aside>
@@ -174,13 +177,20 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { agentDefinitionCatalogClient, type AgentDefinitionCatalogClient, type AgentDefinitionCatalogItem } from '@/api/agentDefinitions'
+import { agentFlags, agentTaskCreatePageEnabled } from '@/config/agentFlags'
 import { agentSubscriptionClient, type AgentSubscription, type AgentSubscriptionClient, type AgentSubscriptionConversationOption, type AgentSubscriptionFilterKind } from '@/api/agentSubscriptions'
 
 const props = withDefaults(defineProps<{ client?: AgentSubscriptionClient, definitionClient?: AgentDefinitionCatalogClient }>(), {
   client: () => agentSubscriptionClient,
   definitionClient: () => agentDefinitionCatalogClient,
 })
+const nav = {
+  definitions: agentFlags.definitions,
+  subscriptions: agentFlags.subscriptions,
+  taskCreate: agentTaskCreatePageEnabled,
+}
 type ViewState = 'loading' | 'ready' | 'unavailable' | 'definition_stale' | 'revoking'
 const viewState = ref<ViewState>('loading')
 const subscriptions = ref<AgentSubscription[]>([])
@@ -383,4 +393,5 @@ function filterSummary(item: AgentSubscription): string {
 .create-backdrop{align-items:center;padding:24px}.create-dialog{box-sizing:border-box;width:min(760px,100%);max-height:calc(100vh - 48px);overflow:auto;background:var(--panel);border-radius:22px;padding:26px;box-shadow:0 28px 90px rgba(10,20,16,.28)}.create-dialog-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}.create-dialog-heading h2{font:750 28px Manrope,sans-serif;margin:0}.dialog-close{border:0;background:transparent;color:var(--muted);font-size:28px;cursor:pointer}.create-boundary{display:flex;flex-direction:column;gap:4px;margin:20px 0;padding:14px 16px;border-radius:12px;background:var(--amber-soft);color:#805312;font-size:12px}.create-boundary strong,.create-field>span,.create-filter legend,.create-review strong{font:800 10px "Geist Mono",monospace;letter-spacing:.08em}.create-field{display:grid;gap:8px;margin:16px 0}.create-field>span,.create-filter legend{color:var(--green)}.create-field select,.terms-input{box-sizing:border-box;width:100%;min-height:46px;border:1px solid var(--line);border-radius:11px;background:#f7f8f5;padding:10px 12px;color:var(--ink);font:600 13px inherit}.create-field small{color:var(--muted)}.create-filter{display:grid;grid-template-columns:1fr 1fr;gap:12px;border:1px solid var(--line);border-radius:13px;padding:15px;margin:18px 0}.create-filter legend{padding:0 5px}.terms-input{grid-column:1/-1}.create-state{margin:16px 0;padding:16px;border-radius:12px;background:var(--green-soft);color:var(--green);font-size:13px}.create-state.warning{background:var(--amber-soft);color:var(--amber)}.create-state.danger{background:var(--red-soft);color:var(--red)}.create-review{display:grid;gap:7px;background:var(--rail);color:#fff;border-radius:14px;padding:17px 18px}.create-review strong{color:#82deb3}.create-review span{font:650 16px "Geist Mono",monospace;overflow-wrap:anywhere}.create-review small{color:#afbeb8}.create-submit{background:var(--green);color:#fff}.create-submit:disabled{opacity:.5;cursor:not-allowed!important}
 @media(max-width:900px){.subscription-shell{grid-template-columns:1fr}.control-rail{display:none}.subscription-main{padding:26px 20px 60px}.content-grid{grid-template-columns:1fr}.authority-panel{order:-1}.page-header{align-items:flex-start}.create-button{font-size:0;padding:12px}.create-button span{font-size:22px}.shadow-notice{align-items:flex-start;flex-direction:column;gap:6px}}
 @media(max-width:560px){.subscription-main{padding:20px 16px 48px}.page-header h1{font-size:34px}.subtitle{font-size:12px}.shadow-notice{margin:22px 0}.content-grid{display:block}.authority-panel{display:none}.subscription-list{gap:14px}.subscription-card{padding:18px}.card-top{align-items:flex-start}.card-top h3{font-size:18px}.status-pill{padding:8px 10px}.binding{white-space:normal;line-height:1.5}.card-bottom{align-items:flex-end}.dialog-backdrop{background:rgba(11,20,17,.24)}.revoke-dialog{width:100%;border-radius:22px 22px 0 0;padding:14px 20px 24px}.dialog-actions{flex-direction:row}.create-backdrop{padding:0;align-items:flex-end}.create-dialog{width:100%;max-height:94vh;border-radius:22px 22px 0 0;padding:22px 20px}.create-filter{grid-template-columns:1fr}.terms-input{grid-column:1}.create-dialog-heading h2{font-size:24px}}
+a.rail-item,a.rail-active{text-decoration:none;color:inherit}
 </style>

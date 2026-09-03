@@ -16,10 +16,11 @@ function client(): AgentDefinitionCatalogClient {
 }
 
 describe('AgentDefinitionCatalog', () => {
-  it('uses shared Pencil tokens and keeps the page read-only', () => {
+  it('uses shared Pencil tokens and keeps free-form writes off the catalog', () => {
     expect(source).toContain('--app:var(--dp-canvas)')
-    expect(source).toContain('CATALOG ONLY')
+    expect(source).toContain('CATALOG + PROFILE')
     expect(source).toContain('RUNTIME DISABLED')
+    expect(source).toContain('data-agent-definition-create')
     expect(source).not.toMatch(/<input|<textarea/)
   })
 
@@ -46,6 +47,22 @@ describe('AgentDefinitionCatalog', () => {
 
     expect(catalog.list).toHaveBeenLastCalledWith('NEXT', 50)
     expect(wrapper.findAll('[data-agent-definition-id]').length).toBe(2)
+  })
+
+  it('creates the bounded subscription_autoreply profile then reloads the catalog', async () => {
+    const catalog = client()
+    catalog.create = vi.fn().mockResolvedValue({ ...definition, definitionId: 'DEF-NEW', version: 1 })
+    vi.mocked(catalog.list)
+      .mockResolvedValueOnce({ definitions: [], nextCursor: '' })
+      .mockResolvedValueOnce({ definitions: [{ ...definition, definitionId: 'DEF-NEW', version: 1 }], nextCursor: '' })
+    const wrapper = mount(AgentDefinitionCatalog, { props: { client: catalog } })
+    await flushPromises()
+    await wrapper.get('[data-agent-definition-create]').trigger('click')
+    await flushPromises()
+
+    expect(catalog.create).toHaveBeenCalledWith('subscription_autoreply')
+    expect(catalog.list).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[data-agent-definition-id="DEF-NEW"]').text()).toContain('VERSION 01')
   })
 
   it('fails closed and removes stale rows when a next page overlaps', async () => {

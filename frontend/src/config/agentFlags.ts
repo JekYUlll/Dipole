@@ -1,0 +1,36 @@
+function enabled(value: string | undefined): boolean {
+  return value === 'true'
+}
+
+export const agentFlags = {
+  elicitation: enabled(import.meta.env.VITE_AGENT_ELICITATION_ENABLED),
+  approval: enabled(import.meta.env.VITE_AGENT_APPROVAL_ENABLED),
+  subscriptions: enabled(import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED),
+  definitions: enabled(import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED),
+  memories: enabled(import.meta.env.VITE_AGENT_MEMORIES_ENABLED),
+  memoryCorrection: enabled(import.meta.env.VITE_AGENT_MEMORY_CORRECTION_ENABLED),
+  taskCreate: enabled(import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED),
+  timeline: enabled(import.meta.env.VITE_AGENT_TIMELINE_ENABLED),
+  artifacts: enabled(import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED),
+}
+
+export const agentTaskCreatePageEnabled = agentFlags.taskCreate && agentFlags.timeline
+
+export interface AgentSettingsLink {
+  id: string
+  label: string
+  to: { name: string }
+}
+
+export function agentSettingsLinks(): AgentSettingsLink[] {
+  const links: AgentSettingsLink[] = []
+  if (agentFlags.definitions) links.push({ id: 'definitions', label: 'Agent 定义', to: { name: 'agent-definitions' } })
+  if (agentFlags.subscriptions) links.push({ id: 'subscriptions', label: '事件订阅', to: { name: 'agent-subscriptions' } })
+  if (agentFlags.memories) links.push({ id: 'memories', label: '长期记忆', to: { name: 'agent-memories' } })
+  if (agentTaskCreatePageEnabled) links.push({ id: 'create', label: '创建任务', to: { name: 'agent-task-create' } })
+  return links
+}
+
+export function agentControlHome(): { name: string } | undefined {
+  return agentSettingsLinks()[0]?.to
+}

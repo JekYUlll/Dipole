@@ -12,9 +12,7 @@
 
 ### session-fad3064c
 
-- 正在做：已实现未启用能力整理；Workflow Repair Execute 默认关启动接线（未提交，未 rebase 到 `origin/master`）
-- 在改：`internal/services/core/bootstrap/**`、`internal/config/**`、`deploy/microservices/agent-workflow-repair-execute.yml`、`docs/notes/implemented-but-disabled.md`
-- 避开：Definition catalog、Gateway definitions API、`agent.proto`、autoreply smoke、Remote 部署手册（另一路已推 `a3f18071` / `57f2a9d1`）
+- 空闲
 
 ## Code style
 

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { parseAgentDefinitionCatalogPage } from './agentDefinitions'
+import { describe, expect, it, vi } from 'vitest'
+import { agentDefinitionCatalogClient, parseAgentDefinitionCatalogPage } from './agentDefinitions'
 
 const definition = {
   definitionId: 'DEF-1', version: 7, agentId: 'UAI', conversationScopes: ['*', 'group:G123'],
@@ -11,6 +11,10 @@ describe('Agent Definition catalog parser', () => {
     expect(parseAgentDefinitionCatalogPage({ definitions: [definition], nextCursor: 'eyJ2ZXJzaW9uIjo3fQ' })).toEqual({
       definitions: [definition], nextCursor: 'eyJ2ZXJzaW9uIjo3fQ',
     })
+  })
+
+  it('rejects an unsupported Definition profile before calling the API', async () => {
+    await expect((agentDefinitionCatalogClient.create as (profile: string) => Promise<unknown>)('interactive')).rejects.toThrow('unsupported')
   })
 
   it('rejects authority drift and extra fields', () => {

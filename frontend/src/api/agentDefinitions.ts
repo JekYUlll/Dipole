@@ -16,8 +16,11 @@ export interface AgentDefinitionCatalogPage {
   nextCursor: string
 }
 
+export type AgentDefinitionCreateProfile = 'subscription_autoreply'
+
 export interface AgentDefinitionCatalogClient {
-	list(after?: string, limit?: number): Promise<AgentDefinitionCatalogPage>
+  list(after?: string, limit?: number): Promise<AgentDefinitionCatalogPage>
+  create?(profile: AgentDefinitionCreateProfile): Promise<AgentDefinitionCatalogItem>
 }
 
 const identifier = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/
@@ -61,6 +64,10 @@ export const agentDefinitionCatalogClient: AgentDefinitionCatalogClient = {
     const query = new URLSearchParams({ limit: String(limit) })
     if (after) query.set('after', after)
     return parseAgentDefinitionCatalogPage(await api.get(`/api/v1/agent/definitions?${query.toString()}`))
+  },
+  async create(profile: AgentDefinitionCreateProfile): Promise<AgentDefinitionCatalogItem> {
+    if (profile !== 'subscription_autoreply') throw new Error('Agent Definition profile is unsupported')
+    return parseAgentDefinitionCatalogItem(await api.post('/api/v1/agent/definitions', { profile }))
   },
 }
 

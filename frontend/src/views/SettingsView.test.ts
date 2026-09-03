@@ -11,6 +11,12 @@ describe('SettingsView contract', () => {
     expect(source).toContain("name: 'devices'")
   })
 
+  it('exposes Agent control links from the shared flag helper', () => {
+    expect(source).toContain('id="agent-title"')
+    expect(source).toContain('agentSettingsLinks')
+    expect(source).toContain('Agent 控制')
+  })
+
   it('does not disclose device network or connection identifiers', () => {
     expect(source).not.toMatch(/device\.ip|connection_id|last_seen_at/)
   })

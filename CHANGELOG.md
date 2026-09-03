@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-03：以前端为主线打开 Agent 体验开关，并反推后端缺口。
+  - 新增 `frontend/.env.agent-experience` / `npm run dev:agent`，Settings / Chat / 侧栏可到达定义、订阅、记忆和创建任务。生产 `VITE_*` 默认仍关。
+  - Definition 目录接上已有 `POST /api/v1/agent/definitions`（`subscription_autoreply`）。
+  - 走查结论：最大后端缺口是 owner 任务列表 / HITL 收件箱；其次是 memory candidate 列表。详见 `docs/notes/agent-frontend-experience-gaps.md`。
+
 - 2026-09-03：新增可复跑的第一方 MCP 认证客户端 smoke，并在 Remote GPU 隔离候选完成实测。
   - `scripts/smoke-agent-mcp-client.mjs` 从临时 owner 的登录、Definition/Task 创建、`mcpRunId` 绑定与 consent grant 走到 `initialize`、`tools/list`、`dipole_conversation_list`；结果只输出脱敏状态。
   - 实测保持 `shadow/read_shadow`，MCP Streamable HTTP 未返回 `Mcp-Session-Id`，客户端按无状态请求完成调用。写工具、外部 MCP、Memory 写入与默认 profile 继续关闭。

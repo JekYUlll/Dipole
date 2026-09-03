@@ -51,7 +51,7 @@ async function submit() {
       <div>
         <p class="eyebrow">AGENT TASK / CREATE</p>
         <h1>创建 Agent 任务</h1>
-        <p class="description">任务提交后进入只读时间线。</p>
+        <p class="description">任务提交后进入执行时间线；审批和补充信息从时间线进入。</p>
       </div>
       <span class="request-badge">REQUEST / {{ request || 'LOCAL' }}</span>
     </header>
@@ -63,7 +63,7 @@ async function submit() {
         <span id="agent-task-goal-help">只读取当前认证账号已授权的会话。</span>
         <span id="agent-task-goal-count">{{ characterCount }}/4000</span>
       </div>
-      <p class="boundary">提交不会启用 Runtime、Tool 或外部服务。</p>
+      <p class="boundary">提交会创建当前账号的任务记录。是否真正跑 Runtime 取决于 Gateway / Interactive 开关，本页不单独打开这些能力。</p>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <div class="action-row">
         <span class="state-label">{{ state === 'submitting' ? 'SUBMITTING' : 'VALIDATE BEFORE SUBMIT' }}</span>

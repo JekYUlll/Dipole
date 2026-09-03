@@ -27,6 +27,18 @@
       </div>
     </section>
 
+    <section v-if="agentLinks.length" class="settings-card" aria-labelledby="agent-title">
+      <div class="card-heading">
+        <div><p class="eyebrow">AGENT CONTROL</p><h2 id="agent-title">Agent 控制</h2></div>
+      </div>
+      <p class="card-copy">打开当前账号已启用的 Agent 页面。任务审批和补充信息仍要从具体任务的时间线进入。</p>
+      <ul class="agent-links">
+        <li v-for="link in agentLinks" :key="link.id">
+          <RouterLink class="secondary-link" :to="link.to">{{ link.label }}</RouterLink>
+        </li>
+      </ul>
+    </section>
+
     <section class="settings-card" aria-labelledby="device-title">
       <div class="card-heading">
         <div><p class="eyebrow">SECURITY</p><h2 id="device-title">设备会话</h2></div>
@@ -55,6 +67,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import api from '@/api'
+import { agentSettingsLinks } from '@/config/agentFlags'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 
@@ -68,6 +81,7 @@ const saved = ref(false)
 const errorMessage = ref('')
 const accountIdentity = computed(() => auth.currentUser?.telephone || auth.currentUser?.email || auth.currentUser?.uuid || '未登录')
 const syncLabel = computed(() => ({ idle: '尚未同步', restoring: '正在恢复', current: '已同步', error: '同步异常', storage_full: '本地空间不足' }[chat.syncStatus] || '未知状态'))
+const agentLinks = agentSettingsLinks()
 
 async function load() {
   loading.value = true; errorMessage.value = ''
@@ -91,5 +105,5 @@ onMounted(load)
 </script>
 
 <style scoped>
-.settings-page{min-height:100vh;background:var(--dp-canvas);color:var(--dp-ink);font-family:var(--dp-font-body);padding:48px max(24px,calc((100vw - 960px)/2))}.settings-header,.card-heading,.actions,.logout-card{display:flex;align-items:center;justify-content:space-between;gap:20px}.settings-header{margin-bottom:28px}.settings-header h1{font:800 38px var(--dp-font-display);letter-spacing:-.04em;margin:6px 0}.settings-header>div>p:last-child,.card-copy{color:var(--dp-ink-soft);margin:0;line-height:1.7}.eyebrow{color:var(--dp-accent-strong);font:700 10px var(--dp-font-data);letter-spacing:.12em;margin:0}.back-link,.secondary-link{color:var(--dp-accent-strong);font-weight:700;text-decoration:none}.settings-card{background:var(--dp-surface);border:1px solid var(--dp-line);border-radius:var(--dp-radius-md);box-shadow:0 12px 30px color-mix(in srgb, var(--dp-rail) 5%, transparent);margin-top:16px;padding:28px}.settings-card h2{font:800 21px var(--dp-font-display);margin:5px 0 0}.identity,.sync-state{color:var(--dp-ink-soft);font:600 12px var(--dp-font-data)}.signature-field{display:grid;gap:8px;font-weight:700;margin-top:22px}.signature-field textarea{border:1px solid var(--dp-line);border-radius:var(--dp-radius-sm);font:inherit;min-height:92px;padding:12px;resize:vertical}.signature-field small{color:var(--dp-ink-faint);text-align:right}.actions{justify-content:flex-end;margin-top:16px}.primary,.danger{border:0;border-radius:var(--dp-radius-sm);color:var(--dp-text-inverse);cursor:pointer;font:700 13px var(--dp-font-body);padding:11px 16px}.primary{background:var(--dp-accent-strong)}.danger{background:var(--dp-danger)}button:disabled{cursor:not-allowed;opacity:.6}.sync-details{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr));margin:20px 0 0}.sync-details div{background:var(--dp-surface-muted);border-radius:var(--dp-radius-sm);padding:15px}.sync-details dt{color:var(--dp-ink-soft);font-size:12px}.sync-details dd{font:700 15px var(--dp-font-data);margin:6px 0 0}.notice{border-radius:var(--dp-radius-sm);display:inline-flex;gap:8px;margin:0 0 16px;padding:10px 12px}.notice button{background:transparent;border:0;color:inherit;cursor:pointer;font-weight:700;text-decoration:underline}.error{background:var(--dp-danger-soft);color:var(--dp-danger)}.success{background:var(--dp-success-soft);color:var(--dp-success);margin:0}.logout-card{margin-bottom:40px}@media(max-width:640px){.settings-page{padding:28px 16px}.settings-header,.card-heading,.logout-card{align-items:flex-start;flex-direction:column}.settings-card{padding:20px}.sync-details{grid-template-columns:1fr}.actions{align-items:stretch;flex-direction:column}.primary,.danger{width:100%}}
+.settings-page{min-height:100vh;background:var(--dp-canvas);color:var(--dp-ink);font-family:var(--dp-font-body);padding:48px max(24px,calc((100vw - 960px)/2))}.settings-header,.card-heading,.actions,.logout-card{display:flex;align-items:center;justify-content:space-between;gap:20px}.settings-header{margin-bottom:28px}.settings-header h1{font:800 38px var(--dp-font-display);letter-spacing:-.04em;margin:6px 0}.settings-header>div>p:last-child,.card-copy{color:var(--dp-ink-soft);margin:0;line-height:1.7}.eyebrow{color:var(--dp-accent-strong);font:700 10px var(--dp-font-data);letter-spacing:.12em;margin:0}.back-link,.secondary-link{color:var(--dp-accent-strong);font-weight:700;text-decoration:none}.settings-card{background:var(--dp-surface);border:1px solid var(--dp-line);border-radius:var(--dp-radius-md);box-shadow:0 12px 30px color-mix(in srgb, var(--dp-rail) 5%, transparent);margin-top:16px;padding:28px}.settings-card h2{font:800 21px var(--dp-font-display);margin:5px 0 0}.identity,.sync-state{color:var(--dp-ink-soft);font:600 12px var(--dp-font-data)}.agent-links{display:flex;flex-wrap:wrap;gap:12px 20px;list-style:none;margin:18px 0 0;padding:0}.signature-field{display:grid;gap:8px;font-weight:700;margin-top:22px}.signature-field textarea{border:1px solid var(--dp-line);border-radius:var(--dp-radius-sm);font:inherit;min-height:92px;padding:12px;resize:vertical}.signature-field small{color:var(--dp-ink-faint);text-align:right}.actions{justify-content:flex-end;margin-top:16px}.primary,.danger{border:0;border-radius:var(--dp-radius-sm);color:var(--dp-text-inverse);cursor:pointer;font:700 13px var(--dp-font-body);padding:11px 16px}.primary{background:var(--dp-accent-strong)}.danger{background:var(--dp-danger)}button:disabled{cursor:not-allowed;opacity:.6}.sync-details{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr));margin:20px 0 0}.sync-details div{background:var(--dp-surface-muted);border-radius:var(--dp-radius-sm);padding:15px}.sync-details dt{color:var(--dp-ink-soft);font-size:12px}.sync-details dd{font:700 15px var(--dp-font-data);margin:6px 0 0}.notice{border-radius:var(--dp-radius-sm);display:inline-flex;gap:8px;margin:0 0 16px;padding:10px 12px}.notice button{background:transparent;border:0;color:inherit;cursor:pointer;font-weight:700;text-decoration:underline}.error{background:var(--dp-danger-soft);color:var(--dp-danger)}.success{background:var(--dp-success-soft);color:var(--dp-success);margin:0}.logout-card{margin-bottom:40px}@media(max-width:640px){.settings-page{padding:28px 16px}.settings-header,.card-heading,.logout-card{align-items:flex-start;flex-direction:column}.settings-card{padding:20px}.sync-details{grid-template-columns:1fr}.actions{align-items:stretch;flex-direction:column}.primary,.danger{width:100%}}
 </style>
