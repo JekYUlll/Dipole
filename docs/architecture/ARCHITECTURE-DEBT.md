@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：Remote GPU 在当前主线使用校验后的用户态 Go `1.26.0` 复跑 Multipart fault matrix：cleanup、Gateway 限流、代理超时、7 条告警规则、真实 MinIO/Redis drift 对账与 Redis 重启恢复均通过，随机临时容器为零，公共 `dipole-experience` 为 11 个健康容器。该隔离验证不替代 24 小时预签名直传流量、Alertmanager 通知接收方或默认 `relay` 模式切换证据。
+
 - 2026-09-04：Web Sync observability preflight 发现并修正两个隔离环境边界：可选 scrape target 不参与仅启动 Gateway 依赖闭包的健康判定，profile 容器由 cleanup 显式回收。Remote GPU 在 `e04c2e28` 的 loopback-only 隔离项目完成 Gateway、Prometheus、Alertmanager 与 `dipole-required` 指标链路验证，退出后项目容器为零，公共 `dipole-experience` 为 11 个健康容器。它不构成真实客户端观察、Cassandra hydration 主读或默认同步模式切换证据。
 
 - 2026-09-04：SQLC 迁移的生产依赖审计确认 `go.mod` 与全部非测试 Go 源均不再包含 GORM；新增仓库级 import 门禁防止后续回流。`internal/compat` 仅保留迁移回归辅助，Go/Eino 旧 Agent 仅由 Core embedded Kafka 回滚路径使用，两者均不构成 GORM 运行依赖。
