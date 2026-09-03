@@ -32,10 +32,25 @@
   --dp-font-display: "Manrope", sans-serif;
   --dp-font-body: "Noto Sans SC", sans-serif;
   --dp-font-data: "Geist Mono", monospace;
-  --dp-radius-sm: 8px;
-  --dp-radius-md: 14px;
+  --dp-radius-sm: 0px;
+  --dp-radius-md: 0px;
+  --dp-radius-pill: 999px;
   --dp-space-xs: 8px;
   --dp-space-sm: 12px;
   --dp-space-md: 16px;
   --dp-space-lg: 24px;
+  /* BI workspace/panel aliases so component code doesn't have to remember
+     which of canvas/surface/surface-muted is which. See §4.3 in
+     docs/notes/frontend-bi-redesign.md. */
+  --dp-bg-workspace: var(--dp-canvas);
+  --dp-bg-panel: var(--dp-surface);
+  --dp-bg-panel-muted: var(--dp-surface-muted);
+}
+
+/* Utility: monospaced data snippets (task ids, hashes, timestamps).
+   Attach with `class="mono"` — see §4.4. */
+.mono {
+  font-family: var(--dp-font-data);
+  font-size: 10px;
+  letter-spacing: 0.04em;
 }

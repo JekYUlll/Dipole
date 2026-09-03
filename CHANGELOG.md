@@ -1,5 +1,15 @@
 # 更新日志
 
+- 2026-09-03：前端 BI 重构 Phase 0——铺 PrimeVue 4 + 直角 primitives，旧 Agent 页不动。
+  - 装 `primevue@4.4.1` + `@primeuix/themes@4.4.1`；`config/primevueTheme.ts` 用 Aura preset + `definePreset` 把所有 `borderRadius` 收 0、把 primary/surface/content/formField 语义色桥接到 `--dp-*` 变量，density 收紧到 form 6/10。`main.ts` 注册 PrimeVue + `ConfirmationService` + `ToastService`，`ripple:false`。
+  - 新 primitives：`layout/AppShell.vue`（48px rail 顶栏 + Chat/Directory/Settings 固定 tab + 🤖 toggle 通过 `?agent=1&view=live` 改 URL + 待办红角标 + 28px status bar + `default` / `agent-drawer` / `status-right` / `search` slot）、`data/StatusPill.vue`（6 色 tone、可选 dot、dense）、`data/Banner.vue`（4 色 tone、图标 + action + close，替代整屏中央 state card）、`data/StatePanel.vue`（cold-start 才用，spinner/empty/unavailable 三态）。
+  - Feather 图标补 `IconCpu / IconMoreHorizontal / IconChevron{Right,Down} / IconRefreshCw / IconInbox / IconPackage / IconGrid / IconRadio / IconEdit`。`design-tokens.css` 加 `--dp-bg-workspace/panel/panel-muted` 别名与 `.mono` 工具类；`design-tokens.test.ts` 契约照旧。
+  - 4 组 primitive 单测 23/23 通过，全量 227/227 通过，`vue-tsc --noEmit` 干净，`vite build` 351 KB（+PrimeVue baseline，后续 view 内按需 import 拆包）。默认路由与 `VITE_*` 均未变，产线开关继续关闭。
+
+- 2026-09-03：设计稿加入对话气泡，与前端待落地方向对齐。
+  - `pencil-append-chat-agent-drawer-v1.mjs` 的 `message` helper 分左右流：他人消息 `surface` 底、`line` 描边、`ink` 正文；自己消息 `own: true` 时 avatar 与文本反向，气泡改 `accent-soft` 底 + `accent-strong` 正文，附件在气泡内嵌入。Live drawer 的 Evan 两条消息置 `own: true`。
+  - `dipole-ui.pen` 重生成 5 个 frame（716 KB），flatten 脚本零 rewrite，`radius-sm/md=0` + `radius-pill=999` 保持。
+
 - 2026-09-03：恢复 Cassandra 缺行回退的双向集成覆盖。
   - 隔离 read-routing smoke 现在同时验证 `after_seq` 和 `before_seq` 页面在 Cassandra Timeline 缺行时回退 MySQL，避免基准夹具重构缩窄原有集成断言。
 
