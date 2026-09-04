@@ -618,6 +618,10 @@ services:
       DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"
       DIPOLE_GATEWAY_AGENT_CONTROL_TARGET: http://agent:8091
       DIPOLE_GATEWAY_AGENT_CONTROL_SECRET: ${DIPOLE_GATEWAY_AGENT_CONTROL_SECRET:-}
+      # Promotion controls are an operator workflow and remain disabled until a
+      # reviewed deployment needs to issue or revoke an active-read grant.
+      DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED: ${DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED:-false}
+      DIPOLE_GATEWAY_AGENT_PROMOTION_TENANT_ID: ${DIPOLE_GATEWAY_AGENT_PROMOTION_TENANT_ID:-dipole}
       # Owner-scoped Definition creation is required before a user can enter the
       # default read-only Temporal admission path. It grants read capability only.
       DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: ${DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED:-true}

@@ -61,6 +61,12 @@ DIPOLE_MYSQL_AIO_COMPAT=1 DIPOLE_AGENT_INTERACTIVE_READ_PROFILE=active \
 
 基础 Compose 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2`、`DIPOLE_AGENT_TEMPORAL_ENABLED=true` 和 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_active`。`agent-active.yml` 仅保留旧部署命令兼容性。
 
+### Runtime Promotion Control（默认关）
+
+`DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=true` 只开放受认证的 Gateway operator API：创建 promotion proposal、查询 proposal、由第二位 operator 审核，以及撤销已签发 grant。Gateway 不签发 grant，也不信任请求中的 principal；Core 继续通过持久 `agent_runtime_promotion_operator_grants` 校验 `can_propose/can_review/can_revoke`，并强制 proposer 与 reviewer 为不同主体。
+
+启用前必须设置 `DIPOLE_GATEWAY_AGENT_PROMOTION_TENANT_ID`，准备已归档 evidence artifact 与 eval suite hash，并通过现有 operator grant 流程分别授权 proposer/reviewer。只有审核完成且 proposal 返回 grant ID 后，owner Definition 才可进入绑定 candidate 的 `read_active` admission。紧急回滚先关闭 Gateway 开关，再调用 revoke API；关闭 HTTP 路由不会撤销已存在 grant。
+
 同一 overlay 固定 `direct_target`、Memory、retrieval、retrieval-to-Context、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 
 ### Subscription Active Read

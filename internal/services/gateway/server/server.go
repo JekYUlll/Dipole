@@ -36,6 +36,7 @@ type Dependencies struct {
 	Search                 application.SearchApplication
 	AgentTasks             AgentTaskControlApplication
 	AgentTaskInbox         AgentTaskInboxApplication
+	AgentPromotions        AgentRuntimePromotionApplication
 	AgentSubscriptions     AgentSubscriptionControlApplication
 	AgentDefinitions       AgentDefinitionCatalogApplication
 	AgentMemories          AgentMemoryControlApplication
@@ -133,6 +134,12 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
+	}
+	if dependencies.AgentPromotions != nil {
+		engine.POST("/api/v1/agent/runtime-promotions", auth, agentRuntimePromotionProposeHandler(dependencies.AgentPromotions))
+		engine.GET("/api/v1/agent/runtime-promotions/:proposal_id", auth, agentRuntimePromotionGetHandler(dependencies.AgentPromotions))
+		engine.POST("/api/v1/agent/runtime-promotions/:proposal_id/review", auth, agentRuntimePromotionReviewHandler(dependencies.AgentPromotions))
+		engine.POST("/api/v1/agent/runtime-promotions/grants/:grant_id/revoke", auth, agentRuntimePromotionRevokeHandler(dependencies.AgentPromotions))
 	}
 	if dependencies.AgentSubscriptions != nil {
 		engine.GET("/api/v1/agent/subscriptions", auth, agentSubscriptionListHandler(dependencies.AgentSubscriptions))

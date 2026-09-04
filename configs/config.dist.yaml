@@ -21,6 +21,10 @@ gateway:
   # Keep disabled until the Agent Runtime and Temporal control plane are ready.
   agent_control_enabled: false
   agent_control_target: http://127.0.0.1:8091
+  # Exposes operator-only Runtime promotion proposal/review/revoke through Core gRPC.
+  # Core additionally requires a durable operator grant and two distinct principals.
+  agent_promotion_enabled: false
+  agent_promotion_tenant_id: dipole
   # Exposes only the fixed owner-scoped conversation.read Definition template through Core gRPC.
   # Keep disabled in the default deployment; isolated Agent profiles can enable it without enabling subscriptions.
   agent_definition_enabled: false

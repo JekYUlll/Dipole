@@ -140,6 +140,42 @@ type gatewayAgentDefinitionStub struct {
 	limit            int
 }
 
+type gatewayAgentPromotionStub struct {
+	principal, proposalID, decision, grantID, ticketRef, reason string
+	propose                                                     AgentRuntimePromotionProposeInput
+	proposeCalls, getCalls, reviewCalls, revokeCalls            int
+}
+
+func (s *gatewayAgentPromotionStub) Propose(_ context.Context, principal string, input AgentRuntimePromotionProposeInput) (*AgentRuntimePromotionProposal, error) {
+	s.principal, s.propose = principal, input
+	s.proposeCalls++
+	return gatewayPromotionProposalFixture(), nil
+}
+
+func (s *gatewayAgentPromotionStub) Get(_ context.Context, principal, proposalID string) (*AgentRuntimePromotionProposal, error) {
+	s.principal, s.proposalID = principal, proposalID
+	s.getCalls++
+	return gatewayPromotionProposalFixture(), nil
+}
+
+func (s *gatewayAgentPromotionStub) Review(_ context.Context, principal, proposalID, decision string) (*AgentRuntimePromotionProposal, error) {
+	s.principal, s.proposalID, s.decision = principal, proposalID, decision
+	s.reviewCalls++
+	proposal := gatewayPromotionProposalFixture()
+	proposal.Status, proposal.GrantID, proposal.DecidedAtUnixMS = decision, "GRANT-1", 1_700_000_000_500
+	return proposal, nil
+}
+
+func (s *gatewayAgentPromotionStub) Revoke(_ context.Context, principal, grantID, ticketRef, reason string) (*AgentRuntimePromotionGrant, error) {
+	s.principal, s.grantID, s.ticketRef, s.reason = principal, grantID, ticketRef, reason
+	s.revokeCalls++
+	return &AgentRuntimePromotionGrant{GrantID: grantID, TenantID: "dipole", RuntimeID: "dipole-agent", CandidateVersion: "candidate-v1", DefinitionID: "DEF-1", DefinitionVersion: 1, PolicyVersion: "dipole.agent.shadow-promotion-policy.v2", ValidFromUnixMS: 1_700_000_000_000, ExpiresAtUnixMS: 1_700_000_900_000, RevokedAtUnixMS: 1_700_000_000_500}, nil
+}
+
+func gatewayPromotionProposalFixture() *AgentRuntimePromotionProposal {
+	return &AgentRuntimePromotionProposal{ProposalID: strings.Repeat("a", 64), TenantID: "dipole", RuntimeID: "dipole-agent", CandidateVersion: "candidate-v1", DefinitionID: "DEF-1", DefinitionVersion: 1, EvidenceArtifactID: strings.Repeat("b", 64), EvidenceSHA256: strings.Repeat("c", 64), EvalSuiteSHA256: strings.Repeat("d", 64), ProposerID: "U100", TicketRef: "OPS-1", Reason: "enable reviewed read task", Status: "proposed", ProposedAtUnixMS: 1_700_000_000_000, ExpiresAtUnixMS: 1_700_000_100_000, GrantValidFromUnixMS: 1_700_000_000_000, GrantExpiresAtUnixMS: 1_700_000_900_000}
+}
+
 func (s *gatewayAgentDefinitionStub) CreateDefinition(_ context.Context, principal, profile string) (*AgentDefinitionCatalogItem, error) {
 	s.principal, s.profile = principal, profile
 	return &AgentDefinitionCatalogItem{DefinitionID: "DEF-CREATED", Version: 1, AgentID: "UAI", ConversationScopes: []string{"*"}, ValidFromUnixMS: 1_000, CreatedAtUnixMS: 1_000, UpdatedAtUnixMS: 1_000}, nil
@@ -675,6 +711,86 @@ func TestGatewayOwnsAuthenticatedAgentDefinitionCatalog(t *testing.T) {
 	gateway.Engine().ServeHTTP(invalidResponse, invalidCreate)
 	if invalidResponse.Code != http.StatusBadRequest {
 		t.Fatalf("invalid create code=%d body=%s", invalidResponse.Code, invalidResponse.Body.String())
+	}
+}
+
+func TestGatewayOwnsAuthenticatedAgentRuntimePromotionControl(t *testing.T) {
+	t.Chdir("../../../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	promotions := &gatewayAgentPromotionStub{}
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentPromotions: promotions, Limiter: gatewayLimiterStub{}})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+
+	unauthorized := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(unauthorized, httptest.NewRequest(http.MethodPost, "/api/v1/agent/runtime-promotions", nil))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized code=%d", unauthorized.Code)
+	}
+	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
+	body := `{"runtimeId":"dipole-agent","candidateVersion":"candidate-v1","definitionId":"DEF-1","definitionVersion":1,"evidenceArtifactId":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","evidenceSha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","evalSuiteSha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","ticketRef":"OPS-1","reason":"enable reviewed read task","expiresAtUnixMs":1700000100000,"grantValidFromUnixMs":1700000000000,"grantExpiresAtUnixMs":1700000900000}`
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/agent/runtime-promotions", strings.NewReader(body))
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusOK || promotions.proposeCalls != 1 || promotions.principal != "U100" || promotions.propose.RuntimeID != "dipole-agent" || !strings.Contains(response.Body.String(), `"proposalId"`) {
+		t.Fatalf("propose code=%d stub=%+v body=%s", response.Code, promotions, response.Body.String())
+	}
+
+	proposalID := strings.Repeat("a", 64)
+	get := httptest.NewRequest(http.MethodGet, "/api/v1/agent/runtime-promotions/"+proposalID, nil)
+	get.Header.Set("Authorization", "Bearer "+token)
+	getResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(getResponse, get)
+	if getResponse.Code != http.StatusOK || promotions.getCalls != 1 || promotions.proposalID != proposalID {
+		t.Fatalf("get code=%d stub=%+v body=%s", getResponse.Code, promotions, getResponse.Body.String())
+	}
+
+	review := httptest.NewRequest(http.MethodPost, "/api/v1/agent/runtime-promotions/"+proposalID+"/review", strings.NewReader(`{"decision":"approved"}`))
+	review.Header.Set("Authorization", "Bearer "+token)
+	review.Header.Set("Content-Type", "application/json")
+	reviewResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(reviewResponse, review)
+	if reviewResponse.Code != http.StatusOK || promotions.reviewCalls != 1 || promotions.decision != "approved" {
+		t.Fatalf("review code=%d stub=%+v body=%s", reviewResponse.Code, promotions, reviewResponse.Body.String())
+	}
+
+	revoke := httptest.NewRequest(http.MethodPost, "/api/v1/agent/runtime-promotions/grants/GRANT-1/revoke", strings.NewReader(`{"ticketRef":"OPS-2","reason":"window complete"}`))
+	revoke.Header.Set("Authorization", "Bearer "+token)
+	revoke.Header.Set("Content-Type", "application/json")
+	revokeResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(revokeResponse, revoke)
+	if revokeResponse.Code != http.StatusOK || promotions.revokeCalls != 1 || promotions.grantID != "GRANT-1" || promotions.ticketRef != "OPS-2" {
+		t.Fatalf("revoke code=%d stub=%+v body=%s", revokeResponse.Code, promotions, revokeResponse.Body.String())
+	}
+
+	for _, invalid := range []struct {
+		path string
+		body string
+	}{
+		{path: "/api/v1/agent/runtime-promotions", body: `{"runtimeId":"dipole-agent","principalUserId":"U999"}`},
+		{path: "/api/v1/agent/runtime-promotions/" + proposalID + "/review", body: `{"decision":"approved","principalUserId":"U999"}`},
+		{path: "/api/v1/agent/runtime-promotions/grants/GRANT-1/revoke", body: `{"ticketRef":"OPS-2","reason":"\n"}`},
+	} {
+		invalidRequest := httptest.NewRequest(http.MethodPost, invalid.path, strings.NewReader(invalid.body))
+		invalidRequest.Header.Set("Authorization", "Bearer "+token)
+		invalidRequest.Header.Set("Content-Type", "application/json")
+		invalidResponse := httptest.NewRecorder()
+		gateway.Engine().ServeHTTP(invalidResponse, invalidRequest)
+		if invalidResponse.Code != http.StatusBadRequest {
+			t.Fatalf("invalid request code=%d path=%s body=%s", invalidResponse.Code, invalid.path, invalidResponse.Body.String())
+		}
+	}
+	if promotions.proposeCalls != 1 || promotions.reviewCalls != 1 || promotions.revokeCalls != 1 {
+		t.Fatalf("invalid request reached promotion application: %+v", promotions)
 	}
 }
 

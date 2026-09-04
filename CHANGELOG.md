@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：新增默认关闭的 Agent Runtime Promotion Control Gateway 适配器。
+  - 已认证 operator 可经 Gateway 发起 proposal、读取 proposal、由第二位 operator 审核及撤销 grant；Gateway 只转发可信 session principal，Core 继续从 SQLC 持久 operator grant 执行权限、双人签署、candidate/evidence/eval 绑定和撤销事务。
+  - 默认 Compose 固定 `DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=false`；新静态回归锁定默认关闭与 tenant 配置。该切片不自动签发 grant，不扩大 owner Definition、写 Capability、MCP、Memory 或订阅 authority。
+
 - 2026-09-04：校正 Agent Runtime 运行手册的主线部署口径。
   - `services/agent-runtime/README.md` 现明确区分未配置的独立进程与微服务 Compose：后者默认运行 `remote + read_active`、Temporal、认证 Capability RPC 与只读 Task Control，`read_shadow` 只作为显式回退和测试 profile。
   - 新增静态回归验证 README 与 canonical Compose 的 Runtime、Temporal 和 activity mode 开关保持一致；写 Capability、MCP、Memory、检索和订阅触发的默认关闭边界不变。

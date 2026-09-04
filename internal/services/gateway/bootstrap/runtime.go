@@ -265,6 +265,21 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 			agentDefinitions = agentControlClient
 		}
 	}
+	var agentPromotions *gateway.AgentRuntimePromotionClient
+	if gatewayCfg.AgentPromotionEnabled {
+		promotionTenant := gatewayCfg.AgentPromotionTenantID
+		if promotionTenant == "" {
+			promotionTenant = "dipole"
+		}
+		agentPromotions, err = gateway.NewAgentRuntimePromotionClient(
+			agentv1.NewAgentCapabilityServiceClient(coreConn), promotionTenant,
+			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent Runtime promotion control client: %w", err)
+		}
+	}
 	var agentMemories *gateway.AgentMemoryControlClient
 	if gatewayCfg.AgentMemoryEnabled {
 		agentMemories, err = gateway.NewAgentMemoryControlClient(
@@ -331,6 +346,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		Search:                 search,
 		AgentTasks:             agentTasks,
 		AgentTaskInbox:         agentTaskInbox,
+		AgentPromotions:        agentPromotions,
 		AgentSubscriptions:     agentSubscriptions,
 		AgentDefinitions:       agentDefinitions,
 		AgentMemories:          agentMemories,

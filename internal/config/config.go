@@ -35,6 +35,8 @@ type Gateway struct {
 	AgentControlEnabled       bool   `mapstructure:"agent_control_enabled"`
 	AgentControlTarget        string `mapstructure:"agent_control_target"`
 	AgentControlSecret        string `mapstructure:"agent_control_secret"`
+	AgentPromotionEnabled     bool   `mapstructure:"agent_promotion_enabled"`
+	AgentPromotionTenantID    string `mapstructure:"agent_promotion_tenant_id"`
 	AgentDefinitionEnabled    bool   `mapstructure:"agent_definition_enabled"`
 	AgentSubscriptionEnabled  bool   `mapstructure:"agent_subscription_enabled"`
 	AgentSubscriptionTenantID string `mapstructure:"agent_subscription_tenant_id"`
@@ -816,6 +818,8 @@ func GatewayConfig() Gateway {
 		AgentControlEnabled:       cfg.GetBool("gateway.agent_control_enabled"),
 		AgentControlTarget:        strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
 		AgentControlSecret:        strings.TrimSpace(cfg.GetString("gateway.agent_control_secret")),
+		AgentPromotionEnabled:     cfg.GetBool("gateway.agent_promotion_enabled"),
+		AgentPromotionTenantID:    strings.TrimSpace(cfg.GetString("gateway.agent_promotion_tenant_id")),
 		AgentDefinitionEnabled:    cfg.GetBool("gateway.agent_definition_enabled"),
 		AgentSubscriptionEnabled:  cfg.GetBool("gateway.agent_subscription_enabled"),
 		AgentSubscriptionTenantID: strings.TrimSpace(cfg.GetString("gateway.agent_subscription_tenant_id")),

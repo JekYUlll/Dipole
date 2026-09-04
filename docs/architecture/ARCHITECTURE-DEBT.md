@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：公共体验的 active read admission 过去只能由 smoke 直接写临时 promotion grant，无法作为可审计运维流程。Gateway 现具备默认关闭的 proposal/get/review/revoke 适配器，所有请求携带认证 session principal 至 Core；持久 operator grant、proposer/reviewer 分离、candidate/evidence/eval 精确绑定和撤销继续在 Core/SQLC 事务执行。真实体验部署仍需准备 operator grant、归档 evidence、完整 Gateway/Core Remote GPU receipt 以及前端 operator 页面，默认公开路由保持关闭。
+
 - 2026-09-04：Agent Runtime README 曾将旧的 Shadow/Temporal-disabled Compose 写成主线默认，与当前 `remote + read_active` Durable Runtime 冲突。现已按独立进程与微服务 Compose 分层重写，并由 `scripts/test_agent_runtime_readme.py` 固定 Runtime、Temporal、activity mode 和 Shadow 回退口径。该治理不改变任何默认 Capability authority；MCP、Memory、检索、订阅和写入仍需独立 profile、证据与回滚。
 
 - 2026-09-04：基础 Compose 现默认启用认证的 Durable Agent Task Control，并保持 `remote + read_active` 的只读 Capability surface。Gateway 可转发任务创建、查询、取消、输入和审批；Task 依赖 Temporal 持久化恢复。该控制面不授予 `message.system.send`、MCP、Memory、检索或订阅触发权限，Shadow MCP overlay 也会显式关闭控制面，避免测试 profile 继承主线入口。Remote GPU 在 `a10cea42` 的一次性项目验证了完整默认服务健康，以及认证 Gateway 返回 `taskControlEnabled=true`、active Runtime、Temporal `read_active` 和交互写入关闭；候选容器、卷和工作树均已清理。active admission 仍要求 owner Definition 与同 candidate 的有效 promotion grant，因此该状态验证不能表示任意新用户可以执行 Task。下一体验切片应以短期 grant 演练真实只读轨迹并在结束时撤销。Provider 成功率、共享 tenant、浏览器 HITL 和写入 authority 仍需独立验收。
