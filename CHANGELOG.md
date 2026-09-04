@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：校正 Agent Runtime 运行手册的主线部署口径。
+  - `services/agent-runtime/README.md` 现明确区分未配置的独立进程与微服务 Compose：后者默认运行 `remote + read_active`、Temporal、认证 Capability RPC 与只读 Task Control，`read_shadow` 只作为显式回退和测试 profile。
+  - 新增静态回归验证 README 与 canonical Compose 的 Runtime、Temporal 和 activity mode 开关保持一致；写 Capability、MCP、Memory、检索和订阅触发的默认关闭边界不变。
+
 - 2026-09-04：完成同主线 revision 的 Active Read Agent 远程复验。
   - Remote GPU 使用干净 `a5482c6f` checkout，在独立 `agent-active-smoke-20260904170858-2756087` Compose project 以 `remote + read_active` 运行 Interactive smoke；owner Definition、短期 promotion grant、认证 Gateway 和 Temporal 均由脚本临时配置并在退出时回收。
   - 验收通过 owner Task 创建幂等、跨 owner 拒绝、`conversation.list -> conversation.read` 两步只读轨迹及零 Agent 消息写入。退出码为 `0`，候选容器和卷为零，公共 `dipole-experience` 全程保持 11 个运行容器。

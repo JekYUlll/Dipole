@@ -1,6 +1,6 @@
 # Dipole Agent Runtime
 
-TypeScript Agent 执行面。当前 G2 foundation 固定可信 `ExecutionContext`、Capability Registry、resource-scope Policy Engine、Go 兼容 Task ID、Kafka shadow consumer 和 Fastify 健康面。
+TypeScript Agent 执行面。当前 G2 foundation 固定可信 `ExecutionContext`、Capability Registry、resource-scope Policy Engine、Go 兼容 Task ID、Kafka consumer 和 Fastify 健康面。微服务 Compose 默认运行受限的 `remote + read_active` Durable Runtime，启用 Temporal、认证 Task Control 与只读 `conversation.list/read`；消息写入、MCP、Memory、检索和订阅触发仍保持显式关闭。完整部署输入、回滚和证据边界见 [Agent Active 部署运行手册](../../docs/agent/AGENT-ACTIVE-DEPLOYMENT.md)。
 
 ```bash
 npm ci
@@ -27,9 +27,9 @@ DIPOLE_AGENT_MYSQL_DATABASE=dipole \
 npm start
 ```
 
-默认关闭 Kafka、Temporal、MCP 和 Task Control 时，Runtime 仍可作为独立 HTTP 进程启动：`GET /livez` 检查进程存活，`GET /readyz` 检查生命周期初始化是否完成。安全的本地 smoke 可使用 `DIPOLE_AGENT_HOST=127.0.0.1` 和独立端口执行，随后以 SIGINT 验证优雅退出。
+未设置微服务 Compose 环境变量时，Runtime 可作为默认关闭 Kafka、Temporal、MCP 和 Task Control 的独立 HTTP 进程启动：`GET /livez` 检查进程存活，`GET /readyz` 检查生命周期初始化是否完成。安全的本地 smoke 可使用 `DIPOLE_AGENT_HOST=127.0.0.1` 和独立端口执行，随后以 SIGINT 验证优雅退出。
 
-Runtime 只接受 `message.direct.created` 的兼容 v1 envelope，使用独立 `dipole-agent-shadow-*` consumer group，并在 consumer 启动完成后开放 `/readyz`。默认物理 topic 为 `dipole.message.direct.created`，启动时创建并校验 main、`.retry`、`.dead` 的分区与副本配置。冷启动时 topic metadata 尚未收敛会执行有界重连，每次失败均断开旧 consumer。
+Runtime 只接受 `message.direct.created` 的兼容 v1 envelope，并在 consumer 启动完成后开放 `/readyz`。上面的独立示例使用 `dipole-agent-shadow-*` group；微服务 Compose 使用独立的 `dipole-agent-active-primary-v1` group。默认物理 topic 为 `dipole.message.direct.created`，启动时创建并校验 main、`.retry`、`.dead` 的分区与副本配置。冷启动时 topic metadata 尚未收敛会执行有界重连，每次失败均断开旧 consumer。
 
 ## Subscription prefilter rollout gate
 
@@ -82,9 +82,9 @@ Runtime 拒绝非 HTTP endpoint、嵌入 URL 的凭据、非 protobuf 协议和�
 
 触发模式默认是 `DIPOLE_AGENT_TRIGGER_MODE=direct_target`。应用 migration v28 并通过受控 Core Store 配置有效订阅后，可显式设置 `subscription`：Runtime 先经受认证 Capability RPC 获取 Definition/resource scope 授权后的候选，再以 `all` 或 `message_contains_any` 做本地确定性过滤。零匹配不会领取 EventLedger、启动 Temporal 或调用模型；匹配 Task 固定稳定排序后的 Subscription ID。Gateway/Vue 已提供默认关闭的 owner list/create/revoke 管理入口；共享环境仍保持 `direct_target`，Runtime subscription 消费和语义预筛需先通过独立证据门禁。
 
-## Temporal G3 foundation
+## Temporal runtime modes
 
-Temporal Worker 默认关闭，默认注册无副作用的 foundation Activity，不接管 Kafka Shadow 流量：
+微服务 Compose 默认启用 Temporal，并以 `read_active` 运行受控只读 Task。下面的 `foundation` 配置只用于独立进程或本地恢复诊断，不接管 Kafka 流量：
 
 ```bash
 DIPOLE_AGENT_TEMPORAL_ENABLED=true \
@@ -99,11 +99,11 @@ Workflow ID 固定为 `dipole-agent-task/{task_id}`。运行中重复启动复�
 
 显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=persistent_shadow` 后，Worker 使用既有 Agent Capability RPC 执行 Task/Run admission，并在 Workflow 终止前精确提交 completed、failed 或 cancelled Run。`wait_approval` 会先持久化 capability/scope/arguments/nonce 绑定；只有 request/approval ID 匹配且 Core 确认 actor 为 Task principal 的 Signal 才能完成 approved/revoked 并恢复 Workflow。该模式要求 `DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true` 及对应 target、共享密钥或 mTLS 配置。Workflow starter 和未来 Signal bridge 必须来自可信认证入口，模型无权设置 principal。当前 Kafka consumer 不启动 Workflow，模型、Capability Step 和权威 Task 状态继续由既有路径持有。
 
-显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list/read` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。Shadow 保留 `agent_tasks.status` 的策略生命周期，受 CAS 保护的 `workflow_status` 与 Run 共同表示本次 Durable 执行终态；评测只能接受两者中的有效终态记录，不能以仍在运行的策略 Task 伪造结果。回滚时恢复 `persistent_shadow` 或 `foundation`，Compose 默认仍为 Temporal disabled + `foundation`。
+显式设置 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_shadow` 后，Kafka consumer 只负责 EventLedger claim 和稳定 Workflow 启动，ContextCompiler、ModelRouter、Plan/Step 持久化与 `conversation.list/read` 在 Temporal Activity 中执行。该模式同时要求 migration v26、`LEDGER_MODE=mysql`、`MODEL_MODE=ai_sdk`、模型 routes、Capability RPC、Core MinIO 和 Temporal；Task、Run、admission 与原始事件必须精确绑定。成功模型输出写入 `agent_model_calls.output_json`，随后经 Core 创建版本化 `conversation_digest` Artifact；Activity 重试先恢复模型与已完成 Step，并复用和复核同一内容寻址对象。Shadow 保留 `agent_tasks.status` 的策略生命周期，受 CAS 保护的 `workflow_status` 与 Run 共同表示本次 Durable 执行终态；评测只能接受两者中的有效终态记录，不能以仍在运行的策略 Task 伪造结果。`read_shadow` 是显式回退与测试 profile；主 Compose 保持 Temporal enabled + `read_active`。
 
 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow` 是外部 MCP 的独占常驻模式。它要求 external Profile、Temporal、Kafka、subscription trigger 与 Capability RPC 全部显式启用，并加载受约束 I/O/deployment route manifests；入口会跳过旧 Kafka runtime 和旧 Temporal Worker，使用统一 process 按 Worker/Client/Kafka 启动、Kafka/Client/Worker/Core 停止。Compose 默认不启用该模式。回滚先关闭 `DIPOLE_AGENT_EXTERNAL_MCP_ENABLED`，并将 activity mode 恢复 `foundation`；任何真实外部连接前仍要求 fresh readiness evidence。
 
-Active Runtime 还要求 `DIPOLE_AGENT_RUNTIME_MODE=remote`、`DIPOLE_AGENT_CANDIDATE_VERSION` 和 `DIPOLE_AGENT_RELEASE_MANIFEST`。微服务 Compose 默认使用 `shadow`，active 部署应额外加载 `deploy/microservices/agent-active.yml`，并提供只读 manifest、独立 `DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID`、OpenAI-compatible Provider 的 name/base URL/API key/routes、v2 Context profile，以及 Temporal address/namespace/task queue。overlay 会强制 `ai_sdk` 与 `read_active`，任一输入缺失都会在 Compose 渲染时拒绝，避免继承 shadow group 或本地 Temporal 默认值。启动时会读取 release manifest，只有 candidate 一致且 manifest 已推进到 `user_gray` 才允许进入 `read_active`；`offline`/`shadow` 清单会 fail closed。回滚时先移除 overlay，将 Runtime mode 恢复为 shadow 并关闭 active 依赖，release manifest 不会被启动过程改写。
+Active Runtime 要求 `DIPOLE_AGENT_RUNTIME_MODE=remote`、`DIPOLE_AGENT_CANDIDATE_VERSION` 和 `DIPOLE_AGENT_RELEASE_MANIFEST`。微服务 Compose 默认提供 `remote + read_active` 所需的 Temporal、认证 Capability RPC、独立 `DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID`、OpenAI-compatible Provider 输入与 v2 Context profile；`deploy/microservices/agent-active.yml` 只保留旧部署命令兼容。任一必填输入缺失都会在 Compose 渲染时拒绝。启动时会读取 release manifest，只有 candidate 一致且 manifest 已推进到 `user_gray` 才允许进入 `read_active`；`offline`/`shadow` 清单会 fail closed。回滚时加载 `deploy/microservices/agent-temporal-read-shadow.yml` 或停止该 Runtime，release manifest 不会被启动过程改写。
 
 Agent 镜像使用 Node 22 Bookworm slim。Temporal Native Core 发布为 GNU libc 二进制，Alpine/musl 镜像无法启用 Worker。
 
@@ -190,7 +190,7 @@ Provider name 是 route 的稳定前缀，所有 route 必须使用相同前缀�
 
 `DIPOLE_AGENT_MODEL_OUTPUT_MODE` 默认 `json_schema`。Provider 不支持该 response format 时可显式设置 `json_text`：Runtime 在同一次、无内部重试的调用中要求纯 JSON，再用同一份 Zod schema 在本地验证。无效 JSON 或 schema 不匹配照常使该次调用失败并由既有 ModelRouter 记录与预算控制。
 
-开发环境使用 `deploy/microservices/agent-ai-sdk-shadow.yml` 覆盖基础微服务 Compose。该 overlay 固定 `ai_sdk` 与 `openai_compatible`，其余 Provider、预算与 Context 输入均由受忽略的 `.env` 提供；移除 overlay 即回到默认 metadata Shadow Runtime。
+`deploy/microservices/agent-ai-sdk-shadow.yml` 是独立的 Shadow/测试 overlay。主 Compose 已固定 `ai_sdk` 与 `openai_compatible`，Provider、预算与 Context 输入由受忽略的 `.env` 提供；移除该 overlay 后仍回到默认的只读 `remote + read_active` Runtime。
 
 Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK 内部 retry 固定为 0。模型输出经过 Zod 校验，只能规划显式允许的只读 capability，并输出有序 `steps[]`。`ai_sdk` 模式强制使用 MySQL：ModelRouter 在每次 provider 调用前通过 ModelAuditStore 预留 Task slot，持久化 route、attempt、input/output Token、结构化输出、latency 与终态；Kafka 或 Temporal 重投不能刷新预算。
 
@@ -198,7 +198,7 @@ Runtime 按 route 顺序降级，失败调用同样消耗 `MAX_CALLS`；AI SDK �
 
 `DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED` 也默认 `false`，且要求先开启 retrieval。启用后 Planner 仅从当前事件的 `payload.content` 提取最多 256 个 Unicode 字符作为查询，经 Core 受权检索最多 8 条结果，并在模型调用前按 Context budget 编译为带 `messageId`、conversation、sequence 和 query hash provenance 的 `untrusted` evidence。检索失败会阻断本次模型调用；缺少正文、关闭开关或预算不足时保持既有路径。该配置不启用 Elasticsearch、跨会话检索、共享环境流量或生产默认路径。
 
-`CONTEXT_COMPILER_VERSION` 默认并在 Compose 中固定为 `v1`，从而保持已有不可变 Plan 的 prompt 与 manifest 哈希。新候选可显式设置 `v2`；切换前应等待旧候选 Task 收敛或使用新的 Task cohort，回滚只需恢复 `v1`。
+独立进程的 `CONTEXT_COMPILER_VERSION` 默认 `v1`，微服务 Compose 固定为 `v2`。切换候选前应等待旧候选 Task 收敛或使用新的 Task cohort；回滚到 `v1` 仅适用于显式 Shadow/本地 profile。
 
 v2 的 `MODEL_CONTEXT_PROFILES` 是可选严格 JSON 数组。每个 route 可声明 `contextWindowTokens`、`utf8BytesPerToken` 与 `safetyMarginBps`；Runtime 对全部候选 route 取最大估算和最小窗口，确保同一 prompt 可安全进入后续 fallback。未声明 route 固定采用 8192 Token 窗口、2 UTF-8 bytes/token 与 25% 余量，并把最终 profile 集合的 SHA-256 estimator ID 写入 Context manifest。v1 拒绝 profile，v2 中任一 profile 引用未知 route，或最小窗口容纳不了 4096 输入预算与 `MAX_OUTPUT_TOKENS` 时，配置解析直接失败。
 
@@ -212,4 +212,4 @@ npm run context:calibrate -- --evidence=../../contracts/agent-context-calibratio
 
 命令不访问 provider 或网络。报告不回显 case 正文，只保存正文 SHA-256、UTF-8 字节数、逐 route 估算误差、fallback route 和双重证据哈希；零低估且所有 route 均有显式 profile 时退出 0，合法但不足的校准退出 2，输入错误退出 1。`eligible` 只用于候选评审，不能修改 Runtime 配置或自动启用 Compiler v2。
 
-微服务环境使用根目录 `deploy/compose/docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，默认仅启用 Kafka 与 Agent 自有 MySQL ledger。Capability RPC 和 Temporal 均需通过显式开关及凭据启用。
+微服务环境使用根目录 `deploy/compose/docker-compose.microservices.yml` 的 `agent` 服务；容器固定 Node 22，默认启用 Kafka、Agent 自有 MySQL ledger、认证 Capability RPC 与 Temporal。只读范围之外的 Capability 仍需单独的 profile、凭据和验收。
