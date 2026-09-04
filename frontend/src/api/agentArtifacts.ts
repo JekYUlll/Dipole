@@ -48,7 +48,11 @@ export function parseAgentArtifactMetadata(raw: unknown): AgentArtifactMetadata 
       (raw.createdAtUnixMs as number) <= 0) {
     throw new Error('Agent Artifact metadata is invalid')
   }
-  if (raw.artifactId !== raw.contentSha256) throw new Error('Agent Artifact content address is invalid')
+  // artifactId is a deterministic identity hash of the Artifact binding
+  // (schema, task, run, type, version, contentSha256); it is distinct from
+  // contentSha256, which addresses only the raw bytes. See
+  // internal/application/agent_artifact.go::NewAgentArtifactV1 for the derivation.
+  // Both are validated as 64-hex strings above; do not require equality here.
   return {
     artifactId: raw.artifactId,
     taskId: raw.taskId,

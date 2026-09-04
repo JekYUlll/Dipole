@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { agentArtifactClient, parseAgentArtifactContent, parseAgentArtifactMetadata, parseAgentArtifactPage } from './agentArtifacts'
 
 const artifactId = 'a'.repeat(64)
+// The backend derives artifactId as sha256(schema|task|run|type|version|contentSha256),
+// so the two IDs are always distinct in practice. Model that here so the tests
+// cannot silently drift back to a "single content-addressed hash" assumption.
+const contentSha256 = 'b'.repeat(64)
 const valid = {
   artifactId,
   taskId: 'TASK-1',
@@ -10,7 +14,7 @@ const valid = {
   version: 1,
   title: 'Project digest',
   mediaType: 'application/json',
-  contentSha256: artifactId,
+  contentSha256,
   sizeBytes: 18432,
   createdAtUnixMs: 1_725_000_000_000,
 }
@@ -24,8 +28,12 @@ describe('Agent Artifact metadata API', () => {
     expect(parseAgentArtifactMetadata(valid)).toEqual(valid)
   })
 
-  it('rejects content-address drift and unexpected body fields', () => {
-    expect(() => parseAgentArtifactMetadata({ ...valid, contentSha256: 'b'.repeat(64) })).toThrow('content address')
+  it('accepts an identity hash distinct from the content hash and rejects unexpected body fields', () => {
+    // artifactId and contentSha256 are independent 64-hex strings in the backend contract.
+    expect(parseAgentArtifactMetadata({ ...valid, artifactId: 'c'.repeat(64) })).toMatchObject({ artifactId: 'c'.repeat(64), contentSha256 })
+    // Malformed hashes still fail the shape check.
+    expect(() => parseAgentArtifactMetadata({ ...valid, contentSha256: 'not-a-hash' })).toThrow('metadata')
+    expect(() => parseAgentArtifactMetadata({ ...valid, artifactId: 'not-a-hash' })).toThrow('metadata')
     expect(() => parseAgentArtifactMetadata({ ...valid, content: 'secret' })).toThrow('metadata')
   })
 
