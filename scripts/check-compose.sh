@@ -136,6 +136,7 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ADDRESS == "temporal:7233"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_NAMESPACE == "default"
+  and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-active-primary-v1"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE == "dipole-agent-primary-v1"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "read_active"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
@@ -521,14 +522,6 @@ if env -u DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY \
   exit 1
 fi
 
-if env -u DIPOLE_AGENT_RELEASE_MANIFEST_FILE -u DIPOLE_AGENT_CANDIDATE_VERSION \
-  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
-  docker compose -f deploy/compose/docker-compose.microservices.yml \
-    -f deploy/microservices/agent-active.yml config --quiet >/dev/null 2>&1; then
-  echo "active Agent overlay must reject missing manifest and candidate inputs" >&2
-  exit 1
-fi
-
 external_mcp_shadow_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_EXTERNAL_MCP_IO_MANIFEST_FILE=/tmp/dipole-agent-external-mcp-io-check.json \
@@ -629,21 +622,17 @@ if env -u DIPOLE_AGENT_EXTERNAL_MCP_PROFILES \
   exit 1
 fi
 
-if DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+if env -u DIPOLE_AGENT_MODEL_PROVIDER_NAME \
+  -u DIPOLE_AGENT_MODEL_BASE_URL \
+  -u DIPOLE_AGENT_MODEL_API_KEY \
+  -u DIPOLE_AGENT_MODEL_ROUTES \
+  -u DIPOLE_AGENT_MODEL_CONTEXT_PROFILES \
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
   DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
   DIPOLE_AGENT_CANDIDATE_VERSION=agent-runtime@compose-check \
   docker compose -f deploy/compose/docker-compose.microservices.yml \
     -f deploy/microservices/agent-active.yml config --quiet >/dev/null 2>&1; then
-  echo "active Agent overlay must reject missing provider, Temporal, context, and active Kafka inputs" >&2
-  exit 1
-fi
-
-if env -u DIPOLE_AGENT_CANDIDATE_VERSION \
-  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
-  DIPOLE_AGENT_RELEASE_MANIFEST_FILE=/tmp/dipole-agent-release-manifest-check.json \
-  docker compose -f deploy/compose/docker-compose.microservices.yml \
-    -f deploy/microservices/agent-active.yml config --quiet >/dev/null 2>&1; then
-  echo "active Agent overlay must reject a missing candidate input" >&2
+  echo "default active Agent Compose must reject missing Provider inputs" >&2
   exit 1
 fi
 

@@ -4,6 +4,7 @@ services:
       # Expose only the first-party, read-only MCP server through Gateway.
       # This overlay deliberately leaves Interactive Task controls untouched so
       # it can compose with the interactive shadow profile.
+      DIPOLE_AGENT_RUNTIME_MODE: shadow
       DIPOLE_AGENT_MCP_SERVER_ENABLED: "true"
       DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
       DIPOLE_AGENT_MEMORY_ENABLED: "false"
