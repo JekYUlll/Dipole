@@ -14,10 +14,6 @@
 
 空闲
 
-### session-oauth-durable
-
-worktree `/data/workspace/dipole/.worktrees/agent-oauth-durable-handoff`（分支 `feature/agent-oauth-durable-handoff`）：Agent OAuth callback durable handoff 的 Runtime 侧 provider exchange + token lifecycle 组合闭环。只改 `services/agent-runtime/src/mcp/**` 新增 TS + 上述 4 处文档；不动 proto / SQLC / Core Go / Gateway Go / `index.ts` / Compose / env / 前端。
-
 ## Code style
 
 - 在开始不要过度设计，留出可以扩展的空间，循循渐进进行开发。
