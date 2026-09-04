@@ -37,6 +37,17 @@ type oauthCallbackHandoffRecorderStub struct {
 	err    error
 }
 
+type oauthTokenLifecycleStoreStub struct {
+	input     application.AgentOAuthTokenLifecycleWriteRequestV1
+	persisted bool
+	err       error
+}
+
+func (s *oauthTokenLifecycleStoreStub) PersistAgentOAuthTokenLifecycle(_ context.Context, input application.AgentOAuthTokenLifecycleWriteRequestV1, _ time.Time) (bool, error) {
+	s.input = input
+	return s.persisted, s.err
+}
+
 func (s *oauthCallbackHandoffRecorderStub) RecordAgentOAuthCallbackHandoff(_ context.Context, input application.AgentOAuthCallbackHandoffRecordRequestV1, _ time.Time) (*application.AgentOAuthCallbackHandoffV1, bool, error) {
 	s.input = input
 	return s.record, s.record != nil, s.err
@@ -217,6 +228,53 @@ func TestOAuthCallbackHandoffTerminalRPCsFailClosedWithoutStore(t *testing.T) {
 		t.Fatalf("expected unavailable, got %v", err)
 	}
 	_, err = server.ReleaseOAuthCallbackHandoff(context.Background(), &agentv1.ReleaseOAuthCallbackHandoffRequest{Context: requestContext, HandoffId: handoffID, LeaseOwner: "runtime-1"})
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("expected unavailable, got %v", err)
+	}
+}
+
+func TestPersistOAuthTokenLifecycleRequiresAgentLeaseAndOpaqueEnvelope(t *testing.T) {
+	handoffID := strings.Repeat("a", 22)
+	server, err := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = server.WithOAuthCallbackHandoffs(&oauthCallbackHandoffStoreStub{}); err != nil {
+		t.Fatal(err)
+	}
+	lifecycle := &oauthTokenLifecycleStoreStub{persisted: true}
+	if _, err = server.WithOAuthTokenLifecycles(lifecycle); err != nil {
+		t.Fatal(err)
+	}
+	expiresAt := time.Now().UTC().Add(time.Hour).UnixMilli()
+	request := &agentv1.PersistOAuthTokenLifecycleRequest{
+		Context: grpccommon.RequestContext("U-untrusted", "dipole-agent"), HandoffId: handoffID, LeaseOwner: "runtime-1",
+		State: string(application.AgentOAuthTokenLifecycleActiveV1), SealedTokenBundle: "v1.nonce.ciphertext.tag.wrapped",
+		TokenBundleSha256: strings.Repeat("c", 64), AccessTokenExpiresAtUnixMs: expiresAt, Scope: "calendar.read",
+	}
+	response, err := server.PersistOAuthTokenLifecycle(context.Background(), request)
+	if err != nil || response.GetHandoffId() != handoffID || lifecycle.input.SealedTokenBundle != request.GetSealedTokenBundle() || lifecycle.input.AccessTokenExpiresAt.UnixMilli() != expiresAt {
+		t.Fatalf("response=%v err=%v input=%+v", response, err, lifecycle.input)
+	}
+	request.Context.CallerService = "dipole-gateway"
+	if _, err = server.PersistOAuthTokenLifecycle(context.Background(), request); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected denied, got %v", err)
+	}
+	request.Context.CallerService = "dipole-agent"
+	request.SealedTokenBundle = "plaintext"
+	if _, err = server.PersistOAuthTokenLifecycle(context.Background(), request); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected invalid envelope, got %v", err)
+	}
+}
+
+func TestPersistOAuthTokenLifecycleFailsClosedWithoutLifecycleStore(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithOAuthCallbackHandoffs(&oauthCallbackHandoffStoreStub{}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := server.PersistOAuthTokenLifecycle(context.Background(), &agentv1.PersistOAuthTokenLifecycleRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), HandoffId: strings.Repeat("a", 22), LeaseOwner: "runtime-1",
+	})
 	if status.Code(err) != codes.Unavailable {
 		t.Fatalf("expected unavailable, got %v", err)
 	}

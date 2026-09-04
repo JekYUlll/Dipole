@@ -1,5 +1,14 @@
 # 架构债务台账
 
+### AD-063：OAuth token lifecycle 的 Runtime envelope 与长期 refresh authority 尚未接线
+
+- **优先级：** P1
+- **状态：** 进行中
+- **发现日期：** 2026-09-04
+- **现状：** `000060_agent_oauth_token_lifecycles` 已提供 Core-owned SQLC persistence seam。`PersistOAuthTokenLifecycle` 只接受 mTLS `dipole-agent`，并将第一次 opaque token envelope 写入原子绑定到 `exchange_claimed` callback handoff、lease owner 与 expiry；重复调用仅接受完全一致的 metadata。Core 从不处理 token 明文，默认配置仍关闭 callback handoff，因此不新增公开 OAuth 能力。
+- **缺口：** Runtime 还没有使用独立 token envelope v1 对 provider token bundle 加密后调用该 RPC；refresh/revoke/expiry 也尚无经评审的长期 authority、轮换和 retention worker。旧进程内 `TokenLifecycleStore` 仅用于离线 fixture，不能作为 production persistence。
+- **完成条件：** versioned Runtime token envelope contract、RPC client 与 provider processor 接线，refresh/revoke/expiry 的最小权限 worker、真实 mTLS/MySQL restart drill、轮换/清理 policy 与 Gateway/Runtime 同时关闭的可执行回滚证据。
+
 - 2026-09-04：A7 已补齐开发期 Prometheus 到 Alertmanager 的运行时投递证据。`smoke-multipart-alertmanager-routing.sh` 仅启动隔离 Prometheus 和 Alertmanager，复用正式 Multipart rule file 并加入临时 `vector(1)` alert，确认 firing alert 出现在 Alertmanager API；`1b5efc87` Remote GPU 通过，候选容器为零，公共 `dipole-experience` 保持 12 个容器，日志 SHA-256 为 `583dcc7af033211935587320ba951979e78437e68742d0563dff2fa83bfafc65`。该证据限于开发期 `discard` receiver，真实 receiver、升级策略、24 小时预签名流量和默认 relay 切流继续关闭。
 
 - 2026-09-04：A7 在 current `master` `43d86704` 重新通过 [隔离 Multipart restart receipt](../../benchmarks/multipart-restart-smoke-2026-09-04/)。随机命名 MinIO 和持久卷在首个 5 MiB part 后重启，续传、Complete 和内容比对通过；公共 `dipole-experience` 保持 12 个容器，候选容器清理为零。该证据仍限于 disposable fixture，浏览器断网、预签名、Redis 和跨存储故障矩阵继续由 A7 跟踪。

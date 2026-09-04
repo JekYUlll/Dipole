@@ -16,6 +16,7 @@ type RestrictedServer struct {
 	oauthTransactions     application.AgentOAuthAuthorizationTransactionStoreV1
 	oauthCallbackHandoffs application.AgentOAuthCallbackHandoffStoreV1
 	oauthCallbackRecorder application.AgentOAuthCallbackHandoffRecorderV1
+	oauthTokenLifecycles  application.AgentOAuthTokenLifecycleStoreV1
 }
 
 // MemoryPromotionReceiptServer remains an alias for callers that compose only
@@ -76,6 +77,14 @@ func (s *RestrictedServer) WithOAuthCallbackHandoffRecorder(recorder application
 	return s, nil
 }
 
+func (s *RestrictedServer) WithOAuthTokenLifecycles(store application.AgentOAuthTokenLifecycleStoreV1) (*RestrictedServer, error) {
+	if s == nil || store == nil {
+		return nil, errors.New("Agent OAuth token lifecycle store is required")
+	}
+	s.oauthTokenLifecycles = store
+	return s, nil
+}
+
 func (s *RestrictedServer) CommitMemoryPromotionReceipt(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
 	if s == nil {
 		return nil, errors.New("Agent Memory promotion receipt server is unavailable")
@@ -116,4 +125,11 @@ func (s *RestrictedServer) ReleaseOAuthCallbackHandoff(ctx context.Context, requ
 		return nil, errors.New("Agent OAuth callback handoff server is unavailable")
 	}
 	return releaseOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func (s *RestrictedServer) PersistOAuthTokenLifecycle(ctx context.Context, request *agentv1.PersistOAuthTokenLifecycleRequest) (*agentv1.PersistOAuthTokenLifecycleResponse, error) {
+	if s == nil {
+		return nil, errors.New("Agent OAuth token lifecycle server is unavailable")
+	}
+	return persistOAuthTokenLifecycleV1(ctx, request, s.oauthCallbackHandoffs, s.oauthTokenLifecycles)
 }

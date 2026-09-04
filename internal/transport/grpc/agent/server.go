@@ -58,6 +58,7 @@ type Server struct {
 	oauthTransactions      application.AgentOAuthAuthorizationTransactionStoreV1
 	oauthCallbackHandoffs  application.AgentOAuthCallbackHandoffStoreV1
 	oauthCallbackRecorder  application.AgentOAuthCallbackHandoffRecorderV1
+	oauthTokenLifecycles   application.AgentOAuthTokenLifecycleStoreV1
 }
 
 const oauthCallbackHandoffLeaseDurationV1 = 30 * time.Second
@@ -83,6 +84,14 @@ func (s *Server) WithOAuthCallbackHandoffRecorder(recorder application.AgentOAut
 		return nil, errors.New("Agent OAuth callback handoff recorder is required")
 	}
 	s.oauthCallbackRecorder = recorder
+	return s, nil
+}
+
+func (s *Server) WithOAuthTokenLifecycles(store application.AgentOAuthTokenLifecycleStoreV1) (*Server, error) {
+	if s == nil || store == nil {
+		return nil, errors.New("Agent OAuth token lifecycle store is required")
+	}
+	s.oauthTokenLifecycles = store
 	return s, nil
 }
 
@@ -1673,6 +1682,42 @@ func completeOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.Comple
 
 func (s *Server) ReleaseOAuthCallbackHandoff(ctx context.Context, request *agentv1.ReleaseOAuthCallbackHandoffRequest) (*agentv1.ReleaseOAuthCallbackHandoffResponse, error) {
 	return releaseOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackHandoffs)
+}
+
+func (s *Server) PersistOAuthTokenLifecycle(ctx context.Context, request *agentv1.PersistOAuthTokenLifecycleRequest) (*agentv1.PersistOAuthTokenLifecycleResponse, error) {
+	return persistOAuthTokenLifecycleV1(ctx, request, s.oauthCallbackHandoffs, s.oauthTokenLifecycles)
+}
+
+func persistOAuthTokenLifecycleV1(ctx context.Context, request *agentv1.PersistOAuthTokenLifecycleRequest, handoffs application.AgentOAuthCallbackHandoffStoreV1, lifecycles application.AgentOAuthTokenLifecycleStoreV1) (*agentv1.PersistOAuthTokenLifecycleResponse, error) {
+	handoffID, err := authorizeOAuthCallbackHandoffTerminalV1(ctx, request.GetContext(), request.GetHandoffId(), request.GetLeaseOwner(), handoffs)
+	if err != nil {
+		return nil, err
+	}
+	if lifecycles == nil {
+		return nil, status.Error(codes.Unavailable, "OAuth token lifecycle is unavailable")
+	}
+	input := application.AgentOAuthTokenLifecycleWriteRequestV1{
+		HandoffUUID: handoffID, LeaseOwner: request.GetLeaseOwner(), State: application.AgentOAuthTokenLifecycleStateV1(request.GetState()),
+		SealedTokenBundle: request.GetSealedTokenBundle(), TokenBundleSHA256: request.GetTokenBundleSha256(),
+		Scope: request.GetScope(), RevocationReason: request.GetRevocationReason(),
+	}
+	if expiresAt := request.GetAccessTokenExpiresAtUnixMs(); expiresAt != 0 {
+		input.AccessTokenExpiresAt = time.UnixMilli(expiresAt).UTC()
+	}
+	if err := input.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "OAuth token lifecycle is invalid")
+	}
+	persisted, err := lifecycles.PersistAgentOAuthTokenLifecycle(grpccommon.Correlation(ctx, request.GetContext()), input, time.Now().UTC().Truncate(time.Millisecond))
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthTokenLifecycleInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth token lifecycle is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth token lifecycle persistence failed")
+	}
+	if !persisted {
+		return nil, status.Error(codes.NotFound, "OAuth callback handoff unavailable")
+	}
+	return &agentv1.PersistOAuthTokenLifecycleResponse{HandoffId: handoffID, State: string(input.State)}, nil
 }
 
 func releaseOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.ReleaseOAuthCallbackHandoffRequest, handoffs application.AgentOAuthCallbackHandoffStoreV1) (*agentv1.ReleaseOAuthCallbackHandoffResponse, error) {

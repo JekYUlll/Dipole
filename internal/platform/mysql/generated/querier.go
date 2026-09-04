@@ -108,6 +108,7 @@ type Querier interface {
 	GetAgentModelRunStatus(ctx context.Context, runUuid string) (string, error)
 	GetAgentOAuthAuthorizationTransaction(ctx context.Context, transactionUuid string) (AgentOauthAuthorizationTransaction, error)
 	GetAgentOAuthCallbackHandoff(ctx context.Context, handoffUuid string) (AgentOauthCallbackHandoff, error)
+	GetAgentOAuthTokenLifecycle(ctx context.Context, handoffUuid string) (AgentOauthTokenLifecycle, error)
 	GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error)
 	GetAgentRuntimePromotionGrant(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
 	GetAgentRuntimePromotionGrantForUpdate(ctx context.Context, grantUuid string) (AgentRuntimePromotionGrant, error)
@@ -176,6 +177,7 @@ type Querier interface {
 	InsertAgentModelRun(ctx context.Context, arg InsertAgentModelRunParams) error
 	InsertAgentOAuthAuthorizationTransaction(ctx context.Context, arg InsertAgentOAuthAuthorizationTransactionParams) (int64, error)
 	InsertAgentOAuthCallbackHandoff(ctx context.Context, arg InsertAgentOAuthCallbackHandoffParams) (int64, error)
+	InsertAgentOAuthTokenLifecycleFromClaim(ctx context.Context, arg InsertAgentOAuthTokenLifecycleFromClaimParams) (int64, error)
 	InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error)
 	InsertAgentRuntimePromotionGrant(ctx context.Context, arg InsertAgentRuntimePromotionGrantParams) (int64, error)
 	InsertAgentRuntimePromotionProposal(ctx context.Context, arg InsertAgentRuntimePromotionProposalParams) (int64, error)

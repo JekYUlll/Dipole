@@ -1,3 +1,8 @@
+- 2026-09-04：OAuth callback handoff 新增默认关闭的 Core-owned token lifecycle persistence seam。
+  - `000060_agent_oauth_token_lifecycles`、SQLC repository 和 `PersistOAuthTokenLifecycle` RPC 将 Runtime-key encrypted envelope 的首次写入绑定到仍有效的 callback lease；Core 不接收或记录 token 明文，精确重复提交只接受相同的密封 metadata。
+  - RPC 仅允许 mTLS `dipole-agent` caller，缺少 lifecycle store 返回 `Unavailable`；Core 仅在既有 `agent_oauth_callback_handoff_enabled` 与 mTLS 门禁同时满足时装配该 store，默认公开 OAuth surface 不变。
+  - refresh/revoke/retention worker 和 Runtime 的 token envelope sealer 继续保持未装配，详见 `AD-063`。
+
 - 2026-09-04：Core capability 服务的 dipole-agent 方法许可清单补齐两个 Runtime 生产调用。`internal/services/core/rpcpolicy/policy.go` 的 `isAgentServiceMethodAllowed` 之前未列出 `AppendAgentTaskTimelineEvent`（`services/agent-runtime/src/models/model-router.ts:205` 追加 Timeline 事件的 secondary projection 路径，失败被静默吞掉）与 `SearchConversations`（`services/agent-runtime/src/models/model-shadow-planner.ts:100` retrieval opt-in 走 Core Search 组装）。缺项在 mTLS + `dipole-agent` caller 下会被 `RestrictAgentServiceMethods` 拒绝为 `PermissionDenied`，Runtime 端表现为 Timeline 静默丢失和 retrieval 开启后 fail closed。新增 `TestAgentServiceMethodAllowlistCoversRuntimeInvocations`：枚举 `services/agent-runtime/src/capabilities/agent-capability-rpc.ts` 里 `this.rpc.<method>` 的全部 30 个调用点作为不变量，任何 Runtime capability 新调用未同步进 allowlist 时该测试立即失败。不影响 Gateway/Search/Sync 现有策略，不改变默认 Compose 开关。`go build ./...` 干净，短测通过。
 
 - 2026-09-04：Remote GPU 已在 current `master` revision `43d86704` 复跑隔离 MinIO Multipart restart smoke。首个 5 MiB part 写入后重启随机命名、持久卷隔离的 MinIO，再续传、Complete 并按完整对象内容核验；公共 `dipole-experience` 保持 12 个容器，候选容器清理为零。低敏 [receipt](benchmarks/multipart-restart-smoke-2026-09-04/) 仅覆盖 disposable fixture，默认 `relay` 路径、浏览器断网、预签名、Redis 故障和跨存储对账保持不变。
