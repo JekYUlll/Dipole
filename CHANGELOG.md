@@ -1,3 +1,7 @@
+- 2026-09-04：Remote GPU 已通过默认关闭的 OAuth token lifecycle MySQL/mTLS restart drill。
+  - 演练仅启动隔离 MySQL，迁移独立 schema 后以 TLS 1.3 mTLS Core listener 写入 active lifecycle、重启 listener 并精确重放；测试断言生命周期仅一行且改写 metadata 被拒绝。
+  - 不注册 Gateway callback route，不启动 Runtime Provider、Kafka、Temporal 或公共 Compose project。完整命令与边界见 [receipt](benchmarks/agent-oauth-token-lifecycle-restart-2026-09-04/)；refresh/revoke/retention authority 继续由 `AD-063` 跟踪。
+
 - 2026-09-04：Remote GPU 已在 `85af1e88` 验证 OAuth token lifecycle 的开发期工具链契约：Go `1.27.0` contract、Node `22.12.0` 下 3 个 Runtime 测试文件/11 项测试以及 TypeScript typecheck 均通过；公共 `dipole-experience` 保持 12 个运行容器。该回执只覆盖源码和工具链，不启动 callback route、Core mTLS、MySQL 写入或真实 Provider，详见 [receipt](benchmarks/agent-oauth-token-lifecycle-2026-09-04/)。
 
 - 2026-09-04：OAuth callback provider 的永久失败现可持久化为 Core-owned `revoked` lifecycle 状态。

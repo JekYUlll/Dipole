@@ -14,6 +14,8 @@
 - `OAuthCallbackHandoffProviderProcessor` 把 provider + lifecycle wire 成 executor 认识的 `OAuthCallbackHandoffProcessor`：`exchanged` 写 active → `"completed"`；`retryable_failure` 不写 lifecycle → `"retryable_failure"`；`permanent_failure` 写 revoked → `"completed"`；lifecycle 已有 active / refreshed / revoked 时短路返回 `"completed"`，用于精确重放保护（Core 本身也拒绝二次 claim，此为进程内的第二道去重）。
 - 端到端 6 场景（重复 notify、Worker 重启换 lease owner、claim 后 lease 超时、`exchanged` 精确重放被 Core 拒、`retryable_failure` 回滚后再次 claim 成功、`PERMISSION_DENIED` 时 Runtime 不打开 envelope / 不调 provider / 不写 lifecycle）在 `services/agent-runtime/src/mcp/oauth-callback-handoff-durable-runtime.test.ts` 用离线 fake Core store + fake provider 覆盖。
 
+隔离的 Core/MySQL restart drill 使用 `scripts/drill-agent-oauth-token-lifecycle-mysql-mtls-restart.sh`。它只启动一次性 MySQL，迁移独立 schema 后以 TLS 1.3 mTLS 启动 Core、持久化一次 active lifecycle、重启 Core listener 并重放相同请求，最后验证只存在一条记录且 metadata 改写被拒绝。脚本不注册 Gateway callback route，不启动 Runtime Provider、Kafka 或 Temporal，也不会触碰公共 Compose project。
+
 回滚：关闭 Gateway route 开关或保持这组可选组件未装配即可；executor / claim / terminal / envelope / key source 未受修改，Runtime `index.ts`、Compose / env 和前端仍未接线。真实 provider adapter、Core-owned token lifecycle SQLC 表、Runtime 侧密钥轮换 / retention job、Runtime control handler 装配依然是 release 前置。
 
 ## Why The Gate Exists
