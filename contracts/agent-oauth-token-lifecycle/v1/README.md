@@ -34,4 +34,5 @@ For the initial code exchange, `state=active`. Runtime must submit the envelope
 through `PersistOAuthTokenLifecycle` while the callback handoff lease remains
 valid, then complete the handoff only after Core acknowledges the same
 `handoff_uuid` and state. `refreshed`, `revoked` and `expired` transitions need
-their own long-lived authority and remain disabled.
+their own long-lived authority and remain disabled. The required authority,
+CAS, event and deployment gates are fixed in [MAINTENANCE.md](MAINTENANCE.md).

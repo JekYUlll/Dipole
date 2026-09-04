@@ -1,3 +1,7 @@
+- 2026-09-04：固定 OAuth token lifecycle maintenance v1 契约。
+  - callback lease 仅授权初次 lifecycle 写入；后续 refresh、revoke 与 expiry 必须使用独立 maintenance lease、Runtime key binding 和 digest + lease generation CAS。
+  - 契约还固定最小审计字段、terminal material 清理及默认 profile 的 enablement gate；当前未新增 worker、RPC 或公开 OAuth surface。
+
 - 2026-09-04：OAuth token lifecycle 新增 Core-owned SQLC expiry maintenance primitive。
   - 条件更新仅作用于已到期的 `active`/`refreshed` lifecycle，单次上限 1000，原子清除密封 bundle、digest、expiry 与 scope 并置为 `expired`；调用方只得到计数。
   - 该 primitive 默认未调度，不读取或返回 token material。独立 worker identity、refresh/revoke authority 与运行时回滚证据继续由 `AD-063` 跟踪。
