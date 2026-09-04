@@ -1886,4 +1886,5 @@
 - **本轮进展：** Agent Task 的取消与审批 JSON 入口已补齐与创建、输入相同的前置 body 上限；超限输入在 Gateway 截止，不会消耗 Runtime 或 Temporal 控制面资源。
 - **本轮进展：** 取消入口现兼容代理传输的未知 `Content-Length` body，在同一上限内保留 owner 提供的取消原因，避免 chunked 请求退化为无理由取消。
 - **下一步：** Core embedded 保留原 handler 以支持回滚，其他共享 HTTP 资源域继续按资源域迁移；每次迁移均需结构门禁禁止独立 Gateway 回流到兼容实现。
-- 2026-09-04：隔离 Agent OpenTelemetry smoke 的 Tempo/Collector Compose 启动现有 30 至 1800 秒的可配置时限，默认 300 秒；超时仍由 trap 清理随机 Compose project 和测试卷，且不改变 `DIPOLE_AGENT_OTEL_ENABLED=false` 默认值。Remote GPU SSH 本轮超时，真实 Collector-to-Tempo trace receipt 待主机连通后重跑，不能由该本地门禁推导远端可用性。
+- 2026-09-04：隔离 Agent OpenTelemetry smoke 的 Tempo/Collector Compose 启动现有 30 至 1800 秒的可配置时限，默认 300 秒；超时仍由 trap 清理随机 Compose project 和测试卷，且不改变 `DIPOLE_AGENT_OTEL_ENABLED=false` 默认值。
+- 2026-09-04：Remote GPU 已在 `2aa608e5` 重跑隔离 Agent OTel smoke。`agent.otel.smoke` trace 经 Collector 写入 Tempo 并可查询，远端完整日志 SHA-256 为 `71c99ee185cadd6674f1af6a51e74c9618d893d88714c7384d83547c8c09bbaa`；测试项目退出后无候选容器，公共 `dipole-experience` 仍为 11 个容器。此证据仅覆盖开发期的单 span 导出链，不推导默认 exporter 启用、真实任务 trace 覆盖或共享环境告警有效性。

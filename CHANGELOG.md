@@ -2,7 +2,7 @@
 
 - 2026-09-04：为隔离 Agent OpenTelemetry smoke 增加 Compose 启动时限。
   - `smoke-agent-otel.sh` 现在将 Tempo/Collector 启动限制在 30 至 1800 秒，默认 300 秒；镜像拉取或 Compose 卡住时会以非零退出，并经既有 trap 清理随机项目、卷和匿名 Docker 配置。
-  - 默认 `DIPOLE_AGENT_OTEL_ENABLED=false` 保持不变。本轮仅加本地静态门禁；Remote GPU SSH 当前不可达，真实 trace 验收待连通后重跑。
+  - Remote GPU 在 `2aa608e5` 的随机隔离项目中通过真实 trace 验收：`agent.otel.smoke` 经 Collector 写入 Tempo 且可按 trace ID 查询；远端日志 SHA-256 为 `71c99ee185cadd6674f1af6a51e74c9618d893d88714c7384d83547c8c09bbaa`。退出后候选容器为零，公共 `dipole-experience` 保持 11 个运行容器。默认 `DIPOLE_AGENT_OTEL_ENABLED=false` 不变。
 
 - 2026-09-04：补齐 Active Read Agent Task 的隔离验收。
   - 交互只读 smoke 可显式切换到 active profile：候选环境创建 owner Definition、安装短期 promotion grant，并在退出时撤销 grant、删除容器和卷。
