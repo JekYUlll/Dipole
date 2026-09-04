@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：失败模型调用的 token 计量治理已收口。`agent_model_calls` 对无法获取 Provider usage 的失败调用保持 token `NULL`，Shadow Eval review pack 明确导出 `tokenMetering=unavailable` 并保留完成的延迟计量；评审仍须将此类样本作为不完整 Cost observation，不能用于总体成功率或成本结论。
+
 - 2026-09-04：Agent Runtime 的 AI SDK Provider 选项回归覆盖已去重：DeepSeek thinking-disabled 仅保留一个 canonical case，避免合并残留放大测试维护成本。该整理不改变模型路由、默认开关或 Provider 调用语义。
 
 - 2026-09-04：Gateway 已为 `agent.task.waiting` locator 增加固定 outcome 计数：`online` 表示至少一条 WebSocket 投递，`offline` 表示零在线连接且由 Task Inbox 补拉，`invalid` 表示 Kafka payload 或 envelope 拒绝。Prometheus 只对 `invalid` 增长告警，避免将正常离线状态升级为事故；共享环境浏览器窗口与端到端告警投递仍待独立验收。
@@ -269,7 +271,7 @@
 
 - 2026-09-02：Remote GPU 已归档 [N=4 安全跳过窗口](../../benchmarks/agent-shadow-eval-window-2026-09-02-n4/)。它只覆盖 `conversation.list` 成功、随后可信空发现使 `conversation.read` 成为 `not_required/no_discovered_conversation` 的受控路径；四例均通过五类结构性 Eval。固定单路径 cohort 不能填写总体任务成功率，也不能替代恢复、多轮检索、写能力或共享环境证据。
 
-- 2026-09-01：同一受控栈的一条 Provider 空 JSON-text 失败事件在持久 Run 中保留 `model run budget exhausted`，但模型调用缺失 token 计量，现有五类 Eval 会因不完整 Cost observation fail closed。后续需让失败调用输出明确的计量可用性/不可用性并纳入失败分类，禁止以通过样本替代整体成功率。
+- 2026-09-01：同一受控栈的一条 Provider 空 JSON-text 失败事件在持久 Run 中保留 `model run budget exhausted`。失败调用现以空 token 字段和 `tokenMetering=unavailable` 进入 Shadow Eval review pack；该样本仍属于不完整 Cost observation，禁止以通过样本替代整体成功率。
 
 - 2026-09-01：Remote GPU 受控窗口暴露汇总 schema 只接受 64 位摘要、与 OCI 的 40 位 Git revision 不兼容。契约已放宽为两种有效 revision 长度并覆盖回归；窗口重跑前不产生汇总结论。
 

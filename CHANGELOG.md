@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-04：修正 Agent 失败模型调用的评测计量口径。
+  - 失败 Provider 调用的空 token 字段会以 `unavailable` 导出到只读 Shadow Eval review pack，保留失败调用与延迟证据，避免将未知计量误报为零成本。
+
 - 2026-09-04：清理 Agent Runtime Provider 选项测试的重复覆盖。
   - `AISDKStructuredModelClient` 保留单一 DeepSeek thinking-disabled 透传断言，移除同文件、同语义的重复案例；运行时行为和 Provider 配置不变。
 

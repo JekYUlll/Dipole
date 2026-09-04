@@ -44,6 +44,18 @@ describe("Shadow evaluation review pack", () => {
     expect(pack.observed.permissions[0]?.authorization).toEqual({ status: "missing" });
   });
 
+  it("exports failed provider calls with unavailable token metering", () => {
+    const pack = buildShadowEvalReviewPack("agent-runtime@candidate-1", {
+      ...observation(),
+      modelCalls: [{ route: "gateway/primary", status: "failed", inputTokens: null, outputTokens: null, latencyMs: 12 }]
+    });
+
+    expect(pack.evaluatorEligibility).toEqual({ status: "eligible", blockingReasons: [] });
+    expect(pack.observed.metering.modelCalls).toEqual([
+      { route: "gateway/primary", status: "failed", tokenMetering: "unavailable", latencyMetering: "complete" }
+    ]);
+  });
+
   it("keeps a trusted empty-discovery read visible without treating it as an unrecorded authorization", () => {
     const pack = buildShadowEvalReviewPack("agent-runtime@candidate-1", {
       ...observation(),
