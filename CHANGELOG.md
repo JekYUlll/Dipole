@@ -1,5 +1,7 @@
 - 2026-09-04：Core capability 服务的 dipole-agent 方法许可清单补齐两个 Runtime 生产调用。`internal/services/core/rpcpolicy/policy.go` 的 `isAgentServiceMethodAllowed` 之前未列出 `AppendAgentTaskTimelineEvent`（`services/agent-runtime/src/models/model-router.ts:205` 追加 Timeline 事件的 secondary projection 路径，失败被静默吞掉）与 `SearchConversations`（`services/agent-runtime/src/models/model-shadow-planner.ts:100` retrieval opt-in 走 Core Search 组装）。缺项在 mTLS + `dipole-agent` caller 下会被 `RestrictAgentServiceMethods` 拒绝为 `PermissionDenied`，Runtime 端表现为 Timeline 静默丢失和 retrieval 开启后 fail closed。新增 `TestAgentServiceMethodAllowlistCoversRuntimeInvocations`：枚举 `services/agent-runtime/src/capabilities/agent-capability-rpc.ts` 里 `this.rpc.<method>` 的全部 30 个调用点作为不变量，任何 Runtime capability 新调用未同步进 allowlist 时该测试立即失败。不影响 Gateway/Search/Sync 现有策略，不改变默认 Compose 开关。`go build ./...` 干净，短测通过。
 
+- 2026-09-04：修复 Agent `promotion_active` profile 的 Control API 门禁。reviewed Memory 提交 Worker 现在显式拒绝任务控制入口，避免 promotion queue 与交互式 Task 创建同时暴露；默认 Compose、MCP、消息写入和 OAuth callback 路径保持关闭。
+
 # 更新日志
 
 - 2026-09-04：新增隔离 Multipart Prometheus 到 Alertmanager routing smoke。

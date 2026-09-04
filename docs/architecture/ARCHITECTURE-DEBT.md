@@ -207,6 +207,8 @@
 
 - 2026-09-01：Artifact 前端里程碑已接入 owner-scoped `conversation_digest` 阅读区。客户端仅在 metadata 精确匹配 `conversation_digest` 与 `text/markdown` 时读取正文，并复核响应的 Artifact ID/媒体类型；正文不可用时 metadata 继续保留且可重试。页面以文本阅读区呈现 Markdown 源文，未增加下载、对象键、Metadata JSON、公开 URL 或写入口。Remote GPU Node 22 已通过定向 Vitest `7/7`、typecheck、生产构建和 Chromium 功能/视觉回归；Pencil v2 brief 已归档，实际画布增量继续由 AD-044 跟踪。
 
+- 2026-09-04：`promotion_active` Runtime profile 现显式拒绝 `controlEnabled=true`，使 reviewed Memory 提交 Worker 保持专用 Temporal 队列与只读 Capability surface，不会同时提供交互式 Task 创建入口。该修复由完整 Agent Runtime 测试回归发现；共享环境 Kafka trigger、owner revoke mTLS、promotion overlay 回滚和 24 小时观测证据仍由 AD-009 跟踪。
+
 - 2026-09-02：Remote GPU 的全新 loopback-only Compose 候选以同一 clean revision `d7fee99a` 构建 Core、Gateway、Message、Sync、Search、迁移、修复与 Agent 镜像，并完成 JWT Interactive Task `202 -> completed -> Timeline` 两页续页验收。Runtime 继续固定 `shadow/read_shadow`，MCP、Memory promotion、active authority 与写 Capability 未开启；此开发期单任务结果不构成成功率、生产发布、公开体验或共享观察窗口证据。
 - 2026-09-02：Go 微服务候选镜像已调整为先建立可跨 revision 复用的 Alpine 依赖层，再写入 provenance 标签和服务二进制。该改动降低同机候选构建的重复网络与 Docker I/O，且由静态层顺序测试锁定；它不替代同版本 OCI 标签复核、Compose 运行验收或回滚证据。
 - 2026-09-01：全新 Remote GPU 候选已从空 MySQL 卷完成 migration v57，当前 Core 与 read-shadow Agent 启动。验收发现 Artifact Timeline 的拼接 event ID 超过 MySQL `VARCHAR(64)`，写入被投影层吸收；修复改用 Artifact 的 64 位内容寻址 ID，并在领域层校验上限。重建同版本 Core 后，新受认证只读任务已完成，Artifact metadata 与 Timeline 中唯一对应 Artifact 事件均返回 `200`；该证据未扩大 active authority 或写 Capability。

@@ -26,6 +26,9 @@ export function assertActiveMemoryPromotionProfile(profile: ActiveMemoryPromotio
     if (profile.authority !== "operator_approved") {
       throw new Error("Memory promotion commit requires operator-approved authority");
     }
+    if (profile.controlEnabled) {
+      throw new Error("Memory promotion commit forbids the Control API");
+    }
     assertActiveReadProfileSurface(profile.runtimeMode, profile);
     return;
   }
