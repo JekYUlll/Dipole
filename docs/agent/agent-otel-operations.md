@@ -17,7 +17,7 @@ export DIPOLE_AGENT_OTEL_ENABLED=true
 docker compose -f deploy/compose/docker-compose.microservices.yml --profile observability up -d tempo otel-collector prometheus
 ```
 
-Smoke 使用固定 localhost 验收端口、随机 Compose project 和测试专用卷，因此应在长期 profile 启动前独立执行。它生成 `agent.otel.smoke` span，验证 Collector accepted/sent 指标并按 trace ID 从 Tempo 查询完整 trace，退出时删除测试栈。正式环境应另外归档镜像 digest、Prometheus 原始查询、Tempo trace ID、执行时间和配置 commit。
+Smoke 使用固定 localhost 验收端口、随机 Compose project 和测试专用卷，因此应在长期 profile 启动前独立执行。它生成 `agent.otel.smoke` span，验证 Collector accepted/sent 指标并按 trace ID 从 Tempo 查询完整 trace，退出时删除测试栈。Compose 启动默认限制为 300 秒；可用 `DIPOLE_AGENT_OTEL_SMOKE_STARTUP_TIMEOUT_SECONDS` 在 30 至 1800 秒内调整，超时同样执行清理。正式环境应另外归档镜像 digest、Prometheus 原始查询、Tempo trace ID、执行时间和配置 commit。
 
 ## Trace 与审计联查
 

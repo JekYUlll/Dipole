@@ -4,6 +4,17 @@ set -euo pipefail
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 project_name="dipole-agent-otel-${RANDOM}"
 docker_config=${DIPOLE_SMOKE_DOCKER_CONFIG:-/tmp/dipole-docker-anonymous}
+startup_timeout_seconds=${DIPOLE_AGENT_OTEL_SMOKE_STARTUP_TIMEOUT_SECONDS:-300}
+
+if ! [[ "${startup_timeout_seconds}" =~ ^[0-9]+$ ]] || (( startup_timeout_seconds < 30 || startup_timeout_seconds > 1800 )); then
+  echo "Agent OTel smoke startup timeout must be between 30 and 1800 seconds" >&2
+  exit 2
+fi
+if ! command -v timeout >/dev/null 2>&1; then
+  echo "Agent OTel smoke requires the timeout command" >&2
+  exit 2
+fi
+
 mkdir -p "$docker_config"
 
 compose=(docker compose -p "$project_name" -f "$root_dir/deploy/compose/docker-compose.microservices.yml" --profile observability)
@@ -14,7 +25,7 @@ cleanup() {
 trap cleanup EXIT
 
 DOCKER_CONFIG="$docker_config" DIPOLE_INTERNAL_RPC_SHARED_SECRET=otel-smoke-only \
-  "${compose[@]}" up -d tempo otel-collector
+  timeout --preserve-status "${startup_timeout_seconds}s" "${compose[@]}" up -d tempo otel-collector
 
 for _ in $(seq 1 60); do
   if curl -fsS http://127.0.0.1:13133/ >/dev/null 2>&1 && curl -fsS http://127.0.0.1:3200/ready >/dev/null 2>&1; then
