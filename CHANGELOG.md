@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-04：修正 Agent Model Audit MySQL 集成夹具的迁移漂移。
+  - 夹具现应用 `000057_agent_model_run_stages`，与 Model Router 的 `task_uuid + stage` 查询和复合唯一约束一致；Remote GPU 的隔离 MySQL 8.4 验证此前暴露该列缺失，公共部署未受影响。
+
 - 2026-09-04：修正 Agent 失败模型调用的评测计量口径。
   - 失败 Provider 调用的空 token 字段会以 `unavailable` 导出到只读 Shadow Eval review pack，保留失败调用与延迟证据，避免将未知计量误报为零成本。
 

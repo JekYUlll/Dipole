@@ -27,6 +27,8 @@ integration("MySQLModelAuditStore MySQL 8.4 contract", () => {
     await pool.query(migration);
     const outputReplay = await readFile(new URL("../../../../db/migrations/000023_agent_model_output_replay.up.sql", import.meta.url), "utf8");
     await pool.query(outputReplay);
+    const runStages = await readFile(new URL("../../../../db/migrations/000057_agent_model_run_stages.up.sql", import.meta.url), "utf8");
+    await pool.query(runStages);
   });
 
   afterAll(async () => {
