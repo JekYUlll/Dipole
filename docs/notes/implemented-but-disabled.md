@@ -1,7 +1,7 @@
 # 已实现但未启用
 
 整理日期：2026-09-03。只列**代码已具备、默认关闭**的能力；未实现的规划项不在此列。
-默认拓扑是 Agent Shadow + Temporal 关 + 全部写能力关 + Cassandra/Web Sync/预签名直传关。
+默认拓扑是 `remote + read_active` Agent Runtime、Temporal 与认证 Task Control；自动消息写入、MCP、Memory、检索、订阅触发、Cassandra/Web Sync/预签名直传继续关闭。
 共享环境启用前仍要各自的观察窗口证据，本表不改变默认路径。
 
 ## 和「缺页面 / 重复实现」的边界
@@ -15,6 +15,7 @@ Pencil 侧栏「审批记录」没有路由和 API，已从任务/记忆/定义/
 ## 怎么读
 
 - **可 opt-in**：compose overlay / 显式 flag 就能跑隔离栈，缺的是共享环境证据。
+- **默认只读**：主 Compose 已装配，实际 Task admission 仍需要 owner Definition 与同 candidate 的有效 promotion grant。
 - **缺接线**：实现齐，但生产启动链、Activity 或公开入口还没挂上。
 - **缺环境**：实现齐，卡在浏览器二进制、真实 MinIO/CORS、共享 Kafka 等。
 
@@ -26,9 +27,9 @@ Pencil 侧栏「审批记录」没有路由和 API，已从任务/记忆/定义/
 | Subscription Active Read | `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED`；`agent-subscription-active.yml` | 可 opt-in | AD-034 / AD-009 共享 Kafka/Temporal 窗口 |
 | Subscription Shadow | `DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED`；`agent-subscription-shadow.yml` | 可 opt-in | AD-034 reviewed Shadow |
 | Interactive `/send` | `DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED`；`agent-interactive-active.yml` | 可 opt-in | AD-009 浏览器 HITL、shared tenant、联合故障 |
-| Active Read | `DIPOLE_AGENT_RUNTIME_MODE=remote` + Temporal；`agent-active.yml` | 可 opt-in | AD-009 |
-| Temporal Worker | `DIPOLE_AGENT_TEMPORAL_ENABLED` | 可 opt-in | 默认 `foundation`，只在 overlay 开 |
-| Task Control + 交互创建 + owner 收件箱 | `DIPOLE_AGENT_CONTROL_ENABLED` / Gateway 同名；前端 `VITE_AGENT_TIMELINE_ENABLED` | 可 opt-in | AD-009。收件箱随 Control 装配，页面随 Timeline 开关 |
+| Active Read | `DIPOLE_AGENT_RUNTIME_MODE=remote` + Temporal；`agent-active.yml` | 默认只读 | 服务已运行；Task admission 仍需 owner Definition + promotion grant，AD-009 覆盖共享环境体验 |
+| Temporal Worker | `DIPOLE_AGENT_TEMPORAL_ENABLED=true` | 默认只读 | `agent-temporal-read-shadow.yml` 仅用于回退与测试；默认仅运行 `read_active`，AD-009 继续覆盖共享环境体验 |
+| Task Control + 交互创建 + owner 收件箱 | `DIPOLE_AGENT_CONTROL_ENABLED=true` / Gateway 同名；前端 `VITE_AGENT_TIMELINE_ENABLED` | 服务端默认只读 | 收件箱随 Control 装配；前端页面仍受 Timeline 配置控制，且 admission 需要 owner Definition + promotion grant |
 | 多会话 `wait_input` | 无独立开关，随 Temporal read | 可 opt-in | AD-009 E2E |
 | Memory 观察写入 | `DIPOLE_AGENT_MEMORY_ENABLED` | 可 opt-in | AD-009 / AD-061 |
 | Memory Promotion Commit | Core `agent_memory_promotion_receipt_commit_enabled` + Runtime commit flag | 可 opt-in | AD-009 联合 revoke/rollback |

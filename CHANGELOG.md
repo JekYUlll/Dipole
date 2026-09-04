@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：校正 Agent 已实现能力台账的默认拓扑口径。
+  - 主 Compose 的 `remote + read_active` Runtime、Temporal 与认证 Task Control 现明确标为默认只读服务；`agent-temporal-read-shadow.yml` 仅作为回退和测试 profile。
+  - 台账继续区分服务启动与 Task admission：实际执行仍要求 owner Definition 与同 candidate 的有效 promotion grant，自动写入、MCP、Memory、检索和订阅触发均未随之开启。
+
 - 2026-09-04：为隔离 Agent OpenTelemetry smoke 增加 Compose 启动时限。
   - `smoke-agent-otel.sh` 现在将 Tempo/Collector 启动限制在 30 至 1800 秒，默认 300 秒；镜像拉取或 Compose 卡住时会以非零退出，并经既有 trap 清理随机项目、卷和匿名 Docker 配置。
   - Remote GPU 在 `2aa608e5` 的随机隔离项目中通过真实 trace 验收：`agent.otel.smoke` 经 Collector 写入 Tempo 且可按 trace ID 查询；远端日志 SHA-256 为 `71c99ee185cadd6674f1af6a51e74c9618d893d88714c7384d83547c8c09bbaa`。退出后候选容器为零，公共 `dipole-experience` 保持 11 个运行容器。默认 `DIPOLE_AGENT_OTEL_ENABLED=false` 不变。
