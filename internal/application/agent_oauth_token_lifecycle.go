@@ -44,7 +44,7 @@ func (v AgentOAuthTokenLifecycleWriteRequestV1) Validate() error {
 		strings.TrimSpace(v.LeaseOwner) != v.LeaseOwner {
 		return ErrAgentOAuthTokenLifecycleInvalid
 	}
-	if len(v.Scope) > 2048 || strings.TrimSpace(v.Scope) != v.Scope || len(v.RevocationReason) > 512 || strings.TrimSpace(v.RevocationReason) != v.RevocationReason {
+	if len(v.Scope) > 2048 || strings.TrimSpace(v.Scope) != v.Scope || strings.ContainsAny(v.Scope, "\r\n\x00") || len(v.RevocationReason) > 512 || strings.TrimSpace(v.RevocationReason) != v.RevocationReason || strings.ContainsAny(v.RevocationReason, "\r\n\x00") {
 		return ErrAgentOAuthTokenLifecycleInvalid
 	}
 	switch v.State {

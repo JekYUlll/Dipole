@@ -53,6 +53,17 @@ describe("OAuthCallbackHandoffProviderProcessor", () => {
     expect(lifecycle.get(handoff.handoffId)?.state).toBe("pending_exchange");
   });
 
+  it("keeps the local lifecycle pending when Core persistence fails", async () => {
+    const lifecycle = new TokenLifecycleStore();
+    const provider = new DeterministicFakeOAuthCallbackProvider({ plan: new Map([[digest("code"), { kind: "exchanged", tokens }]]) });
+    const processor = new OAuthCallbackHandoffProviderProcessor({
+      provider, lifecycle, leaseOwner: "runtime-worker-1",
+      persistence: { async persistActive() { throw new Error("Core unavailable"); } }
+    });
+    await expect(processor.process({ authorizationCode: "code", handoff })).rejects.toThrow("Core unavailable");
+    expect(lifecycle.get(handoff.handoffId)?.state).toBe("pending_exchange");
+  });
+
   it("does not call the provider a second time once the lifecycle has a terminal/active record", async () => {
     const lifecycle = new TokenLifecycleStore();
     const provider = new DeterministicFakeOAuthCallbackProvider({ plan: new Map([[digest("code"), { kind: "exchanged", tokens }]]) });

@@ -30,6 +30,7 @@ func TestAgentOAuthTokenLifecycleWriteRequestValidation(t *testing.T) {
 		{HandoffUUID: valid.HandoffUUID, LeaseOwner: valid.LeaseOwner, State: valid.State, SealedTokenBundle: "plaintext", TokenBundleSHA256: valid.TokenBundleSHA256, AccessTokenExpiresAt: expiresAt},
 		{HandoffUUID: valid.HandoffUUID, LeaseOwner: valid.LeaseOwner, State: AgentOAuthTokenLifecycleRevokedV1, SealedTokenBundle: valid.SealedTokenBundle, RevocationReason: "invalid_grant"},
 		{HandoffUUID: valid.HandoffUUID, LeaseOwner: valid.LeaseOwner, State: AgentOAuthTokenLifecycleExpiredV1, RevocationReason: "expired"},
+		{HandoffUUID: valid.HandoffUUID, LeaseOwner: valid.LeaseOwner, State: valid.State, SealedTokenBundle: valid.SealedTokenBundle, TokenBundleSHA256: valid.TokenBundleSHA256, AccessTokenExpiresAt: expiresAt, Scope: "calendar.read\nadmin"},
 	} {
 		if err := invalid.Validate(); !errors.Is(err, ErrAgentOAuthTokenLifecycleInvalid) {
 			t.Fatalf("expected invalid lifecycle request, got %v", err)
