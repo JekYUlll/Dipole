@@ -8,6 +8,7 @@ root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-shadow-${RANDOM}-$$}"
 model_source="${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE:-stub}"
 execution_profile="${DIPOLE_AGENT_INTERACTIVE_READ_PROFILE:-shadow}"
+build_timeout_seconds="${DIPOLE_AGENT_INTERACTIVE_BUILD_TIMEOUT_SECONDS:-900}"
 owner_telephone="13900000005"
 foreign_telephone="13900000006"
 agent_uuid="UAI000000000000000001"
@@ -15,8 +16,10 @@ grant_uuid="PROMOTION-READ-ACTIVE-${RANDOM}-$$"
 
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
 command -v openssl >/dev/null 2>&1 || { printf 'openssl is required\n' >&2; exit 2; }
+command -v timeout >/dev/null 2>&1 || { printf 'timeout is required\n' >&2; exit 2; }
 [[ "${model_source}" == "stub" || "${model_source}" == "provider" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
 [[ "${execution_profile}" == "shadow" || "${execution_profile}" == "active" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_READ_PROFILE must be shadow or active\n' >&2; exit 2; }
+[[ "${build_timeout_seconds}" =~ ^[0-9]+$ ]] && (( build_timeout_seconds >= 120 && build_timeout_seconds <= 3600 )) || { printf 'DIPOLE_AGENT_INTERACTIVE_BUILD_TIMEOUT_SECONDS must be between 120 and 3600\n' >&2; exit 2; }
 if [[ "${model_source}" == "provider" ]]; then
   : "${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE:?DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE is required for provider mode}"
   [[ -f "${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE}" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE must name a file\n' >&2; exit 2; }
@@ -24,8 +27,10 @@ fi
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-interactive-shadow.XXXXXX")
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
-  "${root_dir}/scripts/docker-build.sh" backend
-  "${root_dir}/scripts/docker-build-microservice-images.sh"
+  # A build is isolated but can still stall on a package manager or image pull.
+  # Preserve the non-zero timeout status so the cleanup trap tears down this project.
+  timeout --preserve-status "${build_timeout_seconds}" "${root_dir}/scripts/docker-build.sh" backend
+  timeout --preserve-status "${build_timeout_seconds}" "${root_dir}/scripts/docker-build-microservice-images.sh"
 fi
 
 : "${DIPOLE_MIGRATE_IMAGE:=dipole-migrate:latest}"
