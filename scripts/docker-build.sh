@@ -70,7 +70,9 @@ cmd_frontend() {
   fi
   echo "==> Building frontend..."
   cd "${ROOT_DIR}/frontend"
-  "${NPM_BIN}" ci --prefer-offline
+  # Audit and funding checks are unrelated to a deterministic artifact build.
+  # Disabling them prevents a slow registry audit request from extending it.
+  "${NPM_BIN}" ci --prefer-offline --no-audit --no-fund
   if [[ -n "${FRONTEND_BUILD_MODE}" ]]; then
     "${NPM_BIN}" run build -- --mode "${FRONTEND_BUILD_MODE}"
   else

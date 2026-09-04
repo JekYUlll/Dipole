@@ -266,6 +266,15 @@ case "${action}" in
     done
     ;;
   build)
+    if [[ -n "\$node_root" && -x "\$node_root/bin/node" ]]; then
+      export PATH="\$node_root/bin:\$PATH"
+    fi
+    actual_node="\$(node --version 2>/dev/null || true)"
+    required_node="v22.0.0"
+    if [[ -z "\$actual_node" || "\$(printf '%s\n' "\$required_node" "\$actual_node" | sort -V | tail -n 1)" != "\$actual_node" ]]; then
+      printf 'remote build refused: requires Node %s+; set DIPOLE_REMOTE_NODE_ROOT\n' "\$required_node" >&2
+      exit 4
+    fi
     case "\$frontend_profile" in
       "") scripts/docker-build.sh frontend ;;
       agent-interactive-shadow)

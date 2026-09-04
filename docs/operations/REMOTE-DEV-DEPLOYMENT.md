@@ -59,7 +59,7 @@ DIPOLE_REMOTE_GO_ROOT=/home/admin1/.local/go-1.27.0 \
 scripts/remote-dev.sh test
 ```
 
-管理员已将 Node 22.12.0 以用户态方式放置于 `/home/admin1/.local/node-22.12.0`。`node-test` 会优先使用该路径；缺少依赖时执行 `npm ci --ignore-scripts`，随后以 `--package-lock=false` 补齐 optional dependencies，避免远端测试改写提交中的锁文件。测试前会拒绝已有的 `webapp` 脏状态，测试退出时仅清理本次构建产生的该目录变更：
+管理员已将 Node 22.12.0 以用户态方式放置于 `/home/admin1/.local/node-22.12.0`。`node-test` 与 `build` 都会优先使用该路径，并在 Docker 构建前拒绝 Node 22 以下的运行时；这避免 Vite 依赖被系统 Node 误执行。Artifact build 的 `npm ci` 关闭 audit/fund 请求，避免与产物无关的 registry 访问拖慢构建。缺少依赖时 `node-test` 执行 `npm ci --ignore-scripts`，测试前会拒绝已有的 `webapp` 脏状态，测试退出时仅清理本次构建产生的该目录变更：
 
 ```bash
 DIPOLE_REMOTE_BRANCH=master \

@@ -7,6 +7,7 @@ import test from "node:test";
 
 const source = fs.readFileSync(new URL("./remote-dev.sh", import.meta.url), "utf8");
 const conflictHelper = new URL("./remote-sync-conflicts.sh", import.meta.url);
+const dockerBuild = fs.readFileSync(new URL("./docker-build.sh", import.meta.url), "utf8");
 
 function git(cwd, ...args) {
   return childProcess.execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
@@ -190,6 +191,8 @@ test("direct multipart smoke scripts honor an explicit remote Go toolchain", () 
 test("remote image builds compile committed backend binaries first", () => {
   assert.ok(source.includes('REMOTE_FRONTEND_PROFILE="${DIPOLE_REMOTE_FRONTEND_PROFILE:-}"'));
   assert.ok(source.includes('local remote_frontend_profile="${REMOTE_FRONTEND_PROFILE:-$REMOTE_EMPTY_ARG}"'));
+  assert.match(source, /build\)[\s\S]*?export PATH="\\\$node_root\/bin:\\\$PATH"/);
+  assert.match(source, /build\)[\s\S]*?remote build refused: requires Node %s\+; set DIPOLE_REMOTE_NODE_ROOT/);
   assert.match(source, /agent-interactive-shadow\)[\s\S]*?DIPOLE_FRONTEND_BUILD_MODE=agent-interactive-shadow scripts\/docker-build\.sh frontend/);
   assert.match(source, /build\)[\s\S]*?scripts\/docker-build\.sh frontend[\s\S]*?scripts\/docker-build\.sh backend[\s\S]*?scripts\/docker-build-microservice-images\.sh/);
 });
@@ -250,6 +253,10 @@ test("remote node toolchain is explicit and version-gated", () => {
   assert.match(source, /REMOTE_NODE_ROOT="\$\{DIPOLE_REMOTE_NODE_ROOT:-/);
   assert.match(source, /required_node="v22\.0\.0"/);
   assert.match(source, /remote node-test refused: requires Node %s\+/);
+});
+
+test("frontend artifact builds avoid unrelated npm audit and funding requests", () => {
+  assert.match(dockerBuild, /"\$\{NPM_BIN\}" ci --prefer-offline --no-audit --no-fund/);
 });
 
 test("remote Go toolchain prefers explicit configuration and discovers the newest user-local install", () => {

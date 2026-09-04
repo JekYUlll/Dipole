@@ -1,6 +1,9 @@
 services:
   agent:
     environment:
+      # This overlay follows the read-shadow fallback overlay in the smoke.
+      # Restore an active-only Kafka group before Runtime validates its profile.
+      DIPOLE_AGENT_KAFKA_GROUP_ID: ${DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID:?DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID is required}
       DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: interactive_active
       DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: ${DIPOLE_AGENT_INTERACTIVE_TASK_QUEUE:?DIPOLE_AGENT_INTERACTIVE_TASK_QUEUE is required}
       DIPOLE_AGENT_CONTROL_ENABLED: "true"

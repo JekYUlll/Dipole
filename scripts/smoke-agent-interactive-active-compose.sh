@@ -9,7 +9,9 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 root_dir=$(cd "${script_dir}/.." && pwd)
 compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-active-${RANDOM}-$$}"
+receipt_file="${DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE:-}"
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-interactive-active.XXXXXX")
+receipt_temp=""
 owner_uuid=""
 owner_telephone="13900000001"
 agent_uuid="UAI000000000000000001"
@@ -19,6 +21,12 @@ grant_uuid="PROMOTION-SMOKE-ACTIVE"
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
 command -v openssl >/dev/null 2>&1 || { printf 'openssl is required\n' >&2; exit 2; }
 command -v node >/dev/null 2>&1 || { printf 'Node.js is required\n' >&2; exit 2; }
+if [[ -n "${receipt_file}" ]]; then
+  [[ "${receipt_file}" = /* && ! -e "${receipt_file}" && -d "$(dirname "${receipt_file}")" ]] || {
+    printf 'DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE must be a new absolute path in an existing directory\n' >&2
+    exit 2
+  }
+fi
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   "${script_dir}/docker-build.sh" backend
@@ -103,6 +111,7 @@ cleanup() {
   else
     printf 'Interactive Agent Compose stack retained: project=%s\n' "${project_name}"
   fi
+  [[ -z "${receipt_temp}" ]] || rm -f "${receipt_temp}"
   rm -rf "${scratch_dir}"
   exit "${status}"
 }
@@ -462,5 +471,18 @@ approved_effects=$(mysql -e "SELECT
 
 revoked=$(mysql -e "UPDATE agent_runtime_promotion_grants SET revoked_at = UTC_TIMESTAMP(3) WHERE grant_uuid = '${grant_uuid}' AND revoked_at IS NULL; SELECT ROW_COUNT();")
 [[ "${revoked}" == "1" ]] || { printf 'Temporary promotion grant revocation failed: %q\n' "${revoked}" >&2; exit 1; }
+
+if [[ -n "${receipt_file}" ]]; then
+  runtime_revision=$(git -C "${root_dir}" rev-parse HEAD)
+  [[ "${runtime_revision}" =~ ^[a-f0-9]{40}$ ]] || { printf 'interactive active smoke runtime revision is invalid\n' >&2; exit 1; }
+  approved_task_sha256=$(printf '%s' "${approved_task}" | openssl dgst -sha256 -r | awk '{print $1}')
+  receipt_temp=$(mktemp "$(dirname "${receipt_file}")/.dipole-agent-interactive-active-receipt.XXXXXX")
+  cat >"${receipt_temp}" <<JSON
+{"schemaVersion":"dipole.agent.interactive-active-smoke-receipt.v1","runtimeRevision":"${runtime_revision}","profile":"active","modelSource":"deterministic","approvedTaskSha256":"${approved_task_sha256}","deniedToolInvocationCount":0,"deniedMessageCount":0,"approvedToolInvocationCount":1,"approvedApprovalCount":1,"approvedMessageCount":1,"approvedDistinctMessageCount":1,"approvedSyncInboxCount":2,"completedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+JSON
+  ln "${receipt_temp}" "${receipt_file}"
+  rm -f "${receipt_temp}"
+  receipt_temp=""
+fi
 
 printf 'Interactive Agent active Compose smoke passed: owner WebSocket received the waiting locator; deny has zero effects; duplicate approval converged to one Tool invocation, one message, and two Sync inbox entries.\n'

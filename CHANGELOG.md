@@ -2,6 +2,16 @@
 
 # 更新日志
 
+- 2026-09-04：Remote GPU 的候选镜像构建现在复用显式 Node 22 工具链并在 Docker 构建前执行版本门禁。
+  - 此前 `build` 仅在 `node-test` 选择用户态 Node，导致前端构建可能回落到系统 Node 18；现在 `DIPOLE_REMOTE_NODE_ROOT` 与 `node-test` 使用相同的优先级，缺失或版本不足会以状态码 `4` 退出。
+  - 前端 artifact build 的 `npm ci` 同时关闭 audit/fund 请求，避免 registry 审计尾部请求阻塞与产物无关的 Remote GPU 构建。
+  - 该修复不启动 Compose、不影响公共体验容器，也不改变 Agent、OAuth 或其他默认能力开关。
+
+- 2026-09-04：Interactive Active Agent smoke 现显式恢复隔离 Kafka consumer group。
+  - 该 smoke 同时加载 read-shadow 回退 overlay 与 interactive-active overlay；后者现在覆盖前者的 shadow group，确保 `remote` Runtime 使用 `dipole-agent-active-*` 组通过 active profile 校验。
+  - Remote GPU 在 `258ae82e` 的隔离项目通过 owner WebSocket waiting locator、拒绝零副作用、Worker 重启后的重复批准收敛为一次 Tool invocation、一条消息和两条 Sync Inbox 投影；候选容器为零，公共 `dipole-experience` 保持 12 个容器。运行日志 SHA-256 为 `dc6274f177a1c58498b50d910d39efe00929c29daad1f803878fb4a46efd5e88`。
+  - active smoke 现实现可选的低敏、原子 receipt 输出；`c9ff05f0` 已在同形 Remote GPU 验收生成 JSON 工件，详见 [interactive active smoke receipt](benchmarks/agent-interactive-active-smoke-2026-09-04/)。变更仅作用于显式 interactive smoke overlay，默认 read-active 与 shadow 回退配置不变。
+
 - 2026-09-04：Web Sync observability Smoke 仅对必需服务 target 等待收敛，并归档修复后 Remote GPU 回执。
   - Prometheus target 响应会保留未启用的 optional Agent/Search 服务；Smoke 现以结构化选择器只要求 Core、Message、Sync、Gateway 为 `up`，并在 Gateway ready 后最多等待 30 秒。
   - clean `8cecb0ef` 的 loopback-only 复验通过，候选项目容器为零，公共 `dipole-experience` 保持 12 个容器；详见 `benchmarks/web-sync-observability-smoke-2026-09-04/`。

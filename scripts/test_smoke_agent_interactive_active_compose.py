@@ -17,6 +17,8 @@ class InteractiveAgentActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('agent-interactive-active.yml', script)
         self.assertIn('DIPOLE_AGENT_INTERACTIVE_TASK_QUEUE:=dipole-agent-interactive-', script)
         self.assertIn('DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID:=dipole-agent-active-interactive-', script)
+        overlay = (ROOT / "deploy/microservices/agent-interactive-active.yml").read_text(encoding="utf-8")
+        self.assertIn('DIPOLE_AGENT_KAFKA_GROUP_ID: ${DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID:?DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID is required}', overlay)
         self.assertIn('DIPOLE_AGENT_TEMPORAL_TASK_QUEUE:=${DIPOLE_AGENT_INTERACTIVE_TASK_QUEUE}', script)
         self.assertIn('DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1', script)
         self.assertIn('DIPOLE_MYSQL_AIO_COMPAT:=0', script)
@@ -68,6 +70,17 @@ class InteractiveAgentActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn("UPDATE agent_runtime_promotion_grants SET revoked_at = UTC_TIMESTAMP(3)", script)
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="https://models.invalid/v1"', script)
         self.assertIn('DIPOLE_AGENT_MODEL_ROUTES="compose-smoke/deterministic"', script)
+
+    def test_smoke_receipt_is_opt_in_low_sensitivity_and_atomic(self) -> None:
+        script = (ROOT / "scripts/smoke-agent-interactive-active-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('receipt_file="${DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE:-}"', script)
+        self.assertIn('must be a new absolute path in an existing directory', script)
+        self.assertIn('"approvedTaskSha256":"${approved_task_sha256}"', script)
+        self.assertIn('"runtimeRevision":"${runtime_revision}"', script)
+        self.assertIn("openssl dgst -sha256 -r", script)
+        self.assertIn('ln "${receipt_temp}" "${receipt_file}"', script)
+        self.assertNotIn('"approvedTaskId":"${approved_task}"', script)
+        self.assertNotIn('"ownerUuid":"${owner_uuid}"', script)
 
 
 if __name__ == "__main__":

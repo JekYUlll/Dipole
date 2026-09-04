@@ -1,5 +1,9 @@
 # 架构债务台账
 
+- 2026-09-04：Remote GPU 的 `build` 曾忽略已配置的 `DIPOLE_REMOTE_NODE_ROOT`，前端依赖在系统 Node 18 上安装并因项目要求 Node 22.12+ 而停止。入口现与 `node-test` 一致地优先选择用户态 Node，并在启动 Docker 构建前 fail-closed；前端 artifact build 还关闭与产物无关的 npm audit/fund registry 请求，避免 audit 尾部等待占用构建窗口。脚本契约测试锁定两项门禁。候选后端镜像与 `258ae82e` Interactive Active Compose smoke 已完成；当前只剩前端 session 的 TypeScript 编译错误阻止完整前端 artifact build，未影响本 Agent 受控验收。
+
+- 2026-09-04：Interactive Active smoke 组合 base、read-shadow 和 active overlays 时，read-shadow 的 `DIPOLE_AGENT_KAFKA_GROUP_ID=dipole-agent-shadow-v1` 曾覆盖到 active Runtime，导致其启动时被 group-isolation 校验拒绝。interactive overlay 现强制要求 `DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID` 并映射为容器内 group；静态测试固定该覆盖。`258ae82e` Remote GPU smoke 已通过并自动清理隔离项目，关闭该运行配置缺口；`c9ff05f0` 随后以相同隔离路径生成低敏、原子 [receipt](../../benchmarks/agent-interactive-active-smoke-2026-09-04/)，确认拒绝零副作用、Worker 重启后批准幂等、消息和 Sync 投影计数。该证据依旧限于确定性开发 fixture。
+
 - 2026-09-04：Web Sync observability Smoke 的 `dipole-required` scrape-pool 过滤在不同 Prometheus target 响应形态下仍需精确限制到本次启动的四项服务。现以结构化 target 选择器只等待 Core、Message、Sync、Gateway 收敛为 `up`，optional Agent/Search target 保持可见但不影响最小预检；Gateway ready 后最多等待 30 秒。clean `8cecb0ef` 已在 Remote GPU loopback-only 项目通过，日志哈希与容器清理结果归档于 [`web-sync-observability-smoke-2026-09-04`](../../benchmarks/web-sync-observability-smoke-2026-09-04/)。真实浏览器 24 小时窗口、原始 Prometheus 响应归档、对象版本和责任人批准继续为 A6 前置条件。
 
 - 2026-09-04：`internal/services/core/rpcpolicy` 的 `dipole-agent` 方法许可清单补齐 `AppendAgentTaskTimelineEvent` 与 `SearchConversations` 两条 Runtime 生产调用；缺失时前者被静默吞（`model-router.ts:205` 明确「Timeline is a secondary projection」），后者在 retrieval opt-in 开启后 fail closed。新增 `TestAgentServiceMethodAllowlistCoversRuntimeInvocations` 枚举 `agent-capability-rpc.ts` 的所有 30 个 `this.rpc.<method>` 调用作为回归护栏，未来 Runtime 新加 capability 客户端方法必须同时进 allowlist。策略仍是允许清单+拒绝其余，Gateway/Search/Sync 语义不变。

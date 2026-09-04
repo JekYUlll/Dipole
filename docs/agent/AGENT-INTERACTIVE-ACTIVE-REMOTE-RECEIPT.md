@@ -1,5 +1,28 @@
 # Interactive Active Remote Receipt
 
+## Kafka Group Recovery Validation (2026-09-04)
+
+This development-only Remote GPU run used source revision
+`258ae82ee89ec00add9e8d9335cc197a5a3b385f` in the isolated Compose project
+`dipole-agent-active-258ae82e`. It verified the explicit active Kafka consumer
+group override after the read-shadow fallback overlay had previously reached
+the active Runtime.
+
+| Scenario | Result |
+| --- | --- |
+| Active Runtime startup | The Runtime passed active group-isolation validation and became healthy |
+| Denied replay | Zero Tool Invocations and zero messages |
+| Approved replay after Worker restart | One completed Tool Invocation, one Agent message, and two Sync Inbox entries |
+| Cleanup | Candidate containers were zero after exit; `dipole-experience` remained at 12 running containers |
+
+The isolated run exited with status `0`. Its retained Remote GPU log has
+SHA-256 `dc6274f177a1c58498b50d910d39efe00929c29daad1f803878fb4a46efd5e88`.
+This revision predates the machine-readable receipt implementation, so this
+section records a human-readable evidence boundary only. The follow-up
+`c9ff05f0` run generated the low-sensitivity
+[machine-readable receipt](../../benchmarks/agent-interactive-active-smoke-2026-09-04/)
+without task, owner, message, prompt, model output, or credential material.
+
 ## Owner Definition Binding And Approval Recovery (2026-09-03)
 
 This development-only Remote GPU run used Core revision
