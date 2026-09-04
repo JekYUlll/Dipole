@@ -20,6 +20,7 @@
 - 2026-09-04：Remote GPU 隔离 Web Sync observability smoke 在首次拉取 Prometheus 镜像时出现无进度下载，公共 `dipole-experience` 未受影响且隔离 project 已清理。smoke 现将 `up --wait` 限定为 30 至 1800 秒的可配置时限，默认 300 秒；超时只结束本次隔离验收并执行既有清理，不修改 Docker daemon、入口隧道、公共 Compose project 或客户端默认模式。该治理减少验证任务长期占用，Prometheus/Alertmanager 完整 smoke 与真实 24 小时观察窗口仍待可用镜像源和独立运行证据。
 
 - 2026-09-03：Gateway 已拥有 Sync HTTP handler，独立进程不再通过共享 `internal/gateway/http` 装配 `/sync`、设备与群 checkpoint、comparison 路由。Core embedded 仍使用共享 handler 作为本地回滚兼容层；Message、Core 资源域 handler 的同类迁移需按域切片，不能在未完成 Web Sync 观察窗口时删除旧 Offline 兼容 API。
+- 2026-09-03：MySQL `message_search_documents` 已完成从 Search 运行时的 adapter 退役。Search Indexer、查询服务与运维回填均使用 Elasticsearch，SQLC adapter、查询和专属契约测试已删除并由结构门禁阻止回流。已发布表保留到独立的数据保留/清理迁移，当前不能因代码退役推导为生产数据已删除。
 
 - 2026-09-03：Cassandra read-routing 集成 smoke 的缺行回退已恢复双向断言：`after_seq` 与 `before_seq` 都必须返回 MySQL 页面。此前基准夹具重构期间只保留 `after_seq` 集成检查，虽有单元覆盖，仍缺真实存储组合证据；本次补齐后默认主读比例和回退语义不变。
 
