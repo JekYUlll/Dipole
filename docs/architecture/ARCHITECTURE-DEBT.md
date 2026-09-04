@@ -6,8 +6,9 @@
 - **状态：** 进行中
 - **发现日期：** 2026-09-04
 - **现状：** `000060_agent_oauth_token_lifecycles` 已提供 Core-owned SQLC persistence seam。`PersistOAuthTokenLifecycle` 只接受 mTLS `dipole-agent`，并将第一次 opaque token envelope 写入原子绑定到 `exchange_claimed` callback handoff、lease owner 与 expiry；重复调用仅接受完全一致的 metadata。Core 从不处理 token 明文，默认配置仍关闭 callback handoff，因此不新增公开 OAuth 能力。
-- **缺口：** Runtime 还没有使用独立 token envelope v1 对 provider token bundle 加密后调用该 RPC；refresh/revoke/expiry 也尚无经评审的长期 authority、轮换和 retention worker。旧进程内 `TokenLifecycleStore` 仅用于离线 fixture，不能作为 production persistence。
-- **完成条件：** versioned Runtime token envelope contract、RPC client 与 provider processor 接线，refresh/revoke/expiry 的最小权限 worker、真实 mTLS/MySQL restart drill、轮换/清理 policy 与 Gateway/Runtime 同时关闭的可执行回滚证据。
+- **本轮进展：** Runtime 已增加 versioned token envelope v1、Core mTLS persistence client 和 provider processor 的 optional persistence seam。初次 exchange 先以 AES-256-GCM + Runtime RSA-OAEP-SHA256 public half 封装 canonical token bundle，再调用 Core；Core acknowledgement 失败时本地 lifecycle 不会进入 `active`，executor 保留 lease。AAD 绑定 handoff、key、state、digest、expiry 与 scope，且 scope 的 LF/CR/NUL 输入 fail closed。
+- **缺口：** 默认 Runtime 仍不装配该 client 或真实 Provider；refresh/revoke/expiry 也尚无经评审的长期 authority、轮换和 retention worker。旧进程内 `TokenLifecycleStore` 仅用于离线 fixture，不能作为 production persistence。
+- **完成条件：** 受评审的 provider profile 将 client 注入 processor、refresh/revoke/expiry 的最小权限 worker、真实 mTLS/MySQL restart drill、轮换/清理 policy 与 Gateway/Runtime 同时关闭的可执行回滚证据。
 
 - 2026-09-04：A7 已补齐开发期 Prometheus 到 Alertmanager 的运行时投递证据。`smoke-multipart-alertmanager-routing.sh` 仅启动隔离 Prometheus 和 Alertmanager，复用正式 Multipart rule file 并加入临时 `vector(1)` alert，确认 firing alert 出现在 Alertmanager API；`1b5efc87` Remote GPU 通过，候选容器为零，公共 `dipole-experience` 保持 12 个容器，日志 SHA-256 为 `583dcc7af033211935587320ba951979e78437e68742d0563dff2fa83bfafc65`。该证据限于开发期 `discard` receiver，真实 receiver、升级策略、24 小时预签名流量和默认 relay 切流继续关闭。
 

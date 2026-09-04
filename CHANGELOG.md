@@ -1,3 +1,8 @@
+- 2026-09-04：Agent Runtime 新增未装配的 OAuth token lifecycle envelope v1 与 Core persistence client。
+  - Provider exchange 成功后，Runtime 使用既有受保护私钥源派生 RSA public half，封装 canonical token bundle 为 AES-256-GCM + RSA-OAEP-SHA256 envelope，并将 ciphertext、SHA-256、expiry 和 scope 提交给 Core；Core acknowledgement 失败时本地 lifecycle 保持 `pending_exchange`，executor 会保留 callback lease。
+  - envelope AAD 绑定 handoff、Runtime key、state、bundle digest、expiry 与 scope，token 明文不会进入 RPC、日志、Kafka、Temporal 或 Core；新增 scope 的 CR/LF/NUL fail-closed 校验。
+  - 此模块没有默认 bootstrap、Compose 或 Provider 配置引用。长期 refresh/revoke/expiry authority 与受控 MySQL/mTLS restart drill 继续由 `AD-063` 跟踪。
+
 - 2026-09-04：OAuth callback handoff 新增默认关闭的 Core-owned token lifecycle persistence seam。
   - `000060_agent_oauth_token_lifecycles`、SQLC repository 和 `PersistOAuthTokenLifecycle` RPC 将 Runtime-key encrypted envelope 的首次写入绑定到仍有效的 callback lease；Core 不接收或记录 token 明文，精确重复提交只接受相同的密封 metadata。
   - RPC 仅允许 mTLS `dipole-agent` caller，缺少 lifecycle store 返回 `Unavailable`；Core 仅在既有 `agent_oauth_callback_handoff_enabled` 与 mTLS 门禁同时满足时装配该 store，默认公开 OAuth surface 不变。
