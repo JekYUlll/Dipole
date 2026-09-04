@@ -8,11 +8,14 @@ type ViewState = 'idle' | 'validation_error' | 'submitting' | 'unavailable'
 const props = withDefaults(defineProps<{
   client?: AgentTaskClient
   requestId?: () => string
+  embedded?: boolean
 }>(), {
   client: () => agentTaskClient,
   requestId: () => crypto.randomUUID(),
+  embedded: false,
 })
 
+const emit = defineEmits<{ (e: 'created', taskId: string): void }>()
 const router = useRouter()
 const goal = ref('')
 const request = ref('')
@@ -37,7 +40,11 @@ async function submit() {
   error.value = ''
   try {
     const result = await props.client.startTask({ clientRequestId: request.value, goal: normalizedGoal })
-    await router.replace({ name: 'agent-task-timeline', params: { taskId: result.taskId } })
+    if (props.embedded) {
+      emit('created', result.taskId)
+      return
+    }
+    await router.replace({ path: '/', query: { agent: '1', view: 'tasks', task: result.taskId, panel: 'timeline' } })
   } catch {
     state.value = 'unavailable'
     error.value = '任务创建暂不可用。'

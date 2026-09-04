@@ -41,7 +41,7 @@ describe('AgentTaskCreate', () => {
     await wrapper.get('[data-agent-task-create-form]').trigger('submit')
     await flushPromises()
     expect(startTask).toHaveBeenCalledWith({ clientRequestId: 'local:001', goal: 'Summarize unread work' })
-    expect(replace).toHaveBeenCalledWith({ name: 'agent-task-timeline', params: { taskId: 'TASK-1' } })
+    expect(replace).toHaveBeenCalledWith({ path: '/', query: { agent: '1', view: 'tasks', task: 'TASK-1', panel: 'timeline' } })
   })
 
   it('uses a UUID string when no request-id prop is supplied', async () => {
@@ -56,7 +56,7 @@ describe('AgentTaskCreate', () => {
       clientRequestId: expect.stringMatching(/^[A-Za-z0-9._:-]{1,64}$/),
       goal: 'Summarize my recent discussions',
     })
-    expect(replace).toHaveBeenCalledWith({ name: 'agent-task-timeline', params: { taskId: 'TASK-1' } })
+    expect(replace).toHaveBeenCalledWith({ path: '/', query: { agent: '1', view: 'tasks', task: 'TASK-1', panel: 'timeline' } })
   })
 
   it('does not expose a fallback when task creation is unavailable', async () => {

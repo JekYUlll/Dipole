@@ -1,5 +1,20 @@
 # 更新日志
 
+- 2026-09-04：Chat + Agent Drawer 整体交付并统一视觉层。
+  - IA 收敛：`AppShell` 顶栏只留 Chat 一个 tab，齿轮唯一入口打开 `SettingsDialog` 弹窗；删除 `SettingsView` 整页 + 10 条旧 `/agent/*` 路由 + `AgentApprovalView / AgentArtifactInboxView / AgentArtifactView / AgentDefinitionsView / AgentElicitationView / AgentMemoriesView / AgentSubscriptionsView / AgentTaskCreateView / AgentTaskInboxView / AgentTaskTimelineView`。所有 Agent 面板改由 `?agent=1&view=<key>` 落在 420px 右侧 `AgentDrawer` 里，六个 tab（Live/Tasks/Artifacts/Definitions/Subscriptions/Memories）映射同名视图。
+  - Agent 视图切分：新 `AgentDrawer.vue`、`AgentLiveView / AgentTasksView / AgentArtifactsView / AgentDefinitionsView / AgentSubscriptionsView / AgentMemoriesView`、共享 `AgentEmptyState`；`ChatView` 用 `MessageBubble` 组件替代内联气泡；`SettingsDialog` + 独立 `ChangePasswordDialog` 承接账户资料、密码、Agent 入口链接、设备安全、本地同步、退出登录。
+  - UI polish（今日 12 项修复）：
+    - S0-1 屏蔽 PrimeVue 5 未授权水印 `#p-license-host`（`design-tokens.css` 单条隐藏，注释指向正式采购）。
+    - S0-2 `AgentDrawer` 断点从 820px 调到 1180px，窄屏切成右侧 overlay，420px 宽度保证 1024 屏下主聊天区仍能展开。
+    - S0-3 `dipole-preview-mock.mjs` 补 WebSocket upgrade 握手 + Ping/Pong，前端不再指数级重连。
+    - S1-4/5 顶栏图标、tab、avatar、brand dot 全部换离主红色：icon 用 `rgba(255,255,255,0.75)`，激活态 rail-soft 深蓝，Agent toggle 激活态 gold 底 rail 文字，avatar navy 底描边。
+    - S1-6 `AgentDrawer` header 简化：title-dot 6px + 单像素 line 分隔；Live view 三张 KPI 卡统一 top-border，仅 value 颜色区分；`SCOPE` chip 改成 outlined label 与值分离。
+    - S1-7 `SettingsDialog` header 有独立 padding + border，eyebrow 用 `ink-faint`，仅 `SESSION` 区红色；按钮换成 primary(实红) / secondary(白底灰边) / danger(白底红边→hover 实红) 三级一致体系；signature 输入 focus 高亮。
+    - S1-8 `ChangePasswordDialog` 三个输入补 padding/focus 高亮，取消/修改按钮同 Settings 一致的 primary/secondary 层级。
+    - S2-11 `AgentMemoriesView` 候选与长期记忆改用左侧 2px 强调条，共用面板底色。
+  - 覆盖率：`vitest run` 257/257 通过；`vue-tsc --noEmit` 上遗留 `AgentArtifactsView` / `AgentTasksView` 模板中 `@row-click="(e: ...) => ..."` 内联类型标注 6 条 pre-existing 报错，不来自本次 UI 层改动，另议。
+  - 预览：`start-dev.sh` 之外，`/data/workspace/.dev-logs/dipole-preview-mock.mjs` 提供 mock（默认 `:18080`），前端 `npm run dev:agent` 起在 `:8002`，代理 `/api` 到 `DIPOLE_WEB_PROXY_TARGET=http://127.0.0.1:18080`；WS 现在能正确 upgrade。
+
 - 2026-09-03：前端 BI 重构 Phase 0——铺 PrimeVue 4 + 直角 primitives，旧 Agent 页不动。
   - 装 `primevue@4.4.1` + `@primeuix/themes@4.4.1`；`config/primevueTheme.ts` 用 Aura preset + `definePreset` 把所有 `borderRadius` 收 0、把 primary/surface/content/formField 语义色桥接到 `--dp-*` 变量，density 收紧到 form 6/10。`main.ts` 注册 PrimeVue + `ConfirmationService` + `ToastService`，`ripple:false`。
   - 新 primitives：`layout/AppShell.vue`（48px rail 顶栏 + Chat/Directory/Settings 固定 tab + 🤖 toggle 通过 `?agent=1&view=live` 改 URL + 待办红角标 + 28px status bar + `default` / `agent-drawer` / `status-right` / `search` slot）、`data/StatusPill.vue`（6 色 tone、可选 dot、dense）、`data/Banner.vue`（4 色 tone、图标 + action + close，替代整屏中央 state card）、`data/StatePanel.vue`（cold-start 才用，spinner/empty/unavailable 三态）。

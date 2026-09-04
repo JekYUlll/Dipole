@@ -23,7 +23,12 @@ test.beforeEach(async ({ page, browserName }) => {
 })
 
 test('keeps the default-off task creation surface aligned with the Pencil baseline', async ({ page }) => {
-  await page.goto('/app/agent/tasks/new')
+  await page.route('**/api/v1/agent/tasks**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ code: 0, data: { tasks: [], nextCursor: '' } }),
+  }))
+  await page.goto('/app/?agent=1&view=tasks&drawer=create')
 
   await expect(page.getByRole('heading', { name: '创建 Agent 任务' })).toBeVisible()
   await expect(page.getByText('提交不会启用 Runtime、Tool 或外部服务。')).toBeVisible()
@@ -32,11 +37,16 @@ test('keeps the default-off task creation surface aligned with the Pencil baseli
   })
 })
 
-test('exposes the creation route through the authenticated IM navigation only when its flags are enabled', async ({ page }) => {
-  await page.goto('/app/')
-
-  await page.getByRole('button', { name: '创建 Agent 任务' }).click()
-  await expect(page).toHaveURL(/\/app\/agent\/tasks\/new$/)
+test('exposes task creation through the Agent drawer when flags are enabled', async ({ page }) => {
+  await page.route('**/api/v1/agent/tasks**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ code: 0, data: { tasks: [], nextCursor: '' } }),
+  }))
+  await page.goto('/app/?agent=1&view=tasks')
+  await page.locator('[data-agent-task-create-entry]').click()
+  await expect(page).toHaveURL(/view=tasks/)
+  await expect(page).toHaveURL(/drawer=create/)
   await expect(page.getByRole('heading', { name: '创建 Agent 任务' })).toBeVisible()
 })
 

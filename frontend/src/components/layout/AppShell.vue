@@ -1,27 +1,21 @@
 <script setup lang="ts">
-// AppShell — top-level chrome shared across Chat / Directory / Settings.
+// AppShell — top-level chrome shared by Chat.
 //
 // Layout:
-//   [ Top bar 48px ]                                (workspace switcher + 🤖 toggle)
-//   [ Main slot (fills)  | Agent Drawer slot ]      (Drawer optional & flag-gated)
+//   [ Top bar 48px ]           (brand · Chat 徽标 · Agent 切换 · 设置 · 头像)
+//   [ Main slot (fills) | Agent Drawer slot ]
 //   [ Status bar 28px ]
 //
-// The AppShell doesn't own routing or feature-flag decisions — it accepts
-// props that say which workspace tab is active, whether the Agent toggle
-// should be highlighted, and how many pending Agent actions require the
-// owner's attention (drives the red badge on the toggle).
-//
-// Design ref: design/dipole-ui.pen "App Chrome v2" + "Chat + Agent Drawer · Live".
-// Kill-list ref: docs/notes/frontend-bi-redesign.md §3.5.
+// 顶部只保留一个"设置"入口 —— 齿轮按钮打开 SettingsDialog（父组件
+// 用 v-model:open-settings 监听）；不再有 Settings tab 或多余的搜索按钮，
+// 主界面的搜索属于 Chat 面板本身。
 
 import { computed } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import {
-  IconCpu, IconSettings, IconSearch,
-} from '@/components/icons'
+import { IconCpu, IconSettings } from '@/components/icons'
 
-export type WorkspaceKey = 'chat' | 'directory' | 'settings'
+export type WorkspaceKey = 'chat' | 'settings'
 
 const props = withDefaults(defineProps<{
   /** Which top-level workspace is currently focused. */
@@ -38,6 +32,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'toggle-agent'): void
+  (e: 'open-settings'): void
 }>()
 
 const router = useRouter()
@@ -50,17 +45,7 @@ const initials = computed(() => {
   return name.trim().slice(0, 2).toUpperCase()
 })
 
-// Tabs stay in a fixed order regardless of route so the header doesn't jump.
-const tabs: { key: WorkspaceKey; label: string; to: string }[] = [
-  { key: 'chat',      label: 'Chat',      to: '/' },
-  { key: 'directory', label: 'Directory', to: '/directory' },
-  { key: 'settings',  label: 'Settings',  to: '/settings' },
-]
-
 function onAgentToggle() {
-  // Toggle Drawer via URL query — the AppShell doesn't know how the
-  // parent renders the Drawer, but by manipulating `agent` we make deep
-  // links shareable and keep the browser back stack clean.
   const isOpen = route.query.agent === '1'
   const query = { ...route.query }
   if (isOpen) {
@@ -77,6 +62,10 @@ function onAgentToggle() {
   router.replace({ query })
   emit('toggle-agent')
 }
+
+function onOpenSettings() {
+  emit('open-settings')
+}
 </script>
 
 <template>
@@ -88,30 +77,19 @@ function onAgentToggle() {
         <span class="app-shell__brand-word">DIPOLE</span>
       </RouterLink>
 
+      <!-- Chat 是唯一的主活动 tab；不再重复放 Settings。 -->
       <nav class="app-shell__tabs" aria-label="workspaces">
         <RouterLink
-          v-for="t in tabs" :key="t.key"
-          :to="t.to"
+          to="/"
           class="app-shell__tab"
-          :class="{ 'app-shell__tab--active': props.activeWorkspace === t.key }"
-        >{{ t.label }}</RouterLink>
+          :class="{ 'app-shell__tab--active': props.activeWorkspace === 'chat' }"
+        >Chat</RouterLink>
       </nav>
 
       <div class="app-shell__spacer" aria-hidden="true" />
 
       <div class="app-shell__right">
-        <button
-          v-if="$slots.search === undefined"
-          type="button"
-          class="app-shell__icon-btn"
-          title="搜索"
-          aria-label="搜索"
-        >
-          <IconSearch :size="16" />
-        </button>
-        <slot name="search" />
-
-        <!-- Agent Drawer toggle: THE ONLY entry point. -->
+        <!-- Agent Drawer toggle: the ONLY drawer entry. -->
         <button
           type="button"
           class="app-shell__agent-toggle"
@@ -130,21 +108,25 @@ function onAgentToggle() {
           >{{ props.agentPending > 99 ? '99+' : props.agentPending }}</span>
         </button>
 
-        <RouterLink
-          to="/settings"
+        <!-- Settings 入口：唯一，弹 SettingsDialog。 -->
+        <button
+          type="button"
           class="app-shell__icon-btn"
           :class="{ 'app-shell__icon-btn--active': props.activeWorkspace === 'settings' }"
+          data-open-settings
           title="设置"
           aria-label="打开设置"
+          @click="onOpenSettings"
         >
           <IconSettings :size="16" />
-        </RouterLink>
+        </button>
 
         <button
           type="button"
           class="app-shell__avatar"
           :title="auth.currentUser?.nickname ?? '账户'"
           aria-label="账户菜单"
+          @click="onOpenSettings"
         >
           <span>{{ initials }}</span>
         </button>
@@ -204,9 +186,10 @@ function onAgentToggle() {
   letter-spacing: 0.12em;
 }
 .app-shell__brand-dot {
-  width: 10px; height: 10px;
+  width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--dp-accent);
+  background: var(--dp-agent);
+  box-shadow: 0 0 0 2px rgba(239, 173, 5, 0.24);
 }
 
 .app-shell__tabs {
@@ -215,7 +198,7 @@ function onAgentToggle() {
   gap: 24px;
 }
 .app-shell__tab {
-  color: var(--dp-ink-faint);
+  color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
   font: 500 13px var(--dp-font-body);
   padding: 4px 2px;
@@ -226,7 +209,7 @@ function onAgentToggle() {
 .app-shell__tab--active {
   color: var(--dp-text-inverse);
   font-weight: 700;
-  box-shadow: inset 0 -2px 0 var(--dp-accent);
+  box-shadow: inset 0 -2px 0 var(--dp-text-inverse);
 }
 
 .app-shell__spacer { flex: 1; }
@@ -239,16 +222,17 @@ function onAgentToggle() {
 .app-shell__icon-btn {
   border: 0;
   background: transparent;
-  color: var(--dp-ink-faint);
+  color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
   padding: 6px;
   display: inline-flex;
   align-items: center;
   border-radius: 0;
   text-decoration: none;
+  transition: color 0.12s, background 0.12s;
 }
-.app-shell__icon-btn:hover,
-.app-shell__icon-btn--active { color: var(--dp-text-inverse); }
+.app-shell__icon-btn:hover { color: var(--dp-text-inverse); background: var(--dp-rail-soft); }
+.app-shell__icon-btn--active { color: var(--dp-text-inverse); background: var(--dp-rail-soft); }
 .app-shell__icon-btn:focus-visible {
   outline: 2px solid var(--dp-accent);
   outline-offset: 2px;
@@ -259,18 +243,19 @@ function onAgentToggle() {
   position: relative;
   border: 0;
   background: transparent;
-  color: var(--dp-ink-faint);
+  color: rgba(255, 255, 255, 0.75);
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 4px 10px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   border-radius: 0;
+  transition: color 0.12s, background 0.12s;
 }
-.app-shell__agent-toggle:hover { color: var(--dp-text-inverse); }
+.app-shell__agent-toggle:hover { color: var(--dp-text-inverse); background: var(--dp-rail-soft); }
 .app-shell__agent-toggle--active {
-  background: var(--dp-rail-soft);
-  color: var(--dp-text-inverse);
+  background: var(--dp-agent);
+  color: var(--dp-rail);
 }
 .app-shell__agent-toggle:focus-visible {
   outline: 2px solid var(--dp-accent);
@@ -295,14 +280,19 @@ function onAgentToggle() {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--dp-accent);
+  background: var(--dp-rail-soft);
   color: var(--dp-text-inverse);
-  border: 0;
-  font: 700 10px var(--dp-font-data);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  font: 700 11px var(--dp-font-body);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.12s, border-color 0.12s;
+}
+.app-shell__avatar:hover {
+  background: #26476a;
+  border-color: rgba(255, 255, 255, 0.4);
 }
 .app-shell__avatar:focus-visible {
   outline: 2px solid var(--dp-canvas);

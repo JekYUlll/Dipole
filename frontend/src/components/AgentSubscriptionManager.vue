@@ -1,6 +1,6 @@
 <template>
-  <section class="subscription-shell" :data-agent-subscription-state="viewState" :aria-busy="busy">
-    <aside class="control-rail" aria-label="Agent control navigation">
+  <section class="subscription-shell" :class="{ 'is-embedded': embedded }" :data-agent-subscription-state="viewState" :aria-busy="busy">
+    <aside v-if="!embedded" class="control-rail" aria-label="Agent control navigation">
       <div class="brand"><span class="brand-dot" />DIPOLE</div>
       <p class="rail-kicker">AGENT CONTROL</p>
       <RouterLink v-if="nav.subscriptions" class="rail-active" :to="{ name: 'agent-subscriptions' }">⌁ <span>事件订阅</span></RouterLink>
@@ -183,10 +183,12 @@ import { agentDefinitionCatalogClient, type AgentDefinitionCatalogClient, type A
 import { agentFlags, agentTaskRunTarget } from '@/config/agentFlags'
 import { agentSubscriptionClient, type AgentSubscription, type AgentSubscriptionClient, type AgentSubscriptionConversationOption, type AgentSubscriptionFilterKind } from '@/api/agentSubscriptions'
 
-const props = withDefaults(defineProps<{ client?: AgentSubscriptionClient, definitionClient?: AgentDefinitionCatalogClient }>(), {
+const props = withDefaults(defineProps<{ client?: AgentSubscriptionClient; definitionClient?: AgentDefinitionCatalogClient; embedded?: boolean }>(), {
   client: () => agentSubscriptionClient,
   definitionClient: () => agentDefinitionCatalogClient,
+  embedded: false,
 })
+const { embedded } = props
 const nav = {
   definitions: agentFlags.definitions,
   subscriptions: agentFlags.subscriptions,
@@ -396,4 +398,5 @@ function filterSummary(item: AgentSubscription): string {
 @media(max-width:900px){.subscription-shell{grid-template-columns:1fr}.control-rail{display:none}.subscription-main{padding:26px 20px 60px}.content-grid{grid-template-columns:1fr}.authority-panel{order:-1}.page-header{align-items:flex-start}.create-button{font-size:0;padding:12px}.create-button span{font-size:22px}.shadow-notice{align-items:flex-start;flex-direction:column;gap:6px}}
 @media(max-width:560px){.subscription-main{padding:20px 16px 48px}.page-header h1{font-size:34px}.subtitle{font-size:12px}.shadow-notice{margin:22px 0}.content-grid{display:block}.authority-panel{display:none}.subscription-list{gap:14px}.subscription-card{padding:18px}.card-top{align-items:flex-start}.card-top h3{font-size:18px}.status-pill{padding:8px 10px}.binding{white-space:normal;line-height:1.5}.card-bottom{align-items:flex-end}.dialog-backdrop{background:rgba(11,20,17,.24)}.revoke-dialog{width:100%;border-radius:22px 22px 0 0;padding:14px 20px 24px}.dialog-actions{flex-direction:row}.create-backdrop{padding:0;align-items:flex-end}.create-dialog{width:100%;max-height:94vh;border-radius:22px 22px 0 0;padding:22px 20px}.create-filter{grid-template-columns:1fr}.terms-input{grid-column:1}.create-dialog-heading h2{font-size:24px}}
 a.rail-item,a.rail-active{text-decoration:none;color:inherit}
+.subscription-shell.is-embedded{grid-template-columns:1fr;min-height:auto}
 </style>

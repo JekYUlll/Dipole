@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 const artifactId = 'a'.repeat(64)
 const metadata = {
@@ -12,6 +13,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('dipole.web.token', 'artifact-inbox-browser-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
+  await stubChatBootstrap(page)
 })
 
 test('lists owner artifact metadata without fetching digest content', async ({ page }) => {
@@ -26,8 +28,8 @@ test('lists owner artifact metadata without fetching digest content', async ({ p
     await route.fulfill({ status: 404 })
   })
 
-  await page.goto('/app/agent/artifacts')
-  await expect(page.getByRole('heading', { name: '任务产物', exact: true })).toBeVisible()
+  await page.goto('/app/?agent=1&view=artifacts')
+  await expect(page.locator('[data-agent-artifacts-view]')).toBeVisible()
   await expect(page.getByText('Project digest')).toBeVisible()
   await expect(page.getByText('Ship the gateway')).toHaveCount(0)
   await expect(page.getByText(/object key/i)).toHaveCount(0)

@@ -4,33 +4,19 @@ import { describe, expect, it } from 'vitest'
 
 const source = readFileSync(resolve(import.meta.dirname, 'index.ts'), 'utf8')
 
-describe('Agent route security contract', () => {
-  it('keeps every Agent page authenticated and independently flag-gated', () => {
-    for (const routeName of [
-      'agent-task-inbox',
-      'agent-task-create',
-      'agent-task-input',
-      'agent-task-approval',
-      'agent-task-timeline',
-      'agent-artifact-inbox',
-      'agent-artifact',
-      'agent-subscriptions',
-      'agent-definitions',
-      'agent-memories',
-    ]) {
-      expect(source).toContain(`name: '${routeName}'`)
-      expect(source).toMatch(new RegExp(`name: '${routeName}'[\\s\\S]{0,220}?meta: \\{ requiresAuth: true \\}`))
-    }
+describe('Route security contract', () => {
+  it('keeps Chat as the only Agent surface and drops standalone /agent/* pages', () => {
+    expect(source).toContain("name: 'chat'")
+    expect(source).toContain("path: '/'")
+    expect(source).not.toContain("path: '/agent/")
+    expect(source).not.toContain("name: 'agent-")
+  })
 
-    expect(source).toContain("import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'")
-    expect(source).toContain("import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED === 'true'")
-    expect(source).toContain("import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'")
-    expect(source).toContain("import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'")
-    expect(source).toContain("import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'")
-    expect(source).toContain("import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED === 'true'")
-    expect(source).toContain("import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED === 'true'")
-    expect(source).toContain("import.meta.env.VITE_AGENT_MEMORIES_ENABLED === 'true'")
-    expect(source).toContain("return { name: 'chat' }")
+  it('redirects legacy /settings to Chat with the settings=1 modal trigger', () => {
+    expect(source).toContain("path: '/settings'")
+    expect(source).toContain("redirect: { path: '/', query: { settings: '1' } }")
+    // Settings 不再作为独立页面组件被引入。
+    expect(source).not.toContain('SettingsView.vue')
   })
 
   it('keeps the Contact directory authenticated without an Agent feature flag', () => {
@@ -54,7 +40,7 @@ describe('Agent route security contract', () => {
   })
 
   it('keeps unauthenticated access redirected to Login', () => {
-    expect(source).toContain("if (to.meta.requiresAuth && !auth.token)")
+    expect(source).toContain('if (to.meta.requiresAuth && !auth.token)')
     expect(source).toContain("return { name: 'login' }")
   })
 })

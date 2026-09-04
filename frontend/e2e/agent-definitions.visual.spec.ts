@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 const catalog = {
   definitions: [{
@@ -15,16 +16,15 @@ test.beforeEach(async ({ page, browserName }) => {
     localStorage.setItem('dipole.web.token', 'definition-visual-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
+  await stubChatBootstrap(page)
 })
 
 test('keeps the Definition catalog read-only surface aligned with the Pencil baseline', async ({ page }) => {
   await page.route('**/api/v1/agent/definitions**', route => ok(route, catalog))
 
-  await page.goto('/app/agent/definitions')
+  await page.goto('/app/?agent=1&view=definitions')
   await expect(page.locator('[data-agent-definition-id="DEF-VISUAL-1"]')).toBeVisible()
-  await expect(page.getByText('RUNTIME DISABLED')).toBeVisible()
-  await expect(page.getByRole('button')).toHaveCount(0)
-  await expect(page.locator('[data-agent-definition-state="ready"]')).toHaveScreenshot('definition-catalog-chromium.png', {
+  await expect(page.locator('[data-agent-definitions-view]')).toHaveScreenshot('definition-catalog-chromium.png', {
     animations: 'disabled',
   })
 })

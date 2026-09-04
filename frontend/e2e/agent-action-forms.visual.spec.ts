@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 test.beforeEach(async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'visual baseline is canonicalized on Chromium')
@@ -9,6 +10,7 @@ test.beforeEach(async ({ page, browserName }) => {
   await page.route('**/api/v1/users/me**', route => ok(route, {
     uuid: 'U1', nickname: 'User One', avatar: '', signature: '', user_type: 0, status: 1,
   }))
+  await stubChatBootstrap(page)
 })
 
 test('keeps the approval surface aligned with the Pencil baseline', async ({ page }) => {
@@ -21,8 +23,8 @@ test('keeps the approval surface aligned with the Pencil baseline', async ({ pag
     },
   }))
 
-  await page.goto('/app/agent/tasks/TASK-1/approval')
-  await expect(page.getByRole('heading', { name: '确认 Agent 操作' })).toBeVisible()
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=approval')
+  await expect(page.getByText('向项目群发送延期风险提醒')).toBeVisible()
   await expect(page.locator('.approval-grid')).toHaveScreenshot('approval-chromium.png', {
     animations: 'disabled',
     mask: [page.locator('.deadline strong')],
@@ -44,8 +46,8 @@ test('keeps the elicitation surface aligned with the Pencil baseline', async ({ 
     },
   }))
 
-  await page.goto('/app/agent/tasks/TASK-1/input')
-  await expect(page.getByRole('heading', { name: '补充任务信息' })).toBeVisible()
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=input')
+  await expect(page.getByText('Choose event settings')).toBeVisible()
   await expect(page.locator('.elicitation-grid')).toHaveScreenshot('elicitation-chromium.png', {
     animations: 'disabled',
     mask: [page.locator('.deadline strong')],

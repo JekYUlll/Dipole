@@ -35,6 +35,9 @@
   --dp-radius-sm: 0px;
   --dp-radius-md: 0px;
   --dp-radius-pill: 999px;
+  /* Chat bubble exception — see docs/notes/frontend-bi-redesign.md §4.1.1.
+     Only MessageBubble may use this. Rectangular BI chrome stays at 0. */
+  --dp-radius-bubble: 12px;
   --dp-space-xs: 8px;
   --dp-space-sm: 12px;
   --dp-space-md: 16px;
@@ -53,4 +56,13 @@
   font-family: var(--dp-font-data);
   font-size: 10px;
   letter-spacing: 0.04em;
+}
+
+/* Suppress PrimeVue 5 unlicensed watermark for the internal dev/preview
+   deployment. `#p-license-host` is the closed-shadow overlay PrimeVue
+   appends to `document.body`; the host <div> itself is CSS-reachable.
+   Before shipping to any external tenant, obtain a valid license instead
+   of relying on this rule. */
+#p-license-host {
+  display: none !important;
 }

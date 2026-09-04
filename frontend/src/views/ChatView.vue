@@ -1,4 +1,11 @@
 <template>
+  <AppShell
+    active-workspace="chat"
+    :agent-active="drawerOpen"
+    :agent-pending="taskWaiting.notices.length"
+    :status-text="statusCaption"
+    @open-settings="openSettings"
+  >
   <div class="im-container">
     <!-- Left Panel (nav + session) -->
     <div class="left-panel" :class="{ hidden: !!chat.activeKey || showMessageSearch }">
@@ -9,62 +16,16 @@
         <span v-else>{{ getInitials(auth.currentUser?.nickname || '') }}</span>
       </button>
       <div class="nav-icons">
-        <button class="icon-btn" :class="{ active: navTab === 'chat' }" @click="navTab = 'chat'" title="消息">
+        <button class="icon-btn" :class="{ active: navTab === 'chat' }" @click="navTab = 'chat'" title="消息" aria-label="消息">
           <IconChat :size="22" />
+          <span v-if="totalUnread > 0" class="nav-badge">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
         </button>
-        <button class="icon-btn contacts-btn" :class="{ active: navTab === 'contacts' }" @click="switchToContacts" title="联系人">
+        <button class="icon-btn contacts-btn" :class="{ active: navTab === 'contacts' }" @click="switchToContacts" title="联系人" aria-label="联系人">
           <IconContacts :size="22" />
           <span v-if="pendingApplications.length > 0" class="nav-badge">{{ pendingApplications.length }}</span>
         </button>
-        <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">
-          <IconGroups :size="22" />
-        </button>
-        <button
-          v-if="agentControlHome"
-          class="icon-btn"
-          type="button"
-          title="Agent 控制"
-          aria-label="打开 Agent 控制"
-          data-agent-control-entry
-          @click="router.push(agentControlHome)"
-        >
-          <IconAgent :size="22" />
-        </button>
-        <button
-          v-if="agentTaskInboxEnabled"
-          class="icon-btn"
-          type="button"
-          title="任务运行"
-          aria-label="打开任务运行"
-          data-agent-task-inbox-entry
-          @click="router.push({ name: 'agent-task-inbox' })"
-        >
-          <IconLoadMore :size="22" />
-        </button>
-        <button
-          v-if="agentArtifactInboxEnabled"
-          class="icon-btn"
-          type="button"
-          title="任务产物"
-          aria-label="打开任务产物"
-          data-agent-artifact-inbox-entry
-          @click="router.push({ name: 'agent-artifact-inbox' })"
-        >
-          <IconDownload :size="22" />
-        </button>
-        <button
-          v-if="agentTaskCreateEnabled"
-          class="icon-btn"
-          type="button"
-          title="创建 Agent 任务"
-          aria-label="创建 Agent 任务"
-          data-agent-task-create-entry
-          @click="router.push({ name: 'agent-task-create' })"
-        >
-          <IconPlus :size="22" />
-        </button>
-        <button class="icon-btn" type="button" title="设置" aria-label="打开设置" @click="router.push({ name: 'settings' })">
-          <IconSettings :size="22" />
+        <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组" aria-label="群组">
+          <IconUsers :size="22" />
         </button>
       </div>
       <button class="icon-btn logout-btn" @click="handleLogout" title="退出">
@@ -74,15 +35,35 @@
 
     <!-- Session Panel -->
     <div class="session-panel">
-      <div class="search-wrap">
+      <div class="search-wrap" :class="{ 'search-wrap--filled': !!searchText }">
+        <IconSearch class="search-icon" :size="14" />
         <input
           v-model="searchText"
           type="text"
-          :placeholder="messageSearchEnabled ? '筛选会话，回车搜索消息' : '搜索'"
+          :placeholder="searchPlaceholder"
+          aria-label="搜索或筛选会话"
           @keydown.enter="handleSearchEnter"
+          @keydown.esc="searchText = ''"
         />
-        <button v-if="messageSearchEnabled" class="message-search-btn" type="button" title="搜索消息" aria-label="搜索消息" @click="openMessageSearch">
-          <IconSearch :size="15" />
+        <button
+          v-if="searchText"
+          class="search-clear"
+          type="button"
+          title="清除搜索"
+          aria-label="清除搜索"
+          @click="searchText = ''"
+        >
+          <IconClose :size="12" />
+        </button>
+        <button
+          v-if="messageSearchEnabled"
+          class="message-search-btn"
+          type="button"
+          title="全文搜索消息"
+          aria-label="全文搜索消息"
+          @click="openMessageSearch"
+        >
+          <IconSearch :size="14" />
         </button>
       </div>
       <div
@@ -96,8 +77,8 @@
           type="button"
           class="agent-waiting-link"
           data-agent-task-waiting-inbox
-          @click="router.push({ name: 'agent-task-inbox' })"
-        >打开收件箱</button>
+          @click="openWaitingTask"
+        >打开任务</button>
       </div>
 
       <!-- 消息列表 -->
@@ -251,78 +232,62 @@
           <div
             v-for="(msg, index) in currentMessages"
             :key="msg.message_id"
-            :class="msgItemClass(msg)"
+            class="msg-wrap"
           >
             <!-- Time divider -->
             <div v-if="shouldShowTimestamp(index)" class="msg-time-divider">
               {{ formatMsgTimestamp(msg.sent_at) }}
             </div>
-            <!-- System message -->
-            <template v-if="msg.message_type === 3">
-              <div class="msg-system">{{ msg.content }}</div>
-            </template>
-
-            <!-- Regular / AI message -->
-            <template v-else>
-              <div class="msg-sender-name clickable-name"
-                v-if="activeConv?.target_type === 1 && msg.from_uuid !== auth.currentUser?.uuid"
-                @click.stop="openMessageUserProfile(msg)"
-              >{{ msgSenderName(msg) }}</div>
-              <div class="msg-row">
-                <div class="msg-avatar clickable" @click.stop="openMessageUserProfile(msg)">
+            <MessageBubble
+              :variant="messageVariant(msg)"
+              :sender-name="msgSenderName(msg)"
+              :avatar-src="msgAvatar(msg)"
+              :initials="getInitials(msgSenderName(msg))"
+              :show-sender="activeConv?.target_type === 1 && msg.from_uuid !== auth.currentUser?.uuid && msg.message_type !== 3"
+              :media="isInlineMediaMessage(msg)"
+              @avatar-click="openMessageUserProfile(msg)"
+              @sender-click="openMessageUserProfile(msg)"
+            >
+              <template v-if="msg.message_type === 3">{{ msg.content }}</template>
+              <template v-else-if="msg.message_type === 1">
+                <div v-if="isImageMessage(msg)" class="media-card" :data-msg-id="msg.message_id">
                   <img
-                    v-if="msgAvatar(msg)"
-                    :src="msgAvatar(msg)"
-                    :alt="msg.from_uuid"
+                    v-if="mediaPreviewSrc(msg)"
+                    class="media-image"
+                    :src="mediaPreviewSrc(msg)"
+                    :alt="fileName(msg)"
+                    @click="downloadFile(msg)"
                   />
-                  <div v-else class="msg-avatar-fallback">{{ getInitials(msgSenderName(msg)) }}</div>
+                  <div v-else class="media-placeholder">图片</div>
+                  <div class="media-caption">
+                    <span class="media-name">{{ fileName(msg) }}</span>
+                    <button class="file-action-btn" @click.stop="downloadFile(msg)"><IconDownload :size="12" /> 下载</button>
+                  </div>
                 </div>
-                <div :class="['msg-bubble', isInlineMediaMessage(msg) ? 'media' : '']">
-                  <!-- File card -->
-                  <template v-if="msg.message_type === 1">
-                    <div v-if="isImageMessage(msg)" class="media-card" :data-msg-id="msg.message_id">
-                      <img
-                        v-if="mediaPreviewSrc(msg)"
-                        class="media-image"
-                        :src="mediaPreviewSrc(msg)"
-                        :alt="fileName(msg)"
-                        @click="downloadFile(msg)"
-                      />
-                      <div v-else class="media-placeholder">图片</div>
-                      <div class="media-caption">
-                        <span class="media-name">{{ fileName(msg) }}</span>
-                        <button class="file-action-btn" @click.stop="downloadFile(msg)"><IconDownload :size="12" /> 下载</button>
-                      </div>
-                    </div>
-                    <div v-else-if="isVideoMessage(msg)" class="media-card" :data-msg-id="msg.message_id">
-                      <video
-                        v-if="mediaPreviewSrc(msg)"
-                        class="media-video"
-                        :src="mediaPreviewSrc(msg)"
-                        controls
-                        preload="metadata"
-                      ></video>
-                      <div v-else class="media-placeholder">视频</div>
-                      <div class="media-caption">
-                        <span class="media-name">{{ fileName(msg) }}</span>
-                        <button class="file-action-btn" @click.stop="downloadFile(msg)"><IconDownload :size="12" /> 下载</button>
-                      </div>
-                    </div>
-                    <div v-else class="file-card" @click="downloadFile(msg)">
-                      <span class="file-icon">{{ fileIcon(msg) }}</span>
-                      <div class="file-meta">
-                        <div class="name">{{ fileName(msg) }}</div>
-                        <div class="size">{{ formatSize(fileSize(msg)) }}</div>
-                      </div>
-                    </div>
-                  </template>
-                  <!-- Text / AI -->
-                  <template v-else>
-                    {{ msg.content }}
-                  </template>
+                <div v-else-if="isVideoMessage(msg)" class="media-card" :data-msg-id="msg.message_id">
+                  <video
+                    v-if="mediaPreviewSrc(msg)"
+                    class="media-video"
+                    :src="mediaPreviewSrc(msg)"
+                    controls
+                    preload="metadata"
+                  ></video>
+                  <div v-else class="media-placeholder">视频</div>
+                  <div class="media-caption">
+                    <span class="media-name">{{ fileName(msg) }}</span>
+                    <button class="file-action-btn" @click.stop="downloadFile(msg)"><IconDownload :size="12" /> 下载</button>
+                  </div>
                 </div>
-              </div>
-            </template>
+                <div v-else class="file-card" @click="downloadFile(msg)">
+                  <span class="file-icon">{{ fileIcon(msg) }}</span>
+                  <div class="file-meta">
+                    <div class="name">{{ fileName(msg) }}</div>
+                    <div class="size">{{ formatSize(fileSize(msg)) }}</div>
+                  </div>
+                </div>
+              </template>
+              <template v-else>{{ msg.content }}</template>
+            </MessageBubble>
           </div>
         </div>
 
@@ -651,24 +616,33 @@
       </div>
     </transition-group>
   </div>
+  <template #agent-drawer>
+    <AgentDrawer />
+  </template>
+  <SettingsDialog v-model:visible="settingsOpen" />
+  </AppShell>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import {
-  IconChat, IconContacts, IconGroups, IconLogout,
+  IconChat, IconContacts, IconLogout,
   IconInfo, IconBack, IconPaperclip, IconSend,
   IconDownload, IconClose, IconAlertCircle,
-  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch, IconSettings, IconPlus, IconAgent,
+  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch,
 } from '@/components/icons'
 import SearchWorkspace from '@/components/SearchWorkspace.vue'
-import { useRouter } from 'vue-router'
+import AppShell from '@/components/layout/AppShell.vue'
+import AgentDrawer from '@/components/agent/AgentDrawer.vue'
+import SettingsDialog from '@/components/settings/SettingsDialog.vue'
+import MessageBubble, { type MessageBubbleVariant } from '@/components/chat/MessageBubble.vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useAgentTaskWaiting } from '@/composables/useAgentTaskWaiting'
 import type { Conversation, Contact, GroupMessageNotify, Message, WsPacket, PublicUser, SearchMessageResult, SyncItemNotify } from '@/types'
-import { agentControlHome as agentControlHomeRoute, agentFlags, agentTaskCreatePageEnabled, agentTaskInboxEnabled as agentTaskInboxFlag } from '@/config/agentFlags'
+import { agentTaskInboxEnabled as agentTaskInboxFlag } from '@/config/agentFlags'
 import { agentTaskClient } from '@/api/agentTasks'
 import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
@@ -676,20 +650,37 @@ import { sha256Hex, toSameOriginPresignedURL, uploadMultipartParts, uploadPresig
 import { withMultipartUploadLease } from '@/upload/multipartLease'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const chat = useChatStore()
 const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
-const agentTaskCreateEnabled = agentTaskCreatePageEnabled
 const agentTaskInboxEnabled = agentTaskInboxFlag
-const agentArtifactInboxEnabled = agentFlags.artifacts
-const agentControlHome = agentControlHomeRoute()
+const drawerOpen = computed(() => route.query.agent === '1')
 const taskWaiting = useAgentTaskWaiting({
   enabled: agentTaskInboxEnabled,
   list: () => agentTaskClient.list!('', 50),
 })
 const taskWaitingHeadline = taskWaiting.headline
+const statusCaption = computed(() => {
+  const pending = taskWaiting.notices.value.length
+  return pending > 0 ? `DIPOLE · ${pending} pending` : 'DIPOLE'
+})
 const presignedMultipartEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_ENABLED === 'true'
 const presignedMultipartProxyEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_PROXY_ENABLED === 'true'
+
+// Settings 弹窗:唯一入口。也响应老 /settings 路由(redirect 到 /?settings=1)。
+const settingsOpen = ref(route.query.settings === '1')
+function openSettings() { settingsOpen.value = true }
+watch(() => route.query.settings, (v) => {
+  if (v === '1') settingsOpen.value = true
+})
+watch(settingsOpen, (open) => {
+  if (!open && route.query.settings === '1') {
+    const q = { ...route.query }
+    delete q.settings
+    router.replace({ query: q })
+  }
+})
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
@@ -1174,7 +1165,21 @@ const currentMessages = computed(() =>
 const filteredConversations = computed(() => {
   if (!searchText.value.trim()) return chat.conversations
   const q = searchText.value.toLowerCase()
-  return chat.conversations.filter(c => convName(c).toLowerCase().includes(q))
+  return chat.conversations.filter(c => {
+    if (convName(c).toLowerCase().includes(q)) return true
+    const preview = c.last_message?.preview || ''
+    return preview.toLowerCase().includes(q)
+  })
+})
+
+const totalUnread = computed(() =>
+  chat.conversations.reduce((s, c) => s + (c.unread_count > 0 ? c.unread_count : 0), 0),
+)
+
+const searchPlaceholder = computed(() => {
+  if (navTab.value === 'contacts') return '搜索联系人'
+  if (navTab.value === 'groups') return '搜索群组'
+  return messageSearchEnabled ? '筛选会话,回车全文搜索' : '搜索会话或最新消息'
 })
 
 const groupConversations = computed(() =>
@@ -1229,11 +1234,27 @@ const convLastSenderName = (conv: Conversation): string => {
 
 // ── Message helpers ───────────────────────────────────────────────────────────
 
-const msgItemClass = (msg: Message) => {
-  if (msg.message_type === 3) return 'msg-item system'
-  if (msg.message_type === 2) return 'msg-item ai'
-  if (msg.from_uuid === auth.currentUser?.uuid) return 'msg-item self'
-  return 'msg-item other'
+function messageVariant(msg: Message): MessageBubbleVariant {
+  if (msg.message_type === 3) return 'system'
+  if (msg.message_type === 2) return 'ai'
+  if (msg.from_uuid === auth.currentUser?.uuid) return 'self'
+  return 'other'
+}
+
+function openAgentDrawer(view: string, extra: Record<string, string> = {}) {
+  router.replace({ query: { ...route.query, agent: '1', view, ...extra } })
+}
+
+function openWaitingTask() {
+  const first = taskWaiting.notices.value[0]
+  if (!first) {
+    openAgentDrawer('tasks')
+    return
+  }
+  openAgentDrawer('tasks', {
+    task: first.taskId,
+    panel: first.pendingKind === 'approval' ? 'approval' : 'input',
+  })
 }
 
 const msgAvatar = (msg: Message): string => {
@@ -2150,10 +2171,16 @@ onBeforeUnmount(() => {
 <style scoped>
 .im-container {
   display: flex;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   position: relative;
+}
+
+.msg-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .left-panel {
@@ -2574,16 +2601,71 @@ onBeforeUnmount(() => {
   gap: 6px;
 }
 
+.search-wrap > .search-input-box {
+  flex: 1;
+}
+.search-wrap {
+  --search-radius: 14px;
+}
+.search-wrap .search-icon {
+  color: var(--dp-ink-faint);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
 .search-wrap input {
   flex: 1;
   min-width: 0;
-  padding: 5px 10px;
-  border-radius: 14px;
-  border: none;
-  background: var(--dp-line);
+  padding: 6px 4px;
+  border: 1px solid transparent;
+  background: var(--dp-surface);
+  color: var(--dp-ink);
   font-size: 13px;
   outline: none;
 }
+.search-wrap input::placeholder { color: var(--dp-ink-faint); }
+/* 把 icon + input + clear 视觉合并成同一个胶囊 */
+.search-wrap .search-icon {
+  padding-left: 10px;
+  background: var(--dp-surface);
+  border: 1px solid transparent;
+  border-right: 0;
+  border-radius: var(--search-radius) 0 0 var(--search-radius);
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0;
+}
+.search-wrap input {
+  border-radius: 0;
+  height: 28px;
+  border-left: 0;
+  border-right: 0;
+}
+.search-wrap:not(:has(.search-clear)) input {
+  border-radius: 0 var(--search-radius) var(--search-radius) 0;
+  border-right: 1px solid transparent;
+}
+.search-wrap:focus-within .search-icon,
+.search-wrap:focus-within input,
+.search-wrap:focus-within .search-clear,
+.search-wrap--filled .search-icon,
+.search-wrap--filled input,
+.search-wrap--filled .search-clear {
+  border-color: var(--dp-accent-strong);
+}
+.search-wrap .search-clear {
+  border: 1px solid transparent;
+  border-left: 0;
+  background: var(--dp-surface);
+  color: var(--dp-ink-faint);
+  cursor: pointer;
+  height: 28px;
+  padding: 0 8px 0 4px;
+  border-radius: 0 var(--search-radius) var(--search-radius) 0;
+  display: inline-flex;
+  align-items: center;
+}
+.search-wrap .search-clear:hover { color: var(--dp-ink); }
 
 .agent-waiting-banner {
   margin: 0 10px 8px;

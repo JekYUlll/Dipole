@@ -40,4 +40,13 @@ describe('AgentApprovalForm', () => {
     expect(wrapper.text()).not.toContain('upstream detail')
     expect(wrapper.find('[data-agent-approve]').exists()).toBe(false)
   })
+
+  it('hides the source rail when embedded', async () => {
+    const wrapper = mount(AgentApprovalForm, {
+      props: { taskId: 'TASK-1', client: client([approvalTask]), now: () => 1_000, embedded: true },
+    })
+    await flushPromises()
+    expect(wrapper.find('.source-rail').exists()).toBe(false)
+    expect(wrapper.text()).toContain('向项目群发送延期风险提醒')
+  })
 })

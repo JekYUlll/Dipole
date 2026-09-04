@@ -50,4 +50,8 @@ describe('Pencil design token contract', () => {
     expect(pen.variables['radius-sm'].value).toBe(0)
     expect(pen.variables['radius-md'].value).toBe(0)
   })
+
+  it('reserves radius-bubble only for chat message bubbles', () => {
+    expect(cssToken('radius-bubble')).toBe('12px')
+  })
 })

@@ -9,8 +9,6 @@ const makeRouter = () => createRouter({
   history: createMemoryHistory(),
   routes: [
     { path: '/', component: { template: '<div/>' } },
-    { path: '/directory', component: { template: '<div/>' } },
-    { path: '/settings', component: { template: '<div/>' } },
   ],
 })
 
@@ -21,22 +19,26 @@ describe('AppShell', () => {
     auth.currentUser = { uuid: 'U-evan', nickname: 'Evan', avatar: '' } as any
   })
 
-  it('renders the three fixed workspace tabs in order', () => {
+  it('exposes only one Chat workspace tab; Settings and Directory are not duplicated in the topbar', () => {
     const router = makeRouter()
     const w = mount(AppShell, { global: { plugins: [router] } })
     const tabs = w.findAll('.app-shell__tab').map(t => t.text())
-    expect(tabs).toEqual(['Chat', 'Directory', 'Settings'])
+    expect(tabs).toEqual(['Chat'])
+    // 设置入口只有一个,并且不是 tab 或 RouterLink,而是发 event 的按钮。
+    const settingsEntries = w.findAll('[data-open-settings]')
+    expect(settingsEntries).toHaveLength(1)
+    expect(w.findAll('a').every(a => a.attributes('href') !== '/settings')).toBe(true)
   })
 
   it('marks the active workspace tab', () => {
     const router = makeRouter()
     const w = mount(AppShell, {
       global: { plugins: [router] },
-      props: { activeWorkspace: 'directory' },
+      props: { activeWorkspace: 'chat' },
     })
     const active = w.findAll('.app-shell__tab--active')
     expect(active).toHaveLength(1)
-    expect(active[0].text()).toBe('Directory')
+    expect(active[0].text()).toBe('Chat')
   })
 
   it('renders agent pending badge only when count > 0', async () => {
@@ -59,7 +61,6 @@ describe('AppShell', () => {
     expect(router.currentRoute.value.query.agent).toBe('1')
     expect(router.currentRoute.value.query.view).toBe('live')
     expect(w.emitted('toggle-agent')).toHaveLength(1)
-    // Second click closes the drawer & clears all drawer-related query params.
     await w.find('[data-agent-toggle]').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.query.agent).toBeUndefined()
@@ -71,6 +72,14 @@ describe('AppShell', () => {
     const w = mount(AppShell, { global: { plugins: [router] }, props: { agentActive: true } })
     expect(w.find('.app-shell__agent-toggle--active').exists()).toBe(true)
     expect(w.find('[data-agent-toggle]').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('emits open-settings from the gear icon and avatar', async () => {
+    const router = makeRouter()
+    const w = mount(AppShell, { global: { plugins: [router] } })
+    await w.find('[data-open-settings]').trigger('click')
+    await w.find('.app-shell__avatar').trigger('click')
+    expect(w.emitted('open-settings')).toHaveLength(2)
   })
 
   it('renders status bar with default caption', () => {

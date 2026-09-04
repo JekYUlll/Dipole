@@ -171,4 +171,10 @@ describe('AgentMemoryManager', () => {
     expect(wrapper.text()).toContain('已拒绝')
     expect(wrapper.find('[data-agent-memory-candidate-promote="CAND-3"]').exists()).toBe(false)
   })
+
+  it('hides the control rail when embedded', async () => {
+    const wrapper = mount(AgentMemoryManager, { props: { client: service(), embedded: true } })
+    await flushPromises()
+    expect(wrapper.find('.control-rail').exists()).toBe(false)
+  })
 })
