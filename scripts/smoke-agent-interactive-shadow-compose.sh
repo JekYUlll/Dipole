@@ -36,8 +36,13 @@ fi
 : "${DIPOLE_AGENT_IMAGE:=dipole-agent:latest}"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
 : "${DIPOLE_AGENT_CONTROL_SECRET:=$(openssl rand -hex 32)}"
-: "${DIPOLE_AGENT_KAFKA_GROUP_ID:=dipole-agent-shadow-interactive-${RANDOM}-$$}"
-: "${DIPOLE_AGENT_INTERACTIVE_SHADOW_TASK_QUEUE:=dipole-agent-interactive-shadow-${RANDOM}-$$}"
+if [[ "${execution_profile}" == "active" ]]; then
+  : "${DIPOLE_AGENT_KAFKA_GROUP_ID:=dipole-agent-active-read-${RANDOM}-$$}"
+  : "${DIPOLE_AGENT_INTERACTIVE_SHADOW_TASK_QUEUE:=dipole-agent-active-read-${RANDOM}-$$}"
+else
+  : "${DIPOLE_AGENT_KAFKA_GROUP_ID:=dipole-agent-shadow-interactive-${RANDOM}-$$}"
+  : "${DIPOLE_AGENT_INTERACTIVE_SHADOW_TASK_QUEUE:=dipole-agent-interactive-shadow-${RANDOM}-$$}"
+fi
 : "${DIPOLE_AGENT_TEMPORAL_ADDRESS:=temporal:7233}"
 : "${DIPOLE_AGENT_TEMPORAL_NAMESPACE:=default}"
 : "${DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1}"
@@ -105,6 +110,9 @@ compose() {
 
 cleanup() {
   local status=$?
+  if [[ "${status}" != "0" ]]; then
+    compose logs --no-color agent >&2 || true
+  fi
   if [[ "${execution_profile}" == "active" ]]; then
     compose exec -T mysql mysql -uroot -proot123 dipole \
       -e "UPDATE agent_runtime_promotion_grants SET revoked_at = COALESCE(revoked_at, UTC_TIMESTAMP(3)) WHERE grant_uuid = '${grant_uuid}'" >/dev/null 2>&1 || true
