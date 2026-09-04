@@ -80,6 +80,47 @@ services:
       timeout: 3s
       retries: 20
 
+  temporal-postgresql:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    volumes:
+      - agent_temporal_postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -d temporal"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  temporal:
+    image: temporalio/auto-setup:1.29.1
+    restart: unless-stopped
+    depends_on:
+      temporal-postgresql:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_SEEDS: temporal-postgresql
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      DBNAME: temporal
+      VISIBILITY_DBNAME: temporal_visibility
+      DEFAULT_NAMESPACE: default
+      DEFAULT_NAMESPACE_RETENTION: 24h
+      BIND_ON_IP: 0.0.0.0
+    expose:
+      - "7233"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/7233'"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 30s
+
   agent:
     build:
       context: ../../services/agent-runtime
@@ -93,10 +134,13 @@ services:
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
+      - ${DIPOLE_AGENT_RELEASE_MANIFEST_FILE:-../../deploy/agent/release-manifest.dev.json}:/run/dipole/release/manifest.json:ro
     depends_on:
       core:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      temporal:
         condition: service_healthy
       mysql-permissions:
         condition: service_completed_successfully
@@ -105,10 +149,10 @@ services:
       DIPOLE_AGENT_HOST: 0.0.0.0
       DIPOLE_AGENT_PORT: "8091"
       DIPOLE_AGENT_KAFKA_ENABLED: "true"
-      DIPOLE_AGENT_RUNTIME_MODE: shadow
+      DIPOLE_AGENT_RUNTIME_MODE: remote
       DIPOLE_AGENT_KAFKA_BROKERS: kafka:9092
       DIPOLE_AGENT_KAFKA_CLIENT_ID: dipole-agent
-      DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-shadow-v1
+      DIPOLE_AGENT_KAFKA_GROUP_ID: ${DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID:-dipole-agent-primary-v1}
       DIPOLE_AGENT_KAFKA_TOPIC: message.direct.created
       DIPOLE_AGENT_KAFKA_TOPIC_PREFIX: dipole
       DIPOLE_AGENT_KAFKA_FAILURE_MAX_ATTEMPTS: "3"
@@ -125,10 +169,18 @@ services:
       DIPOLE_AGENT_CAPABILITY_RPC_TARGET: core:9091
       DIPOLE_INTERNAL_RPC_TLS_CERT_FILE: /run/dipole/certs/agent.pem
       DIPOLE_INTERNAL_RPC_TLS_KEY_FILE: /run/dipole/certs/agent-key.pem
-      DIPOLE_AGENT_MODEL_MODE: metadata
-      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v1
-      # Base shadow mode is v1. Route profiles belong to the explicit v2 overlays.
-      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: ""
+      DIPOLE_AGENT_CANDIDATE_VERSION: ${DIPOLE_AGENT_CANDIDATE_VERSION:-agent-runtime@dev}
+      DIPOLE_AGENT_RELEASE_MANIFEST: /run/dipole/release/manifest.json
+      DIPOLE_AGENT_MODEL_MODE: ai_sdk
+      DIPOLE_AGENT_MODEL_PROVIDER: openai_compatible
+      DIPOLE_AGENT_MODEL_PROVIDER_NAME: ${DIPOLE_AGENT_MODEL_PROVIDER_NAME:?DIPOLE_AGENT_MODEL_PROVIDER_NAME is required}
+      DIPOLE_AGENT_MODEL_BASE_URL: ${DIPOLE_AGENT_MODEL_BASE_URL:?DIPOLE_AGENT_MODEL_BASE_URL is required}
+      DIPOLE_AGENT_MODEL_API_KEY: ${DIPOLE_AGENT_MODEL_API_KEY:?DIPOLE_AGENT_MODEL_API_KEY is required}
+      DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS: ${DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS:-false}
+      DIPOLE_AGENT_MODEL_OUTPUT_MODE: ${DIPOLE_AGENT_MODEL_OUTPUT_MODE:-json_text}
+      DIPOLE_AGENT_MODEL_ROUTES: ${DIPOLE_AGENT_MODEL_ROUTES:?DIPOLE_AGENT_MODEL_ROUTES is required}
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v2
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: ${DIPOLE_AGENT_MODEL_CONTEXT_PROFILES:?DIPOLE_AGENT_MODEL_CONTEXT_PROFILES is required}
       DIPOLE_AGENT_MEMORY_ENABLED: "false"
       DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
       DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"
@@ -138,10 +190,13 @@ services:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${DIPOLE_AGENT_OTEL_TRACES_ENDPOINT:-http://otel-collector:4318/v1/traces}
       OTEL_TRACES_SAMPLER: parentbased_traceidratio
       OTEL_TRACES_SAMPLER_ARG: ${DIPOLE_AGENT_OTEL_SAMPLE_RATIO:-0.1}
-      DIPOLE_AGENT_TEMPORAL_ENABLED: "false"
-      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "foundation"
-      DIPOLE_AGENT_CONTROL_ENABLED: ${DIPOLE_AGENT_CONTROL_ENABLED:-false}
-      DIPOLE_AGENT_MCP_SERVER_ENABLED: ${DIPOLE_AGENT_MCP_SERVER_ENABLED:-false}
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true"
+      DIPOLE_AGENT_TEMPORAL_ADDRESS: ${DIPOLE_AGENT_TEMPORAL_ADDRESS:-temporal:7233}
+      DIPOLE_AGENT_TEMPORAL_NAMESPACE: ${DIPOLE_AGENT_TEMPORAL_NAMESPACE:-default}
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: ${DIPOLE_AGENT_TEMPORAL_TASK_QUEUE:-dipole-agent-primary-v1}
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: read_active
+      DIPOLE_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"
       DIPOLE_AGENT_MCP_RESOURCE: ${DIPOLE_AGENT_MCP_RESOURCE:-https://dipole.local/api/v1/agent/mcp}
       DIPOLE_AGENT_MCP_TOOL_TIMEOUT_MS: ${DIPOLE_AGENT_MCP_TOOL_TIMEOUT_MS:-5000}
       DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
@@ -648,6 +703,7 @@ volumes:
   mysql_microservices_data:
   redis_microservices_data:
   kafka_microservices_data:
+  agent_temporal_postgresql_data:
   minio_microservices_data:
   elasticsearch_microservices_data:
   tempo_trace_data:

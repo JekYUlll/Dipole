@@ -18,7 +18,13 @@ grep -F "当前仓库已具备可渲染的 MySQL Router/InnoDB Cluster、Kafka �
 }
 
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=static-compose-validation-only}"
-export DIPOLE_INTERNAL_RPC_SHARED_SECRET
+: "${DIPOLE_AGENT_MODEL_PROVIDER_NAME:=compose-check}"
+: "${DIPOLE_AGENT_MODEL_BASE_URL:=https://models.example.test/v1}"
+: "${DIPOLE_AGENT_MODEL_API_KEY:=compose-check-model-key}"
+: "${DIPOLE_AGENT_MODEL_ROUTES:=compose-check/deterministic}"
+: "${DIPOLE_AGENT_MODEL_CONTEXT_PROFILES:=[{\"route\":\"compose-check/deterministic\",\"contextWindowTokens\":32768,\"utf8BytesPerToken\":3,\"safetyMarginBps\":1500}]}"
+export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_MODEL_PROVIDER_NAME DIPOLE_AGENT_MODEL_BASE_URL
+export DIPOLE_AGENT_MODEL_API_KEY DIPOLE_AGENT_MODEL_ROUTES DIPOLE_AGENT_MODEL_CONTEXT_PROFILES
 
 for file in docker-compose.yml deploy/compose/docker-compose*.yml; do
   [[ "$file" == "deploy/compose/docker-compose.business-cluster.yml" ]] && continue
@@ -85,7 +91,15 @@ jq -e '
   )
 ' <<<"${cluster_config}" >/dev/null
 
-default_microservices_config="$(docker compose -f deploy/compose/docker-compose.microservices.yml config --format json)"
+default_microservices_config="$(
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_AGENT_MODEL_PROVIDER_NAME=deepseek \
+  DIPOLE_AGENT_MODEL_BASE_URL=https://models.example.test/v1 \
+  DIPOLE_AGENT_MODEL_API_KEY=compose-check-model-key \
+  DIPOLE_AGENT_MODEL_ROUTES=deepseek/deepseek-v4-flash \
+  DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"deepseek/deepseek-v4-flash","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]' \
+    docker compose -f deploy/compose/docker-compose.microservices.yml config --format json
+)"
 if ! awk '/^  agent:/{inside=1; next} inside && /^  [^[:space:]]/{exit} inside && /path: \.\.\/\.\.\/\.env/{found=1} END{exit found ? 0 : 1}' deploy/compose/docker-compose.microservices.yml; then
   echo "Agent service must load the optional root .env file" >&2
   exit 1
@@ -115,11 +129,22 @@ jq -e '
   and .services.agent.image == "dipole-agent:latest"
   and (.services.agent.build.context | endswith("/services/agent-runtime"))
   and .services.agent.environment.DIPOLE_AGENT_KAFKA_ENABLED == "true"
-  and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "shadow"
+  and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "remote"
   and .services.agent.environment.DIPOLE_AGENT_UUID == "UAI000000000000000001"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_MODE == "ai_sdk"
+  and .services.agent.environment.DIPOLE_AGENT_MODEL_PROVIDER_NAME == "deepseek"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ADDRESS == "temporal:7233"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_NAMESPACE == "default"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE == "dipole-agent-primary-v1"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "read_active"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
   and .services.agent.depends_on.core.condition == "service_healthy"
+  and .services.agent.depends_on.temporal.condition == "service_healthy"
+  and .services.temporal.image == "temporalio/auto-setup:1.29.1"
+  and .services.temporal.depends_on["temporal-postgresql"].condition == "service_healthy"
+  and .services["temporal-postgresql"].image == "postgres:16"
   and ((.services.core.depends_on // {}) | has("message") | not)
   and ((.services.message.depends_on // {}) | has("core") | not)
   and .services.gateway.depends_on.sync.condition == "service_healthy"

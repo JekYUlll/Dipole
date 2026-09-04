@@ -1,6 +1,6 @@
 # Agent Active 部署运行手册
 
-本文档约束 `read_active` 的 user-gray 部署。基础 Compose 固定为 Shadow；只有显式加载 active overlay 才会请求 active 依赖。
+本文档约束 `read_active` 的 user-gray 部署。基础 Compose 默认启动 Temporal，并运行受限的 `remote + read_active` Durable Runtime；写入、MCP、Memory、检索和订阅触发仍由显式 overlay 管理。
 
 ## 1. 边界
 
@@ -48,7 +48,7 @@ active Runtime 默认只执行 `conversation.list/read`。`DIPOLE_AGENT_INTERACT
 | `DIPOLE_AGENT_TEMPORAL_NAMESPACE` | 目标 namespace |
 | `DIPOLE_AGENT_TEMPORAL_TASK_QUEUE` | 独立 active task queue |
 
-overlay 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2`、`DIPOLE_AGENT_TEMPORAL_ENABLED=true` 和 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_active`。
+基础 Compose 固定 `DIPOLE_AGENT_MODEL_MODE=ai_sdk`、`DIPOLE_AGENT_CONTEXT_COMPILER_VERSION=v2`、`DIPOLE_AGENT_TEMPORAL_ENABLED=true` 和 `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=read_active`。`agent-active.yml` 仅保留旧部署命令兼容性。
 
 同一 overlay 固定 `direct_target`、Memory、retrieval、retrieval-to-Context、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 

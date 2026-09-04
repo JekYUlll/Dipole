@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：基础 Compose 已将 Temporal 从可选 Shadow overlay 收口为默认的 Durable Runtime 依赖，主线运行受限 `remote + read_active`。默认路径仍禁止自动写入、MCP、Memory、检索和订阅触发；Shadow profile 仅保留给回退与测试。仓库内 development manifest 只用于本地可启动性，部署必须注入同版本、已评审的 `user_gray` manifest 和 Provider Secret。
+
 - 2026-09-04：Remote GPU 的隔离 MySQL 8.4 Model Audit contract 曾发现夹具只应用 `000019` 与 `000023`，遗漏 `000057_agent_model_run_stages`，导致当前带 `stage` 的 SQL 查询全部失败。夹具已按运行时依赖补齐 migration，并在 `aef434b0` 的回环 MySQL 8.4 容器通过 6/6 contract；候选目录、容器与 bundle 均已清理，公共 `dipole-experience` 保持 11 个容器。该回执仅覆盖 Model Audit 持久化，不外推为 Agent 端到端或 Provider 质量结论。
 
 - 2026-09-04：失败模型调用的 token 计量治理已收口。`agent_model_calls` 对无法获取 Provider usage 的失败调用保持 token `NULL`，Shadow Eval review pack 明确导出 `tokenMetering=unavailable` 并保留完成的延迟计量；评审仍须将此类样本作为不完整 Cost observation，不能用于总体成功率或成本结论。
