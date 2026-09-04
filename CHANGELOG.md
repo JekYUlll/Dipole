@@ -3,6 +3,7 @@
 - 2026-09-04：基础微服务 Compose 默认启用 Temporal Durable Agent Runtime。
   - 主线现在启动 Temporal/PostgreSQL，并以 `remote + read_active` 承载只读、可恢复的 Agent Task；自动消息写入、MCP、Memory、检索和订阅触发继续显式关闭。
   - `agent-temporal-read-shadow.yml` 改为显式回退与测试 profile，`agent-active.yml` 保持旧部署命令兼容。默认开发 manifest 只用于本地启动，部署环境必须覆盖为已评审的 `user_gray` manifest。
+  - Remote GPU 的隔离 Compose 已通过启动验收：Agent、Temporal、PostgreSQL 与其余微服务均健康，Temporal Worker 进入 `RUNNING`，Kafka consumer 加入 `dipole-agent-active-primary-v1`；候选容器和卷已清理。
 
 - 2026-09-04：新增默认未挂载的 Gateway OAuth callback handoff handler。
   - handler 复核 correlation cookie、浏览器绑定、state、issuer 与 redirect URI，在写入前拒绝无效请求；成功路径仅写 Runtime-only envelope 并向 Runtime 通知 opaque handoff ID。
