@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：补齐 Gateway 到 Core 的 OAuth callback handoff record client。
+  - 客户端仅传递验证后的 ID、摘要、Runtime-only envelope 与 key ID，并以 `dipole-gateway` 可信上下文保留 correlation；无效输入、异常 gRPC 状态、过期或不匹配回包均失败关闭。
+  - 客户端未装配到 HTTP 路由，默认 OAuth callback 和 Provider 流量保持关闭。
+
 - 2026-09-04：对齐 Agent OAuth callback handoff 的实现状态与发布门禁文档。
   - Gateway 已有 correlation v1 原语，Runtime claim/terminal 客户端、Gateway notifier 与 Core mTLS handoff Store 已完成；文档现将剩余工作准确收敛到 cookie/回调验证、Provider 交换、token 生命周期与受控演练。
   - 默认配置、HTTP 路由和 Provider 流量均未改变。
