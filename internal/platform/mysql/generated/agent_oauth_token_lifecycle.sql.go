@@ -11,6 +11,33 @@ import (
 	"time"
 )
 
+const expireDueAgentOAuthTokenLifecycles = `-- name: ExpireDueAgentOAuthTokenLifecycles :execrows
+UPDATE agent_oauth_token_lifecycles
+SET state = 'expired',
+    sealed_token_bundle = NULL,
+    token_bundle_sha256 = NULL,
+    access_token_expires_at = NULL,
+    scope = NULL,
+    revocation_reason = NULL
+WHERE state IN ('active', 'refreshed')
+  AND access_token_expires_at <= ?
+ORDER BY access_token_expires_at ASC
+LIMIT ?
+`
+
+type ExpireDueAgentOAuthTokenLifecyclesParams struct {
+	AccessTokenExpiresAt sql.NullTime
+	Limit                int32
+}
+
+func (q *Queries) ExpireDueAgentOAuthTokenLifecycles(ctx context.Context, arg ExpireDueAgentOAuthTokenLifecyclesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, expireDueAgentOAuthTokenLifecycles, arg.AccessTokenExpiresAt, arg.Limit)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getAgentOAuthTokenLifecycle = `-- name: GetAgentOAuthTokenLifecycle :one
 SELECT handoff_uuid, runtime_key_id, state, sealed_token_bundle, token_bundle_sha256, access_token_expires_at, scope, refresh_count, revocation_reason, created_at, updated_at FROM agent_oauth_token_lifecycles WHERE handoff_uuid = ? LIMIT 1
 `

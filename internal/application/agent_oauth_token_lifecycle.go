@@ -84,3 +84,9 @@ func validAgentOAuthSealedTokenBundle(value string) bool {
 type AgentOAuthTokenLifecycleStoreV1 interface {
 	PersistAgentOAuthTokenLifecycle(context.Context, AgentOAuthTokenLifecycleWriteRequestV1, time.Time) (bool, error)
 }
+
+// AgentOAuthTokenLifecycleExpiryStoreV1 is a separate maintenance authority.
+// It may only clear already-expired opaque material and never returns it.
+type AgentOAuthTokenLifecycleExpiryStoreV1 interface {
+	ExpireDueAgentOAuthTokenLifecycles(context.Context, time.Time, uint32) (uint64, error)
+}

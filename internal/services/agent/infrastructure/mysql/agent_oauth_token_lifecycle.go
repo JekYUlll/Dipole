@@ -14,6 +14,7 @@ import (
 type AgentOAuthTokenLifecycleQueries interface {
 	InsertAgentOAuthTokenLifecycleFromClaim(context.Context, generated.InsertAgentOAuthTokenLifecycleFromClaimParams) (int64, error)
 	GetAgentOAuthTokenLifecycle(context.Context, string) (generated.AgentOauthTokenLifecycle, error)
+	ExpireDueAgentOAuthTokenLifecycles(context.Context, generated.ExpireDueAgentOAuthTokenLifecyclesParams) (int64, error)
 }
 
 // AgentOAuthTokenLifecycleRepository keeps the initial exchange result bound
@@ -24,6 +25,7 @@ type AgentOAuthTokenLifecycleRepository struct {
 }
 
 var _ application.AgentOAuthTokenLifecycleStoreV1 = (*AgentOAuthTokenLifecycleRepository)(nil)
+var _ application.AgentOAuthTokenLifecycleExpiryStoreV1 = (*AgentOAuthTokenLifecycleRepository)(nil)
 
 func NewAgentOAuthTokenLifecycleRepository(queries AgentOAuthTokenLifecycleQueries) (*AgentOAuthTokenLifecycleRepository, error) {
 	if queries == nil {
@@ -87,4 +89,19 @@ func lifecycleMatchesWrite(row generated.AgentOauthTokenLifecycle, input applica
 		(!row.AccessTokenExpiresAt.Valid || row.AccessTokenExpiresAt.Time.Equal(canonicalHandoffTime(input.AccessTokenExpiresAt))) &&
 		row.Scope.String == input.Scope && row.Scope.Valid == (input.Scope != "") &&
 		row.RevocationReason.String == input.RevocationReason && row.RevocationReason.Valid == (input.RevocationReason != "")
+}
+
+// ExpireDueAgentOAuthTokenLifecycles removes opaque material only after Core's
+// database time boundary is reached. Callers receive a count, never rows.
+func (r *AgentOAuthTokenLifecycleRepository) ExpireDueAgentOAuthTokenLifecycles(ctx context.Context, now time.Time, limit uint32) (uint64, error) {
+	if now.IsZero() || limit == 0 || limit > 1000 {
+		return 0, application.ErrAgentOAuthTokenLifecycleInvalid
+	}
+	rows, err := r.queries.ExpireDueAgentOAuthTokenLifecycles(ctx, generated.ExpireDueAgentOAuthTokenLifecyclesParams{
+		AccessTokenExpiresAt: sql.NullTime{Time: canonicalHandoffTime(now), Valid: true}, Limit: int32(limit),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("expire due Agent OAuth token lifecycles: %w", err)
+	}
+	return uint64(rows), nil
 }

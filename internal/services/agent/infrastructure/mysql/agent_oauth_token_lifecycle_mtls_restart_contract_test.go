@@ -90,6 +90,17 @@ func TestAgentOAuthTokenLifecycleMySQLMTLSRestartContract(t *testing.T) {
 		t.Fatalf("modified lifecycle retry code=%s err=%v, want not found", status.Code(err), err)
 	}
 	assertOAuthLifecycleStoredExactlyOnce(t, ctx, db, handoffID, request)
+	expiryStore, ok := repositories.OAuthTokenLifecycles.(application.AgentOAuthTokenLifecycleExpiryStoreV1)
+	if !ok {
+		t.Fatal("OAuth lifecycle repository does not implement expiry maintenance")
+	}
+	if expired, err := expiryStore.ExpireDueAgentOAuthTokenLifecycles(ctx, now.Add(3*time.Minute), 1); err != nil || expired != 0 {
+		t.Fatalf("early lifecycle expiry: expired=%d err=%v", expired, err)
+	}
+	if expired, err := expiryStore.ExpireDueAgentOAuthTokenLifecycles(ctx, now.Add(5*time.Minute), 1); err != nil || expired != 1 {
+		t.Fatalf("due lifecycle expiry: expired=%d err=%v", expired, err)
+	}
+	assertOAuthLifecycleMaterialExpired(t, ctx, db, handoffID)
 }
 
 func oauthLifecycleRestartRequest(handoffID, leaseOwner string, expiresAt time.Time) *agentv1.PersistOAuthTokenLifecycleRequest {
@@ -122,5 +133,19 @@ func assertOAuthLifecycleStoredExactlyOnce(t *testing.T, ctx context.Context, db
 	}
 	if state != request.GetState() || sealedBundle != request.GetSealedTokenBundle() || digest != request.GetTokenBundleSha256() || scope != request.GetScope() || expiresAt.UnixMilli() != request.GetAccessTokenExpiresAtUnixMs() {
 		t.Fatalf("persisted lifecycle drifted: state=%q bundle=%q digest=%q expires=%d scope=%q", state, sealedBundle, digest, expiresAt.UnixMilli(), scope)
+	}
+}
+
+func assertOAuthLifecycleMaterialExpired(t *testing.T, ctx context.Context, db *sql.DB, handoffID string) {
+	t.Helper()
+	var state string
+	var sealedBundle, digest, scope sql.NullString
+	var expiresAt sql.NullTime
+	if err := db.QueryRowContext(ctx, `SELECT state, sealed_token_bundle, token_bundle_sha256, access_token_expires_at, scope FROM agent_oauth_token_lifecycles WHERE handoff_uuid = ?`, handoffID).
+		Scan(&state, &sealedBundle, &digest, &expiresAt, &scope); err != nil {
+		t.Fatalf("read expired lifecycle: %v", err)
+	}
+	if state != "expired" || sealedBundle.Valid || digest.Valid || expiresAt.Valid || scope.Valid {
+		t.Fatalf("expired lifecycle retained material: state=%q sealed=%v digest=%v expires=%v scope=%v", state, sealedBundle.Valid, digest.Valid, expiresAt.Valid, scope.Valid)
 	}
 }

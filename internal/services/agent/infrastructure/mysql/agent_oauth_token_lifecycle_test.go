@@ -14,6 +14,7 @@ import (
 type agentOAuthTokenLifecycleQueriesStub struct {
 	insert func(context.Context, generated.InsertAgentOAuthTokenLifecycleFromClaimParams) (int64, error)
 	get    func(context.Context, string) (generated.AgentOauthTokenLifecycle, error)
+	expire func(context.Context, generated.ExpireDueAgentOAuthTokenLifecyclesParams) (int64, error)
 }
 
 func (s agentOAuthTokenLifecycleQueriesStub) InsertAgentOAuthTokenLifecycleFromClaim(ctx context.Context, params generated.InsertAgentOAuthTokenLifecycleFromClaimParams) (int64, error) {
@@ -22,6 +23,13 @@ func (s agentOAuthTokenLifecycleQueriesStub) InsertAgentOAuthTokenLifecycleFromC
 
 func (s agentOAuthTokenLifecycleQueriesStub) GetAgentOAuthTokenLifecycle(ctx context.Context, handoffID string) (generated.AgentOauthTokenLifecycle, error) {
 	return s.get(ctx, handoffID)
+}
+
+func (s agentOAuthTokenLifecycleQueriesStub) ExpireDueAgentOAuthTokenLifecycles(ctx context.Context, params generated.ExpireDueAgentOAuthTokenLifecyclesParams) (int64, error) {
+	if s.expire == nil {
+		return 0, nil
+	}
+	return s.expire(ctx, params)
 }
 
 func TestAgentOAuthTokenLifecycleRepositoryBindsInitialWriteToLiveLease(t *testing.T) {
@@ -77,5 +85,35 @@ func TestAgentOAuthTokenLifecycleRepositoryAcceptsOnlyExactRetry(t *testing.T) {
 	}
 	if persisted, err := store.PersistAgentOAuthTokenLifecycle(context.Background(), input, now); err != nil || !persisted {
 		t.Fatalf("exact retry persisted=%v err=%v", persisted, err)
+	}
+}
+
+func TestAgentOAuthTokenLifecycleRepositoryExpiresOnlyBoundedDueRows(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 4, 12, 0, 0, 123000000, time.UTC)
+	store, err := NewAgentOAuthTokenLifecycleRepository(agentOAuthTokenLifecycleQueriesStub{
+		insert: func(context.Context, generated.InsertAgentOAuthTokenLifecycleFromClaimParams) (int64, error) {
+			return 0, nil
+		},
+		get: func(context.Context, string) (generated.AgentOauthTokenLifecycle, error) {
+			return generated.AgentOauthTokenLifecycle{}, sql.ErrNoRows
+		},
+		expire: func(_ context.Context, params generated.ExpireDueAgentOAuthTokenLifecyclesParams) (int64, error) {
+			if !params.AccessTokenExpiresAt.Valid || !params.AccessTokenExpiresAt.Time.Equal(now) || params.Limit != 25 {
+				t.Fatalf("expiry parameters drifted: %+v", params)
+			}
+			return 3, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("new repository: %v", err)
+	}
+	if expired, err := store.ExpireDueAgentOAuthTokenLifecycles(context.Background(), now, 25); err != nil || expired != 3 {
+		t.Fatalf("expired=%d err=%v", expired, err)
+	}
+	for _, limit := range []uint32{0, 1001} {
+		if _, err := store.ExpireDueAgentOAuthTokenLifecycles(context.Background(), now, limit); err != application.ErrAgentOAuthTokenLifecycleInvalid {
+			t.Fatalf("limit=%d err=%v, want invalid", limit, err)
+		}
 	}
 }

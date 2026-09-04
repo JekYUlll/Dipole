@@ -75,6 +75,7 @@ type Querier interface {
 	EnsureUserSyncState(ctx context.Context, userUuid string) (sql.Result, error)
 	EraseOwnedAgentMemoryRoot(ctx context.Context, arg EraseOwnedAgentMemoryRootParams) (int64, error)
 	ExpireAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
+	ExpireDueAgentOAuthTokenLifecycles(ctx context.Context, arg ExpireDueAgentOAuthTokenLifecyclesParams) (int64, error)
 	FailAgentMemoryLineageBackfillJob(ctx context.Context, arg FailAgentMemoryLineageBackfillJobParams) (sql.Result, error)
 	FailAgentModelCall(ctx context.Context, arg FailAgentModelCallParams) (int64, error)
 	FailAgentModelRun(ctx context.Context, arg FailAgentModelRunParams) (int64, error)

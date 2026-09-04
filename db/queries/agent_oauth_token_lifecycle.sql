@@ -13,3 +13,16 @@ WHERE agent_oauth_callback_handoffs.handoff_uuid = ?
 
 -- name: GetAgentOAuthTokenLifecycle :one
 SELECT * FROM agent_oauth_token_lifecycles WHERE handoff_uuid = ? LIMIT 1;
+
+-- name: ExpireDueAgentOAuthTokenLifecycles :execrows
+UPDATE agent_oauth_token_lifecycles
+SET state = 'expired',
+    sealed_token_bundle = NULL,
+    token_bundle_sha256 = NULL,
+    access_token_expires_at = NULL,
+    scope = NULL,
+    revocation_reason = NULL
+WHERE state IN ('active', 'refreshed')
+  AND access_token_expires_at <= ?
+ORDER BY access_token_expires_at ASC
+LIMIT ?;

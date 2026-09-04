@@ -1,3 +1,7 @@
+- 2026-09-04：OAuth token lifecycle 新增 Core-owned SQLC expiry maintenance primitive。
+  - 条件更新仅作用于已到期的 `active`/`refreshed` lifecycle，单次上限 1000，原子清除密封 bundle、digest、expiry 与 scope 并置为 `expired`；调用方只得到计数。
+  - 该 primitive 默认未调度，不读取或返回 token material。独立 worker identity、refresh/revoke authority 与运行时回滚证据继续由 `AD-063` 跟踪。
+
 - 2026-09-04：Remote GPU 已通过默认关闭的 OAuth token lifecycle MySQL/mTLS restart drill。
   - 演练仅启动隔离 MySQL，迁移独立 schema 后以 TLS 1.3 mTLS Core listener 写入 active lifecycle、重启 listener 并精确重放；测试断言生命周期仅一行且改写 metadata 被拒绝。
   - 不注册 Gateway callback route，不启动 Runtime Provider、Kafka、Temporal 或公共 Compose project。完整命令与边界见 [receipt](benchmarks/agent-oauth-token-lifecycle-restart-2026-09-04/)；refresh/revoke/retention authority 继续由 `AD-063` 跟踪。
