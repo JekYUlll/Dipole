@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：对齐 Agent OAuth callback handoff 的实现状态与发布门禁文档。
+  - Gateway 已有 correlation v1 原语，Runtime claim/terminal 客户端、Gateway notifier 与 Core mTLS handoff Store 已完成；文档现将剩余工作准确收敛到 cookie/回调验证、Provider 交换、token 生命周期与受控演练。
+  - 默认配置、HTTP 路由和 Provider 流量均未改变。
+
 - 2026-09-04：增加默认未装配的 Gateway OAuth callback correlation v1 原语。
   - HMAC 保护 transaction、owner、issuer、redirect URI、state digest、browser-session digest 与 expiry；篡改和过期值均失败关闭，未注册 HTTP route。
 

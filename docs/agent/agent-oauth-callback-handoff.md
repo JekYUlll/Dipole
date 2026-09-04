@@ -8,7 +8,7 @@
 
 当前 transaction consume 是单次条件更新。若 Gateway 成功 consume 后 Runtime 不可达，Gateway 手中的 authorization code 和密封 verifier 都无法可靠重试：Core 已拒绝第二次 consume，Runtime 也没有可恢复的 handoff record。
 
-此外，OAuth callback 只能携带 `code`、`state` 与可选 issuer 参数。当前 RPC 要求 Gateway 从认证 context 提供 owner 与 transaction ID，尚未定义如何从 callback 的 opaque `state` 安全恢复这两个值。因此 HTTP callback 继续保持未注册。
+此外，OAuth callback 只能携带 `code`、`state` 与可选 issuer 参数。Gateway 已具备签名的 correlation v1 原语，可绑定 transaction、owner、issuer、redirect URI、state 摘要、browser-session 摘要与 expiry。该原语尚未由 cookie 签发或 callback handler 装配，Gateway 也尚未在 HTTP 请求中复核 issuer、redirect URI 与 browser binding，因此 HTTP callback 继续保持未注册。
 
 这项门禁遵循 [RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html) 的 redirect-flow 与 PKCE 要求：精确 redirect URI、事务唯一的 S256 PKCE、可验证的 state/浏览器绑定，以及对多 Authorization Server 的 mix-up 防护。
 
@@ -33,7 +33,7 @@ Core 必须在 transaction record 中精确核对：
 transaction_id + owner + state_sha256 + issuer + redirect_uri + expiry
 ```
 
-当前 Core consume RPC 已覆盖其中一部分。callback correlation 和 issuer mix-up 验证必须作为后续 additive contract 加入，而非复用未经验证的浏览器 session 字段。
+当前 Core consume RPC 已覆盖其中一部分。callback correlation v1 已作为 additive contract 落地；后续 handler 必须使用它完成 issuer mix-up、redirect URI 与 browser binding 验证，且不得复用未经验证的浏览器 session 字段。
 
 ## Durable Handoff State Machine
 
@@ -69,9 +69,9 @@ The exact dual-channel transport and failure contract is maintained in
 
 ## Release Prerequisites
 
-1. Add a versioned callback-correlation contract with browser-binding expiry and mix-up issuer verification.
-2. Add an Agent-owned SQLC handoff table, KMS/envelope ciphertext, code-hash uniqueness and lease/terminal transitions.
-3. Add Gateway and Runtime mTLS clients with no debug logging of request bodies or sensitive headers.
+1. 将现有 versioned callback-correlation contract 装配为短时 browser-binding cookie，并在 handler 中完成 expiry、issuer mix-up 与 redirect URI 验证。
+2. 已完成：Agent-owned SQLC handoff table、Runtime-only envelope ciphertext、code-hash uniqueness 与 lease/terminal transitions。
+3. 已完成：Gateway 和 Runtime mTLS clients，且控制面不记录 request body 或敏感 headers。
 4. Make Runtime token exchange idempotent and add refresh/revoke retention policy.
 5. Add fault tests for duplicate callback, Runtime unavailable after claim, restart during exchange, expired correlation, wrong issuer, wrong redirect URI and wrong browser binding.
 6. Complete a controlled provider-owner review before enabling any callback route.
