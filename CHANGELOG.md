@@ -4,6 +4,10 @@
   - `BUILD_IMAGE=1` 时，backend 与 microservice 构建各受 `DIPOLE_AGENT_INTERACTIVE_BUILD_TIMEOUT_SECONDS` 控制，默认 900 秒、合法范围 120 至 3600 秒；超时保留非零退出并交给既有 trap 回收候选 Compose project。
   - Remote GPU 在 `41866a8` 的隔离 active smoke 中观察到 Agent image 的 `npm prune` 无进展后已主动停止；候选容器为零，公共 `dipole-experience` 保持 11 个运行容器。该记录不构成 active Task 成功验收。
 
+- 2026-09-04：收窄 Interactive Agent smoke 的镜像构建范围。
+  - smoke 只构建 `migrate/core/gateway/message/sync/agent` 的实际依赖镜像，不再为 read-only Task 验收构建 Search、Indexer 或 Timeline Repair。
+  - Agent Docker image 使用独立 production dependency stage，生产层通过 `npm ci --omit=dev --ignore-scripts --no-audit --no-fund` 获取依赖，移除 build stage 的 `npm prune` 长尾操作。
+
 - 2026-09-04：Agent Task admission 拒绝现在提供可操作的安全响应。
   - 当 Core 以 `PERMISSION_DENIED` 拒绝交互 Task admission 时，Agent Runtime 将其规范为 `403`、`reason=admission_denied`，明确提示当前 owner 需要 active Definition 与有效 promotion grant。
   - 响应不披露 grant、候选策略或其他 owner 数据；其他 Runtime 控制错误也新增稳定的 `reason` 枚举字段，方便前端在后续独立改版中展示恢复指引。

@@ -30,7 +30,8 @@ if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   # A build is isolated but can still stall on a package manager or image pull.
   # Preserve the non-zero timeout status so the cleanup trap tears down this project.
   timeout --preserve-status "${build_timeout_seconds}" "${root_dir}/scripts/docker-build.sh" backend
-  timeout --preserve-status "${build_timeout_seconds}" "${root_dir}/scripts/docker-build-microservice-images.sh"
+  DIPOLE_MICROSERVICE_IMAGE_SERVICES="migrate,core,gateway,message,sync,agent" \
+    timeout --preserve-status "${build_timeout_seconds}" "${root_dir}/scripts/docker-build-microservice-images.sh"
 fi
 
 : "${DIPOLE_MIGRATE_IMAGE:=dipole-migrate:latest}"

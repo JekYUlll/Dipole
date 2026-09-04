@@ -23,6 +23,7 @@ class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
         self.assertIn('build_timeout_seconds="${DIPOLE_AGENT_INTERACTIVE_BUILD_TIMEOUT_SECONDS:-900}"', smoke)
         self.assertIn("DIPOLE_AGENT_INTERACTIVE_BUILD_TIMEOUT_SECONDS must be between 120 and 3600", smoke)
         self.assertIn('timeout --preserve-status "${build_timeout_seconds}"', smoke)
+        self.assertIn('DIPOLE_MICROSERVICE_IMAGE_SERVICES="migrate,core,gateway,message,sync,agent"', smoke)
         self.assertIn('remote-gpu-mysql-aio-compat.yml', smoke)
         self.assertIn('agent-interactive-shadow-smoke.yml', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
@@ -77,6 +78,13 @@ class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_MODEL_PROVIDER: openai_compatible', overlay)
         self.assertIn('DIPOLE_AGENT_MODEL_ROUTES:', overlay)
         self.assertIn('DIPOLE_AGENT_INTERACTIVE_SHADOW_TASK_QUEUE', overlay)
+
+    def test_agent_image_keeps_production_dependencies_out_of_the_build_stage(self) -> None:
+        dockerfile = (ROOT / "services/agent-runtime/Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("FROM node:22-bookworm-slim AS production-dependencies", dockerfile)
+        self.assertIn("RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund", dockerfile)
+        self.assertIn("COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules", dockerfile)
+        self.assertNotIn("npm prune", dockerfile)
 
 
 if __name__ == "__main__":
