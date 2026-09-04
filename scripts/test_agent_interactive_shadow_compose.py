@@ -25,6 +25,19 @@ class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
         self.assertIn('compose down --volumes --remove-orphans', smoke)
 
+    def test_active_read_profile_stays_read_only_and_uses_a_revocable_grant(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
+        overlay = (ROOT / "deploy/microservices/agent-interactive-read-active.yml").read_text(encoding="utf-8")
+        self.assertIn('execution_profile="${DIPOLE_AGENT_INTERACTIVE_READ_PROFILE:-shadow}"', smoke)
+        self.assertIn('agent-interactive-read-active.yml', smoke)
+        self.assertIn('agent_runtime_promotion_grants', smoke)
+        self.assertIn('WHERE grant_uuid = \'${grant_uuid}\'', smoke)
+        self.assertIn('DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: read_active', overlay)
+        self.assertIn('DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"', overlay)
+        self.assertIn('DIPOLE_AGENT_MEMORY_ENABLED: "false"', overlay)
+        self.assertIn('DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"', overlay)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: "true"', overlay)
+
     def test_provider_mode_requires_an_env_file_and_keeps_shadow_overlays(self) -> None:
         smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
         self.assertIn('model_source="${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE:-stub}"', smoke)

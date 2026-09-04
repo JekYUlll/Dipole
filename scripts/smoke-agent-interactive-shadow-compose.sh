@@ -7,13 +7,16 @@ set -euo pipefail
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-shadow-${RANDOM}-$$}"
 model_source="${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE:-stub}"
+execution_profile="${DIPOLE_AGENT_INTERACTIVE_READ_PROFILE:-shadow}"
 owner_telephone="13900000005"
 foreign_telephone="13900000006"
 agent_uuid="UAI000000000000000001"
+grant_uuid="PROMOTION-READ-ACTIVE-${RANDOM}-$$"
 
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
 command -v openssl >/dev/null 2>&1 || { printf 'openssl is required\n' >&2; exit 2; }
 [[ "${model_source}" == "stub" || "${model_source}" == "provider" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
+[[ "${execution_profile}" == "shadow" || "${execution_profile}" == "active" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_READ_PROFILE must be shadow or active\n' >&2; exit 2; }
 if [[ "${model_source}" == "provider" ]]; then
   : "${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE:?DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE is required for provider mode}"
   [[ -f "${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE}" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE must name a file\n' >&2; exit 2; }
@@ -73,11 +76,18 @@ else
   model_env_file="${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE}"
 fi
 
-compose_files=(
-  -f "${root_dir}/deploy/compose/docker-compose.microservices.yml"
-  -f "${root_dir}/deploy/microservices/agent-temporal-read-shadow.yml"
-  -f "${root_dir}/deploy/microservices/agent-interactive-shadow.yml"
-)
+compose_files=(-f "${root_dir}/deploy/compose/docker-compose.microservices.yml")
+if [[ "${execution_profile}" == "shadow" ]]; then
+  compose_files+=(
+    -f "${root_dir}/deploy/microservices/agent-temporal-read-shadow.yml"
+    -f "${root_dir}/deploy/microservices/agent-interactive-shadow.yml"
+  )
+else
+  compose_files+=(
+    -f "${root_dir}/deploy/microservices/agent-active.yml"
+    -f "${root_dir}/deploy/microservices/agent-interactive-read-active.yml"
+  )
+fi
 if [[ "${model_source}" == "stub" ]]; then
   compose_files+=( -f "${root_dir}/deploy/microservices/agent-interactive-shadow-smoke.yml" )
 else
@@ -95,6 +105,10 @@ compose() {
 
 cleanup() {
   local status=$?
+  if [[ "${execution_profile}" == "active" ]]; then
+    compose exec -T mysql mysql -uroot -proot123 dipole \
+      -e "UPDATE agent_runtime_promotion_grants SET revoked_at = COALESCE(revoked_at, UTC_TIMESTAMP(3)) WHERE grant_uuid = '${grant_uuid}'" >/dev/null 2>&1 || true
+  fi
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
     compose down --volumes --remove-orphans >/dev/null 2>&1 || true
     rm -rf "${scratch_dir}"
@@ -111,8 +125,8 @@ compose up -d --wait
 
 compose exec -T mysql mysql -uroot -proot123 dipole -e "INSERT IGNORE INTO users (uuid, nickname, telephone, password_hash, status, created_at, updated_at) VALUES ('${agent_uuid}', 'Dipole Agent', '13900000002', 'smoke', 1, NOW(3), NOW(3));"
 
-result=$(compose exec -T agent node --input-type=module - "${owner_telephone}" "${foreign_telephone}" "${agent_uuid}" <<'NODE'
-const [ownerTelephone, foreignTelephone, agentUuid] = process.argv.slice(2);
+result=$(compose exec -T agent node --input-type=module - "${owner_telephone}" "${foreign_telephone}" "${agent_uuid}" "${execution_profile}" <<'NODE'
+const [ownerTelephone, foreignTelephone, agentUuid, executionProfile] = process.argv.slice(2);
 
 async function request(method, url, token, body) {
   const response = await fetch(url, { method, headers: { authorization: `Bearer ${token}`, ...(body === undefined ? {} : { "content-type": "application/json" }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -147,6 +161,11 @@ const foreign = await registerAndLogin(foreignTelephone, "Shadow Foreign");
 await sendBootstrapMessage(owner.token, agentUuid, "agent");
 const definition = await request("POST", "http://gateway:8080/api/v1/agent/definitions", owner.token);
 if (definition.response.status !== 201) throw new Error(`definition failed: ${definition.response.status}`);
+if (executionProfile === "active") {
+  if (typeof definition.payload?.definitionId !== "string") throw new Error("active Definition did not return an ID");
+  process.stdout.write(`${owner.ownerUuid}\t${definition.payload.definitionId}`);
+  process.exit(0);
+}
 
 const taskBody = { client_request_id: `interactive-shadow-${Date.now()}`, goal: "List my conversations and read the available Agent conversation for a summary." };
 const first = await request("POST", "http://gateway:8080/api/v1/agent/tasks", owner.token, taskBody);
@@ -171,7 +190,61 @@ NODE
 )
 IFS=$'\t' read -r owner_uuid task_uuid <<<"${result}"
 
-effects=$(compose exec -T mysql mysql -N -B -uroot -proot123 dipole -e "SELECT (SELECT COUNT(*) FROM agent_tasks WHERE task_uuid = '${task_uuid}' AND status = 'completed' AND workflow_status = 'completed'), (SELECT COUNT(*) FROM agent_runs WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM agent_shadow_steps WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}')")
-[[ "${effects}" == $'1\t1\t2\t0' ]] || { printf 'interactive read task wrote or did not complete the read trajectory: %q\n' "${effects}" >&2; exit 1; }
+if [[ "${execution_profile}" == "active" ]]; then
+  IFS=$'\t' read -r owner_uuid definition_uuid <<<"${result}"
+  compose exec -T mysql mysql -uroot -proot123 dipole <<SQL
+INSERT INTO agent_runtime_promotion_grants (
+  grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version,
+  policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at
+) VALUES (
+  '${grant_uuid}', 'dipole', 'dipole-agent', '${DIPOLE_AGENT_CANDIDATE_VERSION:-agent-runtime@dev}', '${definition_uuid}', 1,
+  'dipole.agent.shadow-promotion-policy.v2',
+  'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+  'U-SMOKE-GRANTOR', 'U-SMOKE-REVIEWER',
+  DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE), DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 15 MINUTE)
+);
+SQL
+  task_uuid=$(compose exec -T agent node --input-type=module - "${owner_telephone}" "${foreign_telephone}" <<'NODE'
+const [ownerTelephone, foreignTelephone] = process.argv.slice(2);
+async function login(telephone) {
+  const response = await fetch("http://core:8081/api/v1/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ telephone, password: "smoke-pass-123" }) });
+  const token = (await response.json())?.data?.token;
+  if (response.status !== 200 || typeof token !== "string") throw new Error(`login failed: ${response.status}`);
+  return token;
+}
+async function request(method, url, token, body) {
+  const response = await fetch(url, { method, headers: { authorization: `Bearer ${token}`, ...(body === undefined ? {} : { "content-type": "application/json" }) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  return { response, payload: await response.json().catch(() => undefined) };
+}
+const ownerToken = await login(ownerTelephone);
+const foreignToken = await login(foreignTelephone);
+const body = { client_request_id: `interactive-read-active-${Date.now()}`, goal: "List my conversations and read the available Agent conversation for a summary." };
+const first = await request("POST", "http://gateway:8080/api/v1/agent/tasks", ownerToken, body);
+const second = await request("POST", "http://gateway:8080/api/v1/agent/tasks", ownerToken, body);
+if (first.response.status !== 202 || second.response.status !== 202 || typeof first.payload?.taskId !== "string" || first.payload.taskId !== second.payload?.taskId) throw new Error(`duplicate task start diverged: ${first.response.status}/${second.response.status}`);
+const taskId = first.payload.taskId;
+const foreignRead = await request("GET", `http://gateway:8080/api/v1/agent/tasks/${taskId}`, foreignToken);
+if (![403, 404].includes(foreignRead.response.status)) throw new Error(`foreign owner read was not rejected: ${foreignRead.response.status}`);
+let status = "unavailable";
+for (let attempt = 0; attempt < 90; attempt += 1) {
+  const current = await request("GET", `http://gateway:8080/api/v1/agent/tasks/${taskId}`, ownerToken);
+  if (current.response.status === 200 && typeof current.payload?.status === "string") status = current.payload.status;
+  if (current.response.status === 200 && current.payload?.status === "completed") { process.stdout.write(taskId); process.exit(0); }
+  await new Promise(resolve => setTimeout(resolve, 1_000));
+}
+throw new Error(`active read task did not complete (last status: ${status})`);
+NODE
+)
+fi
 
-printf 'Interactive Agent shadow Compose smoke passed: authenticated Gateway task creation is idempotent, owner-scoped, read-only, and completes its two-Step read trajectory.\n'
+if [[ "${execution_profile}" == "shadow" ]]; then
+  effects=$(compose exec -T mysql mysql -N -B -uroot -proot123 dipole -e "SELECT (SELECT COUNT(*) FROM agent_tasks WHERE task_uuid = '${task_uuid}' AND status = 'completed' AND workflow_status = 'completed'), (SELECT COUNT(*) FROM agent_runs WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM agent_shadow_steps WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}')")
+  [[ "${effects}" == $'1\t1\t2\t0' ]] || { printf 'interactive read task wrote or did not complete the read trajectory: %q\n' "${effects}" >&2; exit 1; }
+else
+  effects=$(compose exec -T mysql mysql -N -B -uroot -proot123 dipole -e "SELECT (SELECT COUNT(*) FROM agent_tasks WHERE task_uuid = '${task_uuid}' AND status = 'completed' AND workflow_status = 'completed'), (SELECT COUNT(*) FROM agent_runs WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM agent_model_runs WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}')")
+  IFS=$'\t' read -r task_count run_count model_count message_count <<<"${effects}"
+  [[ "${task_count}" == "1" && "${run_count}" == "1" && "${model_count}" =~ ^[1-9][0-9]*$ && "${message_count}" == "0" ]] || { printf 'active read task wrote or did not complete: %q\n' "${effects}" >&2; exit 1; }
+fi
+
+printf 'Interactive Agent %s Compose smoke passed: authenticated Gateway task creation is idempotent, owner-scoped, read-only, and completes its two-Step read trajectory.\n' "${execution_profile}"
