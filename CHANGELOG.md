@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-04：完成同主线 revision 的 Active Read Agent 远程复验。
+  - Remote GPU 使用干净 `a5482c6f` checkout，在独立 `agent-active-smoke-20260904170858-2756087` Compose project 以 `remote + read_active` 运行 Interactive smoke；owner Definition、短期 promotion grant、认证 Gateway 和 Temporal 均由脚本临时配置并在退出时回收。
+  - 验收通过 owner Task 创建幂等、跨 owner 拒绝、`conversation.list -> conversation.read` 两步只读轨迹及零 Agent 消息写入。退出码为 `0`，候选容器和卷为零，公共 `dipole-experience` 全程保持 11 个运行容器。
+  - 此回执验证受控开发 fixture 的 active admission 与新镜像构建路径；不扩大默认写入、MCP、Memory、共享租户、浏览器 HITL 或性能结论。
+
 - 2026-09-04：Interactive Agent Compose smoke 的镜像构建增加有界时限。
   - `BUILD_IMAGE=1` 时，backend 与 microservice 构建各受 `DIPOLE_AGENT_INTERACTIVE_BUILD_TIMEOUT_SECONDS` 控制，默认 900 秒、合法范围 120 至 3600 秒；超时保留非零退出并交给既有 trap 回收候选 Compose project。
   - Remote GPU 在 `41866a8` 的隔离 active smoke 中观察到 Agent image 的 `npm prune` 无进展后已主动停止；候选容器为零，公共 `dipole-experience` 保持 11 个运行容器。该记录不构成 active Task 成功验收。
