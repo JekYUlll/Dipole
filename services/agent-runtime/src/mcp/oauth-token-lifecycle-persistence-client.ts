@@ -30,6 +30,14 @@ export interface OAuthTokenLifecyclePersistenceInput {
   readonly traceId?: string;
 }
 
+export interface OAuthTokenLifecycleRevocationInput {
+  readonly handoff: OAuthCallbackHandoffClaim;
+  readonly leaseOwner: string;
+  readonly reason: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}
+
 /** Runtime-to-Core token lifecycle writer. The RPC receives opaque ciphertext only. */
 export class OAuthTokenLifecyclePersistenceClient {
   constructor(
@@ -54,21 +62,36 @@ export class OAuthTokenLifecyclePersistenceClient {
     });
   }
 
+  async persistRevoked(input: OAuthTokenLifecycleRevocationInput): Promise<void> {
+    if (!leaseOwnerPattern.test(input.leaseOwner) || typeof input.reason !== "string" || input.reason.length < 1 || input.reason.length > 512 || input.reason.trim() !== input.reason || /[\r\n\0]/u.test(input.reason) ||
+        input.handoff.leaseExpiresAt.getTime() <= Date.now() || input.handoff.expiresAt.getTime() <= Date.now()) {
+      throw new OAuthTokenLifecyclePersistenceInvalidError("OAuth token lifecycle revocation request is invalid");
+    }
+    await this.invokeRequest({
+      context: { principalUserId: "", deviceId: "", requestId: input.requestId ?? "", traceId: input.traceId ?? "", callerService },
+      handoffId: input.handoff.handoffId, leaseOwner: input.leaseOwner, state: "revoked", sealedTokenBundle: "", tokenBundleSha256: "",
+      accessTokenExpiresAtUnixMs: 0n, scope: "", revocationReason: input.reason
+    }, input.requestId, input.traceId);
+  }
+
   private invoke(input: OAuthTokenLifecyclePersistenceInput, sealed: SealedOAuthTokenLifecycleBundle): Promise<void> {
-    const metadata = new grpc.Metadata();
-    metadata.set("x-dipole-caller-service", callerService);
-    metadata.set("x-dipole-service-token", this.sharedSecret);
-    if (input.requestId !== undefined) metadata.set("x-request-id", input.requestId);
-    if (input.traceId !== undefined) metadata.set("x-trace-id", input.traceId);
-    const request: PersistOAuthTokenLifecycleRequest = {
+    return this.invokeRequest({
       context: { principalUserId: "", deviceId: "", requestId: input.requestId ?? "", traceId: input.traceId ?? "", callerService },
       handoffId: input.handoff.handoffId, leaseOwner: input.leaseOwner, state: "active", sealedTokenBundle: sealed.envelope,
       tokenBundleSha256: sealed.sha256, accessTokenExpiresAtUnixMs: BigInt(sealed.expiresAt.getTime()), scope: sealed.scope, revocationReason: ""
-    };
+    }, input.requestId, input.traceId);
+  }
+
+  private invokeRequest(request: PersistOAuthTokenLifecycleRequest, requestId?: string, traceId?: string): Promise<void> {
+    const metadata = new grpc.Metadata();
+    metadata.set("x-dipole-caller-service", callerService);
+    metadata.set("x-dipole-service-token", this.sharedSecret);
+    if (requestId !== undefined) metadata.set("x-request-id", requestId);
+    if (traceId !== undefined) metadata.set("x-trace-id", traceId);
     return new Promise((resolve, reject) => {
       this.rpc.persistOAuthTokenLifecycle(request, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null) return reject(mapRPCError(error));
-        if (response === undefined || response.handoffId !== input.handoff.handoffId || response.state !== "active") {
+        if (response === undefined || response.handoffId !== request.handoffId || response.state !== request.state) {
           return reject(new OAuthTokenLifecyclePersistenceUnavailableError("OAuth token lifecycle persistence returned invalid evidence"));
         }
         resolve();

@@ -1,3 +1,7 @@
+- 2026-09-04：OAuth callback provider 的永久失败现可持久化为 Core-owned `revoked` lifecycle 状态。
+  - Runtime 在 `invalid_grant` 等确定性失败时仅提交 handoff、lease、状态与受控原因，不提交 token envelope、token digest、expiry 或 scope；Core 确认后本地 fixture 才进入 `revoked`，然后 executor 才完成 callback handoff。
+  - Core 写入失败或 Runtime RPC 错误会保留 lease 和 `pending_exchange`，以便受控重试。该路径继续未装配到默认 Runtime/Compose，active token 的长期 refresh/revoke authority 仍不在本切片范围内。
+
 - 2026-09-04：Agent Runtime 新增未装配的 OAuth token lifecycle envelope v1 与 Core persistence client。
   - Provider exchange 成功后，Runtime 使用既有受保护私钥源派生 RSA public half，封装 canonical token bundle 为 AES-256-GCM + RSA-OAEP-SHA256 envelope，并将 ciphertext、SHA-256、expiry 和 scope 提交给 Core；Core acknowledgement 失败时本地 lifecycle 保持 `pending_exchange`，executor 会保留 callback lease。
   - envelope AAD 绑定 handoff、Runtime key、state、bundle digest、expiry 与 scope，token 明文不会进入 RPC、日志、Kafka、Temporal 或 Core；新增 scope 的 CR/LF/NUL fail-closed 校验。
