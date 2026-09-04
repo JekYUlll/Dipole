@@ -58,10 +58,26 @@ describe("OAuthCallbackHandoffProviderProcessor", () => {
     const provider = new DeterministicFakeOAuthCallbackProvider({ plan: new Map([[digest("code"), { kind: "exchanged", tokens }]]) });
     const processor = new OAuthCallbackHandoffProviderProcessor({
       provider, lifecycle, leaseOwner: "runtime-worker-1",
-      persistence: { async persistActive() { throw new Error("Core unavailable"); } }
+      persistence: { async persistActive() { throw new Error("Core unavailable"); }, async persistRevoked() {} }
     });
     await expect(processor.process({ authorizationCode: "code", handoff })).rejects.toThrow("Core unavailable");
     expect(lifecycle.get(handoff.handoffId)?.state).toBe("pending_exchange");
+  });
+
+  it("persists revocation before entering a local terminal state", async () => {
+    const lifecycle = new TokenLifecycleStore();
+    const provider = new DeterministicFakeOAuthCallbackProvider({ plan: new Map([[digest("code"), { kind: "permanent_failure", reason: "invalid_grant" }]]) });
+    const calls: string[] = [];
+    const processor = new OAuthCallbackHandoffProviderProcessor({
+      provider, lifecycle, leaseOwner: "runtime-worker-1",
+      persistence: {
+        async persistActive() {},
+        async persistRevoked(input) { calls.push(`${input.leaseOwner}:${input.reason}`); }
+      }
+    });
+    await expect(processor.process({ authorizationCode: "code", handoff })).resolves.toBe("completed");
+    expect(calls).toEqual(["runtime-worker-1:invalid_grant"]);
+    expect(lifecycle.get(handoff.handoffId)?.state).toBe("revoked");
   });
 
   it("does not call the provider a second time once the lifecycle has a terminal/active record", async () => {

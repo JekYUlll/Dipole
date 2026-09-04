@@ -23,7 +23,10 @@ import { TokenLifecycleStore, isTerminalOrActive, type TokenLifecycleBundle } fr
 export interface OAuthCallbackHandoffProviderProcessorOptions {
   readonly provider: OAuthCallbackProvider;
   readonly lifecycle: TokenLifecycleStore;
-  readonly persistence?: Readonly<{ persistActive(input: Readonly<{ handoff: OAuthCallbackHandoffClaim; leaseOwner: string; bundle: TokenLifecycleBundle }>): Promise<void> }>;
+  readonly persistence?: Readonly<{
+    persistActive(input: Readonly<{ handoff: OAuthCallbackHandoffClaim; leaseOwner: string; bundle: TokenLifecycleBundle }>): Promise<void>;
+    persistRevoked(input: Readonly<{ handoff: OAuthCallbackHandoffClaim; leaseOwner: string; reason: string }>): Promise<void>;
+  }>;
   readonly leaseOwner?: string;
 }
 
@@ -63,6 +66,10 @@ export class OAuthCallbackHandoffProviderProcessor implements OAuthCallbackHando
         // Record the permanent revocation so a duplicate `notifyHandoff` short-circuits
         // above; the executor still marks the handoff `exchanged` because the exchange
         // will not be attempted again.
+        if (this.options.persistence !== undefined) {
+          if (this.options.leaseOwner === undefined) throw new Error("OAuth token lifecycle lease owner is required");
+          await this.options.persistence.persistRevoked({ handoff: input.handoff, leaseOwner: this.options.leaseOwner, reason: outcome.reason });
+        }
         lifecycle.revoke(input.handoff.handoffId, outcome.reason);
         return "completed";
     }

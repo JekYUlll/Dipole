@@ -30,4 +30,18 @@ describe("OAuthTokenLifecyclePersistenceClient", () => {
     expect(captured.request.sealedTokenBundle).not.toContain("access-token");
     expect(captured.metadata?.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
   });
+
+  it("persists permanent provider failure without token material", async () => {
+    const captured: { request?: any } = {};
+    const rpc: OAuthTokenLifecyclePersistenceRPC = {
+      persistOAuthTokenLifecycle(request, _metadata, _options, callback) {
+        captured.request = request;
+        callback(null, { handoffId: request.handoffId, state: request.state });
+        return {} as grpc.ClientUnaryCall;
+      }
+    };
+    const client = new OAuthTokenLifecyclePersistenceClient(rpc, "runtime-secret", { async use(_id, operation) { return operation(Buffer.alloc(0)); } });
+    await client.persistRevoked({ handoff, leaseOwner: "runtime-worker-1", reason: "invalid_grant" });
+    expect(captured.request).toMatchObject({ handoffId: handoff.handoffId, leaseOwner: "runtime-worker-1", state: "revoked", sealedTokenBundle: "", tokenBundleSha256: "", accessTokenExpiresAtUnixMs: 0n, scope: "", revocationReason: "invalid_grant" });
+  });
 });
