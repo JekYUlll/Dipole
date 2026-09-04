@@ -15,6 +15,15 @@ if ! command -v timeout >/dev/null 2>&1; then
   exit 2
 fi
 
+# Compose validates every required Agent environment value even though this
+# smoke starts only Tempo and the Collector. Keep that interpolation local and
+# inert so it never needs a model provider or credential.
+export DIPOLE_AGENT_MODEL_PROVIDER_NAME=compose-smoke
+export DIPOLE_AGENT_MODEL_BASE_URL=http://127.0.0.1:9/v1
+export DIPOLE_AGENT_MODEL_API_KEY=otel-smoke-only
+export DIPOLE_AGENT_MODEL_ROUTES=compose-smoke/deterministic
+export DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"compose-smoke/deterministic","contextWindowTokens":32768,"utf8BytesPerToken":3,"safetyMarginBps":1500}]'
+
 mkdir -p "$docker_config"
 
 compose=(docker compose -p "$project_name" -f "$root_dir/deploy/compose/docker-compose.microservices.yml" --profile observability)

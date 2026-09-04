@@ -20,6 +20,15 @@ class AgentOtelSmokeTest(unittest.TestCase):
         self.assertIn("command -v timeout", smoke)
         self.assertIn('timeout --preserve-status "${startup_timeout_seconds}s" "${compose[@]}" up -d tempo otel-collector', smoke)
 
+    def test_smoke_uses_inert_model_config_only_for_compose_interpolation(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-otel.sh").read_text(encoding="utf-8")
+
+        self.assertIn("export DIPOLE_AGENT_MODEL_PROVIDER_NAME=compose-smoke", smoke)
+        self.assertIn("export DIPOLE_AGENT_MODEL_BASE_URL=http://127.0.0.1:9/v1", smoke)
+        self.assertIn("export DIPOLE_AGENT_MODEL_API_KEY=otel-smoke-only", smoke)
+        self.assertIn("export DIPOLE_AGENT_MODEL_ROUTES=compose-smoke/deterministic", smoke)
+        self.assertIn('DIPOLE_AGENT_MODEL_CONTEXT_PROFILES=', smoke)
+
     def test_timeout_keeps_the_existing_isolation_and_cleanup(self) -> None:
         smoke = (ROOT / "scripts/smoke-agent-otel.sh").read_text(encoding="utf-8")
 
