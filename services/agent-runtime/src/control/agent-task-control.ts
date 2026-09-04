@@ -2,7 +2,7 @@ import type { AgentTaskControlAuthorization } from "../capabilities/agent-capabi
 import type { AgentTaskState } from "../task/agent-task-state.js";
 import { validateElicitationResponse, type AgentElicitationValue } from "../task/agent-elicitation.js";
 
-export type AgentTaskControlErrorCode = "invalid_argument" | "not_found" | "conflict";
+export type AgentTaskControlErrorCode = "invalid_argument" | "not_found" | "conflict" | "admission_denied";
 
 export class AgentTaskControlError extends Error {
   constructor(readonly code: AgentTaskControlErrorCode, message: string) {

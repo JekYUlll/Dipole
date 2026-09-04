@@ -50,4 +50,16 @@ describe("interactive Agent Task request", () => {
     await expect(service.start({ principalUserId: "U100", body: { clientRequestId: "", goal: "invalid" } }))
       .rejects.toMatchObject({ code: "invalid_argument" });
   });
+
+  it("maps a Core admission denial to a safe actionable control error", async () => {
+    const dispatch = vi.fn(async () => { throw Object.assign(new Error("Agent Run admission denied"), { code: 7 }); });
+    const service = new InteractiveTaskStartService({ tenantId: "dipole", agentId: "UAI" }, { dispatch });
+
+    await expect(service.start({
+      principalUserId: "U100", body: { clientRequestId: "client-denied", goal: "Summarize unread work" }
+    })).rejects.toMatchObject({
+      code: "admission_denied",
+      message: "Agent Task admission requires an active owner Definition and a valid promotion grant"
+    });
+  });
 });

@@ -10,6 +10,8 @@ active Runtime 默认只执行 `conversation.list/read`。基础 Compose 固定�
 
 创建请求被 Runtime 接受后，Core 仍会在 durable admission 时复核该 owner 的 active Definition 和同一 candidate 的有效 promotion grant。主 Compose 默认公开经过认证的 `POST /api/v1/agent/definitions`，它只能创建 owner-scoped `read_only` Definition，不能授予写 Capability 或替代 promotion grant。`/api/v1/agent/status` 中的 `taskControlEnabled=true` 只表示认证控制路由已装配，不表示任意用户已经具备 active Run 资格。开发或体验环境必须使用受控短期 grant，并在验收后撤销；共享环境继续遵循本手册的 operator review 与 `user_gray` 证据要求。
 
+若 Runtime admission 被 Core 拒绝，`POST /api/v1/agent/tasks` 返回 `403` 与 `reason: "admission_denied"`。该响应只说明需准备 active owner Definition 和同 candidate 的有效 promotion grant；它不公开 grant 状态、评审证据、候选策略或其他 owner 的任何信息。
+
 开发期可用隔离 Read Active smoke 验证完整只读 Task。它使用本地 loopback model stub、临时 owner Definition 和 15 分钟 promotion grant，验证请求幂等、owner 隔离、Temporal 完成、两步读取轨迹和零 Agent 消息写入；cleanup 会撤销 grant 并删除容器、卷与临时证书。
 
 ```bash

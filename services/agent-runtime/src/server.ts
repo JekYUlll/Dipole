@@ -386,8 +386,8 @@ function oauthCallbackHandoffID(body: unknown): string | undefined {
 
 function sendControlError(reply: { code(statusCode: number): { send(payload: unknown): unknown } }, error: unknown): unknown {
   if (error instanceof AgentTaskControlError) {
-    const status = error.code === "invalid_argument" ? 400 : error.code === "not_found" ? 404 : 409;
-    return reply.code(status).send({ code: status, message: error.message });
+    const status = error.code === "invalid_argument" ? 400 : error.code === "not_found" ? 404 : error.code === "admission_denied" ? 403 : 409;
+    return reply.code(status).send({ code: status, reason: error.code, message: error.message });
   }
   const externalCode = typeof error === "object" && error !== null && "code" in error ? Number(error.code) : -1;
   const name = error instanceof Error ? error.name : "";

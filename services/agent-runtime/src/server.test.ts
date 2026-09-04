@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { AgentTaskControlError } from "./control/agent-task-control.js";
 import { buildServer } from "./server.js";
 import { SubscriptionShadowMetrics } from "./observability/subscription-shadow-metrics.js";
 
@@ -71,6 +72,28 @@ describe("agent runtime Task control API", () => {
     expect(startTask).toHaveBeenCalledWith({
       principalUserId: "U100", requestId: "R1", traceId: "T1",
       body: { clientRequestId: "client-1", goal: "Summarize my unread work.", principalUserId: "U999" }
+    });
+    await server.close();
+  });
+
+  it("returns an actionable forbidden response when admission is denied", async () => {
+    const server = buildServer({ isReady: () => true }, {
+      secret: "control-secret",
+      service: {
+        startTask: vi.fn(async () => { throw new AgentTaskControlError("admission_denied", "Agent Task admission requires an active owner Definition and a valid promotion grant"); }),
+        getTask: vi.fn(), cancelTask: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn()
+      }
+    });
+    const response = await server.inject({
+      method: "POST", url: "/internal/v1/agent/tasks", headers,
+      payload: { clientRequestId: "client-denied", goal: "Summarize unread work" }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      code: 403,
+      reason: "admission_denied",
+      message: "Agent Task admission requires an active owner Definition and a valid promotion grant"
     });
     await server.close();
   });

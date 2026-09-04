@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：Agent Task admission 拒绝现在提供可操作的安全响应。
+  - 当 Core 以 `PERMISSION_DENIED` 拒绝交互 Task admission 时，Agent Runtime 将其规范为 `403`、`reason=admission_denied`，明确提示当前 owner 需要 active Definition 与有效 promotion grant。
+  - 响应不披露 grant、候选策略或其他 owner 数据；其他 Runtime 控制错误也新增稳定的 `reason` 枚举字段，方便前端在后续独立改版中展示恢复指引。
+
 - 2026-09-04：主 Compose 默认开放 owner-scoped 的只读 Agent Definition API。
   - Gateway 现在默认装配认证的 `POST/GET /api/v1/agent/definitions`，使用户能够创建进入 `read_active` Durable Task admission 所需的 `read_only` Definition；用户仍可用环境变量关闭该入口。
   - API 只产生当前 owner 的 `conversation.list/read` wildcard scope，不能授予消息写入、MCP、Memory、订阅或 promotion authority。Core 继续要求同 candidate 的有效 promotion grant，因此默认 Task Control 不会自动提升为任意用户可执行。

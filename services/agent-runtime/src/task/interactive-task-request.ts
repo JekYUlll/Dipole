@@ -61,7 +61,16 @@ export class InteractiveTaskStartService {
     } catch (error) {
       throw new AgentTaskControlError("invalid_argument", error instanceof Error ? error.message : "Interactive Agent Task input is invalid");
     }
-    await this.dispatcher.dispatch(request.event, request.identity, request.taskId);
+    try {
+      await this.dispatcher.dispatch(request.event, request.identity, request.taskId);
+    } catch (error) {
+      // Core intentionally keeps promotion details private. Preserve its denial
+      // boundary while giving the owner the two prerequisites they can act on.
+      if (grpcPermissionDenied(error)) {
+        throw new AgentTaskControlError("admission_denied", "Agent Task admission requires an active owner Definition and a valid promotion grant");
+      }
+      throw error;
+    }
     return { taskId: request.taskId, status: "accepted" };
   }
 }
@@ -115,4 +124,8 @@ function required(value: string, label: string): string {
 function optional(value: string | undefined): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized.slice(0, 128) : undefined;
+}
+
+function grpcPermissionDenied(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && Number(error.code) === 7;
 }
