@@ -73,6 +73,33 @@ func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
 	}
 }
 
+func TestConfigDistKeepsAgentOAuthCallbackClosed(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if v.GetBool("gateway.agent_oauth_callback_enabled") {
+		t.Fatal("Agent OAuth callback route must remain opt-in")
+	}
+	if got := v.GetString("gateway.agent_oauth_callback_target"); got != "http://127.0.0.1:8091" {
+		t.Fatalf("Agent OAuth callback default target = %q", got)
+	}
+	for _, key := range []string{
+		"gateway.agent_oauth_callback_secret",
+		"gateway.agent_oauth_callback_redirect_uri",
+		"gateway.agent_oauth_callback_runtime_key_id",
+		"gateway.agent_oauth_callback_runtime_public_key_file",
+		"gateway.agent_oauth_callback_correlation_secret",
+		"gateway.agent_oauth_callback_browser_session_cookie",
+		"gateway.agent_oauth_callback_correlation_cookie",
+	} {
+		if !v.IsSet(key) || v.GetString(key) != "" {
+			t.Fatalf("Agent OAuth callback material %s must be declared and blank by default", key)
+		}
+	}
+}
+
 func TestConfigureConfigSourceUsesExplicitEnvironmentFile(t *testing.T) {
 	t.Setenv("DIPOLE_CONFIG_FILE", "/tmp/dipole-explicit-config.yaml")
 	v := viper.New()

@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：Gateway OAuth callback 的默认关闭 Composition Root 已完成：显式 `gateway.agent_oauth_callback_enabled` 才会注册 `/oauth/callback`，并要求 Runtime public key、callback correlation、redirect URI 和 Runtime notifier 所需材料全部可用。默认 Compose 不挂载 key、不提供材料，Runtime control endpoint 仍未装配。债务收敛为：Core-owned SQLC token lifecycle/KMS、Runtime provider profile 与 control handler、密钥轮换和受控端到端演练；在这些证据齐备前不得开启该开关或将此路由公开。
+
 - 2026-09-04：公共体验的 active read admission 过去只能由 smoke 直接写临时 promotion grant，无法作为可审计运维流程。Gateway 现具备默认关闭的 proposal/get/review/revoke 适配器，所有请求携带认证 session principal 至 Core；持久 operator grant、proposer/reviewer 分离、candidate/evidence/eval 精确绑定和撤销继续在 Core/SQLC 事务执行。真实体验部署仍需准备 operator grant、归档 evidence、完整 Gateway/Core Remote GPU receipt 以及前端 operator 页面，默认公开路由保持关闭。
 
 - 2026-09-04：Agent Runtime README 曾将旧的 Shadow/Temporal-disabled Compose 写成主线默认，与当前 `remote + read_active` Durable Runtime 冲突。现已按独立进程与微服务 Compose 分层重写，并由 `scripts/test_agent_runtime_readme.py` 固定 Runtime、Temporal、activity mode 和 Shadow 回退口径。该治理不改变任何默认 Capability authority；MCP、Memory、检索、订阅和写入仍需独立 profile、证据与回滚。

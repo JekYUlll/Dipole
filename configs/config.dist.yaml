@@ -40,6 +40,16 @@ gateway:
   # Exposes MCP only through Gateway JWT authentication and Core Task/Run authorization.
   agent_mcp_enabled: false
   agent_mcp_target: http://127.0.0.1:8091
+  # Public OAuth callback remains closed until its Runtime handoff profile is explicitly supplied.
+  agent_oauth_callback_enabled: false
+  agent_oauth_callback_target: http://127.0.0.1:8091
+  agent_oauth_callback_secret: ""
+  agent_oauth_callback_redirect_uri: ""
+  agent_oauth_callback_runtime_key_id: ""
+  agent_oauth_callback_runtime_public_key_file: ""
+  agent_oauth_callback_correlation_secret: ""
+  agent_oauth_callback_browser_session_cookie: ""
+  agent_oauth_callback_correlation_cookie: ""
 
 realtime:
   # go is the compatible default; shadow keeps Go writes while C++ observes; cpp checkpoints Go message offsets without client writes.

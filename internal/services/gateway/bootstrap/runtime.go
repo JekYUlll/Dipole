@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -202,6 +203,46 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		return nil, err
 	}
 	runtime.coreConn = coreConn
+	var agentOAuthCallback http.Handler
+	if gatewayCfg.AgentOAuthCallbackEnabled {
+		publicKey, readErr := os.ReadFile(gatewayCfg.AgentOAuthCallbackRuntimePublicKeyFile)
+		if readErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("read Agent OAuth callback Runtime public key: %w", readErr)
+		}
+		recorder, recordErr := gateway.NewAgentOAuthCallbackHandoffRecordClient(
+			agentv1.NewAgentCapabilityServiceClient(coreConn),
+			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
+		if recordErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent OAuth callback handoff recorder: %w", recordErr)
+		}
+		notifier, notifyErr := gateway.NewAgentOAuthCallbackHandoffNotifier(
+			gatewayCfg.AgentOAuthCallbackTarget,
+			gatewayCfg.AgentOAuthCallbackSecret,
+			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
+		if notifyErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent OAuth callback handoff notifier: %w", notifyErr)
+		}
+		handler, handlerErr := gateway.NewAgentOAuthCallbackHandler(gateway.AgentOAuthCallbackHandlerConfig{
+			CorrelationSecret:        []byte(gatewayCfg.AgentOAuthCallbackCorrelationSecret),
+			BrowserSessionCookieName: gatewayCfg.AgentOAuthCallbackBrowserSessionCookie,
+			CorrelationCookieName:    gatewayCfg.AgentOAuthCallbackCorrelationCookie,
+			RedirectURI:              gatewayCfg.AgentOAuthCallbackRedirectURI,
+			RuntimeKeyID:             gatewayCfg.AgentOAuthCallbackRuntimeKeyID,
+			RuntimePublicKeyPEM:      publicKey,
+			Record:                   recorder,
+			Notify:                   notifier,
+		})
+		if handlerErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent OAuth callback handler: %w", handlerErr)
+		}
+		agentOAuthCallback = handler
+	}
 	var search application.SearchApplication
 	if config.SearchConfig().Enabled {
 		searchClient, searchConnection, err := DialSearchApplication(ctx, rpcCfg)
@@ -352,6 +393,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		AgentMemories:          agentMemories,
 		AgentArtifacts:         agentArtifactApplication(agentArtifacts),
 		AgentMCP:               agentMCP,
+		AgentOAuthCallback:     agentOAuthCallback,
 		TokenResolver:          coreauth.NewTokenService(),
 		Presence:               wsTransport.NewRedisPresenceTracker(presence),
 		Limiter:                gatewayLimiter,

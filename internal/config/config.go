@@ -30,22 +30,31 @@ type Server struct {
 }
 
 type Gateway struct {
-	Mode                      string `mapstructure:"mode"`
-	CoreHTTPTarget            string `mapstructure:"core_http_target"`
-	AgentControlEnabled       bool   `mapstructure:"agent_control_enabled"`
-	AgentControlTarget        string `mapstructure:"agent_control_target"`
-	AgentControlSecret        string `mapstructure:"agent_control_secret"`
-	AgentPromotionEnabled     bool   `mapstructure:"agent_promotion_enabled"`
-	AgentPromotionTenantID    string `mapstructure:"agent_promotion_tenant_id"`
-	AgentDefinitionEnabled    bool   `mapstructure:"agent_definition_enabled"`
-	AgentSubscriptionEnabled  bool   `mapstructure:"agent_subscription_enabled"`
-	AgentSubscriptionTenantID string `mapstructure:"agent_subscription_tenant_id"`
-	AgentMemoryEnabled        bool   `mapstructure:"agent_memory_enabled"`
-	AgentMemoryTenantID       string `mapstructure:"agent_memory_tenant_id"`
-	AgentArtifactEnabled      bool   `mapstructure:"agent_artifact_enabled"`
-	AgentArtifactTenantID     string `mapstructure:"agent_artifact_tenant_id"`
-	AgentMCPEnabled           bool   `mapstructure:"agent_mcp_enabled"`
-	AgentMCPTarget            string `mapstructure:"agent_mcp_target"`
+	Mode                                   string `mapstructure:"mode"`
+	CoreHTTPTarget                         string `mapstructure:"core_http_target"`
+	AgentControlEnabled                    bool   `mapstructure:"agent_control_enabled"`
+	AgentControlTarget                     string `mapstructure:"agent_control_target"`
+	AgentControlSecret                     string `mapstructure:"agent_control_secret"`
+	AgentPromotionEnabled                  bool   `mapstructure:"agent_promotion_enabled"`
+	AgentPromotionTenantID                 string `mapstructure:"agent_promotion_tenant_id"`
+	AgentDefinitionEnabled                 bool   `mapstructure:"agent_definition_enabled"`
+	AgentSubscriptionEnabled               bool   `mapstructure:"agent_subscription_enabled"`
+	AgentSubscriptionTenantID              string `mapstructure:"agent_subscription_tenant_id"`
+	AgentMemoryEnabled                     bool   `mapstructure:"agent_memory_enabled"`
+	AgentMemoryTenantID                    string `mapstructure:"agent_memory_tenant_id"`
+	AgentArtifactEnabled                   bool   `mapstructure:"agent_artifact_enabled"`
+	AgentArtifactTenantID                  string `mapstructure:"agent_artifact_tenant_id"`
+	AgentMCPEnabled                        bool   `mapstructure:"agent_mcp_enabled"`
+	AgentMCPTarget                         string `mapstructure:"agent_mcp_target"`
+	AgentOAuthCallbackEnabled              bool   `mapstructure:"agent_oauth_callback_enabled"`
+	AgentOAuthCallbackTarget               string `mapstructure:"agent_oauth_callback_target"`
+	AgentOAuthCallbackSecret               string `mapstructure:"agent_oauth_callback_secret"`
+	AgentOAuthCallbackRedirectURI          string `mapstructure:"agent_oauth_callback_redirect_uri"`
+	AgentOAuthCallbackRuntimeKeyID         string `mapstructure:"agent_oauth_callback_runtime_key_id"`
+	AgentOAuthCallbackRuntimePublicKeyFile string `mapstructure:"agent_oauth_callback_runtime_public_key_file"`
+	AgentOAuthCallbackCorrelationSecret    string `mapstructure:"agent_oauth_callback_correlation_secret"`
+	AgentOAuthCallbackBrowserSessionCookie string `mapstructure:"agent_oauth_callback_browser_session_cookie"`
+	AgentOAuthCallbackCorrelationCookie    string `mapstructure:"agent_oauth_callback_correlation_cookie"`
 }
 
 type Realtime struct {
@@ -813,22 +822,31 @@ func ServerConfig() Server {
 func GatewayConfig() Gateway {
 	MustLoad()
 	return Gateway{
-		Mode:                      strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
-		CoreHTTPTarget:            strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
-		AgentControlEnabled:       cfg.GetBool("gateway.agent_control_enabled"),
-		AgentControlTarget:        strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
-		AgentControlSecret:        strings.TrimSpace(cfg.GetString("gateway.agent_control_secret")),
-		AgentPromotionEnabled:     cfg.GetBool("gateway.agent_promotion_enabled"),
-		AgentPromotionTenantID:    strings.TrimSpace(cfg.GetString("gateway.agent_promotion_tenant_id")),
-		AgentDefinitionEnabled:    cfg.GetBool("gateway.agent_definition_enabled"),
-		AgentSubscriptionEnabled:  cfg.GetBool("gateway.agent_subscription_enabled"),
-		AgentSubscriptionTenantID: strings.TrimSpace(cfg.GetString("gateway.agent_subscription_tenant_id")),
-		AgentMemoryEnabled:        cfg.GetBool("gateway.agent_memory_enabled"),
-		AgentMemoryTenantID:       strings.TrimSpace(cfg.GetString("gateway.agent_memory_tenant_id")),
-		AgentArtifactEnabled:      cfg.GetBool("gateway.agent_artifact_enabled"),
-		AgentArtifactTenantID:     strings.TrimSpace(cfg.GetString("gateway.agent_artifact_tenant_id")),
-		AgentMCPEnabled:           cfg.GetBool("gateway.agent_mcp_enabled"),
-		AgentMCPTarget:            strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
+		Mode:                                   strings.ToLower(strings.TrimSpace(cfg.GetString("gateway.mode"))),
+		CoreHTTPTarget:                         strings.TrimSpace(cfg.GetString("gateway.core_http_target")),
+		AgentControlEnabled:                    cfg.GetBool("gateway.agent_control_enabled"),
+		AgentControlTarget:                     strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
+		AgentControlSecret:                     strings.TrimSpace(cfg.GetString("gateway.agent_control_secret")),
+		AgentPromotionEnabled:                  cfg.GetBool("gateway.agent_promotion_enabled"),
+		AgentPromotionTenantID:                 strings.TrimSpace(cfg.GetString("gateway.agent_promotion_tenant_id")),
+		AgentDefinitionEnabled:                 cfg.GetBool("gateway.agent_definition_enabled"),
+		AgentSubscriptionEnabled:               cfg.GetBool("gateway.agent_subscription_enabled"),
+		AgentSubscriptionTenantID:              strings.TrimSpace(cfg.GetString("gateway.agent_subscription_tenant_id")),
+		AgentMemoryEnabled:                     cfg.GetBool("gateway.agent_memory_enabled"),
+		AgentMemoryTenantID:                    strings.TrimSpace(cfg.GetString("gateway.agent_memory_tenant_id")),
+		AgentArtifactEnabled:                   cfg.GetBool("gateway.agent_artifact_enabled"),
+		AgentArtifactTenantID:                  strings.TrimSpace(cfg.GetString("gateway.agent_artifact_tenant_id")),
+		AgentMCPEnabled:                        cfg.GetBool("gateway.agent_mcp_enabled"),
+		AgentMCPTarget:                         strings.TrimSpace(cfg.GetString("gateway.agent_mcp_target")),
+		AgentOAuthCallbackEnabled:              cfg.GetBool("gateway.agent_oauth_callback_enabled"),
+		AgentOAuthCallbackTarget:               strings.TrimSpace(cfg.GetString("gateway.agent_oauth_callback_target")),
+		AgentOAuthCallbackSecret:               strings.TrimSpace(cfg.GetString("gateway.agent_oauth_callback_secret")),
+		AgentOAuthCallbackRedirectURI:          strings.TrimSpace(cfg.GetString("gateway.agent_oauth_callback_redirect_uri")),
+		AgentOAuthCallbackRuntimeKeyID:         strings.TrimSpace(cfg.GetString("gateway.agent_oauth_callback_runtime_key_id")),
+		AgentOAuthCallbackRuntimePublicKeyFile: strings.TrimSpace(cfg.GetString("gateway.agent_oauth_callback_runtime_public_key_file")),
+		AgentOAuthCallbackCorrelationSecret:    strings.TrimSpace(cfg.GetString("gateway.agent_oauth_callback_correlation_secret")),
+		AgentOAuthCallbackBrowserSessionCookie: strings.TrimSpace(cfg.GetString("gateway.agent_oauth_callback_browser_session_cookie")),
+		AgentOAuthCallbackCorrelationCookie:    strings.TrimSpace(cfg.GetString("gateway.agent_oauth_callback_correlation_cookie")),
 	}
 }
 

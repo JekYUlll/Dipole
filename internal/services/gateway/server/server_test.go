@@ -452,6 +452,38 @@ func TestGatewayRequiresRemoteDependencies(t *testing.T) {
 	}
 }
 
+func TestGatewayMountsOAuthCallbackOnlyWhenExplicitlyInjected(t *testing.T) {
+	withoutCallback, err := newTestGatewayServer("http://127.0.0.1:8081", Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, route := range withoutCallback.Engine().Routes() {
+		if route.Method == http.MethodGet && route.Path == "/oauth/callback" {
+			t.Fatal("callback route must remain unmounted without an injected handler")
+		}
+	}
+
+	withCallback, err := newTestGatewayServer("http://127.0.0.1:8081", Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, Limiter: gatewayLimiterStub{},
+		AgentOAuthCallback: http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			if request.URL.Path != "/oauth/callback" {
+				t.Fatalf("unexpected callback path: %q", request.URL.Path)
+			}
+			writer.WriteHeader(http.StatusAccepted)
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	withCallback.Engine().ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/oauth/callback", nil))
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("injected callback status=%d", response.Code)
+	}
+}
+
 func TestGatewayOwnsAuthenticatedSearchRoute(t *testing.T) {
 	t.Chdir("../../../..")
 	t.Setenv("DIPOLE_CONFIG_FILE", "configs/config.dist.yaml")

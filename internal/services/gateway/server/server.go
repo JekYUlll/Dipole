@@ -42,6 +42,7 @@ type Dependencies struct {
 	AgentMemories          AgentMemoryControlApplication
 	AgentArtifacts         AgentArtifactApplication
 	AgentMCP               AgentMCPApplication
+	AgentOAuthCallback     http.Handler
 	TokenResolver          application.TokenResolver
 	Presence               wsTransport.PresenceTracker
 	Limiter                MessageRateLimiter
@@ -105,6 +106,9 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "component": "gateway"})
 	})
 	engine.GET("/api/v1/ws", wsHandler.Handle)
+	if dependencies.AgentOAuthCallback != nil {
+		engine.GET("/oauth/callback", gin.WrapH(dependencies.AgentOAuthCallback))
+	}
 	protected := engine.Group("/api/v1")
 	protected.Use(auth)
 	protected.GET("/messages/offline", messageHandler.ListOffline)

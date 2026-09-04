@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：Gateway OAuth callback route 完成默认关闭的 Composition Root 装配。
+  - 仅在显式开关下注册 `/oauth/callback`；启动阶段加载 Runtime public key 并构造 Core handoff record client、Runtime opaque-ID notifier 和浏览器 correlation handler。缺少任一材料会失败关闭。
+  - 默认 Compose 仅声明空材料且不挂载密钥文件，Runtime control handler 仍未装配，因此没有端到端 OAuth 发布面。
+
 - 2026-09-04：补齐 Agent Runtime Promotion Control 的受控 operator grant 运维入口。
   - `manage-agent-promotion-operator-grant.sh` 默认只输出计划；`--apply` 强制要求受控 Compose project、不同的授予人与接收人、工单、原因和短期 UTC 到期时间，并且不把数据库密码放进命令行参数。
   - migration v59 为 grant/revoke 增加追加式审计行。脚本只管理 `agent_runtime_promotion_operator_grants`，不能审核 proposal、签发 Runtime promotion grant 或启用默认关闭的 Gateway 路由。
