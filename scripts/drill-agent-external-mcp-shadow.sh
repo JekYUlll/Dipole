@@ -8,6 +8,11 @@ node_dir="$(dirname "$node_path")"
 npm_bin="${DIPOLE_NPM_BIN:-$node_dir/npm}"
 # npm's launcher resolves `node` from PATH. Keep it aligned with DIPOLE_NODE_BIN.
 export PATH="$node_dir:$PATH"
+node_version="$("${node_path}" --version 2>/dev/null || true)"
+if [[ ! "$node_version" =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]] || (( BASH_REMATCH[1] < 22 )); then
+  printf 'Agent External MCP Shadow drill requires Node 22+; set DIPOLE_NODE_BIN to a Node 22 executable\n' >&2
+  exit 2
+fi
 compose_file="$root_dir/deploy/agent/external-mcp-shadow-drill.compose.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-mcp-drill-${RANDOM}-$$}"
 evidence_path="${DIPOLE_AGENT_MCP_DRILL_EVIDENCE:-$root_dir/services/agent-runtime/.artifacts/external-mcp-shadow-drill.json}"
@@ -48,6 +53,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+cd "$root_dir"
 mkdir -p "$(dirname "$evidence_path")"
 mkdir -p "$(dirname "$approval_evidence_path")"
 compose up -d --wait
@@ -86,7 +92,7 @@ fixture_address="$(jq -er '.address | select(type == "string" and length > 0)' "
 cd "$root_dir/services/agent-runtime"
 node_install_marker="node_modules/.dipole-node-path"
 if [[ ! -x node_modules/.bin/vitest ]] || [[ ! -f "$node_install_marker" ]] || [[ "$(<"$node_install_marker")" != "$node_path" ]]; then
-  "$npm_bin" ci --ignore-scripts
+  "$npm_bin" ci --ignore-scripts --no-audit --no-fund
   printf '%s\n' "$node_path" >"$node_install_marker"
 fi
 export DIPOLE_AGENT_FULL_STACK_DRILL=true

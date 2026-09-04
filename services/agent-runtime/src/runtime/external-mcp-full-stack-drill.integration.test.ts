@@ -19,7 +19,7 @@ import {
 import type { ExternalMcpConfig } from "../mcp/external-mcp-profile.js";
 import type { ExternalMcpProductionIoConfig } from "../mcp/external-mcp-production-io.js";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
-import { agentTaskId } from "../events/shadow-processor.js";
+import { agentEventLedgerKey, agentTaskId } from "../events/shadow-processor.js";
 import { createPersistentAgentTaskLifecycleActivities } from "../temporal/agent-task-lifecycle-activities.js";
 import { foundationAgentTaskActivities } from "../temporal/agent-task-activities.js";
 import { createTemporalMcpDispatchRuntime } from "../temporal/mcp-dispatch-runtime.js";
@@ -32,6 +32,7 @@ import { createExternalMcpShadowDrillEvidence } from "./external-mcp-shadow-dril
 
 const enabled = process.env.DIPOLE_AGENT_FULL_STACK_DRILL === "true";
 const integration = describe.skipIf(!enabled);
+const drillSubscriptionId = "SUB-MCP-DRILL";
 
 integration("external MCP isolated full-stack Shadow drill", () => {
   const database = `dipole_mcp_drill_${randomUUID().replaceAll("-", "")}`;
@@ -142,7 +143,8 @@ integration("external MCP isolated full-stack Shadow drill", () => {
       await waitForConsumerGroup(shadowConfig);
       await publish(shadowConfig, eventEnvelope("EVENT-MCP-DRILL-1", "MESSAGE-MCP-DRILL-1"));
       await waitFor(async () => Number((await databasePool.query<Array<{ count: number } & import("mysql2").RowDataPacket>>(
-        "SELECT COUNT(*) AS count FROM agent_event_ledger WHERE event_id = 'EVENT-MCP-DRILL-1' AND status = 'completed'"
+        "SELECT COUNT(*) AS count FROM agent_event_ledger WHERE event_id = ? AND status = 'completed'",
+        [ledgerEventId("EVENT-MCP-DRILL-1")]
       ))[0][0]?.count) === 1);
       await delay(750);
       expect(observation.toolCalls).toBe(1);
@@ -180,7 +182,14 @@ integration("external MCP isolated full-stack Shadow drill", () => {
   }, 120_000);
 
   function taskId(messageId: string): string {
-    return agentTaskId({ tenantId: "dipole", agentUuid: "UAI-DRILL", triggerType: "message.direct.created", triggerRef: messageId });
+    return agentTaskId({
+      tenantId: "dipole", agentUuid: "UAI-DRILL", triggerType: "message.direct.created", triggerRef: messageId,
+      subscriptionId: drillSubscriptionId
+    });
+  }
+
+  function ledgerEventId(eventId: string): string {
+    return agentEventLedgerKey({ eventId, subscriptionId: drillSubscriptionId });
   }
 });
 

@@ -67,8 +67,16 @@ func TestAgentMCPRPCDrillFixtureAuthentication(t *testing.T) {
 	server := startAgentMCPRPCDrillServer(t, certs, fixture)
 
 	valid := dialAgentMCPRPCDrillClient(t, server.Address(), certs.ca, certs.agentCert, certs.agentKey, agentMCPRPCDrillSecret, agentServiceName)
-	if response, err := valid.MatchEventSubscriptions(context.Background(), drillMatchRequest()); err != nil || len(response.GetSubscriptions()) != 1 {
+	if response, err := valid.MatchEventSubscriptions(context.Background(), drillMatchRequest()); err != nil || len(response.GetSubscriptions()) != 1 || response.GetSubscriptions()[0].GetCreatedById() != "U100" {
 		t.Fatalf("valid mTLS Agent call response=%+v err=%v", response, err)
+	}
+	admitRequest := &agentv1.AdmitRunRequest{
+		TenantId: "dipole", PrincipalUserId: "U100", AgentId: "UAI-DRILL", TriggerType: "message.direct.created",
+		TriggerRef: "MESSAGE-MCP-DRILL-1", EventId: "EVENT-MCP-DRILL-1", RuntimeId: agentServiceName, Mode: "shadow", SubscriptionId: " SUB-MCP-DRILL ",
+	}
+	if response, err := valid.AdmitRun(context.Background(), admitRequest); err != nil || response.GetTaskId() != drillIdentifier("task:", 59,
+		"dipole.agent.policy.persistence.v1", "dipole", "UAI-DRILL", "message.direct.created", "MESSAGE-MCP-DRILL-1", "SUB-MCP-DRILL") {
+		t.Fatalf("subscription-scoped mTLS Agent admission response=%+v err=%v", response, err)
 	}
 	if response, err := valid.CommitMemoryPromotionReceipt(context.Background(), drillMemoryPromotionCommitRequest()); err != nil || response.GetMemoryId() != "MEM-COMMIT-CAND-1" || response.GetMemoryType() != "semantic" {
 		t.Fatalf("valid mTLS receipt commit response=%+v err=%v", response, err)
@@ -250,14 +258,18 @@ func (f *agentMCPRPCDrillFixture) MatchEventSubscriptions(_ context.Context, req
 	f.recordCall()
 	return &agentv1.MatchEventSubscriptionsResponse{Subscriptions: []*agentv1.AgentEventSubscription{{
 		SubscriptionId: "SUB-MCP-DRILL", DefinitionId: "DEF-REPOSITORY-GUARDIAN", DefinitionVersion: 1,
-		TenantId: request.GetTenantId(), AgentId: request.GetAgentId(), EventType: request.GetEventType(),
+		TenantId: request.GetTenantId(), AgentId: request.GetAgentId(), CreatedById: "U100", EventType: request.GetEventType(),
 		ResourceType: request.GetResourceType(), ResourceId: request.GetResourceId(), FilterKind: "all", FilterJson: []byte(`{}`), Status: "active",
 	}}}, nil
 }
 
 func (f *agentMCPRPCDrillFixture) AdmitRun(_ context.Context, request *agentv1.AdmitRunRequest) (*agentv1.AdmitRunResponse, error) {
 	f.recordCall()
-	taskID := drillIdentifier("task:", 59, "dipole.agent.policy.persistence.v1", request.GetTenantId(), request.GetAgentId(), request.GetTriggerType(), request.GetTriggerRef())
+	taskParts := []string{"dipole.agent.policy.persistence.v1", request.GetTenantId(), request.GetAgentId(), request.GetTriggerType(), request.GetTriggerRef()}
+	if subscriptionID := strings.TrimSpace(request.GetSubscriptionId()); subscriptionID != "" {
+		taskParts = append(taskParts, subscriptionID)
+	}
+	taskID := drillIdentifier("task:", 59, taskParts...)
 	runID := drillIdentifier("run:", 60, "dipole.agent.run.v1", taskID, request.GetRuntimeId(), request.GetMode())
 	return &agentv1.AdmitRunResponse{TaskId: taskID, RunId: runID, RunStatus: "running"}, nil
 }

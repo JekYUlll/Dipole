@@ -1,5 +1,10 @@
 # 更新日志
 
+- 2026-09-04：External MCP Shadow drill 在依赖安装前增加 Node 22 运行时门禁。
+  - `DIPOLE_NODE_BIN` 指向 Node 18 或无效版本时，脚本以状态码 `2` 失败关闭，不会创建 Compose 资源或执行 `npm ci`；远端可显式指定已有的用户态 Node 22。缺依赖时的 lockfile 安装关闭 audit/fund 网络请求，避免 audit 阻塞隔离 drill。
+  - Core mTLS drill fixture 现显式回传订阅 owner，并将非空 subscription ID 纳入确定性 Task ID 向量，使 subscription 触发的 Runtime、Temporal Workflow 与 Core admission 使用同一隔离键。
+  - Remote GPU 在 `58ad3ada` 通过一次 disposable full-stack drill；归档 [MCP/Approval receipts](benchmarks/agent-mcp-approval-shadow-2026-09-04/)，覆盖 Tool/Artifact、重启去重、过期 readiness 拒绝和 approval replay 零副作用。该证据不授予 production authority。
+
 - 2026-09-04：Interactive Agent 隔离 Compose smoke 可选归档低敏成功 receipt。
   - 通过 `DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE` 指定既有目录下的新绝对路径后，脚本仅在所有 owner 隔离、幂等、只读轨迹与计数断言通过时原子写入 revision、profile、模型来源、任务 ID 哈希和受控计数。
   - receipt 不含原始 task/owner、消息、提示词、模型响应、Token 或凭据；失败与超时不生成回执。该工件只绑定隔离开发 smoke，不能替代共享 authority、性能或公开写入验收。
