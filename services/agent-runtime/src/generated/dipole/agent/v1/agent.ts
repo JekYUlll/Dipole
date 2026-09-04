@@ -1140,6 +1140,64 @@ export interface ReleaseOAuthCallbackHandoffResponse {
     handoffId: string;
 }
 /**
+ * Runtime submits only an encrypted token lifecycle record before completing
+ * its callback handoff lease. Core verifies the lease and persists the opaque
+ * envelope without receiving a plaintext provider token.
+ *
+ * @generated from protobuf message dipole.agent.v1.PersistOAuthTokenLifecycleRequest
+ */
+export interface PersistOAuthTokenLifecycleRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string handoff_id = 2
+     */
+    handoffId: string;
+    /**
+     * @generated from protobuf field: string lease_owner = 3
+     */
+    leaseOwner: string;
+    /**
+     * @generated from protobuf field: string state = 4
+     */
+    state: string;
+    /**
+     * @generated from protobuf field: string sealed_token_bundle = 5
+     */
+    sealedTokenBundle: string;
+    /**
+     * @generated from protobuf field: string token_bundle_sha256 = 6
+     */
+    tokenBundleSha256: string;
+    /**
+     * @generated from protobuf field: int64 access_token_expires_at_unix_ms = 7
+     */
+    accessTokenExpiresAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string scope = 8
+     */
+    scope: string;
+    /**
+     * @generated from protobuf field: string revocation_reason = 9
+     */
+    revocationReason: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.PersistOAuthTokenLifecycleResponse
+ */
+export interface PersistOAuthTokenLifecycleResponse {
+    /**
+     * @generated from protobuf field: string handoff_id = 1
+     */
+    handoffId: string;
+    /**
+     * @generated from protobuf field: string state = 2
+     */
+    state: string;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.BeginMcpToolInvocationRequest
  */
 export interface BeginMcpToolInvocationRequest {
@@ -6822,6 +6880,171 @@ class ReleaseOAuthCallbackHandoffResponse$Type extends MessageType<ReleaseOAuthC
  * @generated MessageType for protobuf message dipole.agent.v1.ReleaseOAuthCallbackHandoffResponse
  */
 export const ReleaseOAuthCallbackHandoffResponse = new ReleaseOAuthCallbackHandoffResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class PersistOAuthTokenLifecycleRequest$Type extends MessageType<PersistOAuthTokenLifecycleRequest> {
+    constructor() {
+        super("dipole.agent.v1.PersistOAuthTokenLifecycleRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "handoff_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "lease_owner", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "state", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "sealed_token_bundle", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 6, name: "token_bundle_sha256", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 7, name: "access_token_expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 8, name: "scope", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 9, name: "revocation_reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<PersistOAuthTokenLifecycleRequest>): PersistOAuthTokenLifecycleRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.handoffId = "";
+        message.leaseOwner = "";
+        message.state = "";
+        message.sealedTokenBundle = "";
+        message.tokenBundleSha256 = "";
+        message.accessTokenExpiresAtUnixMs = 0n;
+        message.scope = "";
+        message.revocationReason = "";
+        if (value !== undefined)
+            reflectionMergePartial<PersistOAuthTokenLifecycleRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: PersistOAuthTokenLifecycleRequest): PersistOAuthTokenLifecycleRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string handoff_id */ 2:
+                    message.handoffId = reader.string();
+                    break;
+                case /* string lease_owner */ 3:
+                    message.leaseOwner = reader.string();
+                    break;
+                case /* string state */ 4:
+                    message.state = reader.string();
+                    break;
+                case /* string sealed_token_bundle */ 5:
+                    message.sealedTokenBundle = reader.string();
+                    break;
+                case /* string token_bundle_sha256 */ 6:
+                    message.tokenBundleSha256 = reader.string();
+                    break;
+                case /* int64 access_token_expires_at_unix_ms */ 7:
+                    message.accessTokenExpiresAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string scope */ 8:
+                    message.scope = reader.string();
+                    break;
+                case /* string revocation_reason */ 9:
+                    message.revocationReason = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: PersistOAuthTokenLifecycleRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string handoff_id = 2; */
+        if (message.handoffId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.handoffId);
+        /* string lease_owner = 3; */
+        if (message.leaseOwner !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.leaseOwner);
+        /* string state = 4; */
+        if (message.state !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.state);
+        /* string sealed_token_bundle = 5; */
+        if (message.sealedTokenBundle !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.sealedTokenBundle);
+        /* string token_bundle_sha256 = 6; */
+        if (message.tokenBundleSha256 !== "")
+            writer.tag(6, WireType.LengthDelimited).string(message.tokenBundleSha256);
+        /* int64 access_token_expires_at_unix_ms = 7; */
+        if (message.accessTokenExpiresAtUnixMs !== 0n)
+            writer.tag(7, WireType.Varint).int64(message.accessTokenExpiresAtUnixMs);
+        /* string scope = 8; */
+        if (message.scope !== "")
+            writer.tag(8, WireType.LengthDelimited).string(message.scope);
+        /* string revocation_reason = 9; */
+        if (message.revocationReason !== "")
+            writer.tag(9, WireType.LengthDelimited).string(message.revocationReason);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.PersistOAuthTokenLifecycleRequest
+ */
+export const PersistOAuthTokenLifecycleRequest = new PersistOAuthTokenLifecycleRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class PersistOAuthTokenLifecycleResponse$Type extends MessageType<PersistOAuthTokenLifecycleResponse> {
+    constructor() {
+        super("dipole.agent.v1.PersistOAuthTokenLifecycleResponse", [
+            { no: 1, name: "handoff_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 2, name: "state", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<PersistOAuthTokenLifecycleResponse>): PersistOAuthTokenLifecycleResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.handoffId = "";
+        message.state = "";
+        if (value !== undefined)
+            reflectionMergePartial<PersistOAuthTokenLifecycleResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: PersistOAuthTokenLifecycleResponse): PersistOAuthTokenLifecycleResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* string handoff_id */ 1:
+                    message.handoffId = reader.string();
+                    break;
+                case /* string state */ 2:
+                    message.state = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: PersistOAuthTokenLifecycleResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* string handoff_id = 1; */
+        if (message.handoffId !== "")
+            writer.tag(1, WireType.LengthDelimited).string(message.handoffId);
+        /* string state = 2; */
+        if (message.state !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.state);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.PersistOAuthTokenLifecycleResponse
+ */
+export const PersistOAuthTokenLifecycleResponse = new PersistOAuthTokenLifecycleResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class BeginMcpToolInvocationRequest$Type extends MessageType<BeginMcpToolInvocationRequest> {
     constructor() {
@@ -13495,6 +13718,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ClaimOAuthCallbackHandoff", options: {}, I: ClaimOAuthCallbackHandoffRequest, O: ClaimOAuthCallbackHandoffResponse },
     { name: "CompleteOAuthCallbackHandoff", options: {}, I: CompleteOAuthCallbackHandoffRequest, O: CompleteOAuthCallbackHandoffResponse },
     { name: "ReleaseOAuthCallbackHandoff", options: {}, I: ReleaseOAuthCallbackHandoffRequest, O: ReleaseOAuthCallbackHandoffResponse },
+    { name: "PersistOAuthTokenLifecycle", options: {}, I: PersistOAuthTokenLifecycleRequest, O: PersistOAuthTokenLifecycleResponse },
     { name: "BeginMcpToolInvocation", options: {}, I: BeginMcpToolInvocationRequest, O: BeginMcpToolInvocationResponse },
     { name: "ResolveMcpToolCommand", options: {}, I: ResolveMcpToolCommandRequest, O: ResolveMcpToolCommandResponse },
     { name: "ClaimMcpToolRound", options: {}, I: ClaimMcpToolRoundRequest, O: ClaimMcpToolRoundResponse },

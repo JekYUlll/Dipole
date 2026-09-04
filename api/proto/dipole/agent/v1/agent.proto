@@ -373,6 +373,26 @@ message ReleaseOAuthCallbackHandoffResponse {
   string handoff_id = 1;
 }
 
+// Runtime submits only an encrypted token lifecycle record before completing
+// its callback handoff lease. Core verifies the lease and persists the opaque
+// envelope without receiving a plaintext provider token.
+message PersistOAuthTokenLifecycleRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string handoff_id = 2;
+  string lease_owner = 3;
+  string state = 4;
+  string sealed_token_bundle = 5;
+  string token_bundle_sha256 = 6;
+  int64 access_token_expires_at_unix_ms = 7;
+  string scope = 8;
+  string revocation_reason = 9;
+}
+
+message PersistOAuthTokenLifecycleResponse {
+  string handoff_id = 1;
+  string state = 2;
+}
+
 message BeginMcpToolInvocationRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -1109,6 +1129,7 @@ service AgentCapabilityService {
   rpc ClaimOAuthCallbackHandoff(ClaimOAuthCallbackHandoffRequest) returns (ClaimOAuthCallbackHandoffResponse);
   rpc CompleteOAuthCallbackHandoff(CompleteOAuthCallbackHandoffRequest) returns (CompleteOAuthCallbackHandoffResponse);
   rpc ReleaseOAuthCallbackHandoff(ReleaseOAuthCallbackHandoffRequest) returns (ReleaseOAuthCallbackHandoffResponse);
+  rpc PersistOAuthTokenLifecycle(PersistOAuthTokenLifecycleRequest) returns (PersistOAuthTokenLifecycleResponse);
   rpc BeginMcpToolInvocation(BeginMcpToolInvocationRequest) returns (BeginMcpToolInvocationResponse);
   rpc ResolveMcpToolCommand(ResolveMcpToolCommandRequest) returns (ResolveMcpToolCommandResponse);
   rpc ClaimMcpToolRound(ClaimMcpToolRoundRequest) returns (ClaimMcpToolRoundResponse);

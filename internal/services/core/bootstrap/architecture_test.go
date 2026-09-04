@@ -49,6 +49,7 @@ func TestCoreRuntimeKeepsOAuthCallbackHandoffExplicitAndMTLSBound(t *testing.T) 
 		"Agent OAuth callback handoff requires internal RPC mTLS",
 		"WithOAuthCallbackHandoffs",
 		"WithOAuthCallbackHandoffRecorder",
+		"WithOAuthTokenLifecycles",
 		"NewOAuthCallbackHandoffServer",
 	} {
 		if !strings.Contains(text, requirement) {

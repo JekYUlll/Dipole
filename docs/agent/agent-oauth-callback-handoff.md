@@ -10,7 +10,7 @@
 
 - `OAuthCallbackProvider` 是唯一新增的接口：吃 executor 已经解开的 authorization code，只返回 `{ kind: "exchanged" | "retryable_failure" | "permanent_failure" }` 三种声明结果；不确定失败必须抛错以让 executor 保留 lease（沿用现有"outcome unknown 保留 lease"契约）。
 - `DeterministicFakeOAuthCallbackProvider` 是测试双重：按 `sha256(authorizationCode)` 查 plan，`exchanged` / `permanent_failure` 幂等缓存，`retryable_failure` 每次都会真调，`throw` outcome 用来模拟不确定；无任何真实 HTTP。
-- `TokenLifecycleStore`（进程内）承载 `pending_exchange → active → refreshed → { revoked | expired }` 状态机；terminal 后 `accessToken` / `refreshToken` 置 null 仅保留 metadata，非法转换 fail closed。**这只是 seam**——生产 lifecycle 必须由 Core 拥有的 SQLC 表 + KMS 承担；本切片没有新增 migration、没有新增 SQLC、没有跨进程持久化。
+- `TokenLifecycleStore`（进程内）承载离线 fixture 的 `pending_exchange → active → refreshed → { revoked | expired }` 状态机；terminal 后 `accessToken` / `refreshToken` 置 null 仅保留 metadata，非法转换 fail closed。生产路径现有 Core-owned `000060_agent_oauth_token_lifecycles` SQLC seam：`PersistOAuthTokenLifecycle` 仅接受 mTLS `dipole-agent`，将首次 opaque envelope 写入绑定到仍有效的 callback lease，并对精确重复提交幂等。Runtime token envelope sealer、refresh/revoke/retention worker 仍未装配，因此该 RPC 不构成可发布 token lifecycle。
 - `OAuthCallbackHandoffProviderProcessor` 把 provider + lifecycle wire 成 executor 认识的 `OAuthCallbackHandoffProcessor`：`exchanged` 写 active → `"completed"`；`retryable_failure` 不写 lifecycle → `"retryable_failure"`；`permanent_failure` 写 revoked → `"completed"`；lifecycle 已有 active / refreshed / revoked 时短路返回 `"completed"`，用于精确重放保护（Core 本身也拒绝二次 claim，此为进程内的第二道去重）。
 - 端到端 6 场景（重复 notify、Worker 重启换 lease owner、claim 后 lease 超时、`exchanged` 精确重放被 Core 拒、`retryable_failure` 回滚后再次 claim 成功、`PERMISSION_DENIED` 时 Runtime 不打开 envelope / 不调 provider / 不写 lifecycle）在 `services/agent-runtime/src/mcp/oauth-callback-handoff-durable-runtime.test.ts` 用离线 fake Core store + fake provider 覆盖。
 
@@ -84,7 +84,7 @@ The exact dual-channel transport and failure contract is maintained in
 1. 已完成：将 versioned callback-correlation contract 装配为默认关闭的 Gateway handler，复核 expiry、issuer mix-up、redirect URI 与 browser binding。
 2. 已完成：Agent-owned SQLC handoff table、Runtime-only envelope ciphertext、code-hash uniqueness 与 lease/terminal transitions。
 3. 已完成：Gateway 和 Runtime mTLS clients，且控制面不记录 request body 或敏感 headers。
-4. 实现 Core-owned、Runtime-key encrypted token lifecycle，并为 refresh/revoke/retention 提供幂等持久化策略。
+4. 部分完成：Core-owned SQLC persistence 已绑定 callback lease；仍需 Runtime-key token envelope、refresh/revoke/retention 的幂等 worker 与恢复演练。
 5. 装配经评审的 Runtime provider profile 与 handoff receiver；启用后必须在 Runtime 启动时验证私钥、Core mTLS、provider 身份与 lifecycle backend。
 6. Add fault tests for duplicate callback, Runtime unavailable after claim, restart during exchange, expired correlation, wrong issuer, wrong redirect URI and wrong browser binding.
 7. 完成 provider owner 评审、受控端到端演练和回滚演练后，才允许同时启用 Gateway 与 Runtime。

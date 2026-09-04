@@ -375,6 +375,20 @@ type AgentOauthCallbackHandoff struct {
 	UpdatedAt               time.Time
 }
 
+type AgentOauthTokenLifecycle struct {
+	HandoffUuid          string
+	RuntimeKeyID         string
+	State                string
+	SealedTokenBundle    sql.NullString
+	TokenBundleSha256    sql.NullString
+	AccessTokenExpiresAt sql.NullTime
+	Scope                sql.NullString
+	RefreshCount         uint32
+	RevocationReason     sql.NullString
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
 type AgentRun struct {
 	ID               uint64
 	RunUuid          string

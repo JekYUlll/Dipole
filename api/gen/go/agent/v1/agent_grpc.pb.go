@@ -55,6 +55,7 @@ const (
 	AgentCapabilityService_ClaimOAuthCallbackHandoff_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/ClaimOAuthCallbackHandoff"
 	AgentCapabilityService_CompleteOAuthCallbackHandoff_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/CompleteOAuthCallbackHandoff"
 	AgentCapabilityService_ReleaseOAuthCallbackHandoff_FullMethodName           = "/dipole.agent.v1.AgentCapabilityService/ReleaseOAuthCallbackHandoff"
+	AgentCapabilityService_PersistOAuthTokenLifecycle_FullMethodName            = "/dipole.agent.v1.AgentCapabilityService/PersistOAuthTokenLifecycle"
 	AgentCapabilityService_BeginMcpToolInvocation_FullMethodName                = "/dipole.agent.v1.AgentCapabilityService/BeginMcpToolInvocation"
 	AgentCapabilityService_ResolveMcpToolCommand_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ResolveMcpToolCommand"
 	AgentCapabilityService_ClaimMcpToolRound_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ClaimMcpToolRound"
@@ -125,6 +126,7 @@ type AgentCapabilityServiceClient interface {
 	ClaimOAuthCallbackHandoff(ctx context.Context, in *ClaimOAuthCallbackHandoffRequest, opts ...grpc.CallOption) (*ClaimOAuthCallbackHandoffResponse, error)
 	CompleteOAuthCallbackHandoff(ctx context.Context, in *CompleteOAuthCallbackHandoffRequest, opts ...grpc.CallOption) (*CompleteOAuthCallbackHandoffResponse, error)
 	ReleaseOAuthCallbackHandoff(ctx context.Context, in *ReleaseOAuthCallbackHandoffRequest, opts ...grpc.CallOption) (*ReleaseOAuthCallbackHandoffResponse, error)
+	PersistOAuthTokenLifecycle(ctx context.Context, in *PersistOAuthTokenLifecycleRequest, opts ...grpc.CallOption) (*PersistOAuthTokenLifecycleResponse, error)
 	BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(ctx context.Context, in *ResolveMcpToolCommandRequest, opts ...grpc.CallOption) (*ResolveMcpToolCommandResponse, error)
 	ClaimMcpToolRound(ctx context.Context, in *ClaimMcpToolRoundRequest, opts ...grpc.CallOption) (*ClaimMcpToolRoundResponse, error)
@@ -519,6 +521,16 @@ func (c *agentCapabilityServiceClient) ReleaseOAuthCallbackHandoff(ctx context.C
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) PersistOAuthTokenLifecycle(ctx context.Context, in *PersistOAuthTokenLifecycleRequest, opts ...grpc.CallOption) (*PersistOAuthTokenLifecycleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PersistOAuthTokenLifecycleResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_PersistOAuthTokenLifecycle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) BeginMcpToolInvocation(ctx context.Context, in *BeginMcpToolInvocationRequest, opts ...grpc.CallOption) (*BeginMcpToolInvocationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BeginMcpToolInvocationResponse)
@@ -803,6 +815,7 @@ type AgentCapabilityServiceServer interface {
 	ClaimOAuthCallbackHandoff(context.Context, *ClaimOAuthCallbackHandoffRequest) (*ClaimOAuthCallbackHandoffResponse, error)
 	CompleteOAuthCallbackHandoff(context.Context, *CompleteOAuthCallbackHandoffRequest) (*CompleteOAuthCallbackHandoffResponse, error)
 	ReleaseOAuthCallbackHandoff(context.Context, *ReleaseOAuthCallbackHandoffRequest) (*ReleaseOAuthCallbackHandoffResponse, error)
+	PersistOAuthTokenLifecycle(context.Context, *PersistOAuthTokenLifecycleRequest) (*PersistOAuthTokenLifecycleResponse, error)
 	BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error)
 	ResolveMcpToolCommand(context.Context, *ResolveMcpToolCommandRequest) (*ResolveMcpToolCommandResponse, error)
 	ClaimMcpToolRound(context.Context, *ClaimMcpToolRoundRequest) (*ClaimMcpToolRoundResponse, error)
@@ -944,6 +957,9 @@ func (UnimplementedAgentCapabilityServiceServer) CompleteOAuthCallbackHandoff(co
 }
 func (UnimplementedAgentCapabilityServiceServer) ReleaseOAuthCallbackHandoff(context.Context, *ReleaseOAuthCallbackHandoffRequest) (*ReleaseOAuthCallbackHandoffResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReleaseOAuthCallbackHandoff not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) PersistOAuthTokenLifecycle(context.Context, *PersistOAuthTokenLifecycleRequest) (*PersistOAuthTokenLifecycleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PersistOAuthTokenLifecycle not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) BeginMcpToolInvocation(context.Context, *BeginMcpToolInvocationRequest) (*BeginMcpToolInvocationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BeginMcpToolInvocation not implemented")
@@ -1687,6 +1703,24 @@ func _AgentCapabilityService_ReleaseOAuthCallbackHandoff_Handler(srv interface{}
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_PersistOAuthTokenLifecycle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PersistOAuthTokenLifecycleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).PersistOAuthTokenLifecycle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_PersistOAuthTokenLifecycle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).PersistOAuthTokenLifecycle(ctx, req.(*PersistOAuthTokenLifecycleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_BeginMcpToolInvocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BeginMcpToolInvocationRequest)
 	if err := dec(in); err != nil {
@@ -2269,6 +2303,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReleaseOAuthCallbackHandoff",
 			Handler:    _AgentCapabilityService_ReleaseOAuthCallbackHandoff_Handler,
+		},
+		{
+			MethodName: "PersistOAuthTokenLifecycle",
+			Handler:    _AgentCapabilityService_PersistOAuthTokenLifecycle_Handler,
 		},
 		{
 			MethodName: "BeginMcpToolInvocation",

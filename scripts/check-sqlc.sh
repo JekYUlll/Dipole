@@ -20,7 +20,10 @@ reject_legacy_orm() {
 
   # Scan tests too: test-only GORM adapters would leave a second data-access
   # model that cannot be shared safely by the future polyglot services.
-  if rg --quiet --glob '*.go' --glob '!vendor/**' --ignore-case "${legacy_go_pattern}" .; then
+  # The architecture test intentionally asserts these legacy import strings.
+  # Excluding that self-referential test keeps the production/test-source scan
+  # strict without making the gate permanently fail on its own assertions.
+  if rg --quiet --glob '*.go' --glob '!vendor/**' --glob '!internal/platform/mysql/sqlc_architecture_test.go' --ignore-case "${legacy_go_pattern}" .; then
     echo "Go code must use database/sql and SQLC; GORM or AutoMigrate references remain" >&2
     exit 1
   fi
