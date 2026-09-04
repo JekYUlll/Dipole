@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-04：增加默认未装配的 Gateway OAuth callback correlation v1 原语。
+  - HMAC 保护 transaction、owner、issuer、redirect URI、state digest、browser-session digest 与 expiry；篡改和过期值均失败关闭，未注册 HTTP route。
+
 - 2026-09-04：将 OAuth callback handoff 原子记录接入默认关闭的 Core gRPC seam。
   - `RecordOAuthCallbackHandoff` 仅接受 `dipole-gateway`，从可信 RequestContext 恢复 owner，并将 Runtime-only 密文记录委托给 SQLC 原子仓储；缺少显式 mTLS Store 注入时固定返回 `Unavailable`。
   - Go 与 TypeScript protobuf 已同步生成。浏览器 correlation、callback route、Provider code exchange 和 token 生命周期继续关闭。
