@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-04：Remote GPU 的隔离 MySQL 8.4 Model Audit contract 发现夹具只应用 `000019` 与 `000023`，遗漏 `000057_agent_model_run_stages`，导致当前带 `stage` 的 SQL 查询全部失败。夹具现按运行时依赖补齐该 migration；公共 `dipole-experience` 未被连接或重启，仍需以修复 revision 重跑完整隔离 contract。
+- 2026-09-04：Remote GPU 的隔离 MySQL 8.4 Model Audit contract 曾发现夹具只应用 `000019` 与 `000023`，遗漏 `000057_agent_model_run_stages`，导致当前带 `stage` 的 SQL 查询全部失败。夹具已按运行时依赖补齐 migration，并在 `aef434b0` 的回环 MySQL 8.4 容器通过 6/6 contract；候选目录、容器与 bundle 均已清理，公共 `dipole-experience` 保持 11 个容器。该回执仅覆盖 Model Audit 持久化，不外推为 Agent 端到端或 Provider 质量结论。
 
 - 2026-09-04：失败模型调用的 token 计量治理已收口。`agent_model_calls` 对无法获取 Provider usage 的失败调用保持 token `NULL`，Shadow Eval review pack 明确导出 `tokenMetering=unavailable` 并保留完成的延迟计量；评审仍须将此类样本作为不完整 Cost observation，不能用于总体成功率或成本结论。
 

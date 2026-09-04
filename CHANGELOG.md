@@ -1,5 +1,8 @@
 # 更新日志
 
+- 2026-09-04：完成 Agent Model Audit 的 Remote GPU MySQL 8.4 合同复验。
+  - `aef434b0` 在回环隔离 MySQL 容器中通过 6 项并发保留、策略漂移、终态调用、崩溃保留、Kafka 重试预算和结果重放测试；候选目录、容器与 bundle 均已清理，公共 `dipole-experience` 保持 11 个容器。
+
 - 2026-09-04：修正 Agent Model Audit MySQL 集成夹具的迁移漂移。
   - 夹具现应用 `000057_agent_model_run_stages`，与 Model Router 的 `task_uuid + stage` 查询和复合唯一约束一致；Remote GPU 的隔离 MySQL 8.4 验证此前暴露该列缺失，公共部署未受影响。
 
