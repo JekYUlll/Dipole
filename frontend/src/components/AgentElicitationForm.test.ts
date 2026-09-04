@@ -86,4 +86,13 @@ describe('AgentElicitationForm', () => {
     await flushPromises()
     expect(wrapper.find('[data-agent-submit]').exists()).toBe(true)
   })
+
+  it('hides the source rail when embedded', async () => {
+    const wrapper = mount(AgentElicitationForm, {
+      props: { taskId: 'TASK-1', client: client([waitingTask]), now: () => 1_000, embedded: true },
+    })
+    await flushPromises()
+    expect(wrapper.find('.source-rail').exists()).toBe(false)
+    expect(wrapper.find('[data-agent-submit]').exists()).toBe(true)
+  })
 })

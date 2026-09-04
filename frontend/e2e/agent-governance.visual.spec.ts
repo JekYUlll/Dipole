@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 const subscription = {
   subscriptionId: 'SUB-1', definitionId: 'DEF-1', definitionVersion: 7, agentId: 'UAI',
@@ -22,6 +23,7 @@ test.beforeEach(async ({ page, browserName }) => {
     localStorage.setItem('dipole.web.token', 'governance-visual-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
+  await stubChatBootstrap(page)
 })
 
 test('keeps the subscription governance surface aligned with the Pencil baseline', async ({ page }) => {
@@ -42,19 +44,20 @@ test('keeps the subscription governance surface aligned with the Pencil baseline
     await route.fulfill({ status: 404 })
   })
 
-  await page.goto('/app/agent/subscriptions')
-  await expect(page.getByRole('heading', { name: '事件订阅' })).toBeVisible()
-  await expect(page.locator('.subscription-shell')).toHaveScreenshot('subscriptions-chromium.png', {
+  await page.goto('/app/?agent=1&view=subscriptions')
+  await expect(page.locator('[data-agent-subscriptions-view]')).toBeVisible()
+  await expect(page.locator('[data-agent-subscriptions-view]')).toHaveScreenshot('subscriptions-chromium.png', {
     animations: 'disabled',
   })
 })
 
 test('keeps the memory governance surface aligned with the Pencil baseline', async ({ page }) => {
+  await page.route('**/api/v1/agent/memory-candidates**', route => ok(route, { candidates: [], nextCursor: '' }))
   await page.route('**/api/v1/agent/memories**', route => ok(route, { memories: [memory], nextCursor: '' }))
 
-  await page.goto('/app/agent/memories')
-  await expect(page.getByRole('heading', { name: '长期记忆', exact: true })).toBeVisible()
-  await expect(page.locator('.memory-shell')).toHaveScreenshot('memories-chromium.png', {
+  await page.goto('/app/?agent=1&view=memories')
+  await expect(page.locator('[data-agent-memories-view]')).toBeVisible()
+  await expect(page.locator('[data-agent-memories-view]')).toHaveScreenshot('memories-chromium.png', {
     animations: 'disabled',
   })
 })

@@ -59,4 +59,13 @@ describe('AgentTaskInbox', () => {
     expect(taskClient.list).toHaveBeenLastCalledWith('NEXT', 50)
     expect(wrapper.findAll('[data-agent-task-id]').length).toBe(2)
   })
+
+  it('hides the control rail when embedded', async () => {
+    const wrapper = mount(AgentTaskInbox, {
+      props: { client: client(), embedded: true },
+      global: { stubs: { RouterLink: { props: ['to'], template: '<a><slot /></a>' } } },
+    })
+    await flushPromises()
+    expect(wrapper.find('.control-rail').exists()).toBe(false)
+  })
 })

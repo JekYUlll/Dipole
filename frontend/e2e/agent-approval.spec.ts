@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 const taskPath = '/api/v1/agent/tasks/TASK-1'
 const approvalPath = `${taskPath}/approvals/APPROVAL-1`
@@ -25,6 +26,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/users/me**', route => ok(route, {
     uuid: 'U1', nickname: 'User One', avatar: '', signature: '', user_type: 0, status: 1,
   }))
+  await stubChatBootstrap(page)
 })
 
 test('submits the exact approval binding and resumes the Task', async ({ page }) => {
@@ -46,8 +48,7 @@ test('submits the exact approval binding and resumes the Task', async ({ page })
     await route.fulfill({ status: 404 })
   })
 
-  await page.goto('/app/agent/tasks/TASK-1/approval')
-  await expect(page.getByRole('heading', { name: '确认 Agent 操作' })).toBeVisible()
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=approval')
   await expect(page.getByText('向项目群发送延期风险提醒')).toBeVisible()
   await page.getByRole('button', { name: '批准并继续' }).click()
 
@@ -70,7 +71,7 @@ test('fails closed when the authoritative Task query is unavailable', async ({ p
     await ok(route, waitingTask())
   })
 
-  await page.goto('/app/agent/tasks/TASK-1/approval')
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=approval')
   await expect(page.getByRole('alert')).toContainText('无法确认当前审批请求')
   await expect(page.getByText('private upstream detail')).toHaveCount(0)
   await expect(page.getByRole('button', { name: '批准并继续' })).toHaveCount(0)
@@ -81,7 +82,7 @@ test('fails closed when the authoritative Task query is unavailable', async ({ p
 test('keeps the approval action surface single-column on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.route('**/api/v1/agent/tasks/**', route => ok(route, waitingTask()))
-  await page.goto('/app/agent/tasks/TASK-1/approval')
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=approval')
 
   const columns = await page.locator('.approval-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns)
   expect(columns.trim().split(/\s+/)).toHaveLength(1)

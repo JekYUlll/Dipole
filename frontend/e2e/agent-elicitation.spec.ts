@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 const taskPath = '/api/v1/agent/tasks/TASK-1'
 const inputPath = `${taskPath}/inputs/INPUT-1`
@@ -28,6 +29,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('dipole.web.token', 'elicitation-browser-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U1', nickname: 'User One' }))
   })
+  await stubChatBootstrap(page)
 })
 
 test('submits the exact Task/request binding and discloses untrusted MCP source', async ({ page }) => {
@@ -53,7 +55,7 @@ test('submits the exact Task/request binding and discloses untrusted MCP source'
     await route.fulfill({ status: 404 })
   })
 
-  await page.goto('/app/agent/tasks/TASK-1/input')
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=input')
   await expect(page.getByText('UNTRUSTED MCP')).toBeVisible()
   await expect(page.getByText('calendar.example')).toBeVisible()
   await page.getByRole('textbox', { name: 'Event title' }).fill('Release review')
@@ -81,7 +83,7 @@ test('focuses the first invalid field and hides stale data while query is unavai
     await ok(route, waitingTask())
   })
 
-  await page.goto('/app/agent/tasks/TASK-1/input')
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=input')
   await expect(page.getByRole('alert')).toContainText('无法确认当前输入请求')
   await expect(page.getByText('private upstream detail')).toHaveCount(0)
   await expect(page.locator('[data-agent-submit]')).toHaveCount(0)
@@ -94,7 +96,7 @@ test('focuses the first invalid field and hides stale data while query is unavai
 test('keeps the maintained single-column mobile layout', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.route('**/api/v1/agent/tasks/**', route => ok(route, waitingTask()))
-  await page.goto('/app/agent/tasks/TASK-1/input')
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=input')
 
   const columns = await page.locator('.elicitation-grid').evaluate(element => getComputedStyle(element).gridTemplateColumns)
   expect(columns.trim().split(/\s+/)).toHaveLength(1)

@@ -65,6 +65,7 @@ type Dependencies struct {
 	SyncComparison applicationPort.ClientSyncComparisonObserver
 	Messaging      *MessagingServices
 	SystemMessages applicationPort.SystemMessageSender
+	FrontendFlags  *FrontendFlags
 }
 
 func NewWithRepositories(repos *Repositories) *Server {
@@ -80,7 +81,7 @@ func NewWithDependencies(repos *Repositories, dependencies Dependencies) *Server
 	engine.Use(middleware.Correlation())
 	engine.Use(logger.GinLogger(), logger.GinRecovery())
 	engine.Use(cors.Default())
-	mountWebApp(engine)
+	mountWebApp(engine, dependencies.FrontendFlags)
 
 	appCfg := config.AppConfig()
 

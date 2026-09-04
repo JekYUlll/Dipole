@@ -65,20 +65,24 @@ function eventTime(event: AgentTaskTimelineEvent): string {
   return new Date(event.occurredAtUnixMs).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-function artifactRoute(event: AgentTaskTimelineEvent): { name: 'agent-artifact'; params: { artifactId: string } } | undefined {
-  if (event.kind !== 'artifact' || event.artifactId === undefined) return undefined
-  return { name: 'agent-artifact', params: { artifactId: event.artifactId } }
+function drawerTarget(view: string, extra: Record<string, string>) {
+  return { path: '/', query: { agent: '1', view, ...extra } }
 }
 
-function approvalRoute(event: AgentTaskTimelineEvent): { name: 'agent-task-approval'; params: { taskId: string } } | undefined {
+function artifactRoute(event: AgentTaskTimelineEvent) {
+  if (event.kind !== 'artifact' || event.artifactId === undefined) return undefined
+  return drawerTarget('artifacts', { artifact: event.artifactId })
+}
+
+function approvalRoute(event: AgentTaskTimelineEvent) {
   if (event.kind !== 'approval' || event.approvalId === undefined) return undefined
   if (event.status !== 'waiting_approval' && event.status !== 'pending') return undefined
-  return { name: 'agent-task-approval', params: { taskId: props.taskId } }
+  return drawerTarget('tasks', { task: props.taskId, panel: 'approval' })
 }
 
-function inputRoute(event: AgentTaskTimelineEvent): { name: 'agent-task-input'; params: { taskId: string } } | undefined {
+function inputRoute(event: AgentTaskTimelineEvent) {
   if (event.kind !== 'input_request' || event.status !== 'waiting_input') return undefined
-  return { name: 'agent-task-input', params: { taskId: props.taskId } }
+  return drawerTarget('tasks', { task: props.taskId, panel: 'input' })
 }
 
 async function cancel() {

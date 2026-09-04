@@ -125,4 +125,12 @@ describe('AgentSubscriptionManager', () => {
     expect(wrapper.text()).not.toContain('private upstream detail')
     expect(wrapper.find('[data-agent-subscription-revoke]').exists()).toBe(false)
   })
+
+  it('hides the control rail when embedded', async () => {
+    const wrapper = mount(AgentSubscriptionManager, {
+      props: { client: service(), definitionClient: definitions(), embedded: true },
+    })
+    await flushPromises()
+    expect(wrapper.find('.control-rail').exists()).toBe(false)
+  })
 })

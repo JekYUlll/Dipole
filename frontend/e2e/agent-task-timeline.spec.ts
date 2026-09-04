@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('dipole.web.token', 'timeline-browser-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
+  await stubChatBootstrap(page)
 })
 
 test('loads the owner-scoped timeline and preserves its cursor contract', async ({ page }) => {
@@ -26,7 +28,7 @@ test('loads the owner-scoped timeline and preserves its cursor contract', async 
     })
   })
 
-  await page.goto('/app/agent/tasks/TASK-1/timeline')
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-1&panel=timeline')
   await expect(page.getByRole('heading', { name: '执行轨迹' })).toBeVisible()
   await expect(page.locator('[data-event-seq="1"]')).toBeVisible()
   await expect(page.getByText('model_call')).toHaveCount(0)

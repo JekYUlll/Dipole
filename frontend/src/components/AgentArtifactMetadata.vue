@@ -4,7 +4,10 @@ import { RouterLink } from 'vue-router'
 import { agentArtifactClient, type AgentArtifactClient, type AgentArtifactContent, type AgentArtifactMetadata } from '@/api/agentArtifacts'
 import { agentFlags } from '@/config/agentFlags'
 
-const props = withDefaults(defineProps<{ artifactId: string; client?: AgentArtifactClient }>(), { client: undefined })
+const props = withDefaults(defineProps<{ artifactId: string; client?: AgentArtifactClient; embedded?: boolean }>(), {
+  client: undefined,
+  embedded: false,
+})
 const client = computed(() => props.client ?? agentArtifactClient)
 const state = ref<'loading' | 'ready' | 'unavailable'>('loading')
 const artifact = ref<AgentArtifactMetadata>()
@@ -64,7 +67,12 @@ function shortID(value: string): string { return `${value.slice(0, 12)}...${valu
         <p class="subtitle">认证 owner 可读取任务摘要；下载与对象存储信息保持关闭。</p>
       </div>
       <div class="header-actions">
-        <RouterLink v-if="inboxEnabled" class="inbox-link" :to="{ name: 'agent-artifact-inbox' }" data-agent-artifact-inbox>返回产物列表 →</RouterLink>
+        <RouterLink
+          v-if="inboxEnabled && !props.embedded"
+          class="inbox-link"
+          :to="{ path: '/', query: { agent: '1', view: 'artifacts' } }"
+          data-agent-artifact-inbox
+        >返回产物列表 →</RouterLink>
         <span class="metadata-badge">OWNER READ</span>
       </div>
     </header>

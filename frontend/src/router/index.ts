@@ -40,100 +40,11 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      // Settings 不再作为独立页面。历史链接 /settings 一律回到 Chat,
+      // 并通过 query 触发弹窗;由 ChatView 监听 `settings=1` 打开 SettingsDialog。
       path: '/settings',
       name: 'settings',
-      component: () => import('@/views/SettingsView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/agent/tasks',
-      name: 'agent-task-inbox',
-      component: () => import('@/views/AgentTaskInboxView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/tasks/new',
-      name: 'agent-task-create',
-      component: () => import('@/views/AgentTaskCreateView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_TASK_CREATE_ENABLED === 'true' && import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/tasks/:taskId/input',
-      name: 'agent-task-input',
-      component: () => import('@/views/AgentElicitationView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_ELICITATION_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/tasks/:taskId/approval',
-      name: 'agent-task-approval',
-      component: () => import('@/views/AgentApprovalView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_APPROVAL_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/tasks/:taskId/timeline',
-      name: 'agent-task-timeline',
-      component: () => import('@/views/AgentTaskTimelineView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/artifacts',
-      name: 'agent-artifact-inbox',
-      component: () => import('@/views/AgentArtifactInboxView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/artifacts/:artifactId',
-      name: 'agent-artifact',
-      component: () => import('@/views/AgentArtifactView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_ARTIFACTS_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/subscriptions',
-      name: 'agent-subscriptions',
-      component: () => import('@/views/AgentSubscriptionsView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_SUBSCRIPTIONS_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/definitions',
-      name: 'agent-definitions',
-      component: () => import('@/views/AgentDefinitionsView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_DEFINITIONS_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
-    },
-    {
-      path: '/agent/memories',
-      name: 'agent-memories',
-      component: () => import('@/views/AgentMemoriesView.vue'),
-      meta: { requiresAuth: true },
-      beforeEnter: () => import.meta.env.VITE_AGENT_MEMORIES_ENABLED === 'true'
-        ? true
-        : { name: 'chat' },
+      redirect: { path: '/', query: { settings: '1' } },
     },
   ],
 })

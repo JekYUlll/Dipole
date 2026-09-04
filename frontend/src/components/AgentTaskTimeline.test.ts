@@ -16,7 +16,7 @@ const defaultClient = () => ({
 function mountTimeline(client: ReturnType<typeof defaultClient>) {
   return mount(AgentTaskTimeline, {
     props: { taskId: 'TASK-1', client },
-    global: { stubs: { RouterLink: { props: ['to'], template: '<a :data-route-name="to.name"><slot /></a>' } } },
+    global: { stubs: { RouterLink: { props: ['to'], template: '<a :data-route-name="to.query && to.query.view" :data-query-panel="to.query && to.query.panel"><slot /></a>' } } },
   })
 }
 
@@ -86,7 +86,8 @@ describe('AgentTaskTimeline', () => {
     const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
     await flushPromises()
     expect(wrapper.get('.input-link').text()).toBe('补充任务信息')
-    expect(wrapper.get('.input-link').attributes('data-route-name')).toBe('agent-task-input')
+    expect(wrapper.get('.input-link').attributes('data-route-name')).toBe('tasks')
+    expect(wrapper.get('.input-link').attributes('data-query-panel')).toBe('input')
   })
 
   it('links a pending approval event written by Core to its owner-scoped approval surface', async () => {
@@ -97,7 +98,8 @@ describe('AgentTaskTimeline', () => {
     const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
     await flushPromises()
     expect(wrapper.get('.approval-link').text()).toBe('处理审批请求')
-    expect(wrapper.get('.approval-link').attributes('data-route-name')).toBe('agent-task-approval')
+    expect(wrapper.get('.approval-link').attributes('data-route-name')).toBe('tasks')
+    expect(wrapper.get('.approval-link').attributes('data-query-panel')).toBe('approval')
   })
 
   it('cancels the current task from the timeline header', async () => {
@@ -119,6 +121,7 @@ describe('AgentTaskTimeline', () => {
     const wrapper = mountTimeline({ ...defaultClient(), getTimeline })
     await flushPromises()
     expect(wrapper.get('.approval-link').text()).toBe('处理审批请求')
-    expect(wrapper.get('.approval-link').attributes('data-route-name')).toBe('agent-task-approval')
+    expect(wrapper.get('.approval-link').attributes('data-route-name')).toBe('tasks')
+    expect(wrapper.get('.approval-link').attributes('data-query-panel')).toBe('approval')
   })
 })

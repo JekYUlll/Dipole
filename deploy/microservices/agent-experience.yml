@@ -1,0 +1,99 @@
+services:
+  core:
+    environment:
+      DIPOLE_FRONTEND_AGENT_ELICITATION_ENABLED: "true"
+      DIPOLE_FRONTEND_AGENT_APPROVAL_ENABLED: "true"
+      DIPOLE_FRONTEND_AGENT_SUBSCRIPTIONS_ENABLED: "true"
+      DIPOLE_FRONTEND_AGENT_DEFINITIONS_ENABLED: "true"
+      DIPOLE_FRONTEND_AGENT_MEMORIES_ENABLED: "true"
+      DIPOLE_FRONTEND_AGENT_MEMORY_CORRECTION_ENABLED: "true"
+      DIPOLE_FRONTEND_AGENT_TASK_CREATE_ENABLED: "true"
+      DIPOLE_FRONTEND_AGENT_TIMELINE_ENABLED: "true"
+      DIPOLE_FRONTEND_AGENT_ARTIFACTS_ENABLED: "true"
+
+  gateway:
+    environment:
+      DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_MEMORY_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_CONTROL_SECRET: ${DIPOLE_AGENT_CONTROL_SECRET:?DIPOLE_AGENT_CONTROL_SECRET is required}
+      DIPOLE_GATEWAY_AGENT_MCP_ENABLED: "false"
+
+  temporal-postgresql:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    volumes:
+      - agent_experience_temporal_postgresql_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -d temporal"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  temporal:
+    image: temporalio/auto-setup:1.29.1
+    restart: unless-stopped
+    depends_on:
+      temporal-postgresql:
+        condition: service_healthy
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_SEEDS: temporal-postgresql
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      DBNAME: temporal
+      VISIBILITY_DBNAME: temporal_visibility
+      DEFAULT_NAMESPACE: default
+      DEFAULT_NAMESPACE_RETENTION: 24h
+      BIND_ON_IP: 0.0.0.0
+    expose:
+      - "7233"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/7233'"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 30s
+
+  agent:
+    depends_on:
+      temporal:
+        condition: service_healthy
+    volumes:
+      - ../../deploy/experience-release-manifest.json:/run/dipole/release/manifest.json:ro
+    environment:
+      DIPOLE_AGENT_RUNTIME_MODE: shadow
+      DIPOLE_AGENT_CANDIDATE_VERSION: experience-v1
+      DIPOLE_AGENT_RELEASE_MANIFEST: /run/dipole/release/manifest.json
+      DIPOLE_AGENT_MODEL_MODE: ai_sdk
+      DIPOLE_AGENT_MODEL_PROVIDER: openai_compatible
+      DIPOLE_AGENT_MODEL_PROVIDER_NAME: ${DIPOLE_AGENT_MODEL_PROVIDER_NAME:?DIPOLE_AGENT_MODEL_PROVIDER_NAME is required}
+      DIPOLE_AGENT_MODEL_BASE_URL: ${DIPOLE_AGENT_MODEL_BASE_URL:?DIPOLE_AGENT_MODEL_BASE_URL is required}
+      DIPOLE_AGENT_MODEL_API_KEY: ${DIPOLE_AGENT_MODEL_API_KEY:?DIPOLE_AGENT_MODEL_API_KEY is required}
+      DIPOLE_AGENT_MODEL_ROUTES: ${DIPOLE_AGENT_MODEL_ROUTES:?DIPOLE_AGENT_MODEL_ROUTES is required}
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: ${DIPOLE_AGENT_MODEL_CONTEXT_PROFILES:?DIPOLE_AGENT_MODEL_CONTEXT_PROFILES is required}
+      DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS: ${DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS:-false}
+      DIPOLE_AGENT_MODEL_OUTPUT_MODE: ${DIPOLE_AGENT_MODEL_OUTPUT_MODE:-json_schema}
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v2
+      DIPOLE_AGENT_MODEL_MAX_CALLS: ${DIPOLE_AGENT_MODEL_MAX_CALLS:-1}
+      DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: ${DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS:-30000}
+      DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: ${DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS:-1024}
+      DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-shadow-experience-v1
+      DIPOLE_AGENT_MEMORY_ENABLED: "true"
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true"
+      DIPOLE_AGENT_TEMPORAL_ADDRESS: temporal:7233
+      DIPOLE_AGENT_TEMPORAL_NAMESPACE: default
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: dipole-agent-experience-v1
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: read_shadow
+      DIPOLE_AGENT_CONTROL_ENABLED: "true"
+      DIPOLE_AGENT_CONTROL_SECRET: ${DIPOLE_AGENT_CONTROL_SECRET:?DIPOLE_AGENT_CONTROL_SECRET is required}
+
+volumes:
+  agent_experience_temporal_postgresql_data:

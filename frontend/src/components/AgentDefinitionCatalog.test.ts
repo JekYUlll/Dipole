@@ -78,4 +78,10 @@ describe('AgentDefinitionCatalog', () => {
     expect(wrapper.text()).toContain('Definition 目录暂时不可用')
     expect(wrapper.find('[data-agent-definition-id]').exists()).toBe(false)
   })
+
+  it('hides the control rail when embedded', async () => {
+    const wrapper = mount(AgentDefinitionCatalog, { props: { client: client(), embedded: true } })
+    await flushPromises()
+    expect(wrapper.find('.control-rail').exists()).toBe(false)
+  })
 })

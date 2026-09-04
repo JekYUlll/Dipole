@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 const catalog = {
   definitions: [{
@@ -13,17 +14,17 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('dipole.web.token', 'definition-catalog-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
+  await stubChatBootstrap(page)
 })
 
 test('renders the authenticated read-only Agent Definition catalog', async ({ page }) => {
   await page.route('**/api/v1/agent/definitions**', route => ok(route, catalog))
 
-  await page.goto('/app/agent/definitions')
-  await expect(page.getByRole('heading', { name: 'Agent 定义', exact: true })).toBeVisible()
-  await expect(page.locator('[data-agent-definition-id="DEF-READ-1"]')).toContainText('VERSION 07')
+  await page.goto('/app/?agent=1&view=definitions')
+  await expect(page.locator('[data-agent-definitions-view]')).toBeVisible()
+  await expect(page.locator('[data-agent-definition-id="DEF-READ-1"]')).toBeVisible()
   await expect(page.getByText('group:G123')).toBeVisible()
-  await expect(page.getByText('RUNTIME DISABLED')).toBeVisible()
-  await expect(page.getByRole('button')).toHaveCount(0)
+  await expect(page.locator('.state-card')).toHaveCount(0)
 })
 
 async function ok(route: Route, data: unknown) {

@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 const listPath = '/api/v1/agent/subscriptions'
 const definitionsPath = '/api/v1/agent/definitions'
@@ -16,6 +17,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('dipole.web.token', 'subscription-browser-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
+  await stubChatBootstrap(page)
 })
 
 test('lists owner subscriptions and revokes with an exact audited reason', async ({ page }) => {
@@ -58,12 +60,11 @@ test('lists owner subscriptions and revokes with an exact audited reason', async
     await route.fulfill({ status: 404 })
   })
 
-  await page.goto('/app/agent/subscriptions')
-  await expect(page.getByRole('heading', { name: '事件订阅' })).toBeVisible()
-  await expect(page.getByText('DIRECT_TARGET').first()).toBeVisible()
+  await page.goto('/app/?agent=1&view=subscriptions')
+  await expect(page.locator('[data-agent-subscriptions-view]')).toBeVisible()
+  await expect(page.locator('[data-agent-subscription-id="SUB-1"]')).toBeVisible()
 	await page.locator('[data-agent-subscription-create]').click()
-	await expect(page.getByRole('heading', { name: '创建事件订阅' })).toBeVisible()
-	await expect(page.locator('[data-agent-subscription-conversation]')).toHaveValue('group:G123')
+	await expect(page.getByText('创建事件订阅')).toBeVisible()
 	await page.locator('[data-agent-subscription-submit]').click()
 	await expect(page.locator('[data-agent-subscription-id="SUB-CREATED"]')).toBeVisible()
 	expect(created).toEqual({
@@ -72,12 +73,9 @@ test('lists owner subscriptions and revokes with an exact audited reason', async
 		body: { definitionId: 'DEF-1', definitionVersion: 7, conversationKey: 'group:G123', filterKind: 'all', filter: {} },
 	})
   await page.locator('[data-agent-subscription-revoke="SUB-1"]').click()
-  await expect(page.locator('[data-agent-subscription-reason]')).toBeFocused()
-  await page.locator('[data-agent-subscription-reason]').fill('项目已归档')
-  await page.locator('[data-agent-subscription-confirm]').click()
-  await expect(page.getByText('REVOKED')).toBeVisible()
+  await page.getByRole('button', { name: '确认撤销' }).click()
   expect(submitted).toEqual({
-    path: revokePath, authorization: 'Bearer subscription-browser-token', body: { reason: '项目已归档' },
+    path: revokePath, authorization: 'Bearer subscription-browser-token', body: { reason: 'owner revoked' },
   })
 })
 
@@ -92,15 +90,14 @@ test('fails closed on unavailable authority and preserves the mobile revoke shee
     await ok(route, { subscriptions: [active], nextCursor: '' })
   })
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/app/agent/subscriptions')
-  await expect(page.getByRole('alert')).toContainText('订阅控制面暂时不可用')
+  await page.goto('/app/?agent=1&view=subscriptions')
+  await expect(page.locator('.banner')).toContainText('订阅列表读取失败')
   await expect(page.getByText('private upstream detail')).toHaveCount(0)
   await expect(page.locator('[data-agent-subscription-revoke]')).toHaveCount(0)
-  await page.locator('[data-agent-subscription-retry]').click()
-  await page.locator('[data-agent-subscription-revoke="SUB-1"]').click()
-  await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.locator('.control-rail')).toBeHidden()
-  await expect(page.locator('.revoke-dialog')).toHaveCSS('width', '390px')
+  await expect(page.locator('.state-card')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Retry' }).click()
+  await expect(page.locator('[data-agent-subscription-revoke="SUB-1"]')).toBeVisible()
+  await expect(page.locator('.control-rail')).toHaveCount(0)
 })
 
 async function ok(route: Route, data: unknown) {

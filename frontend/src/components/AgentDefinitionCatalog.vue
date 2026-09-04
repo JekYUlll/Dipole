@@ -1,6 +1,6 @@
 <template>
-  <section class="definition-shell" :data-agent-definition-state="viewState" :aria-busy="busy">
-    <aside class="control-rail" aria-label="Agent control navigation">
+  <section class="definition-shell" :class="{ 'is-embedded': embedded }" :data-agent-definition-state="viewState" :aria-busy="busy">
+    <aside v-if="!embedded" class="control-rail" aria-label="Agent control navigation">
       <div class="brand"><span />DIPOLE</div>
       <p class="rail-kicker">AGENT CONTROL</p>
       <RouterLink v-if="nav.definitions" class="rail-active" :to="{ name: 'agent-definitions' }">▣ <span>Agent 定义</span></RouterLink>
@@ -89,9 +89,11 @@ import { RouterLink } from 'vue-router'
 import { agentDefinitionCatalogClient, type AgentDefinitionCatalogClient, type AgentDefinitionCatalogItem } from '@/api/agentDefinitions'
 import { agentFlags, agentTaskRunTarget } from '@/config/agentFlags'
 
-const props = withDefaults(defineProps<{ client?: AgentDefinitionCatalogClient }>(), {
+const props = withDefaults(defineProps<{ client?: AgentDefinitionCatalogClient; embedded?: boolean }>(), {
   client: () => agentDefinitionCatalogClient,
+  embedded: false,
 })
+const { embedded } = props
 
 type ViewState = 'loading' | 'ready' | 'unavailable'
 const viewState = ref<ViewState>('loading')
@@ -169,6 +171,7 @@ function timestamp(value: number) { return new Date(value).toISOString().replace
 <style scoped>
 a.rail-item,a.rail-active{text-decoration:none;color:inherit}
 .header-actions{display:flex;align-items:center;gap:12px}
+.definition-shell.is-embedded{grid-template-columns:1fr;min-height:auto}
 .create-button{border:0;border-radius:11px;padding:12px 15px;background:var(--dp-accent);color:var(--dp-canvas);cursor:pointer;font:700 12px var(--dp-font-data)}
 .create-button:disabled{cursor:wait;opacity:.65}
 .form-error{margin:0 0 16px;color:var(--dp-danger);font-size:13px}

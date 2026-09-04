@@ -1,6 +1,6 @@
 <template>
-  <section class="inbox-shell" :data-agent-artifact-inbox-state="viewState" :aria-busy="busy">
-    <aside class="control-rail" aria-label="Agent control navigation">
+  <section class="inbox-shell" :class="{ 'is-embedded': embedded }" :data-agent-artifact-inbox-state="viewState" :aria-busy="busy">
+    <aside v-if="!embedded" class="control-rail" aria-label="Agent control navigation">
       <div class="brand"><span />DIPOLE</div>
       <p class="rail-kicker">AGENT CONTROL</p>
       <RouterLink v-if="nav.definitions" class="rail-item" :to="{ name: 'agent-definitions' }">▣ <span>Agent 定义</span></RouterLink>
@@ -72,9 +72,11 @@ import { RouterLink } from 'vue-router'
 import { agentArtifactClient, type AgentArtifactClient, type AgentArtifactMetadata } from '@/api/agentArtifacts'
 import { agentFlags, agentTaskRunTarget } from '@/config/agentFlags'
 
-const props = withDefaults(defineProps<{ client?: AgentArtifactClient }>(), {
+const props = withDefaults(defineProps<{ client?: AgentArtifactClient; embedded?: boolean }>(), {
   client: () => agentArtifactClient,
+  embedded: false,
 })
+const { embedded } = props
 const nav = {
   definitions: agentFlags.definitions,
   subscriptions: agentFlags.subscriptions,
@@ -162,4 +164,5 @@ function timestamp(value: number): string {
 .danger-text{color:var(--dp-danger)}
 a.rail-item,a.rail-active{text-decoration:none;color:inherit}
 @media(max-width:900px){.inbox-shell{grid-template-columns:1fr}.control-rail{display:none}.inbox-main{padding:26px 20px 60px}.page-header{align-items:flex-start;flex-direction:column}}
+.inbox-shell.is-embedded{grid-template-columns:1fr;min-height:auto}
 </style>

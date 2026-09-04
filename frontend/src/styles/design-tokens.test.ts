@@ -42,4 +42,16 @@ describe('Pencil design token contract', () => {
       expect(cssToken(cssName)).toBe(`${pen.variables[penName].value}px`)
     }
   })
+
+  it('keeps rectangular BI shape: radius-sm and radius-md are zero, only pill stays round', () => {
+    expect(cssToken('radius-sm')).toBe('0px')
+    expect(cssToken('radius-md')).toBe('0px')
+    expect(cssToken('radius-pill')).toBe('999px')
+    expect(pen.variables['radius-sm'].value).toBe(0)
+    expect(pen.variables['radius-md'].value).toBe(0)
+  })
+
+  it('reserves radius-bubble only for chat message bubbles', () => {
+    expect(cssToken('radius-bubble')).toBe('12px')
+  })
 })

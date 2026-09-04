@@ -63,4 +63,13 @@ describe('AgentArtifactInbox', () => {
     expect(artifactClient.list).toHaveBeenLastCalledWith('1725000000000:' + 'b'.repeat(64), 50)
     expect(wrapper.findAll('[data-agent-artifact-id]').length).toBe(2)
   })
+
+  it('hides the control rail when embedded', async () => {
+    const wrapper = mount(AgentArtifactInbox, {
+      props: { client: client(), embedded: true },
+      global: { stubs: { RouterLink: { props: ['to'], template: '<a><slot /></a>' } } },
+    })
+    await flushPromises()
+    expect(wrapper.find('.control-rail').exists()).toBe(false)
+  })
 })

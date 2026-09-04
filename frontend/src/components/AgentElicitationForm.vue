@@ -1,5 +1,5 @@
 <template>
-  <section class="elicitation-shell" :data-agent-elicit-state="viewState" :aria-busy="busy" aria-live="polite">
+  <section class="elicitation-shell" :class="{ 'is-embedded': embedded }" :data-agent-elicit-state="viewState" :aria-busy="busy" aria-live="polite">
     <header class="elicitation-header">
       <div>
         <p class="eyebrow">DIPOLE AGENT / INPUT REQUEST</p>
@@ -20,7 +20,7 @@
     </div>
 
     <div v-else-if="pending" class="elicitation-grid">
-      <aside class="source-rail">
+      <aside v-if="!embedded" class="source-rail">
         <p class="rail-label">REQUEST SOURCE</p>
         <dl class="binding-list">
           <dt>Task</dt><dd>{{ task?.taskId }}</dd>
@@ -46,6 +46,10 @@
       </aside>
 
       <form class="form-panel" data-agent-submit @submit.prevent="submit">
+        <p v-if="embedded && pending.source.kind === 'mcp'" class="embedded-source">
+          <span class="trust-chip">UNTRUSTED MCP</span>
+          {{ pending.source.serverId }}
+        </p>
         <div class="prompt-block">
           <p class="rail-label">AGENT ASKS</p>
           <h2>{{ pending.prompt }}</h2>
@@ -152,10 +156,13 @@ const props = withDefaults(defineProps<{
   taskId: string
   client?: AgentTaskClient
   now?: () => number
+  embedded?: boolean
 }>(), {
   client: () => agentTaskClient,
   now: () => Date.now,
+  embedded: false,
 })
+const { embedded } = props
 
 const task = ref<AgentTaskState>()
 const pending = ref<AgentInputPending>()
@@ -404,4 +411,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   .action-row { flex-direction: column-reverse; }
   .action-row button { width: 100%; }
 }
+.elicitation-shell.is-embedded { min-height: auto; padding: 0; background: transparent; }
+.elicitation-shell.is-embedded .elicitation-grid { grid-template-columns: 1fr; max-width: none; box-shadow: none; border-radius: 0; }
+.elicitation-shell.is-embedded .elicitation-header { display: none; }
+.embedded-source { display: flex; align-items: center; gap: 8px; font: 600 12px var(--dp-font-data); color: var(--dp-warning); margin: 0 0 12px; }
 </style>

@@ -12,7 +12,8 @@
 
 ### session-fad3064c
 
-空闲
+- 空闲。Chat + Agent Drawer + UI polish 已合并进主干；预览 Vite `:8002` + mock `:18080` 仍在跑，勿占端口
+- 避开：生产 flag、共享 Compose、Directory workspace
 
 ## Code style
 

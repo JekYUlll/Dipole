@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { stubChatBootstrap } from './helpers/chatBootstrap'
 
 const timeline = {
   schemaVersion: 'dipole.agent.task_timeline.v1',
@@ -19,12 +20,13 @@ test.beforeEach(async ({ page, browserName }) => {
     localStorage.setItem('dipole.web.token', 'timeline-visual-token')
     localStorage.setItem('dipole.web.user', JSON.stringify({ uuid: 'U100', nickname: 'Owner' }))
   })
+  await stubChatBootstrap(page)
 })
 
 test('keeps the Timeline metadata surface aligned with the Pencil baseline', async ({ page }) => {
   await page.route('**/api/v1/agent/tasks/TASK-VISUAL-1/timeline**', route => ok(route, timeline))
 
-  await page.goto('/app/agent/tasks/TASK-VISUAL-1/timeline')
+  await page.goto('/app/?agent=1&view=tasks&task=TASK-VISUAL-1&panel=timeline')
   await expect(page.getByRole('heading', { name: '执行轨迹' })).toBeVisible()
   await expect(page.locator('[data-event-seq="4"]')).toBeVisible()
   await expect(page.getByText('model_call')).toHaveCount(0)

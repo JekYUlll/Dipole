@@ -21,8 +21,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@primeuix/themes": "^3.0.0",
     "axios": "^1.7.2",
     "pinia": "^2.1.7",
+    "primevue": "^5.0.1",
     "vue": "^3.4.29",
     "vue-router": "^4.3.3"
   },

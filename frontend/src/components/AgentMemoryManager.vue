@@ -1,6 +1,6 @@
 <template>
-  <section class="memory-shell" :data-agent-memory-state="viewState" :aria-busy="busy">
-    <aside class="control-rail" aria-label="Agent control navigation">
+  <section class="memory-shell" :class="{ 'is-embedded': embedded }" :data-agent-memory-state="viewState" :aria-busy="busy">
+    <aside v-if="!embedded" class="control-rail" aria-label="Agent control navigation">
       <div class="brand"><span />DIPOLE</div>
       <p class="rail-kicker">AGENT CONTROL</p>
       <div class="rail-active">◉ <span>长期记忆</span></div>
@@ -161,10 +161,12 @@ import { RouterLink } from 'vue-router'
 import { agentMemoryClient, type AgentMemory, type AgentMemoryCandidate, type AgentMemoryClient } from '@/api/agentMemories'
 import { agentFlags, agentTaskRunTarget } from '@/config/agentFlags'
 
-const props = withDefaults(defineProps<{ client?: AgentMemoryClient, correctionEnabled?: boolean }>(), {
+const props = withDefaults(defineProps<{ client?: AgentMemoryClient; correctionEnabled?: boolean; embedded?: boolean }>(), {
   client: () => agentMemoryClient,
   correctionEnabled: import.meta.env.VITE_AGENT_MEMORY_CORRECTION_ENABLED === 'true',
+  embedded: false,
 })
+const { embedded } = props
 const nav = {
   definitions: agentFlags.definitions,
   subscriptions: agentFlags.subscriptions,
@@ -422,4 +424,5 @@ function statusClass(item: AgentMemory) { return inactive(item) ? 'status-danger
 @media(max-width:900px){.memory-shell{grid-template-columns:1fr}.control-rail{display:none}.memory-main{padding:26px 20px 60px}.content-grid{grid-template-columns:1fr}.authority-panel{order:-1}.page-header{align-items:flex-start}.trust-notice{align-items:flex-start;flex-direction:column;gap:6px}}
 @media(max-width:560px){.memory-main{padding:20px 16px 48px}.page-header h1{font-size:34px}.auto-status{font-size:8px}.authority-panel{display:none}.memory-card{padding:17px}.card-top{align-items:flex-start}.card-top h3{font-size:16px}.status-pill{padding:7px 9px}.card-bottom{align-items:flex-end}.revoke-dialog{width:100%;padding:14px 20px 24px}.trust-notice{margin:22px 0}}
 a.rail-item,a.rail-active{text-decoration:none;color:inherit}
+.memory-shell.is-embedded{grid-template-columns:1fr;min-height:auto}
 </style>

@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   base: '/app/',
   resolve: {
@@ -15,6 +15,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    allowedHosts: mode === 'agent-experience' ? true : undefined,
     proxy: {
       '/api': {
         target: process.env.DIPOLE_WEB_PROXY_TARGET || 'http://localhost:80',
@@ -28,4 +29,4 @@ export default defineConfig({
     globals: true,
     include: ['src/**/*.test.ts'],
   },
-})
+}))
