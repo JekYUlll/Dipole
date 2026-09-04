@@ -2,6 +2,11 @@
 
 # 更新日志
 
+- 2026-09-04：新增隔离 Multipart Prometheus 到 Alertmanager routing smoke。
+  - smoke 会挂载正式 `multipart-alerts.yml` 并生成只在隔离项目内存在的即时告警，验证 Prometheus 能将 firing alert 投递到开发期 Alertmanager `discard` receiver；Compose 插值、临时配置权限、超时和项目清理均受门禁保护。
+  - Remote GPU 在 `1b5efc87` 通过该链路，候选容器清理为零，公共 `dipole-experience` 保持 12 个容器；日志 SHA-256 为 `583dcc7af033211935587320ba951979e78437e68742d0563dff2fa83bfafc65`。
+  - 此 smoke 不配置外部 receiver，不发送真实 Multipart 业务告警，也不改变 `storage.multipart_mode=relay`。
+
 - 2026-09-04：Remote GPU 的候选镜像构建现在复用显式 Node 22 工具链并在 Docker 构建前执行版本门禁。
   - 此前 `build` 仅在 `node-test` 选择用户态 Node，导致前端构建可能回落到系统 Node 18；现在 `DIPOLE_REMOTE_NODE_ROOT` 与 `node-test` 使用相同的优先级，缺失或版本不足会以状态码 `4` 退出。
   - 前端 artifact build 的 `npm ci` 同时关闭 audit/fund 请求，避免 registry 审计尾部请求阻塞与产物无关的 Remote GPU 构建。
