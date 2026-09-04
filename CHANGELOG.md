@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：校正 OAuth callback handoff 的发布门禁说明。
+  - Gateway 已具备默认关闭的 callback route；Runtime receiver、经评审 Provider profile 与 Core-owned encrypted token lifecycle 仍未装配，单独打开 Gateway 开关不能构成完整部署。
+  - 发布前置现明确要求持久 refresh/revoke/retention、Runtime/Core identity 验证、故障与回滚演练，避免将组件级装配误解为可公开启用。
+
 - 2026-09-04：Gateway OAuth callback route 完成默认关闭的 Composition Root 装配。
   - 仅在显式开关下注册 `/oauth/callback`；启动阶段加载 Runtime public key 并构造 Core handoff record client、Runtime opaque-ID notifier 和浏览器 correlation handler。缺少任一材料会失败关闭。
   - 默认 Compose 仅声明空材料且不挂载密钥文件，Runtime control handler 仍未装配，因此没有端到端 OAuth 发布面。

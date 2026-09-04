@@ -81,13 +81,14 @@ The exact dual-channel transport and failure contract is maintained in
 
 ## Release Prerequisites
 
-1. 将现有 versioned callback-correlation contract 装配为短时 browser-binding cookie，并在 handler 中完成 expiry、issuer mix-up 与 redirect URI 验证。
+1. 已完成：将 versioned callback-correlation contract 装配为默认关闭的 Gateway handler，复核 expiry、issuer mix-up、redirect URI 与 browser binding。
 2. 已完成：Agent-owned SQLC handoff table、Runtime-only envelope ciphertext、code-hash uniqueness 与 lease/terminal transitions。
 3. 已完成：Gateway 和 Runtime mTLS clients，且控制面不记录 request body 或敏感 headers。
-4. Make Runtime token exchange idempotent and add refresh/revoke retention policy.
-5. Add fault tests for duplicate callback, Runtime unavailable after claim, restart during exchange, expired correlation, wrong issuer, wrong redirect URI and wrong browser binding.
-6. Complete a controlled provider-owner review before enabling any callback route.
+4. 实现 Core-owned、Runtime-key encrypted token lifecycle，并为 refresh/revoke/retention 提供幂等持久化策略。
+5. 装配经评审的 Runtime provider profile 与 handoff receiver；启用后必须在 Runtime 启动时验证私钥、Core mTLS、provider 身份与 lifecycle backend。
+6. Add fault tests for duplicate callback, Runtime unavailable after claim, restart during exchange, expired correlation, wrong issuer, wrong redirect URI and wrong browser binding.
+7. 完成 provider owner 评审、受控端到端演练和回滚演练后，才允许同时启用 Gateway 与 Runtime。
 
 ## Current Safe Surface
 
-The deployment surface remains unchanged: no OAuth HTTP callback route, no Runtime handoff receiver, no token exchange, no token persistence and no active Runtime configuration flag. Runtime contains unmounted claim and terminal clients; its mTLS-only claim response includes the owner binding needed to reconstruct envelope AAD, while `index.ts` does not construct either. The executor checks the durable handoff expiry and lease expiry before private-key use and again before the provider processor; either pre-effect failure releases the lease, while an unknown processor or completion outcome retains it. A Runtime replacement can claim only after Core accepts the earlier Runtime's explicit release; process-local notification deduplication is deliberately not the recovery authority. `ConsumeOAuthAuthorizationTransaction` and callback handoff RPCs remain internal; the latter require explicit Core Store injection, internal RPC mTLS and a `dipole-agent` caller.
+默认部署保持零 OAuth callback surface：`gateway.agent_oauth_callback_enabled=false`，Runtime handoff receiver、token exchange、token persistence 和 active Runtime profile 均未装配。Gateway 已有受完整配置约束的 `/oauth/callback` route；单独打开它不能形成完整 profile，也不得用于共享环境。Runtime 包含未装配的 claim 和 terminal clients；其 mTLS-only claim 响应包含重建 envelope AAD 所需的 owner binding，`index.ts` 不会构造这些组件。executor 会在私钥使用前及 provider processor 前复核 durable handoff expiry/lease expiry；pre-effect 失败释放 lease，未知 processor 或 completion outcome 保留 lease。Runtime replacement 只能在 Core 接受前一实例显式 release 后重新领取，进程内 notification deduplication 不承担恢复权威。`ConsumeOAuthAuthorizationTransaction` 与 callback handoff RPC 保持内部可见，后者要求显式 Core Store injection、内部 RPC mTLS 与 `dipole-agent` caller。
