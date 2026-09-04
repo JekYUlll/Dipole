@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：补齐 OAuth callback durable handoff 的 SQLC 原子记录仓储。
+  - 新仓储在同一 MySQL 事务内校验授权 transaction、写入 Runtime-only 密文 handoff 并条件消费 transaction；精确重放返回原记录，冲突写入会整体回滚。
+  - Remote GPU 的回环隔离 MySQL 8.4 合同测试已覆盖首次记录、精确重放与 handoff 唯一键冲突回滚。浏览器 callback 路由、correlation、Provider code exchange 与 token 生命周期保持关闭。
+
 - 2026-09-04：完成 Agent Model Audit 的 Remote GPU MySQL 8.4 合同复验。
   - `aef434b0` 在回环隔离 MySQL 容器中通过 6 项并发保留、策略漂移、终态调用、崩溃保留、Kafka 重试预算和结果重放测试；候选目录、容器与 bundle 均已清理，公共 `dipole-experience` 保持 11 个容器。
 

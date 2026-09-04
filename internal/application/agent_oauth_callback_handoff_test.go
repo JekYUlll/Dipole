@@ -42,3 +42,18 @@ func TestAgentOAuthCallbackHandoffValidation(t *testing.T) {
 		})
 	}
 }
+
+func TestAgentOAuthCallbackHandoffRecordRequestValidation(t *testing.T) {
+	valid := AgentOAuthCallbackHandoffRecordRequestV1{
+		HandoffUUID: strings.Repeat("a", 22), TransactionUUID: strings.Repeat("b", 22), OwnerUserUUID: "U100",
+		StateSHA256: strings.Repeat("c", 64), AuthorizationCodeSHA256: strings.Repeat("d", 64),
+		SealedAuthorizationCode: "v1.abc.def.ghi", RuntimeKeyID: "oauth-runtime-2026-08",
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("validate record request: %v", err)
+	}
+	valid.AuthorizationCodeSHA256 = "not-a-digest"
+	if !errors.Is(valid.Validate(), ErrAgentOAuthCallbackHandoffInvalid) {
+		t.Fatal("expected invalid callback record request")
+	}
+}

@@ -9,6 +9,28 @@ import (
 
 var ErrAgentOAuthCallbackHandoffInvalid = errors.New("agent OAuth callback handoff is invalid")
 
+// AgentOAuthCallbackHandoffRecordRequestV1 contains only callback material
+// sealed for the Runtime. Core derives issuer, redirect URI, and expiry from
+// the authenticated authorization transaction inside one transaction.
+type AgentOAuthCallbackHandoffRecordRequestV1 struct {
+	HandoffUUID, TransactionUUID, OwnerUserUUID string
+	StateSHA256, AuthorizationCodeSHA256        string
+	SealedAuthorizationCode, RuntimeKeyID       string
+}
+
+type AgentOAuthCallbackHandoffRecorderV1 interface {
+	RecordAgentOAuthCallbackHandoff(context.Context, AgentOAuthCallbackHandoffRecordRequestV1, time.Time) (*AgentOAuthCallbackHandoffV1, bool, error)
+}
+
+func (v AgentOAuthCallbackHandoffRecordRequestV1) Validate() error {
+	if !validAgentOAuthTransactionIdentifier(v.HandoffUUID) || !validAgentOAuthTransactionIdentifier(v.TransactionUUID) ||
+		!validAgentOAuthIdentifier(v.OwnerUserUUID, 64) || !validSHA256V1(v.StateSHA256) || !validSHA256V1(v.AuthorizationCodeSHA256) ||
+		!validAgentOAuthSealedVerifier(v.SealedAuthorizationCode) || !validAgentOAuthIdentifier(v.RuntimeKeyID, 128) {
+		return ErrAgentOAuthCallbackHandoffInvalid
+	}
+	return nil
+}
+
 type AgentOAuthCallbackHandoffStatusV1 string
 
 const (
