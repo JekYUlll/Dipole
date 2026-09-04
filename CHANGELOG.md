@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：新增默认未挂载的 Gateway OAuth callback handoff handler。
+  - handler 复核 correlation cookie、浏览器绑定、state、issuer 与 redirect URI，在写入前拒绝无效请求；成功路径仅写 Runtime-only envelope 并向 Runtime 通知 opaque handoff ID。
+  - Gateway 路由、cookie 签发、Provider 配置及 token 生命周期未启用，默认网络行为不变。
+
 - 2026-09-04：补齐 Gateway 到 Core 的 OAuth callback handoff record client。
   - 客户端仅传递验证后的 ID、摘要、Runtime-only envelope 与 key ID，并以 `dipole-gateway` 可信上下文保留 correlation；无效输入、异常 gRPC 状态、过期或不匹配回包均失败关闭。
   - 客户端未装配到 HTTP 路由，默认 OAuth callback 和 Provider 流量保持关闭。
