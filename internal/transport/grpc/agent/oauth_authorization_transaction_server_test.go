@@ -31,6 +31,17 @@ type oauthCallbackHandoffStoreStub struct {
 	released       []string
 }
 
+type oauthCallbackHandoffRecorderStub struct {
+	record *application.AgentOAuthCallbackHandoffV1
+	input  application.AgentOAuthCallbackHandoffRecordRequestV1
+	err    error
+}
+
+func (s *oauthCallbackHandoffRecorderStub) RecordAgentOAuthCallbackHandoff(_ context.Context, input application.AgentOAuthCallbackHandoffRecordRequestV1, _ time.Time) (*application.AgentOAuthCallbackHandoffV1, bool, error) {
+	s.input = input
+	return s.record, s.record != nil, s.err
+}
+
 func (s *oauthCallbackHandoffStoreStub) CreateAgentOAuthCallbackHandoff(context.Context, application.AgentOAuthCallbackHandoffV1) (bool, error) {
 	return false, errors.New("unused")
 }
@@ -105,6 +116,33 @@ func TestConsumeOAuthAuthorizationTransactionFailsClosedWithoutStore(t *testing.
 	_, err := server.ConsumeOAuthAuthorizationTransaction(context.Background(), &agentv1.ConsumeOAuthAuthorizationTransactionRequest{
 		Context: grpccommon.RequestContext("U100", "dipole-gateway"), TransactionId: strings.Repeat("a", 22), StateSha256: strings.Repeat("b", 64),
 	})
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("expected unavailable, got %v", err)
+	}
+}
+
+func TestRecordOAuthCallbackHandoffRequiresGatewayAndTrustedOwner(t *testing.T) {
+	transactionID, handoffID := strings.Repeat("a", 22), strings.Repeat("b", 22)
+	recorder := &oauthCallbackHandoffRecorderStub{record: &application.AgentOAuthCallbackHandoffV1{HandoffUUID: handoffID, TransactionUUID: transactionID, OwnerUserUUID: "U100", ExpiresAt: time.Now().UTC().Add(time.Hour)}}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	if _, err := server.WithOAuthCallbackHandoffRecorder(recorder); err != nil {
+		t.Fatal(err)
+	}
+	request := &agentv1.RecordOAuthCallbackHandoffRequest{Context: grpccommon.RequestContext("U100", "dipole-gateway"), HandoffId: handoffID, TransactionId: transactionID,
+		StateSha256: strings.Repeat("c", 64), AuthorizationCodeSha256: strings.Repeat("d", 64), SealedAuthorizationCode: "v1.abc.def.ghi", RuntimeKeyId: "runtime-key-1"}
+	response, err := server.RecordOAuthCallbackHandoff(context.Background(), request)
+	if err != nil || response.GetHandoffId() != handoffID || recorder.input.OwnerUserUUID != "U100" || recorder.input.HandoffUUID != handoffID {
+		t.Fatalf("response=%v err=%v input=%+v", response, err, recorder.input)
+	}
+	request.Context.CallerService = "dipole-agent"
+	if _, err = server.RecordOAuthCallbackHandoff(context.Background(), request); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected denied, got %v", err)
+	}
+}
+
+func TestRecordOAuthCallbackHandoffFailsClosedWithoutRecorder(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	_, err := server.RecordOAuthCallbackHandoff(context.Background(), &agentv1.RecordOAuthCallbackHandoffRequest{Context: grpccommon.RequestContext("U100", "dipole-gateway")})
 	if status.Code(err) != codes.Unavailable {
 		t.Fatalf("expected unavailable, got %v", err)
 	}

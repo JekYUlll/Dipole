@@ -57,6 +57,7 @@ type Server struct {
 	messageCommands        application.AgentMessageCommandExecutionV1
 	oauthTransactions      application.AgentOAuthAuthorizationTransactionStoreV1
 	oauthCallbackHandoffs  application.AgentOAuthCallbackHandoffStoreV1
+	oauthCallbackRecorder  application.AgentOAuthCallbackHandoffRecorderV1
 }
 
 const oauthCallbackHandoffLeaseDurationV1 = 30 * time.Second
@@ -74,6 +75,14 @@ func (s *Server) WithOAuthCallbackHandoffs(store application.AgentOAuthCallbackH
 		return nil, errors.New("Agent OAuth callback handoff store is required")
 	}
 	s.oauthCallbackHandoffs = store
+	return s, nil
+}
+
+func (s *Server) WithOAuthCallbackHandoffRecorder(recorder application.AgentOAuthCallbackHandoffRecorderV1) (*Server, error) {
+	if s == nil || recorder == nil {
+		return nil, errors.New("Agent OAuth callback handoff recorder is required")
+	}
+	s.oauthCallbackRecorder = recorder
 	return s, nil
 }
 
@@ -1556,6 +1565,42 @@ func consumeOAuthAuthorizationTransactionV1(ctx context.Context, request *agentv
 		TransactionId: record.TransactionUUID, Issuer: record.Issuer, RedirectUri: record.RedirectURI,
 		SealedCodeVerifier: record.SealedCodeVerifier, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli(),
 	}, nil
+}
+
+func (s *Server) RecordOAuthCallbackHandoff(ctx context.Context, request *agentv1.RecordOAuthCallbackHandoffRequest) (*agentv1.RecordOAuthCallbackHandoffResponse, error) {
+	return recordOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackRecorder)
+}
+
+func recordOAuthCallbackHandoffV1(ctx context.Context, request *agentv1.RecordOAuthCallbackHandoffRequest, recorder application.AgentOAuthCallbackHandoffRecorderV1) (*agentv1.RecordOAuthCallbackHandoffResponse, error) {
+	caller, err := grpccommon.Caller(ctx, request.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	owner, err := grpccommon.Principal(request.GetContext())
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "OAuth callback principal is required")
+	}
+	if caller != "dipole-gateway" {
+		return nil, status.Error(codes.PermissionDenied, "only Gateway may record OAuth callback handoffs")
+	}
+	if recorder == nil {
+		return nil, status.Error(codes.Unavailable, "OAuth callback handoff is unavailable")
+	}
+	record, _, err := recorder.RecordAgentOAuthCallbackHandoff(grpccommon.Correlation(ctx, request.GetContext()), application.AgentOAuthCallbackHandoffRecordRequestV1{
+		HandoffUUID: request.GetHandoffId(), TransactionUUID: request.GetTransactionId(), OwnerUserUUID: owner,
+		StateSHA256: request.GetStateSha256(), AuthorizationCodeSHA256: request.GetAuthorizationCodeSha256(),
+		SealedAuthorizationCode: request.GetSealedAuthorizationCode(), RuntimeKeyID: request.GetRuntimeKeyId(),
+	}, time.Now().UTC().Truncate(time.Millisecond))
+	if err != nil {
+		if errors.Is(err, application.ErrAgentOAuthCallbackHandoffInvalid) {
+			return nil, status.Error(codes.InvalidArgument, "OAuth callback handoff is invalid")
+		}
+		return nil, status.Error(codes.Internal, "OAuth callback handoff record failed")
+	}
+	if record == nil {
+		return nil, status.Error(codes.Internal, "OAuth callback handoff record is unavailable")
+	}
+	return &agentv1.RecordOAuthCallbackHandoffResponse{HandoffId: record.HandoffUUID, ExpiresAtUnixMs: record.ExpiresAt.UnixMilli()}, nil
 }
 
 func (s *Server) ClaimOAuthCallbackHandoff(ctx context.Context, request *agentv1.ClaimOAuthCallbackHandoffRequest) (*agentv1.ClaimOAuthCallbackHandoffResponse, error) {

@@ -349,7 +349,7 @@
 
 - 2026-08-31：Agent Capability RPC 的重连包装器改为在每次方法调用时解析当前 gRPC channel。Core `UNAVAILABLE` 后，即使上层缓存了方法引用，下一次事件级调用也会进入 replacement channel；transport 继续不重放失败调用，Kafka/EventLedger 仍负责幂等重试。隔离 Core 重启/Temporal 收敛演练继续待补。
 
-- 2026-09-04：OAuth callback durable handoff 增加 SQLC 原子记录仓储：在同一 MySQL 事务中校验 transaction owner/state/expiry、写入 Runtime-only 密文 handoff 并条件消费 transaction；同一请求重放返回既有记录，唯一键冲突使整个 transaction 回滚。Remote GPU 回环 MySQL 8.4 合同测试已覆盖这三条路径。该仓储尚未接入 callback HTTP 或 Core RPC，浏览器 correlation、Provider exchange、token 持久化和 refresh/revoke 生命周期继续由 release gate 限制。
+- 2026-09-04：OAuth callback durable handoff 增加 SQLC 原子记录仓储：在同一 MySQL 事务中校验 transaction owner/state/expiry、写入 Runtime-only 密文 handoff 并条件消费 transaction；同一请求重放返回既有记录，唯一键冲突使整个 transaction 回滚。Remote GPU 回环 MySQL 8.4 合同测试已覆盖这三条路径。Core 的默认关闭 `RecordOAuthCallbackHandoff` RPC 只接受 `dipole-gateway`，从可信 RequestContext 恢复 owner，并仅在 handoff Store 与内部 mTLS 同时注入时装配。浏览器 correlation、callback HTTP、Provider exchange、token 持久化和 refresh/revoke 生命周期继续由 release gate 限制。
 - 2026-09-04：Core 现可在 `agent_oauth_callback_handoff_enabled=true` 与内部 RPC mTLS 同时成立时装配 SQLC OAuth handoff Store，并仅允许 `dipole-agent` 调用 claim/complete/release；默认配置保持关闭。浏览器 callback、Provider code exchange、token 持久化和 refresh/revoke 生命周期仍由 OAuth release gate 限制。
 - 2026-08-31：默认关闭的 Agent OAuth callback handoff executor 在私钥解封前和 Provider processor 前均复核 durable handoff 的 lease/expiry。过期检查失败会在产生外部副作用前释放 lease；processor 或 completion 结果不确定时保留 lease，避免把不确定副作用重新排队。callback HTTP、Provider exchange、token 生命周期和默认运行时装配仍由 OAuth release gate 限制。
 

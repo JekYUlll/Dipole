@@ -311,6 +311,24 @@ message ConsumeOAuthAuthorizationTransactionResponse {
   int64 expires_at_unix_ms = 5;
 }
 
+// Only the authenticated Gateway may persist a validated callback handoff.
+// Core recovers owner binding from RequestContext and performs the durable
+// write plus authorization transaction consume atomically.
+message RecordOAuthCallbackHandoffRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string handoff_id = 2;
+  string transaction_id = 3;
+  string state_sha256 = 4;
+  string authorization_code_sha256 = 5;
+  string sealed_authorization_code = 6;
+  string runtime_key_id = 7;
+}
+
+message RecordOAuthCallbackHandoffResponse {
+  string handoff_id = 1;
+  int64 expires_at_unix_ms = 2;
+}
+
 // Only the authenticated Agent Runtime may claim a persisted callback handoff.
 // Core chooses the lease duration and recovers all ownership binding itself.
 message ClaimOAuthCallbackHandoffRequest {
@@ -1087,6 +1105,7 @@ service AgentCapabilityService {
   rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);
   rpc ResolveMcpContext(ResolveMcpContextRequest) returns (ResolveMcpContextResponse);
   rpc ConsumeOAuthAuthorizationTransaction(ConsumeOAuthAuthorizationTransactionRequest) returns (ConsumeOAuthAuthorizationTransactionResponse);
+  rpc RecordOAuthCallbackHandoff(RecordOAuthCallbackHandoffRequest) returns (RecordOAuthCallbackHandoffResponse);
   rpc ClaimOAuthCallbackHandoff(ClaimOAuthCallbackHandoffRequest) returns (ClaimOAuthCallbackHandoffResponse);
   rpc CompleteOAuthCallbackHandoff(CompleteOAuthCallbackHandoffRequest) returns (CompleteOAuthCallbackHandoffResponse);
   rpc ReleaseOAuthCallbackHandoff(ReleaseOAuthCallbackHandoffRequest) returns (ReleaseOAuthCallbackHandoffResponse);

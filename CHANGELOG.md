@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：将 OAuth callback handoff 原子记录接入默认关闭的 Core gRPC seam。
+  - `RecordOAuthCallbackHandoff` 仅接受 `dipole-gateway`，从可信 RequestContext 恢复 owner，并将 Runtime-only 密文记录委托给 SQLC 原子仓储；缺少显式 mTLS Store 注入时固定返回 `Unavailable`。
+  - Go 与 TypeScript protobuf 已同步生成。浏览器 correlation、callback route、Provider code exchange 和 token 生命周期继续关闭。
+
 - 2026-09-04：补齐 OAuth callback durable handoff 的 SQLC 原子记录仓储。
   - 新仓储在同一 MySQL 事务内校验授权 transaction、写入 Runtime-only 密文 handoff 并条件消费 transaction；精确重放返回原记录，冲突写入会整体回滚。
   - Remote GPU 的回环隔离 MySQL 8.4 合同测试已覆盖首次记录、精确重放与 handoff 唯一键冲突回滚。浏览器 callback 路由、correlation、Provider code exchange 与 token 生命周期保持关闭。

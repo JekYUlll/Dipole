@@ -446,16 +446,28 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 					cleanup()
 					return nil, fmt.Errorf("configure standalone Agent OAuth callback handoff rpc adapter: %w", composeErr)
 				}
+				if _, composeErr = searchAdapter.WithOAuthCallbackHandoffRecorder(agentRepos.OAuthCallbackRecorder); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth callback handoff record rpc adapter: %w", composeErr)
+				}
 			} else if restrictedAdapter, ok := agentAdapter.(*agentgrpc.RestrictedServer); ok {
 				if _, composeErr = restrictedAdapter.WithOAuthCallbackHandoffs(agentRepos.OAuthCallbackHandoffs); composeErr != nil {
 					cleanup()
 					return nil, fmt.Errorf("configure standalone Agent OAuth callback handoff rpc adapter: %w", composeErr)
+				}
+				if _, composeErr = restrictedAdapter.WithOAuthCallbackHandoffRecorder(agentRepos.OAuthCallbackRecorder); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth callback handoff record rpc adapter: %w", composeErr)
 				}
 			} else {
 				agentAdapter, composeErr = agentgrpc.NewOAuthCallbackHandoffServer(agentRepos.OAuthCallbackHandoffs)
 				if composeErr != nil {
 					cleanup()
 					return nil, fmt.Errorf("compose standalone Agent OAuth callback handoff rpc adapter: %w", composeErr)
+				}
+				if _, composeErr = agentAdapter.(*agentgrpc.RestrictedServer).WithOAuthCallbackHandoffRecorder(agentRepos.OAuthCallbackRecorder); composeErr != nil {
+					cleanup()
+					return nil, fmt.Errorf("configure standalone Agent OAuth callback handoff record rpc adapter: %w", composeErr)
 				}
 			}
 		}

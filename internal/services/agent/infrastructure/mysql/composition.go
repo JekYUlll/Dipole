@@ -35,6 +35,7 @@ type ProcessRepositories struct {
 	ToolRounds            application.AgentMCPToolRoundStoreV1
 	OAuthTransactions     application.AgentOAuthAuthorizationTransactionStoreV1
 	OAuthCallbackHandoffs application.AgentOAuthCallbackHandoffStoreV1
+	OAuthCallbackRecorder application.AgentOAuthCallbackHandoffRecorderV1
 }
 
 func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
@@ -78,6 +79,10 @@ func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent OAuth callback handoff repository: %w", err)
 	}
+	oauthCallbackRecorder, err := NewAgentOAuthCallbackHandoffRecordingRepository(mysqlStore)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent OAuth callback handoff recorder: %w", err)
+	}
 	promotionControls, err := NewAgentRuntimePromotionControlRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
@@ -91,7 +96,7 @@ func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
 		DefinitionCatalog: policy, ApprovalGrants: policy, Promotions: policy,
 		Subscriptions: policy, Repairs: policy, RepairExecutions: policy, RepairTransactions: policy, Artifacts: artifacts, ArtifactCatalog: artifacts,
 		Memories: memories, MemoryOwners: memories, MemoryCandidates: memories, MemoryPromotions: memories,
-		ToolAudits: toolAudits, ToolRounds: toolRounds, OAuthTransactions: oauthTransactions, OAuthCallbackHandoffs: oauthCallbackHandoffs,
+		ToolAudits: toolAudits, ToolRounds: toolRounds, OAuthTransactions: oauthTransactions, OAuthCallbackHandoffs: oauthCallbackHandoffs, OAuthCallbackRecorder: oauthCallbackRecorder,
 		PromotionControls: promotionControls, ReadinessEvidence: readinessEvidence,
 	}, nil
 }

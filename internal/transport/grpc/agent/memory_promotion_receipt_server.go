@@ -15,6 +15,7 @@ type RestrictedServer struct {
 	commits               application.AgentMemoryPromotionReceiptCommitServiceV1
 	oauthTransactions     application.AgentOAuthAuthorizationTransactionStoreV1
 	oauthCallbackHandoffs application.AgentOAuthCallbackHandoffStoreV1
+	oauthCallbackRecorder application.AgentOAuthCallbackHandoffRecorderV1
 }
 
 // MemoryPromotionReceiptServer remains an alias for callers that compose only
@@ -67,6 +68,14 @@ func (s *RestrictedServer) WithOAuthCallbackHandoffs(handoffs application.AgentO
 	return s, nil
 }
 
+func (s *RestrictedServer) WithOAuthCallbackHandoffRecorder(recorder application.AgentOAuthCallbackHandoffRecorderV1) (*RestrictedServer, error) {
+	if s == nil || recorder == nil {
+		return nil, errors.New("Agent OAuth callback handoff recorder is required")
+	}
+	s.oauthCallbackRecorder = recorder
+	return s, nil
+}
+
 func (s *RestrictedServer) CommitMemoryPromotionReceipt(ctx context.Context, request *agentv1.CommitMemoryPromotionReceiptRequest) (*agentv1.CommitMemoryPromotionReceiptResponse, error) {
 	if s == nil {
 		return nil, errors.New("Agent Memory promotion receipt server is unavailable")
@@ -79,6 +88,13 @@ func (s *RestrictedServer) ConsumeOAuthAuthorizationTransaction(ctx context.Cont
 		return nil, errors.New("Agent OAuth authorization transaction server is unavailable")
 	}
 	return consumeOAuthAuthorizationTransactionV1(ctx, request, s.oauthTransactions)
+}
+
+func (s *RestrictedServer) RecordOAuthCallbackHandoff(ctx context.Context, request *agentv1.RecordOAuthCallbackHandoffRequest) (*agentv1.RecordOAuthCallbackHandoffResponse, error) {
+	if s == nil {
+		return nil, errors.New("Agent OAuth callback handoff server is unavailable")
+	}
+	return recordOAuthCallbackHandoffV1(ctx, request, s.oauthCallbackRecorder)
 }
 
 func (s *RestrictedServer) ClaimOAuthCallbackHandoff(ctx context.Context, request *agentv1.ClaimOAuthCallbackHandoffRequest) (*agentv1.ClaimOAuthCallbackHandoffResponse, error) {
