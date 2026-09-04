@@ -17,8 +17,7 @@
 
 ### session-1a2b3c4d
 
-- 空闲。Agent Memory promotion Control API 门禁修复已在本分支通过 Remote GPU Node 22 全量验证
-- 避开：前端、OAuth provider 装配、共享 Compose 与默认公开开关
+- 空闲。
 
 ## Code style
 

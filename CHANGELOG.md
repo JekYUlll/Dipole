@@ -1,5 +1,7 @@
 - 2026-09-04：Core capability 服务的 dipole-agent 方法许可清单补齐两个 Runtime 生产调用。`internal/services/core/rpcpolicy/policy.go` 的 `isAgentServiceMethodAllowed` 之前未列出 `AppendAgentTaskTimelineEvent`（`services/agent-runtime/src/models/model-router.ts:205` 追加 Timeline 事件的 secondary projection 路径，失败被静默吞掉）与 `SearchConversations`（`services/agent-runtime/src/models/model-shadow-planner.ts:100` retrieval opt-in 走 Core Search 组装）。缺项在 mTLS + `dipole-agent` caller 下会被 `RestrictAgentServiceMethods` 拒绝为 `PermissionDenied`，Runtime 端表现为 Timeline 静默丢失和 retrieval 开启后 fail closed。新增 `TestAgentServiceMethodAllowlistCoversRuntimeInvocations`：枚举 `services/agent-runtime/src/capabilities/agent-capability-rpc.ts` 里 `this.rpc.<method>` 的全部 30 个调用点作为不变量，任何 Runtime capability 新调用未同步进 allowlist 时该测试立即失败。不影响 Gateway/Search/Sync 现有策略，不改变默认 Compose 开关。`go build ./...` 干净，短测通过。
 
+- 2026-09-04：External MCP/Approval Shadow receipt 已刷新并绑定当前 `8c9c0b3f`。Remote GPU 的 disposable MySQL/Kafka/Temporal/Go Core mTLS/local MCP drill 验证两条 subscription event 收敛为一次 Tool/Artifact、重启去重、过期 readiness 拒绝、mTLS identity denial，以及 approval denied/consumed/failed replay 的零附加 effect；公共 `dipole-experience` 保持 12 个容器，候选资源清理为零。该回执保持 `production_authority=false`，不外推至真实外部 MCP、共享 authority 或 active 写入。
+
 - 2026-09-04：修复 Agent `promotion_active` profile 的 Control API 门禁。reviewed Memory 提交 Worker 现在显式拒绝任务控制入口，避免 promotion queue 与交互式 Task 创建同时暴露；默认 Compose、MCP、消息写入和 OAuth callback 路径保持关闭。
 
 # 更新日志

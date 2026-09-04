@@ -300,7 +300,7 @@ Approval receipt v2 进一步将拒绝语义与 effect count 分开绑定：`den
 
 2026-09-01 在候选 revision `f0dcf98a0b366031f7097cfd331318d39a9cf7a6` 完成 v2 drill。归档的 [v2 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/) 已同时验证 deny、consumed replay 和 failed-operation replay 都被拒绝且没有新增 effect；同一运行仍通过本地 MCP、EventLedger 重启去重、过期 readiness 与 mTLS identity denial。该结论保持在 disposable fixture 范围内。
 
-该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，但没有注册到生产 Worker、`index.ts` 或现有 Activity mode。当前启动链也没有外部 Capability route；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，生产 Worker 与外部网络开关继续关闭。
+该 Activity 已由通用 `agentTaskWorkflow` 的 `external_mcp_v1` 分支引用，并只在显式 `external_mcp_shadow` Activity mode 下通过受管 Worker 接入 `index.ts`。基础 `foundation` profile 不注册这组 Activity、路由或外部网络资源；第一方 Message write 继续使用带 action reference 的现有 Finish 路径，外部 write Capability 尚无通用可验证 action receipt。在真实路由注册、受控调度、active Artifact policy 和生产 I/O 完成前，默认生产开关继续关闭。
 
 ## 后续实现门槛
 
@@ -310,6 +310,6 @@ Transport Factory 已完成版本精确绑定、每请求 fresh Secret、公共 
 
 文件 CA provider 将 opaque ref 映射到规范绝对路径，每次 dispatch 都重新打开并加载，以支持受控原子轮换。父目录必须 canonical 且不可被 group/world 写，文件使用 `O_NOFOLLOW` 并要求 regular、single-link、root/expected-owner、不可被 group/world 写、256 KiB 默认上限；内容只允许 1 至 32 个可解析 PEM certificate。该 provider 适合静态 CA bundle，私钥和 Bearer secret 不得进入此映射。
 
-生产接入仍至少需要：启动前下游文件 preflight、每租户 provider owner 授权、secret lease/吊销告警、低敏审计及真实公网故障演练；更高安全级别部署还需 Vault/KMS/Secret Manager adapter。Secret 只在 Factory 内短暂使用，组合接口只向 Runtime 返回 tenant-bound Registry。当前 loader/composition 未注册到 `index.ts` 或 Worker startup，不会读取 manifest/凭据、发起查询或建立连接。
+生产接入仍至少需要：启动前下游文件 preflight、每租户 provider owner 授权、secret lease/吊销告警、低敏审计及真实公网故障演练；更高安全级别部署还需 Vault/KMS/Secret Manager adapter。Secret 只在 Factory 内短暂使用，组合接口只向 Runtime 返回 tenant-bound Registry。loader/composition 只由显式 `external_mcp_shadow` Worker startup 使用；基础 profile 不读取 manifest/凭据，也不发起查询或建立连接。
 
 完成上述门槛后，先在独立 Shadow tenant 接入一个只读 Server，验证 Server identity、Tool allowlist、取消/超时、Prompt Injection provenance 和凭据轮换，再评估按租户灰度。回滚始终先关闭外部 MCP 开关并等待在途 Tool 调用收敛。

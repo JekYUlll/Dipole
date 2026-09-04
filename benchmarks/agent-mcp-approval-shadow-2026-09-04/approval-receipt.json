@@ -12,8 +12,8 @@
   "schema_version": "dipole.agent.approval-gate-drill.v2",
   "outcome": "passed",
   "isolation": "disposable_go_core_mtls_approval_gate_fixture",
-  "collected_at": "2026-09-04T11:01:46.376Z",
-  "expires_at": "2026-09-05T11:01:46.376Z",
+  "collected_at": "2026-09-04T12:46:35.089Z",
+  "expires_at": "2026-09-05T12:46:35.089Z",
   "production_authority": false,
-  "content_sha256": "4f151d2de8a4e2087dc19569a8d570b1d4c88d96f9f227e3106a862a9ec737bc"
+  "content_sha256": "9473e6ed3ead574c8c54d964dfca73adb4bdf2ba42c63fe765f95068b96057f0"
 }

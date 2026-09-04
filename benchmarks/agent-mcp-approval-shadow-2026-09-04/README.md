@@ -2,7 +2,7 @@
 
 ## Scope
 
-This receipt records a disposable Remote GPU run from source revision `58ad3ada52286ad1684bdac315f83db8af185975`. It used isolated MySQL 8.4, Kafka 3.9, an in-memory Temporal test server, a Go Core mTLS fixture, and a local MCP fixture.
+This receipt records a disposable Remote GPU run from source revision `8c9c0b3f5d9f246043e0b55b51f8858360cb7c46`. It used isolated MySQL 8.4, Kafka 3.9, an in-memory Temporal test server, a Go Core mTLS fixture, and a local MCP fixture.
 
 ## Verified Behavior
 
@@ -13,6 +13,6 @@ This receipt records a disposable Remote GPU run from source revision `58ad3ada5
 
 ## Boundary
 
-The receipts set `production_authority=false`. The run did not contact a real external MCP server or write IM messages. It does not prove browser approval UI behavior, shared Core/Kafka/Temporal authority, public DNS/TLS, credential lifecycle, or active write authority. The script removed its disposable containers, volumes, network, certificates, and temporary fixture after completion.
+The receipts set `production_authority=false`. The run did not contact a real external MCP server or write IM messages. It does not prove browser approval UI behavior, shared Core/Kafka/Temporal authority, public DNS/TLS, credential lifecycle, or active write authority. The script removed its disposable containers, volumes, network, certificates, and temporary fixture after completion; post-run inspection confirmed no candidate containers remained and the public `dipole-experience` project stayed at 12 containers.
 
 See [`mcp-receipt.json`](mcp-receipt.json), [`approval-receipt.json`](approval-receipt.json), and the [External MCP runbook](../../docs/agent/agent-external-mcp.md).
