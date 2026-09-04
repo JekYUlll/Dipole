@@ -8,6 +8,8 @@
 
 active Runtime 默认只执行 `conversation.list/read`。基础 Compose 固定开启 Agent Task Control，Gateway 以内部共享密钥转发认证 owner 的控制请求；该控制面本身不授予写 Capability。`DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED=true` 是独立的候选开关：它只允许 owner 在直属 Agent 会话发出显式 `/send <内容>`，Task 先进入 `waiting_approval`，approved Signal 后通过既有 grant、一次性 consume、Tool Invocation 与 Core 消息命令链路执行一条 `system_message`。当前 active overlay 不设置该开关，因此 Artifact、消息发送、外部 MCP 和其他写 Capability 继续保持关闭。
 
+创建请求被 Runtime 接受后，Core 仍会在 durable admission 时复核该 owner 的 active Definition 和同一 candidate 的有效 promotion grant。`/api/v1/agent/status` 中的 `taskControlEnabled=true` 只表示认证控制路由已装配，不表示任意用户已经具备 active Run 资格。开发或体验环境必须使用受控 Definition 与短期 grant，并在验收后撤销；共享环境继续遵循本手册的 operator review 与 `user_gray` 证据要求。
+
 ## 运行状态诊断
 
 认证用户可通过 `GET /api/v1/agent/status` 查询当前 Agent Task 控制面的低敏状态。响应只包含 schema version、Runtime mode、Temporal 是否启用及 activity mode、Task control 是否启用和交互消息写入是否启用；不包含 Provider、模型 route、端点、凭据、任务、消息或用户数据。该接口用于区分“控制面未装配”和“任务执行失败”，不能替代 `/livez`、`/readyz`、任务 Timeline、共享环境 receipt 或发布批准。
