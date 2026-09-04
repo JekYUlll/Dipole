@@ -139,10 +139,12 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_KAFKA_GROUP_ID == "dipole-agent-active-primary-v1"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE == "dipole-agent-primary-v1"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "read_active"
+  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED == "false"
   and .services.agent.depends_on.core.condition == "service_healthy"
   and .services.agent.depends_on.temporal.condition == "service_healthy"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
   and .services.temporal.image == "temporalio/auto-setup:1.29.1"
   and .services.temporal.depends_on["temporal-postgresql"].condition == "service_healthy"
   and .services["temporal-postgresql"].image == "postgres:16"
@@ -201,9 +203,10 @@ jq -e '
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_NAMESPACE == "dipole"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE == "dipole-agent-active-compose-check"
   and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE == "read_active"
-  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "false"
+  and .services.agent.environment.DIPOLE_AGENT_CONTROL_ENABLED == "true"
   and .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "false"
   and .services.agent.environment.DIPOLE_AGENT_EXTERNAL_MCP_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED == "true"
   and any(.services.agent.volumes[]; (.source | endswith("/tmp/dipole-agent-release-manifest-check.json"))
     and .target == "/run/dipole/release/manifest.json" and .read_only == true)
 ' <<<"${active_agent_config}" >/dev/null

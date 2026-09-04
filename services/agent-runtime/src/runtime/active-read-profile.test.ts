@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { assertActiveReadProfileSurface } from "./active-read-profile.js";
 
 const readOnlySurface = {
-  controlEnabled: false,
+  controlEnabled: true,
   mcpServerEnabled: false,
   externalMcpEnabled: false,
   memoryEnabled: false,
@@ -22,7 +22,6 @@ describe("active Agent read profile", () => {
   });
 
   it.each([
-    ["controlEnabled", "Control API"],
     ["mcpServerEnabled", "MCP Server"],
     ["externalMcpEnabled", "External MCP"],
     ["memoryEnabled", "Memory"],

@@ -14,7 +14,6 @@ export function assertActiveReadProfileSurface(
 ): void {
   if (runtimeMode !== "active") return;
   const enabled = [
-    ["Control API", surface.controlEnabled],
     ["MCP Server", surface.mcpServerEnabled],
     ["External MCP", surface.externalMcpEnabled],
     ["Memory", surface.memoryEnabled],

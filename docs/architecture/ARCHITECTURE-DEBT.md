@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：基础 Compose 现默认启用认证的 Durable Agent Task Control，并保持 `remote + read_active` 的只读 Capability surface。Gateway 可转发任务创建、查询、取消、输入和审批；Task 依赖 Temporal 持久化恢复。该控制面不授予 `message.system.send`、MCP、Memory、检索或订阅触发权限，Shadow MCP overlay 也会显式关闭控制面，避免测试 profile 继承主线入口。默认任务控制的隔离 Compose API 闭环、真实 Provider 成功率、共享 tenant、浏览器 HITL 和写入 authority 仍需独立验收。
+
 - 2026-09-04：基础 Compose 已将 Temporal 从可选 Shadow overlay 收口为默认的 Durable Runtime 依赖，主线运行受限 `remote + read_active`。默认路径仍禁止自动写入、MCP、Memory、检索和订阅触发；Shadow profile 仅保留给回退与测试。仓库内 development manifest 只用于本地可启动性，部署必须注入同版本、已评审的 `user_gray` manifest 和 Provider Secret。
   - Remote GPU 隔离 Compose 已验证全链启动：Agent、Temporal、PostgreSQL、Core、Gateway、Message、Sync、Kafka、MySQL、Redis 和 MinIO 均健康；Temporal Worker 使用主线 queue，Kafka consumer 使用隔离的 `dipole-agent-active-primary-v1` group。该回执只覆盖启动与连接面，不推导模型效果、写入 authority、共享 tenant 或成功率。
 

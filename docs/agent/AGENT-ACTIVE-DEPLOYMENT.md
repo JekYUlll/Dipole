@@ -1,12 +1,12 @@
 # Agent Active 部署运行手册
 
-本文档约束 `read_active` 的 user-gray 部署。基础 Compose 默认启动 Temporal，并运行受限的 `remote + read_active` Durable Runtime；写入、MCP、Memory、检索和订阅触发仍由显式 overlay 管理。
+本文档约束 `read_active` 的 user-gray 部署。基础 Compose 默认启动 Temporal，并运行受限的 `remote + read_active` Durable Runtime；认证用户可使用 Task Control 创建、查询、取消、输入和审批只读任务。消息写入、MCP、Memory、检索和订阅触发仍由显式 overlay 管理。
 
 ## 1. 边界
 
 `docker compose config` 通过证明部署输入完整。它不提供 Kafka、Temporal、Capability RPC、模型 Provider、评测或权限链路的在线证据。
 
-active Runtime 默认只执行 `conversation.list/read`。`DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED=true` 是独立的候选开关：它只允许 owner 在直属 Agent 会话发出显式 `/send <内容>`，Task 先进入 `waiting_approval`，approved Signal 后通过既有 grant、一次性 consume、Tool Invocation 与 Core 消息命令链路执行一条 `system_message`。当前 active overlay 不设置该开关，因此 Artifact、消息发送、外部 MCP 和其他写 Capability 继续保持关闭。
+active Runtime 默认只执行 `conversation.list/read`。基础 Compose 固定开启 Agent Task Control，Gateway 以内部共享密钥转发认证 owner 的控制请求；该控制面本身不授予写 Capability。`DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED=true` 是独立的候选开关：它只允许 owner 在直属 Agent 会话发出显式 `/send <内容>`，Task 先进入 `waiting_approval`，approved Signal 后通过既有 grant、一次性 consume、Tool Invocation 与 Core 消息命令链路执行一条 `system_message`。当前 active overlay 不设置该开关，因此 Artifact、消息发送、外部 MCP 和其他写 Capability 继续保持关闭。
 
 ## 运行状态诊断
 
