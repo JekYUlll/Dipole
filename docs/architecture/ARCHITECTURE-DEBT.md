@@ -241,6 +241,8 @@
 
 - 2026-09-04：Remote GPU 已在 `58ad3ada` 运行并归档 [MCP/Approval Shadow receipts](../../benchmarks/agent-mcp-approval-shadow-2026-09-04/)。两条 subscription-scoped ledger event、一次 allowlisted local Tool/Artifact、重启去重、过期 readiness 拒绝、mTLS identity denial，以及 approval denied/consumed/failed replay 的零附加 effect 均通过。共享 Core/Kafka/Temporal、真实外部 MCP、浏览器审批和 active authority 继续开放。
 
+- 2026-09-04：Agent 学习与面试材料已引用上述最新 receipt，并将可表述的 subscription-scoped 幂等与 approval replay 边界同共享 authority、真实外部网络和浏览器审批缺口分开记录。
+
 - 2026-09-01：Approval gate drill receipt 升级为 v2，将已拒绝 grant、已消费 grant 重放和失败操作后的重放作为独立布尔断言，并继续绑定相应的零副作用计数。v1 保留为历史 evidence；v2 Remote GPU receipt、审批 UI 与共享环境验证仍待完成。
 
 - 2026-09-01：Remote GPU 已在候选 `3c1f3eba` 复跑 disposable External MCP/approval Shadow drill，并归档 [低敏 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01/)。本地 MCP Tool/Artifact、EventLedger 重启去重、过期 readiness 拒绝、Core mTLS identity denial 和一次 approved fixture operation 的副作用基数均通过。MySQL AIO 兼容参数仅作用于该 disposable drill；共享服务、真实外部 DNS/TLS、凭据生命周期、approval UI deny 和 active authority 继续开放。

@@ -1,5 +1,7 @@
 # 更新日志
 
+- 2026-09-04：Agent 学习与面试材料已切换至最新的 External MCP/Approval Shadow receipt，明确 subscription-scoped 幂等、过期 readiness 拒绝和 approval replay 的证据范围。
+
 - 2026-09-04：External MCP Shadow drill 在依赖安装前增加 Node 22 运行时门禁。
   - `DIPOLE_NODE_BIN` 指向 Node 18 或无效版本时，脚本以状态码 `2` 失败关闭，不会创建 Compose 资源或执行 `npm ci`；远端可显式指定已有的用户态 Node 22。缺依赖时的 lockfile 安装关闭 audit/fund 网络请求，避免 audit 阻塞隔离 drill。
   - Core mTLS drill fixture 现显式回传订阅 owner，并将非空 subscription ID 纳入确定性 Task ID 向量，使 subscription 触发的 Runtime、Temporal Workflow 与 Core admission 使用同一隔离键。

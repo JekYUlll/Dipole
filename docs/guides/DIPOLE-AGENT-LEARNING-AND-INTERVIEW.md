@@ -30,7 +30,7 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 - **限制：** Remote GPU 已完成隔离 Compose 上同版本、只读 admission、终态和 Timeline 分页验证。它不能外推为任务成功率、active authority、写 Capability、生产部署或公开体验；基础 Compose 默认仍关闭控制面。
 - **复核条件：** 修改 admission ID 派生、Gateway 身份、Runtime control 配置、前端 feature flag 或 Timeline 路由时。
 | reviewed Memory receipt、mTLS、MySQL retry | 已验证（隔离 Remote GPU） | `scripts/drill-agent-memory-promotion-temporal-mysql-mtls.sh` |
-| External MCP Shadow 完整链路 | 已验证（隔离 Remote GPU） | `scripts/drill-agent-external-mcp-shadow.sh` |
+| External MCP Shadow 完整链路 | 已验证（隔离 Remote GPU） | [2026-09-04 MCP/Approval receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-04/) |
 | `conversation.search` 受控检索契约 | 已验证（Core/Proto/TS 与隔离 Remote GPU） | `internal/services/agent/application/agent_capability.go` |
 | `promotion_active` 与 External MCP Shadow mode | 默认关闭 | [External MCP 运行手册](../agent/agent-external-mcp.md) |
 | Project Guardian 预筛评测基线 | 已验证（合成离线） | `contracts/agent-evals/v1/project-guardian-synthetic-corpus.json` |
@@ -84,9 +84,9 @@ ExecutionContext、Capability、Temporal、Memory、MCP、评测、运行模式�
 
 - **简历句：** 为外部 MCP 只读调用构建可释放的 Shadow 验证链，串联 Kafka、MySQL EventLedger、Temporal、mTLS Core RPC 与受限 MCP Tool，并用重启重放和过期 readiness 验证安全收敛。
 - **演示：** 运行 `scripts/drill-agent-external-mcp-shadow.sh`；查看低敏 evidence 中的事件数、Tool/Artifact 数、重启去重与 readiness 拒绝结果。
-- **证据：** [2026-09-01 v2 隔离 receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-01-v2/)、[外部 MCP 运行手册](../agent/agent-external-mcp.md)、`services/agent-runtime/src/runtime/external-mcp-full-stack-drill.integration.test.ts`、`contracts/agent-external-mcp/v2/shadow-drill-evidence.schema.json`。
+- **证据：** [2026-09-04 MCP/Approval receipt](../../benchmarks/agent-mcp-approval-shadow-2026-09-04/)、[外部 MCP 运行手册](../agent/agent-external-mcp.md)、`services/agent-runtime/src/runtime/external-mcp-full-stack-drill.integration.test.ts`、`contracts/agent-external-mcp/v2/shadow-drill-evidence.schema.json`。
 - **追问：** “为什么重发相同事件不能重复调用 Tool？” Kafka 至少一次投递和 Runtime 重启会产生重复输入，持久 EventLedger 与稳定 Task ID 共同限制只执行一次。
-- **限制：** 演练使用本地 MCP fixture、临时 CA、临时 MySQL/Kafka 与内存 Temporal；v2 已验证拒绝 grant 不产生副作用，审批 UI deny 流程仍待前端切片。共享身份、外部 DNS/TLS、凭据轮换或生产 authority 仍未接入。
+- **限制：** 演练使用本地 MCP fixture、临时 CA、临时 MySQL/Kafka 与内存 Temporal。最新 receipt 证明 subscription-scoped 幂等键、过期 readiness 拒绝和 approval denied/consumed/failed replay 的零附加 effect；审批 UI deny、共享身份、外部 DNS/TLS、凭据轮换或 production authority 仍未接入。
 - **下一步：** 在独立 Shadow tenant 使用受控只读 Server，补齐真实 Provider owner、凭据吊销、网络故障和观测窗口证据。
 - **复核条件：** 修改 EventLedger、Kafka group、Temporal route、Core RPC、MCP transport 或 readiness policy 时。
 
