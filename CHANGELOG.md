@@ -1,3 +1,7 @@
+- 2026-09-04：新增默认未装配的 OAuth lifecycle maintenance lease persistence foundation。
+  - SQLC 表以 `handoff_uuid` 保证每个 lifecycle 只有一个 lease，并通过 `runtime_key_id`、owner、generation 与 expiry 支持过期后 fencing reclaim。
+  - 当前没有 RPC、worker 或默认 profile 引用；后续将补齐活跃 lifecycle 校验、受控 envelope retrieval 与 CAS transition。
+
 - 2026-09-04：固定 OAuth token lifecycle maintenance v1 契约。
   - callback lease 仅授权初次 lifecycle 写入；后续 refresh、revoke 与 expiry 必须使用独立 maintenance lease、Runtime key binding 和 digest + lease generation CAS。
   - 契约还固定最小审计字段、terminal material 清理及默认 profile 的 enablement gate；当前未新增 worker、RPC 或公开 OAuth surface。

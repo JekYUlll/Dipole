@@ -90,3 +90,13 @@ type AgentOAuthTokenLifecycleStoreV1 interface {
 type AgentOAuthTokenLifecycleExpiryStoreV1 interface {
 	ExpireDueAgentOAuthTokenLifecycles(context.Context, time.Time, uint32) (uint64, error)
 }
+
+type AgentOAuthTokenLifecycleMaintenanceLeaseV1 struct {
+	HandoffUUID, RuntimeKeyID, LeaseOwner string
+	LeaseGeneration                       uint64
+	LeaseExpiresAt                        time.Time
+}
+
+type AgentOAuthTokenLifecycleMaintenanceLeaseStoreV1 interface {
+	ClaimAgentOAuthTokenLifecycleMaintenanceLease(context.Context, string, string, string, time.Time, time.Time) (*AgentOAuthTokenLifecycleMaintenanceLeaseV1, error)
+}

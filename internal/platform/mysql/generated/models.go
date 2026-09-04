@@ -389,6 +389,16 @@ type AgentOauthTokenLifecycle struct {
 	UpdatedAt            time.Time
 }
 
+type AgentOauthTokenLifecycleMaintenanceLease struct {
+	HandoffUuid     string
+	RuntimeKeyID    string
+	LeaseOwner      string
+	LeaseGeneration uint64
+	LeaseExpiresAt  time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type AgentRun struct {
 	ID               uint64
 	RunUuid          string
