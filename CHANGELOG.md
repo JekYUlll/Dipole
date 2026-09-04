@@ -3,6 +3,19 @@
 - 2026-09-04：为隔离 Agent OpenTelemetry smoke 增加 Compose 启动时限。
   - `smoke-agent-otel.sh` 现在将 Tempo/Collector 启动限制在 30 至 1800 秒，默认 300 秒；镜像拉取或 Compose 卡住时会以非零退出，并经既有 trap 清理随机项目、卷和匿名 Docker 配置。
   - Remote GPU 在 `2aa608e5` 的随机隔离项目中通过真实 trace 验收：`agent.otel.smoke` 经 Collector 写入 Tempo 且可按 trace ID 查询；远端日志 SHA-256 为 `71c99ee185cadd6674f1af6a51e74c9618d893d88714c7384d83547c8c09bbaa`。退出后候选容器为零，公共 `dipole-experience` 保持 11 个运行容器。默认 `DIPOLE_AGENT_OTEL_ENABLED=false` 不变。
+  - 默认 `DIPOLE_AGENT_OTEL_ENABLED=false` 保持不变。本轮仅加本地静态门禁；Remote GPU SSH 当前不可达，真实 trace 验收待连通后重跑。
+- 2026-09-04：Agent OAuth callback durable handoff 补上 Runtime 侧的 provider exchange + token lifecycle 组合闭环，默认仍不接线。
+  - 新增 `services/agent-runtime/src/mcp/oauth-callback-provider.ts`（provider 接口 + `OAuthTokenBundle` + `{exchanged | retryable_failure | permanent_failure}` outcome + `isValidTokenBundle` 校验）；`deterministic-fake-oauth-callback-provider.ts` 提供确定性 fake：按 `sha256(authorizationCode)` 查 plan、terminal outcome 幂等缓存、retryable 每次都会真调、支持 `throw` 模拟不确定，`exchangeCount` 计数用于回归。
+  - 新增 `oauth-callback-token-lifecycle.ts`：进程内 `TokenLifecycleStore`，状态机 `pending_exchange → active → refreshed → { revoked | expired }`。terminal（`revoked`/`expired`）后 `get` 保留元数据，`accessToken` / `refreshToken` 置 null；非法转换 fail closed。
+  - 新增 `oauth-callback-handoff-provider-processor.ts`：`OAuthCallbackHandoffProcessor` 的一种可选实现，把 provider + lifecycle wire 起来——`exchanged` 写 active + `"completed"`；`retryable_failure` 不写 lifecycle + `"retryable_failure"`；`permanent_failure` 写 revoked + `"completed"`；抛错继续冒泡以保留 executor lease（沿用现有"outcome unknown 保留 lease"契约，未修改）。
+  - 测试：`oauth-callback-provider.test.ts` / `deterministic-fake-oauth-callback-provider.test.ts` / `oauth-callback-token-lifecycle.test.ts` / `oauth-callback-handoff-provider-processor.test.ts` + `oauth-callback-handoff-durable-runtime.test.ts` 覆盖 6 端到端场景：重复 notify、Worker 重启 lease 过期换 owner、claim 后 lease 超时、`exchanged` 精确重放被 Core 拒绝、`retryable_failure` 回滚后再次 claim 成功、`PERMISSION_DENIED` 时不打开 envelope、不调 provider、不写 lifecycle。
+  - 未变更：proto / SQLC / Core Go / Gateway Go / `services/agent-runtime/src/index.ts` / Compose / env / bootstrap / 前端 / 主 checkout；无新增依赖，`package.json` 不动。`docs/agent/agent-oauth-callback-handoff.md` 加了 `Provider exchange + token lifecycle` 小节，`docs/architecture/ARCHITECTURE-DEBT.md` 同日新增归档条目，`docs/notes/implemented-but-disabled.md` OAuth 行补明本切片仍默认关。回滚：删除 feature branch 即可，无入口挂载。
+
+- 2026-09-03：前端 BI 重构 Phase 0——铺 PrimeVue 4 + 直角 primitives，旧 Agent 页不动。
+  - 装 `primevue@4.4.1` + `@primeuix/themes@4.4.1`；`config/primevueTheme.ts` 用 Aura preset + `definePreset` 把所有 `borderRadius` 收 0、把 primary/surface/content/formField 语义色桥接到 `--dp-*` 变量，density 收紧到 form 6/10。`main.ts` 注册 PrimeVue + `ConfirmationService` + `ToastService`，`ripple:false`。
+  - 新 primitives：`layout/AppShell.vue`（48px rail 顶栏 + Chat/Directory/Settings 固定 tab + 🤖 toggle 通过 `?agent=1&view=live` 改 URL + 待办红角标 + 28px status bar + `default` / `agent-drawer` / `status-right` / `search` slot）、`data/StatusPill.vue`（6 色 tone、可选 dot、dense）、`data/Banner.vue`（4 色 tone、图标 + action + close，替代整屏中央 state card）、`data/StatePanel.vue`（cold-start 才用，spinner/empty/unavailable 三态）。
+  - Feather 图标补 `IconCpu / IconMoreHorizontal / IconChevron{Right,Down} / IconRefreshCw / IconInbox / IconPackage / IconGrid / IconRadio / IconEdit`。`design-tokens.css` 加 `--dp-bg-workspace/panel/panel-muted` 别名与 `.mono` 工具类；`design-tokens.test.ts` 契约照旧。
+  - 4 组 primitive 单测 23/23 通过，全量 227/227 通过，`vue-tsc --noEmit` 干净，`vite build` 351 KB（+PrimeVue baseline，后续 view 内按需 import 拆包）。默认路由与 `VITE_*` 均未变，产线开关继续关闭。
 
 - 2026-09-04：补齐 Active Read Agent Task 的隔离验收。
   - 交互只读 smoke 可显式切换到 active profile：候选环境创建 owner Definition、安装短期 promotion grant，并在退出时撤销 grant、删除容器和卷。

@@ -41,6 +41,7 @@ Pencil 侧栏「审批记录」没有路由和 API，已从任务/记忆/定义/
 | MCP Elicitation continuation | `DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE=external_mcp_shadow`；overlay `agent-external-mcp-shadow.yml` | 可 opt-in | AD-036 多轮 / 敏感授权 / 共享环境。单轮 continuation 已在该 Worker 的 `executeMcpDispatch` |
 | 第一方 Elicitation Timeline 入口 | `VITE_AGENT_ELICITATION_ENABLED` | 可 opt-in | 投影已写 `input_request`，Timeline 已链接；页面默认关 |
 | OAuth callback consume | `agent_oauth_authorization_transaction_consume_enabled` | 可 opt-in | mTLS + callback + 密钥评审 |
+| OAuth callback durable handoff（Runtime 侧 provider + token lifecycle） | 无独立开关：`services/agent-runtime/src/index.ts` 完全不装配，`OAuthCallbackRuntimeConfig` 默认 `enabled=false` 且 `assertOAuthCallbackRuntimeUnavailable` 会拒绝启用 | 缺接线（组合闭环已实现） | 需真实 provider adapter + Core-owned token lifecycle SQLC 表 + Runtime 密钥轮换/retention + Gateway callback route。回滚方式：删除 feature branch，主 checkout 未受影响 |
 
 ## 存储 / Sync / 文件
 
