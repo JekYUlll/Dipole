@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：主 Compose 默认开放 owner-scoped 的只读 Agent Definition API。
+  - Gateway 现在默认装配认证的 `POST/GET /api/v1/agent/definitions`，使用户能够创建进入 `read_active` Durable Task admission 所需的 `read_only` Definition；用户仍可用环境变量关闭该入口。
+  - API 只产生当前 owner 的 `conversation.list/read` wildcard scope，不能授予消息写入、MCP、Memory、订阅或 promotion authority。Core 继续要求同 candidate 的有效 promotion grant，因此默认 Task Control 不会自动提升为任意用户可执行。
+
 - 2026-09-04：校正 Agent 已实现能力台账的默认拓扑口径。
   - 主 Compose 的 `remote + read_active` Runtime、Temporal 与认证 Task Control 现明确标为默认只读服务；`agent-temporal-read-shadow.yml` 仅作为回退和测试 profile。
   - 台账继续区分服务启动与 Task admission：实际执行仍要求 owner Definition 与同 candidate 的有效 promotion grant，自动写入、MCP、Memory、检索和订阅触发均未随之开启。

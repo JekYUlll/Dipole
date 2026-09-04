@@ -120,7 +120,7 @@ jq -e '
   and .services.core.environment.DIPOLE_INTERNAL_RPC_AGENT_WORKFLOW_REPAIR_EXECUTE_ENABLED == "false"
   and .services.gateway.image == "dipole-gateway:latest"
   and .services.gateway.entrypoint == ["/app/service"]
-  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "false"
+  and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED == "true"
   and .services.gateway.environment.DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "false"
   and .services.message.image == "dipole-message:latest"
   and .services.message.entrypoint == ["/app/service"]
