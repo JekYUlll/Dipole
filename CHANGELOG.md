@@ -1,3 +1,9 @@
+- 2026-09-04：`agent-experience.yml` 提高 `DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS` 默认值,修复推理模型下首个任务必失败的问题。
+  - 根因:体验环境默认路由为 `deepseek/deepseek-v4-flash`(reasoning 家族)。在真实规划提示词上,DeepSeek 观测到 `reasoning_tokens ≈ 2 000 + visible content ≈ 800`,而旧默认 `MAX_OUTPUT_TOKENS=1024` 上限直接被 reasoning 阶段吃光,`content` 字段返回空字符串;`AISDKStructuredModelClient` 判空后抛 `model JSON-text response is not a valid JSON object (bytes=0,first="empty",...)`,`mysql-model-audit-store` 把 `agent_model_runs.status` 置 `failed`、`calls_reserved=1=max_calls`。Temporal 重试时 `reserve()` 命中 `calls_reserved>=max_calls` 走 `undefined` 分支,`ModelRouter` 就以 `attempts=0, exhaustedBudget=true` 结束,前端任务停在失败状态。
+  - 修复:`deploy/microservices/agent-experience.yml` 的三个 fallback 从 `MAX_CALLS=1 / TIMEOUT=30s / MAX_OUTPUT_TOKENS=1024` 提升为 `3 / 90s / 4096`。仍支持 `.env` 显式覆盖(operator 侧优先),`shadow-runtime.ts` 的 dev 默认值 `2 / 15s / 512` 不动(体验部署走 `experience` 组合文件里的默认)。真实推理调用仍保持 shadow 模式关闭,不影响 mock/CI 场景。
+  - 现场:LAB113-OPS 上的 `dipole-experience` 已同步 `.env` 覆盖并 `--force-recreate agent`;失败任务 `task:a095f0f1dade8b751e8e3ad17bab7a4f7646cc9f82516987ddcd3a949c1` 对应的 `agent_model_runs` 已删,允许 Temporal 重放。真机 probe 复核:同类规划提示词返回 `finish_reason=stop, reasoning_tokens=1963, completion_tokens=2829, content_bytes=3831`,不再触发空响应。
+  - 遗留:如果后续切换到非推理模型(如 `deepseek-chat`),可以把 `MAX_OUTPUT_TOKENS` 收回 1024,但建议保留 `MAX_CALLS>=2` 以便对空响应有一次重试余量。同一路由的 policy 一旦落表,`.env` 里改小 `MAX_OUTPUT_TOKENS` 后旧任务会因 `samePolicy` 校验抛 `Agent model run policy conflict` — 变更需清理对应 `agent_model_runs` 行,或者只对新任务生效。
+
 - 2026-09-04：新增默认未装配的 OAuth lifecycle maintenance lease persistence foundation。
   - SQLC 表以 `handoff_uuid` 保证每个 lifecycle 只有一个 lease，并通过 `runtime_key_id`、owner、generation 与 expiry 支持过期后 fencing reclaim。
   - 当前没有 RPC、worker 或默认 profile 引用；后续将补齐活跃 lifecycle 校验、受控 envelope retrieval 与 CAS transition。

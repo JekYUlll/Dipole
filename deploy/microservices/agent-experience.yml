@@ -82,9 +82,17 @@ services:
       DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS: ${DIPOLE_AGENT_MODEL_STRUCTURED_OUTPUTS:-false}
       DIPOLE_AGENT_MODEL_OUTPUT_MODE: ${DIPOLE_AGENT_MODEL_OUTPUT_MODE:-json_schema}
       DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v2
-      DIPOLE_AGENT_MODEL_MAX_CALLS: ${DIPOLE_AGENT_MODEL_MAX_CALLS:-1}
-      DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: ${DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS:-30000}
-      DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: ${DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS:-1024}
+      # Reasoning models (e.g. deepseek-v4-flash / o1-style routes) spend a
+      # non-trivial slice of the output budget on hidden reasoning tokens before
+      # emitting any visible content. Experience deployments observed ~2 000
+      # reasoning tokens for a single planner call, so a 1 024-token cap led to
+      # empty responses and a spurious "model run budget exhausted" failure on
+      # the first task. The defaults below reserve headroom for reasoning
+      # tokens and leave two extra call slots for parse-retry, while still
+      # honouring any explicit override the operator supplies.
+      DIPOLE_AGENT_MODEL_MAX_CALLS: ${DIPOLE_AGENT_MODEL_MAX_CALLS:-3}
+      DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: ${DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS:-90000}
+      DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: ${DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS:-4096}
       DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-shadow-experience-v1
       DIPOLE_AGENT_MEMORY_ENABLED: "true"
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true"
