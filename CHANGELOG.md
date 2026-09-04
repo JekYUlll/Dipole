@@ -1,3 +1,5 @@
+- 2026-09-04：Remote GPU 已在 `85af1e88` 验证 OAuth token lifecycle 的开发期工具链契约：Go `1.27.0` contract、Node `22.12.0` 下 3 个 Runtime 测试文件/11 项测试以及 TypeScript typecheck 均通过；公共 `dipole-experience` 保持 12 个运行容器。该回执只覆盖源码和工具链，不启动 callback route、Core mTLS、MySQL 写入或真实 Provider，详见 [receipt](benchmarks/agent-oauth-token-lifecycle-2026-09-04/)。
+
 - 2026-09-04：OAuth callback provider 的永久失败现可持久化为 Core-owned `revoked` lifecycle 状态。
   - Runtime 在 `invalid_grant` 等确定性失败时仅提交 handoff、lease、状态与受控原因，不提交 token envelope、token digest、expiry 或 scope；Core 确认后本地 fixture 才进入 `revoked`，然后 executor 才完成 callback handoff。
   - Core 写入失败或 Runtime RPC 错误会保留 lease 和 `pending_exchange`，以便受控重试。该路径继续未装配到默认 Runtime/Compose，active token 的长期 refresh/revoke authority 仍不在本切片范围内。
