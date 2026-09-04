@@ -429,7 +429,17 @@ wait_for_workflow() {
   [[ "${result}" == "${wanted_status}" ]] || { printf 'Workflow status did not converge: task=%s got=%s want=%s\n' "${task_id}" "${result}" "${wanted_status}" >&2; return 1; }
 }
 
+verify_waiting_locator_metric() {
+  local metric
+  metric=$(compose exec -T gateway wget -q -O - http://127.0.0.1:9100/metrics | grep '^dipole_agent_task_waiting_locator_total{outcome="online"} ' || true)
+  [[ "${metric}" == 'dipole_agent_task_waiting_locator_total{outcome="online"} 1' ]] || {
+    printf 'Agent Task waiting locator metric diverged: %q\n' "${metric}" >&2
+    return 1
+  }
+}
+
 denied_task=$(start_task_and_wait_for_locator "deny-$(openssl rand -hex 6)" "/send This message must stay uncommitted.")
+verify_waiting_locator_metric
 denied_approval=$(wait_for_approval "${denied_task}")
 resolve_twice "${denied_task}" "${denied_approval}" denied >/dev/null
 wait_for_workflow "${denied_task}" cancelled
