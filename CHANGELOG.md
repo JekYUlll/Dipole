@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：补齐 Active Read Agent Task 的隔离验收。
+  - 交互只读 smoke 可显式切换到 active profile：候选环境创建 owner Definition、安装短期 promotion grant，并在退出时撤销 grant、删除容器和卷。
+  - Remote GPU 在 `7771400b` 通过认证任务幂等、跨 owner 拒绝、Temporal durable 完成、两步读取轨迹与零 Agent 消息写入断言；公共 `dipole-experience` 保持 11 个运行容器。
+
 - 2026-09-04：默认微服务 Compose 开放只读 Durable Agent Task 控制面。
   - Gateway 现默认转发认证用户的任务创建、查询、取消、输入和审批请求到 `remote + read_active` Runtime；任务经 Temporal 持久化执行，自动消息写入、MCP、Memory、检索和订阅触发继续关闭。
   - Shadow MCP profile 显式关闭 Task Control，避免继承主线默认开关；交互消息写入仍需受控 `interactive_active` overlay、owner 审批与独立验收。

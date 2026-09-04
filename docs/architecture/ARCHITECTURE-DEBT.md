@@ -2,6 +2,8 @@
 
 - 2026-09-04：基础 Compose 现默认启用认证的 Durable Agent Task Control，并保持 `remote + read_active` 的只读 Capability surface。Gateway 可转发任务创建、查询、取消、输入和审批；Task 依赖 Temporal 持久化恢复。该控制面不授予 `message.system.send`、MCP、Memory、检索或订阅触发权限，Shadow MCP overlay 也会显式关闭控制面，避免测试 profile 继承主线入口。Remote GPU 在 `a10cea42` 的一次性项目验证了完整默认服务健康，以及认证 Gateway 返回 `taskControlEnabled=true`、active Runtime、Temporal `read_active` 和交互写入关闭；候选容器、卷和工作树均已清理。active admission 仍要求 owner Definition 与同 candidate 的有效 promotion grant，因此该状态验证不能表示任意新用户可以执行 Task。下一体验切片应以短期 grant 演练真实只读轨迹并在结束时撤销。Provider 成功率、共享 tenant、浏览器 HITL 和写入 authority 仍需独立验收。
 
+- 2026-09-04：Active Read Task 的短期 grant 演练已在 `7771400b` 完成。独立 Compose project 使用 `remote + read_active`，临时创建 owner Definition 和 15 分钟 promotion grant；认证 Gateway 的重复创建收敛为一个 Task，跨 owner 查询被拒绝，Temporal 完成两步 `conversation.list → conversation.read` 轨迹，Agent 消息计数为零。退出时 grant 由 trap 撤销，候选容器/卷和工作树均为零，公共 `dipole-experience` 为 11 个运行容器。该回执仅证明受控 fixture；默认主线仍不为新用户自动签发 Definition 或 grant，真实 Provider 效果、共享 tenant、浏览器 HITL 与写入 authority 继续关闭。
+
 - 2026-09-04：基础 Compose 已将 Temporal 从可选 Shadow overlay 收口为默认的 Durable Runtime 依赖，主线运行受限 `remote + read_active`。默认路径仍禁止自动写入、MCP、Memory、检索和订阅触发；Shadow profile 仅保留给回退与测试。仓库内 development manifest 只用于本地可启动性，部署必须注入同版本、已评审的 `user_gray` manifest 和 Provider Secret。
   - Remote GPU 隔离 Compose 已验证全链启动：Agent、Temporal、PostgreSQL、Core、Gateway、Message、Sync、Kafka、MySQL、Redis 和 MinIO 均健康；Temporal Worker 使用主线 queue，Kafka consumer 使用隔离的 `dipole-agent-active-primary-v1` group。该回执只覆盖启动与连接面，不推导模型效果、写入 authority、共享 tenant 或成功率。
 

@@ -10,6 +10,13 @@ active Runtime 默认只执行 `conversation.list/read`。基础 Compose 固定�
 
 创建请求被 Runtime 接受后，Core 仍会在 durable admission 时复核该 owner 的 active Definition 和同一 candidate 的有效 promotion grant。`/api/v1/agent/status` 中的 `taskControlEnabled=true` 只表示认证控制路由已装配，不表示任意用户已经具备 active Run 资格。开发或体验环境必须使用受控 Definition 与短期 grant，并在验收后撤销；共享环境继续遵循本手册的 operator review 与 `user_gray` 证据要求。
 
+开发期可用隔离 Read Active smoke 验证完整只读 Task。它使用本地 loopback model stub、临时 owner Definition 和 15 分钟 promotion grant，验证请求幂等、owner 隔离、Temporal 完成、两步读取轨迹和零 Agent 消息写入；cleanup 会撤销 grant 并删除容器、卷与临时证书。
+
+```bash
+DIPOLE_MYSQL_AIO_COMPAT=1 DIPOLE_AGENT_INTERACTIVE_READ_PROFILE=active \
+  scripts/smoke-agent-interactive-shadow-compose.sh
+```
+
 ## 运行状态诊断
 
 认证用户可通过 `GET /api/v1/agent/status` 查询当前 Agent Task 控制面的低敏状态。响应只包含 schema version、Runtime mode、Temporal 是否启用及 activity mode、Task control 是否启用和交互消息写入是否启用；不包含 Provider、模型 route、端点、凭据、任务、消息或用户数据。该接口用于区分“控制面未装配”和“任务执行失败”，不能替代 `/livez`、`/readyz`、任务 Timeline、共享环境 receipt 或发布批准。
