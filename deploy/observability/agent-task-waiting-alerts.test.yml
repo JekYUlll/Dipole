@@ -1,0 +1,20 @@
+rule_files:
+  - agent-task-waiting-alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'dipole_agent_task_waiting_locator_total{outcome="invalid"}'
+        values: '0 1 1'
+      - series: 'dipole_agent_task_waiting_locator_total{outcome="offline"}'
+        values: '0 1 2'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: DipoleAgentTaskWaitingLocatorInvalid
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Agent Task waiting locator payload is invalid

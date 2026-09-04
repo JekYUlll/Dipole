@@ -1,0 +1,9 @@
+groups:
+  - name: dipole-agent-task-waiting
+    rules:
+      - alert: DipoleAgentTaskWaitingLocatorInvalid
+        expr: sum(increase(dipole_agent_task_waiting_locator_total{outcome="invalid"}[5m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Agent Task waiting locator payload is invalid

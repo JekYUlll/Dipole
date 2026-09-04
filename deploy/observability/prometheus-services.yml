@@ -17,6 +17,7 @@ rule_files:
   - /etc/prometheus/service-alerts.yml
   - /etc/prometheus/agent-otel-alerts.yml
   - /etc/prometheus/agent-timeline-repair-alerts.yml
+  - /etc/prometheus/agent-task-waiting-alerts.yml
 
 scrape_configs:
   - job_name: dipole-required

@@ -85,6 +85,7 @@ services:
       - ../../deploy/observability/web-sync-alerts.yml:/etc/prometheus/web-sync-alerts.yml:ro
       - ../../deploy/observability/duplicate-hydration-alerts.yml:/etc/prometheus/duplicate-hydration-alerts.yml:ro
       - ../../deploy/observability/agent-timeline-repair-alerts.yml:/etc/prometheus/agent-timeline-repair-alerts.yml:ro
+      - ../../deploy/observability/agent-task-waiting-alerts.yml:/etc/prometheus/agent-task-waiting-alerts.yml:ro
       - prometheus_cluster_data:/prometheus
     depends_on:
       - kafka-exporter

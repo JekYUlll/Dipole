@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：Gateway 已为 `agent.task.waiting` locator 增加固定 outcome 计数：`online` 表示至少一条 WebSocket 投递，`offline` 表示零在线连接且由 Task Inbox 补拉，`invalid` 表示 Kafka payload 或 envelope 拒绝。Prometheus 只对 `invalid` 增长告警，避免将正常离线状态升级为事故；共享环境浏览器窗口与端到端告警投递仍待独立验收。
+
 - 2026-09-04：Go/Eino legacy Agent 已被结构门禁限定到 `internal/services/core/bootstrap/embedded/kafka.go` 的 embedded Kafka 回滚路径；独立 Core、Gateway、Message、Sync 与新增生产代码均无法重新导入。TS Agent Runtime 继续承担独立演进主线，legacy 删除仍需在 embedded 回滚策略结束后单独进行。
 
 - 2026-09-04：Remote GPU 在当前主线使用校验后的用户态 Go `1.26.0` 复跑 Multipart fault matrix：cleanup、Gateway 限流、代理超时、7 条告警规则、真实 MinIO/Redis drift 对账与 Redis 重启恢复均通过，随机临时容器为零，公共 `dipole-experience` 为 11 个健康容器。该隔离验证不替代 24 小时预签名直传流量、Alertmanager 通知接收方或默认 `relay` 模式切换证据。

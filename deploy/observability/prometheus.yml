@@ -10,6 +10,7 @@ rule_files:
   - /etc/prometheus/web-sync-alerts.yml
   - /etc/prometheus/duplicate-hydration-alerts.yml
   - /etc/prometheus/agent-timeline-repair-alerts.yml
+  - /etc/prometheus/agent-task-waiting-alerts.yml
 
 scrape_configs:
   - job_name: kafka

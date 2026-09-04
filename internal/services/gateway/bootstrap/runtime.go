@@ -393,7 +393,8 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 			eventSender = runtime.router
 		}
 	}
-	if err := gatewaykafka.RegisterHandlers(eventSender, deliveryAuthority, deliveryFence); err != nil {
+	agentTaskWaitingCollector := platformObservability.NewAgentTaskWaitingCollector()
+	if err := gatewaykafka.RegisterHandlers(eventSender, deliveryAuthority, deliveryFence, agentTaskWaitingCollector); err != nil {
 		cleanup()
 		return nil, fmt.Errorf("register gateway kafka handlers: %w", err)
 	}
@@ -409,7 +410,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		ConstLabels: prometheus.Labels{"authority": string(deliveryAuthority)},
 	})
 	authorityMetric.Set(1)
-	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), gatewayServiceName, platformKafka.Subscriber, authorityMetric)
+	runtime.metrics, err = platformRuntime.StartMetrics(config.MetricsConfig(), gatewayServiceName, platformKafka.Subscriber, authorityMetric, agentTaskWaitingCollector)
 	if err != nil {
 		cleanup()
 		return nil, fmt.Errorf("start gateway metrics: %w", err)

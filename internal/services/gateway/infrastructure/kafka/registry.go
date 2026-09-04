@@ -21,7 +21,7 @@ type RealtimeHub interface {
 }
 
 // RegisterHandlers installs all Kafka consumers owned by Gateway.
-func RegisterHandlers(hub RealtimeHub, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence) error {
+func RegisterHandlers(hub RealtimeHub, authority realtimeDelivery.Authority, fence realtimeDelivery.AuthorityFence, agentTaskWaitingObservers ...AgentTaskWaitingObserver) error {
 	if platformKafka.Subscriber == nil {
 		return nil
 	}
@@ -56,7 +56,7 @@ func RegisterHandlers(hub RealtimeHub, authority realtimeDelivery.Authority, fen
 	}))
 	platformKafka.Subscriber.Register("session.force_logout", NewSessionKickHandler(hub))
 	platformKafka.Subscriber.Register("contact.friend.deleted", NewContactFriendDeletedHandler(hub))
-	platformKafka.Subscriber.Register(application.AgentTaskWaitingEventTypeV1, NewAgentTaskWaitingHandler(hub))
+	platformKafka.Subscriber.Register(application.AgentTaskWaitingEventTypeV1, NewAgentTaskWaitingHandler(hub, agentTaskWaitingObservers...))
 	return nil
 }
 
