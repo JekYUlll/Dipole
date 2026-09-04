@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：复验当前主线的 Web Sync observability 预检。
+  - Remote GPU 在 `a0e126b7` 的独立 loopback Compose 项目验证 Gateway、Prometheus、Alertmanager 与 Core、Message、Sync、Gateway 四项必需指标目标；脚本以退出码 `0` 完成并自动清理容器和卷，公共 `dipole-experience` 保持 11 个健康容器。
+  - 该证据只确认 24 小时 Web Sync 观察前的服务与指标连通性。真实客户端样本、候选 Web bundle 绑定、完整窗口与 Cassandra hydration 主读均未启用。
+
 - 2026-09-04：为 Agent Task waiting locator 增加 Gateway 观测与告警。
   - Gateway 现以低基数 `online`、`offline`、`invalid` 记录 `agent_task_waiting` locator 投递结果；离线只表示客户端须由 Task Inbox 补拉，非法载荷触发 Prometheus warning。
 

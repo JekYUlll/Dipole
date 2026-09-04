@@ -1571,6 +1571,7 @@
 - **影响范围：** `cmd/tools/sync-baseline`、历史群消息、Outbox 保留、Message Inbox 写权限退役
 - **解决方式：** migration v11 增加不可变 baseline Job/Entry；Capture 在 Repeatable Read 固定 Inbox 高水位，并归档所有缺少 created Outbox 的原始 `sync_seq + recipient + locator`，以规范化 SHA-256 校验完整性。Reconcile 同时扫描快照后新增 legacy 行；Restore 仅修复 missing，保留原 Cursor，并拒绝 extra/conflicting 状态。
 - **验证：** 纯领域测试覆盖稳定摘要和差异分类；真实 MySQL 8.4 integration/smoke 覆盖重复 Capture、删行检测、原 `sync_seq` 恢复、越界冲突拒绝、v11 down/up 与并发 migration owner。
+- **后续观察边界：** 2026-09-04 在 `a0e126b7` 的隔离 Remote GPU Compose 项目复验 Web Sync observability preflight，Gateway、Prometheus、Alertmanager 与 Core/Message/Sync/Gateway 指标目标均健康，退出后项目容器与卷为零。该回执不包含真实客户端样本或 24 小时 Evidence，旧 Offline 兼容窗口和 Cassandra hydration 主读继续保持关闭。
 
 ### AD-020：Search 删除接口缺少 mutation revision
 
