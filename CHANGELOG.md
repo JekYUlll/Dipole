@@ -3,6 +3,7 @@
 - 2026-09-04：默认微服务 Compose 开放只读 Durable Agent Task 控制面。
   - Gateway 现默认转发认证用户的任务创建、查询、取消、输入和审批请求到 `remote + read_active` Runtime；任务经 Temporal 持久化执行，自动消息写入、MCP、Memory、检索和订阅触发继续关闭。
   - Shadow MCP profile 显式关闭 Task Control，避免继承主线默认开关；交互消息写入仍需受控 `interactive_active` overlay、owner 审批与独立验收。
+  - Remote GPU 在 `a10cea42` 的隔离 Compose project 启动全部默认服务，并通过认证 Gateway 状态路由确认 `taskControlEnabled=true`、`runtimeMode=active`、Temporal `read_active` 与交互消息写入关闭；候选容器和卷已清理。
 
 - 2026-09-04：基础微服务 Compose 默认启用 Temporal Durable Agent Runtime。
   - 主线现在启动 Temporal/PostgreSQL，并以 `remote + read_active` 承载只读、可恢复的 Agent Task；自动消息写入、MCP、Memory、检索和订阅触发继续显式关闭。
