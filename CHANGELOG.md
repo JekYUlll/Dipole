@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：补齐 Agent Runtime Promotion Control 的受控 operator grant 运维入口。
+  - `manage-agent-promotion-operator-grant.sh` 默认只输出计划；`--apply` 强制要求受控 Compose project、不同的授予人与接收人、工单、原因和短期 UTC 到期时间，并且不把数据库密码放进命令行参数。
+  - migration v59 为 grant/revoke 增加追加式审计行。脚本只管理 `agent_runtime_promotion_operator_grants`，不能审核 proposal、签发 Runtime promotion grant 或启用默认关闭的 Gateway 路由。
+
 - 2026-09-04：新增默认关闭的 Agent Runtime Promotion Control Gateway 适配器。
   - 已认证 operator 可经 Gateway 发起 proposal、读取 proposal、由第二位 operator 审核及撤销 grant；Gateway 只转发可信 session principal，Core 继续从 SQLC 持久 operator grant 执行权限、双人签署、candidate/evidence/eval 绑定和撤销事务。
   - 默认 Compose 固定 `DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=false`；新静态回归锁定默认关闭与 tenant 配置。该切片不自动签发 grant，不扩大 owner Definition、写 Capability、MCP、Memory 或订阅 authority。

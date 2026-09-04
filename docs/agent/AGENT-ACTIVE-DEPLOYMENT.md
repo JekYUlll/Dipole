@@ -67,6 +67,20 @@ DIPOLE_MYSQL_AIO_COMPAT=1 DIPOLE_AGENT_INTERACTIVE_READ_PROFILE=active \
 
 启用前必须设置 `DIPOLE_GATEWAY_AGENT_PROMOTION_TENANT_ID`，准备已归档 evidence artifact 与 eval suite hash，并通过现有 operator grant 流程分别授权 proposer/reviewer。只有审核完成且 proposal 返回 grant ID 后，owner Definition 才可进入绑定 candidate 的 `read_active` admission。紧急回滚先关闭 Gateway 开关，再调用 revoke API；关闭 HTTP 路由不会撤销已存在 grant。
 
+受控运维可用 `scripts/manage-agent-promotion-operator-grant.sh` 预置或撤销 proposer/reviewer/revoker 权限。脚本默认 dry-run，执行必须携带 `--apply`、不同的被授权人与记录人、工单号、原因和有限的 UTC 到期时间；每次变更都会追加 `agent_runtime_promotion_operator_grant_audits`。它只改 operator grant，不能审核候选、签发 Runtime promotion grant 或开启 Gateway 路由。共享项目示例：
+
+```bash
+DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" \
+  scripts/manage-agent-promotion-operator-grant.sh grant \
+  --compose-project dipole-experience \
+  --compose-file deploy/compose/docker-compose.microservices.yml \
+  --compose-file deploy/microservices/remote-gpu-mysql-aio-compat.yml \
+  --compose-file deploy/microservices/agent-experience.yml \
+  --user <proposer-uuid> --granted-by <reviewer-uuid> \
+  --ticket OPS-123 --reason 'approved user gray window' \
+  --roles propose --expires-at 2026-09-05T12:00:00Z --apply
+```
+
 同一 overlay 固定 `direct_target`、Memory、retrieval、retrieval-to-Context、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 
 ### Subscription Active Read

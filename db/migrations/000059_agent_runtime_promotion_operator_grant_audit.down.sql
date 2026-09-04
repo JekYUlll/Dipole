@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS agent_runtime_promotion_operator_grant_audits;
