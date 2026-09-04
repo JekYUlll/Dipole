@@ -29,6 +29,17 @@ class AgentInteractiveShadowComposeSmokeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"', smoke)
         self.assertIn('compose down --volumes --remove-orphans', smoke)
 
+    def test_smoke_receipt_is_opt_in_low_sensitivity_and_atomic(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('receipt_file="${DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE:-}"', smoke)
+        self.assertIn('must be a new absolute path in an existing directory', smoke)
+        self.assertIn('"taskSha256":"${task_sha256}"', smoke)
+        self.assertIn('"runtimeRevision":"${runtime_revision}"', smoke)
+        self.assertIn("openssl dgst -sha256 -r", smoke)
+        self.assertIn('ln "${receipt_temp}" "${receipt_file}"', smoke)
+        self.assertNotIn('"taskId":"${task_uuid}"', smoke)
+        self.assertNotIn('"ownerUuid":"${owner_uuid}"', smoke)
+
     def test_active_read_profile_stays_read_only_and_uses_a_revocable_grant(self) -> None:
         smoke = (ROOT / "scripts/smoke-agent-interactive-shadow-compose.sh").read_text(encoding="utf-8")
         overlay = (ROOT / "deploy/microservices/agent-interactive-read-active.yml").read_text(encoding="utf-8")

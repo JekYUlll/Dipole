@@ -1888,6 +1888,7 @@
 
 - **2026-08-30 兼容性补充：** promotion receipt v2 将 observational candidate 与显式目标类型一起绑定至 canonical hash；历史 v1 receipt 保持原语义可读，但因没有目标类型而在 replay 阶段 fail-closed。External MCP Shadow 对 partial enablement 增加零进程启动回归，默认关闭路径继续不构造 Worker、RPC 或网络资源。
 - 2026-09-03：Interactive Agent Task 的 admission 与首次可查询状态之间存在短暂最终一致性窗口。Remote GPU 多会话 scope-confirmation 验收中，`POST /api/v1/agent/tasks` 已返回 `202`，但首个 owner `GET` 在 Core Task 授权记录和 Temporal 投影落库前得到 `404`；约一秒后的有界查询得到 `waiting_input`，精确 input 后收敛 `completed` 并产生 Artifact。前端任务创建页应在提交后的有限时间内仅对 owner 的该 Task 将 `404` 当作 pending admission 重试，超时后保留真实错误；不要把无限重试或跨 owner 的 `404` 隐藏为加载态。该问题不改变读写授权边界，active write、MCP 和 OAuth 继续独立受控。
+- 2026-09-04：隔离 Interactive Agent Compose smoke 现可选写入原子、低敏成功 receipt，保留 runtime revision、profile、模型来源、task SHA-256 与受控计数，使自动清理后的开发期结果能够归档。receipt 不包含主体、原始任务、消息、提示词、模型输出或凭据；它也不覆盖共享 authority、浏览器 HITL、外部 MCP/OAuth、公开写入或性能证据。
 ### AD-062：Gateway 与 embedded Core 共享 HTTP handler 的迁移边界
 
 - **优先级：** P2

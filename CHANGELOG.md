@@ -1,5 +1,9 @@
 # 更新日志
 
+- 2026-09-04：Interactive Agent 隔离 Compose smoke 可选归档低敏成功 receipt。
+  - 通过 `DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE` 指定既有目录下的新绝对路径后，脚本仅在所有 owner 隔离、幂等、只读轨迹与计数断言通过时原子写入 revision、profile、模型来源、任务 ID 哈希和受控计数。
+  - receipt 不含原始 task/owner、消息、提示词、模型响应、Token 或凭据；失败与超时不生成回执。该工件只绑定隔离开发 smoke，不能替代共享 authority、性能或公开写入验收。
+
 - 2026-09-04：校正 OAuth callback handoff 的发布门禁说明。
   - Gateway 已具备默认关闭的 callback route；Runtime receiver、经评审 Provider profile 与 Core-owned encrypted token lifecycle 仍未装配，单独打开 Gateway 开关不能构成完整部署。
   - 发布前置现明确要求持久 refresh/revoke/retention、Runtime/Core identity 验证、故障与回滚演练，避免将组件级装配误解为可公开启用。

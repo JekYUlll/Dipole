@@ -9,6 +9,7 @@ project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-shadow-${RANDOM}-
 model_source="${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE:-stub}"
 execution_profile="${DIPOLE_AGENT_INTERACTIVE_READ_PROFILE:-shadow}"
 build_timeout_seconds="${DIPOLE_AGENT_INTERACTIVE_BUILD_TIMEOUT_SECONDS:-900}"
+receipt_file="${DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE:-}"
 owner_telephone="13900000005"
 foreign_telephone="13900000006"
 agent_uuid="UAI000000000000000001"
@@ -20,11 +21,18 @@ command -v timeout >/dev/null 2>&1 || { printf 'timeout is required\n' >&2; exit
 [[ "${model_source}" == "stub" || "${model_source}" == "provider" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
 [[ "${execution_profile}" == "shadow" || "${execution_profile}" == "active" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_READ_PROFILE must be shadow or active\n' >&2; exit 2; }
 [[ "${build_timeout_seconds}" =~ ^[0-9]+$ ]] && (( build_timeout_seconds >= 120 && build_timeout_seconds <= 3600 )) || { printf 'DIPOLE_AGENT_INTERACTIVE_BUILD_TIMEOUT_SECONDS must be between 120 and 3600\n' >&2; exit 2; }
+if [[ -n "${receipt_file}" ]]; then
+  [[ "${receipt_file}" = /* && ! -e "${receipt_file}" && -d "$(dirname "${receipt_file}")" ]] || {
+    printf 'DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE must be a new absolute path in an existing directory\n' >&2
+    exit 2
+  }
+fi
 if [[ "${model_source}" == "provider" ]]; then
   : "${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE:?DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE is required for provider mode}"
   [[ -f "${DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE}" ]] || { printf 'DIPOLE_AGENT_INTERACTIVE_SHADOW_MODEL_ENV_FILE must name a file\n' >&2; exit 2; }
 fi
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-interactive-shadow.XXXXXX")
+receipt_temp=""
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   # A build is isolated but can still stall on a package manager or image pull.
@@ -129,6 +137,7 @@ cleanup() {
   else
     printf 'Interactive shadow Compose stack retained: project=%s scratch=%s\n' "${project_name}" "${scratch_dir}" >&2
   fi
+  [[ -z "${receipt_temp}" ]] || rm -f "${receipt_temp}"
   exit "${status}"
 }
 trap cleanup EXIT INT TERM
@@ -254,11 +263,26 @@ fi
 
 if [[ "${execution_profile}" == "shadow" ]]; then
   effects=$(compose exec -T mysql mysql -N -B -uroot -proot123 dipole -e "SELECT (SELECT COUNT(*) FROM agent_tasks WHERE task_uuid = '${task_uuid}' AND status = 'completed' AND workflow_status = 'completed'), (SELECT COUNT(*) FROM agent_runs WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM agent_shadow_steps WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}')")
-  [[ "${effects}" == $'1\t1\t2\t0' ]] || { printf 'interactive read task wrote or did not complete the read trajectory: %q\n' "${effects}" >&2; exit 1; }
+  IFS=$'\t' read -r task_count run_count trajectory_count message_count <<<"${effects}"
+  [[ "${task_count}" == "1" && "${run_count}" == "1" && "${trajectory_count}" == "2" && "${message_count}" == "0" ]] || { printf 'interactive read task wrote or did not complete the read trajectory: %q\n' "${effects}" >&2; exit 1; }
 else
   effects=$(compose exec -T mysql mysql -N -B -uroot -proot123 dipole -e "SELECT (SELECT COUNT(*) FROM agent_tasks WHERE task_uuid = '${task_uuid}' AND status = 'completed' AND workflow_status = 'completed'), (SELECT COUNT(*) FROM agent_runs WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM agent_model_runs WHERE task_uuid = '${task_uuid}' AND status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}')")
   IFS=$'\t' read -r task_count run_count model_count message_count <<<"${effects}"
   [[ "${task_count}" == "1" && "${run_count}" == "1" && "${model_count}" =~ ^[1-9][0-9]*$ && "${message_count}" == "0" ]] || { printf 'active read task wrote or did not complete: %q\n' "${effects}" >&2; exit 1; }
+  trajectory_count="${model_count}"
+fi
+
+if [[ -n "${receipt_file}" ]]; then
+  runtime_revision=$(git -C "${root_dir}" rev-parse HEAD)
+  [[ "${runtime_revision}" =~ ^[a-f0-9]{40}$ ]] || { printf 'interactive smoke runtime revision is invalid\n' >&2; exit 1; }
+  task_sha256=$(printf '%s' "${task_uuid}" | openssl dgst -sha256 -r | awk '{print $1}')
+  receipt_temp=$(mktemp "$(dirname "${receipt_file}")/.dipole-agent-interactive-receipt.XXXXXX")
+  cat >"${receipt_temp}" <<JSON
+{"schemaVersion":"dipole.agent.interactive-smoke-receipt.v1","runtimeRevision":"${runtime_revision}","profile":"${execution_profile}","modelSource":"${model_source}","taskSha256":"${task_sha256}","taskCount":${task_count},"runCount":${run_count},"trajectoryCount":${trajectory_count},"agentMessageCount":${message_count},"completedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+JSON
+  ln "${receipt_temp}" "${receipt_file}"
+  rm -f "${receipt_temp}"
+  receipt_temp=""
 fi
 
 printf 'Interactive Agent %s Compose smoke passed: authenticated Gateway task creation is idempotent, owner-scoped, read-only, and completes its two-Step read trajectory.\n' "${execution_profile}"

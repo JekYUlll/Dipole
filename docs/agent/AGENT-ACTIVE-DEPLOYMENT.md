@@ -19,6 +19,21 @@ DIPOLE_MYSQL_AIO_COMPAT=1 DIPOLE_AGENT_INTERACTIVE_READ_PROFILE=active \
   scripts/smoke-agent-interactive-shadow-compose.sh
 ```
 
+### 1.1 归档隔离 smoke 回执
+
+为避免临时 Compose 栈在 cleanup 后只留下终端输出，可选地将一次成功验收写成低敏 JSON receipt。目标文件必须是既有目录下的新绝对路径；脚本在全部断言通过后创建临时文件，再以原子链接发布。失败、超时或 cleanup 不会生成成功回执。
+
+```bash
+evidence_dir=/data/admin1/dipole-evidence
+mkdir -p "${evidence_dir}"
+DIPOLE_MYSQL_AIO_COMPAT=1 \
+  DIPOLE_AGENT_INTERACTIVE_READ_PROFILE=active \
+  DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE="${evidence_dir}/agent-interactive-$(date -u +%Y%m%dT%H%M%SZ).json" \
+  scripts/smoke-agent-interactive-shadow-compose.sh
+```
+
+receipt 仅包含执行 revision、profile、模型来源、任务 ID 的 SHA-256、受控计数与 UTC 完成时间。它不保存 owner、原始 task ID、消息、提示词、模型响应、Token 或凭据；它也不替代共享环境授权、性能或公开写入能力的验收。
+
 ## 运行状态诊断
 
 认证用户可通过 `GET /api/v1/agent/status` 查询当前 Agent Task 控制面的低敏状态。响应只包含 schema version、Runtime mode、Temporal 是否启用及 activity mode、Task control 是否启用和交互消息写入是否启用；不包含 Provider、模型 route、端点、凭据、任务、消息或用户数据。该接口用于区分“控制面未装配”和“任务执行失败”，不能替代 `/livez`、`/readyz`、任务 Timeline、共享环境 receipt 或发布批准。
