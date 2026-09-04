@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-04：`internal/services/core/rpcpolicy` 的 `dipole-agent` 方法许可清单补齐 `AppendAgentTaskTimelineEvent` 与 `SearchConversations` 两条 Runtime 生产调用；缺失时前者被静默吞（`model-router.ts:205` 明确「Timeline is a secondary projection」），后者在 retrieval opt-in 开启后 fail closed。新增 `TestAgentServiceMethodAllowlistCoversRuntimeInvocations` 枚举 `agent-capability-rpc.ts` 的所有 30 个 `this.rpc.<method>` 调用作为回归护栏，未来 Runtime 新加 capability 客户端方法必须同时进 allowlist。策略仍是允许清单+拒绝其余，Gateway/Search/Sync 语义不变。
+
 - 2026-09-04：OAuth callback handoff 文档曾把默认部署的关闭状态表述为“没有 Gateway callback route”，与 `cb8708a3` 的 default-off Composition Root 不一致。现已校正为：Gateway 可在完整材料和显式开关下装配 route；Runtime receiver、经评审 Provider profile、Core-owned Runtime-key encrypted token lifecycle、轮换/retention 与端到端故障回滚证据仍是启用前置。此项不改变任何运行时开关或公开入口。
 
 - 2026-09-04：Gateway OAuth callback 的默认关闭 Composition Root 已完成：显式 `gateway.agent_oauth_callback_enabled` 才会注册 `/oauth/callback`，并要求 Runtime public key、callback correlation、redirect URI 和 Runtime notifier 所需材料全部可用。默认 Compose 不挂载 key、不提供材料，Runtime control endpoint 仍未装配。债务收敛为：Core-owned SQLC token lifecycle/KMS、Runtime provider profile 与 control handler、密钥轮换和受控端到端演练；在这些证据齐备前不得开启该开关或将此路由公开。
