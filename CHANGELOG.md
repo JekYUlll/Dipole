@@ -2,6 +2,11 @@
 
 # 更新日志
 
+- 2026-09-04：Web Sync observability Smoke 仅对必需服务 target 等待收敛，并归档修复后 Remote GPU 回执。
+  - Prometheus target 响应会保留未启用的 optional Agent/Search 服务；Smoke 现以结构化选择器只要求 Core、Message、Sync、Gateway 为 `up`，并在 Gateway ready 后最多等待 30 秒。
+  - clean `8cecb0ef` 的 loopback-only 复验通过，候选项目容器为零，公共 `dipole-experience` 保持 12 个容器；详见 `benchmarks/web-sync-observability-smoke-2026-09-04/`。
+  - 这份回执只覆盖开发预检，不构成 24 小时客户端观察、默认 Web Sync 模式或 Cassandra hydration 主读的晋级结论。
+
 - 2026-09-04：Agent 学习与面试材料已切换至最新的 External MCP/Approval Shadow receipt，明确 subscription-scoped 幂等、过期 readiness 拒绝和 approval replay 的证据范围。
 
 - 2026-09-04：External MCP Shadow drill 在依赖安装前增加 Node 22 运行时门禁。

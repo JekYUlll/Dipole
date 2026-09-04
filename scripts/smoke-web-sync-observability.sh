@@ -34,6 +34,38 @@ compose() {
   docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" "$@"
 }
 
+required_targets_are_healthy() {
+  python3 -c '
+import json
+import sys
+
+required = {"dipole-core", "dipole-message", "dipole-sync", "dipole-gateway"}
+payload = json.load(sys.stdin)
+targets = payload.get("data", {}).get("activeTargets", [])
+health = {
+    target.get("labels", {}).get("service"): target.get("health")
+    for target in targets
+    if target.get("labels", {}).get("service") in required
+}
+sys.exit(0 if all(health.get(service) == "up" for service in required) else 1)
+' <<<"$1"
+}
+
+wait_for_healthy_targets() {
+  local targets
+  for _ in $(seq 1 30); do
+    targets="$(curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/api/v1/targets?state=active&scrapePool=dipole-required")"
+    if required_targets_are_healthy "${targets}"; then
+      printf '%s' "${targets}"
+      return 0
+    fi
+    sleep 1
+  done
+
+  printf '%s' "${targets:-}" >&2
+  return 1
+}
+
 cleanup() {
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
     compose --profile observability down -v --remove-orphans >/dev/null 2>&1 || true
@@ -66,14 +98,7 @@ for service in core message sync gateway; do
   compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/metrics | grep -q '^#'
 done
 
-targets="$(curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/api/v1/targets?state=active&scrapePool=dipole-required")"
-for service in dipole-core dipole-message dipole-sync dipole-gateway; do
-  grep -q "\"service\":\"${service}\"" <<<"${targets}"
-done
-if grep -Eq '"health":"(down|unknown)"' <<<"${targets}"; then
-  echo "Prometheus has an unhealthy active target" >&2
-  exit 1
-fi
+targets="$(wait_for_healthy_targets)"
 
 echo "Web Sync observability smoke passed: loopback gateway=${GATEWAY_URL} prometheus=${PROMETHEUS_URL} alertmanager=${ALERTMANAGER_URL}"
 echo "This smoke does not start a Web Sync promotion observation window."

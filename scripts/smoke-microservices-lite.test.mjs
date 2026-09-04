@@ -12,7 +12,15 @@ test("lightweight smoke targets only the gateway dependency closure", () => {
     "config", "--format", "json",
   ], {
     cwd: root,
-    env: { ...process.env, DIPOLE_INTERNAL_RPC_SHARED_SECRET: "test-only" },
+    env: {
+      ...process.env,
+      DIPOLE_INTERNAL_RPC_SHARED_SECRET: "test-only",
+      DIPOLE_AGENT_MODEL_API_KEY: "test-only",
+      DIPOLE_AGENT_MODEL_BASE_URL: "https://example.test/v1",
+      DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: "{}",
+      DIPOLE_AGENT_MODEL_PROVIDER_NAME: "test-provider",
+      DIPOLE_AGENT_MODEL_ROUTES: "{}",
+    },
     encoding: "utf8",
   });
   const services = JSON.parse(raw).services;
@@ -40,13 +48,17 @@ test("web sync observability smoke stays isolated and does not claim promotion",
 
   for (const required of [
     "--profile observability up -d --wait gateway prometheus alertmanager",
+    "DIPOLE_WEB_SYNC_OBSERVABILITY_STARTUP_TIMEOUT_SECONDS:-300",
+    "timeout --preserve-status \"${startup_timeout_seconds}s\" docker compose",
+    "--profile observability down -v --remove-orphans",
+    "wait_for_healthy_targets",
+    "required_targets_are_healthy",
     "http://127.0.0.1:9100/metrics",
     "DIPOLE_PROMETHEUS_PORT:-9090",
     "DIPOLE_ALERTMANAGER_PORT:-9093",
     "${ALERTMANAGER_URL}/-/ready",
-    "dipole-core dipole-message dipole-sync dipole-gateway",
+    'required = {"dipole-core", "dipole-message", "dipole-sync", "dipole-gateway"}',
     "api/v1/targets?state=active&scrapePool=dipole-required",
-    "compose --profile observability down -v --remove-orphans",
     "does not start a Web Sync promotion observation window",
   ]) {
     assert.match(script, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
