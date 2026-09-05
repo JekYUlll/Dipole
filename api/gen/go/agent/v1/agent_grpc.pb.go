@@ -40,6 +40,7 @@ const (
 	AgentCapabilityService_RequestApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/RequestApproval"
 	AgentCapabilityService_ResolveApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/ResolveApproval"
 	AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/AuthorizeSubscriptionMessage"
+	AgentCapabilityService_AuthorizeInteractiveReply_FullMethodName             = "/dipole.agent.v1.AgentCapabilityService/AuthorizeInteractiveReply"
 	AgentCapabilityService_ConsumeApproval_FullMethodName                       = "/dipole.agent.v1.AgentCapabilityService/ConsumeApproval"
 	AgentCapabilityService_ResolveApprovalGrant_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/ResolveApprovalGrant"
 	AgentCapabilityService_ListConversations_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
@@ -111,6 +112,12 @@ type AgentCapabilityServiceClient interface {
 	// verification that the task is subscription-triggered, owner-consistent, and
 	// scoped to the owner's direct Agent conversation. Default-off (AD-034).
 	AuthorizeSubscriptionMessage(ctx context.Context, in *RequestApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
+	// AuthorizeInteractiveReply mints an already-approved assistant-reply grant for a
+	// self-initiated interactive task, replacing the owner Signal with Core-side
+	// verification that the task is interactive-triggered (never subscription), the
+	// pinned Definition authorizes assistant replies for this owner, and the scope
+	// targets the owner's direct Agent conversation. Default-off (AD-034).
+	AuthorizeInteractiveReply(ctx context.Context, in *RequestApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error)
 	ConsumeApproval(ctx context.Context, in *ConsumeApprovalRequest, opts ...grpc.CallOption) (*ConsumeApprovalResponse, error)
 	ResolveApprovalGrant(ctx context.Context, in *ResolveApprovalGrantRequest, opts ...grpc.CallOption) (*ResolveApprovalGrantResponse, error)
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
@@ -365,6 +372,16 @@ func (c *agentCapabilityServiceClient) AuthorizeSubscriptionMessage(ctx context.
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ApprovalResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) AuthorizeInteractiveReply(ctx context.Context, in *RequestApprovalRequest, opts ...grpc.CallOption) (*ApprovalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApprovalResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_AuthorizeInteractiveReply_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -800,6 +817,12 @@ type AgentCapabilityServiceServer interface {
 	// verification that the task is subscription-triggered, owner-consistent, and
 	// scoped to the owner's direct Agent conversation. Default-off (AD-034).
 	AuthorizeSubscriptionMessage(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error)
+	// AuthorizeInteractiveReply mints an already-approved assistant-reply grant for a
+	// self-initiated interactive task, replacing the owner Signal with Core-side
+	// verification that the task is interactive-triggered (never subscription), the
+	// pinned Definition authorizes assistant replies for this owner, and the scope
+	// targets the owner's direct Agent conversation. Default-off (AD-034).
+	AuthorizeInteractiveReply(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error)
 	ConsumeApproval(context.Context, *ConsumeApprovalRequest) (*ConsumeApprovalResponse, error)
 	ResolveApprovalGrant(context.Context, *ResolveApprovalGrantRequest) (*ResolveApprovalGrantResponse, error)
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
@@ -912,6 +935,9 @@ func (UnimplementedAgentCapabilityServiceServer) ResolveApproval(context.Context
 }
 func (UnimplementedAgentCapabilityServiceServer) AuthorizeSubscriptionMessage(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AuthorizeSubscriptionMessage not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) AuthorizeInteractiveReply(context.Context, *RequestApprovalRequest) (*ApprovalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AuthorizeInteractiveReply not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ConsumeApproval(context.Context, *ConsumeApprovalRequest) (*ConsumeApprovalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ConsumeApproval not implemented")
@@ -1429,6 +1455,24 @@ func _AgentCapabilityService_AuthorizeSubscriptionMessage_Handler(srv interface{
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).AuthorizeSubscriptionMessage(ctx, req.(*RequestApprovalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_AuthorizeInteractiveReply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestApprovalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).AuthorizeInteractiveReply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_AuthorizeInteractiveReply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).AuthorizeInteractiveReply(ctx, req.(*RequestApprovalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2243,6 +2287,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AuthorizeSubscriptionMessage",
 			Handler:    _AgentCapabilityService_AuthorizeSubscriptionMessage_Handler,
+		},
+		{
+			MethodName: "AuthorizeInteractiveReply",
+			Handler:    _AgentCapabilityService_AuthorizeInteractiveReply_Handler,
 		},
 		{
 			MethodName: "ConsumeApproval",

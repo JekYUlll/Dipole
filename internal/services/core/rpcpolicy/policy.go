@@ -48,6 +48,7 @@ func isAgentServiceMethodAllowed(method string) bool {
 		agentv1.AgentCapabilityService_ConsumeApproval_FullMethodName,
 		agentv1.AgentCapabilityService_ResolveApprovalGrant_FullMethodName,
 		agentv1.AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName,
+		agentv1.AgentCapabilityService_AuthorizeInteractiveReply_FullMethodName,
 		agentv1.AgentCapabilityService_ListConversations_FullMethodName,
 		agentv1.AgentCapabilityService_ReadConversation_FullMethodName,
 		agentv1.AgentCapabilityService_SearchConversations_FullMethodName,

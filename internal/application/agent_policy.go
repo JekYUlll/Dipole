@@ -122,6 +122,12 @@ var agentActiveApprovedCapabilityProjectionV1 = []struct {
 	CapabilityID, Permission, ResourceType, Action string
 }{
 	{AgentCapabilitySystemMessageSend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
+	// An interactive Agent task replies to its own owner in the owner's direct Agent
+	// conversation. assistant_reply.send carries the same message.write permission and
+	// conversation write action as system.send; keeping both in the explicit allowlist lets
+	// an owner Definition that already authorizes message writes deliver a natural AI reply
+	// (MessageTypeAIText) rather than only a system notice.
+	{AgentCapabilityAssistantReplySend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
 }
 
 func ProjectAgentApprovedCapabilitiesV1(definition AgentDefinitionVersionV1) ([]string, error) {

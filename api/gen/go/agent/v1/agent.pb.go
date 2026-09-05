@@ -10960,7 +10960,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\x0econtent_sha256\x18\x06 \x01(\tR\rcontentSha256\x12\x16\n" +
 	"\x06status\x18\a \x01(\tR\x06status\x12/\n" +
 	"\x14collected_at_unix_ms\x18\b \x01(\x03R\x11collectedAtUnixMs\x12+\n" +
-	"\x12expires_at_unix_ms\x18\t \x01(\x03R\x0fexpiresAtUnixMs2\xd49\n" +
+	"\x12expires_at_unix_ms\x18\t \x01(\x03R\x0fexpiresAtUnixMs2\xbd:\n" +
 	"\x16AgentCapabilityService\x12|\n" +
 	"\x17MatchEventSubscriptions\x12/.dipole.agent.v1.MatchEventSubscriptionsRequest\x1a0.dipole.agent.v1.MatchEventSubscriptionsResponse\x12s\n" +
 	"\x17CreateEventSubscription\x12/.dipole.agent.v1.CreateEventSubscriptionRequest\x1a'.dipole.agent.v1.AgentEventSubscription\x12\xa6\x01\n" +
@@ -10982,7 +10982,8 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\tFinishRun\x12!.dipole.agent.v1.FinishRunRequest\x1a\".dipole.agent.v1.FinishRunResponse\x12]\n" +
 	"\x0fRequestApproval\x12'.dipole.agent.v1.RequestApprovalRequest\x1a!.dipole.agent.v1.ApprovalResponse\x12]\n" +
 	"\x0fResolveApproval\x12'.dipole.agent.v1.ResolveApprovalRequest\x1a!.dipole.agent.v1.ApprovalResponse\x12j\n" +
-	"\x1cAuthorizeSubscriptionMessage\x12'.dipole.agent.v1.RequestApprovalRequest\x1a!.dipole.agent.v1.ApprovalResponse\x12d\n" +
+	"\x1cAuthorizeSubscriptionMessage\x12'.dipole.agent.v1.RequestApprovalRequest\x1a!.dipole.agent.v1.ApprovalResponse\x12g\n" +
+	"\x19AuthorizeInteractiveReply\x12'.dipole.agent.v1.RequestApprovalRequest\x1a!.dipole.agent.v1.ApprovalResponse\x12d\n" +
 	"\x0fConsumeApproval\x12'.dipole.agent.v1.ConsumeApprovalRequest\x1a(.dipole.agent.v1.ConsumeApprovalResponse\x12s\n" +
 	"\x14ResolveApprovalGrant\x12,.dipole.agent.v1.ResolveApprovalGrantRequest\x1a-.dipole.agent.v1.ResolveApprovalGrantResponse\x12j\n" +
 	"\x11ListConversations\x12).dipole.agent.v1.ListConversationsRequest\x1a*.dipole.agent.v1.ListConversationsResponse\x12g\n" +
@@ -11283,109 +11284,111 @@ var file_dipole_agent_v1_agent_proto_depIdxs = []int32{
 	7,   // 114: dipole.agent.v1.AgentCapabilityService.RequestApproval:input_type -> dipole.agent.v1.RequestApprovalRequest
 	8,   // 115: dipole.agent.v1.AgentCapabilityService.ResolveApproval:input_type -> dipole.agent.v1.ResolveApprovalRequest
 	7,   // 116: dipole.agent.v1.AgentCapabilityService.AuthorizeSubscriptionMessage:input_type -> dipole.agent.v1.RequestApprovalRequest
-	10,  // 117: dipole.agent.v1.AgentCapabilityService.ConsumeApproval:input_type -> dipole.agent.v1.ConsumeApprovalRequest
-	12,  // 118: dipole.agent.v1.AgentCapabilityService.ResolveApprovalGrant:input_type -> dipole.agent.v1.ResolveApprovalGrantRequest
-	14,  // 119: dipole.agent.v1.AgentCapabilityService.ListConversations:input_type -> dipole.agent.v1.ListConversationsRequest
-	17,  // 120: dipole.agent.v1.AgentCapabilityService.ReadConversation:input_type -> dipole.agent.v1.ReadConversationRequest
-	19,  // 121: dipole.agent.v1.AgentCapabilityService.SearchConversations:input_type -> dipole.agent.v1.SearchConversationsRequest
-	22,  // 122: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:input_type -> dipole.agent.v1.AuthorizeTaskControlRequest
-	24,  // 123: dipole.agent.v1.AgentCapabilityService.ListOwnedAgentTasks:input_type -> dipole.agent.v1.ListOwnedAgentTasksRequest
-	27,  // 124: dipole.agent.v1.AgentCapabilityService.ListAgentTaskTimeline:input_type -> dipole.agent.v1.ListAgentTaskTimelineRequest
-	30,  // 125: dipole.agent.v1.AgentCapabilityService.AppendAgentTaskTimelineEvent:input_type -> dipole.agent.v1.AppendAgentTaskTimelineEventRequest
-	32,  // 126: dipole.agent.v1.AgentCapabilityService.ResolveMcpContext:input_type -> dipole.agent.v1.ResolveMcpContextRequest
-	34,  // 127: dipole.agent.v1.AgentCapabilityService.ConsumeOAuthAuthorizationTransaction:input_type -> dipole.agent.v1.ConsumeOAuthAuthorizationTransactionRequest
-	36,  // 128: dipole.agent.v1.AgentCapabilityService.RecordOAuthCallbackHandoff:input_type -> dipole.agent.v1.RecordOAuthCallbackHandoffRequest
-	38,  // 129: dipole.agent.v1.AgentCapabilityService.ClaimOAuthCallbackHandoff:input_type -> dipole.agent.v1.ClaimOAuthCallbackHandoffRequest
-	40,  // 130: dipole.agent.v1.AgentCapabilityService.CompleteOAuthCallbackHandoff:input_type -> dipole.agent.v1.CompleteOAuthCallbackHandoffRequest
-	42,  // 131: dipole.agent.v1.AgentCapabilityService.ReleaseOAuthCallbackHandoff:input_type -> dipole.agent.v1.ReleaseOAuthCallbackHandoffRequest
-	44,  // 132: dipole.agent.v1.AgentCapabilityService.PersistOAuthTokenLifecycle:input_type -> dipole.agent.v1.PersistOAuthTokenLifecycleRequest
-	46,  // 133: dipole.agent.v1.AgentCapabilityService.BeginMcpToolInvocation:input_type -> dipole.agent.v1.BeginMcpToolInvocationRequest
-	48,  // 134: dipole.agent.v1.AgentCapabilityService.ResolveMcpToolCommand:input_type -> dipole.agent.v1.ResolveMcpToolCommandRequest
-	50,  // 135: dipole.agent.v1.AgentCapabilityService.ClaimMcpToolRound:input_type -> dipole.agent.v1.ClaimMcpToolRoundRequest
-	52,  // 136: dipole.agent.v1.AgentCapabilityService.FinishMcpToolRound:input_type -> dipole.agent.v1.FinishMcpToolRoundRequest
-	55,  // 137: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocation:input_type -> dipole.agent.v1.FinishMcpToolInvocationRequest
-	57,  // 138: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocationFromRound:input_type -> dipole.agent.v1.FinishMcpToolInvocationFromRoundRequest
-	59,  // 139: dipole.agent.v1.AgentCapabilityService.ExecuteMcpMessageCommand:input_type -> dipole.agent.v1.ExecuteMcpMessageCommandRequest
-	61,  // 140: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:input_type -> dipole.agent.v1.ProjectTaskWorkflowStateRequest
-	63,  // 141: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:input_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
-	67,  // 142: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:input_type -> dipole.agent.v1.ProposeWorkflowRepairRequest
-	68,  // 143: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:input_type -> dipole.agent.v1.DecideWorkflowRepairRequest
-	69,  // 144: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:input_type -> dipole.agent.v1.GetWorkflowRepairRequest
-	71,  // 145: dipole.agent.v1.AgentCapabilityService.ExecuteWorkflowRepair:input_type -> dipole.agent.v1.ExecuteWorkflowRepairRequest
-	72,  // 146: dipole.agent.v1.AgentCapabilityService.RollbackWorkflowRepair:input_type -> dipole.agent.v1.RollbackWorkflowRepairRequest
-	74,  // 147: dipole.agent.v1.AgentCapabilityService.ProposeRuntimePromotion:input_type -> dipole.agent.v1.ProposeRuntimePromotionRequest
-	75,  // 148: dipole.agent.v1.AgentCapabilityService.ReviewRuntimePromotion:input_type -> dipole.agent.v1.ReviewRuntimePromotionRequest
-	76,  // 149: dipole.agent.v1.AgentCapabilityService.GetRuntimePromotion:input_type -> dipole.agent.v1.GetRuntimePromotionRequest
-	80,  // 150: dipole.agent.v1.AgentCapabilityService.GetRuntimePromotionEvidence:input_type -> dipole.agent.v1.GetRuntimePromotionEvidenceRequest
-	77,  // 151: dipole.agent.v1.AgentCapabilityService.RevokeRuntimePromotion:input_type -> dipole.agent.v1.RevokeRuntimePromotionRequest
-	82,  // 152: dipole.agent.v1.AgentCapabilityService.CreateArtifact:input_type -> dipole.agent.v1.CreateArtifactRequest
-	83,  // 153: dipole.agent.v1.AgentCapabilityService.GetArtifact:input_type -> dipole.agent.v1.GetArtifactRequest
-	87,  // 154: dipole.agent.v1.AgentCapabilityService.ListOwnedArtifacts:input_type -> dipole.agent.v1.ListOwnedArtifactsRequest
-	120, // 155: dipole.agent.v1.AgentCapabilityService.PublishMcpReadinessEvidence:input_type -> dipole.agent.v1.PublishMcpReadinessEvidenceRequest
-	122, // 156: dipole.agent.v1.AgentCapabilityService.ResolveFreshMcpReadinessEvidence:input_type -> dipole.agent.v1.ResolveFreshMcpReadinessEvidenceRequest
-	91,  // 157: dipole.agent.v1.AgentCapabilityService.MatchEventSubscriptions:output_type -> dipole.agent.v1.MatchEventSubscriptionsResponse
-	90,  // 158: dipole.agent.v1.AgentCapabilityService.CreateEventSubscription:output_type -> dipole.agent.v1.AgentEventSubscription
-	95,  // 159: dipole.agent.v1.AgentCapabilityService.ListEligibleSubscriptionConversations:output_type -> dipole.agent.v1.ListEligibleSubscriptionConversationsResponse
-	97,  // 160: dipole.agent.v1.AgentCapabilityService.ListEventSubscriptions:output_type -> dipole.agent.v1.ListEventSubscriptionsResponse
-	90,  // 161: dipole.agent.v1.AgentCapabilityService.RevokeEventSubscription:output_type -> dipole.agent.v1.AgentEventSubscription
-	99,  // 162: dipole.agent.v1.AgentCapabilityService.CreateAgentDefinition:output_type -> dipole.agent.v1.AgentDefinitionCatalogItem
-	102, // 163: dipole.agent.v1.AgentCapabilityService.ListAgentDefinitions:output_type -> dipole.agent.v1.ListAgentDefinitionsResponse
-	106, // 164: dipole.agent.v1.AgentCapabilityService.ListContextMemories:output_type -> dipole.agent.v1.ListContextMemoriesResponse
-	109, // 165: dipole.agent.v1.AgentCapabilityService.ListOwnedMemories:output_type -> dipole.agent.v1.ListOwnedMemoriesResponse
-	108, // 166: dipole.agent.v1.AgentCapabilityService.RevokeOwnedMemory:output_type -> dipole.agent.v1.AgentOwnedMemory
-	112, // 167: dipole.agent.v1.AgentCapabilityService.CorrectOwnedMemory:output_type -> dipole.agent.v1.CorrectOwnedMemoryResponse
-	108, // 168: dipole.agent.v1.AgentCapabilityService.PromoteMemoryCandidate:output_type -> dipole.agent.v1.AgentOwnedMemory
-	116, // 169: dipole.agent.v1.AgentCapabilityService.ReviewMemoryCandidate:output_type -> dipole.agent.v1.AgentMemoryCandidateSummary
-	117, // 170: dipole.agent.v1.AgentCapabilityService.ListOwnedMemoryCandidates:output_type -> dipole.agent.v1.ListOwnedMemoryCandidatesResponse
-	119, // 171: dipole.agent.v1.AgentCapabilityService.CommitMemoryPromotionReceipt:output_type -> dipole.agent.v1.CommitMemoryPromotionReceiptResponse
-	1,   // 172: dipole.agent.v1.AgentCapabilityService.AdmitRun:output_type -> dipole.agent.v1.AdmitRunResponse
-	3,   // 173: dipole.agent.v1.AgentCapabilityService.CompleteRun:output_type -> dipole.agent.v1.CompleteRunResponse
-	5,   // 174: dipole.agent.v1.AgentCapabilityService.FinishRun:output_type -> dipole.agent.v1.FinishRunResponse
-	9,   // 175: dipole.agent.v1.AgentCapabilityService.RequestApproval:output_type -> dipole.agent.v1.ApprovalResponse
-	9,   // 176: dipole.agent.v1.AgentCapabilityService.ResolveApproval:output_type -> dipole.agent.v1.ApprovalResponse
-	9,   // 177: dipole.agent.v1.AgentCapabilityService.AuthorizeSubscriptionMessage:output_type -> dipole.agent.v1.ApprovalResponse
-	11,  // 178: dipole.agent.v1.AgentCapabilityService.ConsumeApproval:output_type -> dipole.agent.v1.ConsumeApprovalResponse
-	13,  // 179: dipole.agent.v1.AgentCapabilityService.ResolveApprovalGrant:output_type -> dipole.agent.v1.ResolveApprovalGrantResponse
-	16,  // 180: dipole.agent.v1.AgentCapabilityService.ListConversations:output_type -> dipole.agent.v1.ListConversationsResponse
-	18,  // 181: dipole.agent.v1.AgentCapabilityService.ReadConversation:output_type -> dipole.agent.v1.ReadConversationResponse
-	21,  // 182: dipole.agent.v1.AgentCapabilityService.SearchConversations:output_type -> dipole.agent.v1.SearchConversationsResponse
-	23,  // 183: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:output_type -> dipole.agent.v1.AuthorizeTaskControlResponse
-	26,  // 184: dipole.agent.v1.AgentCapabilityService.ListOwnedAgentTasks:output_type -> dipole.agent.v1.ListOwnedAgentTasksResponse
-	29,  // 185: dipole.agent.v1.AgentCapabilityService.ListAgentTaskTimeline:output_type -> dipole.agent.v1.ListAgentTaskTimelineResponse
-	31,  // 186: dipole.agent.v1.AgentCapabilityService.AppendAgentTaskTimelineEvent:output_type -> dipole.agent.v1.AppendAgentTaskTimelineEventResponse
-	33,  // 187: dipole.agent.v1.AgentCapabilityService.ResolveMcpContext:output_type -> dipole.agent.v1.ResolveMcpContextResponse
-	35,  // 188: dipole.agent.v1.AgentCapabilityService.ConsumeOAuthAuthorizationTransaction:output_type -> dipole.agent.v1.ConsumeOAuthAuthorizationTransactionResponse
-	37,  // 189: dipole.agent.v1.AgentCapabilityService.RecordOAuthCallbackHandoff:output_type -> dipole.agent.v1.RecordOAuthCallbackHandoffResponse
-	39,  // 190: dipole.agent.v1.AgentCapabilityService.ClaimOAuthCallbackHandoff:output_type -> dipole.agent.v1.ClaimOAuthCallbackHandoffResponse
-	41,  // 191: dipole.agent.v1.AgentCapabilityService.CompleteOAuthCallbackHandoff:output_type -> dipole.agent.v1.CompleteOAuthCallbackHandoffResponse
-	43,  // 192: dipole.agent.v1.AgentCapabilityService.ReleaseOAuthCallbackHandoff:output_type -> dipole.agent.v1.ReleaseOAuthCallbackHandoffResponse
-	45,  // 193: dipole.agent.v1.AgentCapabilityService.PersistOAuthTokenLifecycle:output_type -> dipole.agent.v1.PersistOAuthTokenLifecycleResponse
-	47,  // 194: dipole.agent.v1.AgentCapabilityService.BeginMcpToolInvocation:output_type -> dipole.agent.v1.BeginMcpToolInvocationResponse
-	49,  // 195: dipole.agent.v1.AgentCapabilityService.ResolveMcpToolCommand:output_type -> dipole.agent.v1.ResolveMcpToolCommandResponse
-	51,  // 196: dipole.agent.v1.AgentCapabilityService.ClaimMcpToolRound:output_type -> dipole.agent.v1.ClaimMcpToolRoundResponse
-	53,  // 197: dipole.agent.v1.AgentCapabilityService.FinishMcpToolRound:output_type -> dipole.agent.v1.FinishMcpToolRoundResponse
-	56,  // 198: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocation:output_type -> dipole.agent.v1.FinishMcpToolInvocationResponse
-	58,  // 199: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocationFromRound:output_type -> dipole.agent.v1.FinishMcpToolInvocationFromRoundResponse
-	60,  // 200: dipole.agent.v1.AgentCapabilityService.ExecuteMcpMessageCommand:output_type -> dipole.agent.v1.ExecuteMcpMessageCommandResponse
-	62,  // 201: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:output_type -> dipole.agent.v1.ProjectTaskWorkflowStateResponse
-	65,  // 202: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:output_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
-	70,  // 203: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
-	70,  // 204: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
-	70,  // 205: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
-	73,  // 206: dipole.agent.v1.AgentCapabilityService.ExecuteWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairExecutionResponse
-	73,  // 207: dipole.agent.v1.AgentCapabilityService.RollbackWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairExecutionResponse
-	78,  // 208: dipole.agent.v1.AgentCapabilityService.ProposeRuntimePromotion:output_type -> dipole.agent.v1.RuntimePromotionProposalResponse
-	78,  // 209: dipole.agent.v1.AgentCapabilityService.ReviewRuntimePromotion:output_type -> dipole.agent.v1.RuntimePromotionProposalResponse
-	78,  // 210: dipole.agent.v1.AgentCapabilityService.GetRuntimePromotion:output_type -> dipole.agent.v1.RuntimePromotionProposalResponse
-	81,  // 211: dipole.agent.v1.AgentCapabilityService.GetRuntimePromotionEvidence:output_type -> dipole.agent.v1.RuntimePromotionEvidenceResponse
-	79,  // 212: dipole.agent.v1.AgentCapabilityService.RevokeRuntimePromotion:output_type -> dipole.agent.v1.RuntimePromotionGrantResponse
-	85,  // 213: dipole.agent.v1.AgentCapabilityService.CreateArtifact:output_type -> dipole.agent.v1.CreateArtifactResponse
-	86,  // 214: dipole.agent.v1.AgentCapabilityService.GetArtifact:output_type -> dipole.agent.v1.GetArtifactResponse
-	88,  // 215: dipole.agent.v1.AgentCapabilityService.ListOwnedArtifacts:output_type -> dipole.agent.v1.ListOwnedArtifactsResponse
-	121, // 216: dipole.agent.v1.AgentCapabilityService.PublishMcpReadinessEvidence:output_type -> dipole.agent.v1.PublishMcpReadinessEvidenceResponse
-	123, // 217: dipole.agent.v1.AgentCapabilityService.ResolveFreshMcpReadinessEvidence:output_type -> dipole.agent.v1.ResolveFreshMcpReadinessEvidenceResponse
-	157, // [157:218] is the sub-list for method output_type
-	96,  // [96:157] is the sub-list for method input_type
+	7,   // 117: dipole.agent.v1.AgentCapabilityService.AuthorizeInteractiveReply:input_type -> dipole.agent.v1.RequestApprovalRequest
+	10,  // 118: dipole.agent.v1.AgentCapabilityService.ConsumeApproval:input_type -> dipole.agent.v1.ConsumeApprovalRequest
+	12,  // 119: dipole.agent.v1.AgentCapabilityService.ResolveApprovalGrant:input_type -> dipole.agent.v1.ResolveApprovalGrantRequest
+	14,  // 120: dipole.agent.v1.AgentCapabilityService.ListConversations:input_type -> dipole.agent.v1.ListConversationsRequest
+	17,  // 121: dipole.agent.v1.AgentCapabilityService.ReadConversation:input_type -> dipole.agent.v1.ReadConversationRequest
+	19,  // 122: dipole.agent.v1.AgentCapabilityService.SearchConversations:input_type -> dipole.agent.v1.SearchConversationsRequest
+	22,  // 123: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:input_type -> dipole.agent.v1.AuthorizeTaskControlRequest
+	24,  // 124: dipole.agent.v1.AgentCapabilityService.ListOwnedAgentTasks:input_type -> dipole.agent.v1.ListOwnedAgentTasksRequest
+	27,  // 125: dipole.agent.v1.AgentCapabilityService.ListAgentTaskTimeline:input_type -> dipole.agent.v1.ListAgentTaskTimelineRequest
+	30,  // 126: dipole.agent.v1.AgentCapabilityService.AppendAgentTaskTimelineEvent:input_type -> dipole.agent.v1.AppendAgentTaskTimelineEventRequest
+	32,  // 127: dipole.agent.v1.AgentCapabilityService.ResolveMcpContext:input_type -> dipole.agent.v1.ResolveMcpContextRequest
+	34,  // 128: dipole.agent.v1.AgentCapabilityService.ConsumeOAuthAuthorizationTransaction:input_type -> dipole.agent.v1.ConsumeOAuthAuthorizationTransactionRequest
+	36,  // 129: dipole.agent.v1.AgentCapabilityService.RecordOAuthCallbackHandoff:input_type -> dipole.agent.v1.RecordOAuthCallbackHandoffRequest
+	38,  // 130: dipole.agent.v1.AgentCapabilityService.ClaimOAuthCallbackHandoff:input_type -> dipole.agent.v1.ClaimOAuthCallbackHandoffRequest
+	40,  // 131: dipole.agent.v1.AgentCapabilityService.CompleteOAuthCallbackHandoff:input_type -> dipole.agent.v1.CompleteOAuthCallbackHandoffRequest
+	42,  // 132: dipole.agent.v1.AgentCapabilityService.ReleaseOAuthCallbackHandoff:input_type -> dipole.agent.v1.ReleaseOAuthCallbackHandoffRequest
+	44,  // 133: dipole.agent.v1.AgentCapabilityService.PersistOAuthTokenLifecycle:input_type -> dipole.agent.v1.PersistOAuthTokenLifecycleRequest
+	46,  // 134: dipole.agent.v1.AgentCapabilityService.BeginMcpToolInvocation:input_type -> dipole.agent.v1.BeginMcpToolInvocationRequest
+	48,  // 135: dipole.agent.v1.AgentCapabilityService.ResolveMcpToolCommand:input_type -> dipole.agent.v1.ResolveMcpToolCommandRequest
+	50,  // 136: dipole.agent.v1.AgentCapabilityService.ClaimMcpToolRound:input_type -> dipole.agent.v1.ClaimMcpToolRoundRequest
+	52,  // 137: dipole.agent.v1.AgentCapabilityService.FinishMcpToolRound:input_type -> dipole.agent.v1.FinishMcpToolRoundRequest
+	55,  // 138: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocation:input_type -> dipole.agent.v1.FinishMcpToolInvocationRequest
+	57,  // 139: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocationFromRound:input_type -> dipole.agent.v1.FinishMcpToolInvocationFromRoundRequest
+	59,  // 140: dipole.agent.v1.AgentCapabilityService.ExecuteMcpMessageCommand:input_type -> dipole.agent.v1.ExecuteMcpMessageCommandRequest
+	61,  // 141: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:input_type -> dipole.agent.v1.ProjectTaskWorkflowStateRequest
+	63,  // 142: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:input_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsRequest
+	67,  // 143: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:input_type -> dipole.agent.v1.ProposeWorkflowRepairRequest
+	68,  // 144: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:input_type -> dipole.agent.v1.DecideWorkflowRepairRequest
+	69,  // 145: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:input_type -> dipole.agent.v1.GetWorkflowRepairRequest
+	71,  // 146: dipole.agent.v1.AgentCapabilityService.ExecuteWorkflowRepair:input_type -> dipole.agent.v1.ExecuteWorkflowRepairRequest
+	72,  // 147: dipole.agent.v1.AgentCapabilityService.RollbackWorkflowRepair:input_type -> dipole.agent.v1.RollbackWorkflowRepairRequest
+	74,  // 148: dipole.agent.v1.AgentCapabilityService.ProposeRuntimePromotion:input_type -> dipole.agent.v1.ProposeRuntimePromotionRequest
+	75,  // 149: dipole.agent.v1.AgentCapabilityService.ReviewRuntimePromotion:input_type -> dipole.agent.v1.ReviewRuntimePromotionRequest
+	76,  // 150: dipole.agent.v1.AgentCapabilityService.GetRuntimePromotion:input_type -> dipole.agent.v1.GetRuntimePromotionRequest
+	80,  // 151: dipole.agent.v1.AgentCapabilityService.GetRuntimePromotionEvidence:input_type -> dipole.agent.v1.GetRuntimePromotionEvidenceRequest
+	77,  // 152: dipole.agent.v1.AgentCapabilityService.RevokeRuntimePromotion:input_type -> dipole.agent.v1.RevokeRuntimePromotionRequest
+	82,  // 153: dipole.agent.v1.AgentCapabilityService.CreateArtifact:input_type -> dipole.agent.v1.CreateArtifactRequest
+	83,  // 154: dipole.agent.v1.AgentCapabilityService.GetArtifact:input_type -> dipole.agent.v1.GetArtifactRequest
+	87,  // 155: dipole.agent.v1.AgentCapabilityService.ListOwnedArtifacts:input_type -> dipole.agent.v1.ListOwnedArtifactsRequest
+	120, // 156: dipole.agent.v1.AgentCapabilityService.PublishMcpReadinessEvidence:input_type -> dipole.agent.v1.PublishMcpReadinessEvidenceRequest
+	122, // 157: dipole.agent.v1.AgentCapabilityService.ResolveFreshMcpReadinessEvidence:input_type -> dipole.agent.v1.ResolveFreshMcpReadinessEvidenceRequest
+	91,  // 158: dipole.agent.v1.AgentCapabilityService.MatchEventSubscriptions:output_type -> dipole.agent.v1.MatchEventSubscriptionsResponse
+	90,  // 159: dipole.agent.v1.AgentCapabilityService.CreateEventSubscription:output_type -> dipole.agent.v1.AgentEventSubscription
+	95,  // 160: dipole.agent.v1.AgentCapabilityService.ListEligibleSubscriptionConversations:output_type -> dipole.agent.v1.ListEligibleSubscriptionConversationsResponse
+	97,  // 161: dipole.agent.v1.AgentCapabilityService.ListEventSubscriptions:output_type -> dipole.agent.v1.ListEventSubscriptionsResponse
+	90,  // 162: dipole.agent.v1.AgentCapabilityService.RevokeEventSubscription:output_type -> dipole.agent.v1.AgentEventSubscription
+	99,  // 163: dipole.agent.v1.AgentCapabilityService.CreateAgentDefinition:output_type -> dipole.agent.v1.AgentDefinitionCatalogItem
+	102, // 164: dipole.agent.v1.AgentCapabilityService.ListAgentDefinitions:output_type -> dipole.agent.v1.ListAgentDefinitionsResponse
+	106, // 165: dipole.agent.v1.AgentCapabilityService.ListContextMemories:output_type -> dipole.agent.v1.ListContextMemoriesResponse
+	109, // 166: dipole.agent.v1.AgentCapabilityService.ListOwnedMemories:output_type -> dipole.agent.v1.ListOwnedMemoriesResponse
+	108, // 167: dipole.agent.v1.AgentCapabilityService.RevokeOwnedMemory:output_type -> dipole.agent.v1.AgentOwnedMemory
+	112, // 168: dipole.agent.v1.AgentCapabilityService.CorrectOwnedMemory:output_type -> dipole.agent.v1.CorrectOwnedMemoryResponse
+	108, // 169: dipole.agent.v1.AgentCapabilityService.PromoteMemoryCandidate:output_type -> dipole.agent.v1.AgentOwnedMemory
+	116, // 170: dipole.agent.v1.AgentCapabilityService.ReviewMemoryCandidate:output_type -> dipole.agent.v1.AgentMemoryCandidateSummary
+	117, // 171: dipole.agent.v1.AgentCapabilityService.ListOwnedMemoryCandidates:output_type -> dipole.agent.v1.ListOwnedMemoryCandidatesResponse
+	119, // 172: dipole.agent.v1.AgentCapabilityService.CommitMemoryPromotionReceipt:output_type -> dipole.agent.v1.CommitMemoryPromotionReceiptResponse
+	1,   // 173: dipole.agent.v1.AgentCapabilityService.AdmitRun:output_type -> dipole.agent.v1.AdmitRunResponse
+	3,   // 174: dipole.agent.v1.AgentCapabilityService.CompleteRun:output_type -> dipole.agent.v1.CompleteRunResponse
+	5,   // 175: dipole.agent.v1.AgentCapabilityService.FinishRun:output_type -> dipole.agent.v1.FinishRunResponse
+	9,   // 176: dipole.agent.v1.AgentCapabilityService.RequestApproval:output_type -> dipole.agent.v1.ApprovalResponse
+	9,   // 177: dipole.agent.v1.AgentCapabilityService.ResolveApproval:output_type -> dipole.agent.v1.ApprovalResponse
+	9,   // 178: dipole.agent.v1.AgentCapabilityService.AuthorizeSubscriptionMessage:output_type -> dipole.agent.v1.ApprovalResponse
+	9,   // 179: dipole.agent.v1.AgentCapabilityService.AuthorizeInteractiveReply:output_type -> dipole.agent.v1.ApprovalResponse
+	11,  // 180: dipole.agent.v1.AgentCapabilityService.ConsumeApproval:output_type -> dipole.agent.v1.ConsumeApprovalResponse
+	13,  // 181: dipole.agent.v1.AgentCapabilityService.ResolveApprovalGrant:output_type -> dipole.agent.v1.ResolveApprovalGrantResponse
+	16,  // 182: dipole.agent.v1.AgentCapabilityService.ListConversations:output_type -> dipole.agent.v1.ListConversationsResponse
+	18,  // 183: dipole.agent.v1.AgentCapabilityService.ReadConversation:output_type -> dipole.agent.v1.ReadConversationResponse
+	21,  // 184: dipole.agent.v1.AgentCapabilityService.SearchConversations:output_type -> dipole.agent.v1.SearchConversationsResponse
+	23,  // 185: dipole.agent.v1.AgentCapabilityService.AuthorizeTaskControl:output_type -> dipole.agent.v1.AuthorizeTaskControlResponse
+	26,  // 186: dipole.agent.v1.AgentCapabilityService.ListOwnedAgentTasks:output_type -> dipole.agent.v1.ListOwnedAgentTasksResponse
+	29,  // 187: dipole.agent.v1.AgentCapabilityService.ListAgentTaskTimeline:output_type -> dipole.agent.v1.ListAgentTaskTimelineResponse
+	31,  // 188: dipole.agent.v1.AgentCapabilityService.AppendAgentTaskTimelineEvent:output_type -> dipole.agent.v1.AppendAgentTaskTimelineEventResponse
+	33,  // 189: dipole.agent.v1.AgentCapabilityService.ResolveMcpContext:output_type -> dipole.agent.v1.ResolveMcpContextResponse
+	35,  // 190: dipole.agent.v1.AgentCapabilityService.ConsumeOAuthAuthorizationTransaction:output_type -> dipole.agent.v1.ConsumeOAuthAuthorizationTransactionResponse
+	37,  // 191: dipole.agent.v1.AgentCapabilityService.RecordOAuthCallbackHandoff:output_type -> dipole.agent.v1.RecordOAuthCallbackHandoffResponse
+	39,  // 192: dipole.agent.v1.AgentCapabilityService.ClaimOAuthCallbackHandoff:output_type -> dipole.agent.v1.ClaimOAuthCallbackHandoffResponse
+	41,  // 193: dipole.agent.v1.AgentCapabilityService.CompleteOAuthCallbackHandoff:output_type -> dipole.agent.v1.CompleteOAuthCallbackHandoffResponse
+	43,  // 194: dipole.agent.v1.AgentCapabilityService.ReleaseOAuthCallbackHandoff:output_type -> dipole.agent.v1.ReleaseOAuthCallbackHandoffResponse
+	45,  // 195: dipole.agent.v1.AgentCapabilityService.PersistOAuthTokenLifecycle:output_type -> dipole.agent.v1.PersistOAuthTokenLifecycleResponse
+	47,  // 196: dipole.agent.v1.AgentCapabilityService.BeginMcpToolInvocation:output_type -> dipole.agent.v1.BeginMcpToolInvocationResponse
+	49,  // 197: dipole.agent.v1.AgentCapabilityService.ResolveMcpToolCommand:output_type -> dipole.agent.v1.ResolveMcpToolCommandResponse
+	51,  // 198: dipole.agent.v1.AgentCapabilityService.ClaimMcpToolRound:output_type -> dipole.agent.v1.ClaimMcpToolRoundResponse
+	53,  // 199: dipole.agent.v1.AgentCapabilityService.FinishMcpToolRound:output_type -> dipole.agent.v1.FinishMcpToolRoundResponse
+	56,  // 200: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocation:output_type -> dipole.agent.v1.FinishMcpToolInvocationResponse
+	58,  // 201: dipole.agent.v1.AgentCapabilityService.FinishMcpToolInvocationFromRound:output_type -> dipole.agent.v1.FinishMcpToolInvocationFromRoundResponse
+	60,  // 202: dipole.agent.v1.AgentCapabilityService.ExecuteMcpMessageCommand:output_type -> dipole.agent.v1.ExecuteMcpMessageCommandResponse
+	62,  // 203: dipole.agent.v1.AgentCapabilityService.ProjectTaskWorkflowState:output_type -> dipole.agent.v1.ProjectTaskWorkflowStateResponse
+	65,  // 204: dipole.agent.v1.AgentCapabilityService.ListTaskWorkflowProjectionSnapshots:output_type -> dipole.agent.v1.ListTaskWorkflowProjectionSnapshotsResponse
+	70,  // 205: dipole.agent.v1.AgentCapabilityService.ProposeWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	70,  // 206: dipole.agent.v1.AgentCapabilityService.DecideWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	70,  // 207: dipole.agent.v1.AgentCapabilityService.GetWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairProposalResponse
+	73,  // 208: dipole.agent.v1.AgentCapabilityService.ExecuteWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairExecutionResponse
+	73,  // 209: dipole.agent.v1.AgentCapabilityService.RollbackWorkflowRepair:output_type -> dipole.agent.v1.WorkflowRepairExecutionResponse
+	78,  // 210: dipole.agent.v1.AgentCapabilityService.ProposeRuntimePromotion:output_type -> dipole.agent.v1.RuntimePromotionProposalResponse
+	78,  // 211: dipole.agent.v1.AgentCapabilityService.ReviewRuntimePromotion:output_type -> dipole.agent.v1.RuntimePromotionProposalResponse
+	78,  // 212: dipole.agent.v1.AgentCapabilityService.GetRuntimePromotion:output_type -> dipole.agent.v1.RuntimePromotionProposalResponse
+	81,  // 213: dipole.agent.v1.AgentCapabilityService.GetRuntimePromotionEvidence:output_type -> dipole.agent.v1.RuntimePromotionEvidenceResponse
+	79,  // 214: dipole.agent.v1.AgentCapabilityService.RevokeRuntimePromotion:output_type -> dipole.agent.v1.RuntimePromotionGrantResponse
+	85,  // 215: dipole.agent.v1.AgentCapabilityService.CreateArtifact:output_type -> dipole.agent.v1.CreateArtifactResponse
+	86,  // 216: dipole.agent.v1.AgentCapabilityService.GetArtifact:output_type -> dipole.agent.v1.GetArtifactResponse
+	88,  // 217: dipole.agent.v1.AgentCapabilityService.ListOwnedArtifacts:output_type -> dipole.agent.v1.ListOwnedArtifactsResponse
+	121, // 218: dipole.agent.v1.AgentCapabilityService.PublishMcpReadinessEvidence:output_type -> dipole.agent.v1.PublishMcpReadinessEvidenceResponse
+	123, // 219: dipole.agent.v1.AgentCapabilityService.ResolveFreshMcpReadinessEvidence:output_type -> dipole.agent.v1.ResolveFreshMcpReadinessEvidenceResponse
+	158, // [158:220] is the sub-list for method output_type
+	96,  // [96:158] is the sub-list for method input_type
 	96,  // [96:96] is the sub-list for extension type_name
 	96,  // [96:96] is the sub-list for extension extendee
 	0,   // [0:96] is the sub-list for field type_name

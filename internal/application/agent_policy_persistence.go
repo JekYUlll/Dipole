@@ -228,6 +228,13 @@ type AgentSubscriptionMessageApproverV1 interface {
 	AutoApproveSubscriptionMessage(ctx context.Context, request AgentApprovalRequestV1) (*AgentApprovalV1, error)
 }
 
+// AgentInteractiveReplyApproverV1 mints an already-approved assistant-reply grant
+// for a self-initiated interactive task, replacing the owner Signal with Core-side
+// verification of interactive triggering and owner-conversation scope.
+type AgentInteractiveReplyApproverV1 interface {
+	AutoApproveInteractiveReply(ctx context.Context, request AgentApprovalRequestV1) (*AgentApprovalV1, error)
+}
+
 func (d AgentDefinitionVersionV1) Validate() error {
 	if anyBlank(d.DefinitionUUID, d.TenantID, d.OwnerUUID, d.AgentUUID) || d.Version == 0 || d.ValidFrom.IsZero() ||
 		(d.Status != AgentDefinitionStatusActive && d.Status != AgentDefinitionStatusRevoked) || len(d.Permissions) == 0 || len(d.Scopes) == 0 {

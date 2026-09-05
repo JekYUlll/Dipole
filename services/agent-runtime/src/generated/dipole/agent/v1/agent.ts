@@ -13703,6 +13703,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "RequestApproval", options: {}, I: RequestApprovalRequest, O: ApprovalResponse },
     { name: "ResolveApproval", options: {}, I: ResolveApprovalRequest, O: ApprovalResponse },
     { name: "AuthorizeSubscriptionMessage", options: {}, I: RequestApprovalRequest, O: ApprovalResponse },
+    { name: "AuthorizeInteractiveReply", options: {}, I: RequestApprovalRequest, O: ApprovalResponse },
     { name: "ConsumeApproval", options: {}, I: ConsumeApprovalRequest, O: ConsumeApprovalResponse },
     { name: "ResolveApprovalGrant", options: {}, I: ResolveApprovalGrantRequest, O: ResolveApprovalGrantResponse },
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },

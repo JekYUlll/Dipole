@@ -26,6 +26,7 @@ func RestrictServiceMethods(ctx context.Context, request any, info *grpc.UnarySe
 		info.FullMethod != agentv1.AgentCapabilityService_ConsumeApproval_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveApprovalGrant_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeInteractiveReply_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ReadConversation_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName &&

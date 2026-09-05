@@ -282,6 +282,8 @@ type approvalServiceStub struct {
 	consumed             application.AgentApprovalConsumptionV1
 	subscriptionApproved application.AgentApprovalRequestV1
 	subscriptionErr      error
+	interactiveApproved  application.AgentApprovalRequestV1
+	interactiveErr       error
 }
 
 type approvalGrantResolverStub struct {
@@ -1457,6 +1459,56 @@ func TestConsumeApprovalRPCRequiresActiveModeAndExactClaim(t *testing.T) {
 	request.Context = grpccommon.RequestContext("", "dipole-gateway")
 	if _, err := server.ConsumeApproval(context.Background(), request); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("forged caller Approval consumption code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+}
+
+func (s *approvalServiceStub) AutoApproveInteractiveReply(_ context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
+	s.interactiveApproved = request
+	if s.interactiveErr != nil {
+		return nil, s.interactiveErr
+	}
+	approval := request.Approval
+	approval.Status = application.AgentApprovalStatusApproved
+	approval.ApprovedByUUID = "U100"
+	return &approval, nil
+}
+
+func TestAuthorizeInteractiveReplyRPCRequiresAgentCallerAndActiveMode(t *testing.T) {
+	approvals := &approvalServiceStub{}
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{}, approvals)
+	timeline := &taskTimelineStub{}
+	server, _ = server.WithTaskTimeline(timeline)
+	replyRequest := func() *agentv1.RequestApprovalRequest {
+		return &agentv1.RequestApprovalRequest{
+			Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "approval:reply-1",
+			CapabilityId: "message.assistant_reply.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "direct:U100:UAI", Actions: []string{"write"}},
+			ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64),
+			ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(), Mode: "active",
+		}
+	}
+	response, err := server.AuthorizeInteractiveReply(context.Background(), replyRequest())
+	if err != nil || response.GetStatus() != "approved" || response.GetApprovedByUserId() != "U100" ||
+		approvals.interactiveApproved.RuntimeID != "dipole-agent" || approvals.interactiveApproved.Mode != "active" ||
+		approvals.interactiveApproved.Approval.ApprovalUUID != "approval:reply-1" {
+		t.Fatalf("authorize interactive reply response=%+v request=%+v err=%v", response, approvals.interactiveApproved, err)
+	}
+	if len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventApproval || timeline.events[0].Status != "approved" {
+		t.Fatalf("unexpected interactive Approval timeline: %+v", timeline.events)
+	}
+	shadow := replyRequest()
+	shadow.Mode = "shadow"
+	if _, err := server.AuthorizeInteractiveReply(context.Background(), shadow); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("shadow interactive authorization code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+	forged := replyRequest()
+	forged.Context = grpccommon.RequestContext("", "dipole-gateway")
+	if _, err := server.AuthorizeInteractiveReply(context.Background(), forged); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("forged caller interactive authorization code = %s, want %s", status.Code(err), codes.PermissionDenied)
+	}
+	principalBound := replyRequest()
+	principalBound.Context = grpccommon.RequestContext("U100", "dipole-agent")
+	if _, err := server.AuthorizeInteractiveReply(context.Background(), principalBound); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("principal-bound interactive authorization code = %s, want %s", status.Code(err), codes.InvalidArgument)
 	}
 }
 

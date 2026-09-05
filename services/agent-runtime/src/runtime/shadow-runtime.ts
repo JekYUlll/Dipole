@@ -46,7 +46,7 @@ import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
 import type { AgentTaskActivities } from "../temporal/agent-task-activities.js";
-import { createInteractiveMessageExecutor, createSubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
+import { createInteractiveMessageExecutor, createInteractiveReplyExecutor, createSubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
 import { createReconnectingAgentCapabilityTransport } from "./reconnecting-agent-capability-transport.js";
 
 const shadowRuntimeConfigSchema = z.object({
@@ -559,6 +559,9 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
       ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {}),
       ...(config.runtimeMode === "active" && config.interactiveMessageWritesEnabled
         ? { interactiveMessage: createInteractiveMessageExecutor(rpc.client) }
+        : {}),
+      ...(config.runtimeMode === "active" && config.interactiveMessageWritesEnabled
+        ? { interactiveReply: createInteractiveReplyExecutor(rpc.client) }
         : {}),
       ...(config.runtimeMode === "active" && config.subscriptionMessageWritesEnabled
         ? { subscriptionMessage: createSubscriptionMessageExecutor(rpc.client) }

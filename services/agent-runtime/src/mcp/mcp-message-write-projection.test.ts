@@ -6,7 +6,7 @@ import * as grpc from "@grpc/grpc-js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { createDipoleMcpServer } from "./dipole-mcp-server.js";
-import { createInteractiveMessageExecutor, createSubscriptionMessageExecutor, McpMessageWriteProjection, subscriptionReplyReplayMarker } from "./mcp-message-write-projection.js";
+import { createInteractiveMessageExecutor, createInteractiveReplyExecutor, createSubscriptionMessageExecutor, McpMessageWriteProjection, subscriptionReplyReplayMarker } from "./mcp-message-write-projection.js";
 import { AllowlistedMcpToolClient } from "./mcp-tool-client.js";
 import { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
 import { McpWriteApprovalGate } from "./mcp-write-approval-gate.js";
@@ -196,6 +196,45 @@ describe("MCP Message write projection", () => {
 
     expect(invocationIds).toHaveLength(2);
     expect(invocationIds[0]).not.toBe(invocationIds[1]);
+  });
+
+  it("mints an owner-scoped assistant_reply grant via AuthorizeInteractiveReply", async () => {
+    const invocationIds: string[] = [];
+    const client = {
+      authorizeInteractiveReply: vi.fn(async () => undefined),
+      consumeApproval: vi.fn(async () => undefined),
+      resolveApprovalGrant: vi.fn(async () => ({
+        approvalId: "APR-1", capabilityId: "message.assistant_reply.send",
+        resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+        scopeSha256: "fda03fe9202766c3e59c11b4b069749a400e50041a44d1d200ff41c64aefa8a5",
+        argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
+        nonceSha256: "d".repeat(64), expiresAtUnixMs: Date.now() + 60_000
+      })),
+      begin: vi.fn(async () => undefined),
+      finishToolInvocation: vi.fn(async () => undefined),
+      resolveMcpToolCommand: vi.fn(async () => { throw new Error("no completed invocation"); }),
+      executeMessageCommand: vi.fn(async (input: { invocationId: string }) => {
+        invocationIds.push(input.invocationId);
+        return { resourceType: "message" as const, resourceId: "MSG-1", commandKind: "assistant_reply" as const, commandId: `tool:${input.invocationId}` };
+      })
+    };
+    const replyContext = { ...context, approvedCapabilities: ["message.assistant_reply.send"] };
+    await createInteractiveReplyExecutor(client).execute(
+      { conversationId: "direct:U100:UAI", content: "notice", eventId: "E-INT-1", occurredAtUnixMs: 1_700_000_000_000 }, replyContext
+    );
+    expect(client.authorizeInteractiveReply).toHaveBeenCalledOnce();
+    const mintArgs = client.authorizeInteractiveReply.mock.calls[0]!;
+    expect(mintArgs[0]).toBe("TASK-1");
+    expect(mintArgs[1]).toBe("RUN-1");
+    expect(mintArgs[2]).toMatchObject({
+      capabilityId: "message.assistant_reply.send",
+      resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
+      argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
+      expiresAtUnixMs: 1_700_000_000_000 + 30 * 60 * 1_000
+    });
+    expect(mintArgs[2].approvalId).toMatch(/^approval:[0-9a-f]{48}$/);
+    expect(client.executeMessageCommand).toHaveBeenCalledOnce();
+    expect(client.executeMessageCommand.mock.calls[0]![0]).toMatchObject({ commandKind: "assistant_reply" });
   });
 
   it("reuses one message command after an uncertain Core response", async () => {

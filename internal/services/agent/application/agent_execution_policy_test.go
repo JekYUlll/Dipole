@@ -593,7 +593,7 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 		t.Fatalf("admit promoted active Run: %v", err)
 	}
 	if execution.Invocation.RuntimeID != "dipole-agent" || execution.Invocation.Mode != "active" ||
-		len(execution.Invocation.ApprovedCapabilities) != 1 || execution.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend ||
+		len(execution.Invocation.ApprovedCapabilities) != 2 || execution.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend || execution.Invocation.ApprovedCapabilities[1] != application.AgentCapabilityAssistantReplySend ||
 		authorizer.request.RuntimeID != "dipole-agent" || authorizer.request.CandidateVersion != "runtime-v7" || authorizer.request.Task.DefinitionVersion != 7 ||
 		authorizer.request.Definition.Version != 7 {
 		t.Fatalf("promotion binding drifted: execution=%+v request=%+v", execution, authorizer.request)

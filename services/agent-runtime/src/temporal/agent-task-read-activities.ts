@@ -21,7 +21,7 @@ import type { ExecutionContext } from "../runtime/execution-context.js";
 import { agentElicitationSchemaVersion, validateElicitationForm, type AgentElicitationForm } from "../task/agent-elicitation.js";
 import type { AgentTaskResume } from "../task/agent-task-state.js";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
-import type { SubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
+import type { InteractiveReplyExecutor, SubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
 
 const readScopeConfirmationKind = "dipole.agent.read-scope-confirmation.v1";
 const readScopeFieldId = "conversation";
@@ -66,6 +66,7 @@ export function createTemporalReadStepActivities(
     readonly readScopeConfirmationTtlMs?: number;
     readonly interactiveMessage?: InteractiveMessageExecutor;
     readonly subscriptionMessage?: SubscriptionMessageExecutor;
+    readonly interactiveReply?: InteractiveReplyExecutor;
   }
 ): AgentTaskActivities {
   return {
@@ -190,7 +191,8 @@ export function createTemporalReadStepActivities(
           return value;
         });
         span.setAttribute("dipole.agent.run.step_count", plan.steps.length);
-        const replyMessageAction = await maybeSendSubscriptionReply(event, context, plan, runtimeMode, dependencies, telemetry);
+        const replyMessageAction = (await maybeSendSubscriptionReply(event, context, plan, runtimeMode, dependencies, telemetry))
+          ?? (await maybeSendInteractiveReply(event, context, plan, runtimeMode, dependencies, telemetry));
         if (replyMessageAction !== undefined) span.setAttribute("dipole.agent.run.reply", "sent");
         return {
           kind: "complete",
@@ -340,6 +342,36 @@ async function maybeSendSubscriptionReply(
   return telemetry.withSpan("agent.message.reply", {
     taskId: context.taskId, runId: context.runId,
     attributes: { "dipole.agent.message.kind": "system_message" }
+  }, () => executor.execute(
+    { conversationId: directConversationKey(context.principalUuid, context.agentUuid), content, eventId: event.eventId, occurredAtUnixMs },
+    context
+  ));
+}
+
+// Autonomous interactive replies fire for interactive-triggered active tasks
+// whose owner is the requester. A plain interactive goal (not a /send command)
+// runs the read/plan path and then delivers the model summary to the owner's
+// direct Agent conversation as an assistant reply, reusing the audited
+// approval-bound message write with a Core-minted, owner-scoped grant.
+async function maybeSendInteractiveReply(
+  event: { readonly eventType: string; readonly eventId: string; readonly occurredAt: string },
+  context: ExecutionContext,
+  plan: ShadowPlan,
+  runtimeMode: AgentRuntimeMode,
+  dependencies: { readonly interactiveReply?: InteractiveReplyExecutor },
+  telemetry: Pick<AgentTelemetry, "withSpan">
+): Promise<string | undefined> {
+  if (runtimeMode !== "active" || dependencies.interactiveReply === undefined || event.eventType !== "agent.interactive.requested") {
+    return undefined;
+  }
+  const content = plan.summary.trim().slice(0, maxSubscriptionReplyBytes);
+  if (content.length === 0) return undefined;
+  const occurredAtUnixMs = Date.parse(event.occurredAt);
+  if (!Number.isSafeInteger(occurredAtUnixMs)) return undefined;
+  const executor = dependencies.interactiveReply;
+  return telemetry.withSpan("agent.message.reply", {
+    taskId: context.taskId, runId: context.runId,
+    attributes: { "dipole.agent.message.kind": "assistant_reply" }
   }, () => executor.execute(
     { conversationId: directConversationKey(context.principalUuid, context.agentUuid), content, eventId: event.eventId, occurredAtUnixMs },
     context

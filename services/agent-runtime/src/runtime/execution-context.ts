@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const uniqueStrings = (values: string[]) => new Set(values).size === values.length;
-const approvedCapabilitySchema = z.enum(["message.system.send"]);
+const approvedCapabilitySchema = z.enum(["message.system.send", "message.assistant_reply.send"]);
 
 export const resourceScopeSchema = z.object({
   resourceType: z.string().trim().min(1),

@@ -73,6 +73,15 @@ const interactiveMessageTool: DipoleMcpWriteToolProjection = {
   commandKind: "system_message"
 };
 
+const assistantReplyTool: DipoleMcpWriteToolProjection = {
+  name: "dipole_assistant_reply",
+  capabilityId: "message.assistant_reply.send",
+  title: "Send assistant reply",
+  description: "Deliver one approved assistant reply to the task owner's direct Agent conversation",
+  inputSchema: messageInputSchema,
+  commandKind: "assistant_reply"
+};
+
 export interface MessageExecutor {
   execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext): Promise<string>;
 }
@@ -94,6 +103,7 @@ export const subscriptionReplyReplayMarker = "dipole.agent.subscription-reply.al
 
 const interactiveMessageInvocationNamespace = "dipole.agent.interactive-message-invocation.v1";
 const subscriptionMessageInvocationNamespace = "dipole.agent.subscription-message-invocation.v1";
+const interactiveReplyInvocationNamespace = "dipole.agent.interactive-reply-invocation.v1";
 
 // The owner Signal drives interactive writes.
 export function createInteractiveMessageExecutor(client: MessageExecutorClient): MessageExecutor {
@@ -131,6 +141,85 @@ export function createSubscriptionMessageExecutor(client: SubscriptionMessageExe
   };
 }
 
+export interface InteractiveReplyExecutor {
+  execute(
+    input: { readonly conversationId: string; readonly content: string; readonly eventId: string; readonly occurredAtUnixMs: number },
+    context: ExecutionContext
+  ): Promise<string>;
+}
+
+type InteractiveReplyExecutorClient = MessageExecutorClient & Pick<AgentCapabilityRPCClient, "authorizeInteractiveReply" | "resolveMcpToolCommand">;
+
+// Marks an interactive reply the Runtime recognised as already delivered by a
+// prior Activity attempt. Informational (task output only).
+export const interactiveReplyReplayMarker = "dipole.agent.interactive-reply.already-delivered.v1";
+
+// A self-initiated interactive task replies to its own owner. Like the
+// subscription path it carries no owner Signal, so the executor first asks Core
+// to mint an already-approved, owner-scoped assistant_reply grant, then runs the
+// identical approval-bound write chain under its own Tool Invocation namespace so
+// interactive /send writes and autonomous replies never collide inside one task.
+export function createInteractiveReplyExecutor(client: InteractiveReplyExecutorClient): InteractiveReplyExecutor {
+  const projection = messageProjectionExecutor(client, interactiveReplyInvocationNamespace, assistantReplyTool);
+  return {
+    execute: async (input, context) => {
+      const request = { conversationId: input.conversationId, content: input.content };
+      const binding = interactiveReplyApproval(context, input);
+      try {
+        await client.authorizeInteractiveReply(context.taskId, context.runId, binding, context);
+        return await projection(request, context);
+      } catch (error) {
+        // A retried Activity can re-enter after a prior attempt already delivered
+        // this reply and spent its single-use grant. A completed Tool Invocation
+        // under the deterministic id is proof of delivery: skip instead of
+        // double-sending; any other failure must surface so the Task fails loudly.
+        if (await interactiveReplyAlreadyDelivered(client, context, request)) {
+          return interactiveReplyReplayMarker;
+        }
+        throw error;
+      }
+    }
+  };
+}
+
+async function interactiveReplyAlreadyDelivered(
+  client: Pick<InteractiveReplyExecutorClient, "resolveMcpToolCommand">,
+  context: ExecutionContext,
+  request: { readonly conversationId: string; readonly content: string }
+): Promise<boolean> {
+  const invocationId = messageInvocationID(interactiveReplyInvocationNamespace, assistantReplyTool.capabilityId, context, request);
+  try {
+    const invocation = await client.resolveMcpToolCommand(context.taskId, context.runId, invocationId);
+    return invocation.status === "completed";
+  } catch {
+    return false;
+  }
+}
+
+// Deterministic so a retried reply mints an identical binding, mirroring the
+// subscription approval derivation but scoped to the interactive-reply namespace
+// and the assistant_reply capability.
+function interactiveReplyApproval(
+  context: ExecutionContext,
+  input: { readonly conversationId: string; readonly content: string; readonly eventId: string; readonly occurredAtUnixMs: number }
+): AgentApprovalBinding {
+  if (!Number.isSafeInteger(input.occurredAtUnixMs)) throw new Error("Interactive Agent reply event time is invalid");
+  if (!input.conversationId.trim() || !input.eventId.trim()) throw new Error("Interactive Agent reply binding is incomplete");
+  const resourceScope = { resourceType: "conversation", resourceId: input.conversationId, actions: ["write"] };
+  const argumentsSha256 = messageDigest([canonicalMcpJSON({ conversationId: input.conversationId, content: input.content })]);
+  const scopeSha256 = messageDigest(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions]);
+  const approvalId = `approval:${messageDigest(["dipole.agent.interactive-reply.v1", context.taskId, context.runId, input.eventId, argumentsSha256]).slice(0, 48)}`;
+  return {
+    approvalId,
+    capabilityId: "message.assistant_reply.send",
+    resourceScope,
+    scopeSha256,
+    argumentsSha256,
+    nonceSha256: messageDigest(["dipole.agent.interactive-reply.nonce.v1", approvalId]),
+    expiresAtUnixMs: input.occurredAtUnixMs + 30 * 60 * 1_000
+  };
+}
+
 // Probes the deterministic reply Tool Invocation. Core's ResolveMcpToolCommand
 // is a read: a missing invocation (first attempt) or a still-open one is not
 // proof of delivery, so only a completed status short-circuits the replay.
@@ -139,7 +228,7 @@ async function subscriptionReplyAlreadyDelivered(
   context: ExecutionContext,
   request: { readonly conversationId: string; readonly content: string }
 ): Promise<boolean> {
-  const invocationId = messageInvocationID(subscriptionMessageInvocationNamespace, context, request);
+  const invocationId = messageInvocationID(subscriptionMessageInvocationNamespace, interactiveMessageTool.capabilityId, context, request);
   try {
     const invocation = await client.resolveMcpToolCommand(context.taskId, context.runId, invocationId);
     return invocation.status === "completed";
@@ -150,12 +239,13 @@ async function subscriptionReplyAlreadyDelivered(
 
 function messageProjectionExecutor(
   client: MessageExecutorClient,
-  invocationNamespace: string
+  invocationNamespace: string,
+  tool: DipoleMcpWriteToolProjection = interactiveMessageTool
 ): (input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext) => Promise<string> {
   const registry = new CapabilityRegistry();
   registry.register({
     descriptor: {
-      id: "message.system.send",
+      id: tool.capabilityId,
       risk: "write",
       requiredPermission: "message.write",
       approvalRequired: true
@@ -174,13 +264,13 @@ function messageProjectionExecutor(
     new McpToolInvocationRunner(
       { begin: begin => client.begin(begin), finish: finish => client.finishToolInvocation(finish) },
       undefined,
-      () => messageInvocationID(invocationNamespace, context, input),
+      () => messageInvocationID(invocationNamespace, tool.capabilityId, context, input),
       undefined,
       undefined,
       isUncertainMessageCommandFailure
     ),
     { executeMessageCommand: command => client.executeMessageCommand(command) }
-  ).execute(interactiveMessageTool, input, context);
+  ).execute(tool, input, context);
 }
 
 // Deterministic so a retried reply mints an identical binding: the resolve gate
@@ -213,6 +303,7 @@ function messageDigest(parts: readonly string[]): string {
 
 function messageInvocationID(
   invocationNamespace: string,
+  capabilityId: string,
   context: ExecutionContext,
   input: { readonly conversationId: string; readonly content: string }
 ): string {
@@ -220,7 +311,7 @@ function messageInvocationID(
     invocationNamespace,
     context.taskId,
     context.runId,
-    interactiveMessageTool.capabilityId,
+    capabilityId,
     input.conversationId,
     input.content
   ].join("\n");
