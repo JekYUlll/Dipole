@@ -82,6 +82,76 @@ func (b *ContextBuilder) BuildDirectContext(ctx context.Context, userUUID, assis
 	}, nil
 }
 
+func (b *ContextBuilder) BuildGroupContext(ctx context.Context, userUUID, assistantUUID, groupUUID string) (*ConversationContext, error) {
+	userUUID = strings.TrimSpace(userUUID)
+	assistantUUID = strings.TrimSpace(assistantUUID)
+	groupUUID = strings.TrimSpace(groupUUID)
+	execution, err := requireAuthorizedExecutionForResource(ctx, application.AgentCapabilityUserProfileRead, application.AgentResourceTypeUser, userUUID, application.AgentResourceActionRead)
+	if err != nil {
+		return nil, fmt.Errorf("authorize ai group context profile: %w", err)
+	}
+	if execution.PrincipalUserUUID != userUUID || execution.AgentUUID != assistantUUID {
+		return nil, application.ErrAgentCapabilityDenied
+	}
+	invocation := execution.invocationV1()
+	endUser, err := b.capability.GetUserProfile(ctx, invocation, userUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get ai group conversation user: %w", err)
+	}
+	if endUser == nil {
+		return nil, ErrAIUserNotFound
+	}
+
+	assistant, err := b.capability.GetUserProfile(ctx, invocation, assistantUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get ai assistant user: %w", err)
+	}
+	if assistant == nil || !assistant.IsAssistant() {
+		return nil, ErrAIAssistantNotFound
+	}
+
+	conversationKey := model.GroupConversationKey(groupUUID)
+	if err := authorizeExecutionCapabilityForResource(execution, application.AgentCapabilityConversationRead, application.AgentResourceTypeConversation, conversationKey, application.AgentResourceActionRead); err != nil {
+		return nil, fmt.Errorf("authorize ai group context messages: %w", err)
+	}
+
+	read, err := b.capability.ReadConversation(ctx, invocation, groupUUID, b.maxContextMessages)
+	if err != nil {
+		return nil, fmt.Errorf("read ai group conversation: %w", err)
+	}
+	if read == nil || !read.Found {
+		return nil, fmt.Errorf("ai group conversation is not readable")
+	}
+
+	messages := []*schema.Message{schema.UserMessage("You are mentioned in a group chat. Reply to the members; keep it concise.")}
+	for _, item := range read.Messages {
+		if msg := buildGroupSchemaMessage(item, assistant.UUID); msg != nil {
+			messages = append(messages, msg)
+		}
+	}
+
+	return &ConversationContext{
+		EndUser:   endUser,
+		Assistant: assistant,
+		Messages:  messages,
+	}, nil
+}
+
+func buildGroupSchemaMessage(message *model.Message, assistantUUID string) *schema.Message {
+	msg := buildSchemaMessage(message, assistantUUID)
+	if msg == nil {
+		return nil
+	}
+	if msg.Role == schema.Assistant {
+		return msg
+	}
+	sender := strings.TrimSpace(message.SenderUUID)
+	if sender != "" && !strings.HasPrefix(msg.Content, "[") {
+		msg.Content = "[" + sender + "] " + msg.Content
+	}
+	return msg
+}
+
 func buildSchemaMessage(message *model.Message, assistantUUID string) *schema.Message {
 	if message == nil {
 		return nil

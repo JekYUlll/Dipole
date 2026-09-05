@@ -112,6 +112,29 @@ func DirectReplyHandler(aiService *aiModule.Service) platformKafka.Handler {
 	}
 }
 
+// GroupReplyHandler adapts HandleGroupMessage onto message.group.created.
+// Mention filtering and idempotency live in the Service; this adapter only
+// decodes the envelope and keeps a failed turn from blocking other subscribers.
+func GroupReplyHandler(aiService *aiModule.Service) platformKafka.Handler {
+	return func(ctx context.Context, event platformKafka.Event) error {
+		payload, err := decodeMessageEventPayload(event)
+		if err != nil {
+			logger.Warn("decode ai group trigger message payload failed", zap.Error(err))
+			return err
+		}
+
+		if err := aiService.HandleGroupMessage(ctx, servicePayloadToMessage(payload)); err != nil {
+			logger.Warn("handle ai group reply failed",
+				zap.String("message_id", payload.MessageID),
+				zap.String("target_uuid", payload.TargetUUID),
+				zap.Error(err),
+			)
+		}
+
+		return nil
+	}
+}
+
 func decodeMessageEventPayload(event platformKafka.Event) (messagedomain.MessageEventPayload, error) {
 	if event.Envelope == nil {
 		return messagedomain.MessageEventPayload{}, fmt.Errorf("kafka event envelope is missing")

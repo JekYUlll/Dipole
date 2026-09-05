@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/cloudwego/eino/schema"
@@ -141,5 +142,42 @@ func TestContextBuilderStopsBeforeMessagesWithoutReadPermission(t *testing.T) {
 	}
 	if capability.directReads != 0 {
 		t.Fatalf("denied context build reached Message capability %d times", capability.directReads)
+	}
+}
+
+func TestContextBuilderBuildGroupContext(t *testing.T) {
+	t.Parallel()
+
+	builder := NewContextBuilder(
+		&stubAgentCapability{
+			read: &application.AgentConversationReadV1{
+				Found:      true,
+				TargetUUID: "G100",
+				TargetType: model.MessageTargetGroup,
+				Messages: []*model.Message{
+					{UUID: "M1", SenderUUID: "U100", MessageType: model.MessageTypeText, Content: "@Dipole AI 总结"},
+					{UUID: "M2", SenderUUID: "UAI", MessageType: model.MessageTypeSystem, Content: "上一轮回复"},
+				},
+			},
+			users: map[string]*model.User{
+				"U100": {UUID: "U100", UserType: model.UserTypeNormal},
+				"UAI":  {UUID: "UAI", UserType: model.UserTypeAssistant},
+			},
+		},
+		12,
+	)
+
+	got, err := builder.BuildGroupContext(toolTestContext("U100"), "U100", "UAI", "G100")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(got.Messages) != 3 {
+		t.Fatalf("expected hint + 2 messages, got %d", len(got.Messages))
+	}
+	if got.Messages[1].Role != schema.User || !strings.Contains(got.Messages[1].Content, "[U100]") {
+		t.Fatalf("expected sender-prefixed user message, got %+v", got.Messages[1])
+	}
+	if got.Messages[2].Role != schema.Assistant {
+		t.Fatalf("expected assistant history, got %s", got.Messages[2].Role)
 	}
 }

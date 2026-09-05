@@ -169,7 +169,13 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			return nil, fmt.Errorf("compose AI assistant direct-reply service: %w", aiErr)
 		}
 		if aiService != nil {
+			if runtime.messageSender != nil {
+				aiService.SetGroupMessenger(runtime.messageSender)
+			} else {
+				aiService.SetGroupMessenger(messaging.Messages)
+			}
 			platformKafka.Subscriber.Register("message.direct.created", agentchat.DirectReplyHandler(aiService))
+			platformKafka.Subscriber.Register("message.group.created", agentchat.GroupReplyHandler(aiService))
 		}
 	}
 	if platformKafka.Subscriber != nil {

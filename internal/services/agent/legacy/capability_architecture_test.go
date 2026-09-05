@@ -59,7 +59,9 @@ func TestLegacyAgentIsLimitedToEmbeddedKafkaRollback(t *testing.T) {
 	}
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(currentFile), "..", "..", "..", ".."))
 	const legacyImport = "github.com/JekYUlll/Dipole/internal/services/agent/legacy"
-	const allowedImporter = "internal/services/core/bootstrap/embedded/kafka.go"
+	allowedImporters := map[string]struct{}{
+		"internal/services/core/bootstrap/agentchat/direct_reply.go": {},
+	}
 	found := make([]string, 0, 1)
 
 	err := filepath.WalkDir(repositoryRoot, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -88,7 +90,12 @@ func TestLegacyAgentIsLimitedToEmbeddedKafkaRollback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("scan production Go sources: %v", err)
 	}
-	if len(found) != 1 || found[0] != allowedImporter {
-		t.Fatalf("legacy Agent importers = %v, want only %s", found, allowedImporter)
+	if len(found) != len(allowedImporters) {
+		t.Fatalf("legacy Agent importers = %v, want only agentchat", found)
+	}
+	for _, path := range found {
+		if _, ok := allowedImporters[path]; !ok {
+			t.Fatalf("legacy Agent importers = %v, unexpected %s", found, path)
+		}
 	}
 }

@@ -28,6 +28,33 @@ func (s *stubContextBuilder) BuildDirectContext(context.Context, string, string)
 	return s.context, nil
 }
 
+func (s *stubContextBuilder) BuildGroupContext(context.Context, string, string, string) (*ConversationContext, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+
+	return s.context, nil
+}
+
+type stubGroupMessenger struct {
+	senderUUID string
+	groupUUID  string
+	content    string
+	err        error
+	calls      int
+}
+
+func (s *stubGroupMessenger) SendGroupMessage(senderUUID, groupUUID, content, _ string) (*model.Message, []string, error) {
+	s.calls++
+	s.senderUUID = senderUUID
+	s.groupUUID = groupUUID
+	s.content = content
+	if s.err != nil {
+		return nil, nil, s.err
+	}
+	return &model.Message{UUID: "MG-REPLY"}, nil, nil
+}
+
 type stubCallLogRepository struct {
 	beginReturn bool
 	beginLog    *model.AICallLog
@@ -408,5 +435,115 @@ func TestServiceHandleDirectMessageUsesToolSentMessage(t *testing.T) {
 	}
 	if logs.successArgs[1] != "MSYS100" {
 		t.Fatalf("expected tool-sent message uuid to be recorded, got %+v", logs.successArgs)
+	}
+}
+
+func newGroupReplyService(logs *stubCallLogRepository, groups *stubGroupMessenger, policy *stubExecutionPolicy, agent Agent) *Service {
+	return &Service{
+		config: config.AI{
+			Enabled:           true,
+			Provider:          "openai",
+			Model:             "gpt-test",
+			AssistantUUID:     "UAI",
+			AssistantNickname: "Dipole AI",
+		},
+		contextBuilder: &stubContextBuilder{
+			context: &ConversationContext{Messages: []*schema.Message{schema.UserMessage("@Dipole AI hello")}},
+		},
+		logs:          logs,
+		commands:      &stubAgentCommands{},
+		policy:        policy,
+		agent:         agent,
+		groupMessages: groups,
+	}
+}
+
+func TestServiceHandleGroupMessageSuccess(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: true}
+	groups := &stubGroupMessenger{}
+	policy := &stubExecutionPolicy{}
+	service := newGroupReplyService(logs, groups, policy, &stubAgent{reply: schema.AssistantMessage("group reply", nil)})
+
+	err := service.HandleGroupMessage(context.Background(), &model.Message{
+		UUID:            "MG1",
+		ConversationKey: model.GroupConversationKey("G100"),
+		SenderUUID:      "U100",
+		TargetType:      model.MessageTargetGroup,
+		TargetUUID:      "G100",
+		MessageType:     model.MessageTypeText,
+		Content:         "@Dipole AI 总结一下",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if logs.beginLog == nil || logs.beginLog.TriggerMessageUUID != "MG1" {
+		t.Fatalf("expected begin log for MG1, got %+v", logs.beginLog)
+	}
+	if groups.calls != 1 || groups.senderUUID != "UAI" || groups.groupUUID != "G100" || groups.content != "group reply" {
+		t.Fatalf("unexpected group send: %+v", groups)
+	}
+	if policy.starts != 1 || policy.completions != 1 || policy.failures != 0 {
+		t.Fatalf("unexpected policy lifecycle: %+v", policy)
+	}
+	if len(logs.successArgs) == 0 || logs.successArgs[1] != "MG-REPLY" {
+		t.Fatalf("expected group-reply log, got %+v", logs.successArgs)
+	}
+}
+
+func TestServiceHandleGroupMessageSkipsWithoutMention(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: true}
+	groups := &stubGroupMessenger{}
+	agent := &stubAgent{reply: schema.AssistantMessage("must not run", nil)}
+	service := newGroupReplyService(logs, groups, &stubExecutionPolicy{}, agent)
+
+	if err := service.HandleGroupMessage(context.Background(), &model.Message{
+		UUID: "MG2", SenderUUID: "U100", TargetType: model.MessageTargetGroup, TargetUUID: "G100",
+		MessageType: model.MessageTypeText, Content: "今晚谁有空",
+	}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if logs.beginLog != nil || groups.calls != 0 || agent.calls != 0 {
+		t.Fatalf("non-mention must be a no-op")
+	}
+}
+
+func TestServiceHandleGroupMessageIsIdempotentOnReplay(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: false}
+	groups := &stubGroupMessenger{}
+	agent := &stubAgent{reply: schema.AssistantMessage("must not run", nil)}
+	service := newGroupReplyService(logs, groups, &stubExecutionPolicy{}, agent)
+
+	if err := service.HandleGroupMessage(context.Background(), &model.Message{
+		UUID: "MG3", SenderUUID: "U100", TargetType: model.MessageTargetGroup, TargetUUID: "G100",
+		MessageType: model.MessageTypeText, Content: "@Dipole AI 再问一次",
+	}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if groups.calls != 0 || agent.calls != 0 {
+		t.Fatalf("replay must not send again")
+	}
+}
+
+func TestServiceHandleGroupMessageSkipsAssistantSender(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: true}
+	groups := &stubGroupMessenger{}
+	service := newGroupReplyService(logs, groups, &stubExecutionPolicy{}, &stubAgent{})
+
+	if err := service.HandleGroupMessage(context.Background(), &model.Message{
+		UUID: "MG4", SenderUUID: "UAI", TargetType: model.MessageTargetGroup, TargetUUID: "G100",
+		MessageType: model.MessageTypeText, Content: "@Dipole AI 自己说",
+	}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if logs.beginLog != nil || groups.calls != 0 {
+		t.Fatalf("assistant sender must be skipped")
 	}
 }

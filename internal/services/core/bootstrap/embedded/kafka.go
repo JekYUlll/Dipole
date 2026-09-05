@@ -100,7 +100,9 @@ func RegisterKafkaHandlers(hub WSEventSender, repos *Repositories, messaging *Me
 		if aiService, err := agentchat.NewDirectReplyService(aiConfig, repos.AgentProcess.AICallLogs, agentCommands, agentCapability, repos.AgentProcess.Policy); err != nil {
 			return err
 		} else if aiService != nil {
+			aiService.SetGroupMessenger(messaging.Messages)
 			platformKafka.Subscriber.Register("message.direct.created", agentchat.DirectReplyHandler(aiService))
+			platformKafka.Subscriber.Register("message.group.created", agentchat.GroupReplyHandler(aiService))
 		}
 	}
 	if includeMessagePersistence {

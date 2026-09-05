@@ -69,6 +69,11 @@
 
 # 更新日志
 
+- 2026-09-06：Route A · A2 —— 群内 @小助手 才触发 legacy chatbot 回复。计划见 `docs/agent/CHATBOT-REVIVAL-AND-GROUP-MENTION-PLAN.md`。
+  - 群消息无结构化 mention 字段，新增 `DetectAssistantMention`：大小写/空白折叠、支持 `@Dipole AI` / `@DipoleAI` / 助手 UUID，要求词边界以免误伤。
+  - `Service.HandleGroupMessage` 仅在 `TargetType=group` 且命中 mention 时进入；以 `AICallLog.TriggerMessageUUID` 幂等；`policy.Start` 的 trigger 为 `message.group.created`；回复由助手本人 `SendGroupMessage` 发出（须为群成员，避免空 actor 导致 WS 投递失败）。
+  - microservices core 与 embedded 在 `Subscriber.Start` 之前注册 `message.group.created` → `GroupReplyHandler`。默认 `ai.runtime_mode=remote` 仍完全惰性。
+
 - 2026-09-04：新增隔离 Multipart Prometheus 到 Alertmanager routing smoke。
   - smoke 会挂载正式 `multipart-alerts.yml` 并生成只在隔离项目内存在的即时告警，验证 Prometheus 能将 firing alert 投递到开发期 Alertmanager `discard` receiver；Compose 插值、临时配置权限、超时和项目清理均受门禁保护。
   - Remote GPU 在 `1b5efc87` 通过该链路，候选容器清理为零，公共 `dipole-experience` 保持 12 个容器；日志 SHA-256 为 `583dcc7af033211935587320ba951979e78437e68742d0563dff2fa83bfafc65`。

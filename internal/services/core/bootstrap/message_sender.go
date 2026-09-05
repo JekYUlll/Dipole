@@ -52,6 +52,18 @@ func (s *lazyCoreMessageSender) SendSystemGroupMessage(groupUUID, content string
 	return client.SendSystemGroupMessage(groupUUID, content)
 }
 
+func (s *lazyCoreMessageSender) SendGroupMessage(senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	return s.SendGroupMessageContext(context.Background(), senderUUID, groupUUID, content, clientMessageID)
+}
+
+func (s *lazyCoreMessageSender) SendGroupMessageContext(ctx context.Context, senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	client, err := s.getClient()
+	if err != nil {
+		return nil, nil, err
+	}
+	return client.SendGroupMessageContext(ctx, senderUUID, groupUUID, content, clientMessageID)
+}
+
 // These methods keep Agent writes on the Message service in standalone Core
 // mode while preserving the stable command key used for replay recovery.
 func (s *lazyCoreMessageSender) SendAssistantTextMessageContext(ctx context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
