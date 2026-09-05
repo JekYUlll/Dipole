@@ -22,6 +22,7 @@ import (
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
 	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	coreapplication "github.com/JekYUlll/Dipole/internal/services/core/application"
+	agentchat "github.com/JekYUlll/Dipole/internal/services/core/bootstrap/agentchat"
 	corefile "github.com/JekYUlll/Dipole/internal/services/core/domain/file"
 	corekafka "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/kafka"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
@@ -129,6 +130,48 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			return nil, fmt.Errorf("ensure Core Kafka projection topics: %w", err)
 		}
 	}
+	// Legacy conversational assistant (Route A): when AI runs in an
+	// embedded/shadow runtime mode, subscribe the eino chatbot to
+	// message.direct.created so a DM to the assistant is auto-answered (with
+	// tools) in-process. Registered before Subscriber.Start because the consumer
+	// snapshots handlers per topic at start; inert when AI is remote/off.
+	if runsAI, aiErr := config.AIConfig().RunsEmbeddedAgent(); aiErr != nil {
+		cleanup()
+		return nil, fmt.Errorf("resolve AI runtime mode: %w", aiErr)
+	} else if runsAI && platformKafka.Subscriber != nil {
+		aiRepos, aiErr := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+		if aiErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose AI assistant repositories: %w", aiErr)
+		}
+		aiCommandMessages := agentapplication.AgentCommandMessages(messaging.Messages)
+		aiCapabilityMessages := agentapplication.AgentCapabilityMessages(messaging.Messages)
+		if config.CoreMessageConfig().Transport == "grpc" {
+			aiCommandMessages = runtime.messageSender
+			if runtime.messageReader == nil {
+				runtime.messageReader = newLazyCoreMessageReader(config.InternalRPCConfig())
+			}
+			aiCapabilityMessages = runtime.messageReader
+		}
+		aiCommands, aiErr := agentapplication.NewLocalAgentCommandV1(aiCommandMessages)
+		if aiErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose AI assistant command: %w", aiErr)
+		}
+		aiCapability, aiErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, aiCapabilityMessages, messaging.Conversations, aiCommands)
+		if aiErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose AI assistant capability: %w", aiErr)
+		}
+		aiService, aiErr := agentchat.NewDirectReplyService(config.AIConfig(), aiRepos.AICallLogs, aiCommands, aiCapability, aiRepos.Policy)
+		if aiErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose AI assistant direct-reply service: %w", aiErr)
+		}
+		if aiService != nil {
+			platformKafka.Subscriber.Register("message.direct.created", agentchat.DirectReplyHandler(aiService))
+		}
+	}
 	if platformKafka.Subscriber != nil {
 		if err := platformKafka.Subscriber.Start(ctx); err != nil {
 			cleanup()
@@ -165,7 +208,9 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		}
 		agentMessages := agentapplication.AgentCapabilityMessages(messaging.Messages)
 		if config.CoreMessageConfig().Transport == "grpc" {
-			runtime.messageReader = newLazyCoreMessageReader(rpcCfg)
+			if runtime.messageReader == nil {
+				runtime.messageReader = newLazyCoreMessageReader(rpcCfg)
+			}
 			agentMessages = runtime.messageReader
 		}
 		commandMessages := agentapplication.AgentCommandMessages(messaging.Messages)

@@ -1,0 +1,21 @@
+# Experience-only overlay (Route A - A1): flip Core from the remote governed
+# runtime to the embedded eino conversational assistant so a direct message to
+# the assistant user (UAI0001) is auto-answered in-process, with tools. Layer
+# this AFTER docker-compose.microservices.yml; the base file keeps
+# DIPOLE_AI_RUNTIME_MODE=remote as the rollback path.
+#
+# Reuses the same DeepSeek credentials the agent runtime already consumes
+# (DIPOLE_AGENT_MODEL_BASE_URL / _API_KEY from ../../.env) so no new secret is
+# introduced or committed. The eino "openai" provider is OpenAI-compatible and
+# talks to the DeepSeek endpoint directly.
+services:
+  core:
+    environment:
+      DIPOLE_AI_RUNTIME_MODE: "embedded"
+      DIPOLE_AI_PROVIDER: "openai"
+      DIPOLE_AI_MODEL: "${DIPOLE_AI_MODEL:-deepseek-v4-flash}"
+      DIPOLE_AI_BASE_URL: "${DIPOLE_AGENT_MODEL_BASE_URL:?DIPOLE_AGENT_MODEL_BASE_URL is required}"
+      DIPOLE_AI_API_KEY: "${DIPOLE_AGENT_MODEL_API_KEY:?DIPOLE_AGENT_MODEL_API_KEY is required}"
+      DIPOLE_AI_TIMEOUT_SECONDS: "${DIPOLE_AI_TIMEOUT_SECONDS:-60}"
+      DIPOLE_AI_MAX_CONTEXT_MESSAGES: "${DIPOLE_AI_MAX_CONTEXT_MESSAGES:-12}"
+      DIPOLE_AI_POLICY_MODE: "persistent"
