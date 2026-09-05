@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "dipole.agent.release-manifest.v1",
+  "candidateVersion": "experience-v1",
+  "runtimeId": "dipole-agent",
+  "stage": "user_gray",
+  "components": {
+    "model": { "version": "v1", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    "prompt": { "version": "v1", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+    "capabilitySchema": { "version": "v1", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+    "memoryPolicy": { "version": "v1", "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }
+  },
+  "offlineEvalSuiteSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "createdAt": "2026-09-06T00:00:00.000Z"
+}

@@ -67,9 +67,9 @@ services:
       temporal:
         condition: service_healthy
     volumes:
-      - ../../deploy/experience-release-manifest.json:/run/dipole/release/manifest.json:ro
+      - ../../deploy/agent/release-manifest.experience-v1.json:/run/dipole/release/manifest.json:ro
     environment:
-      DIPOLE_AGENT_RUNTIME_MODE: shadow
+      DIPOLE_AGENT_RUNTIME_MODE: remote
       DIPOLE_AGENT_CANDIDATE_VERSION: experience-v1
       DIPOLE_AGENT_RELEASE_MANIFEST: /run/dipole/release/manifest.json
       DIPOLE_AGENT_MODEL_MODE: ai_sdk
@@ -93,15 +93,16 @@ services:
       DIPOLE_AGENT_MODEL_MAX_CALLS: ${DIPOLE_AGENT_MODEL_MAX_CALLS:-3}
       DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: ${DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS:-90000}
       DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: ${DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS:-4096}
-      DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-shadow-experience-v1
-      DIPOLE_AGENT_MEMORY_ENABLED: "true"
+      DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-active-experience-v1
+      DIPOLE_AGENT_MEMORY_ENABLED: "false"
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true"
       DIPOLE_AGENT_TEMPORAL_ADDRESS: temporal:7233
       DIPOLE_AGENT_TEMPORAL_NAMESPACE: default
-      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: dipole-agent-experience-v1
-      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: read_shadow
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: dipole-agent-interactive-experience-v1
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: interactive_active
       DIPOLE_AGENT_CONTROL_ENABLED: "true"
       DIPOLE_AGENT_CONTROL_SECRET: ${DIPOLE_AGENT_CONTROL_SECRET:?DIPOLE_AGENT_CONTROL_SECRET is required}
+      DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED: "true"
 
 volumes:
   agent_experience_temporal_postgresql_data:
