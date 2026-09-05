@@ -227,6 +227,21 @@ describe("ModelShadowPlanner", () => {
     expect(request?.prompt).toContain('"messageSeq":"9007199254740993"');
   });
 
+  it("composes a direct user-facing reply when no tools were read", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "Hi! I'm your Dipole assistant — happy to help." }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 12, outputTokens: 8 }
+    }));
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list"]);
+
+    await expect(planner.synthesize(event(), context(), { summary: "greeting: reply to the user directly", steps: [] }, []))
+      .resolves.toBe("Hi! I'm your Dipole assistant — happy to help.");
+    const request = (generate.mock.calls as unknown as Array<[{ prompt: string; stage?: string }]>)[0]?.[0];
+    expect(request?.stage).toBe("synthesis");
+    expect(request?.prompt).toContain("first-person message addressed to the user");
+    expect(request?.prompt).not.toContain("greeting: reply to the user directly");
+  });
+
   it("permits a read only when it uses the trusted preceding discovery marker", async () => {
     const generate = vi.fn(async () => ({
       output: {
