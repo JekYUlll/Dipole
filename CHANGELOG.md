@@ -69,6 +69,10 @@
 
 # 更新日志
 
+- 2026-09-06：Route A · A3 —— 群 @ 回复打磨：可选群白名单、每群速率/并发去重、失败兜底话术；助手发出的群文本记为 `MessageTypeAIText`，前端已有 `.msg-item.ai` 渲染。
+  - `ai.group_reply_allowlist` 为空表示所有群；`ai.group_reply_rate_per_minute` 默认 8，`0` 关闭。
+  - 模型失败时先向群里发送兜底话术，再将 `AICallLog` / policy 记失败，避免静默丢回复。
+
 - 2026-09-06：Route A · A2 —— 群内 @小助手 才触发 legacy chatbot 回复。计划见 `docs/agent/CHATBOT-REVIVAL-AND-GROUP-MENTION-PLAN.md`。
   - 群消息无结构化 mention 字段，新增 `DetectAssistantMention`：大小写/空白折叠、支持 `@Dipole AI` / `@DipoleAI` / 助手 UUID，要求词边界以免误伤。
   - `Service.HandleGroupMessage` 仅在 `TargetType=group` 且命中 mention 时进入；以 `AICallLog.TriggerMessageUUID` 幂等；`policy.Start` 的 trigger 为 `message.group.created`；回复由助手本人 `SendGroupMessage` 发出（须为群成员，避免空 actor 导致 WS 投递失败）。

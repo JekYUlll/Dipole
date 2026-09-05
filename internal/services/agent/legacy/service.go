@@ -47,16 +47,19 @@ type Service struct {
 	policy         application.AgentExecutionPolicyV1
 	agent          Agent
 	groupMessages  GroupReplySender
+	groupGate      *groupReplyGate
 }
 
 func NewService(builder conversationContextBuilder, logs callLogRepository, commands application.AgentCommandV1, policy application.AgentExecutionPolicyV1, agent Agent) *Service {
+	cfg := config.AIConfig()
 	return &Service{
-		config:         config.AIConfig(),
+		config:         cfg,
 		contextBuilder: builder,
 		logs:           logs,
 		commands:       commands,
 		policy:         policy,
 		agent:          agent,
+		groupGate:      newGroupReplyGate(cfg.GroupReplyRatePerMinute),
 	}
 }
 
@@ -65,6 +68,16 @@ func (s *Service) SetGroupMessenger(messenger GroupReplySender) {
 		return
 	}
 	s.groupMessages = messenger
+}
+
+func (s *Service) ensureGroupGate() *groupReplyGate {
+	if s == nil {
+		return nil
+	}
+	if s.groupGate == nil {
+		s.groupGate = newGroupReplyGate(s.config.GroupReplyRatePerMinute)
+	}
+	return s.groupGate
 }
 
 func (s *Service) Enabled() bool {
@@ -224,6 +237,14 @@ func (s *Service) HandleGroupMessage(ctx context.Context, message *model.Message
 	if !DetectAssistantMention(message.Content, s.config.AssistantNickname, assistantUUID) {
 		return nil
 	}
+	if !groupReplyAllowed(s.config.GroupReplyAllowlist, groupUUID) {
+		return nil
+	}
+	release, admitted := s.ensureGroupGate().TryEnter(groupUUID)
+	if !admitted {
+		return nil
+	}
+	defer release()
 
 	startedAt := time.Now()
 	started, err := s.logs.Begin(&model.AICallLog{
@@ -287,31 +308,45 @@ func (s *Service) HandleGroupMessage(ctx context.Context, message *model.Message
 
 	runCtx = withToolExecutionState(runCtx, &toolExecutionState{})
 	reply, err := s.agent.Reply(runCtx, conversationContext.Messages)
-	if err != nil {
-		return markFailed(err)
-	}
-
-	content := strings.TrimSpace(reply.Content)
-	if content == "" {
-		if toolMessage := latestToolSentMessage(runCtx); toolMessage != nil {
-			content = strings.TrimSpace(toolMessage.Content)
+	content := ""
+	if err == nil {
+		content = strings.TrimSpace(reply.Content)
+		if content == "" {
+			if toolMessage := latestToolSentMessage(runCtx); toolMessage != nil {
+				content = strings.TrimSpace(toolMessage.Content)
+			}
+		}
+		if content == "" {
+			err = ErrAIEmptyResponse
 		}
 	}
-	if content == "" {
-		return markFailed(ErrAIEmptyResponse)
+	usedFallback := err != nil
+	if usedFallback {
+		content = resolveGroupReplyFallback(s.config.GroupReplyFallback)
 	}
 
-	responseMessage, _, err := s.groupMessages.SendGroupMessage(
+	responseMessage, _, sendErr := s.groupMessages.SendGroupMessage(
 		assistantUUID,
 		groupUUID,
 		content,
 		"reply:"+strings.TrimSpace(message.UUID),
 	)
-	if err != nil {
-		return markFailed(err)
+	if sendErr != nil {
+		if usedFallback {
+			return markFailed(err)
+		}
+		return markFailed(sendErr)
 	}
 	if responseMessage == nil || strings.TrimSpace(responseMessage.UUID) == "" {
+		if usedFallback {
+			return markFailed(err)
+		}
 		return markFailed(ErrAIEmptyResponse)
+	}
+
+	if usedFallback {
+		_ = markFailed(err)
+		return nil
 	}
 
 	usage := extractUsage(reply)

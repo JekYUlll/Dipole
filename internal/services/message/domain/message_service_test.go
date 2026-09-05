@@ -1775,3 +1775,32 @@ func TestMessageServicePersistLocalMessageRejectsConflictingIdempotencyTarget(t 
 		t.Fatalf("expected no local inbox repair for conflicting target, got %+v", repo.ensuredSyncRecipients)
 	}
 }
+
+func TestMessageServiceSendGroupMessageMarksAssistantAsAIText(t *testing.T) {
+	t.Parallel()
+
+	service := NewMessageService(&stubMessageRepository{}, &stubMessageUserFinder{
+		users: map[string]*model.User{
+			"UAI":  {UUID: "UAI", Status: model.UserStatusNormal, UserType: model.UserTypeAssistant},
+			"U100": {UUID: "U100", Status: model.UserStatusNormal},
+		},
+	}, nil, &stubGroupMessageChecker{
+		groups: map[string]*model.Group{
+			"G100": {UUID: "G100", Status: model.GroupStatusNormal},
+		},
+		members: map[string]map[string]*model.GroupMember{
+			"G100": {
+				"UAI":  {GroupUUID: "G100", UserUUID: "UAI"},
+				"U100": {GroupUUID: "G100", UserUUID: "U100"},
+			},
+		},
+	}, nil, nil, &stubHotGroupObserver{})
+
+	message, _, err := service.SendGroupMessage("UAI", "G100", "hello from ai", "cmid-group-ai")
+	if err != nil {
+		t.Fatalf("expected assistant group send to succeed, got %v", err)
+	}
+	if message.MessageType != model.MessageTypeAIText {
+		t.Fatalf("expected AI text type, got %d", message.MessageType)
+	}
+}

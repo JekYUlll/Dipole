@@ -453,6 +453,13 @@ func (s *MessageService) SendGroupMessageContext(ctx context.Context, senderUUID
 	}
 	syncFanout := s.shouldFanoutGroupSync(groupUUID, len(recipientUUIDs))
 
+	messageType := model.MessageTypeText
+	if s.userFinder != nil {
+		if sender, findErr := s.userFinder.GetByUUID(strings.TrimSpace(senderUUID)); findErr == nil && sender != nil && sender.IsAssistant() {
+			messageType = model.MessageTypeAIText
+		}
+	}
+
 	message := &model.Message{
 		UUID:            generateMessageUUID(),
 		ClientMessageID: normalizeClientMessageID(clientMessageID),
@@ -460,7 +467,7 @@ func (s *MessageService) SendGroupMessageContext(ctx context.Context, senderUUID
 		SenderUUID:      strings.TrimSpace(senderUUID),
 		TargetType:      model.MessageTargetGroup,
 		TargetUUID:      groupUUID,
-		MessageType:     model.MessageTypeText,
+		MessageType:     messageType,
 		Content:         content,
 		SentAt:          time.Now().UTC(),
 	}

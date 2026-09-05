@@ -547,3 +547,77 @@ func TestServiceHandleGroupMessageSkipsAssistantSender(t *testing.T) {
 		t.Fatalf("assistant sender must be skipped")
 	}
 }
+
+func TestServiceHandleGroupMessageSkipsAllowlistMiss(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: true}
+	groups := &stubGroupMessenger{}
+	agent := &stubAgent{reply: schema.AssistantMessage("must not run", nil)}
+	service := newGroupReplyService(logs, groups, &stubExecutionPolicy{}, agent)
+	service.config.GroupReplyAllowlist = []string{"G999"}
+
+	if err := service.HandleGroupMessage(context.Background(), &model.Message{
+		UUID: "MG5", SenderUUID: "U100", TargetType: model.MessageTargetGroup, TargetUUID: "G100",
+		MessageType: model.MessageTypeText, Content: "@Dipole AI 总结一下",
+	}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if logs.beginLog != nil || groups.calls != 0 || agent.calls != 0 {
+		t.Fatalf("allowlist miss must be a no-op")
+	}
+}
+
+func TestServiceHandleGroupMessageRateLimitsPerGroup(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: true}
+	groups := &stubGroupMessenger{}
+	service := newGroupReplyService(logs, groups, &stubExecutionPolicy{}, &stubAgent{reply: schema.AssistantMessage("once", nil)})
+	service.config.GroupReplyRatePerMinute = 1
+	service.groupGate = newGroupReplyGate(1)
+
+	msg := &model.Message{
+		UUID: "MG6", SenderUUID: "U100", TargetType: model.MessageTargetGroup, TargetUUID: "G100",
+		MessageType: model.MessageTypeText, Content: "@Dipole AI 第一次",
+	}
+	if err := service.HandleGroupMessage(context.Background(), msg); err != nil {
+		t.Fatalf("first reply: %v", err)
+	}
+	logs.beginLog = nil
+	msg.UUID = "MG7"
+	msg.Content = "@Dipole AI 第二次"
+	if err := service.HandleGroupMessage(context.Background(), msg); err != nil {
+		t.Fatalf("rate-limited reply: %v", err)
+	}
+	if groups.calls != 1 || logs.beginLog != nil {
+		t.Fatalf("second @ in the same window must be skipped, sends=%d begin=%v", groups.calls, logs.beginLog)
+	}
+}
+
+func TestServiceHandleGroupMessageSendsFallbackOnModelError(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: true}
+	groups := &stubGroupMessenger{}
+	policy := &stubExecutionPolicy{}
+	service := newGroupReplyService(logs, groups, policy, &stubAgent{err: errors.New("model down")})
+	service.config.GroupReplyFallback = "稍后再试"
+
+	err := service.HandleGroupMessage(context.Background(), &model.Message{
+		UUID: "MG8", SenderUUID: "U100", TargetType: model.MessageTargetGroup, TargetUUID: "G100",
+		MessageType: model.MessageTypeText, Content: "@Dipole AI 帮我看下",
+	})
+	if err != nil {
+		t.Fatalf("fallback should swallow the model error, got %v", err)
+	}
+	if groups.calls != 1 || groups.content != "稍后再试" {
+		t.Fatalf("expected fallback send, got %+v", groups)
+	}
+	if policy.failures != 1 || policy.completions != 0 {
+		t.Fatalf("fallback should fail the policy, got %+v", policy)
+	}
+	if len(logs.failedArgs) == 0 {
+		t.Fatalf("expected failed call log, got %+v", logs.failedArgs)
+	}
+}

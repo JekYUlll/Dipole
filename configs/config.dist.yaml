@@ -327,3 +327,7 @@ ai:
     Output in plain text only. Do not use Markdown or HTML formatting.
     If the user sends a file, acknowledge the file metadata you can see.
     Keep answers short unless the user asks for depth.
+  # Route A · A3: empty allowlist admits every group; 0 disables the per-group rate.
+  group_reply_allowlist: []
+  group_reply_rate_per_minute: 8
+  group_reply_fallback: "抱歉，我这边暂时没能完成回复，请稍后再试。"

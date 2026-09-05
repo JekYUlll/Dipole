@@ -273,21 +273,24 @@ type HotGroup struct {
 }
 
 type AI struct {
-	Enabled            bool   `mapstructure:"enabled"`
-	RuntimeMode        string `mapstructure:"runtime_mode"`
-	PolicyMode         string `mapstructure:"policy_mode"`
-	Provider           string `mapstructure:"provider"`
-	Model              string `mapstructure:"model"`
-	APIKey             string `mapstructure:"api_key"`
-	BaseURL            string `mapstructure:"base_url"`
-	TimeoutSeconds     int    `mapstructure:"timeout_seconds"`
-	MaxContextMessages int    `mapstructure:"max_context_messages"`
-	AssistantUUID      string `mapstructure:"assistant_uuid"`
-	AssistantNickname  string `mapstructure:"assistant_nickname"`
-	AssistantTelephone string `mapstructure:"assistant_telephone"`
-	AssistantEmail     string `mapstructure:"assistant_email"`
-	AssistantAvatar    string `mapstructure:"assistant_avatar"`
-	SystemPrompt       string `mapstructure:"system_prompt"`
+	Enabled                 bool     `mapstructure:"enabled"`
+	RuntimeMode             string   `mapstructure:"runtime_mode"`
+	PolicyMode              string   `mapstructure:"policy_mode"`
+	Provider                string   `mapstructure:"provider"`
+	Model                   string   `mapstructure:"model"`
+	APIKey                  string   `mapstructure:"api_key"`
+	BaseURL                 string   `mapstructure:"base_url"`
+	TimeoutSeconds          int      `mapstructure:"timeout_seconds"`
+	MaxContextMessages      int      `mapstructure:"max_context_messages"`
+	AssistantUUID           string   `mapstructure:"assistant_uuid"`
+	AssistantNickname       string   `mapstructure:"assistant_nickname"`
+	AssistantTelephone      string   `mapstructure:"assistant_telephone"`
+	AssistantEmail          string   `mapstructure:"assistant_email"`
+	AssistantAvatar         string   `mapstructure:"assistant_avatar"`
+	SystemPrompt            string   `mapstructure:"system_prompt"`
+	GroupReplyAllowlist     []string `mapstructure:"group_reply_allowlist"`
+	GroupReplyRatePerMinute int      `mapstructure:"group_reply_rate_per_minute"`
+	GroupReplyFallback      string   `mapstructure:"group_reply_fallback"`
 }
 
 const (
@@ -564,6 +567,9 @@ func Load() error {
 		v.SetDefault("ai.assistant_email", "ai@dipole.local")
 		v.SetDefault("ai.assistant_avatar", "https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png")
 		v.SetDefault("ai.system_prompt", "You are Dipole AI, a concise and helpful instant messaging assistant. Use the conversation context to answer naturally. If the user sends a file, acknowledge the file metadata you can see. Keep answers short unless the user asks for depth.")
+		v.SetDefault("ai.group_reply_allowlist", []string{})
+		v.SetDefault("ai.group_reply_rate_per_minute", 8)
+		v.SetDefault("ai.group_reply_fallback", "抱歉，我这边暂时没能完成回复，请稍后再试。")
 		for _, key := range []string{
 			"app.name",
 			"app.env",
@@ -760,6 +766,9 @@ func Load() error {
 			"ai.assistant_email",
 			"ai.assistant_avatar",
 			"ai.system_prompt",
+			"ai.group_reply_allowlist",
+			"ai.group_reply_rate_per_minute",
+			"ai.group_reply_fallback",
 		} {
 			if err := v.BindEnv(key); err != nil {
 				loadErr = fmt.Errorf("bind env for %s: %w", key, err)
@@ -1233,6 +1242,9 @@ func AIConfig() AI {
 	aiConfig.AssistantEmail = cfg.GetString("ai.assistant_email")
 	aiConfig.AssistantAvatar = cfg.GetString("ai.assistant_avatar")
 	aiConfig.SystemPrompt = cfg.GetString("ai.system_prompt")
+	aiConfig.GroupReplyAllowlist = cfg.GetStringSlice("ai.group_reply_allowlist")
+	aiConfig.GroupReplyRatePerMinute = cfg.GetInt("ai.group_reply_rate_per_minute")
+	aiConfig.GroupReplyFallback = cfg.GetString("ai.group_reply_fallback")
 	if mode, err := aiConfig.ResolvedRuntimeMode(); err == nil {
 		aiConfig.RuntimeMode = mode
 		aiConfig.Enabled = mode != AIRuntimeOff
