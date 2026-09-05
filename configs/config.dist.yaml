@@ -331,3 +331,5 @@ ai:
   group_reply_allowlist: []
   group_reply_rate_per_minute: 8
   group_reply_fallback: "抱歉，我这边暂时没能完成回复，请稍后再试。"
+  # Additional @-mention aliases besides assistant_nickname (e.g. @AI, @小助手).
+  mention_aliases: ["AI"]

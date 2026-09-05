@@ -23,13 +23,15 @@ func TestDetectAssistantMention(t *testing.T) {
 		{name: "email local part", content: "mail@dipole.ai", want: false},
 		{name: "empty", content: "   ", want: false},
 		{name: "unrelated mention", content: "@周友 今晚有空吗", want: false},
+		{name: "alias AI", content: "@AI 帮我看下", want: true},
+		{name: "alias not a substring", content: "@AIRflow 好棒", want: false},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			if got := DetectAssistantMention(test.content, nick, uuid); got != test.want {
+			if got := DetectAssistantMention(test.content, nick, uuid, "AI"); got != test.want {
 				t.Fatalf("DetectAssistantMention(%q) = %v, want %v", test.content, got, test.want)
 			}
 		})

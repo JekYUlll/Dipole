@@ -69,6 +69,8 @@
 
 # 更新日志
 
+- 2026-09-06：Route A · A3 增补 —— `ai.mention_aliases` 默认追加 `AI`，群内 `@AI` 即可触发小助手；仍保留完整昵称 `@Dipole AI` 与助手 UUID 两种老写法。
+
 - 2026-09-06：Route A · A3 —— 群 @ 回复打磨：可选群白名单、每群速率/并发去重、失败兜底话术；助手发出的群文本记为 `MessageTypeAIText`，前端已有 `.msg-item.ai` 渲染。
   - `ai.group_reply_allowlist` 为空表示所有群；`ai.group_reply_rate_per_minute` 默认 8，`0` 关闭。
   - 模型失败时先向群里发送兜底话术，再将 `AICallLog` / policy 记失败，避免静默丢回复。

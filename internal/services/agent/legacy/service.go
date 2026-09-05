@@ -234,7 +234,8 @@ func (s *Service) HandleGroupMessage(ctx context.Context, message *model.Message
 	if groupUUID == "" {
 		return nil
 	}
-	if !DetectAssistantMention(message.Content, s.config.AssistantNickname, assistantUUID) {
+	mentionTokens := append([]string{assistantUUID}, s.config.MentionAliases...)
+	if !DetectAssistantMention(message.Content, s.config.AssistantNickname, mentionTokens...) {
 		return nil
 	}
 	if !groupReplyAllowed(s.config.GroupReplyAllowlist, groupUUID) {

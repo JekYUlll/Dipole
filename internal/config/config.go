@@ -291,6 +291,7 @@ type AI struct {
 	GroupReplyAllowlist     []string `mapstructure:"group_reply_allowlist"`
 	GroupReplyRatePerMinute int      `mapstructure:"group_reply_rate_per_minute"`
 	GroupReplyFallback      string   `mapstructure:"group_reply_fallback"`
+	MentionAliases          []string `mapstructure:"mention_aliases"`
 }
 
 const (
@@ -570,6 +571,7 @@ func Load() error {
 		v.SetDefault("ai.group_reply_allowlist", []string{})
 		v.SetDefault("ai.group_reply_rate_per_minute", 8)
 		v.SetDefault("ai.group_reply_fallback", "抱歉，我这边暂时没能完成回复，请稍后再试。")
+		v.SetDefault("ai.mention_aliases", []string{"AI"})
 		for _, key := range []string{
 			"app.name",
 			"app.env",
@@ -769,6 +771,7 @@ func Load() error {
 			"ai.group_reply_allowlist",
 			"ai.group_reply_rate_per_minute",
 			"ai.group_reply_fallback",
+			"ai.mention_aliases",
 		} {
 			if err := v.BindEnv(key); err != nil {
 				loadErr = fmt.Errorf("bind env for %s: %w", key, err)
@@ -1245,6 +1248,7 @@ func AIConfig() AI {
 	aiConfig.GroupReplyAllowlist = cfg.GetStringSlice("ai.group_reply_allowlist")
 	aiConfig.GroupReplyRatePerMinute = cfg.GetInt("ai.group_reply_rate_per_minute")
 	aiConfig.GroupReplyFallback = cfg.GetString("ai.group_reply_fallback")
+	aiConfig.MentionAliases = cfg.GetStringSlice("ai.mention_aliases")
 	if mode, err := aiConfig.ResolvedRuntimeMode(); err == nil {
 		aiConfig.RuntimeMode = mode
 		aiConfig.Enabled = mode != AIRuntimeOff

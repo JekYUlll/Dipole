@@ -621,3 +621,23 @@ func TestServiceHandleGroupMessageSendsFallbackOnModelError(t *testing.T) {
 		t.Fatalf("expected failed call log, got %+v", logs.failedArgs)
 	}
 }
+
+func TestServiceHandleGroupMessageAcceptsAlias(t *testing.T) {
+	t.Parallel()
+
+	logs := &stubCallLogRepository{beginReturn: true}
+	groups := &stubGroupMessenger{}
+	agent := &stubAgent{reply: schema.AssistantMessage("aliased", nil)}
+	service := newGroupReplyService(logs, groups, &stubExecutionPolicy{}, agent)
+	service.config.MentionAliases = []string{"AI"}
+
+	if err := service.HandleGroupMessage(context.Background(), &model.Message{
+		UUID: "MG9", SenderUUID: "U100", TargetType: model.MessageTargetGroup, TargetUUID: "G100",
+		MessageType: model.MessageTypeText, Content: "@AI 帮个忙",
+	}); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if groups.calls != 1 || groups.content != "aliased" {
+		t.Fatalf("expected @AI alias to reach the group send, got %+v", groups)
+	}
+}
