@@ -168,6 +168,23 @@ type stubContactNotifier struct {
 	}
 }
 
+type stubContactSystemMessenger struct {
+	calls []struct {
+		sender  string
+		target  string
+		content string
+	}
+}
+
+func (m *stubContactSystemMessenger) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
+	m.calls = append(m.calls, struct {
+		sender  string
+		target  string
+		content string
+	}{sender: senderUUID, target: targetUUID, content: content})
+	return &model.Message{UUID: "M-SYS"}, nil
+}
+
 func (n *stubContactNotifier) NotifyFriendDeleted(userUUID, friendUUID string, occurredAt time.Time) {
 	n.notifications = append(n.notifications, struct {
 		userUUID   string
@@ -289,7 +306,8 @@ func TestContactServiceHandleApplicationAcceptSuccess(t *testing.T) {
 		ExpiresAt:     ptrTime(time.Now().UTC().Add(24 * time.Hour)),
 	}
 	_ = repo.CreateApplication(application)
-	service := NewContactService(repo, &stubContactUserFinder{})
+	messenger := &stubContactSystemMessenger{}
+	service := NewContactService(repo, &stubContactUserFinder{}).WithSystemMessenger(messenger)
 
 	updated, err := service.HandleApplication("U200", application.ID, ContactActionAccept)
 	if err != nil {
@@ -301,6 +319,15 @@ func TestContactServiceHandleApplicationAcceptSuccess(t *testing.T) {
 	isFriend, _ := repo.AreFriends("U100", "U200")
 	if !isFriend {
 		t.Fatalf("expected friendship to be created")
+	}
+	if len(messenger.calls) != 1 {
+		t.Fatalf("expected one shared-thread system message, got %d", len(messenger.calls))
+	}
+	if messenger.calls[0].sender != "U200" || messenger.calls[0].target != "U100" {
+		t.Fatalf("unexpected system message direction: %+v", messenger.calls[0])
+	}
+	if messenger.calls[0].content != "你们已经添加为好友，现在可以开始聊天了" {
+		t.Fatalf("unexpected system message content: %q", messenger.calls[0].content)
 	}
 }
 

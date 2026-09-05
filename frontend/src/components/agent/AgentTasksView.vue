@@ -128,6 +128,10 @@ function label(item: AgentOwnedTask) {
 function rowClass(row: AgentOwnedTask) {
   return row.taskId === selectedId.value ? 'is-selected' : ''
 }
+
+function onTaskRowClick(event: { data: AgentOwnedTask }) {
+  openTask(event.data)
+}
 </script>
 
 <template>
@@ -201,7 +205,7 @@ function rowClass(row: AgentOwnedTask) {
           size="small"
           striped-rows
           :row-class="rowClass"
-          @row-click="(e: { data: AgentOwnedTask }) => openTask(e.data)"
+          @row-click="onTaskRowClick"
         >
           <Column header="STATUS" style="width: 7.5rem">
             <template #body="{ data }">

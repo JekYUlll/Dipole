@@ -25,7 +25,7 @@
           <span v-if="pendingApplications.length > 0" class="nav-badge">{{ pendingApplications.length }}</span>
         </button>
         <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组" aria-label="群组">
-          <IconUsers :size="22" />
+          <IconGroups :size="22" />
         </button>
       </div>
       <button class="icon-btn logout-btn" @click="handleLogout" title="退出">
@@ -36,7 +36,9 @@
     <!-- Session Panel -->
     <div class="session-panel">
       <div class="search-wrap" :class="{ 'search-wrap--filled': !!searchText }">
-        <IconSearch class="search-icon" :size="14" />
+        <span class="search-icon" aria-hidden="true">
+          <IconSearch :size="14" />
+        </span>
         <input
           v-model="searchText"
           type="text"
@@ -92,7 +94,7 @@
         >
           <div class="conv-avatar" :class="{ 'conv-avatar-group': conv.target_type === 1 && !convAvatar(conv) }">
             <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
-            <span v-else-if="conv.target_type === 1" class="group-icon"><IconUsers :size="20" /></span>
+            <span v-else-if="conv.target_type === 1" class="group-icon"><IconGroups :size="20" /></span>
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
@@ -170,7 +172,7 @@
         >
           <div class="conv-avatar" :class="{ 'conv-avatar-group': conv.target_type === 1 && !convAvatar(conv) }">
             <img v-if="convAvatar(conv)" :src="convAvatar(conv)" :alt="convName(conv)" />
-            <span v-else-if="conv.target_type === 1" class="group-icon"><IconUsers :size="20" /></span>
+            <span v-else-if="conv.target_type === 1" class="group-icon"><IconGroups :size="20" /></span>
             <span v-else>{{ getInitials(convName(conv)) }}</span>
           </div>
           <div class="conv-body">
@@ -346,7 +348,7 @@
         <div class="detail-header">
           <div class="detail-avatar">
             <img v-if="groupFromConv(activeConv)?.avatar" :src="groupFromConv(activeConv)!.avatar" alt="group" />
-            <div v-else class="detail-avatar-fallback group-avatar-fallback"><IconUsers :size="28" /></div>
+            <div v-else class="detail-avatar-fallback group-avatar-fallback"><IconGroups :size="28" /></div>
           </div>
           <div class="detail-name">{{ convName(activeConv) }}</div>
           <div class="detail-uuid">{{ activeConv.conversation_key.replace('group:', '') }}</div>
@@ -629,7 +631,7 @@ import {
   IconChat, IconContacts, IconLogout,
   IconInfo, IconBack, IconPaperclip, IconSend,
   IconDownload, IconClose, IconAlertCircle,
-  IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch,
+  IconCheckCircle, IconXCircle, IconGroups, IconUserPlus, IconLoadMore, IconSearch,
 } from '@/components/icons'
 import SearchWorkspace from '@/components/SearchWorkspace.vue'
 import AppShell from '@/components/layout/AppShell.vue'
@@ -1158,8 +1160,25 @@ const inputDisabledReason = computed(() => {
   return '发送文件'
 })
 
+function collapseDuplicateSystemMessages(messages: Message[]): Message[] {
+  const out: Message[] = []
+  for (const msg of messages) {
+    const prev = out[out.length - 1]
+    if (
+      prev
+      && msg.message_type === 3
+      && prev.message_type === 3
+      && prev.content === msg.content
+    ) {
+      continue
+    }
+    out.push(msg)
+  }
+  return out
+}
+
 const currentMessages = computed(() =>
-  chat.messageMap.get(chat.activeKey) ?? []
+  collapseDuplicateSystemMessages(chat.messageMap.get(chat.activeKey) ?? [])
 )
 
 const filteredConversations = computed(() => {
@@ -2543,6 +2562,7 @@ onBeforeUnmount(() => {
 }
 
 .icon-btn {
+  position: relative;
   background: none;
   border: none;
   cursor: pointer;
@@ -2567,21 +2587,23 @@ onBeforeUnmount(() => {
   margin-top: auto;
 }
 
-.contacts-btn {
-  position: relative;
-}
-
 .nav-badge {
   position: absolute;
-  top: -4px;
-  right: -6px;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  box-sizing: border-box;
   background: var(--dp-danger);
-  color: var(--dp-surface);
+  color: var(--dp-text-inverse);
   font-size: 9px;
-  padding: 1px 4px;
+  font-weight: 700;
   border-radius: 8px;
-  line-height: 1.4;
+  line-height: 16px;
+  text-align: center;
   pointer-events: none;
+  z-index: 1;
 }
 
 /* Session Panel */
@@ -2610,21 +2632,7 @@ onBeforeUnmount(() => {
 .search-wrap .search-icon {
   color: var(--dp-ink-faint);
   flex-shrink: 0;
-  margin-left: 8px;
-}
-.search-wrap input {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 4px;
-  border: 1px solid transparent;
-  background: var(--dp-surface);
-  color: var(--dp-ink);
-  font-size: 13px;
-  outline: none;
-}
-.search-wrap input::placeholder { color: var(--dp-ink-faint); }
-/* 把 icon + input + clear 视觉合并成同一个胶囊 */
-.search-wrap .search-icon {
+  margin-left: 0;
   padding-left: 10px;
   background: var(--dp-surface);
   border: 1px solid transparent;
@@ -2633,8 +2641,22 @@ onBeforeUnmount(() => {
   height: 28px;
   display: inline-flex;
   align-items: center;
-  margin-left: 0;
+  justify-content: center;
 }
+.search-wrap input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  border: 1px solid transparent;
+  background: var(--dp-surface);
+  color: var(--dp-ink);
+  caret-color: var(--dp-ink);
+  -webkit-text-fill-color: var(--dp-ink);
+  font-size: 13px;
+  outline: none;
+}
+.search-wrap input::placeholder { color: var(--dp-ink-faint); }
+/* 把 icon + input + clear 视觉合并成同一个胶囊 */
 .search-wrap input {
   border-radius: 0;
   height: 28px;
@@ -3265,7 +3287,10 @@ onBeforeUnmount(() => {
   font-size: 14px;
   font-family: inherit;
   background: var(--dp-surface);
+  color: var(--dp-ink);
+  caret-color: var(--dp-ink);
   min-height: 60px;
+  -webkit-text-fill-color: var(--dp-ink);
 }
 
 .input-area textarea:disabled {
@@ -3437,6 +3462,8 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   font-size: 12px;
   background: var(--dp-surface);
+  color: var(--dp-ink);
+  caret-color: var(--dp-ink);
 }
 
 .detail-inline-btn {
@@ -3692,6 +3719,9 @@ onBeforeUnmount(() => {
   font-size: 13px;
   outline: none;
   box-sizing: border-box;
+  color: var(--dp-ink);
+  caret-color: var(--dp-ink);
+  background: var(--dp-surface);
 }
 
 .modal-btn {

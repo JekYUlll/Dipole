@@ -122,8 +122,11 @@ export const primevueOptions = {
       // Do not add a class prefix to injected CSS variables so we can
       // reference `--p-*` directly in scoped styles.
       prefix: 'p',
-      // Ensure Aura tokens land under the standard `.p-dark`/light selectors
-      // rather than :root, keeping Dipole tokens uncontested.
+      // Dipole chrome is light-only. Aura's default `system` selector applies
+      // dark form-field tokens (light text) when the OS is in dark mode, which
+      // then paints native inputs/textareas as cream-on-cream after ChatView
+      // overrides only the background. Pin light tokens unconditionally.
+      darkModeSelector: false,
       cssLayer: {
         name: 'primevue',
         order: 'theme, base, primevue',

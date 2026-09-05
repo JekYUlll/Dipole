@@ -1,3 +1,13 @@
+html {
+  color-scheme: light;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="submit"]):not([type="button"]),
+textarea {
+  color: var(--dp-ink);
+  caret-color: var(--dp-ink);
+}
+
 :root {
   /* One semantic scale, resolved to the committed V3 brand board (docs/images):
      navy #0d2744, signal red #ea2521, orbit gold #efad05, warm ivory. */

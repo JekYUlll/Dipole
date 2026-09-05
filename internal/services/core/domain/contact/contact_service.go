@@ -340,7 +340,8 @@ func (s *ContactService) HandleApplication(currentUserUUID string, applicationID
 		application.Status = model.ContactApplicationAccepted
 		if s.systemMessenger != nil {
 			const friendMsg = "你们已经添加为好友，现在可以开始聊天了"
-			_, _ = s.systemMessenger.SendSystemDirectMessage(application.ApplicantUUID, application.TargetUUID, friendMsg)
+			// A 1v1 conversation is shared. Sending both directions put two
+			// identical system rows in the same thread.
 			_, _ = s.systemMessenger.SendSystemDirectMessage(application.TargetUUID, application.ApplicantUUID, friendMsg)
 		}
 	case ContactActionReject:

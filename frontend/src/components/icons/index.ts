@@ -19,7 +19,14 @@ const icon = (paths: string, viewBox = '0 0 24 24') =>
           'stroke-linecap': 'round',
           'stroke-linejoin': 'round',
           innerHTML: paths,
-          style: 'display:inline-block;vertical-align:middle;flex-shrink:0',
+          style: {
+            display: 'inline-block',
+            verticalAlign: 'middle',
+            flexShrink: '0',
+            width: `${props.size}px`,
+            height: `${props.size}px`,
+            overflow: 'visible',
+          },
         })
     },
   })
@@ -34,7 +41,7 @@ export const IconContacts = icon(
 )
 
 export const IconGroups = icon(
-  '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'
+  '<circle cx="6.4" cy="8.2" r="2.4"/><circle cx="17.6" cy="8.2" r="2.4"/><circle cx="12" cy="6.6" r="3"/><path d="M2 20v-1.1A3.2 3.2 0 0 1 5.2 15.7h.9"/><path d="M8.2 15.4h7.6A3.4 3.4 0 0 1 19.2 18.8V20"/><path d="M17.9 15.7h.9A3.2 3.2 0 0 1 22 18.9V20"/>'
 )
 
 export const IconLogout = icon(
@@ -82,7 +89,7 @@ export const IconAgent = icon(
 )
 
 export const IconSearch = icon(
-  '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+  '<circle cx="11" cy="11" r="6.5"/><line x1="20" y1="20" x2="16" y2="16"/>'
 )
 
 export const IconClose = icon(
@@ -112,7 +119,7 @@ export const IconUserPlus = icon(
 )
 
 export const IconUsers = icon(
-  '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+  '<circle cx="6.4" cy="8.2" r="2.4"/><circle cx="17.6" cy="8.2" r="2.4"/><circle cx="12" cy="6.6" r="3"/><path d="M2 20v-1.1A3.2 3.2 0 0 1 5.2 15.7h.9"/><path d="M8.2 15.4h7.6A3.4 3.4 0 0 1 19.2 18.8V20"/><path d="M17.9 15.7h.9A3.2 3.2 0 0 1 22 18.9V20"/>'
 )
 
 export const IconLoadMore = icon(

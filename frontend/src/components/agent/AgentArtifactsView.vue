@@ -55,6 +55,10 @@ function sizeLabel(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+function onArtifactRowClick(event: { data: AgentArtifactMetadata }) {
+  open(event.data)
+}
 </script>
 
 <template>
@@ -89,7 +93,7 @@ function sizeLabel(bytes: number) {
           data-key="artifactId"
           size="small"
           striped-rows
-          @row-click="(e: { data: AgentArtifactMetadata }) => open(e.data)"
+          @row-click="onArtifactRowClick"
         >
           <Column header="TITLE" field="title" />
           <Column header="TYPE" field="artifactType" />
