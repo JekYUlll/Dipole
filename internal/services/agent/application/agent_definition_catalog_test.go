@@ -154,10 +154,10 @@ func TestAgentDefinitionCatalogCreatesExplicitSubscriptionAutoReplyDefinition(t 
 	if autoReply.DefinitionUUID == readOnly.DefinitionUUID || replayed.DefinitionUUID != autoReply.DefinitionUUID || len(store.items) != 2 {
 		t.Fatalf("auto-reply Definition identity drifted: read=%+v auto=%+v replay=%+v", readOnly, autoReply, replayed)
 	}
-	if len(autoReply.Permissions) != 2 || autoReply.Permissions[0] != application.AgentPermissionConversationRead || autoReply.Permissions[1] != application.AgentPermissionMessageWrite {
+	if len(autoReply.Permissions) != 3 || autoReply.Permissions[0] != application.AgentPermissionConversationList || autoReply.Permissions[1] != application.AgentPermissionConversationRead || autoReply.Permissions[2] != application.AgentPermissionMessageWrite {
 		t.Fatalf("auto-reply permissions = %#v", autoReply.Permissions)
 	}
-	if len(autoReply.Scopes) != 1 || autoReply.Scopes[0].ResourceType != application.AgentResourceTypeConversation || autoReply.Scopes[0].ResourceID != application.AgentResourceWildcard || len(autoReply.Scopes[0].Actions) != 2 || autoReply.Scopes[0].Actions[0] != application.AgentResourceActionRead || autoReply.Scopes[0].Actions[1] != application.AgentResourceActionWrite {
+	if len(autoReply.Scopes) != 1 || autoReply.Scopes[0].ResourceType != application.AgentResourceTypeConversation || autoReply.Scopes[0].ResourceID != application.AgentResourceWildcard || len(autoReply.Scopes[0].Actions) != 3 || autoReply.Scopes[0].Actions[0] != application.AgentResourceActionList || autoReply.Scopes[0].Actions[1] != application.AgentResourceActionRead || autoReply.Scopes[0].Actions[2] != application.AgentResourceActionWrite {
 		t.Fatalf("auto-reply scopes = %#v", autoReply.Scopes)
 	}
 }

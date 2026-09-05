@@ -83,14 +83,18 @@ func userReadDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.
 }
 
 func userSubscriptionAutoReplyDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.Time) application.AgentDefinitionVersionV1 {
-	digest := sha256.Sum256([]byte("dipole.agent.user-subscription-autoreply-definition.v1\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
+	// An auto-reply plan first discovers authorized conversations (conversation.list)
+	// before it reads one and replies, mirroring the read-only pair. Grant the list
+	// half alongside conversation.read and message.write. Bumped to v2 to mint a fresh
+	// Definition identity for the widened owner-scoped grant.
+	digest := sha256.Sum256([]byte("dipole.agent.user-subscription-autoreply-definition.v2\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
 	return application.AgentDefinitionVersionV1{
 		DefinitionUUID: "user:" + hex.EncodeToString(digest[:])[:59], Version: 1, TenantID: tenantID, OwnerUUID: ownerUUID, AgentUUID: agentUUID,
 		Status:      application.AgentDefinitionStatusActive,
-		Permissions: []string{application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
+		Permissions: []string{application.AgentPermissionConversationList, application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
 		Scopes: []application.AgentResourceScopeV1{{
 			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
-			Actions: []string{application.AgentResourceActionRead, application.AgentResourceActionWrite},
+			Actions: []string{application.AgentResourceActionList, application.AgentResourceActionRead, application.AgentResourceActionWrite},
 		}},
 		ValidFrom: validFrom,
 	}
