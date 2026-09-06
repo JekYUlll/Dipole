@@ -35,6 +35,12 @@ const LowRiskAssistantPromotionGrantUUIDV1 = "lowrisk-assistant-grant:v1"
 // grant's separation-of-duties invariant.
 const lowRiskAssistantReviewerUUIDV1 = "UAI0000000000000000RV"
 
+// lowRiskAssistantOwnerUUIDV1 is the owner identity of the shared low-risk
+// assistant Definition. It is distinct from the Agent UUID so the Definition does
+// not collide with the embedded Agent Definition on the (tenant, owner, agent,
+// version) unique key.
+const lowRiskAssistantOwnerUUIDV1 = "UAI00000000000000LOW01"
+
 type agentPolicyClockV1 func() time.Time
 
 type StaticAgentExecutionPolicyV1 struct {
@@ -594,7 +600,7 @@ func lowRiskAssistantDefinitionV1(tenantID, agentUUID string, validFrom time.Tim
 		DefinitionUUID: LowRiskAssistantDefinitionUUIDV1,
 		Version:        embeddedAgentDefinitionVersionV1,
 		TenantID:       strings.TrimSpace(tenantID),
-		OwnerUUID:      strings.TrimSpace(agentUUID),
+		OwnerUUID:      lowRiskAssistantOwnerUUIDV1,
 		AgentUUID:      strings.TrimSpace(agentUUID),
 		Status:         application.AgentDefinitionStatusActive,
 		Permissions: []string{

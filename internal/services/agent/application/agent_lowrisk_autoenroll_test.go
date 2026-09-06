@@ -47,8 +47,11 @@ func TestAdmitAutoEnrollsFirstContactInteractiveOntoLowRiskDefinition(t *testing
 	if created == nil {
 		t.Fatalf("low-risk assistant Definition was not created: %+v", store.definitions)
 	}
-	if created.OwnerUUID != "UAI" || created.AgentUUID != "UAI" {
-		t.Fatalf("low-risk Definition owner/agent = %s/%s, want the Agent itself", created.OwnerUUID, created.AgentUUID)
+	if created.AgentUUID != "UAI" {
+		t.Fatalf("low-risk Definition agent = %s, want the Agent", created.AgentUUID)
+	}
+	if created.OwnerUUID == "" || created.OwnerUUID == created.AgentUUID {
+		t.Fatalf("low-risk Definition owner must be a distinct platform identity, got %q", created.OwnerUUID)
 	}
 	task := store.tasks[result.TaskUUID]
 	if task == nil || task.DefinitionUUID != agentapplication.LowRiskAssistantDefinitionUUIDV1 {
@@ -82,10 +85,10 @@ func TestAdmitDoesNotAutoEnrollSubscriptionTriggers(t *testing.T) {
 
 func TestAutoApproveInteractiveReplyAllowsLowRiskAgentOwnedDefinition(t *testing.T) {
 	now := time.Date(2026, 9, 6, 8, 0, 0, 0, time.UTC)
-	// The shared low-risk Definition is owned by the Agent, not the principal.
+	// The shared low-risk Definition is owned by a platform identity, not the principal.
 	definition := application.AgentDefinitionVersionV1{
 		DefinitionUUID: agentapplication.LowRiskAssistantDefinitionUUIDV1, Version: 1,
-		TenantID: "dipole", OwnerUUID: "UAI", AgentUUID: "UAI", Status: application.AgentDefinitionStatusActive,
+		TenantID: "dipole", OwnerUUID: "UAI00000000000000LOW01", AgentUUID: "UAI", Status: application.AgentDefinitionStatusActive,
 		Permissions: []string{application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
 		Scopes: []application.AgentResourceScopeV1{{
 			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
@@ -157,7 +160,7 @@ func (s *lowRiskPromotionStoreStub) RevokeRuntimePromotionGrant(context.Context,
 func lowRiskActivePromotionRequest(now time.Time) application.AgentActiveRunPromotionRequestV1 {
 	definition := application.AgentDefinitionVersionV1{
 		DefinitionUUID: agentapplication.LowRiskAssistantDefinitionUUIDV1, Version: 1,
-		TenantID: "dipole", OwnerUUID: "UAI", AgentUUID: "UAI", Status: application.AgentDefinitionStatusActive,
+		TenantID: "dipole", OwnerUUID: "UAI00000000000000LOW01", AgentUUID: "UAI", Status: application.AgentDefinitionStatusActive,
 		Permissions: []string{application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
 		Scopes: []application.AgentResourceScopeV1{{
 			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
