@@ -1,0 +1,126 @@
+[build] 2026年 09月 06日 星期日 04:18:57 CST building backend binary...
+==> Building backend service binaries...
+==> Backend built → dist/dipole-{server,gateway,message,search,sync,sync-replay,sync-reconcile,sync-baseline,migrate,cassandra-projector,search-indexer,search-backfill,search-reconcile,search-alias,search-archive,search-outbox-cleanup,cassandra-backfill,cassandra-reconcile,cassandra-archive,agent-artifact-reconcile,agent-artifact-maintenance,agent-task-timeline-repair,multipart-cleanup}
+[build] 2026年 09月 06日 星期日 04:18:57 CST building core image...
+==> building core image dipole-core:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  83.64MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in 94580f4936cd
+ ---> Removed intermediate container 94580f4936cd
+ ---> d72a0a14cc9c
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> 6011dbc5e059
+Step 10/11 : EXPOSE 8080
+ ---> Running in afb591b4ccb3
+ ---> Removed intermediate container afb591b4ccb3
+ ---> 9d3543041797
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in dfc41dc04b27
+ ---> Removed intermediate container dfc41dc04b27
+ ---> 7a60a18cdc31
+Successfully built 7a60a18cdc31
+Successfully tagged dipole-core:latest
+==> building agent image dipole-agent:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  3.607MB
+Step 1/23 : FROM node:22-bookworm-slim AS build
+ ---> 83f487e0a634
+Step 2/23 : WORKDIR /app
+ ---> Using cache
+ ---> a6cebb12443e
+Step 3/23 : COPY package.json package-lock.json ./
+ ---> Using cache
+ ---> e1323e5a8008
+Step 4/23 : RUN npm ci --ignore-scripts
+ ---> Using cache
+ ---> ad2dd1d602f9
+Step 5/23 : COPY tsconfig.json ./
+ ---> Using cache
+ ---> b069b43c9434
+Step 6/23 : COPY src ./src
+ ---> Using cache
+ ---> 180268bccf31
+Step 7/23 : RUN npm run build
+ ---> Using cache
+ ---> aeb9312abc3c
+Step 8/23 : FROM node:22-bookworm-slim AS production-dependencies
+ ---> 83f487e0a634
+Step 9/23 : WORKDIR /app
+ ---> Using cache
+ ---> a6cebb12443e
+Step 10/23 : COPY package.json package-lock.json ./
+ ---> Using cache
+ ---> e1323e5a8008
+Step 11/23 : RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+ ---> Using cache
+ ---> c9980513b296
+Step 12/23 : FROM node:22-bookworm-slim
+ ---> 83f487e0a634
+Step 13/23 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> 1223d169ba20
+Step 14/23 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> eb765bd7e999
+Step 15/23 : ARG DIPOLE_VCS_DIRTY=unknown
+ ---> Using cache
+ ---> 01749fef5623
+Step 16/23 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_VCS_DIRTY}"
+ ---> Running in 1d13a6f6a94e
+ ---> Removed intermediate container 1d13a6f6a94e
+ ---> bfaea2151cd7
+Step 17/23 : WORKDIR /app
+ ---> Running in 6390cb6d3a99
+ ---> Removed intermediate container 6390cb6d3a99
+ ---> ddfead0402c1
+Step 18/23 : ENV NODE_ENV=production
+ ---> Running in 805cc0a4b838
+ ---> Removed intermediate container 805cc0a4b838
+ ---> 34ecd82ae408
+Step 19/23 : COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
+ ---> 10d14fbf8304
+Step 20/23 : COPY --from=build --chown=node:node /app/dist ./dist
+ ---> d418923d1f23
+Step 21/23 : USER node
+ ---> Running in 888b3b09551b
+ ---> Removed intermediate container 888b3b09551b
+ ---> 7e1df900b4ea
+Step 22/23 : EXPOSE 8091
+ ---> Running in 50c7664650b9
+ ---> Removed intermediate container 50c7664650b9
+ ---> e328a38ead63
+Step 23/23 : CMD ["node", "dist/index.js"]
+ ---> Running in 28fb602720ce
+ ---> Removed intermediate container 28fb602720ce
+ ---> 27a88f8bccf8
+Successfully built 27a88f8bccf8
+Successfully tagged dipole-agent:latest
+microservice images built: revision=d6458d03929c269f3e161f494805abb2cd08d4c8 dirty=true
+[build] 2026年 09月 06日 星期日 04:18:57 CST DONE

@@ -1,0 +1,419 @@
+==> building migrate image dipole-migrate:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon   10.5MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in 17809e50619d
+ ---> Removed intermediate container 17809e50619d
+ ---> bac8e9e5725c
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> c5a573a8c37f
+Step 10/11 : EXPOSE 8080
+ ---> Running in 2ac403847de9
+ ---> Removed intermediate container 2ac403847de9
+ ---> e544200deb32
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in 19efac43ab60
+ ---> Removed intermediate container 19efac43ab60
+ ---> ddd5554ab8d4
+Successfully built ddd5554ab8d4
+Successfully tagged dipole-migrate:latest
+==> building core image dipole-core:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  83.61MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in b9a5b5b087f8
+ ---> Removed intermediate container b9a5b5b087f8
+ ---> 308a1c3fecce
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> a379d32323d2
+Step 10/11 : EXPOSE 8080
+ ---> Running in a881f234f690
+ ---> Removed intermediate container a881f234f690
+ ---> 984ef913f8d3
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in 5df6525bc50b
+ ---> Removed intermediate container 5df6525bc50b
+ ---> 91ac0adebd5d
+Successfully built 91ac0adebd5d
+Successfully tagged dipole-core:latest
+==> building gateway image dipole-gateway:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  46.76MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in b7531b6d8bea
+ ---> Removed intermediate container b7531b6d8bea
+ ---> fe961c62e8c1
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> 21e386f614d4
+Step 10/11 : EXPOSE 8080
+ ---> Running in bd601cae0c1d
+ ---> Removed intermediate container bd601cae0c1d
+ ---> 4958431f8de1
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in fb9b8f1eab42
+ ---> Removed intermediate container fb9b8f1eab42
+ ---> b956609ffdc5
+Successfully built b956609ffdc5
+Successfully tagged dipole-gateway:latest
+==> building message image dipole-message:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  44.67MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in 7edac0a54390
+ ---> Removed intermediate container 7edac0a54390
+ ---> e15e83c62548
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> 372baf359c76
+Step 10/11 : EXPOSE 8080
+ ---> Running in a2bdc40f5ce3
+ ---> Removed intermediate container a2bdc40f5ce3
+ ---> 9755c2805a9e
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in 7f6db3bd7fa9
+ ---> Removed intermediate container 7f6db3bd7fa9
+ ---> 0c53a700f118
+Successfully built 0c53a700f118
+Successfully tagged dipole-message:latest
+==> building sync image dipole-sync:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  38.77MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in 5bc214408a0d
+ ---> Removed intermediate container 5bc214408a0d
+ ---> d550a9323ef8
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> b81dc1b9b8a3
+Step 10/11 : EXPOSE 8080
+ ---> Running in b4c4b889bdaa
+ ---> Removed intermediate container b4c4b889bdaa
+ ---> 603e9a3d2277
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in 9fab4984cf20
+ ---> Removed intermediate container 9fab4984cf20
+ ---> f28f6c015912
+Successfully built f28f6c015912
+Successfully tagged dipole-sync:latest
+==> building search image dipole-search:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  36.08MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in f4ae0347840b
+ ---> Removed intermediate container f4ae0347840b
+ ---> c9c1fa59c488
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> eb33f98f2aae
+Step 10/11 : EXPOSE 8080
+ ---> Running in 37f9757bf701
+ ---> Removed intermediate container 37f9757bf701
+ ---> 9bd6ca15dcbd
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in 0d4b2e2a9f55
+ ---> Removed intermediate container 0d4b2e2a9f55
+ ---> ed3058c89599
+Successfully built ed3058c89599
+Successfully tagged dipole-search:latest
+==> building search-indexer image dipole-search-indexer:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  35.37MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in 5dd9677d2f5a
+ ---> Removed intermediate container 5dd9677d2f5a
+ ---> 86700983b83f
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> 9ce1448ef794
+Step 10/11 : EXPOSE 8080
+ ---> Running in 76d329f6696b
+ ---> Removed intermediate container 76d329f6696b
+ ---> ca2af898d226
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in 59aa9069a22f
+ ---> Removed intermediate container 59aa9069a22f
+ ---> 16a3c738ae8b
+Successfully built 16a3c738ae8b
+Successfully tagged dipole-search-indexer:latest
+==> building agent-timeline-repair image dipole-agent-timeline-repair:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  18.88MB
+Step 1/11 : FROM alpine:3.22
+ ---> 14358309a308
+Step 2/11 : WORKDIR /app
+ ---> Using cache
+ ---> dca67aa0866c
+Step 3/11 : RUN apk add --no-cache ca-certificates tzdata
+ ---> Using cache
+ ---> 15eacaf108e1
+Step 4/11 : ARG DIPOLE_BINARY
+ ---> Using cache
+ ---> 0b0378d0ccc6
+Step 5/11 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> c04b5fd9352f
+Step 6/11 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> f84e873c902f
+Step 7/11 : ARG DIPOLE_BUILD_DIRTY=unknown
+ ---> Using cache
+ ---> 66facfc2d522
+Step 8/11 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_BUILD_DIRTY}"       io.dipole.service.binary="${DIPOLE_BINARY}"
+ ---> Running in e12b21789928
+ ---> Removed intermediate container e12b21789928
+ ---> 2088cc3f25e9
+Step 9/11 : COPY ${DIPOLE_BINARY} /app/service
+ ---> 2a0e031727e0
+Step 10/11 : EXPOSE 8080
+ ---> Running in 45d3074d4694
+ ---> Removed intermediate container 45d3074d4694
+ ---> 2859dc06c636
+Step 11/11 : ENTRYPOINT ["/app/service"]
+ ---> Running in 8d22e86692f3
+ ---> Removed intermediate container 8d22e86692f3
+ ---> 9e9c54359def
+Successfully built 9e9c54359def
+Successfully tagged dipole-agent-timeline-repair:latest
+==> building agent image dipole-agent:latest
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  3.591MB
+Step 1/23 : FROM node:22-bookworm-slim AS build
+ ---> 83f487e0a634
+Step 2/23 : WORKDIR /app
+ ---> Using cache
+ ---> a6cebb12443e
+Step 3/23 : COPY package.json package-lock.json ./
+ ---> Using cache
+ ---> e1323e5a8008
+Step 4/23 : RUN npm ci --ignore-scripts
+ ---> Using cache
+ ---> ad2dd1d602f9
+Step 5/23 : COPY tsconfig.json ./
+ ---> Using cache
+ ---> b069b43c9434
+Step 6/23 : COPY src ./src
+ ---> 6313b40c4a2f
+Step 7/23 : RUN npm run build
+ ---> Running in 77c96fa5ed6d
+
+> dipole-agent-runtime@0.1.0 build
+> tsc -p tsconfig.json
+
+ ---> Removed intermediate container 77c96fa5ed6d
+ ---> a4b552ad646a
+Step 8/23 : FROM node:22-bookworm-slim AS production-dependencies
+ ---> 83f487e0a634
+Step 9/23 : WORKDIR /app
+ ---> Using cache
+ ---> a6cebb12443e
+Step 10/23 : COPY package.json package-lock.json ./
+ ---> Using cache
+ ---> e1323e5a8008
+Step 11/23 : RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+ ---> Using cache
+ ---> c9980513b296
+Step 12/23 : FROM node:22-bookworm-slim
+ ---> 83f487e0a634
+Step 13/23 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> 1223d169ba20
+Step 14/23 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> eb765bd7e999
+Step 15/23 : ARG DIPOLE_VCS_DIRTY=unknown
+ ---> Using cache
+ ---> 01749fef5623
+Step 16/23 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_VCS_DIRTY}"
+ ---> Running in 0e8ff194806a
+ ---> Removed intermediate container 0e8ff194806a
+ ---> 2ae0ddf4c3f9
+Step 17/23 : WORKDIR /app
+ ---> Running in 63ea558ce53e
+ ---> Removed intermediate container 63ea558ce53e
+ ---> cce3095071fb
+Step 18/23 : ENV NODE_ENV=production
+ ---> Running in 9ca93de35912
+ ---> Removed intermediate container 9ca93de35912
+ ---> 3bb61d1c391d
+Step 19/23 : COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
+ ---> 7c81e10da4d7
+Step 20/23 : COPY --from=build --chown=node:node /app/dist ./dist
+ ---> 74d09afedf20
+Step 21/23 : USER node
+ ---> Running in ead0360c19ed
+ ---> Removed intermediate container ead0360c19ed
+ ---> 9933ec7213fe
+Step 22/23 : EXPOSE 8091
+ ---> Running in 19b48ed4989a
+ ---> Removed intermediate container 19b48ed4989a
+ ---> fdccbfcfcdd2
+Step 23/23 : CMD ["node", "dist/index.js"]
+ ---> Running in 9bf2fb3cb57b
+ ---> Removed intermediate container 9bf2fb3cb57b
+ ---> ffe8efdab05c
+Successfully built ffe8efdab05c
+Successfully tagged dipole-agent:latest
+microservice images built: revision=8ad495cc52eaf3dbc005a885e1fd70b89e2251f8 dirty=true

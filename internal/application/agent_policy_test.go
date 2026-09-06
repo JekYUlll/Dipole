@@ -12,7 +12,8 @@ func TestProjectAgentApprovedCapabilitiesV1UsesExplicitWriteAllowlist(t *testing
 		Status: AgentDefinitionStatusActive, Permissions: []string{AgentPermissionMessageWrite},
 		Scopes: []AgentResourceScopeV1{{ResourceType: AgentResourceTypeConversation, ResourceID: "direct:U1:UAI", Actions: []string{AgentResourceActionWrite}}}, ValidFrom: time.Unix(1, 0)}
 	capabilities, err := ProjectAgentApprovedCapabilitiesV1(definition)
-	if err != nil || len(capabilities) != 2 || capabilities[0] != AgentCapabilitySystemMessageSend || capabilities[1] != AgentCapabilityAssistantReplySend {
+	if err != nil || len(capabilities) != 3 || capabilities[0] != AgentCapabilitySystemMessageSend ||
+		capabilities[1] != AgentCapabilityAssistantReplySend || capabilities[2] != AgentCapabilityGroupReplySend {
 		t.Fatalf("capabilities=%v err=%v", capabilities, err)
 	}
 	definition.Scopes[0].Actions = []string{AgentResourceActionRead}

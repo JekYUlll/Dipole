@@ -129,6 +129,16 @@ func (c *Client) SendAssistantTextMessageContext(parent context.Context, assista
 	return grpcmapping.MessageFromProto(response.GetMessage()), nil
 }
 
+// SendAssistantGroupMessageContext delivers an AI-text group reply from the
+// assistant (Route B/B2). It reuses SendGroupText, which the Message domain
+// stamps as MessageTypeAIText when the sender is the assistant, and drops the
+// push-target list so the Agent Command boundary stays a single-message write,
+// mirroring the 1v1 assistant-reply path.
+func (c *Client) SendAssistantGroupMessageContext(parent context.Context, assistantUUID, groupUUID, content, clientMessageID string) (*model.Message, error) {
+	message, _, err := c.SendGroupMessageContext(parent, assistantUUID, groupUUID, content, clientMessageID)
+	return message, err
+}
+
 func (c *Client) SendDirectFileMessage(senderUUID, targetUUID, fileUUID, clientMessageID string) (*model.Message, error) {
 	return c.SendDirectFileMessageContext(context.Background(), senderUUID, targetUUID, fileUUID, clientMessageID)
 }

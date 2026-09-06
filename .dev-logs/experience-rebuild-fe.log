@@ -1,0 +1,56 @@
+==> Building frontend...
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 216 packages in 4s
+
+> dipole-web@0.1.0 build
+> vue-tsc && vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 461 modules transformed.
+rendering chunks...
+computing gzip size...
+../internal/services/core/server/webapp/index.html                                      0.60 kB │ gzip:  0.34 kB
+../internal/services/core/server/webapp/assets/AgentEmptyState-Dghdm0Rb.css             0.74 kB │ gzip:  0.33 kB
+../internal/services/core/server/webapp/assets/StatusPill-BuOqyaL-.css                  1.13 kB │ gzip:  0.40 kB
+../internal/services/core/server/webapp/assets/Banner-CU12Vqw4.css                      1.31 kB │ gzip:  0.46 kB
+../internal/services/core/server/webapp/assets/index-Bcbg9-hK.css                       1.31 kB │ gzip:  0.61 kB
+../internal/services/core/server/webapp/assets/AgentDefinitionsView-fHPtTqO4.css        1.37 kB │ gzip:  0.48 kB
+../internal/services/core/server/webapp/assets/AgentSubscriptionsView-AEW6YbUj.css      1.97 kB │ gzip:  0.60 kB
+../internal/services/core/server/webapp/assets/AgentMemoriesView-DVdqCf6w.css           2.73 kB │ gzip:  0.76 kB
+../internal/services/core/server/webapp/assets/LoginView-C30VbzLx.css                   3.98 kB │ gzip:  1.27 kB
+../internal/services/core/server/webapp/assets/FileDirectoryView-D6fhBl8G.css           4.78 kB │ gzip:  1.27 kB
+../internal/services/core/server/webapp/assets/GroupDirectoryView-Jk01olvA.css          4.79 kB │ gzip:  1.24 kB
+../internal/services/core/server/webapp/assets/ContactDirectoryView-BYOsC02V.css        4.79 kB │ gzip:  1.25 kB
+../internal/services/core/server/webapp/assets/AgentLiveView-1BWohnaI.css               5.74 kB │ gzip:  1.26 kB
+../internal/services/core/server/webapp/assets/DeviceSecurityView-BvyCI-9t.css          5.79 kB │ gzip:  1.45 kB
+../internal/services/core/server/webapp/assets/AgentArtifactsView-s_bHYcic.css          6.41 kB │ gzip:  1.51 kB
+../internal/services/core/server/webapp/assets/AgentTasksView-h3EUV89w.css             21.54 kB │ gzip:  4.05 kB
+../internal/services/core/server/webapp/assets/ChatView-lGDvqrjC.css                   50.51 kB │ gzip:  8.14 kB
+../internal/services/core/server/webapp/assets/_plugin-vue_export-helper-BDNMzG2s.js    0.08 kB │ gzip:  0.09 kB
+../internal/services/core/server/webapp/assets/StatusPill-XitJH3Yq.js                   0.64 kB │ gzip:  0.41 kB
+../internal/services/core/server/webapp/assets/AgentEmptyState-B2u44xLM.js              0.79 kB │ gzip:  0.47 kB
+../internal/services/core/server/webapp/assets/Banner-CcqZYl4N.js                       1.18 kB │ gzip:  0.66 kB
+../internal/services/core/server/webapp/assets/agentDefinitions-Ct4jM7Cp.js             2.14 kB │ gzip:  0.83 kB
+../internal/services/core/server/webapp/assets/agentArtifacts-rbIWhUj-.js               2.81 kB │ gzip:  0.99 kB
+../internal/services/core/server/webapp/assets/AgentDefinitionsView-BkTblNET.js         3.61 kB │ gzip:  1.80 kB
+../internal/services/core/server/webapp/assets/ContactDirectoryView-BPq2ILmP.js         4.33 kB │ gzip:  2.14 kB
+../internal/services/core/server/webapp/assets/GroupDirectoryView-EeVyRLgY.js           5.73 kB │ gzip:  2.64 kB
+../internal/services/core/server/webapp/assets/FileDirectoryView-AKOVqWdi.js            5.84 kB │ gzip:  2.73 kB
+../internal/services/core/server/webapp/assets/AgentLiveView-CdLfaZor.js                6.29 kB │ gzip:  2.44 kB
+../internal/services/core/server/webapp/assets/DeviceSecurityView-CAXg5BIx.js           6.60 kB │ gzip:  2.92 kB
+../internal/services/core/server/webapp/assets/AgentArtifactsView-BKW7EabS.js           8.01 kB │ gzip:  3.51 kB
+../internal/services/core/server/webapp/assets/LoginView-DujH4LHy.js                    8.47 kB │ gzip:  2.58 kB
+../internal/services/core/server/webapp/assets/AgentSubscriptionsView-WpAY4rNF.js      18.94 kB │ gzip:  6.20 kB
+../internal/services/core/server/webapp/assets/AgentMemoriesView-BESvcwRD.js           18.99 kB │ gzip:  6.00 kB
+../internal/services/core/server/webapp/assets/AgentTasksView-fDQbODvj.js              27.01 kB │ gzip:  9.09 kB
+../internal/services/core/server/webapp/assets/focustrap-xDFH7upw.js                   77.88 kB │ gzip: 15.51 kB
+../internal/services/core/server/webapp/assets/api-5ms5Mhmb.js                        117.20 kB │ gzip: 44.52 kB
+../internal/services/core/server/webapp/assets/ChatView-Dax02qgh.js                   153.09 kB │ gzip: 44.77 kB
+../internal/services/core/server/webapp/assets/index-BlwGEWnd.js                      256.72 kB │ gzip: 64.13 kB
+../internal/services/core/server/webapp/assets/skeleton-CjgONSBB.js                   364.59 kB │ gzip: 78.17 kB
+
+✓ built in 1.53s
+==> Frontend built → internal/server/webapp/

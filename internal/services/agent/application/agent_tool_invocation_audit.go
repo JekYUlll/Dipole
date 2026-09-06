@@ -155,7 +155,7 @@ func (s *persistentAgentToolInvocationAuditServiceV1) Finish(ctx context.Context
 			return application.ErrAgentToolInvocationConflict
 		}
 	} else if finish.Status == application.AgentToolInvocationStatusCompleted {
-		if err := s.verifyMessageActionReference(invocation, finish.ActionReference); err != nil {
+		if err := s.verifyMessageActionReference(ctx, invocation, finish.ActionReference); err != nil {
 			return err
 		}
 	}
@@ -223,15 +223,34 @@ func (s *persistentAgentToolInvocationAuditServiceV1) authorizeWriteApproval(ctx
 	return nil
 }
 
-func (s *persistentAgentToolInvocationAuditServiceV1) verifyMessageActionReference(invocation *application.AgentToolInvocationV1, reference *application.AgentToolActionReferenceV1) error {
+func (s *persistentAgentToolInvocationAuditServiceV1) verifyMessageActionReference(ctx context.Context, invocation *application.AgentToolInvocationV1, reference *application.AgentToolActionReferenceV1) error {
 	if reference == nil || reference.Validate() != nil || invocation.ApprovalUUID == "" {
 		return fmt.Errorf("%w: Message action reference is invalid", application.ErrAgentToolInvocationConflict)
 	}
+	// Expected receipt binding per command kind. 1v1 replies (assistant_reply /
+	// system_message) target the owner's direct Agent conversation; Route B/B2
+	// group replies target the group conversation the trigger mentioned,
+	// recovered from the consumed approval scope — the runtime never stamps the
+	// conversation into the message-write invocation's arguments payload.
 	wantCapability := application.AgentCapabilityAssistantReplySend
 	wantType := int8(model.MessageTypeAIText)
-	if reference.CommandKind == application.AgentMessageCommandSystemMessageV1 {
+	wantTargetType := model.MessageTargetDirect
+	wantTargetUUID := invocation.PrincipalUUID
+	wantConversationKey := model.DirectConversationKey(invocation.AgentUUID, invocation.PrincipalUUID)
+	switch reference.CommandKind {
+	case application.AgentMessageCommandSystemMessageV1:
 		wantCapability = application.AgentCapabilitySystemMessageSend
 		wantType = model.MessageTypeSystem
+	case application.AgentMessageCommandGroupReplyV1:
+		conversationKey, err := s.groupReplyConversationKey(ctx, invocation)
+		if err != nil {
+			return err
+		}
+		wantCapability = application.AgentCapabilityGroupReplySend
+		wantType = model.MessageTypeAIText
+		wantTargetType = model.MessageTargetGroup
+		wantTargetUUID = strings.TrimPrefix(conversationKey, "group:")
+		wantConversationKey = conversationKey
 	}
 	if invocation.CapabilityID != wantCapability {
 		return fmt.Errorf("%w: Message action capability conflicts", application.ErrAgentToolInvocationConflict)
@@ -252,12 +271,36 @@ func (s *persistentAgentToolInvocationAuditServiceV1) verifyMessageActionReferen
 		return fmt.Errorf("%w: Message receipt is not committed", application.ErrAgentToolInvocationConflict)
 	}
 	if message.UUID != strings.TrimSpace(reference.ResourceUUID) || message.ClientMessageID != clientMessageID ||
-		message.SenderUUID != invocation.AgentUUID || message.TargetUUID != invocation.PrincipalUUID ||
-		message.TargetType != model.MessageTargetDirect || message.ConversationKey != model.DirectConversationKey(invocation.AgentUUID, invocation.PrincipalUUID) ||
+		message.SenderUUID != invocation.AgentUUID || message.TargetUUID != wantTargetUUID ||
+		message.TargetType != wantTargetType || message.ConversationKey != wantConversationKey ||
 		message.MessageType != wantType {
 		return fmt.Errorf("%w: Message receipt binding conflicts", application.ErrAgentToolInvocationConflict)
 	}
 	return nil
+}
+
+// groupReplyConversationKey recovers the group conversation a Route B/B2 reply
+// targets from the invocation's consumed group_reply approval scope. It mirrors
+// the execution service's binding: the scope (conversation group:<uuid>, write)
+// that authorized the write is the authoritative source of the conversation id,
+// because message-write invocations carry no arguments payload of their own.
+func (s *persistentAgentToolInvocationAuditServiceV1) groupReplyConversationKey(ctx context.Context, invocation *application.AgentToolInvocationV1) (string, error) {
+	approval, err := s.approvals.GetApproval(ctx, invocation.ApprovalUUID)
+	if err != nil {
+		return "", fmt.Errorf("load group reply approval: %w", err)
+	}
+	if approval == nil || approval.ApprovalUUID != invocation.ApprovalUUID || approval.TaskUUID != invocation.TaskUUID ||
+		approval.CapabilityID != application.AgentCapabilityGroupReplySend ||
+		approval.Status != application.AgentApprovalStatusConsumed ||
+		approval.ArgumentsSHA256 != invocation.ArgumentsSHA256 ||
+		approval.ResourceScope.ResourceType != application.AgentResourceTypeConversation {
+		return "", fmt.Errorf("%w: group reply approval scope is unusable", application.ErrAgentToolInvocationConflict)
+	}
+	conversationKey := strings.TrimSpace(approval.ResourceScope.ResourceID)
+	if conversationKey == "group:" || !strings.HasPrefix(conversationKey, "group:") {
+		return "", fmt.Errorf("%w: group reply conversation scope is unusable", application.ErrAgentToolInvocationConflict)
+	}
+	return conversationKey, nil
 }
 
 // confirmMessageReceipt bridges the Kafka enqueue-to-persist interval before a

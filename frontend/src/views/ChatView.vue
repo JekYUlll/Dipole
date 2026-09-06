@@ -36,27 +36,29 @@
     <!-- Session Panel -->
     <div class="session-panel">
       <div class="search-wrap" :class="{ 'search-wrap--filled': !!searchText }">
-        <span class="search-icon" aria-hidden="true">
-          <IconSearch :size="14" />
-        </span>
-        <input
-          v-model="searchText"
-          type="text"
-          :placeholder="searchPlaceholder"
-          aria-label="搜索或筛选会话"
-          @keydown.enter="handleSearchEnter"
-          @keydown.esc="searchText = ''"
-        />
-        <button
-          v-if="searchText"
-          class="search-clear"
-          type="button"
-          title="清除搜索"
-          aria-label="清除搜索"
-          @click="searchText = ''"
-        >
-          <IconClose :size="12" />
-        </button>
+        <div class="search-field">
+          <span class="search-icon" aria-hidden="true">
+            <IconSearch :size="14" />
+          </span>
+          <input
+            v-model="searchText"
+            type="text"
+            :placeholder="searchPlaceholder"
+            aria-label="搜索或筛选会话"
+            @keydown.enter="handleSearchEnter"
+            @keydown.esc="searchText = ''"
+          />
+          <button
+            v-if="searchText"
+            class="search-clear"
+            type="button"
+            title="清除搜索"
+            aria-label="清除搜索"
+            @click="searchText = ''"
+          >
+            <IconClose :size="12" />
+          </button>
+        </div>
         <button
           v-if="messageSearchEnabled"
           class="message-search-btn"
@@ -2616,6 +2618,7 @@ onBeforeUnmount(() => {
 }
 
 .search-wrap {
+  --search-radius: 14px;
   padding: 8px 10px;
   background: var(--dp-line);
   display: flex;
@@ -2623,71 +2626,60 @@ onBeforeUnmount(() => {
   gap: 6px;
 }
 
-.search-wrap > .search-input-box {
+/* The search capsule is a single bordered/rounded box; the icon, input and
+   clear button sit inside it as borderless, transparent children. Building it
+   as one element (rather than three abutting bordered boxes) removes the
+   hairline seam that used to show the strip background between the icon and
+   the input. */
+.search-field {
   flex: 1;
-}
-.search-wrap {
-  --search-radius: 14px;
-}
-.search-wrap .search-icon {
-  color: var(--dp-ink-faint);
-  flex-shrink: 0;
-  margin-left: 0;
-  padding-left: 10px;
+  min-width: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
   background: var(--dp-surface);
   border: 1px solid transparent;
-  border-right: 0;
-  border-radius: var(--search-radius) 0 0 var(--search-radius);
-  height: 28px;
+  border-radius: var(--search-radius);
+  overflow: hidden;
+}
+.search-field:focus-within,
+.search-wrap--filled .search-field {
+  border-color: var(--dp-accent-strong);
+}
+.search-field .search-icon {
+  flex-shrink: 0;
+  padding-left: 10px;
+  color: var(--dp-ink-faint);
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-.search-wrap input {
+.search-field input {
   flex: 1;
   min-width: 0;
-  padding: 6px 4px;
-  border: 1px solid transparent;
-  background: var(--dp-surface);
+  height: 100%;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
   color: var(--dp-ink);
   caret-color: var(--dp-ink);
   -webkit-text-fill-color: var(--dp-ink);
   font-size: 13px;
   outline: none;
 }
-.search-wrap input::placeholder { color: var(--dp-ink-faint); }
-/* 把 icon + input + clear 视觉合并成同一个胶囊 */
-.search-wrap input {
-  border-radius: 0;
-  height: 28px;
-  border-left: 0;
-  border-right: 0;
-}
-.search-wrap:not(:has(.search-clear)) input {
-  border-radius: 0 var(--search-radius) var(--search-radius) 0;
-  border-right: 1px solid transparent;
-}
-.search-wrap:focus-within .search-icon,
-.search-wrap:focus-within input,
-.search-wrap:focus-within .search-clear,
-.search-wrap--filled .search-icon,
-.search-wrap--filled input,
-.search-wrap--filled .search-clear {
-  border-color: var(--dp-accent-strong);
-}
-.search-wrap .search-clear {
-  border: 1px solid transparent;
-  border-left: 0;
-  background: var(--dp-surface);
+.search-field input::placeholder { color: var(--dp-ink-faint); }
+.search-field .search-clear {
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 8px 0 4px;
+  border: 0;
+  background: transparent;
   color: var(--dp-ink-faint);
   cursor: pointer;
-  height: 28px;
-  padding: 0 8px 0 4px;
-  border-radius: 0 var(--search-radius) var(--search-radius) 0;
   display: inline-flex;
   align-items: center;
 }
-.search-wrap .search-clear:hover { color: var(--dp-ink); }
+.search-field .search-clear:hover { color: var(--dp-ink); }
 
 .agent-waiting-banner {
   margin: 0 10px 8px;
