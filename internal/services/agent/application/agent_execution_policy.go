@@ -611,7 +611,7 @@ func lowRiskAssistantDefinitionV1(tenantID, agentUUID string, validFrom time.Tim
 		Scopes: []application.AgentResourceScopeV1{{
 			ResourceType: application.AgentResourceTypeConversation,
 			ResourceID:   application.AgentResourceWildcard,
-			Actions:      []string{application.AgentResourceActionRead, application.AgentResourceActionWrite},
+			Actions:      []string{application.AgentResourceActionRead, application.AgentResourceActionList, application.AgentResourceActionWrite},
 		}},
 		ValidFrom: validFrom,
 	}
