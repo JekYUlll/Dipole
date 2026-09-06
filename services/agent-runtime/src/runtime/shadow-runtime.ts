@@ -14,7 +14,7 @@ import { InMemoryEventLedger, type EventLedger } from "../events/event-ledger.js
 import { matchEventSubscriptions, type AgentEventSubscription } from "../events/event-subscription.js";
 import { KafkaFailureRouter, PermanentKafkaEventError } from "../events/kafka-failure-router.js";
 import { KafkaJSConsumerFactory, KafkaShadowConsumer, type KafkaConsumerFactoryPort } from "../events/kafka-shadow-consumer.js";
-import { decodeMessageCreatedEvent } from "../events/message-event.js";
+import { decodeMessageCreatedEvent, decodeGroupMessageCreatedEvent } from "../events/message-event.js";
 import { MySQLEventLedger } from "../events/mysql-event-ledger.js";
 import { PROBE_AGENT_EVENT_LEDGER } from "../events/mysql-event-ledger-queries.js";
 import { MySQLShadowAuditSink } from "../events/mysql-shadow-audit-sink.js";
@@ -46,7 +46,7 @@ import { PROBE_AGENT_MODEL_RUNS } from "../models/mysql-model-audit-queries.js";
 import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
 import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
 import type { AgentTaskActivities } from "../temporal/agent-task-activities.js";
-import { createInteractiveMessageExecutor, createInteractiveReplyExecutor, createSubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
+import { createGroupReplyExecutor, createInteractiveMessageExecutor, createInteractiveReplyExecutor, createSubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
 import { createReconnectingAgentCapabilityTransport } from "./reconnecting-agent-capability-transport.js";
 
 const shadowRuntimeConfigSchema = z.object({
@@ -71,6 +71,17 @@ const shadowRuntimeConfigSchema = z.object({
   // interactive task (triggerType agent.interactive.requested) instead of only
   // being observed as a message.direct.created task.
   inboundInteractiveEnabled: z.boolean(),
+  // Route B/B2: an optional second physical topic (message.group.created) the
+  // same consumer group subscribes to. Empty keeps single-topic behaviour.
+  groupTopic: z.string().trim(),
+  // Route B/B2: when on, an inbound group message that @-mentions the Agent is
+  // admitted as a governed interactive task scoped to that group conversation.
+  inboundGroupInteractiveEnabled: z.boolean(),
+  // Route B/B2: tokens (besides the Agent UUID) treated as @-mentions of the
+  // assistant in group content, mirroring ai.mention_aliases on the Go side.
+  mentionAliases: z.array(z.string().trim().min(1).max(64)),
+  // Route B/B2: the assistant nickname used for @-mention detection in groups.
+  assistantNickname: z.string().trim().max(64),
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
   readScopeConfirmationTtlMs: z.number().int().min(1000).max(86_400_000),
@@ -268,6 +279,10 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     subscriptionShadowEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED?.trim().toLowerCase() === "true",
     subscriptionActiveEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED?.trim().toLowerCase() === "true",
     inboundInteractiveEnabled: env.DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED?.trim().toLowerCase() === "true",
+    groupTopic: env.DIPOLE_AGENT_KAFKA_GROUP_TOPIC ?? "message.group.created",
+    inboundGroupInteractiveEnabled: env.DIPOLE_AGENT_INBOUND_GROUP_INTERACTIVE_ENABLED?.trim().toLowerCase() === "true",
+    mentionAliases: (env.DIPOLE_AGENT_MENTION_ALIASES ?? "AI").split(",").map((alias) => alias.trim()).filter(Boolean),
+    assistantNickname: env.DIPOLE_AGENT_ASSISTANT_NICKNAME ?? "Dipole AI",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
     readScopeConfirmationTtlMs: Number.parseInt(env.DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS ?? "900000", 10),
@@ -368,14 +383,24 @@ export function buildKafkaShadowRuntime(
   return new KafkaShadowConsumer(factory, {
     groupId: config.groupId,
     topic: physicalTopic(config),
+    additionalTopics: config.groupTopic.trim().length > 0 ? [physicalGroupTopic(config)] : [],
     runtimeMode: config.runtimeMode,
     subscriptionActiveEnabled: config.subscriptionActiveEnabled
   }, async (raw) => {
     let decoded;
+    let isGroup = false;
     try {
       decoded = decodeMessageCreatedEvent(raw);
-    } catch (error) {
-      throw new PermanentKafkaEventError(error);
+    } catch (directError) {
+      // Route B/B2: fall back to the group-message decoder when the envelope is
+      // a message.group.created event (target_type=1). A direct-only deployment
+      // never sees group envelopes, so the fallback is a no-op there.
+      try {
+        decoded = decodeGroupMessageCreatedEvent(raw);
+        isGroup = true;
+      } catch (groupError) {
+        throw new PermanentKafkaEventError(directError);
+      }
     }
     const directTargetAccepted = decoded.targetUuid === config.agentUuid;
     // Agent-authored messages can be delivered back through the same Kafka
@@ -408,7 +433,36 @@ export function buildKafkaShadowRuntime(
         subscriptionShadowObserver.observe({ directTargetAccepted, subscriptionOutcome: "error", candidateCount });
       }
     }
-    if (config.triggerMode === "direct_target" && !directTargetAccepted) return;
+    if (config.triggerMode === "direct_target" && !directTargetAccepted && !(isGroup && config.inboundGroupInteractiveEnabled)) return;
+    // Route B/B2: admit an inbound group message that @-mentions the Agent as a
+    // governed interactive task scoped to that group conversation. Mention
+    // filtering happens before admission so non-mention group traffic never
+    // creates a task; the reply is delivered by the group assistant-reply
+    // executor under the shared low-risk assistant Definition.
+    if (config.triggerMode === "direct_target" && isGroup && config.inboundGroupInteractiveEnabled) {
+      const content = typeof decoded.event.payload.content === "string" ? decoded.event.payload.content.trim() : "";
+      if (content === "") return;
+      const groupUUID = decoded.targetUuid.trim();
+      if (groupUUID === "") return;
+      const mentionTokens = [config.agentUuid, ...config.mentionAliases];
+      if (!detectAssistantMention(content, config.assistantNickname, mentionTokens)) return;
+      const conversationKey = typeof decoded.event.payload.conversation_key === "string" ? decoded.event.payload.conversation_key.trim() : `group:${groupUUID}`;
+      const interactiveEvent: AgentEvent = {
+        eventId: decoded.event.eventId,
+        eventType: "agent.interactive.requested",
+        aggregateId: decoded.event.aggregateId,
+        occurredAt: decoded.event.occurredAt,
+        payload: {
+          content,
+          request_kind: "interactive",
+          conversation_key: conversationKey,
+          group_uuid: groupUUID
+        },
+        lineage: { origin: { type: "service", id: "dipole-inbound-group" } }
+      };
+      await processor.process(interactiveEvent, identity);
+      return;
+    }
     // Route B/B1: admit an inbound DM to the Agent as a governed interactive task
     // so it flows through admission, approval, and the assistant-reply executor.
     if (config.triggerMode === "direct_target" && config.inboundInteractiveEnabled && directTargetAccepted) {
@@ -528,8 +582,13 @@ export function createKafkaShadowRuntime(
           await pool.query(PROBE_AGENT_MODEL_RUNS);
         }
       }
+      const groupTopic = physicalGroupTopic(config);
+      const topics = [mainTopic, `${mainTopic}.retry`, `${mainTopic}.dead`];
+      if (groupTopic !== "") {
+        topics.push(groupTopic, `${groupTopic}.retry`, `${groupTopic}.dead`);
+      }
       await factory.ensureTopics(
-        [mainTopic, `${mainTopic}.retry`, `${mainTopic}.dead`],
+        topics,
         config.topicPartitions,
         config.topicReplicationFactor
       );
@@ -588,6 +647,12 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
         : {}),
       ...(config.runtimeMode === "active" && config.interactiveMessageWritesEnabled
         ? { interactiveReply: createInteractiveReplyExecutor(rpc.client) }
+        : {}),
+      // Route B/B2: a group @-mention interactive task replies in the group
+      // conversation that mentioned the Agent. It reuses the interactive write
+      // gate so it only runs in active mode with interactive writes enabled.
+      ...(config.runtimeMode === "active" && config.interactiveMessageWritesEnabled
+        ? { groupReply: createGroupReplyExecutor(rpc.client) }
         : {}),
       ...(config.runtimeMode === "active" && config.subscriptionMessageWritesEnabled
         ? { subscriptionMessage: createSubscriptionMessageExecutor(rpc.client) }
@@ -658,6 +723,89 @@ function readCapabilityPermissions(config: ShadowRuntimeConfig): readonly string
 
 function physicalTopic(config: ShadowRuntimeConfig): string {
   return config.topicPrefix ? `${config.topicPrefix}.${config.topic}` : config.topic;
+}
+
+function physicalGroupTopic(config: ShadowRuntimeConfig): string {
+  const topic = config.groupTopic.trim();
+  if (topic.length === 0) return "";
+  return config.topicPrefix ? `${config.topicPrefix}.${topic}` : topic;
+}
+
+// detectAssistantMention is the TypeScript port of the Go legacy
+// DetectAssistantMention (internal/services/agent/legacy/mention.go). Group
+// messages carry no structured mention field, so Route B/B2 treats the
+// assistant nickname (and optional extra tokens such as the Agent UUID) as the
+// trigger. Matching is case-insensitive, collapses internal whitespace in both
+// the haystack and the token, accepts a compact form of multi-word nicknames
+// (`@DipoleAI` for `Dipole AI`), and requires a non-word boundary after the token
+// so `@Dipole` does not fire for nickname `Dipole AI`.
+function detectAssistantMention(content: string, nickname: string, extraTokens: readonly string[]): boolean {
+  const foldedContent = foldMentionText(content.trim());
+  if (foldedContent === "") return false;
+  for (const token of mentionTokens(nickname, extraTokens)) {
+    if (token !== "" && hasBoundedAtMention(foldedContent, token)) return true;
+  }
+  return false;
+}
+
+function mentionTokens(nickname: string, extraTokens: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const tokens: string[] = [];
+  const add = (raw: string) => {
+    for (const candidate of expandMentionToken(raw)) {
+      const folded = foldMentionText(candidate);
+      if (folded === "") continue;
+      if (seen.has(folded)) continue;
+      seen.add(folded);
+      tokens.push(folded);
+    }
+  };
+  add(nickname);
+  for (const extra of extraTokens) add(extra);
+  return tokens;
+}
+
+function expandMentionToken(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (trimmed === "") return [];
+  const fields = trimmed.split(/\s+/);
+  return [trimmed, fields.join(" "), fields.join("")];
+}
+
+function foldMentionText(value: string): string {
+  return value.toLowerCase().split(/\s+/).join(" ");
+}
+
+function hasBoundedAtMention(foldedContent: string, foldedToken: string): boolean {
+  let start = 0;
+  while (start < foldedContent.length) {
+    const rel = foldedContent.indexOf("@", start);
+    if (rel < 0) return false;
+    const at = rel;
+    if (at > 0) {
+      const prev = foldedContent.charCodeAt(at - 1);
+      if (isMentionBodyCodeUnit(prev)) {
+        start = at + 1;
+        continue;
+      }
+    }
+    const rest = foldedContent.slice(at + 1).trimStart();
+    if (rest.startsWith(foldedToken)) {
+      const after = rest.slice(foldedToken.length);
+      if (after === "") return true;
+      const next = after.charCodeAt(0);
+      if (!isMentionBodyCodeUnit(next)) return true;
+    }
+    start = at + 1;
+  }
+  return false;
+}
+
+function isMentionBodyCodeUnit(code: number): boolean {
+  // ASCII letter / digit / underscore. The Go original uses unicode.IsLetter
+  // etc.; for mention tokens (ASCII identifiers + CJK nicknames) this ASCII
+  // gate is sufficient and avoids a full Unicode table in the runtime.
+  return (code >= 48 && code <= 57) || (code >= 65 && code <= 90) || (code >= 97 && code <= 122) || code === 95;
 }
 
 function routeContextCompiler(config: ShadowRuntimeConfig): DeterministicContextCompiler {

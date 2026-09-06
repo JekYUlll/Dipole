@@ -235,6 +235,15 @@ type AgentInteractiveReplyApproverV1 interface {
 	AutoApproveInteractiveReply(ctx context.Context, request AgentApprovalRequestV1) (*AgentApprovalV1, error)
 }
 
+// AgentGroupReplyApproverV1 mints an already-approved group-reply grant for a
+// group @-mention interactive task, replacing the owner Signal with Core-side
+// verification that the task is interactive-triggered, the pinned Definition
+// authorizes group replies, and the scope targets exactly the group conversation
+// the trigger mentioned. Route B/B2.
+type AgentGroupReplyApproverV1 interface {
+	AutoApproveGroupReply(ctx context.Context, request AgentApprovalRequestV1) (*AgentApprovalV1, error)
+}
+
 func (d AgentDefinitionVersionV1) Validate() error {
 	if anyBlank(d.DefinitionUUID, d.TenantID, d.OwnerUUID, d.AgentUUID) || d.Version == 0 || d.ValidFrom.IsZero() ||
 		(d.Status != AgentDefinitionStatusActive && d.Status != AgentDefinitionStatusRevoked) || len(d.Permissions) == 0 || len(d.Scopes) == 0 {

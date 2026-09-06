@@ -283,6 +283,69 @@ describe("shadow runtime composition", () => {
     );
   });
 
+  it("admits an inbound group @-mention to the Agent as a governed interactive task when inbound-group-interactive is on", async () => {
+    let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
+    const consumer: KafkaConsumerPort = {
+      connect: async () => undefined,
+      subscribe: async () => undefined,
+      run: async (config) => { eachMessage = config.eachMessage; },
+      disconnect: async () => undefined
+    };
+    const dispatcher = { dispatch: vi.fn(async () => undefined) };
+    const config = loadShadowRuntimeConfig({
+      ...activeRuntimeEnvironment(),
+      DIPOLE_AGENT_TRIGGER_MODE: "direct_target",
+      DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true",
+      DIPOLE_AGENT_INBOUND_GROUP_INTERACTIVE_ENABLED: "true",
+      DIPOLE_AGENT_KAFKA_GROUP_TOPIC: "message.group.created",
+      DIPOLE_AGENT_MENTION_ALIASES: "AI"
+    });
+    const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, dispatcher);
+
+    await runtime.start();
+    await eachMessage!(groupPayload(groupMessageEnvelope("G-ROOM-1", "E-GROUP-MENTION", "@Dipole AI hello group")));
+
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: "E-GROUP-MENTION",
+        eventType: "agent.interactive.requested",
+        payload: expect.objectContaining({
+          content: "@Dipole AI hello group",
+          request_kind: "interactive",
+          conversation_key: "group:G-ROOM-1",
+          group_uuid: "G-ROOM-1"
+        })
+      }),
+      expect.objectContaining({ principalUuid: "U200", agentUuid: "UAI" }),
+      expect.any(String)
+    );
+  });
+
+  it("drops a group message that does not @-mention the Agent", async () => {
+    let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
+    const consumer: KafkaConsumerPort = {
+      connect: async () => undefined,
+      subscribe: async () => undefined,
+      run: async (config) => { eachMessage = config.eachMessage; },
+      disconnect: async () => undefined
+    };
+    const dispatcher = { dispatch: vi.fn(async () => undefined) };
+    const config = loadShadowRuntimeConfig({
+      ...activeRuntimeEnvironment(),
+      DIPOLE_AGENT_TRIGGER_MODE: "direct_target",
+      DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true",
+      DIPOLE_AGENT_INBOUND_GROUP_INTERACTIVE_ENABLED: "true",
+      DIPOLE_AGENT_KAFKA_GROUP_TOPIC: "message.group.created",
+      DIPOLE_AGENT_MENTION_ALIASES: "AI"
+    });
+    const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, dispatcher);
+
+    await runtime.start();
+    await eachMessage!(groupPayload(groupMessageEnvelope("G-ROOM-1", "E-GROUP-NO-MENTION", "hello group without mention")));
+
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
   it("ignores direct messages addressed to another Agent", async () => {
     let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
     const consumer: KafkaConsumerPort = {
@@ -587,5 +650,25 @@ function payload(envelope: object): KafkaInboundPayload {
   return {
     topic: "message.direct.created",
     message: { key: Buffer.from("M100"), value: Buffer.from(JSON.stringify(envelope)) }
+  };
+}
+
+function groupMessageEnvelope(groupUUID: string, eventId: string, content: string, senderUuid = "U200"): object {
+  return {
+    event_id: eventId, request_id: "R1", trace_id: "T1",
+    event_type: "message.group.created", version: "v1", source: "dipole",
+    occurred_at: "2026-08-27T08:00:00.000Z",
+    payload: {
+      mutation_type: "created", revision: 1, actor_uuid: senderUuid, message_id: "M-G1",
+      conversation_key: `group:${groupUUID}`, message_seq: 1, sender_uuid: senderUuid, target_uuid: groupUUID,
+      target_type: 1, message_type: 0, content, sent_at: "2026-08-27T08:00:00.000Z"
+    }
+  };
+}
+
+function groupPayload(envelope: object): KafkaInboundPayload {
+  return {
+    topic: "message.group.created",
+    message: { key: Buffer.from("M-G1"), value: Buffer.from(JSON.stringify(envelope)) }
   };
 }

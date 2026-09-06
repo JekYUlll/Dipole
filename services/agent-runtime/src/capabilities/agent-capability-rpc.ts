@@ -263,7 +263,7 @@ export interface AgentToolInvocationBegin {
 export interface AgentToolActionReference {
   readonly resourceType: "message";
   readonly resourceId: string;
-  readonly commandKind: "assistant_reply" | "system_message";
+  readonly commandKind: "assistant_reply" | "system_message" | "group_reply";
   readonly commandId: string;
 }
 
@@ -271,7 +271,7 @@ export interface AgentMessageCommandExecutionInput {
   readonly taskId: string;
   readonly runId: string;
   readonly invocationId: string;
-  readonly commandKind: "assistant_reply" | "system_message";
+  readonly commandKind: "assistant_reply" | "system_message" | "group_reply";
   readonly content: string;
   readonly requestId?: string;
   readonly traceId?: string;
@@ -510,6 +510,27 @@ export class AgentCapabilityRPCClient {
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response === undefined) return reject(error ?? new Error("Interactive reply authorization returned no response"));
         if (response.approvalId !== approval.approvalId || response.status !== "approved") return reject(new Error("Interactive reply authorization returned a conflicting binding"));
+        resolve();
+      });
+    });
+  }
+
+  // Route B/B2: ask Core to mint an already-approved group-reply grant scoped to
+  // a single group conversation. Mirrors authorizeInteractiveReply but routes
+  // to AuthorizeGroupReply, which enforces the group:<uuid> scope and the shared
+  // low-risk assistant Definition binding.
+  async authorizeGroupReply(taskId: string, runId: string, approval: AgentApprovalBinding, context?: Pick<ExecutionContext, "requestId" | "traceId">): Promise<void> {
+    const metadata = this.metadata(context?.requestId, context?.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.authorizeGroupReply({
+        context: this.requestContext(context?.requestId, context?.traceId), taskId, runId,
+        approvalId: approval.approvalId, capabilityId: approval.capabilityId,
+        resourceScope: { ...approval.resourceScope, actions: [...approval.resourceScope.actions] },
+        scopeSha256: approval.scopeSha256, argumentsSha256: approval.argumentsSha256,
+        nonceSha256: approval.nonceSha256, expiresAtUnixMs: BigInt(approval.expiresAtUnixMs), mode: this.mode
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) return reject(error ?? new Error("Group reply authorization returned no response"));
+        if (response.approvalId !== approval.approvalId || response.status !== "approved") return reject(new Error("Group reply authorization returned a conflicting binding"));
         resolve();
       });
     });

@@ -2,6 +2,7 @@ package agentapplication
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -47,7 +48,7 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 	if err != nil || invocation.TenantID != tool.TenantID || invocation.PrincipalUUID != tool.PrincipalUUID || invocation.AgentUUID != tool.AgentUUID {
 		return nil, application.ErrAgentCommandDenied
 	}
-	wantArgumentsSHA, err := application.AgentMessageCommandToolArgumentsSHA256V1(invocation.PrincipalUUID, invocation.AgentUUID, request.Content)
+	wantArgumentsSHA, err := s.wantArgumentsSHA(request, invocation, *tool)
 	if err != nil || tool.ArgumentsSHA256 != wantArgumentsSHA {
 		return nil, application.ErrAgentCommandDenied
 	}
@@ -57,7 +58,15 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 	}
 	invocation.RequestID, invocation.TraceID = strings.TrimSpace(tool.RequestID), strings.TrimSpace(tool.TraceID)
 	ctx = eventlineage.AgentAction(ctx, invocation.AgentUUID, request.TaskUUID, "")
-	message, err := s.commands.SendMessage(ctx, application.AgentMessageCommandV1{CommandID: commandID, Kind: request.Kind, Invocation: invocation, Content: request.Content})
+	command := application.AgentMessageCommandV1{CommandID: commandID, Kind: request.Kind, Invocation: invocation, Content: request.Content}
+	if request.Kind == application.AgentMessageCommandGroupReplyV1 {
+		conversationID, err := agentMessageCommandConversationIDFromArgumentsV1(tool.ArgumentsJSON)
+		if err != nil {
+			return nil, err
+		}
+		command.ConversationKey = conversationID
+	}
+	message, err := s.commands.SendMessage(ctx, command)
 	if err != nil {
 		return nil, fmt.Errorf("execute Agent Message Command: %w", err)
 	}
@@ -68,4 +77,39 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 	return &application.AgentMessageCommandExecutionResultV1{
 		MessageUUID: strings.TrimSpace(message.UUID), ClientMessageID: clientMessageID, CommandID: commandID, Kind: request.Kind,
 	}, nil
+}
+
+// wantArgumentsSHA re-derives the tool invocation arguments digest the runtime
+// committed at begin time. For 1v1 replies (assistant_reply / system_message)
+// the conversation is the owner's direct Agent conversation; for group replies
+// (Route B/B2) the conversation is the group the trigger mentioned, which the
+// runtime stamped into the tool's ArgumentsJSON, so Core re-derives the digest
+// from that conversation id rather than a principal-derived direct key.
+func (s *AgentMessageCommandExecutionServiceV1) wantArgumentsSHA(request application.AgentMessageCommandExecutionRequestV1, invocation application.AgentInvocationV1, tool application.AgentToolInvocationV1) (string, error) {
+	if request.Kind == application.AgentMessageCommandGroupReplyV1 {
+		conversationID, err := agentMessageCommandConversationIDFromArgumentsV1(tool.ArgumentsJSON)
+		if err != nil {
+			return "", err
+		}
+		return application.AgentMessageCommandToolArgumentsSHA256ForConversationV1(request.Content, conversationID)
+	}
+	return application.AgentMessageCommandToolArgumentsSHA256V1(invocation.PrincipalUUID, invocation.AgentUUID, request.Content)
+}
+
+func agentMessageCommandConversationIDFromArgumentsV1(argumentsJSON string) (string, error) {
+	trimmed := strings.TrimSpace(argumentsJSON)
+	if trimmed == "" {
+		return "", application.ErrAgentCommandDenied
+	}
+	var decoded struct {
+		ConversationID string `json:"conversationId"`
+	}
+	if err := json.Unmarshal([]byte(trimmed), &decoded); err != nil {
+		return "", application.ErrAgentCommandDenied
+	}
+	conversationID := strings.TrimSpace(decoded.ConversationID)
+	if conversationID == "" || !strings.HasPrefix(conversationID, "group:") {
+		return "", application.ErrAgentCommandDenied
+	}
+	return conversationID, nil
 }

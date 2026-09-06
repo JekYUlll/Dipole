@@ -202,6 +202,91 @@ func (s *PersistentAgentApprovalServiceV1) AutoApproveInteractiveReply(ctx conte
 	return &approval, nil
 }
 
+// AutoApproveGroupReply mints an already-approved group-reply grant for a group
+// @-mention interactive task. Unlike 1v1, the trigger sender is not the
+// Definition owner (the shared low-risk assistant Definition is platform-owned),
+// so Core re-verifies the Task is interactive-triggered (never subscription),
+// the pinned Definition is the shared low-risk assistant (the only owner-binding
+// exemption for group replies), the scope targets exactly one group conversation
+// (group:<uuid>), and the capability is group_reply.send, then persists an
+// already-approved grant. Idempotent on an identical binding so a retried reply
+// converges on one grant. Route B/B2.
+func (s *PersistentAgentApprovalServiceV1) AutoApproveGroupReply(ctx context.Context, request application.AgentApprovalRequestV1) (*application.AgentApprovalV1, error) {
+	if strings.TrimSpace(request.Mode) != "active" {
+		return nil, fmt.Errorf("%w: group reply approval requires active mode", application.ErrAgentApprovalDenied)
+	}
+	task, err := s.boundTask(ctx, request.TaskUUID, request.RunUUID, request.RuntimeID, request.Mode)
+	if err != nil {
+		return nil, err
+	}
+	if task.TriggerType != interactiveAgentTriggerTypeV1 || strings.TrimSpace(task.TriggerSubscriptionUUID) != "" {
+		return nil, fmt.Errorf("%w: Task is not interactive-triggered", application.ErrAgentApprovalDenied)
+	}
+	binding := request.Approval
+	if binding.TaskUUID != strings.TrimSpace(request.TaskUUID) || binding.CapabilityID != application.AgentCapabilityGroupReplySend {
+		return nil, fmt.Errorf("%w: group reply approval binding is invalid", application.ErrAgentApprovalDenied)
+	}
+	// The scope is asserted by the runtime from the trigger event's
+	// conversation_key (group:<uuid>). Core re-derives the expected scope hash
+	// from the binding's own ResourceScope so a tampered scope cannot widen
+	// authority: only a group:<uuid> resource id is accepted.
+	if binding.ResourceScope.ResourceType != application.AgentResourceTypeConversation ||
+		!strings.HasPrefix(binding.ResourceScope.ResourceID, "group:") ||
+		binding.ResourceScope.ResourceID == "group:" ||
+		!containsStringV1(binding.ResourceScope.Actions, application.AgentResourceActionWrite) {
+		return nil, fmt.Errorf("%w: group reply scope must target a single group conversation", application.ErrAgentApprovalDenied)
+	}
+	expectedScope := application.AgentResourceScopeV1{
+		ResourceType: binding.ResourceScope.ResourceType,
+		ResourceID:   binding.ResourceScope.ResourceID,
+		Actions:      []string{application.AgentResourceActionWrite},
+	}
+	expectedScopeSHA256, err := application.AgentResourceScopeSHA256V1(expectedScope)
+	if err != nil {
+		return nil, fmt.Errorf("derive group reply scope: %w", err)
+	}
+	if strings.TrimSpace(binding.ScopeSHA256) != expectedScopeSHA256 {
+		return nil, fmt.Errorf("%w: group reply scope hash mismatch", application.ErrAgentApprovalDenied)
+	}
+	definition, err := s.store.GetDefinitionVersion(ctx, task.DefinitionUUID, task.DefinitionVersion)
+	if err != nil || definition == nil {
+		return nil, fmt.Errorf("%w: pinned Agent Definition unavailable", application.ErrAgentApprovalDenied)
+	}
+	// Group replies only run under the shared low-risk assistant Definition; a
+	// per-user owner Definition is not auto-enrolled for group mentions, so any
+	// other owner binding is rejected here.
+	if !isLowRiskAssistantDefinitionV1(definition) {
+		return nil, fmt.Errorf("%w: group reply requires the shared low-risk assistant Definition", application.ErrAgentApprovalDenied)
+	}
+	capabilities, err := application.ProjectAgentApprovedCapabilitiesV1(*definition)
+	if err != nil || !containsStringV1(capabilities, application.AgentCapabilityGroupReplySend) {
+		return nil, fmt.Errorf("%w: pinned Agent Definition does not authorize group replies", application.ErrAgentApprovalDenied)
+	}
+	approval := binding
+	approval.ResourceScope = expectedScope
+	approval.Status = application.AgentApprovalStatusApproved
+	approval.ApprovedByUUID = task.PrincipalUUID
+	approval.ConsumedAt = nil
+	approval.RevokedAt = nil
+	if !s.now().Before(approval.ExpiresAt) || approval.Validate() != nil {
+		return nil, fmt.Errorf("%w: invalid group reply Approval", application.ErrAgentApprovalDenied)
+	}
+	existing, err := s.store.GetApproval(ctx, approval.ApprovalUUID)
+	if err != nil {
+		return nil, fmt.Errorf("get Agent Approval: %w", err)
+	}
+	if existing != nil {
+		if !sameApprovalBindingV1(*existing, approval) || existing.ApprovedByUUID != approval.ApprovedByUUID {
+			return nil, fmt.Errorf("%w: group reply Approval binding conflict", application.ErrAgentApprovalDenied)
+		}
+		return existing, nil
+	}
+	if err := s.store.CreateApproval(ctx, approval); err != nil {
+		return nil, fmt.Errorf("create Agent Approval: %w", err)
+	}
+	return &approval, nil
+}
+
 func (s *PersistentAgentApprovalServiceV1) Resolve(ctx context.Context, resolution application.AgentApprovalResolutionV1) (*application.AgentApprovalV1, error) {
 	task, err := s.boundTask(ctx, resolution.TaskUUID, resolution.RunUUID, resolution.RuntimeID, resolution.Mode)
 	if err != nil {

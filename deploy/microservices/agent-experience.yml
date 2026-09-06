@@ -109,6 +109,12 @@ services:
       DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED: "true"
       # Route B/B1: admit inbound DMs to the assistant as governed interactive tasks.
       DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"
+      # Route B/B2: admit inbound group @-mentions to the assistant as governed
+      # interactive tasks scoped to the group conversation.
+      DIPOLE_AGENT_INBOUND_GROUP_INTERACTIVE_ENABLED: "true"
+      DIPOLE_AGENT_KAFKA_GROUP_TOPIC: message.group.created
+      DIPOLE_AGENT_MENTION_ALIASES: AI
+      DIPOLE_AGENT_ASSISTANT_NICKNAME: ${DIPOLE_AGENT_ASSISTANT_NICKNAME:-Dipole AI}
 
 volumes:
   agent_experience_temporal_postgresql_data:

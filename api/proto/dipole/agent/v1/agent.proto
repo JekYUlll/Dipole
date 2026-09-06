@@ -1120,6 +1120,12 @@ service AgentCapabilityService {
   // pinned Definition authorizes assistant replies for this owner, and the scope
   // targets the owner's direct Agent conversation. Default-off (AD-034).
   rpc AuthorizeInteractiveReply(RequestApprovalRequest) returns (ApprovalResponse);
+  // AuthorizeGroupReply mints an already-approved group-reply grant for a group
+  // @-mention interactive task, replacing the owner Signal with Core-side
+  // verification that the task is interactive-triggered (never subscription),
+  // the pinned Definition is the shared low-risk assistant, and the scope
+  // targets exactly one group conversation. Route B/B2.
+  rpc AuthorizeGroupReply(RequestApprovalRequest) returns (ApprovalResponse);
   rpc ConsumeApproval(ConsumeApprovalRequest) returns (ConsumeApprovalResponse);
   rpc ResolveApprovalGrant(ResolveApprovalGrantRequest) returns (ResolveApprovalGrantResponse);
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);

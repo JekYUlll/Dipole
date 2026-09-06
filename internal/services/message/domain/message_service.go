@@ -244,6 +244,16 @@ func (s *MessageService) SendAssistantTextMessageContext(ctx context.Context, as
 	return s.buildAndDispatchDirect(ctx, assistantUUID, targetUUID, content, clientMessageID, model.MessageTypeAIText)
 }
 
+// SendAssistantGroupMessageContext delivers an AI-text group reply from the
+// assistant (Route B/B2 group @-mention). It reuses SendGroupMessageContext,
+// which the Message domain already stamps as MessageTypeAIText when the
+// sender is the assistant. The push-target list is dropped so the Agent
+// Command boundary stays a single-message write.
+func (s *MessageService) SendAssistantGroupMessageContext(ctx context.Context, assistantUUID, groupUUID, content, clientMessageID string) (*model.Message, error) {
+	message, _, err := s.SendGroupMessageContext(ctx, assistantUUID, groupUUID, content, clientMessageID)
+	return message, err
+}
+
 func (s *MessageService) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
 	return s.SendSystemDirectMessageContext(context.Background(), senderUUID, targetUUID, content)
 }

@@ -18,7 +18,7 @@ export interface McpMessageCommandPort {
     readonly taskId: string;
     readonly runId: string;
     readonly invocationId: string;
-    readonly commandKind: "assistant_reply" | "system_message";
+    readonly commandKind: "assistant_reply" | "system_message" | "group_reply";
     readonly content: string;
     readonly requestId?: string;
     readonly traceId?: string;
@@ -39,7 +39,14 @@ export class McpMessageWriteProjection implements DipoleMcpWriteExecutor {
 
   async execute(tool: DipoleMcpWriteToolProjection, rawArguments: unknown, context: ExecutionContext): Promise<string> {
     const input = messageInputSchema.parse(rawArguments);
-    if (input.conversationId !== directConversationKey(context.principalUuid, context.agentUuid)) {
+    // Route B/B2: a group_reply tool targets the group conversation that
+    // mentioned the Agent (group:<uuid>); every other message tool stays
+    // limited to the owner's direct Agent conversation.
+    if (tool.capabilityId === "message.group_reply.send") {
+      if (!input.conversationId.startsWith("group:") || input.conversationId === "group:") {
+        throw new Error("Group reply Tool requires a group conversation id");
+      }
+    } else if (input.conversationId !== directConversationKey(context.principalUuid, context.agentUuid)) {
       throw new Error("MCP Message Tool is limited to its authenticated direct conversation");
     }
     const approved = await this.approvals.authorize(tool.capabilityId, input, context);
@@ -80,6 +87,18 @@ const assistantReplyTool: DipoleMcpWriteToolProjection = {
   description: "Deliver one approved assistant reply to the task owner's direct Agent conversation",
   inputSchema: messageInputSchema,
   commandKind: "assistant_reply"
+};
+
+// Route B/B2: a group @-mention reply targets the group conversation that
+// triggered the task. The runtime scopes the write to group:<uuid> and Core
+// re-derives the arguments digest from that conversation id.
+const groupReplyTool: DipoleMcpWriteToolProjection = {
+  name: "dipole_group_reply",
+  capabilityId: "message.group_reply.send",
+  title: "Send group reply",
+  description: "Deliver one approved assistant reply to the group conversation that mentioned the Agent",
+  inputSchema: messageInputSchema,
+  commandKind: "group_reply"
 };
 
 export interface MessageExecutor {
@@ -194,6 +213,85 @@ async function interactiveReplyAlreadyDelivered(
   } catch {
     return false;
   }
+}
+
+const groupReplyInvocationNamespace = "dipole.agent.group-reply-invocation.v1";
+
+export interface GroupReplyExecutor {
+  execute(
+    input: { readonly conversationId: string; readonly content: string; readonly eventId: string; readonly occurredAtUnixMs: number },
+    context: ExecutionContext
+  ): Promise<string>;
+}
+
+type GroupReplyExecutorClient = MessageExecutorClient & Pick<AgentCapabilityRPCClient, "authorizeGroupReply" | "resolveMcpToolCommand">;
+
+// Marks a group reply the Runtime recognised as already delivered by a prior
+// Activity attempt. Informational (task output only).
+export const groupReplyReplayMarker = "dipole.agent.group-reply.already-delivered.v1";
+
+// Route B/B2: a group @-mention interactive task replies in the group
+// conversation that mentioned the Agent. Like the 1v1 interactive reply it
+// carries no owner Signal, so the executor first asks Core to mint an
+// already-approved, group-scoped group_reply grant (AuthorizeGroupReply), then
+// runs the approval-bound write chain under a distinct Tool Invocation namespace
+// so group replies never collide with 1v1 replies inside one task.
+export function createGroupReplyExecutor(client: GroupReplyExecutorClient): GroupReplyExecutor {
+  const projection = messageProjectionExecutor(client, groupReplyInvocationNamespace, groupReplyTool);
+  return {
+    execute: async (input, context) => {
+      const request = { conversationId: input.conversationId, content: input.content };
+      const binding = groupReplyApproval(context, input);
+      try {
+        await client.authorizeGroupReply(context.taskId, context.runId, binding, context);
+        return await projection(request, context);
+      } catch (error) {
+        if (await groupReplyAlreadyDelivered(client, context, request)) {
+          return groupReplyReplayMarker;
+        }
+        throw error;
+      }
+    }
+  };
+}
+
+async function groupReplyAlreadyDelivered(
+  client: Pick<GroupReplyExecutorClient, "resolveMcpToolCommand">,
+  context: ExecutionContext,
+  request: { readonly conversationId: string; readonly content: string }
+): Promise<boolean> {
+  const invocationId = messageInvocationID(groupReplyInvocationNamespace, groupReplyTool.capabilityId, context, request);
+  try {
+    const invocation = await client.resolveMcpToolCommand(context.taskId, context.runId, invocationId);
+    return invocation.status === "completed";
+  } catch {
+    return false;
+  }
+}
+
+// Deterministic so a retried group reply mints an identical binding, mirroring
+// the interactive-reply derivation but scoped to the group-reply namespace and
+// the group_reply capability. The scope targets the group conversation.
+function groupReplyApproval(
+  context: ExecutionContext,
+  input: { readonly conversationId: string; readonly content: string; readonly eventId: string; readonly occurredAtUnixMs: number }
+): AgentApprovalBinding {
+  if (!Number.isSafeInteger(input.occurredAtUnixMs)) throw new Error("Group Agent reply event time is invalid");
+  if (!input.conversationId.trim() || !input.eventId.trim()) throw new Error("Group Agent reply binding is incomplete");
+  if (!input.conversationId.startsWith("group:")) throw new Error("Group Agent reply scope must target a group conversation");
+  const resourceScope = { resourceType: "conversation", resourceId: input.conversationId, actions: ["write"] as const };
+  const argumentsSha256 = messageDigest([canonicalMcpJSON({ conversationId: input.conversationId, content: input.content })]);
+  const scopeSha256 = messageDigest(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions]);
+  const approvalId = `approval:${messageDigest(["dipole.agent.group-reply.v1", context.taskId, context.runId, input.eventId, argumentsSha256]).slice(0, 48)}`;
+  return {
+    approvalId,
+    capabilityId: "message.group_reply.send",
+    resourceScope,
+    scopeSha256,
+    argumentsSha256,
+    nonceSha256: messageDigest(["dipole.agent.group-reply.nonce.v1", approvalId]),
+    expiresAtUnixMs: input.occurredAtUnixMs + 30 * 60 * 1_000
+  };
 }
 
 // Deterministic so a retried reply mints an identical binding, mirroring the
@@ -330,11 +428,11 @@ function directConversationKey(first: string, second: string): string {
   return `direct:${[first.trim(), second.trim()].sort().join(":")}`;
 }
 
-function messageActionReference(result: unknown, commandKind: "assistant_reply" | "system_message"): AgentToolActionReference {
+function messageActionReference(result: unknown, commandKind: "assistant_reply" | "system_message" | "group_reply"): AgentToolActionReference {
   const reference = z.object({
     resourceType: z.literal("message"),
     resourceId: z.string().trim().min(1).max(64),
-    commandKind: z.enum(["assistant_reply", "system_message"]),
+    commandKind: z.enum(["assistant_reply", "system_message", "group_reply"]),
     commandId: z.string().trim().min(1).max(128)
   }).strict().parse(result);
   if (reference.commandKind !== commandKind) throw new Error("MCP Message Command kind conflicts with the Tool projection");

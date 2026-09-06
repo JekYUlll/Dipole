@@ -18,6 +18,9 @@ const agentCommandReceiptRecoveryTimeoutV1 = 2 * time.Second
 type AgentCommandMessages interface {
 	SendAssistantTextMessageContext(ctx context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
 	SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error)
+	// SendAssistantGroupMessageContext delivers an AI-text message from the
+	// assistant into a group conversation. Route B/B2 group @-mention replies.
+	SendAssistantGroupMessageContext(ctx context.Context, assistantUUID, groupUUID, content, clientMessageID string) (*model.Message, error)
 	GetMessageCommandReceiptContext(ctx context.Context, senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error)
 }
 
@@ -49,7 +52,14 @@ func (c *LocalAgentCommandV1) SendMessage(ctx context.Context, command applicati
 	if !ok {
 		return nil, application.ErrAgentCommandDenied
 	}
-	conversationKey := model.DirectConversationKey(command.Invocation.PrincipalUUID, command.Invocation.AgentUUID)
+	// Route B/B2: a group reply targets the group conversation the trigger
+	// mentioned (group:<uuid>); 1v1 replies target the owner's direct Agent
+	// conversation. The scope check below pins the capability to that one
+	// conversation so a group reply cannot widen into other conversations.
+	conversationKey := strings.TrimSpace(command.ConversationKey)
+	if conversationKey == "" {
+		conversationKey = model.DirectConversationKey(command.Invocation.PrincipalUUID, command.Invocation.AgentUUID)
+	}
 	if err := application.AuthorizeAgentCapabilityForResourceV1(command.Invocation, descriptor, application.AgentResourceTypeConversation, conversationKey, application.AgentResourceActionWrite); err != nil {
 		return nil, fmt.Errorf("%w: %w", application.ErrAgentCommandDenied, err)
 	}
@@ -72,11 +82,17 @@ func (c *LocalAgentCommandV1) SendMessage(ctx context.Context, command applicati
 		message, err = c.messages.SendAssistantTextMessageContext(ctx, agentUUID, principalUUID, content, clientMessageID)
 	case application.AgentMessageCommandSystemMessageV1:
 		message, err = c.messages.SendSystemDirectMessageCommandContext(ctx, agentUUID, principalUUID, content, clientMessageID)
+	case application.AgentMessageCommandGroupReplyV1:
+		groupUUID := strings.TrimPrefix(conversationKey, "group:")
+		if groupUUID == "" || groupUUID == conversationKey {
+			return nil, application.ErrAgentCommandDenied
+		}
+		message, err = c.messages.SendAssistantGroupMessageContext(ctx, agentUUID, groupUUID, content, clientMessageID)
 	default:
 		return nil, application.ErrAgentCommandDenied
 	}
 	if err == nil {
-		if !agentCommandMessageMatchesV1(message, command.Kind, agentUUID, principalUUID, content, clientMessageID) {
+		if !agentCommandMessageMatchesV1(message, command.Kind, agentUUID, messageTargetForKind(command.Kind, agentUUID, principalUUID, conversationKey), conversationKey, content, clientMessageID) {
 			return nil, application.ErrAgentCommandConflict
 		}
 		return message, nil
@@ -90,23 +106,35 @@ func (c *LocalAgentCommandV1) SendMessage(ctx context.Context, command applicati
 	if receipt == nil || receipt.Status == application.MessageCommandReceiptStatusAbsent {
 		return nil, err
 	}
-	if receipt.Status != application.MessageCommandReceiptStatusCommitted || !agentCommandMessageMatchesV1(receipt.Message, command.Kind, agentUUID, principalUUID, content, clientMessageID) {
+	if receipt.Status != application.MessageCommandReceiptStatusCommitted || !agentCommandMessageMatchesV1(receipt.Message, command.Kind, agentUUID, messageTargetForKind(command.Kind, agentUUID, principalUUID, conversationKey), conversationKey, content, clientMessageID) {
 		return nil, application.ErrAgentCommandConflict
 	}
 	return receipt.Message, nil
 }
 
-func agentCommandMessageMatchesV1(message *model.Message, kind application.AgentMessageCommandKindV1, senderUUID, targetUUID, content, clientMessageID string) bool {
+// messageTargetForKind returns the message target UUID the receipt/match check
+// expects for a given command kind: the principal for 1v1 replies, the group
+// UUID for Route B/B2 group replies.
+func messageTargetForKind(kind application.AgentMessageCommandKindV1, agentUUID, principalUUID, conversationKey string) string {
+	if kind == application.AgentMessageCommandGroupReplyV1 {
+		return strings.TrimPrefix(conversationKey, "group:")
+	}
+	return principalUUID
+}
+
+func agentCommandMessageMatchesV1(message *model.Message, kind application.AgentMessageCommandKindV1, senderUUID, targetUUID, conversationKey, content, clientMessageID string) bool {
 	if message == nil || strings.TrimSpace(message.SenderUUID) != senderUUID || strings.TrimSpace(message.TargetUUID) != targetUUID ||
-		message.TargetType != model.MessageTargetDirect || strings.TrimSpace(message.ConversationKey) != model.DirectConversationKey(senderUUID, targetUUID) ||
+		strings.TrimSpace(message.ConversationKey) != conversationKey ||
 		strings.TrimSpace(message.ClientMessageID) != clientMessageID || strings.TrimSpace(message.Content) != content {
 		return false
 	}
 	switch kind {
 	case application.AgentMessageCommandAssistantReplyV1:
-		return message.MessageType == model.MessageTypeAIText
+		return message.TargetType == model.MessageTargetDirect && message.MessageType == model.MessageTypeAIText
 	case application.AgentMessageCommandSystemMessageV1:
-		return message.MessageType == model.MessageTypeSystem
+		return message.TargetType == model.MessageTargetDirect && message.MessageType == model.MessageTypeSystem
+	case application.AgentMessageCommandGroupReplyV1:
+		return message.TargetType == model.MessageTargetGroup && message.MessageType == model.MessageTypeAIText
 	default:
 		return false
 	}
@@ -118,6 +146,8 @@ func AgentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (str
 		return application.AgentCapabilityAssistantReplySend, nil
 	case application.AgentMessageCommandSystemMessageV1:
 		return application.AgentCapabilitySystemMessageSend, nil
+	case application.AgentMessageCommandGroupReplyV1:
+		return application.AgentCapabilityGroupReplySend, nil
 	default:
 		return "", application.ErrAgentCommandDenied
 	}

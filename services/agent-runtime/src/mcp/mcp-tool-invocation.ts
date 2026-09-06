@@ -22,7 +22,7 @@ export interface McpToolInvocationBegin {
 export interface McpToolActionReference {
   readonly resourceType: "message";
   readonly resourceId: string;
-  readonly commandKind: "assistant_reply" | "system_message";
+  readonly commandKind: "assistant_reply" | "system_message" | "group_reply";
   readonly commandId: string;
 }
 

@@ -19,6 +19,10 @@ const (
 	AgentCapabilityConversationSearch = "conversation.search"
 	AgentCapabilityAssistantReplySend = "message.assistant_reply.send"
 	AgentCapabilitySystemMessageSend  = "message.system.send"
+	// AgentCapabilityGroupReplySend is the Route B/B2 group @-mention reply path:
+	// the assistant replies in a group conversation it is a member of. It is the
+	// group analogue of assistant_reply.send, scoped to a single group conversation.
+	AgentCapabilityGroupReplySend = "message.group_reply.send"
 
 	AgentPermissionUserProfileRead    = "user.profile.read"
 	AgentPermissionConversationList   = "conversation.list"
@@ -58,14 +62,14 @@ type AgentInvocationV1 struct {
 
 func EmbeddedAgentPolicyGrantV1() ([]string, []AgentResourceScopeV1) {
 	return []string{
-		AgentPermissionUserProfileRead,
-		AgentPermissionConversationList,
-		AgentPermissionConversationRead,
-		AgentPermissionMessageWrite,
-	}, []AgentResourceScopeV1{
-		{ResourceType: AgentResourceTypeUser, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
-		{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead, AgentResourceActionList, AgentResourceActionWrite}},
-	}
+			AgentPermissionUserProfileRead,
+			AgentPermissionConversationList,
+			AgentPermissionConversationRead,
+			AgentPermissionMessageWrite,
+		}, []AgentResourceScopeV1{
+			{ResourceType: AgentResourceTypeUser, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
+			{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead, AgentResourceActionList, AgentResourceActionWrite}},
+		}
 }
 
 func AuthorizeAgentCapabilityForResourceV1(invocation AgentInvocationV1, descriptor AgentCapabilityDescriptorV1, resourceType, resourceID, action string) error {
@@ -112,6 +116,9 @@ var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	AgentCapabilityAssistantReplySend: {
 		ID: AgentCapabilityAssistantReplySend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,
 	},
+	AgentCapabilityGroupReplySend: {
+		ID: AgentCapabilityGroupReplySend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,
+	},
 	AgentCapabilitySystemMessageSend: {
 		ID: AgentCapabilitySystemMessageSend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,
 	},
@@ -128,6 +135,11 @@ var agentActiveApprovedCapabilityProjectionV1 = []struct {
 	// an owner Definition that already authorizes message writes deliver a natural AI reply
 	// (MessageTypeAIText) rather than only a system notice.
 	{AgentCapabilityAssistantReplySend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
+	// Route B/B2: a group @-mention reply targets a single group conversation. It
+	// carries the same message.write permission and conversation write action; the
+	// shared low-risk assistant Definition (auto-enrolled on first inbound group
+	// mention) projects it so the reply can be delivered into the group.
+	{AgentCapabilityGroupReplySend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
 }
 
 func ProjectAgentApprovedCapabilitiesV1(definition AgentDefinitionVersionV1) ([]string, error) {
