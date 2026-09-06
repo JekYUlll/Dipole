@@ -174,13 +174,16 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			} else {
 				aiService.SetGroupMessenger(messaging.Messages)
 			}
-			// Route B/B1: the governed interactive path owns 1v1 replies when
-			// ai.direct_reply_enabled=false; the group @-reply stays on legacy
-			// until B2 lands.
+			// Route B/B1 + B2: the governed interactive path owns 1v1 replies when
+			// ai.direct_reply_enabled=false and group @-replies when
+			// ai.group_reply_enabled=false; either legacy handler stays registered
+			// only while its flag is on, so the governed path never double-replies.
 			if config.AIConfig().DirectReplyEnabled {
 				platformKafka.Subscriber.Register("message.direct.created", agentchat.DirectReplyHandler(aiService))
 			}
-			platformKafka.Subscriber.Register("message.group.created", agentchat.GroupReplyHandler(aiService))
+			if config.AIConfig().GroupReplyEnabled {
+				platformKafka.Subscriber.Register("message.group.created", agentchat.GroupReplyHandler(aiService))
+			}
 		}
 	}
 	if platformKafka.Subscriber != nil {

@@ -101,12 +101,16 @@ func RegisterKafkaHandlers(hub WSEventSender, repos *Repositories, messaging *Me
 			return err
 		} else if aiService != nil {
 			aiService.SetGroupMessenger(messaging.Messages)
-			// Route B/B1: legacy 1v1 direct reply is gated by ai.direct_reply_enabled;
-			// group @-reply stays on legacy until B2 lands.
+			// Route B/B1 + B2: legacy 1v1 direct reply is gated by
+			// ai.direct_reply_enabled and legacy group @-reply by
+			// ai.group_reply_enabled, so the governed path is the sole responder
+			// when its flag is off.
 			if aiConfig.DirectReplyEnabled {
 				platformKafka.Subscriber.Register("message.direct.created", agentchat.DirectReplyHandler(aiService))
 			}
-			platformKafka.Subscriber.Register("message.group.created", agentchat.GroupReplyHandler(aiService))
+			if aiConfig.GroupReplyEnabled {
+				platformKafka.Subscriber.Register("message.group.created", agentchat.GroupReplyHandler(aiService))
+			}
 		}
 	}
 	if includeMessagePersistence {

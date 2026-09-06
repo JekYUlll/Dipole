@@ -295,6 +295,10 @@ type AI struct {
 	// DirectReplyEnabled gates the legacy (Route A) 1v1 direct auto-reply. The
 	// governed interactive path (Route B/B1) sets it false to avoid double replies.
 	DirectReplyEnabled bool `mapstructure:"direct_reply_enabled"`
+	// GroupReplyEnabled gates the legacy group @-mention auto-reply. The governed
+	// interactive path (Route B/B2) sets it false so the governed group reply is
+	// the sole responder and no double reply is delivered.
+	GroupReplyEnabled bool `mapstructure:"group_reply_enabled"`
 	// AgentCandidateVersion is the candidate the active Runtime is promoted for;
 	// it must match the agent-runtime's DIPOLE_AGENT_CANDIDATE_VERSION.
 	AgentCandidateVersion string `mapstructure:"agent_candidate_version"`
@@ -581,6 +585,9 @@ func Load() error {
 		// Route B/B1: legacy 1v1 direct auto-reply stays on by default; the governed
 		// interactive path sets this to false to avoid double-replying.
 		v.SetDefault("ai.direct_reply_enabled", true)
+		// Legacy group @-reply is on by default; the governed Route B/B2 path
+		// sets this false so it becomes the sole group responder.
+		v.SetDefault("ai.group_reply_enabled", true)
 		// Candidate version the active Runtime is promoted for; must match the
 		// agent-runtime's DIPOLE_AGENT_CANDIDATE_VERSION so the low-risk platform
 		// grant provisioned at bootstrap authorizes interactive replies.
@@ -786,6 +793,7 @@ func Load() error {
 			"ai.group_reply_fallback",
 			"ai.mention_aliases",
 			"ai.direct_reply_enabled",
+			"ai.group_reply_enabled",
 			"ai.agent_candidate_version",
 		} {
 			if err := v.BindEnv(key); err != nil {
@@ -1265,6 +1273,7 @@ func AIConfig() AI {
 	aiConfig.GroupReplyFallback = cfg.GetString("ai.group_reply_fallback")
 	aiConfig.MentionAliases = cfg.GetStringSlice("ai.mention_aliases")
 	aiConfig.DirectReplyEnabled = cfg.GetBool("ai.direct_reply_enabled")
+	aiConfig.GroupReplyEnabled = cfg.GetBool("ai.group_reply_enabled")
 	aiConfig.AgentCandidateVersion = cfg.GetString("ai.agent_candidate_version")
 	if mode, err := aiConfig.ResolvedRuntimeMode(); err == nil {
 		aiConfig.RuntimeMode = mode

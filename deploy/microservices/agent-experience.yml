@@ -1,9 +1,11 @@
 services:
   core:
     environment:
-      # Route B/B1: hand 1v1 direct replies to the governed interactive path and
-      # provision the platform low-risk promotion grant for the active candidate.
+      # Route B/B1 + B2: hand 1v1 direct replies and group @-replies to the
+      # governed interactive path (sole responder) and provision the platform
+      # low-risk promotion grant for the active candidate.
       DIPOLE_AI_DIRECT_REPLY_ENABLED: "false"
+      DIPOLE_AI_GROUP_REPLY_ENABLED: "false"
       DIPOLE_AI_AGENT_CANDIDATE_VERSION: experience-v1
       DIPOLE_FRONTEND_AGENT_ELICITATION_ENABLED: "true"
       DIPOLE_FRONTEND_AGENT_APPROVAL_ENABLED: "true"
