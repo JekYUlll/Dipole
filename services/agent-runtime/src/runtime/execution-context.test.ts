@@ -22,6 +22,14 @@ describe("ExecutionContext approved Capability projection", () => {
     expect(parsed.approvedCapabilities).toEqual(["message.system.send", "message.assistant_reply.send"]);
   });
 
+  it("accepts the Route B/B2 group-reply Capability", () => {
+    const parsed = executionContextSchema.parse({
+      ...context,
+      approvedCapabilities: ["message.system.send", "message.assistant_reply.send", "message.group_reply.send"]
+    });
+    expect(parsed.approvedCapabilities).toEqual(["message.system.send", "message.assistant_reply.send", "message.group_reply.send"]);
+  });
+
   it("rejects unknown Capability IDs and Shadow approvals", () => {
     expect(() => executionContextSchema.parse({ ...context, approvedCapabilities: ["message.future.send"] })).toThrow();
     expect(() => executionContextSchema.parse({ ...context, mode: "shadow" })).toThrow();

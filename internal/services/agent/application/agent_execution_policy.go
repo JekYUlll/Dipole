@@ -604,6 +604,7 @@ func lowRiskAssistantDefinitionV1(tenantID, agentUUID string, validFrom time.Tim
 		AgentUUID:      strings.TrimSpace(agentUUID),
 		Status:         application.AgentDefinitionStatusActive,
 		Permissions: []string{
+			application.AgentPermissionConversationList,
 			application.AgentPermissionConversationRead,
 			application.AgentPermissionMessageWrite,
 		},
