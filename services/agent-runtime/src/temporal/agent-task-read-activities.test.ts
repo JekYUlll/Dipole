@@ -193,6 +193,86 @@ describe("Temporal read Step Activities", () => {
     expect(execute).not.toHaveBeenCalled();
   });
 
+  it("routes an inbound group @-mention to a single reply call and delivers a group reply, skipping the plan", async () => {
+    const event: AgentEvent = {
+      eventId: "E-GROUP-REPLY", eventType: "agent.interactive.requested", aggregateId: "M-GROUP-REPLY",
+      occurredAt: "2026-08-27T08:00:00.000Z",
+      payload: { content: "@AI 在吗", request_kind: "interactive", conversation_key: "group:G1", group_uuid: "G1" },
+      lineage: { origin: { type: "service", id: "dipole-inbound-group" } }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["conversation.read"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read"] }],
+      approvedCapabilities: ["message.group_reply.send" as const]
+    };
+    const plan = vi.fn(async () => ({ summary: "should not plan", steps: [] }));
+    const reply = vi.fn(async () => "在的，有什么可以帮你？");
+    const execute = vi.fn(async () => "GROUP-ACTION-1");
+    const artifacts = { createArtifact: vi.fn() };
+    const activities = createTemporalReadStepActivities({
+      planner: { plan, reply },
+      audit: { append: vi.fn(async () => undefined) },
+      registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-GROUP" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) },
+      groupReply: { execute }, artifacts, stepLeaseMs: 60_000
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "observe", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).resolves.toEqual({ kind: "complete", output: { summary: "在的，有什么可以帮你？", stepCount: 0, replyMessageAction: "GROUP-ACTION-1" } });
+
+    expect(reply).toHaveBeenCalledOnce();
+    expect(plan).not.toHaveBeenCalled();
+    expect(artifacts.createArtifact).not.toHaveBeenCalled();
+    expect(execute).toHaveBeenCalledWith(
+      { conversationId: "group:G1", content: "在的，有什么可以帮你？", eventId: "E-GROUP-REPLY", occurredAtUnixMs: Date.parse("2026-08-27T08:00:00.000Z") },
+      expect.objectContaining({ taskId, runId, mode: "active" })
+    );
+  });
+
+  it("routes an inbound direct reply to a single reply call and delivers an assistant reply", async () => {
+    const event: AgentEvent = {
+      eventId: "E-DIRECT-REPLY", eventType: "agent.interactive.requested", aggregateId: "M-DIRECT-REPLY",
+      occurredAt: "2026-08-27T08:00:00.000Z",
+      payload: { content: "在吗", request_kind: "interactive", conversation_key: "direct:U100:UAI" },
+      lineage: { origin: { type: "service", id: "dipole-inbound-direct" } }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["conversation.read"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read"] }],
+      approvedCapabilities: ["message.assistant_reply.send" as const]
+    };
+    const plan = vi.fn(async () => ({ summary: "should not plan", steps: [] }));
+    const reply = vi.fn(async () => "你好，我在。");
+    const execute = vi.fn(async () => "DIRECT-ACTION-1");
+    const activities = createTemporalReadStepActivities({
+      planner: { plan, reply },
+      audit: { append: vi.fn(async () => undefined) },
+      registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-DIRECT" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) },
+      interactiveReply: { execute }, stepLeaseMs: 60_000
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "observe", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).resolves.toEqual({ kind: "complete", output: { summary: "你好，我在。", stepCount: 0, replyMessageAction: "DIRECT-ACTION-1" } });
+
+    expect(reply).toHaveBeenCalledOnce();
+    expect(plan).not.toHaveBeenCalled();
+    expect(execute).toHaveBeenCalledWith(
+      { conversationId: "direct:U100:UAI", content: "你好，我在。", eventId: "E-DIRECT-REPLY", occurredAtUnixMs: Date.parse("2026-08-27T08:00:00.000Z") },
+      expect.objectContaining({ taskId, runId, mode: "active" })
+    );
+  });
+
   it("rejects an event ID that conflicts with the trusted active admission", async () => {
     const event: AgentEvent = {
       eventId: "E-ACTIVE-READ", eventType: "message.direct.created", aggregateId: "M-ACTIVE-READ",

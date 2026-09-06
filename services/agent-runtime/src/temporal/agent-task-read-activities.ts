@@ -135,8 +135,35 @@ export function createTemporalReadStepActivities(
         }
         return executeInteractiveMessageStep(input.taskId, input.runId, input.step, input.checkpoint, input.resume, event, context, interactiveMessage, dependencies.interactiveMessage);
       }
-      const confirmation = input.step === 0 ? undefined : resolveReadScopeConfirmation(input, context);
       const telemetry = dependencies.telemetry ?? new AgentTelemetry();
+      // Route B/B1 + B2: an inbound direct/group @-mention reply is a low-risk
+      // conversational answer. Skip the discovery-plan call — its reasoning pass
+      // burns 10k+ tokens / 80-90s to emit a ~150-char plan JSON the reply never
+      // needs — and answer the user's message in a single audited reply call,
+      // then deliver it through the same approval-bound message write.
+      const replyIntent = inboundReplyIntent(event);
+      if (input.step === 0 && runtimeMode === "active" && replyIntent !== undefined && dependencies.planner.reply !== undefined) {
+        return telemetry.withSpan("agent.reply", {
+          taskId: context.taskId, runId: context.runId,
+          attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType, "dipole.agent.reply.kind": replyIntent }
+        }, async span => {
+          const replyText = await dependencies.planner.reply!(event, context);
+          const plan: ShadowPlan = { summary: replyText, steps: [] };
+          const replyMessageAction = (await maybeSendSubscriptionReply(event, context, plan, runtimeMode, dependencies, telemetry))
+            ?? (await maybeSendGroupReply(event, context, plan, runtimeMode, dependencies, telemetry))
+            ?? (await maybeSendInteractiveReply(event, context, plan, runtimeMode, dependencies, telemetry));
+          if (replyMessageAction !== undefined) span.setAttribute("dipole.agent.run.reply", "sent");
+          return {
+            kind: "complete",
+            output: {
+              summary: replyText,
+              stepCount: 0,
+              ...(replyMessageAction === undefined ? {} : { replyMessageAction })
+            }
+          };
+        });
+      }
+      const confirmation = input.step === 0 ? undefined : resolveReadScopeConfirmation(input, context);
       return telemetry.withSpan("agent.run", {
         taskId: context.taskId, runId: context.runId,
         attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
@@ -412,6 +439,18 @@ async function maybeSendGroupReply(
     { conversationId, content, eventId: event.eventId, occurredAtUnixMs },
     context
   ));
+}
+
+// inboundReplyIntent recognises the low-risk inbound reply triggers minted by
+// the runtime converter (shadow-runtime.ts) for a direct DM to the Agent or a
+// group @-mention. The lineage origin id is the trusted marker; a genuine owner
+// interactive goal (dipole-gateway) is not a reply and keeps the full plan path.
+function inboundReplyIntent(event: { readonly eventType: string; readonly lineage?: { readonly origin: { readonly id: string } } | undefined }): "direct" | "group" | undefined {
+  if (event.eventType !== "agent.interactive.requested") return undefined;
+  const origin = event.lineage?.origin.id;
+  if (origin === "dipole-inbound-group") return "group";
+  if (origin === "dipole-inbound-direct") return "direct";
+  return undefined;
 }
 
 function requestedInteractiveMessage(event: { readonly eventType: string; readonly payload: Record<string, unknown> }): { readonly content: string } | undefined {

@@ -99,6 +99,13 @@ export interface ShadowPlanStep {
 export interface ShadowPlanner {
   plan(event: AgentEvent, context: ExecutionContext): Promise<ShadowPlan>;
   synthesize?(event: AgentEvent, context: ExecutionContext, plan: ShadowPlan, outputs: readonly unknown[]): Promise<string>;
+  // reply is a dedicated single-call concise answer for low-risk inbound
+  // direct/group replies. It skips the discovery-plan call entirely: the plan
+  // stage forces the model into an expensive reasoning pass (10k+ reasoning
+  // tokens, 80-90s) only to emit a ~150-char plan JSON that a simple reply does
+  // not need. The reply stage hydrates recent conversation context and answers
+  // the user's message directly in one audited model call. Route B/B1 + B2.
+  reply?(event: AgentEvent, context: ExecutionContext): Promise<string>;
 }
 
 export interface ShadowAuditRecord {

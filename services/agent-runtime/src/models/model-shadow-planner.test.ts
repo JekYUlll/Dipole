@@ -242,6 +242,67 @@ describe("ModelShadowPlanner", () => {
     expect(request?.prompt).not.toContain("greeting: reply to the user directly");
   });
 
+  it("answers an inbound reply in a single reply-stage call grounded in recent conversation", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "在的，有什么可以帮你？" }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 30, outputTokens: 10 }
+    }));
+    const conversation: ConversationReadResult = {
+      found: true, reason: "", targetId: "G1", targetType: 2,
+      messages: [
+        {
+          id: 2n, serverMessageId: "M2", clientMessageId: "C2", conversationKey: "group:G1", sequence: 2n,
+          senderId: "U200", targetType: 2, targetId: "G1", messageType: 1, content: "@AI 在吗",
+          fileId: "", fileName: "", fileSize: 0n, fileUrl: "", fileContentType: "", sentAt: { seconds: 2n, nanos: 0 }
+        },
+        {
+          id: 1n, serverMessageId: "M1", clientMessageId: "C1", conversationKey: "group:G1", sequence: 1n,
+          senderId: "U201", targetType: 2, targetId: "G1", messageType: 1, content: "早上好",
+          fileId: "", fileName: "", fileSize: 0n, fileUrl: "", fileContentType: "", sentAt: { seconds: 1n, nanos: 0 }
+        }
+      ]
+    };
+    const readConversation = vi.fn(async (_context, conversationId: string) => {
+      expect(conversationId).toBe("group:G1");
+      return conversation;
+    });
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.read"], new DeterministicContextCompiler(),
+      undefined, undefined, undefined, { readConversation }
+    );
+
+    await expect(planner.reply(
+      { ...event(), eventType: "agent.interactive.requested", payload: { content: "@AI 在吗", conversation_key: "group:G1" } },
+      context()
+    )).resolves.toBe("在的，有什么可以帮你？");
+
+    expect(generate).toHaveBeenCalledOnce();
+    const request = (generate.mock.calls as unknown as Array<[{ prompt: string; stage?: string }]>)[0]![0];
+    expect(request.stage).toBe("reply");
+    // ordered oldest -> newest, so the mention is the last transcript line
+    expect(request.prompt).toContain("first-person message addressed to the user");
+    expect(request.prompt).toContain("@-mentioned in a group chat");
+    expect(request.prompt.indexOf("早上好")).toBeLessThan(request.prompt.indexOf("@AI 在吗"));
+  });
+
+  it("answers a direct inbound reply without conversation context when none is available", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "你好，我在。" }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 12, outputTokens: 5 }
+    }));
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.read"]);
+
+    await expect(planner.reply(
+      { ...event(), eventType: "agent.interactive.requested", payload: { content: "在吗" } },
+      context()
+    )).resolves.toBe("你好，我在。");
+    expect(generate).toHaveBeenCalledOnce();
+    const request = (generate.mock.calls as unknown as Array<[{ prompt: string; stage?: string }]>)[0]![0];
+    expect(request.stage).toBe("reply");
+    expect(request.prompt).toContain("1:1 direct chat");
+    expect(request.prompt).toContain("在吗");
+  });
+
   it("permits a read only when it uses the trusted preceding discovery marker", async () => {
     const generate = vi.fn(async () => ({
       output: {
