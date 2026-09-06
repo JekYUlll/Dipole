@@ -167,7 +167,10 @@ func (s *PersistentAgentApprovalServiceV1) AutoApproveInteractiveReply(ctx conte
 	if err != nil || definition == nil {
 		return nil, fmt.Errorf("%w: pinned Agent Definition unavailable", application.ErrAgentApprovalDenied)
 	}
-	if strings.TrimSpace(definition.OwnerUUID) != strings.TrimSpace(task.PrincipalUUID) {
+	// The shared low-risk assistant Definition is owned by the Agent, not the
+	// principal; it is the only owner-binding exemption, and only because its
+	// authority is trimmed to replying in the principal's own direct conversation.
+	if !isLowRiskAssistantDefinitionV1(definition) && strings.TrimSpace(definition.OwnerUUID) != strings.TrimSpace(task.PrincipalUUID) {
 		return nil, fmt.Errorf("%w: Agent Definition owner binding is invalid", application.ErrAgentApprovalDenied)
 	}
 	capabilities, err := application.ProjectAgentApprovedCapabilitiesV1(*definition)

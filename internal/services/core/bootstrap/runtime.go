@@ -174,7 +174,12 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			} else {
 				aiService.SetGroupMessenger(messaging.Messages)
 			}
-			platformKafka.Subscriber.Register("message.direct.created", agentchat.DirectReplyHandler(aiService))
+			// Route B/B1: the governed interactive path owns 1v1 replies when
+			// ai.direct_reply_enabled=false; the group @-reply stays on legacy
+			// until B2 lands.
+			if config.AIConfig().DirectReplyEnabled {
+				platformKafka.Subscriber.Register("message.direct.created", agentchat.DirectReplyHandler(aiService))
+			}
 			platformKafka.Subscriber.Register("message.group.created", agentchat.GroupReplyHandler(aiService))
 		}
 	}
@@ -211,6 +216,13 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		if composeErr = agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, agentRepos.Policy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("ensure standalone Agent Definition: %w", composeErr)
+		}
+		// Route B/B1: provision the platform-wide low-risk promotion grant so
+		// first-contact inbound DMs can be auto-enrolled onto the governed
+		// interactive reply path. No-op when no candidate version is configured.
+		if composeErr = agentapplication.EnsureLowRiskAssistantPromotionGrantV1(ctx, agentRepos.Promotions, "dipole", config.AIConfig().AssistantUUID, config.AIConfig().AgentCandidateVersion, time.Now()); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("ensure low-risk assistant promotion grant: %w", composeErr)
 		}
 		agentMessages := agentapplication.AgentCapabilityMessages(messaging.Messages)
 		if config.CoreMessageConfig().Transport == "grpc" {

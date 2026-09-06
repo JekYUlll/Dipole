@@ -67,6 +67,10 @@ const shadowRuntimeConfigSchema = z.object({
   triggerMode: z.enum(["direct_target", "subscription"]),
   subscriptionShadowEnabled: z.boolean(),
   subscriptionActiveEnabled: z.boolean(),
+  // Route B/B1: when on, an inbound DM to the Agent is admitted as a governed
+  // interactive task (triggerType agent.interactive.requested) instead of only
+  // being observed as a message.direct.created task.
+  inboundInteractiveEnabled: z.boolean(),
   ledgerMode: z.enum(["memory", "mysql"]),
   leaseMs: z.number().int().min(1000).max(86_400_000),
   readScopeConfirmationTtlMs: z.number().int().min(1000).max(86_400_000),
@@ -263,6 +267,7 @@ export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeCo
     triggerMode: env.DIPOLE_AGENT_TRIGGER_MODE?.trim().toLowerCase() || "direct_target",
     subscriptionShadowEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED?.trim().toLowerCase() === "true",
     subscriptionActiveEnabled: env.DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED?.trim().toLowerCase() === "true",
+    inboundInteractiveEnabled: env.DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED?.trim().toLowerCase() === "true",
     ledgerMode: env.DIPOLE_AGENT_LEDGER_MODE?.trim().toLowerCase() || "memory",
     leaseMs: Number.parseInt(env.DIPOLE_AGENT_LEDGER_LEASE_MS ?? "60000", 10),
     readScopeConfirmationTtlMs: Number.parseInt(env.DIPOLE_AGENT_READ_SCOPE_CONFIRMATION_TTL_MS ?? "900000", 10),
@@ -404,6 +409,27 @@ export function buildKafkaShadowRuntime(
       }
     }
     if (config.triggerMode === "direct_target" && !directTargetAccepted) return;
+    // Route B/B1: admit an inbound DM to the Agent as a governed interactive task
+    // so it flows through admission, approval, and the assistant-reply executor.
+    if (config.triggerMode === "direct_target" && config.inboundInteractiveEnabled && directTargetAccepted) {
+      const content = typeof decoded.event.payload.content === "string" ? decoded.event.payload.content.trim() : "";
+      if (content === "") return;
+      const conversationKey = typeof decoded.event.payload.conversation_key === "string" ? decoded.event.payload.conversation_key.trim() : "";
+      const interactiveEvent: AgentEvent = {
+        eventId: decoded.event.eventId,
+        eventType: "agent.interactive.requested",
+        aggregateId: decoded.event.aggregateId,
+        occurredAt: decoded.event.occurredAt,
+        payload: {
+          content,
+          request_kind: "interactive",
+          ...(conversationKey === "" ? {} : { conversation_key: conversationKey })
+        },
+        lineage: { origin: { type: "service", id: "dipole-inbound-direct" } }
+      };
+      await processor.process(interactiveEvent, identity);
+      return;
+    }
     if (config.triggerMode === "subscription") {
       if (subscriptionRuntimeGate !== undefined && !subscriptionRuntimeGate.evaluate().taskCreationAllowed) return;
       const matcher = subscriptionMatcher ?? admission;

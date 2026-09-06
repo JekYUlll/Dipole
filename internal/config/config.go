@@ -292,6 +292,12 @@ type AI struct {
 	GroupReplyRatePerMinute int      `mapstructure:"group_reply_rate_per_minute"`
 	GroupReplyFallback      string   `mapstructure:"group_reply_fallback"`
 	MentionAliases          []string `mapstructure:"mention_aliases"`
+	// DirectReplyEnabled gates the legacy (Route A) 1v1 direct auto-reply. The
+	// governed interactive path (Route B/B1) sets it false to avoid double replies.
+	DirectReplyEnabled bool `mapstructure:"direct_reply_enabled"`
+	// AgentCandidateVersion is the candidate the active Runtime is promoted for;
+	// it must match the agent-runtime's DIPOLE_AGENT_CANDIDATE_VERSION.
+	AgentCandidateVersion string `mapstructure:"agent_candidate_version"`
 }
 
 const (
@@ -572,6 +578,13 @@ func Load() error {
 		v.SetDefault("ai.group_reply_rate_per_minute", 8)
 		v.SetDefault("ai.group_reply_fallback", "抱歉，我这边暂时没能完成回复，请稍后再试。")
 		v.SetDefault("ai.mention_aliases", []string{"AI"})
+		// Route B/B1: legacy 1v1 direct auto-reply stays on by default; the governed
+		// interactive path sets this to false to avoid double-replying.
+		v.SetDefault("ai.direct_reply_enabled", true)
+		// Candidate version the active Runtime is promoted for; must match the
+		// agent-runtime's DIPOLE_AGENT_CANDIDATE_VERSION so the low-risk platform
+		// grant provisioned at bootstrap authorizes interactive replies.
+		v.SetDefault("ai.agent_candidate_version", "")
 		for _, key := range []string{
 			"app.name",
 			"app.env",
@@ -772,6 +785,8 @@ func Load() error {
 			"ai.group_reply_rate_per_minute",
 			"ai.group_reply_fallback",
 			"ai.mention_aliases",
+			"ai.direct_reply_enabled",
+			"ai.agent_candidate_version",
 		} {
 			if err := v.BindEnv(key); err != nil {
 				loadErr = fmt.Errorf("bind env for %s: %w", key, err)
@@ -1249,6 +1264,8 @@ func AIConfig() AI {
 	aiConfig.GroupReplyRatePerMinute = cfg.GetInt("ai.group_reply_rate_per_minute")
 	aiConfig.GroupReplyFallback = cfg.GetString("ai.group_reply_fallback")
 	aiConfig.MentionAliases = cfg.GetStringSlice("ai.mention_aliases")
+	aiConfig.DirectReplyEnabled = cfg.GetBool("ai.direct_reply_enabled")
+	aiConfig.AgentCandidateVersion = cfg.GetString("ai.agent_candidate_version")
 	if mode, err := aiConfig.ResolvedRuntimeMode(); err == nil {
 		aiConfig.RuntimeMode = mode
 		aiConfig.Enabled = mode != AIRuntimeOff

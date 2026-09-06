@@ -36,9 +36,17 @@ func (a *PersistentAgentActiveRunPromotionAuthorizerV1) AuthorizeActiveRun(ctx c
 		return fmt.Errorf("%w: active Runtime promotion binding is invalid", application.ErrAgentExecutionPolicyDenied)
 	}
 	at := a.now().UTC()
+	// The shared low-risk assistant Definition is promoted by a platform-wide
+	// grant (provisioned once at deploy time) rather than a per-user grant, so
+	// first-contact interactive senders do not each need a reviewed grant. The
+	// platform grant carries the fixed DefinitionUUID LowRiskAssistantPromotionGrantUUIDV1.
+	definitionUUID := request.Definition.DefinitionUUID
+	if strings.TrimSpace(definitionUUID) == LowRiskAssistantDefinitionUUIDV1 {
+		definitionUUID = LowRiskAssistantPromotionGrantUUIDV1
+	}
 	lookup := application.AgentRuntimePromotionGrantLookupV1{
 		TenantID: request.Task.TenantID, RuntimeID: runtimeID, CandidateVersion: candidateVersion,
-		DefinitionUUID: request.Definition.DefinitionUUID, DefinitionVersion: request.Definition.Version, At: at,
+		DefinitionUUID: definitionUUID, DefinitionVersion: request.Definition.Version, At: at,
 	}
 	grant, err := a.store.GetActiveRuntimePromotionGrant(ctx, lookup)
 	if err != nil {

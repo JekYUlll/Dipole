@@ -1,6 +1,10 @@
 services:
   core:
     environment:
+      # Route B/B1: hand 1v1 direct replies to the governed interactive path and
+      # provision the platform low-risk promotion grant for the active candidate.
+      DIPOLE_AI_DIRECT_REPLY_ENABLED: "false"
+      DIPOLE_AI_AGENT_CANDIDATE_VERSION: experience-v1
       DIPOLE_FRONTEND_AGENT_ELICITATION_ENABLED: "true"
       DIPOLE_FRONTEND_AGENT_APPROVAL_ENABLED: "true"
       DIPOLE_FRONTEND_AGENT_SUBSCRIPTIONS_ENABLED: "true"
@@ -103,6 +107,8 @@ services:
       DIPOLE_AGENT_CONTROL_ENABLED: "true"
       DIPOLE_AGENT_CONTROL_SECRET: ${DIPOLE_AGENT_CONTROL_SECRET:?DIPOLE_AGENT_CONTROL_SECRET is required}
       DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED: "true"
+      # Route B/B1: admit inbound DMs to the assistant as governed interactive tasks.
+      DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"
 
 volumes:
   agent_experience_temporal_postgresql_data:

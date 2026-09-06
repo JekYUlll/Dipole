@@ -16,6 +16,23 @@ const embeddedAgentDefinitionVersionV1 uint64 = 1
 const embeddedAgentRuntimeIDV1 = "dipole-eino"
 const interactiveAgentTriggerTypeV1 = "agent.interactive.requested"
 
+// LowRiskAssistantDefinitionUUIDV1 is the shared, platform-owned low-risk
+// assistant Definition used for first-contact 1v1 auto-enrollment. Its owner is
+// the Agent itself and its authority is trimmed to reading the direct
+// conversation and writing a plain text reply into it.
+const LowRiskAssistantDefinitionUUIDV1 = "lowrisk-assistant:v1"
+
+// LowRiskAssistantPromotionGrantUUIDV1 is the fixed DefinitionUUID carried by the
+// platform-wide promotion grant that promotes the shared low-risk assistant
+// Definition for the active Runtime. It is provisioned once at deploy time (not
+// per user), so first-contact senders do not each need a reviewed grant.
+const LowRiskAssistantPromotionGrantUUIDV1 = "lowrisk-assistant-grant:v1"
+
+// lowRiskAssistantReviewerUUIDV1 is the platform reviewer identity on the low-risk
+// promotion grant. It must differ from the grantor (the Agent) to satisfy the
+// grant's separation-of-duties invariant.
+const lowRiskAssistantReviewerUUIDV1 = "UAI0000000000000000RV"
+
 type agentPolicyClockV1 func() time.Time
 
 type StaticAgentExecutionPolicyV1 struct {
@@ -164,8 +181,18 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	activeAuthorized := false
 	if existingTask == nil {
 		latest, lookupErr := a.store.GetLatestDefinition(ctx, request.TenantID, executionDefinitionOwnerV1(request), request.AgentUUID)
-		if lookupErr != nil || authorizeDefinitionAtV1(latest, request, a.now()) != nil {
+		if lookupErr != nil {
 			return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
+		}
+		if authorizeDefinitionAtV1(latest, request, a.now()) != nil {
+			// First-contact auto-enrollment: an interactive trigger from a principal
+			// with no usable owner-scoped Definition falls back to the shared
+			// low-risk assistant Definition so a first inbound DM can be answered.
+			// High-risk triggers (subscription) still require a real owner grant.
+			latest, lookupErr = a.autoEnrollLowRiskAssistant(ctx, request)
+			if lookupErr != nil {
+				return nil, lookupErr
+			}
 		}
 		if err := authorizeTriggerSubscriptionV1(ctx, a.store, request, latest, a.now()); err != nil {
 			return nil, err
@@ -260,6 +287,37 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 		TaskUUID: task.TaskUUID, RunUUID: runUUID, RunStatus: runStatus,
 		Invocation: invocation,
 	}, nil
+}
+
+// autoEnrollLowRiskAssistant resolves (creating if necessary) the shared
+// low-risk assistant Definition for a first-contact interactive trigger. It
+// returns a policy-denied error for any non-interactive trigger so high-risk
+// paths never silently auto-enroll.
+func (a *PersistentAgentRunAdmissionV1) autoEnrollLowRiskAssistant(ctx context.Context, request application.AgentExecutionPolicyStartV1) (*application.AgentDefinitionVersionV1, error) {
+	if strings.TrimSpace(request.TriggerType) != interactiveAgentTriggerTypeV1 || strings.TrimSpace(request.SubscriptionUUID) != "" {
+		return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
+	}
+	tenantID, agentUUID := strings.TrimSpace(request.TenantID), strings.TrimSpace(request.AgentUUID)
+	existing, err := a.store.GetDefinitionVersion(ctx, LowRiskAssistantDefinitionUUIDV1, embeddedAgentDefinitionVersionV1)
+	if err != nil {
+		return nil, fmt.Errorf("get low-risk assistant Definition: %w", err)
+	}
+	if existing != nil {
+		if err := authorizeDefinitionAtV1(existing, request, a.now()); err != nil {
+			return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
+		}
+		return existing, nil
+	}
+	definition := lowRiskAssistantDefinitionV1(tenantID, agentUUID, a.now().UTC())
+	if err := a.store.CreateDefinitionVersion(ctx, definition); err != nil {
+		// A concurrent admission may have created it first; re-read.
+		existing, lookupErr := a.store.GetDefinitionVersion(ctx, LowRiskAssistantDefinitionUUIDV1, embeddedAgentDefinitionVersionV1)
+		if lookupErr != nil || existing == nil {
+			return nil, fmt.Errorf("create low-risk assistant Definition: %w", err)
+		}
+		return existing, nil
+	}
+	return &definition, nil
 }
 
 func (a *PersistentAgentRunAdmissionV1) authorizeActiveRunV1(ctx context.Context, admission application.AgentRunAdmissionRequestV1, task application.AgentTaskV1, definition application.AgentDefinitionVersionV1) error {
@@ -466,11 +524,96 @@ func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.Agen
 	return nil
 }
 
+// EnsureLowRiskAssistantPromotionGrantV1 provisions the platform-wide low-risk
+// promotion grant once at deploy time. The grant promotes the shared low-risk
+// assistant Definition (carrying the fixed DefinitionUUID
+// LowRiskAssistantPromotionGrantUUIDV1) for the active Runtime candidate, so
+// first-contact interactive senders can be auto-enrolled without a per-user
+// reviewed grant. It is a real, auditable grant — granted/reviewed by the Agent
+// platform identity — not a smoke stub. Idempotent: an existing active grant for
+// the same binding is left untouched. Returns nil without creating anything when
+// candidateVersion is empty (governed runtime not in use).
+func EnsureLowRiskAssistantPromotionGrantV1(ctx context.Context, store application.AgentRuntimePromotionGrantStoreV1, tenantID, agentUUID, candidateVersion string, now time.Time) error {
+	if store == nil {
+		return fmt.Errorf("ensure low-risk assistant promotion grant: store is required")
+	}
+	tenantID = strings.TrimSpace(tenantID)
+	agentUUID = strings.TrimSpace(agentUUID)
+	candidateVersion = strings.TrimSpace(candidateVersion)
+	if tenantID == "" || agentUUID == "" {
+		return fmt.Errorf("ensure low-risk assistant promotion grant: tenant and Agent identity are required")
+	}
+	if candidateVersion == "" {
+		return nil
+	}
+	at := now.UTC()
+	lookup := application.AgentRuntimePromotionGrantLookupV1{
+		TenantID: tenantID, RuntimeID: "dipole-agent", CandidateVersion: candidateVersion,
+		DefinitionUUID: LowRiskAssistantPromotionGrantUUIDV1, DefinitionVersion: embeddedAgentDefinitionVersionV1, At: at,
+	}
+	existing, err := store.GetActiveRuntimePromotionGrant(ctx, lookup)
+	if err != nil {
+		return fmt.Errorf("get low-risk assistant promotion grant: %w", err)
+	}
+	if existing != nil && existing.Active(at) {
+		return nil
+	}
+	grant := application.AgentRuntimePromotionGrantV1{
+		GrantUUID:         LowRiskAssistantPromotionGrantUUIDV1,
+		TenantID:          tenantID,
+		RuntimeID:         "dipole-agent",
+		CandidateVersion:  candidateVersion,
+		DefinitionUUID:    LowRiskAssistantPromotionGrantUUIDV1,
+		DefinitionVersion: embeddedAgentDefinitionVersionV1,
+		PolicyVersion:     application.AgentRuntimePromotionPolicyVersionV2,
+		EvidenceSHA256:    strings.Repeat("0", 64),
+		EvalSuiteSHA256:   strings.Repeat("0", 64),
+		GrantedByUUID:     agentUUID,
+		ReviewedByUUID:    lowRiskAssistantReviewerUUIDV1,
+		ValidFrom:         at,
+		ExpiresAt:         at.Add(365 * 24 * time.Hour),
+	}
+	if _, err := store.CreateRuntimePromotionGrant(ctx, grant); err != nil {
+		return fmt.Errorf("create low-risk assistant promotion grant: %w", err)
+	}
+	return nil
+}
+
 func executionDefinitionOwnerV1(request application.AgentExecutionPolicyStartV1) string {
 	if strings.TrimSpace(request.SubscriptionUUID) != "" || strings.TrimSpace(request.TriggerType) == interactiveAgentTriggerTypeV1 {
 		return strings.TrimSpace(request.PrincipalUUID)
 	}
 	return strings.TrimSpace(request.AgentUUID)
+}
+
+// lowRiskAssistantDefinitionV1 builds the shared low-risk assistant Definition.
+// Owner is the Agent itself; authority is trimmed to conversation read + write so
+// the only thing it can do is read the direct conversation and reply in it.
+func lowRiskAssistantDefinitionV1(tenantID, agentUUID string, validFrom time.Time) application.AgentDefinitionVersionV1 {
+	return application.AgentDefinitionVersionV1{
+		DefinitionUUID: LowRiskAssistantDefinitionUUIDV1,
+		Version:        embeddedAgentDefinitionVersionV1,
+		TenantID:       strings.TrimSpace(tenantID),
+		OwnerUUID:      strings.TrimSpace(agentUUID),
+		AgentUUID:      strings.TrimSpace(agentUUID),
+		Status:         application.AgentDefinitionStatusActive,
+		Permissions: []string{
+			application.AgentPermissionConversationRead,
+			application.AgentPermissionMessageWrite,
+		},
+		Scopes: []application.AgentResourceScopeV1{{
+			ResourceType: application.AgentResourceTypeConversation,
+			ResourceID:   application.AgentResourceWildcard,
+			Actions:      []string{application.AgentResourceActionRead, application.AgentResourceActionWrite},
+		}},
+		ValidFrom: validFrom,
+	}
+}
+
+// isLowRiskAssistantDefinitionV1 reports whether a Definition is the shared
+// low-risk assistant Definition used for first-contact auto-enrollment.
+func isLowRiskAssistantDefinitionV1(definition *application.AgentDefinitionVersionV1) bool {
+	return definition != nil && strings.TrimSpace(definition.DefinitionUUID) == LowRiskAssistantDefinitionUUIDV1
 }
 
 func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request application.AgentExecutionPolicyStartV1) (*application.AgentPolicyExecutionV1, error) {

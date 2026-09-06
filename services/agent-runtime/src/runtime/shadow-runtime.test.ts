@@ -228,6 +228,61 @@ describe("shadow runtime composition", () => {
     );
   });
 
+  it("admits an inbound DM to the Agent as a governed interactive task when inbound-interactive is on", async () => {
+    let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
+    const consumer: KafkaConsumerPort = {
+      connect: async () => undefined,
+      subscribe: async () => undefined,
+      run: async (config) => { eachMessage = config.eachMessage; },
+      disconnect: async () => undefined
+    };
+    const dispatcher = { dispatch: vi.fn(async () => undefined) };
+    const config = loadShadowRuntimeConfig({
+      ...activeRuntimeEnvironment(),
+      DIPOLE_AGENT_TRIGGER_MODE: "direct_target",
+      DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"
+    });
+    const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, dispatcher);
+
+    await runtime.start();
+    await eachMessage!(payload(messageEnvelope("UAI", "E-INBOUND")));
+
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: "E-INBOUND",
+        eventType: "agent.interactive.requested",
+        payload: expect.objectContaining({ content: "hello", request_kind: "interactive", conversation_key: "direct:U100:UAI" })
+      }),
+      expect.objectContaining({ principalUuid: "U100", agentUuid: "UAI" }),
+      expect.any(String)
+    );
+  });
+
+  it("keeps observing inbound DMs as message events when inbound-interactive is off", async () => {
+    let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
+    const consumer: KafkaConsumerPort = {
+      connect: async () => undefined,
+      subscribe: async () => undefined,
+      run: async (config) => { eachMessage = config.eachMessage; },
+      disconnect: async () => undefined
+    };
+    const dispatcher = { dispatch: vi.fn(async () => undefined) };
+    const config = loadShadowRuntimeConfig({
+      ...activeRuntimeEnvironment(),
+      DIPOLE_AGENT_TRIGGER_MODE: "direct_target"
+    });
+    const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, undefined, undefined, undefined, undefined, undefined, undefined, undefined, dispatcher);
+
+    await runtime.start();
+    await eachMessage!(payload(messageEnvelope("UAI", "E-OBSERVE")));
+
+    expect(dispatcher.dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "message.direct.created" }),
+      expect.objectContaining({ principalUuid: "U100", agentUuid: "UAI" }),
+      expect.any(String)
+    );
+  });
+
   it("ignores direct messages addressed to another Agent", async () => {
     let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
     const consumer: KafkaConsumerPort = {
