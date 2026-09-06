@@ -283,7 +283,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent MCP Tool invocation terminal: %w", composeErr)
 		}
-		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, agentCommands)
+		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, agentCommands)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
 		}

@@ -275,7 +275,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Tool invocation audit: %w", composeErr)
 		}
-		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, commands)
+		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, commands)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Message Command execution: %w", composeErr)
