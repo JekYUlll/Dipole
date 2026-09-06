@@ -27,6 +27,7 @@ const viewState = ref<ViewState>('loading')
 const tasks = ref<AgentOwnedTask[]>([])
 const nextCursor = ref('')
 const bannerClosed = ref(false)
+const detailCollapsed = ref(false)
 
 const selectedId = computed(() => String(route.query.task ?? ''))
 const panel = computed(() => {
@@ -108,7 +109,12 @@ function closeDetail() {
   const query = { ...route.query }
   delete query.task
   delete query.panel
+  detailCollapsed.value = false
   router.replace({ query })
+}
+
+function toggleCollapse() {
+  detailCollapsed.value = !detailCollapsed.value
 }
 
 function tone(item: AgentOwnedTask): 'agent' | 'warning' | 'danger' | 'success' | 'neutral' {
@@ -127,10 +133,6 @@ function label(item: AgentOwnedTask) {
 
 function rowClass(row: AgentOwnedTask) {
   return row.taskId === selectedId.value ? 'is-selected' : ''
-}
-
-function onTaskRowClick(event: { data: AgentOwnedTask }) {
-  openTask(event.data)
 }
 </script>
 
@@ -205,7 +207,7 @@ function onTaskRowClick(event: { data: AgentOwnedTask }) {
           size="small"
           striped-rows
           :row-class="rowClass"
-          @row-click="onTaskRowClick"
+          @row-click="(e) => openTask(e.data)"
         >
           <Column header="STATUS" style="width: 7.5rem">
             <template #body="{ data }">
@@ -227,8 +229,9 @@ function onTaskRowClick(event: { data: AgentOwnedTask }) {
         <button v-if="nextCursor" type="button" class="link" :disabled="viewState === 'loading'" @click="load(false)">加载下一页</button>
       </div>
 
-      <aside v-if="selectedId" class="detail-pane" :data-agent-task-panel="panel">
+      <aside v-if="selectedId && !detailCollapsed" class="detail-pane" :data-agent-task-panel="panel">
         <header class="detail-head">
+          <button type="button" class="icon-btn detail-collapse" title="收起详情" aria-label="收起详情" @click="toggleCollapse">‹</button>
           <span class="mono">{{ selectedId }}</span>
           <StatusPill v-if="selected" :tone="tone(selected)" :label="label(selected)" dense />
           <span class="spacer" />
@@ -253,6 +256,14 @@ function onTaskRowClick(event: { data: AgentOwnedTask }) {
         <AgentElicitationForm v-else-if="panel === 'input'" embedded :task-id="selectedId" :client="props.client" />
         <AgentApprovalForm v-else-if="panel === 'approval'" embedded :task-id="selectedId" :client="props.client" />
       </aside>
+      <button
+        v-if="selectedId && detailCollapsed"
+        type="button"
+        class="detail-expand"
+        title="展开详情"
+        aria-label="展开详情"
+        @click="toggleCollapse"
+      >›</button>
     </div>
 
     <Dialog
@@ -286,8 +297,24 @@ function onTaskRowClick(event: { data: AgentOwnedTask }) {
 .skel { display: grid; gap: 8px; padding: 12px; }
 .split { display: flex; min-height: 0; flex: 1; }
 .list-pane { flex: 1; min-width: 0; overflow: auto; }
-.detail-pane { width: 52%; min-width: 220px; border-left: 1px solid var(--dp-line); background: var(--dp-surface); overflow: auto; display: flex; flex-direction: column; }
+.detail-pane { width: 44%; min-width: 240px; max-width: 560px; border-left: 1px solid var(--dp-line); background: var(--dp-surface); overflow: auto; display: flex; flex-direction: column; }
 .detail-head { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-bottom: 1px solid var(--dp-line); }
+.detail-collapse { font-size: 18px; line-height: 1; padding: 2px 6px; }
+.detail-expand {
+  flex: 0 0 22px;
+  align-self: stretch;
+  margin: 8px 0;
+  border: 0;
+  border-left: 1px solid var(--dp-line);
+  background: var(--dp-surface);
+  color: var(--dp-ink-soft);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.detail-expand:hover { background: var(--dp-line); color: var(--dp-ink); }
 .sub-tabs { display: flex; gap: 4px; padding: 0 8px; height: 34px; border-bottom: 1px solid var(--dp-line); }
 .sub-tabs button { border: 0; background: transparent; color: var(--dp-ink-faint); font: 500 11px var(--dp-font-body); cursor: pointer; border-bottom: 2px solid transparent; padding: 0 6px; }
 .sub-tabs button.active { color: var(--dp-ink); font-weight: 700; border-bottom-color: var(--dp-accent); }
