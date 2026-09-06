@@ -35,7 +35,7 @@ group_uuid=$(printf '%s' "$group" | python3 -c 'import sys,json;print(json.load(
 echo "    group=${group_uuid}"
 
 echo "==> @-mention the assistant in the group over WS"
-docker exec -e OWNER="$owner" -e TOKEN="$token" -e GROUP="$group_uuid" "${PROJECT}-agent-1" node --input-type=module - <<'NODE'
+docker exec -i -e OWNER="$owner" -e TOKEN="$token" -e GROUP="$group_uuid" "${PROJECT}-agent-1" node --input-type=module - <<'NODE'
 const [owner, token, group] = [process.env.OWNER, process.env.TOKEN, process.env.GROUP];
 const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=b2-e2e`);
 await new Promise((resolve, reject) => {

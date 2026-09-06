@@ -28,7 +28,7 @@ token=$(printf '%s' "$login" | python3 -c 'import sys,json;print(json.load(sys.s
 echo "    owner=${owner}"
 
 echo "==> send one DM to the assistant over WS (no prior Definition/grant for this user)"
-docker exec -e OWNER="$owner" -e TOKEN="$token" -e AGENT="$AGENT_UUID" "${PROJECT}-agent-1" node --input-type=module - <<'NODE'
+docker exec -i -e OWNER="$owner" -e TOKEN="$token" -e AGENT="$AGENT_UUID" "${PROJECT}-agent-1" node --input-type=module - <<'NODE'
 const [owner, token, agent] = [process.env.OWNER, process.env.TOKEN, process.env.AGENT];
 const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=b1-e2e`);
 await new Promise((resolve, reject) => {
