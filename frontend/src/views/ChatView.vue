@@ -2,7 +2,7 @@
   <AppShell
     active-workspace="chat"
     :agent-active="drawerOpen"
-    :agent-pending="taskWaiting.notices.length"
+    :agent-pending="agentPendingCount"
     :status-text="statusCaption"
     @open-settings="openSettings"
   >
@@ -665,8 +665,11 @@ const taskWaiting = useAgentTaskWaiting({
   list: () => agentTaskClient.list!('', 50),
 })
 const taskWaitingHeadline = taskWaiting.headline
+// taskWaiting.notices is a Ref, and a plain composable object does not
+// auto-unwrap nested refs in templates, so expose the count as a computed.
+const agentPendingCount = computed(() => taskWaiting.notices.value.length)
 const statusCaption = computed(() => {
-  const pending = taskWaiting.notices.value.length
+  const pending = agentPendingCount.value
   return pending > 0 ? `DIPOLE · ${pending} pending` : 'DIPOLE'
 })
 const presignedMultipartEnabled = import.meta.env.VITE_MULTIPART_PRESIGNED_ENABLED === 'true'
