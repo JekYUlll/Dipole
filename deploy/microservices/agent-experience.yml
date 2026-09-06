@@ -95,7 +95,12 @@ services:
       # tokens and leave two extra call slots for parse-retry, while still
       # honouring any explicit override the operator supplies.
       DIPOLE_AGENT_MODEL_MAX_CALLS: ${DIPOLE_AGENT_MODEL_MAX_CALLS:-3}
-      DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: ${DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS:-90000}
+      # The experience stack routes interactive plans through DeepSeek with a
+      # 16k output-token ceiling; complex plan prompts occasionally exceed the
+      # 90s default and fail the run with budget exhausted. Default the
+      # experience overlay to 180s so first-contact group @-mention and DM
+      # replies succeed out of the box; operators can still tighten it.
+      DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: ${DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS:-180000}
       DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: ${DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS:-4096}
       DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-active-experience-v1
       DIPOLE_AGENT_MEMORY_ENABLED: "false"
