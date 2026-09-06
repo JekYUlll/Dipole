@@ -220,7 +220,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		// Route B/B1: provision the platform-wide low-risk promotion grant so
 		// first-contact inbound DMs can be auto-enrolled onto the governed
 		// interactive reply path. No-op when no candidate version is configured.
-		if composeErr = agentapplication.EnsureLowRiskAssistantPromotionGrantV1(ctx, agentRepos.Promotions, "dipole", config.AIConfig().AssistantUUID, config.AIConfig().AgentCandidateVersion, time.Now()); composeErr != nil {
+		if composeErr = agentapplication.EnsureLowRiskAssistantPromotionGrantV1(ctx, agentRepos.Policy, agentRepos.Promotions, "dipole", config.AIConfig().AssistantUUID, config.AIConfig().AgentCandidateVersion, time.Now()); composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("ensure low-risk assistant promotion grant: %w", composeErr)
 		}

@@ -181,7 +181,7 @@ func TestActiveRunPromotionLooksUpPlatformGrantForLowRiskDefinition(t *testing.T
 	now := time.Date(2026, 9, 6, 8, 0, 0, 0, time.UTC)
 	store := &lowRiskPromotionStoreStub{grant: &application.AgentRuntimePromotionGrantV1{
 		GrantUUID: agentapplication.LowRiskAssistantPromotionGrantUUIDV1, TenantID: "dipole", RuntimeID: "dipole-agent",
-		CandidateVersion: "candidate-v1", DefinitionUUID: agentapplication.LowRiskAssistantPromotionGrantUUIDV1, DefinitionVersion: 1,
+		CandidateVersion: "candidate-v1", DefinitionUUID: agentapplication.LowRiskAssistantDefinitionUUIDV1, DefinitionVersion: 1,
 		PolicyVersion:  application.AgentRuntimePromotionPolicyVersionV2,
 		EvidenceSHA256: strings.Repeat("0", 64), EvalSuiteSHA256: strings.Repeat("0", 64),
 		GrantedByUUID: "UAI", ReviewedByUUID: "UREVIEWER",
@@ -194,9 +194,9 @@ func TestActiveRunPromotionLooksUpPlatformGrantForLowRiskDefinition(t *testing.T
 	if err := authorizer.AuthorizeActiveRun(context.Background(), lowRiskActivePromotionRequest(now)); err != nil {
 		t.Fatalf("low-risk active promotion: %v", err)
 	}
-	// The lookup must target the platform grant UUID, not the shared Definition UUID.
-	if store.lookup.DefinitionUUID != agentapplication.LowRiskAssistantPromotionGrantUUIDV1 {
-		t.Fatalf("promotion lookup DefinitionUUID = %q, want platform grant UUID", store.lookup.DefinitionUUID)
+	// The lookup must target the shared Definition's own UUID (the grant's FK target).
+	if store.lookup.DefinitionUUID != agentapplication.LowRiskAssistantDefinitionUUIDV1 {
+		t.Fatalf("promotion lookup DefinitionUUID = %q, want shared Definition UUID", store.lookup.DefinitionUUID)
 	}
 }
 
@@ -204,21 +204,25 @@ func TestEnsureLowRiskAssistantPromotionGrantIsIdempotent(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 9, 6, 8, 0, 0, 0, time.UTC)
 	store := &lowRiskPromotionStoreStub{}
+	policy := &agentPolicyStoreStub{}
 
 	// Empty candidate version is a no-op (governed runtime not in use).
-	if err := agentapplication.EnsureLowRiskAssistantPromotionGrantV1(context.Background(), store, "dipole", "UAI", "", now); err != nil {
+	if err := agentapplication.EnsureLowRiskAssistantPromotionGrantV1(context.Background(), policy, store, "dipole", "UAI", "", now); err != nil {
 		t.Fatalf("empty candidate should be a no-op: %v", err)
 	}
 	if store.created != nil {
 		t.Fatalf("empty candidate must not create a grant")
 	}
 
-	// First call provisions the platform grant.
-	if err := agentapplication.EnsureLowRiskAssistantPromotionGrantV1(context.Background(), store, "dipole", "UAI", "candidate-v1", now); err != nil {
+	// First call provisions the shared Definition and the platform grant.
+	if err := agentapplication.EnsureLowRiskAssistantPromotionGrantV1(context.Background(), policy, store, "dipole", "UAI", "candidate-v1", now); err != nil {
 		t.Fatalf("provision grant: %v", err)
 	}
+	if _, ok := policy.definitions[definitionKeyV1(agentapplication.LowRiskAssistantDefinitionUUIDV1, 1)]; !ok {
+		t.Fatalf("shared low-risk Definition was not ensured: %+v", policy.definitions)
+	}
 	if store.created == nil || store.created.GrantUUID != agentapplication.LowRiskAssistantPromotionGrantUUIDV1 ||
-		store.created.DefinitionUUID != agentapplication.LowRiskAssistantPromotionGrantUUIDV1 || store.created.CandidateVersion != "candidate-v1" {
+		store.created.DefinitionUUID != agentapplication.LowRiskAssistantDefinitionUUIDV1 || store.created.CandidateVersion != "candidate-v1" {
 		t.Fatalf("created grant = %+v", store.created)
 	}
 	if store.created.GrantedByUUID == store.created.ReviewedByUUID {
@@ -228,7 +232,7 @@ func TestEnsureLowRiskAssistantPromotionGrantIsIdempotent(t *testing.T) {
 	// A second call with an already-active grant leaves it untouched.
 	store.grant = store.created
 	store.created = nil
-	if err := agentapplication.EnsureLowRiskAssistantPromotionGrantV1(context.Background(), store, "dipole", "UAI", "candidate-v1", now); err != nil {
+	if err := agentapplication.EnsureLowRiskAssistantPromotionGrantV1(context.Background(), policy, store, "dipole", "UAI", "candidate-v1", now); err != nil {
 		t.Fatalf("re-provision grant: %v", err)
 	}
 	if store.created != nil {

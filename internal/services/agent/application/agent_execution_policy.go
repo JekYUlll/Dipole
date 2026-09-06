@@ -22,10 +22,12 @@ const interactiveAgentTriggerTypeV1 = "agent.interactive.requested"
 // conversation and writing a plain text reply into it.
 const LowRiskAssistantDefinitionUUIDV1 = "lowrisk-assistant:v1"
 
-// LowRiskAssistantPromotionGrantUUIDV1 is the fixed DefinitionUUID carried by the
-// platform-wide promotion grant that promotes the shared low-risk assistant
-// Definition for the active Runtime. It is provisioned once at deploy time (not
-// per user), so first-contact senders do not each need a reviewed grant.
+// LowRiskAssistantPromotionGrantUUIDV1 is the fixed GrantUUID of the platform-wide
+// promotion grant that promotes the shared low-risk assistant Definition for the
+// active Runtime. It is provisioned once at deploy time (not per user), so
+// first-contact senders do not each need a reviewed grant. The grant's
+// DefinitionUUID points at the shared Definition (LowRiskAssistantDefinitionUUIDV1)
+// so it satisfies the definition foreign key.
 const LowRiskAssistantPromotionGrantUUIDV1 = "lowrisk-assistant-grant:v1"
 
 // lowRiskAssistantReviewerUUIDV1 is the platform reviewer identity on the low-risk
@@ -298,26 +300,17 @@ func (a *PersistentAgentRunAdmissionV1) autoEnrollLowRiskAssistant(ctx context.C
 		return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
 	}
 	tenantID, agentUUID := strings.TrimSpace(request.TenantID), strings.TrimSpace(request.AgentUUID)
+	if err := ensureLowRiskAssistantDefinitionV1(ctx, a.store, tenantID, agentUUID, a.now()); err != nil {
+		return nil, err
+	}
 	existing, err := a.store.GetDefinitionVersion(ctx, LowRiskAssistantDefinitionUUIDV1, embeddedAgentDefinitionVersionV1)
-	if err != nil {
+	if err != nil || existing == nil {
 		return nil, fmt.Errorf("get low-risk assistant Definition: %w", err)
 	}
-	if existing != nil {
-		if err := authorizeDefinitionAtV1(existing, request, a.now()); err != nil {
-			return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
-		}
-		return existing, nil
+	if err := authorizeDefinitionAtV1(existing, request, a.now()); err != nil {
+		return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
 	}
-	definition := lowRiskAssistantDefinitionV1(tenantID, agentUUID, a.now().UTC())
-	if err := a.store.CreateDefinitionVersion(ctx, definition); err != nil {
-		// A concurrent admission may have created it first; re-read.
-		existing, lookupErr := a.store.GetDefinitionVersion(ctx, LowRiskAssistantDefinitionUUIDV1, embeddedAgentDefinitionVersionV1)
-		if lookupErr != nil || existing == nil {
-			return nil, fmt.Errorf("create low-risk assistant Definition: %w", err)
-		}
-		return existing, nil
-	}
-	return &definition, nil
+	return existing, nil
 }
 
 func (a *PersistentAgentRunAdmissionV1) authorizeActiveRunV1(ctx context.Context, admission application.AgentRunAdmissionRequestV1, task application.AgentTaskV1, definition application.AgentDefinitionVersionV1) error {
@@ -533,9 +526,9 @@ func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.Agen
 // platform identity — not a smoke stub. Idempotent: an existing active grant for
 // the same binding is left untouched. Returns nil without creating anything when
 // candidateVersion is empty (governed runtime not in use).
-func EnsureLowRiskAssistantPromotionGrantV1(ctx context.Context, store application.AgentRuntimePromotionGrantStoreV1, tenantID, agentUUID, candidateVersion string, now time.Time) error {
-	if store == nil {
-		return fmt.Errorf("ensure low-risk assistant promotion grant: store is required")
+func EnsureLowRiskAssistantPromotionGrantV1(ctx context.Context, policyStore application.AgentPolicyStoreV1, store application.AgentRuntimePromotionGrantStoreV1, tenantID, agentUUID, candidateVersion string, now time.Time) error {
+	if store == nil || policyStore == nil {
+		return fmt.Errorf("ensure low-risk assistant promotion grant: stores are required")
 	}
 	tenantID = strings.TrimSpace(tenantID)
 	agentUUID = strings.TrimSpace(agentUUID)
@@ -546,10 +539,17 @@ func EnsureLowRiskAssistantPromotionGrantV1(ctx context.Context, store applicati
 	if candidateVersion == "" {
 		return nil
 	}
+	// The grant carries a definition foreign key, so the shared Definition must
+	// exist before the grant references it.
+	if err := ensureLowRiskAssistantDefinitionV1(ctx, policyStore, tenantID, agentUUID, now); err != nil {
+		return fmt.Errorf("ensure low-risk assistant Definition: %w", err)
+	}
 	at := now.UTC()
+	// The grant's DefinitionUUID points at the shared Definition so it satisfies
+	// the definition foreign key; the GrantUUID is the distinct platform grant id.
 	lookup := application.AgentRuntimePromotionGrantLookupV1{
 		TenantID: tenantID, RuntimeID: "dipole-agent", CandidateVersion: candidateVersion,
-		DefinitionUUID: LowRiskAssistantPromotionGrantUUIDV1, DefinitionVersion: embeddedAgentDefinitionVersionV1, At: at,
+		DefinitionUUID: LowRiskAssistantDefinitionUUIDV1, DefinitionVersion: embeddedAgentDefinitionVersionV1, At: at,
 	}
 	existing, err := store.GetActiveRuntimePromotionGrant(ctx, lookup)
 	if err != nil {
@@ -563,7 +563,7 @@ func EnsureLowRiskAssistantPromotionGrantV1(ctx context.Context, store applicati
 		TenantID:          tenantID,
 		RuntimeID:         "dipole-agent",
 		CandidateVersion:  candidateVersion,
-		DefinitionUUID:    LowRiskAssistantPromotionGrantUUIDV1,
+		DefinitionUUID:    LowRiskAssistantDefinitionUUIDV1,
 		DefinitionVersion: embeddedAgentDefinitionVersionV1,
 		PolicyVersion:     application.AgentRuntimePromotionPolicyVersionV2,
 		EvidenceSHA256:    strings.Repeat("0", 64),
@@ -614,6 +614,27 @@ func lowRiskAssistantDefinitionV1(tenantID, agentUUID string, validFrom time.Tim
 // low-risk assistant Definition used for first-contact auto-enrollment.
 func isLowRiskAssistantDefinitionV1(definition *application.AgentDefinitionVersionV1) bool {
 	return definition != nil && strings.TrimSpace(definition.DefinitionUUID) == LowRiskAssistantDefinitionUUIDV1
+}
+
+// ensureLowRiskAssistantDefinitionV1 idempotently creates the shared low-risk
+// assistant Definition so the platform promotion grant can reference it.
+func ensureLowRiskAssistantDefinitionV1(ctx context.Context, store application.AgentPolicyStoreV1, tenantID, agentUUID string, now time.Time) error {
+	existing, err := store.GetDefinitionVersion(ctx, LowRiskAssistantDefinitionUUIDV1, embeddedAgentDefinitionVersionV1)
+	if err != nil {
+		return fmt.Errorf("get low-risk assistant Definition: %w", err)
+	}
+	if existing != nil {
+		return nil
+	}
+	definition := lowRiskAssistantDefinitionV1(tenantID, agentUUID, now.UTC())
+	if err := store.CreateDefinitionVersion(ctx, definition); err != nil {
+		// A concurrent process may have created it first; re-read.
+		existing, lookupErr := store.GetDefinitionVersion(ctx, LowRiskAssistantDefinitionUUIDV1, embeddedAgentDefinitionVersionV1)
+		if lookupErr != nil || existing == nil {
+			return fmt.Errorf("create low-risk assistant Definition: %w", err)
+		}
+	}
+	return nil
 }
 
 func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request application.AgentExecutionPolicyStartV1) (*application.AgentPolicyExecutionV1, error) {
