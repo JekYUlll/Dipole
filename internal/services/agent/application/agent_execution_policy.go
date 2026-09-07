@@ -212,7 +212,22 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 			TriggerSubscriptionUUID: strings.TrimSpace(request.SubscriptionUUID),
 		}
 		if err := a.authorizeActiveRunV1(ctx, admission, task, *latest); err != nil {
-			return nil, err
+			// An owner-scoped Definition created from the Agent drawer is usable
+			// for catalog/subscription work, but inbound interactive replies are
+			// promoted by the platform low-risk grant. Without a reviewed grant
+			// for that owner Definition, pinning it would brick 1v1 / group @
+			// replies after the user merely opened 定义. Fall back to the
+			// shared low-risk Definition for interactive triggers only.
+			fallback, fallbackErr := a.fallbackLowRiskInteractive(ctx, request, latest, err)
+			if fallbackErr != nil {
+				return nil, fallbackErr
+			}
+			latest = fallback
+			task.DefinitionUUID = latest.DefinitionUUID
+			task.DefinitionVersion = latest.Version
+			if err := a.authorizeActiveRunV1(ctx, admission, task, *latest); err != nil {
+				return nil, err
+			}
 		}
 		activeAuthorized = admission.Mode == "active"
 		created, createErr := a.store.CreateTask(ctx, task)
@@ -317,6 +332,23 @@ func (a *PersistentAgentRunAdmissionV1) autoEnrollLowRiskAssistant(ctx context.C
 		return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
 	}
 	return existing, nil
+}
+
+// fallbackLowRiskInteractive returns the shared low-risk Definition when an
+// interactive inbound trigger resolved an owner-scoped Definition that cannot
+// be actively promoted. Subscription / non-interactive triggers keep the
+// original denial so high-risk paths never silently auto-enroll.
+func (a *PersistentAgentRunAdmissionV1) fallbackLowRiskInteractive(ctx context.Context, request application.AgentExecutionPolicyStartV1, latest *application.AgentDefinitionVersionV1, authorizeErr error) (*application.AgentDefinitionVersionV1, error) {
+	if authorizeErr == nil || isLowRiskAssistantDefinitionV1(latest) ||
+		strings.TrimSpace(request.TriggerType) != interactiveAgentTriggerTypeV1 ||
+		strings.TrimSpace(request.SubscriptionUUID) != "" {
+		return nil, authorizeErr
+	}
+	fallback, err := a.autoEnrollLowRiskAssistant(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+	return fallback, nil
 }
 
 func (a *PersistentAgentRunAdmissionV1) authorizeActiveRunV1(ctx context.Context, admission application.AgentRunAdmissionRequestV1, task application.AgentTaskV1, definition application.AgentDefinitionVersionV1) error {

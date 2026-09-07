@@ -3,6 +3,7 @@ package agentapplication_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -60,6 +61,94 @@ func TestAdmitAutoEnrollsFirstContactInteractiveOntoLowRiskDefinition(t *testing
 	// Active authorization must have been consulted for the shared Definition.
 	if authorizer.request.Definition.DefinitionUUID != agentapplication.LowRiskAssistantDefinitionUUIDV1 {
 		t.Fatalf("active authorizer saw Definition %q", authorizer.request.Definition.DefinitionUUID)
+	}
+}
+
+// ungrantedOwnerPromotionAuthorizer allows only the shared low-risk Definition.
+// This matches the experience stack: the platform grant promotes lowrisk-assistant:v1,
+// not a user-created catalog Definition.
+type ungrantedOwnerPromotionAuthorizer struct {
+	seen []string
+}
+
+func (s *ungrantedOwnerPromotionAuthorizer) AuthorizeActiveRun(_ context.Context, request application.AgentActiveRunPromotionRequestV1) error {
+	s.seen = append(s.seen, request.Definition.DefinitionUUID)
+	if request.Definition.DefinitionUUID == agentapplication.LowRiskAssistantDefinitionUUIDV1 {
+		return nil
+	}
+	return fmt.Errorf("%w: active Runtime promotion grant is unavailable", application.ErrAgentExecutionPolicyDenied)
+}
+
+func TestAdmitFallsBackToLowRiskWhenOwnerDefinitionHasNoPromotionGrant(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 6, 8, 0, 0, 0, time.UTC)
+	ownerDefinition := application.AgentDefinitionVersionV1{
+		DefinitionUUID: "user:owner-def", Version: 1,
+		TenantID: "dipole", OwnerUUID: "U100", AgentUUID: "UAI", Status: application.AgentDefinitionStatusActive,
+		Permissions: []string{application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
+		Scopes: []application.AgentResourceScopeV1{{
+			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
+			Actions: []string{application.AgentResourceActionRead, application.AgentResourceActionWrite},
+		}},
+		ValidFrom: now.Add(-time.Hour),
+	}
+	store := &agentPolicyStoreStub{
+		latestByOwner: map[string]*application.AgentDefinitionVersionV1{"U100": &ownerDefinition},
+		definitions: map[string]*application.AgentDefinitionVersionV1{
+			definitionKeyV1(ownerDefinition.DefinitionUUID, ownerDefinition.Version): &ownerDefinition,
+		},
+	}
+	authorizer := &ungrantedOwnerPromotionAuthorizer{}
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now }, authorizer)
+	if err != nil {
+		t.Fatalf("new Run admission: %v", err)
+	}
+
+	result, err := admission.Admit(context.Background(), interactiveAdmissionRequest())
+	if err != nil {
+		t.Fatalf("Admit with ungranted owner Definition: %v", err)
+	}
+	task := store.tasks[result.TaskUUID]
+	if task == nil || task.DefinitionUUID != agentapplication.LowRiskAssistantDefinitionUUIDV1 {
+		t.Fatalf("task pinned Definition = %+v, want low-risk fallback", task)
+	}
+	if len(authorizer.seen) < 2 || authorizer.seen[0] != "user:owner-def" || authorizer.seen[len(authorizer.seen)-1] != agentapplication.LowRiskAssistantDefinitionUUIDV1 {
+		t.Fatalf("promotion lookups = %v, want owner then low-risk", authorizer.seen)
+	}
+}
+
+func TestAdmitDoesNotFallBackForSubscriptionWhenOwnerDefinitionHasNoGrant(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 6, 8, 0, 0, 0, time.UTC)
+	ownerDefinition := application.AgentDefinitionVersionV1{
+		DefinitionUUID: "user:owner-def", Version: 1,
+		TenantID: "dipole", OwnerUUID: "U100", AgentUUID: "UAI", Status: application.AgentDefinitionStatusActive,
+		Permissions: []string{application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
+		Scopes: []application.AgentResourceScopeV1{{
+			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
+			Actions: []string{application.AgentResourceActionRead, application.AgentResourceActionWrite},
+		}},
+		ValidFrom: now.Add(-time.Hour),
+	}
+	store := &agentPolicyStoreStub{
+		latestByOwner: map[string]*application.AgentDefinitionVersionV1{"U100": &ownerDefinition},
+		definitions: map[string]*application.AgentDefinitionVersionV1{
+			definitionKeyV1(ownerDefinition.DefinitionUUID, ownerDefinition.Version): &ownerDefinition,
+		},
+	}
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now }, &ungrantedOwnerPromotionAuthorizer{})
+	if err != nil {
+		t.Fatalf("new Run admission: %v", err)
+	}
+	request := interactiveAdmissionRequest()
+	request.TriggerType = "message.group.created"
+	request.SubscriptionUUID = "SUB-1"
+
+	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("subscription with ungranted owner Definition error = %v, want denial", err)
+	}
+	if taskCount := len(store.tasks); taskCount != 0 {
+		t.Fatalf("subscription must not create a task, got %d", taskCount)
 	}
 }
 
