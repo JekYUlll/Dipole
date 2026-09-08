@@ -68,6 +68,15 @@ const { admitAgentTask, finishAgentTask, projectAgentTaskState, requestAgentTask
     maximumAttempts: 3
   }
 });
+const { settleInboundEvent } = proxyActivities<Required<Pick<AgentTaskLifecycleActivities, "settleInboundEvent">>>({
+  startToCloseTimeout: "30 seconds",
+  retry: {
+    initialInterval: "1 second",
+    backoffCoefficient: 2,
+    maximumInterval: "30 seconds",
+    maximumAttempts: 3
+  }
+});
 const { prepareAgentMemoryPromotion, commitPreparedAgentMemoryPromotion } = proxyActivities<AgentMemoryPromotionActivities>({
   startToCloseTimeout: "30 seconds",
   retry: { initialInterval: "1 second", backoffCoefficient: 2, maximumInterval: "10 seconds", maximumAttempts: 3 }
@@ -133,6 +142,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
       output: { outcome: "persistent_replay" }
     };
     if (projectionEnabled) await projectAgentTaskState(projectionActivityInput(input, binding, replayed, workflow));
+    await settleEventClaim(input, replayed);
     return replayed;
   }
   if (state.status === "created") {
@@ -237,7 +247,26 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
     await projectAgentTaskState(projectionActivityInput(input, binding, state, workflow));
   }
   await finishAgentTask(terminalActivityInput(input, binding, state));
+  await settleEventClaim(input, state);
   return state;
+}
+
+async function settleEventClaim(input: AgentTaskWorkflowHistoryInput, state: AgentTaskState): Promise<void> {
+  if (input.eventClaim === undefined) return;
+  if (state.status !== "completed" && state.status !== "failed" && state.status !== "cancelled") {
+    throw new Error("Temporal Agent Task event ledger can only settle a terminal Workflow");
+  }
+  await settleInboundEvent({
+    claim: input.eventClaim,
+    status: state.status,
+    ...(state.status === "completed" ? {} : { error: terminalError(state) })
+  });
+}
+
+function terminalError(state: AgentTaskState): string {
+  if (state.status === "failed") return state.failure?.message ?? state.status;
+  if (state.status === "cancelled") return state.cancellation?.reason ?? state.status;
+  return state.status;
 }
 
 function projectionActivityInput(

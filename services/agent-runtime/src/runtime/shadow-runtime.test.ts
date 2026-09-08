@@ -224,7 +224,8 @@ describe("shadow runtime composition", () => {
     expect(dispatcher.dispatch).toHaveBeenCalledWith(
       expect.objectContaining({ eventId: "E-ACTIVE", eventType: "message.direct.created" }),
       expect.objectContaining({ principalUuid: "U100", agentUuid: "UAI" }),
-      agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100" })
+      agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: "message.direct.created", triggerRef: "M100" }),
+      expect.objectContaining({ eventId: "E-ACTIVE", token: expect.any(String) })
     );
   });
 
@@ -254,7 +255,8 @@ describe("shadow runtime composition", () => {
         payload: expect.objectContaining({ content: "hello", request_kind: "interactive", conversation_key: "direct:U100:UAI" })
       }),
       expect.objectContaining({ principalUuid: "U100", agentUuid: "UAI" }),
-      expect.any(String)
+      expect.any(String),
+      expect.objectContaining({ eventId: "E-INBOUND", token: expect.any(String) })
     );
   });
 
@@ -279,7 +281,8 @@ describe("shadow runtime composition", () => {
     expect(dispatcher.dispatch).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "message.direct.created" }),
       expect.objectContaining({ principalUuid: "U100", agentUuid: "UAI" }),
-      expect.any(String)
+      expect.any(String),
+      expect.objectContaining({ eventId: "E-OBSERVE", token: expect.any(String) })
     );
   });
 
@@ -317,7 +320,8 @@ describe("shadow runtime composition", () => {
         })
       }),
       expect.objectContaining({ principalUuid: "U200", agentUuid: "UAI" }),
-      expect.any(String)
+      expect.any(String),
+      expect.objectContaining({ eventId: "E-GROUP-MENTION", token: expect.any(String) })
     );
   });
 
@@ -481,7 +485,8 @@ describe("shadow runtime composition", () => {
         subscriptionBinding: expect.objectContaining({ subscriptionId: "SUB-A" })
       }),
       expect.objectContaining({ principalUuid: "U100", agentUuid: "UAI" }),
-      expect.any(String)
+      expect.any(String),
+      expect.objectContaining({ eventId: expect.stringMatching(/^subscription:/), token: expect.any(String) })
     );
     expect(fixture.planner.plan).not.toHaveBeenCalled();
   });

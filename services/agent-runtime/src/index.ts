@@ -19,6 +19,7 @@ import {
   foundationAgentTaskActivities,
   type AgentTaskWorkerActivities
 } from "./temporal/agent-task-activities.js";
+import { createAgentEventLedgerLifecycleActivities } from "./temporal/agent-event-ledger-activities.js";
 import { createPersistentAgentTaskLifecycleActivities } from "./temporal/agent-task-lifecycle-activities.js";
 import {
   createTemporalTaskDispatchRuntime,
@@ -349,6 +350,7 @@ if (temporalConfig.enabled && !externalMcpShadowEnabled) {
     activities = {
       ...foundationAgentTaskActivities,
       ...createPersistentAgentTaskLifecycleActivities(temporalReadResources!.client),
+      ...createAgentEventLedgerLifecycleActivities(temporalReadResources!.eventLedger),
       ...temporalReadResources!.activities
     };
     if (temporalConfig.activityMode === "promotion_active") {

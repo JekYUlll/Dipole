@@ -292,7 +292,9 @@ describe("ShadowEventProcessor", () => {
 
     const result = await processor.process(event, identity);
 
-    expect(dispatch).toHaveBeenCalledWith(event, identity, result.taskId);
+    expect(dispatch).toHaveBeenCalledWith(event, identity, result.taskId, {
+      eventId: "E-DISPATCH", taskId: result.taskId, token: expect.any(String)
+    });
     expect(plan).not.toHaveBeenCalled();
     expect(setAttribute).toHaveBeenCalledWith("dipole.agent.task.outcome", "recorded");
     await expect(processor.process(event, identity)).resolves.toMatchObject({ outcome: "duplicate" });

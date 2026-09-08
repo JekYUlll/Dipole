@@ -41,6 +41,41 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     await env?.teardown();
   });
 
+  it("settles an inbound claim only after its terminal Task persistence", async () => {
+    const taskQueue = `dipole-agent-ledger-${Date.now()}`;
+    const claim = { eventId: "event-ledger-1", taskId: "task-ledger-1", token: "claim-token-1" };
+    const lifecycle: string[] = [];
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "run-ledger-1", runStatus: "running" };
+      },
+      async finishAgentTask(input) {
+        expect(input).toMatchObject({ taskId: "task-ledger-1", runStatus: "completed" });
+        lifecycle.push("finish");
+      },
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      async executeAgentTaskStep() {
+        return { kind: "complete", output: { outcome: "replied" } };
+      },
+      async settleInboundEvent(input) {
+        expect(input).toEqual({ claim, status: "completed" });
+        lifecycle.push("settle");
+      }
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+
+    const result = await worker.runUntil(() => env.client.workflow.execute("agentTaskWorkflow", {
+      taskQueue,
+      workflowId: "dipole-agent-task/task-ledger-1",
+      args: [{ taskId: "task-ledger-1", goal: "reply", eventClaim: claim }]
+    }));
+
+    expect(result).toMatchObject({ taskId: "task-ledger-1", status: "completed" });
+    expect(lifecycle).toEqual(["finish", "settle"]);
+  });
+
   it("retries Activities, converges duplicate starts, and resumes after Worker replacement", async () => {
     const taskQueue = `dipole-agent-task-test-${Date.now()}`;
     const approvalDeadline = Date.now() + 5 * 60_000;

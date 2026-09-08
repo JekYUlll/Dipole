@@ -109,7 +109,7 @@
 # 执行顺序与里程碑
 
 1. **B1/B2** 已完成：体验环境仅启用 Route B，私聊和群 @ 均使用低风险 Definition、一次性审批和 Temporal 任务。
-2. **P0 可靠性**：修复失败 workflow 的 event ledger reclaim/retry，并让成功群 @ 任务稳定收敛为 `completed`。
+2. **P0 可靠性**：事件账本已改为由 Temporal workflow 终态结算：成功才 complete，failed/cancelled release 后可 reclaim；定向单测已覆盖 dispatcher 交接与终态 activity。仍需在体验环境注入失败 workflow，并复验群 @ 任务稳定收敛为 `completed`。
 3. **P1 订阅与工具**：将 Definition → Subscription → reviewed promotion grant 串成可见审核流程；继续收口 B3 的 legacy tool capability。
 4. **退役评审**：在幂等、失败恢复、订阅审核和 Eval 门禁均有证据后，移除 Route A 的生产接线；代码目录再单独标记 deprecated 或删除。
 

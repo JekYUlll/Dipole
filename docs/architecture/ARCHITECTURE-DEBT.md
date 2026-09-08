@@ -1,5 +1,14 @@
 # 架构债务台账
 
+### AD-065：Route B EventLedger 的真实失败恢复与群 @ 终态证据尚缺
+
+- **优先级：** P0
+- **状态：** 进行中
+- **发现日期：** 2026-09-08
+- **现状：** 入站 Kafka claim 已随可信 Workflow input 传入 Temporal。Workflow 仅在 `completed` 后调用 `EventLedger.complete`；`failed` 或 `cancelled` 通过既有 token-fenced `release` 归还 lease，后续 consumer 可 reclaim。启动 Workflow 成功不再代表消息处理成功。
+- **缺口：** 当前证据限于 Runtime 定向单测。体验环境仍需以受控失败 Workflow 验证同一事件可重领，并以真实群 @ 事件复验任务终态为 `completed`；在这两项证据完成前，不能将 Route B 表述为已具备完整失败恢复保障。
+- **完成条件：** Remote GPU 受控测试记录失败后 release/reclaim、成功后精确 complete、群 @ 单回复且任务 `completed`，并保留可复核的低敏 receipt 与回滚步骤。
+
 ### AD-063：OAuth token lifecycle 的 Runtime envelope 与长期 refresh authority 尚未接线
 
 - **优先级：** P1

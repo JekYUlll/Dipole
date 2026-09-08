@@ -30,15 +30,18 @@ describe("TemporalShadowTaskDispatcher", () => {
   it("starts a stable Workflow with trusted event admission", async () => {
     const start = vi.fn(async () => ({ workflowId: "dipole-agent-task/task-1" }));
     const dispatcher = new TemporalShadowTaskDispatcher({ start });
-    await dispatcher.dispatch({
+    const event = {
       eventId: "E1", eventType: "message.direct.created", aggregateId: "M1",
       occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "hello" }
-    }, {
+    };
+    const claim = { eventId: "E1", taskId: "task-1", token: "claim-token" };
+    await dispatcher.dispatch(event, {
       tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", requestId: "R1", traceId: "T1"
-    }, "task-1");
+    }, "task-1", claim);
     expect(start).toHaveBeenCalledWith({
       taskId: "task-1", goal: "observe message.direct.created for M1",
       shadowEvent: expect.objectContaining({ eventId: "E1", aggregateId: "M1" }),
+      eventClaim: claim,
       admission: {
         tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
         triggerType: "message.direct.created", triggerRef: "M1", eventId: "E1", requestId: "R1", traceId: "T1"
