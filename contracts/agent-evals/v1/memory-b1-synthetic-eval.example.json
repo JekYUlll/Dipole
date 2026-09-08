@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "dipole.agent.memory-b1-synthetic-eval.v1",
+  "candidateVersion": "agent-runtime@synthetic-fixture",
+  "minimumPassBps": 10000,
+  "cases": [
+    { "caseId": "recall-fixture", "canarySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expectedMemoryLineageCount": 1, "recallExpectation": "required" },
+    { "caseId": "revoke-fixture", "canarySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "expectedMemoryLineageCount": 0, "recallExpectation": "not_evaluated" }
+  ],
+  "observations": [
+    { "caseId": "recall-fixture", "canarySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "taskSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "replySha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 1, "responseContainsCanary": true },
+    { "caseId": "revoke-fixture", "canarySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "taskSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "replySha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 0, "responseContainsCanary": true }
+  ]
+}

@@ -2,6 +2,7 @@
 
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据
 
+- 2026-09-09：已补齐 `eval:memory-b1-synthetic` 的多案例、低敏评测契约与 CLI。每个 observation 只绑定 canary、Task/回复 SHA-256、完成状态、模型调用、lineage 与 canary 命中布尔值，至少两例并拒绝重复 Task hash。`not_evaluated` 明确表达 revoke 文本不做否定判断，避免短期会话上下文带来伪失败或伪通过。双案例 fixture 与类型检查已通过；此机制仍只用于 synthetic 数据，真实 owner-approved corpus、人工语义标注和多模型窗口继续是默认 Memory 之前的前置条件。
 - 2026-09-09：真实 Provider 的隔离 B1 synthetic recall 已归档为低敏 [`receipt`](../../benchmarks/agent-memory-provider-b1-recall-2026-09-09/)。首条受权 Task 以一条模型调用、一条 pre-model lineage 和 canary 命中收敛；回复仅以 SHA-256 绑定。owner revoke 后的新 Task 保持一条模型调用与零条该 Memory lineage。撤销后的文本没有采用“不得出现 canary”的断言，因为同一直接会话的短期历史可能提供该信息；Core lineage 才是撤销读边界的权威依据。该合成样本量为一，继续不构成总体语义质量、成功率或默认 Memory 开关证据。
 - 2026-09-09：B1 provider smoke 已增加原子、低敏 [`receipt`](../../benchmarks/agent-memory-provider-b1-2026-09-09/)，并在 Remote GPU 真正运行。该回执把候选 revision、provider 源、哈希化首条/撤销后 Task 和 `1/1/1/0` 模型/lineage 计数固定为可复核数据；它不保存 prompt、回复、owner、Memory ID 或凭据。回执路径仅接受新建绝对路径，且只有显式 B1 profile 才可写入，避免普通审批 smoke 被误标为 Memory 证据。候选资源自动清理，公共体验保持 11 个容器；它仍不构成语义质量、成功率或默认长会话 Memory 的证据。
 - 2026-09-09：Interactive Active 的隔离 Memory profile 已在 Remote GPU 验收。Runtime 只有在 `DIPOLE_AGENT_MEMORY_ENABLED=true` 与 `DIPOLE_AGENT_INTERACTIVE_MEMORY_PROFILE=true` 同时设置时才允许 Memory；该 profile 还要求 AI SDK，并固定拒绝 retrieval、MCP、external MCP 和 subscription shadow。版本化候选镜像完成 Definition create/list 幂等检查，以及等待审批、拒绝零副作用、重复批准的完整确定性写入 smoke 后自动清理，公共体验栈未修改。

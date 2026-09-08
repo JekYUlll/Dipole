@@ -67,6 +67,18 @@ Adapter 从真实 `Task/Run/Plan/Step/Artifact/ModelCall/ToolCall` 生成 observ
 
 运行 `npm run eval:context-ablation -- --manifest=...` 前，应用 `configs/mysql/agent-eval-grants.dist.sql`，使 `dipole_agent_eval` 只拥有评测审计表与 `agent_context_ablation_bindings` 的 `SELECT` 权限。CLI 成功表示给定的受控任务集、版本、价格和审计观测可以复算；真实样本量、人工审阅记录和窗口级效果结论必须另行归档。
 
+## B1 Synthetic Memory Eval
+
+`memory-b1-synthetic-eval.schema.json` 定义多案例、无正文的 B1 Memory 召回评测。每个案例绑定 synthetic canary、哈希化 Task/回复、模型调用数和 Memory lineage 数；`recallExpectation=required` 才判定回复是否命中 canary。revoke 案例通常设置为 `not_evaluated`，因为同一会话的短期消息历史可能包含此前答案，Core lineage 才是撤销读取的权威边界。
+
+```bash
+cd services/agent-runtime
+npm run eval:memory-b1-synthetic -- \
+  --suite=../../contracts/agent-evals/v1/memory-b1-synthetic-eval.example.json
+```
+
+该 Eval 至少需要两个案例，拒绝重复 case/Task hash、模型调用数漂移、lineage 漂移和缺失 synthetic recall。它不保存消息、Prompt、回复正文、owner、Memory ID 或凭据。fixture 只验证协议；真实语料仍需 owner review、独立人工语义标注和单独的隐私审批。
+
 ## Shadow 样本窗口汇总
 
 `shadow-report.schema.json` 是 `eval:shadow` 的低敏输出 envelope，受限评测环境使用持久化 Run 的 `traceId` 和标准五类报告建立证据关联。`shadow-summary-input.schema.json` 将多个该 envelope 汇总为任务级成功率、五类通过率和失败原因计数。输入只接受同一候选版本、唯一 Suite SHA-256、唯一 Trace ID、每类恰好一个 `*.shadow.<TaskRunDigest>` case 的终态报告；因此合成离线 Suite、重复证据、Trace 复用和混版本样本会 fail closed。公开汇总从 `shadow-summary-report.v2` 起只保留 suite 摘要、聚合数值和固定限制语句；不回显 Task、Run、Trace、用户、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。

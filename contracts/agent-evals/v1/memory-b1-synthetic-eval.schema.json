@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/memory-b1-synthetic-eval.schema.json",
+  "title": "Dipole Agent B1 Synthetic Memory Eval v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidateVersion", "minimumPassBps", "cases", "observations"],
+  "properties": {
+    "schemaVersion": { "const": "dipole.agent.memory-b1-synthetic-eval.v1" },
+    "candidateVersion": { "$ref": "#/$defs/candidateVersion" },
+    "minimumPassBps": { "type": "integer", "minimum": 0, "maximum": 10000 },
+    "cases": { "type": "array", "minItems": 2, "maxItems": 256, "items": { "$ref": "#/$defs/case" } },
+    "observations": { "type": "array", "minItems": 2, "maxItems": 256, "items": { "$ref": "#/$defs/observation" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[a-z0-9][a-z0-9._:-]*$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "candidateVersion": { "type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$" },
+    "case": {
+      "type": "object", "additionalProperties": false,
+      "required": ["caseId", "canarySha256", "expectedMemoryLineageCount", "recallExpectation"],
+      "properties": {
+        "caseId": { "$ref": "#/$defs/id" }, "canarySha256": { "$ref": "#/$defs/sha256" },
+        "expectedMemoryLineageCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "recallExpectation": { "enum": ["required", "not_evaluated"] }
+      }
+    },
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["caseId", "canarySha256", "taskSha256", "replySha256", "taskCompleted", "modelCallCount", "memoryLineageCount", "responseContainsCanary"],
+      "properties": {
+        "caseId": { "$ref": "#/$defs/id" }, "canarySha256": { "$ref": "#/$defs/sha256" },
+        "taskSha256": { "$ref": "#/$defs/sha256" }, "replySha256": { "$ref": "#/$defs/sha256" },
+        "taskCompleted": { "type": "boolean" }, "modelCallCount": { "type": "integer", "minimum": 0, "maximum": 8 },
+        "memoryLineageCount": { "type": "integer", "minimum": 0, "maximum": 8 }, "responseContainsCanary": { "type": "boolean" }
+      }
+    }
+  }
+}
