@@ -1,5 +1,11 @@
 # 架构债务台账
 
+### AD-066：Route B 持久 Memory 的默认召回与写入证据
+
+- 2026-09-09：`ModelShadowPlanner.reply()` 已与普通 plan 路径对齐，能从已授权的同会话 Memory reader 并发获取最多六条记录；每条记录按 1024 字符截断，并带 Memory 类型和 provenance 作为不可信数据进入单次低延迟回复。单元测试覆盖 resource scope、上限与 prompt-injection 数据保留，Remote GPU Node 22 typecheck 和 planner 测试均通过。
+- **剩余边界：** Runtime 仅在显式 `DIPOLE_AGENT_MEMORY_ENABLED=true` 且 Core 返回已审核的持久 Memory 时读取；不会从入站消息自动生成或提升持久 Memory。默认体验环境仍关闭该开关，长期召回质量、写入频率、用户可见记忆控制和真实模型评测尚无证据，不能据此声明默认长会话记忆已启用。
+- **处理门槛：** 先通过 owner review 的 Memory candidate/promotion 流程提供可回滚样本，再在隔离体验项目做多轮召回、注入防护和撤销回归；随后才考虑受控开启 profile。
+
 ### AD-065：Route B EventLedger 的真实失败恢复与群 @ 终态证据
 
 - 2026-09-08：体验 Core 已热更至 `0b1c3f52a`。新 B1 私聊与 B2 群 `@Dipole AI` 均从未处理事件收敛为 `completed`、单条回复和一次 consumed approval。另以临时、无 grant 的 owner Definition 验证 interactive Admission 回退到平台 `lowrisk-assistant:v1`，完成后删除该 Definition；订阅触发依旧不能使用该回退。该回归未改变默认 Compose 开关，也不构成订阅 promotion grant 的启用证据。

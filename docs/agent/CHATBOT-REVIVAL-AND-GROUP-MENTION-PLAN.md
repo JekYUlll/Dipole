@@ -118,7 +118,7 @@
 
 1. **B1/B2** 已完成：体验环境仅启用 Route B，私聊和群 @ 均使用低风险 Definition、一次性审批和 Temporal 任务。
 2. **P0 可靠性**：已完成。事件账本由 Temporal workflow 终态结算：成功才 complete，failed/cancelled release 后可 reclaim；定向与 Temporal 测试覆盖 dispatcher 交接和终态 activity。Remote GPU 已注入 Provider 故障并重投同一原始事件，确认新的 Run/Workflow generation 成功、账本完成且最终消息副作用精确一次；B1/B2 回归均为单回复 `completed`。
-3. **P1 订阅与工具**：已完成 Definition → Subscription → reviewed promotion grant 的受控 Compose 闭环；Gateway 已补齐 operator-scoped evidence 只读 API，前端审核页与真实 evidence 归档继续推进。B3 legacy tool capability 已收口为受治理 read capability。
+3. **P1 订阅与工具**：已完成 Definition → Subscription → reviewed promotion grant 的受控 Compose 闭环；Gateway 已补齐 operator-scoped evidence 只读 API，前端审核页与真实 evidence 归档继续推进。B3 legacy tool capability 已收口为受治理 read capability。入站单次回复现可读取同会话、已审核的持久 Memory；默认写入与启用仍由 `AD-066` 的证据门槛约束。
 4. **退役评审**：在幂等、失败恢复、订阅审核和 Eval 门禁均有证据后，移除 Route A 的生产接线；代码目录再单独标记 deprecated 或删除。
 
 边界纪律：
