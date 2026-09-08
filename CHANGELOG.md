@@ -2757,3 +2757,4 @@
 - 2026-09-09：新增默认关闭的 `agent-promotion-experience.yml` 维护窗口 overlay，只为 Gateway 打开受认证的 Runtime promotion operator route，并要求显式 tenant。运行手册补齐绝对 mTLS 证书目录与容器 healthcheck 预检要求；默认 Compose、常驻体验 Gateway 和 Agent 写入边界均保持不变。
 - 2026-09-09：Remote GPU 体验 Core 已由 `experience-0b1c3f52` 热更至包含 promotion-control 装配的 `dipole-core:latest`（`2c81464e`）。B1 无预配置用户私聊仍收敛为单条回复与一次 consumed approval；短窗口 Gateway promotion overlay 已验证路由装配且普通认证用户得到 `403` operator denial，随后自动恢复为 route disabled。公共体验保持 12 个运行服务。
 - 2026-09-09：`manage-agent-promotion-operator-grant.sh` 新增 `--env-file`，通过 Compose 读取部署变量而不 source 文件。Remote GPU 完成 proposer/reviewer 短期授权与撤销演练：两个活动 operator grant 均写入审计，撤销后活动数归零、同一工单保留四条 grant/revoke 审计记录；未开启 promotion route、未签发 Runtime grant。
+- 2026-09-09：Remote GPU 公共 `dipole-agent` 已通过 mTLS Artifact RPC 发布一次低敏、合成的 promotion evidence receipt；对同一 Task/Run/Definition 输入重放返回相同 content-addressed artifact ID。该验证不打开 Gateway promotion route，不签发 Runtime promotion grant，也不触发 Subscription。
