@@ -245,7 +245,7 @@ func (v AgentToolActionReferenceV1) Validate() error {
 		return ErrAgentToolInvocationInvalid
 	}
 	switch v.CommandKind {
-	case AgentMessageCommandAssistantReplyV1, AgentMessageCommandSystemMessageV1:
+	case AgentMessageCommandAssistantReplyV1, AgentMessageCommandSystemMessageV1, AgentMessageCommandGroupReplyV1:
 		return nil
 	default:
 		return ErrAgentToolInvocationInvalid

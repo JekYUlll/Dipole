@@ -21,6 +21,10 @@ export interface KafkaConsumerFactoryPort {
 export interface KafkaShadowConsumerConfig {
   readonly groupId: string;
   readonly topic: string;
+  // Route B/B2: an optional second physical topic the same consumer group
+  // subscribes to (e.g. message.group.created alongside message.direct.created).
+  // Empty keeps the single-topic behaviour unchanged.
+  readonly additionalTopics?: readonly string[];
   readonly runtimeMode?: "shadow" | "active";
   readonly subscriptionActiveEnabled?: boolean;
   readonly startupAttempts?: number;
@@ -129,6 +133,14 @@ export class KafkaShadowConsumer {
       try {
         await consumer.connect();
         await consumer.subscribe({ topic: this.config.topic.trim(), fromBeginning: false });
+        for (const extra of this.config.additionalTopics ?? []) {
+          const topic = extra.trim();
+          if (topic.length === 0) continue;
+          await consumer.subscribe({ topic, fromBeginning: false });
+          if (this.failureRouter !== undefined) {
+            await consumer.subscribe({ topic: `${topic}.retry`, fromBeginning: false });
+          }
+        }
         if (this.failureRouter !== undefined) {
           await consumer.subscribe({ topic: `${this.config.topic.trim()}.retry`, fromBeginning: false });
         }

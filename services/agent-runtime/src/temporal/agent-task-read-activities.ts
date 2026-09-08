@@ -21,7 +21,7 @@ import type { ExecutionContext } from "../runtime/execution-context.js";
 import { agentElicitationSchemaVersion, validateElicitationForm, type AgentElicitationForm } from "../task/agent-elicitation.js";
 import type { AgentTaskResume } from "../task/agent-task-state.js";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
-import type { InteractiveReplyExecutor, SubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
+import type { GroupReplyExecutor, InteractiveReplyExecutor, SubscriptionMessageExecutor } from "../mcp/mcp-message-write-projection.js";
 
 const readScopeConfirmationKind = "dipole.agent.read-scope-confirmation.v1";
 const readScopeFieldId = "conversation";
@@ -67,6 +67,7 @@ export function createTemporalReadStepActivities(
     readonly interactiveMessage?: InteractiveMessageExecutor;
     readonly subscriptionMessage?: SubscriptionMessageExecutor;
     readonly interactiveReply?: InteractiveReplyExecutor;
+    readonly groupReply?: GroupReplyExecutor;
   }
 ): AgentTaskActivities {
   return {
@@ -134,8 +135,35 @@ export function createTemporalReadStepActivities(
         }
         return executeInteractiveMessageStep(input.taskId, input.runId, input.step, input.checkpoint, input.resume, event, context, interactiveMessage, dependencies.interactiveMessage);
       }
-      const confirmation = input.step === 0 ? undefined : resolveReadScopeConfirmation(input, context);
       const telemetry = dependencies.telemetry ?? new AgentTelemetry();
+      // Route B/B1 + B2: an inbound direct/group @-mention reply is a low-risk
+      // conversational answer. Skip the discovery-plan call — its reasoning pass
+      // burns 10k+ tokens / 80-90s to emit a ~150-char plan JSON the reply never
+      // needs — and answer the user's message in a single audited reply call,
+      // then deliver it through the same approval-bound message write.
+      const replyIntent = inboundReplyIntent(event);
+      if (input.step === 0 && runtimeMode === "active" && replyIntent !== undefined && dependencies.planner.reply !== undefined) {
+        return telemetry.withSpan("agent.reply", {
+          taskId: context.taskId, runId: context.runId,
+          attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType, "dipole.agent.reply.kind": replyIntent }
+        }, async span => {
+          const replyText = await dependencies.planner.reply!(event, context);
+          const plan: ShadowPlan = { summary: replyText, steps: [] };
+          const replyMessageAction = (await maybeSendSubscriptionReply(event, context, plan, runtimeMode, dependencies, telemetry))
+            ?? (await maybeSendGroupReply(event, context, plan, runtimeMode, dependencies, telemetry))
+            ?? (await maybeSendInteractiveReply(event, context, plan, runtimeMode, dependencies, telemetry));
+          if (replyMessageAction !== undefined) span.setAttribute("dipole.agent.run.reply", "sent");
+          return {
+            kind: "complete",
+            output: {
+              summary: replyText,
+              stepCount: 0,
+              ...(replyMessageAction === undefined ? {} : { replyMessageAction })
+            }
+          };
+        });
+      }
+      const confirmation = input.step === 0 ? undefined : resolveReadScopeConfirmation(input, context);
       return telemetry.withSpan("agent.run", {
         taskId: context.taskId, runId: context.runId,
         attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
@@ -192,6 +220,7 @@ export function createTemporalReadStepActivities(
         });
         span.setAttribute("dipole.agent.run.step_count", plan.steps.length);
         const replyMessageAction = (await maybeSendSubscriptionReply(event, context, plan, runtimeMode, dependencies, telemetry))
+          ?? (await maybeSendGroupReply(event, context, plan, runtimeMode, dependencies, telemetry))
           ?? (await maybeSendInteractiveReply(event, context, plan, runtimeMode, dependencies, telemetry));
         if (replyMessageAction !== undefined) span.setAttribute("dipole.agent.run.reply", "sent");
         return {
@@ -376,6 +405,52 @@ async function maybeSendInteractiveReply(
     { conversationId: directConversationKey(context.principalUuid, context.agentUuid), content, eventId: event.eventId, occurredAtUnixMs },
     context
   ));
+}
+
+// Route B/B2: a group @-mention interactive task replies in the group
+// conversation that mentioned the Agent. The group conversation id is carried
+// on the trigger event payload (group_uuid / conversation_key); if absent the
+// task is not a group mention and this is a no-op so the 1v1 path runs.
+async function maybeSendGroupReply(
+  event: { readonly eventType: string; readonly eventId: string; readonly occurredAt: string; readonly payload: Record<string, unknown> },
+  context: ExecutionContext,
+  plan: ShadowPlan,
+  runtimeMode: AgentRuntimeMode,
+  dependencies: { readonly groupReply?: GroupReplyExecutor },
+  telemetry: Pick<AgentTelemetry, "withSpan">
+): Promise<string | undefined> {
+  if (runtimeMode !== "active" || dependencies.groupReply === undefined || event.eventType !== "agent.interactive.requested") {
+    return undefined;
+  }
+  const groupUUID = typeof event.payload.group_uuid === "string" ? event.payload.group_uuid.trim() : "";
+  if (groupUUID === "") return undefined;
+  const content = plan.summary.trim().slice(0, maxSubscriptionReplyBytes);
+  if (content.length === 0) return undefined;
+  const occurredAtUnixMs = Date.parse(event.occurredAt);
+  if (!Number.isSafeInteger(occurredAtUnixMs)) return undefined;
+  const conversationId = typeof event.payload.conversation_key === "string" && event.payload.conversation_key.trim().startsWith("group:")
+    ? event.payload.conversation_key.trim()
+    : `group:${groupUUID}`;
+  const executor = dependencies.groupReply;
+  return telemetry.withSpan("agent.message.reply", {
+    taskId: context.taskId, runId: context.runId,
+    attributes: { "dipole.agent.message.kind": "group_reply" }
+  }, () => executor.execute(
+    { conversationId, content, eventId: event.eventId, occurredAtUnixMs },
+    context
+  ));
+}
+
+// inboundReplyIntent recognises the low-risk inbound reply triggers minted by
+// the runtime converter (shadow-runtime.ts) for a direct DM to the Agent or a
+// group @-mention. The lineage origin id is the trusted marker; a genuine owner
+// interactive goal (dipole-gateway) is not a reply and keeps the full plan path.
+function inboundReplyIntent(event: { readonly eventType: string; readonly lineage?: { readonly origin: { readonly id: string } } | undefined }): "direct" | "group" | undefined {
+  if (event.eventType !== "agent.interactive.requested") return undefined;
+  const origin = event.lineage?.origin.id;
+  if (origin === "dipole-inbound-group") return "group";
+  if (origin === "dipole-inbound-direct") return "direct";
+  return undefined;
 }
 
 function requestedInteractiveMessage(event: { readonly eventType: string; readonly payload: Record<string, unknown> }): { readonly content: string } | undefined {

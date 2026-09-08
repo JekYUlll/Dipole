@@ -361,6 +361,78 @@ func TestPersistentAgentToolInvocationAuditVerifiesMessageActionReference(t *tes
 	}
 }
 
+func TestPersistentAgentToolInvocationAuditVerifiesGroupReplyActionReference(t *testing.T) {
+	clientMessageID, err := application.AgentCommandClientMessageIDV1(application.AgentMessageCommandGroupReplyV1, "CMD-G")
+	if err != nil {
+		t.Fatalf("derive group client message ID: %v", err)
+	}
+	store := &agentToolAuditStoreStub{invocation: &application.AgentToolInvocationV1{
+		InvocationUUID: "INV-G", TaskUUID: "TASK-1", RunUUID: "RUN-1", PrincipalUUID: "U100", AgentUUID: "UAI",
+		CapabilityID:    application.AgentCapabilityGroupReplySend,
+		ArgumentsSHA256: testAuditSHA, ApprovalUUID: "APR-G", Status: application.AgentToolInvocationStatusRunning,
+	}}
+	// Route B/B2: the group conversation is recovered from the consumed
+	// group_reply approval scope, not stamped into the message-write invocation.
+	reader := agentToolApprovalReaderStub{approval: &application.AgentApprovalV1{
+		ApprovalUUID: "APR-G", TaskUUID: "TASK-1", CapabilityID: application.AgentCapabilityGroupReplySend,
+		ResourceScope:   application.AgentResourceScopeV1{ResourceType: application.AgentResourceTypeConversation, ResourceID: "group:G1", Actions: []string{application.AgentResourceActionWrite}},
+		ArgumentsSHA256: testAuditSHA, Status: application.AgentApprovalStatusConsumed,
+	}}
+	receipt := &application.MessageCommandReceipt{Status: application.MessageCommandReceiptStatusCommitted, Message: &model.Message{
+		UUID: "MSG-G", ClientMessageID: clientMessageID, ConversationKey: model.GroupConversationKey("G1"),
+		SenderUUID: "UAI", TargetUUID: "G1", TargetType: model.MessageTargetGroup, MessageType: model.MessageTypeAIText,
+	}}
+	service, _ := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{}, reader, agentToolReceiptQueryStub{receipt: receipt}, time.Now)
+	finish := application.AgentToolInvocationFinishV1{
+		InvocationUUID: "INV-G", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
+		ResultSHA256: testAuditSHA, ResultBytes: 64, LatencyMS: 9,
+		ActionReference: &application.AgentToolActionReferenceV1{ResourceType: application.AgentToolActionResourceMessage, ResourceUUID: "MSG-G", CommandKind: application.AgentMessageCommandGroupReplyV1, CommandID: "CMD-G"},
+	}
+	if err := service.Finish(context.Background(), finish); err != nil {
+		t.Fatalf("finish group reply invocation: %v", err)
+	}
+	if store.finished.ActionReference == nil || store.finished.ActionReference.CommandKind != application.AgentMessageCommandGroupReplyV1 {
+		t.Fatalf("group reply action reference was not persisted: %+v", store.finished)
+	}
+
+	// A receipt bound to a direct conversation must not satisfy a group reply.
+	store.finished = application.AgentToolInvocationFinishV1{}
+	receipt.Message.TargetType = model.MessageTargetDirect
+	receipt.Message.ConversationKey = model.DirectConversationKey("UAI", "U100")
+	if err := service.Finish(context.Background(), finish); !errors.Is(err, application.ErrAgentToolInvocationConflict) {
+		t.Fatalf("group reply must reject a direct-bound receipt: %v", err)
+	}
+}
+
+func TestPersistentAgentToolInvocationAuditRejectsGroupReplyWithoutApprovalScope(t *testing.T) {
+	clientMessageID, _ := application.AgentCommandClientMessageIDV1(application.AgentMessageCommandGroupReplyV1, "CMD-G")
+	store := &agentToolAuditStoreStub{invocation: &application.AgentToolInvocationV1{
+		InvocationUUID: "INV-G", TaskUUID: "TASK-1", RunUUID: "RUN-1", PrincipalUUID: "U100", AgentUUID: "UAI",
+		CapabilityID:    application.AgentCapabilityGroupReplySend,
+		ArgumentsSHA256: testAuditSHA, ApprovalUUID: "APR-G", Status: application.AgentToolInvocationStatusRunning,
+	}}
+	receipt := &application.MessageCommandReceipt{Status: application.MessageCommandReceiptStatusCommitted, Message: &model.Message{
+		UUID: "MSG-G", ClientMessageID: clientMessageID, ConversationKey: model.GroupConversationKey("G1"),
+		SenderUUID: "UAI", TargetUUID: "G1", TargetType: model.MessageTargetGroup, MessageType: model.MessageTypeAIText,
+	}}
+	finish := application.AgentToolInvocationFinishV1{
+		InvocationUUID: "INV-G", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
+		ResultSHA256: testAuditSHA, ResultBytes: 64, LatencyMS: 9,
+		ActionReference: &application.AgentToolActionReferenceV1{ResourceType: application.AgentToolActionResourceMessage, ResourceUUID: "MSG-G", CommandKind: application.AgentMessageCommandGroupReplyV1, CommandID: "CMD-G"},
+	}
+	// A non-group approval scope (e.g. a direct-conversation write) cannot bind a
+	// group reply, even when the delivered message looks group-shaped.
+	reader := agentToolApprovalReaderStub{approval: &application.AgentApprovalV1{
+		ApprovalUUID: "APR-G", TaskUUID: "TASK-1", CapabilityID: application.AgentCapabilityGroupReplySend,
+		ResourceScope:   application.AgentResourceScopeV1{ResourceType: application.AgentResourceTypeConversation, ResourceID: "direct:U100:UAI", Actions: []string{application.AgentResourceActionWrite}},
+		ArgumentsSHA256: testAuditSHA, Status: application.AgentApprovalStatusConsumed,
+	}}
+	service, _ := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1WithClock(store, agentToolAuditResolverStub{}, reader, agentToolReceiptQueryStub{receipt: receipt}, time.Now)
+	if err := service.Finish(context.Background(), finish); !errors.Is(err, application.ErrAgentToolInvocationConflict) {
+		t.Fatalf("group reply must reject a non-group approval scope: %v", err)
+	}
+}
+
 func TestPersistentAgentToolInvocationAuditWaitsForAsyncMessageReceipt(t *testing.T) {
 	clientMessageID, err := application.AgentCommandClientMessageIDV1(application.AgentMessageCommandSystemMessageV1, "CMD-ASYNC")
 	if err != nil {

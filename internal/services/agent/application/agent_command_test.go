@@ -50,6 +50,21 @@ func (s *agentCommandMessagesStub) SendSystemDirectMessageCommandContext(ctx con
 	return commandStubMessage("M-SYSTEM", sender, target, content, clientMessageID, model.MessageTypeSystem), nil
 }
 
+func (s *agentCommandMessagesStub) SendAssistantGroupMessageContext(ctx context.Context, sender, groupUUID, content, clientMessageID string) (*model.Message, error) {
+	s.record(ctx, application.AgentMessageCommandGroupReplyV1, sender, groupUUID, content, clientMessageID)
+	if s.sendErr != nil {
+		return nil, s.sendErr
+	}
+	if s.sendMessage != nil {
+		return s.sendMessage, nil
+	}
+	return &model.Message{
+		UUID: "M-GROUP-REPLY", SenderUUID: sender, TargetUUID: groupUUID, TargetType: model.MessageTargetGroup,
+		ConversationKey: model.GroupConversationKey(groupUUID), Content: content,
+		ClientMessageID: clientMessageID, MessageType: model.MessageTypeAIText,
+	}, nil
+}
+
 func (s *agentCommandMessagesStub) GetMessageCommandReceiptContext(ctx context.Context, sender, clientMessageID string) (*application.MessageCommandReceipt, error) {
 	s.receiptSender, s.receiptClientID = sender, clientMessageID
 	s.receiptContextErr = ctx.Err()
@@ -110,6 +125,39 @@ func TestLocalAgentCommandV1RoutesTrustedIdentityAndCorrelation(t *testing.T) {
 	}
 	if messages.lineage.Origin.ID != "UAI" || messages.lineage.AgentTaskID != "TASK-1" || messages.lineage.CausationEventID != "EVENT-1" {
 		t.Fatalf("command lost event lineage: %+v", messages.lineage)
+	}
+}
+
+// TestLocalAgentCommandV1RoutesGroupReplyToGroupConversation verifies that a
+// group_reply command targets the group conversation (group:<uuid>) and is
+// dispatched through the assistant group-message sender. Route B/B2.
+func TestLocalAgentCommandV1RoutesGroupReplyToGroupConversation(t *testing.T) {
+	t.Parallel()
+	messages := &agentCommandMessagesStub{}
+	commands, err := NewLocalAgentCommandV1(messages)
+	if err != nil {
+		t.Fatalf("new Agent Command: %v", err)
+	}
+	invocation := agentCommandTestInvocation()
+	command := application.AgentMessageCommandV1{
+		CommandID:       "trigger:G1:group-reply",
+		Kind:            application.AgentMessageCommandGroupReplyV1,
+		Invocation:      invocation,
+		Content:         "hi group",
+		ConversationKey: "group:G-ROOM-1",
+	}
+	message, err := commands.SendMessage(context.Background(), command)
+	if err != nil {
+		t.Fatalf("send group Agent Message Command: %v", err)
+	}
+	if message.UUID != "M-GROUP-REPLY" || messages.kind != application.AgentMessageCommandGroupReplyV1 {
+		t.Fatalf("unexpected group command route: message=%+v stub=%+v", message, messages)
+	}
+	if messages.sender != "UAI" || messages.target != "G-ROOM-1" || messages.content != "hi group" {
+		t.Fatalf("group command did not route to the group: %+v", messages)
+	}
+	if message.TargetType != model.MessageTargetGroup || message.ConversationKey != "group:G-ROOM-1" {
+		t.Fatalf("group reply message shape = %+v", message)
 	}
 }
 

@@ -74,6 +74,20 @@ func (s *lazyCoreMessageSender) SendAssistantTextMessageContext(ctx context.Cont
 	return client.SendAssistantTextMessageContext(ctx, assistantUUID, targetUUID, content, clientMessageID)
 }
 
+// SendAssistantGroupMessageContext delivers an AI-text group reply from the
+// assistant (Route B/B2). It reuses SendGroupMessageContext, which the Message
+// domain already stamps as MessageTypeAIText when the sender is the assistant.
+// The push-target list is dropped here so the Agent Command boundary stays a
+// single-message write, mirroring the 1v1 assistant-reply path.
+func (s *lazyCoreMessageSender) SendAssistantGroupMessageContext(ctx context.Context, assistantUUID, groupUUID, content, clientMessageID string) (*model.Message, error) {
+	client, err := s.getClient()
+	if err != nil {
+		return nil, err
+	}
+	message, _, err := client.SendGroupMessageContext(ctx, assistantUUID, groupUUID, content, clientMessageID)
+	return message, err
+}
+
 func (s *lazyCoreMessageSender) SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
 	client, err := s.getClient()
 	if err != nil {

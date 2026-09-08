@@ -18,7 +18,7 @@ export interface DipoleMcpReadToolProjection extends DipoleMcpToolProjectionBase
 }
 
 export interface DipoleMcpWriteToolProjection extends DipoleMcpToolProjectionBase {
-  commandKind: "assistant_reply" | "system_message";
+  commandKind: "assistant_reply" | "system_message" | "group_reply";
 }
 
 export type DipoleMcpToolProjection = DipoleMcpReadToolProjection | DipoleMcpWriteToolProjection;

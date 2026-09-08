@@ -1,0 +1,81 @@
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            Install the buildx component to build images with BuildKit:
+            https://docs.docker.com/go/buildx/
+
+Sending build context to Docker daemon  3.604MB
+Step 1/23 : FROM node:22-bookworm-slim AS build
+ ---> 83f487e0a634
+Step 2/23 : WORKDIR /app
+ ---> Using cache
+ ---> a6cebb12443e
+Step 3/23 : COPY package.json package-lock.json ./
+ ---> Using cache
+ ---> e1323e5a8008
+Step 4/23 : RUN npm ci --ignore-scripts
+ ---> Using cache
+ ---> ad2dd1d602f9
+Step 5/23 : COPY tsconfig.json ./
+ ---> Using cache
+ ---> b069b43c9434
+Step 6/23 : COPY src ./src
+ ---> 41ec15699cf2
+Step 7/23 : RUN npm run build
+ ---> Running in 67fbbd280eab
+
+> dipole-agent-runtime@0.1.0 build
+> tsc -p tsconfig.json
+
+ ---> Removed intermediate container 67fbbd280eab
+ ---> 69007ebd6bb2
+Step 8/23 : FROM node:22-bookworm-slim AS production-dependencies
+ ---> 83f487e0a634
+Step 9/23 : WORKDIR /app
+ ---> Using cache
+ ---> a6cebb12443e
+Step 10/23 : COPY package.json package-lock.json ./
+ ---> Using cache
+ ---> e1323e5a8008
+Step 11/23 : RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+ ---> Using cache
+ ---> c9980513b296
+Step 12/23 : FROM node:22-bookworm-slim
+ ---> 83f487e0a634
+Step 13/23 : ARG DIPOLE_VCS_REVISION=unknown
+ ---> Using cache
+ ---> 1223d169ba20
+Step 14/23 : ARG DIPOLE_BUILD_CREATED=unknown
+ ---> Using cache
+ ---> eb765bd7e999
+Step 15/23 : ARG DIPOLE_VCS_DIRTY=unknown
+ ---> Using cache
+ ---> 01749fef5623
+Step 16/23 : LABEL org.opencontainers.image.revision="${DIPOLE_VCS_REVISION}"       org.opencontainers.image.created="${DIPOLE_BUILD_CREATED}"       io.dipole.source.dirty="${DIPOLE_VCS_DIRTY}"
+ ---> Running in e6f130bfa6c6
+ ---> Removed intermediate container e6f130bfa6c6
+ ---> 6cb725c147cc
+Step 17/23 : WORKDIR /app
+ ---> Running in 7551db9d1c48
+ ---> Removed intermediate container 7551db9d1c48
+ ---> 6c7cfba1b336
+Step 18/23 : ENV NODE_ENV=production
+ ---> Running in d0399fd17730
+ ---> Removed intermediate container d0399fd17730
+ ---> f6ae317c20c7
+Step 19/23 : COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
+ ---> e85482a26e9c
+Step 20/23 : COPY --from=build --chown=node:node /app/dist ./dist
+ ---> 9931409f95d8
+Step 21/23 : USER node
+ ---> Running in 251e446016cc
+ ---> Removed intermediate container 251e446016cc
+ ---> 8479d214cf46
+Step 22/23 : EXPOSE 8091
+ ---> Running in c9c048f551dd
+ ---> Removed intermediate container c9c048f551dd
+ ---> f544abd12375
+Step 23/23 : CMD ["node", "dist/index.js"]
+ ---> Running in a12f080876d9
+ ---> Removed intermediate container a12f080876d9
+ ---> a0420c6da3e7
+Successfully built a0420c6da3e7
+Successfully tagged dipole-agent:latest
