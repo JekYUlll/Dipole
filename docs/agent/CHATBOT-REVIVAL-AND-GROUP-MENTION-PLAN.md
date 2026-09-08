@@ -8,7 +8,7 @@
 |---|---|---|
 | 代码 | `internal/services/agent/legacy/`（package `ai`，基于 eino） | `services/agent-runtime/`（TS）+ `internal/services/agent/`（Go） |
 | 触发 | 私信小助手即自动回（`HandleDirectMessage` 消费 `message.direct.created`） | B1 私聊与 B2 群 @ 生成 `agent.interactive.requested`；也支持显式任务 |
-| 多轮 | 有（最近 12 条上下文，`context_builder.go`） | 无（一 task 一回复） |
+| 多轮 | 有（最近 12 条上下文，`context_builder.go`） | 有：每条入站消息创建一个可恢复 Task，`reply()` 读取同一会话最近 12 条作为短期上下文；默认不写入持久 Memory |
 | 工具 | 5 个：查用户资料 / 搜历史 / 列会话 / 读会话 / 发系统消息（`tools.go`） | user.profile.read、conversation.list/read/search 与受控消息发送 |
 | 模型 | eino：openai / ollama（`model_factory.go`） | DeepSeek via AI SDK |
 | 装配 | 仅 embedded 单体（`embedded/kafka.go:103`） | microservices（体验环境） |
@@ -89,7 +89,7 @@
 - 把发给 `UAI0001` 的 `message.direct.created` 在 `direct_target` 档接成"起 interactive task"（复用 `InteractiveTaskStartService` 的等价链路，或新增 inbound→task dispatcher）。
 - 复用已上线的 assistant_reply 闭环（`AuthorizeInteractiveReply` + `createInteractiveReplyExecutor`），实现真·多轮 1v1。
 - 认证用户的显式交互任务使用相同的 `agent.interactive.requested` admission 语义：无 Subscription 且没有可提升 owner Definition 时回退到 `lowrisk-assistant:v1`，不要求用户先创建 Definition。
-- 会话上下文：交互任务读取直属会话最近 N 条作为 prompt。
+- 会话上下文：交互任务读取直属会话最近 12 条作为 prompt，并按消息序列从旧到新投影为不可信文本；每条消息仍独立生成可恢复 Task，默认不写入持久 Memory。
 验收：私信小助手多轮对话，每轮经 admission/approval/审计。
 
 ## B2. 群 @ 触发（治理版）

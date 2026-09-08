@@ -1,3 +1,5 @@
+- 2026-09-08：校正 Route B 入站多轮语义：每条私聊或群 @ 消息独立生成可恢复 Temporal Task，但 dedicated `reply()` 会以最少一次受权会话读取将最近 12 条消息按序提供给模型。该能力属于短期会话上下文；持久 Memory 默认保持关闭。
+
 - 2026-09-08：Remote GPU 使用 `DIPOLE_ENV_FILE` 完成隔离 Web Sync observability smoke；Core、Message、Sync、Gateway 指标目标与 Prometheus/Alertmanager readiness 均通过，隔离资源清理为零且公共体验栈保持 11 容器。低敏记录见 [`web-sync-observability-smoke-2026-09-08`](benchmarks/web-sync-observability-smoke-2026-09-08/)。该验证未启动真实客户端 24 小时观察窗口。
 
 - 2026-09-08：Web Sync observability smoke 新增可选 `DIPOLE_ENV_FILE` 输入，并通过 Compose `--env-file` 统一用于预检、启动与清理。隔离 worktree 可复用受控部署环境的模型配置而不复制、打印或 `source` 凭据；未设置时原有默认路径不变，给出不可读路径时 fail closed。

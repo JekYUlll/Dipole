@@ -40,6 +40,8 @@
 
 - 2026-09-08：A6 隔离 observability worktree 缺少模型 Provider 配置时，Compose 在渲染阶段因必填变量 fail closed。smoke 现提供可选 `DIPOLE_ENV_FILE`，以 `docker compose --env-file` 将受控环境文件应用到 config、up 和 down，避免 `source`、复制或输出凭据；文件不可读时在启动前拒绝。Remote GPU 已验证受限体验 `.env` 可通过 Compose config preflight，完整隔离 smoke 与真实 24 小时客户端观察窗口仍待执行。
 
+- 2026-09-08：Route B 文档曾把「一条消息对应一个 Temporal Task」简写为缺少多轮能力，和 Runtime 实际行为不一致。`ModelShadowPlanner.reply()` 已用受权 `conversation.read` 读取同会话最近 12 条消息、按 Seq 排序后作为不可信短期上下文；每条消息继续独立创建可恢复 Task，持久 Memory 默认关闭。此项只校正能力边界，不构成 Memory 默认启用或长会话持久化证据。
+
 - 2026-09-08：Remote GPU 已在 `3f6398aa3` 用隔离 `dipole-web-sync-observability` 项目复验 A6 observability smoke。受控 `.env` 仅经 Compose `--env-file` 读取，Core、Message、Sync、Gateway 的 `dipole-required` target 与 Prometheus/Alertmanager readiness 全部通过；退出后候选容器为零，公共 `dipole-experience` 保持 11 个容器。低敏 [receipt](../../benchmarks/web-sync-observability-smoke-2026-09-08/) 已记录日志哈希。真实浏览器 24 小时窗口、原始 Prometheus 响应归档、对象版本与责任人批准继续为 A6 前置条件。
 
 - 2026-09-04：`internal/services/core/rpcpolicy` 的 `dipole-agent` 方法许可清单补齐 `AppendAgentTaskTimelineEvent` 与 `SearchConversations` 两条 Runtime 生产调用；缺失时前者被静默吞（`model-router.ts:205` 明确「Timeline is a secondary projection」），后者在 retrieval opt-in 开启后 fail closed。新增 `TestAgentServiceMethodAllowlistCoversRuntimeInvocations` 枚举 `agent-capability-rpc.ts` 的所有 30 个 `this.rpc.<method>` 调用作为回归护栏，未来 Runtime 新加 capability 客户端方法必须同时进 allowlist。策略仍是允许清单+拒绝其余，Gateway/Search/Sync 语义不变。
