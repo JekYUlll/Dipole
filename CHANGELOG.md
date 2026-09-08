@@ -1,3 +1,5 @@
+- 2026-09-08：新增可重复的 Remote GPU B1 owner Definition fallback 回归脚本。它以新 owner 创建默认只读 Definition、确认无 active promotion grant，再发送新私聊；验收任务固定到 `lowrisk-assistant:v1`、`completed:completed`、一条助手回复和一条 consumed `message.assistant_reply.send` 审批。体验环境已实跑通过，公共 `dipole-experience` 保持 11 个健康容器。
+
 - 2026-09-08：Subscription Active smoke 现以可执行脚本形式交付，并由静态门禁确认 checkout 后保留执行位；运行手册中的路径命令可直接在干净 Remote GPU worktree 运行。
 
 - 2026-09-08：Subscription Active 的确定性 Compose smoke 已改为按模型请求 schema 返回严格的 Plan 或 synthesis JSON，避免把 `steps` 字段带入 synthesis 而耗尽模型预算。Remote GPU 隔离项目复验：Definition、owner-scoped Subscription、短期 grant 与单个 Kafka 事件收敛为一个 completed durable read Task，至少一条模型调用完成且 Agent 消息为零；退出后隔离资源为零，公共 `dipole-experience` 保持 11 个健康容器。该 smoke 的 grant 仍为受控 fixture，operator proposal/review 到 owner Definition grant 的产品闭环继续待做。
