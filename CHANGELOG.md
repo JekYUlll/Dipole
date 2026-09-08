@@ -2675,3 +2675,4 @@
 - 2026-08-30：Multipart 真实对账 smoke 增加可选 Redis 重启故障注入：在匹配状态建立后重启隔离 Redis，验证 metadata 丢失被识别、MinIO 未完成 upload 仍可清理、孤儿 Redis drift 仍可报告；默认 smoke 路径不变，GPU 任务可并行运行且测试资源自动清理。
 - **A7 Multipart cleanup fail-closed**：MinIO 未完成上传扫描错误现在会进入结构化报告并阻止清理命令成功返回，避免部分扫描被误判为完整生命周期证据。
 - 2026-09-08：恢复 Agent Runtime 全量 TypeScript 门禁。消息写入投影测试现在以 `AgentCapabilityRPCClient` 的精确方法签名声明 mock，并保留 capability 窄联合类型；外部 MCP 全栈夹具同步了群入站 topic、mention aliases 与助手昵称。`npm test -- --run` 通过 913 项测试（40 项环境跳过），`npm run typecheck` 和生产构建通过。
+- 2026-09-08：Route B · B3 的 capability 迁移完成收口。受治理 Runtime 已覆盖用户资料、会话 list/read/search；Route A 的 Eino 包标记为 deprecated 且仅保留默认关闭的回退基线。后续新能力不得再接入 legacy 工具面，物理删除仍等待订阅审核、Eval 与正式退役评审。

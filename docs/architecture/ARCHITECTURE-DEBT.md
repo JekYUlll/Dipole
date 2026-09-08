@@ -2,6 +2,8 @@
 
 ### AD-065：Route B EventLedger 的真实失败恢复与群 @ 终态证据
 
+- 2026-09-08：Route B · B3 已完成 legacy capability 的治理收口。`user.profile.read`、`conversation.list`、`conversation.read` 与可选 `conversation.search` 均经 Core Task/Run authority、Runtime Registry 和 Tool invocation audit 执行；Eino `legacy` 包已标记为 deprecated，体验环境的 Route A handler 保持关闭。物理删除继续依赖订阅审核、Eval 和正式退役评审，保留独立回退基线。
+
 - **优先级：** P0
 - **状态：** 已完成（开发期体验环境）
 - **发现日期：** 2026-09-08
