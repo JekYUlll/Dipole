@@ -1,5 +1,7 @@
 # Dipole 面试问答整理
 
+> 文档治理入口已迁移到 [PROJECT-LEARNING-AND-INTERVIEW.md](PROJECT-LEARNING-AND-INTERVIEW.md)。请先阅读 [Dipole IM 面试分册](INTERVIEW-IM.md)、[Dipole Agent 面试分册](INTERVIEW-AGENT.md) 和 [面试技术参考](INTERVIEW-TECHNICAL-REFERENCE.md)。本文件保留历史问答和兼容链接；出现冲突时，以新分册和当前代码证据为准。
+
 > 这是一份持续维护的讲解材料。涉及旧模块名、旧目录或旧技术栈的答案，应以当前架构文档和代码为准。
 
 ## 1. 项目自我介绍
