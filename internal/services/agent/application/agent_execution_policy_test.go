@@ -160,6 +160,25 @@ func (s *agentPolicyStoreStub) GetRun(_ context.Context, uuid string) (*applicat
 	return &copy, nil
 }
 
+func (s *agentPolicyStoreStub) GetLatestRun(_ context.Context, taskUUID, runtimeID, mode string) (*application.AgentRunV1, error) {
+	var latest *application.AgentRunV1
+	for _, run := range s.runs {
+		if run.TaskUUID != taskUUID || run.RuntimeID != runtimeID || run.Mode != mode {
+			continue
+		}
+		attempt := run.Attempt
+		if attempt == 0 {
+			attempt = 1
+		}
+		if latest == nil || attempt > latest.Attempt {
+			copy := *run
+			copy.Attempt = attempt
+			latest = &copy
+		}
+	}
+	return latest, nil
+}
+
 func (s *agentPolicyStoreStub) TransitionRunStatus(_ context.Context, uuid string, from, to application.AgentRunStatusV1, lastError string) (bool, error) {
 	run := s.runs[uuid]
 	if run == nil || run.Status != from {
@@ -546,6 +565,53 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 	}
 	if err := admission.Complete(context.Background(), first.TaskUUID, first.RunUUID, "forged-runtime", "shadow"); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
 		t.Fatalf("forged Runtime completion should be denied, got %v", err)
+	}
+}
+
+func TestPersistentAgentRunAdmissionReclaimsFailedTaskWithNewRunAttempt(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 9, 8, 8, 0, 0, 0, time.UTC)
+	definition := activeAgentDefinitionV1(1, now.Add(-time.Hour), []string{application.AgentPermissionConversationRead})
+	definition.OwnerUUID = "U100"
+	store := policyStoreWithDefinitionV1(definition)
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
+	if err != nil {
+		t.Fatalf("new Run admission: %v", err)
+	}
+	request := application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "shadow",
+	}
+	request.SubscriptionUUID = "SUB-RETRY"
+	store.subscriptions = map[string]*application.AgentEventSubscriptionV1{
+		"SUB-RETRY": {
+			SubscriptionUUID: "SUB-RETRY", DefinitionUUID: definition.DefinitionUUID, DefinitionVersion: definition.Version,
+			TenantID: "dipole", AgentUUID: "UAI", Status: application.AgentSubscriptionStatusActive,
+			EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "*",
+			FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`), CreatedByUUID: definition.OwnerUUID,
+		},
+	}
+
+	first, err := admission.Admit(context.Background(), request)
+	if err != nil {
+		t.Fatalf("admit first Run: %v", err)
+	}
+	if err := admission.Finish(context.Background(), first.TaskUUID, first.RunUUID, "dipole-agent", "shadow", application.AgentRunStatusFailed, "model unavailable"); err != nil {
+		t.Fatalf("fail first Run: %v", err)
+	}
+	second, err := admission.Admit(context.Background(), request)
+	if err != nil {
+		t.Fatalf("reclaim failed Task: %v", err)
+	}
+	if second.TaskUUID != first.TaskUUID || second.RunUUID == first.RunUUID || second.RunStatus != application.AgentRunStatusRunning {
+		t.Fatalf("retry admission = %+v, first=%+v", second, first)
+	}
+	if store.runs[first.RunUUID].Attempt != 1 || store.runs[second.RunUUID].Attempt != 2 || store.tasks[first.TaskUUID].Status != application.AgentTaskStatusRunning {
+		t.Fatalf("retry persistence did not advance immutable attempt: first=%+v second=%+v task=%+v", store.runs[first.RunUUID], store.runs[second.RunUUID], store.tasks[first.TaskUUID])
+	}
+	replay, err := admission.Admit(context.Background(), request)
+	if err != nil || replay.RunUUID != second.RunUUID || replay.RunStatus != application.AgentRunStatusRunning {
+		t.Fatalf("retry replay did not converge: replay=%+v err=%v", replay, err)
 	}
 }
 

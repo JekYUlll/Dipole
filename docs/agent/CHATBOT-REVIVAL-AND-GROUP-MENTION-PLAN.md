@@ -27,7 +27,8 @@
 - 新注册、无 Definition 与 grant 的用户私聊已通过端到端验收：任务完成、Definition 固定为 `lowrisk-assistant:v1`、只发送一条助手回复，且 `message.assistant_reply.send` 审批已消费。
 - 新注册用户创建群并 `@Dipole AI` 的端到端验收也已通过：任务完成、只发送一条群助手回复，且 `message.group_reply.send` 审批已消费。
 - 复验命令（Remote GPU，2026-09-08）：`bash scripts/e2e-b1-inbound-interactive.sh` 与 `bash scripts/e2e-b2-group-mention.sh` 均通过。两次均使用新注册用户和新消息 UUID；B1 任务 `task:17c04102…`、B2 任务 `task:2ed73bfd…` 均收敛为 `completed:completed`，各自只有一条助手消息和一条已消费审批。
-- 下一个正确性切片：失败 workflow 的 event ledger 可 reclaim/retry；订阅路径创建 Definition 后提供经审核的 owner grant 绑定；Definition 抽屉说明明确“私聊和群 @ 无需先创建 Definition”。
+- 2026-09-08：失败 workflow 的 reclaim/retry 已形成可恢复执行代际：同一消息仍映射同一 Task，失败后 EventLedger release 可触发新的 Run attempt；attempt 1 的终态记录和 attempt 2 的新 Temporal execution 均保留。稳定 workflow ID 仅接受 failed-only reuse，完成、取消或运行中的任务不会被新事件重开。真实 Remote GPU 失败后重投演练仍待执行，见 AD-065。
+- 下一个正确性切片：订阅路径创建 Definition 后提供经审核的 owner grant 绑定；Definition 抽屉说明明确“私聊和群 @ 无需先创建 Definition”。
 
 ## 1. 目标与验收
 - G1：私信小助手 → 自动 AI 回复，能调用工具（1v1 多轮对话恢复）。

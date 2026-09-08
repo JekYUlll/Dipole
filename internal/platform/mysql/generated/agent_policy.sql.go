@@ -470,7 +470,7 @@ func (q *Queries) GetAgentEventSubscription(ctx context.Context, subscriptionUui
 }
 
 const getAgentRun = `-- name: GetAgentRun :one
-SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at, candidate_version, trace_id FROM agent_runs WHERE run_uuid = ? LIMIT 1
+SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at, candidate_version, trace_id, attempt FROM agent_runs WHERE run_uuid = ? LIMIT 1
 `
 
 func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, error) {
@@ -490,6 +490,7 @@ func (q *Queries) GetAgentRun(ctx context.Context, runUuid string) (AgentRun, er
 		&i.UpdatedAt,
 		&i.CandidateVersion,
 		&i.TraceID,
+		&i.Attempt,
 	)
 	return i, err
 }
@@ -652,6 +653,41 @@ func (q *Queries) GetAgentWorkflowRepairProposal(ctx context.Context, proposalUu
 		&i.DecidedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getLatestAgentRunForTaskRuntimeMode = `-- name: GetLatestAgentRunForTaskRuntimeMode :one
+SELECT id, run_uuid, task_uuid, runtime_id, mode, status, started_at, completed_at, last_error, created_at, updated_at, candidate_version, trace_id, attempt FROM agent_runs
+WHERE task_uuid = ? AND runtime_id = ? AND mode = ?
+ORDER BY attempt DESC
+LIMIT 1
+`
+
+type GetLatestAgentRunForTaskRuntimeModeParams struct {
+	TaskUuid  string
+	RuntimeID string
+	Mode      string
+}
+
+func (q *Queries) GetLatestAgentRunForTaskRuntimeMode(ctx context.Context, arg GetLatestAgentRunForTaskRuntimeModeParams) (AgentRun, error) {
+	row := q.db.QueryRowContext(ctx, getLatestAgentRunForTaskRuntimeMode, arg.TaskUuid, arg.RuntimeID, arg.Mode)
+	var i AgentRun
+	err := row.Scan(
+		&i.ID,
+		&i.RunUuid,
+		&i.TaskUuid,
+		&i.RuntimeID,
+		&i.Mode,
+		&i.Status,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.LastError,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CandidateVersion,
+		&i.TraceID,
+		&i.Attempt,
 	)
 	return i, err
 }
@@ -823,8 +859,8 @@ func (q *Queries) InsertAgentEventSubscription(ctx context.Context, arg InsertAg
 
 const insertAgentRun = `-- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
-    run_uuid, task_uuid, runtime_id, candidate_version, trace_id, mode, status, started_at
-) VALUES (?, ?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP())
+    run_uuid, task_uuid, runtime_id, candidate_version, trace_id, mode, attempt, status, started_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP())
 `
 
 type InsertAgentRunParams struct {
@@ -834,6 +870,7 @@ type InsertAgentRunParams struct {
 	CandidateVersion sql.NullString
 	TraceID          sql.NullString
 	Mode             string
+	Attempt          uint16
 }
 
 func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) (int64, error) {
@@ -844,6 +881,7 @@ func (q *Queries) InsertAgentRun(ctx context.Context, arg InsertAgentRunParams) 
 		arg.CandidateVersion,
 		arg.TraceID,
 		arg.Mode,
+		arg.Attempt,
 	)
 	if err != nil {
 		return 0, err
@@ -1054,8 +1092,11 @@ const listAgentTaskWorkflowProjectionSnapshots = `-- name: ListAgentTaskWorkflow
 SELECT t.task_uuid, t.workflow_id, t.workflow_run_id, t.workflow_status,
        t.workflow_revision, t.workflow_updated_at
 FROM agent_tasks AS t
-JOIN agent_runs AS r ON r.task_uuid = t.task_uuid
-WHERE r.runtime_id = ? AND r.mode = ? AND t.task_uuid > ?
+WHERE EXISTS (
+    SELECT 1 FROM agent_runs AS r
+    WHERE r.task_uuid = t.task_uuid AND r.runtime_id = ? AND r.mode = ?
+)
+  AND t.task_uuid > ?
 ORDER BY t.task_uuid ASC
 LIMIT ?
 `
@@ -1534,6 +1575,42 @@ WHERE p.proposal_uuid = ? AND p.status = 'proposed'
 
 func (q *Queries) RejectAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error) {
 	result, err := q.db.ExecContext(ctx, rejectAgentWorkflowRepairProposal, proposalUuid)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const restartFailedAgentTaskWorkflowState = `-- name: RestartFailedAgentTaskWorkflowState :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,
+    workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ?
+  AND workflow_status = 'failed'
+  AND workflow_run_id <> ?
+`
+
+type RestartFailedAgentTaskWorkflowStateParams struct {
+	WorkflowID       sql.NullString
+	WorkflowRunID    sql.NullString
+	WorkflowStatus   sql.NullString
+	WorkflowRevision sql.NullInt64
+	TaskUuid         string
+	WorkflowID_2     sql.NullString
+	WorkflowRunID_2  sql.NullString
+}
+
+func (q *Queries) RestartFailedAgentTaskWorkflowState(ctx context.Context, arg RestartFailedAgentTaskWorkflowStateParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, restartFailedAgentTaskWorkflowState,
+		arg.WorkflowID,
+		arg.WorkflowRunID,
+		arg.WorkflowStatus,
+		arg.WorkflowRevision,
+		arg.TaskUuid,
+		arg.WorkflowID_2,
+		arg.WorkflowRunID_2,
+	)
 	if err != nil {
 		return 0, err
 	}

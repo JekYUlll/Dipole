@@ -465,6 +465,22 @@ func (r *AgentPolicyRepository) ProjectTaskWorkflowState(ctx context.Context, pr
 	if rows > 0 {
 		return true, nil
 	}
+	// Temporal starts a fresh execution with the stable Task workflow ID after
+	// a failed inbound delivery. Only a new running execution may replace the
+	// failed Run binding; completed and in-flight executions remain immutable.
+	if projection.Status == application.AgentTaskWorkflowStatusRunning {
+		restarted, restartErr := r.queries.RestartFailedAgentTaskWorkflowState(ctx, generated.RestartFailedAgentTaskWorkflowStateParams{
+			WorkflowID: workflowID, WorkflowRunID: workflowRunID,
+			WorkflowStatus: sql.NullString{String: string(projection.Status), Valid: true}, WorkflowRevision: revision,
+			TaskUuid: projection.TaskUUID, WorkflowID_2: workflowID, WorkflowRunID_2: workflowRunID,
+		})
+		if restartErr != nil {
+			return false, fmt.Errorf("restart failed Agent Task Workflow state: %w", restartErr)
+		}
+		if restarted > 0 {
+			return true, nil
+		}
+	}
 	existing, err := r.GetTask(ctx, projection.TaskUUID)
 	if err != nil {
 		return false, err
@@ -500,6 +516,9 @@ func (r *AgentPolicyRepository) ListTaskWorkflowProjectionSnapshots(ctx context.
 }
 
 func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.AgentRunV1) (bool, error) {
+	if run.Attempt == 0 {
+		run.Attempt = 1
+	}
 	if err := run.Validate(); err != nil {
 		return false, fmt.Errorf("validate Agent Run: %w", err)
 	}
@@ -507,7 +526,7 @@ func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.A
 		_, err := q.InsertAgentRun(ctx, generated.InsertAgentRunParams{
 			RunUuid: run.RunUUID, TaskUuid: run.TaskUUID, RuntimeID: run.RuntimeID,
 			CandidateVersion: sql.NullString{String: run.CandidateVersion, Valid: run.CandidateVersion != ""},
-			TraceID:          sql.NullString{String: run.TraceID, Valid: run.TraceID != ""}, Mode: run.Mode,
+			TraceID:          sql.NullString{String: run.TraceID, Valid: run.TraceID != ""}, Mode: run.Mode, Attempt: run.Attempt,
 		})
 		if err == nil {
 			_, err = appendAgentTaskTimelineEvent(ctx, q, timelineEvent(run.TaskUUID, run.RunUUID, application.AgentTaskTimelineEventRun, string(application.AgentRunStatusRunning)))
@@ -531,7 +550,7 @@ func (r *AgentPolicyRepository) CreateRun(ctx context.Context, run application.A
 	if lookupErr != nil {
 		return false, lookupErr
 	}
-	if existing == nil || existing.TaskUUID != run.TaskUUID || existing.RuntimeID != run.RuntimeID || existing.CandidateVersion != run.CandidateVersion || existing.TraceID != run.TraceID || existing.Mode != run.Mode {
+	if existing == nil || existing.TaskUUID != run.TaskUUID || existing.RuntimeID != run.RuntimeID || existing.CandidateVersion != run.CandidateVersion || existing.TraceID != run.TraceID || existing.Mode != run.Mode || existing.Attempt != run.Attempt {
 		return false, fmt.Errorf("%w: run_uuid=%s", ErrAgentPolicyConflict, run.RunUUID)
 	}
 	return false, nil
@@ -547,7 +566,24 @@ func (r *AgentPolicyRepository) GetRun(ctx context.Context, runUUID string) (*ap
 	}
 	return &application.AgentRunV1{
 		RunUUID: row.RunUuid, TaskUUID: row.TaskUuid, RuntimeID: row.RuntimeID, CandidateVersion: row.CandidateVersion.String, TraceID: row.TraceID.String, Mode: row.Mode,
-		Status: application.AgentRunStatusV1(row.Status), StartedAt: row.StartedAt,
+		Attempt: uint16(row.Attempt), Status: application.AgentRunStatusV1(row.Status), StartedAt: row.StartedAt,
+		CompletedAt: timePointer(row.CompletedAt), LastError: row.LastError.String,
+	}, nil
+}
+
+func (r *AgentPolicyRepository) GetLatestRun(ctx context.Context, taskUUID, runtimeID, mode string) (*application.AgentRunV1, error) {
+	row, err := r.queries.GetLatestAgentRunForTaskRuntimeMode(ctx, generated.GetLatestAgentRunForTaskRuntimeModeParams{
+		TaskUuid: strings.TrimSpace(taskUUID), RuntimeID: strings.TrimSpace(runtimeID), Mode: strings.TrimSpace(mode),
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get latest Agent Run: %w", err)
+	}
+	return &application.AgentRunV1{
+		RunUUID: row.RunUuid, TaskUUID: row.TaskUuid, RuntimeID: row.RuntimeID, CandidateVersion: row.CandidateVersion.String, TraceID: row.TraceID.String, Mode: row.Mode,
+		Attempt: uint16(row.Attempt), Status: application.AgentRunStatusV1(row.Status), StartedAt: row.StartedAt,
 		CompletedAt: timePointer(row.CompletedAt), LastError: row.LastError.String,
 	}, nil
 }

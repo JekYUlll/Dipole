@@ -1948,6 +1948,16 @@
 - **本轮进展：** `user.profile.read` 的专用 Vitest、Core gRPC/Definition Catalog 测试与 `check:proto` 均通过；该 capability 只返回低敏 profile 字段，并要求精确 owner user scope。
 - **下一步：** 在独立 Runtime 工具链治理切片中修复两项既有门禁，再恢复全量 `npm run typecheck` 作为 Agent 合并条件。
 
+### AD-065：入站失败重投尚缺少共享体验环境故障演练
+
+- **优先级：** P0
+- **状态：** 进行中
+- **发现日期：** 2026-09-08
+- **影响范围：** Route B1/B2、EventLedger reclaim、Temporal durable execution
+- **现状：** EventLedger 已在 Workflow 终态完成或释放 claim；`agent_runs` 现记录不可变 `attempt`，Core 只会从失败 Task 创建下一代 Run，Temporal 仅允许 failed-only workflow ID reuse，且新 execution 只能替换已失败的投影绑定。完成、取消和运行中的 Task 保持原有幂等与冲突语义。
+- **证据：** `internal/services/agent/application/agent_execution_policy_test.go`、`internal/services/agent/infrastructure/mysql/agent_policy_contract_test.go`、`services/agent-runtime/src/temporal/temporal-task-client.test.ts`。
+- **下一步：** 在 Remote GPU 受控环境注入一次可归因的 planner 失败，确认 ledger release、attempt 2、旧 token stale 拒绝、只产生一次最终消息副作用，并将 receipt 归档；完成前不将此链路计入公开可靠性指标。
+
 ### AD-062：Gateway 与 embedded Core 共享 HTTP handler 的迁移边界
 
 - **优先级：** P2

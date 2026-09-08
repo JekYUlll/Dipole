@@ -134,22 +134,40 @@ WHERE task_uuid = ?
   AND (workflow_id IS NULL OR (workflow_id = ? AND workflow_run_id = ?))
   AND (workflow_revision IS NULL OR workflow_revision < ?);
 
+-- name: RestartFailedAgentTaskWorkflowState :execrows
+UPDATE agent_tasks
+SET workflow_id = ?, workflow_run_id = ?, workflow_status = ?, workflow_revision = ?,
+    workflow_updated_at = UTC_TIMESTAMP()
+WHERE task_uuid = ?
+  AND workflow_id = ?
+  AND workflow_status = 'failed'
+  AND workflow_run_id <> ?;
+
 -- name: ListAgentTaskWorkflowProjectionSnapshots :many
 SELECT t.task_uuid, t.workflow_id, t.workflow_run_id, t.workflow_status,
        t.workflow_revision, t.workflow_updated_at
 FROM agent_tasks AS t
-JOIN agent_runs AS r ON r.task_uuid = t.task_uuid
-WHERE r.runtime_id = ? AND r.mode = ? AND t.task_uuid > ?
+WHERE EXISTS (
+    SELECT 1 FROM agent_runs AS r
+    WHERE r.task_uuid = t.task_uuid AND r.runtime_id = ? AND r.mode = ?
+)
+  AND t.task_uuid > ?
 ORDER BY t.task_uuid ASC
 LIMIT ?;
 
 -- name: InsertAgentRun :execrows
 INSERT INTO agent_runs (
-    run_uuid, task_uuid, runtime_id, candidate_version, trace_id, mode, status, started_at
-) VALUES (?, ?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP());
+    run_uuid, task_uuid, runtime_id, candidate_version, trace_id, mode, attempt, status, started_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, 'running', UTC_TIMESTAMP());
 
 -- name: GetAgentRun :one
 SELECT * FROM agent_runs WHERE run_uuid = ? LIMIT 1;
+
+-- name: GetLatestAgentRunForTaskRuntimeMode :one
+SELECT * FROM agent_runs
+WHERE task_uuid = ? AND runtime_id = ? AND mode = ?
+ORDER BY attempt DESC
+LIMIT 1;
 
 -- name: TransitionAgentRunStatus :execrows
 UPDATE agent_runs

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -160,6 +161,7 @@ type AgentRunV1 struct {
 	CandidateVersion string           `json:"candidate_version,omitempty"`
 	TraceID          string           `json:"trace_id,omitempty"`
 	Mode             string           `json:"mode"`
+	Attempt          uint16           `json:"attempt"`
 	Status           AgentRunStatusV1 `json:"status"`
 	StartedAt        time.Time        `json:"started_at,omitempty"`
 	CompletedAt      *time.Time       `json:"completed_at,omitempty"`
@@ -295,7 +297,7 @@ func (p AgentTaskWorkflowProjectionV1) Validate() error {
 }
 
 func (r AgentRunV1) Validate() error {
-	if anyBlank(r.RunUUID, r.TaskUUID, r.RuntimeID, r.Mode) {
+	if anyBlank(r.RunUUID, r.TaskUUID, r.RuntimeID, r.Mode) || r.Attempt == 0 {
 		return ErrAgentPolicyInvalid
 	}
 	if r.Mode != "embedded" && r.Mode != "shadow" && r.Mode != "active" {
@@ -321,6 +323,23 @@ func AgentRunUUIDV1(taskUUID, runtimeID, mode string) (string, error) {
 	return "run:" + hex.EncodeToString(digest[:])[:60], nil
 }
 
+// AgentRunUUIDForAttemptV1 preserves the first-run identifier while deriving
+// a separate immutable Run identity for each durable retry attempt.
+func AgentRunUUIDForAttemptV1(taskUUID, runtimeID, mode string, attempt uint16) (string, error) {
+	if attempt == 0 {
+		return "", ErrAgentPolicyInvalid
+	}
+	if attempt == 1 {
+		return AgentRunUUIDV1(taskUUID, runtimeID, mode)
+	}
+	taskUUID, runtimeID, mode = strings.TrimSpace(taskUUID), strings.TrimSpace(runtimeID), strings.TrimSpace(mode)
+	if taskUUID == "" || runtimeID == "" || (mode != "embedded" && mode != "shadow" && mode != "active") {
+		return "", ErrAgentPolicyInvalid
+	}
+	digest := sha256.Sum256([]byte(AgentRunIDVersionV1 + ":attempt\n" + taskUUID + "\n" + runtimeID + "\n" + mode + "\n" + strconv.FormatUint(uint64(attempt), 10)))
+	return "run:" + hex.EncodeToString(digest[:])[:60], nil
+}
+
 func ValidateAgentTaskTransitionV1(from, to AgentTaskStatusV1) error {
 	allowed := false
 	switch from {
@@ -330,6 +349,10 @@ func ValidateAgentTaskTransitionV1(from, to AgentTaskStatusV1) error {
 		allowed = to == AgentTaskStatusWaitingApproval || to == AgentTaskStatusCompleted || to == AgentTaskStatusFailed || to == AgentTaskStatusCancelled
 	case AgentTaskStatusWaitingApproval:
 		allowed = to == AgentTaskStatusRunning || to == AgentTaskStatusFailed || to == AgentTaskStatusCancelled
+	case AgentTaskStatusFailed:
+		// A failed inbound event may be reclaimed by the Event Ledger. Its next
+		// immutable Run attempt reopens the same idempotent Task.
+		allowed = to == AgentTaskStatusRunning
 	}
 	if !allowed {
 		return ErrAgentPolicyInvalid
@@ -492,6 +515,7 @@ type AgentPolicyStoreV1 interface {
 	ListTaskWorkflowProjectionSnapshots(ctx context.Context, runtimeID, mode, afterTaskUUID string, limit int) ([]AgentTaskWorkflowProjectionSnapshotV1, error)
 	CreateRun(ctx context.Context, run AgentRunV1) (bool, error)
 	GetRun(ctx context.Context, runUUID string) (*AgentRunV1, error)
+	GetLatestRun(ctx context.Context, taskUUID, runtimeID, mode string) (*AgentRunV1, error)
 	TransitionRunStatus(ctx context.Context, runUUID string, from, to AgentRunStatusV1, lastError string) (bool, error)
 	CreateApproval(ctx context.Context, approval AgentApprovalV1) error
 	GetApproval(ctx context.Context, approvalUUID string) (*AgentApprovalV1, error)

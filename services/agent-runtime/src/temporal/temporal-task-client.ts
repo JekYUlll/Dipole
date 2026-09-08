@@ -61,7 +61,7 @@ export interface TemporalWorkflowStartPort {
     taskQueue: string;
     workflowId: string;
     workflowIdConflictPolicy: "USE_EXISTING";
-    workflowIdReusePolicy: "REJECT_DUPLICATE";
+    workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY";
     args: [AgentTaskWorkflowHistoryInput];
   }): Promise<TemporalWorkflowStartHandle>;
 }
@@ -246,7 +246,7 @@ async function startTaskWorkflow(
     taskQueue,
     workflowId: agentTaskWorkflowId(input.taskId),
     workflowIdConflictPolicy: "USE_EXISTING",
-    workflowIdReusePolicy: "REJECT_DUPLICATE",
+    workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY",
     args: [input]
   });
   const runId = handle.firstExecutionRunId ?? handle.runId;

@@ -264,6 +264,49 @@ func TestAgentPolicyRepositoryContract(t *testing.T) {
 	if _, err := store.TransitionTaskStatus(context.Background(), task.TaskUUID, application.AgentTaskStatusRunning, application.AgentTaskStatusCreated); !errors.Is(err, application.ErrAgentPolicyInvalid) {
 		t.Fatalf("expected invalid reverse transition, got %v", err)
 	}
+	retryTask := task
+	retryTask.TaskUUID, retryTask.TriggerRef, retryTask.Status = "TASK-RETRY", "M-RETRY", application.AgentTaskStatusCreated
+	if created, err := store.CreateTask(context.Background(), retryTask); err != nil || !created {
+		t.Fatalf("create retry task: created=%v err=%v", created, err)
+	}
+	if changed, err := store.TransitionTaskStatus(context.Background(), retryTask.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning); err != nil || !changed {
+		t.Fatalf("start retry task: changed=%v err=%v", changed, err)
+	}
+	firstRetryRunUUID, _ := application.AgentRunUUIDForAttemptV1(retryTask.TaskUUID, "dipole-agent", "shadow", 1)
+	firstRetryRun := application.AgentRunV1{RunUUID: firstRetryRunUUID, TaskUUID: retryTask.TaskUUID, RuntimeID: "dipole-agent", Mode: "shadow", Attempt: 1, Status: application.AgentRunStatusRunning}
+	if created, err := store.CreateRun(context.Background(), firstRetryRun); err != nil || !created {
+		t.Fatalf("create first retry Run: created=%v err=%v", created, err)
+	}
+	failedProjection := application.AgentTaskWorkflowProjectionV1{TaskUUID: retryTask.TaskUUID, WorkflowID: "dipole-agent-task/" + retryTask.TaskUUID, RunID: "temporal-first", Status: application.AgentTaskWorkflowStatusFailed, Revision: 2}
+	if applied, err := store.ProjectTaskWorkflowState(context.Background(), failedProjection); err != nil || !applied {
+		t.Fatalf("project failed retry Workflow: applied=%v err=%v", applied, err)
+	}
+	if changed, err := store.TransitionRunStatus(context.Background(), firstRetryRunUUID, application.AgentRunStatusRunning, application.AgentRunStatusFailed, "planner unavailable"); err != nil || !changed {
+		t.Fatalf("fail first retry Run: changed=%v err=%v", changed, err)
+	}
+	if changed, err := store.TransitionTaskStatus(context.Background(), retryTask.TaskUUID, application.AgentTaskStatusRunning, application.AgentTaskStatusFailed); err != nil || !changed {
+		t.Fatalf("fail retry task: changed=%v err=%v", changed, err)
+	}
+	if changed, err := store.TransitionTaskStatus(context.Background(), retryTask.TaskUUID, application.AgentTaskStatusFailed, application.AgentTaskStatusRunning); err != nil || !changed {
+		t.Fatalf("reopen failed retry task: changed=%v err=%v", changed, err)
+	}
+	secondRetryRunUUID, _ := application.AgentRunUUIDForAttemptV1(retryTask.TaskUUID, "dipole-agent", "shadow", 2)
+	if created, err := store.CreateRun(context.Background(), application.AgentRunV1{RunUUID: secondRetryRunUUID, TaskUUID: retryTask.TaskUUID, RuntimeID: "dipole-agent", Mode: "shadow", Attempt: 2, Status: application.AgentRunStatusRunning}); err != nil || !created {
+		t.Fatalf("create second retry Run: created=%v err=%v", created, err)
+	}
+	latestRetryRun, err := store.GetLatestRun(context.Background(), retryTask.TaskUUID, "dipole-agent", "shadow")
+	if err != nil || latestRetryRun == nil || latestRetryRun.RunUUID != secondRetryRunUUID || latestRetryRun.Attempt != 2 {
+		t.Fatalf("load latest retry Run: run=%+v err=%v", latestRetryRun, err)
+	}
+	retryProjection := failedProjection
+	retryProjection.RunID, retryProjection.Status, retryProjection.Revision = "temporal-second", application.AgentTaskWorkflowStatusRunning, 1
+	if applied, err := store.ProjectTaskWorkflowState(context.Background(), retryProjection); err != nil || !applied {
+		t.Fatalf("restart failed Workflow projection: applied=%v err=%v", applied, err)
+	}
+	loadedRetryTask, err := store.GetTask(context.Background(), retryTask.TaskUUID)
+	if err != nil || loadedRetryTask == nil || loadedRetryTask.Workflow == nil || loadedRetryTask.Workflow.RunID != "temporal-second" || loadedRetryTask.Workflow.Status != application.AgentTaskWorkflowStatusRunning {
+		t.Fatalf("load restarted retry Task: task=%+v err=%v", loadedRetryTask, err)
+	}
 
 	approval := application.AgentApprovalV1{
 		ApprovalUUID: "APR-1", TaskUUID: task.TaskUUID, CapabilityID: "message.bulk.send",

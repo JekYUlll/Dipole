@@ -38,6 +38,29 @@ func TestAgentApprovalV1AuthorizesExactUnconsumedBinding(t *testing.T) {
 	}
 }
 
+func TestAgentRunUUIDForAttemptV1KeepsFirstRunAndSeparatesRetries(t *testing.T) {
+	t.Parallel()
+
+	first, err := AgentRunUUIDForAttemptV1("TASK-1", "dipole-agent", "shadow", 1)
+	if err != nil {
+		t.Fatalf("derive first Run UUID: %v", err)
+	}
+	legacy, err := AgentRunUUIDV1("TASK-1", "dipole-agent", "shadow")
+	if err != nil {
+		t.Fatalf("derive legacy Run UUID: %v", err)
+	}
+	second, err := AgentRunUUIDForAttemptV1("TASK-1", "dipole-agent", "shadow", 2)
+	if err != nil {
+		t.Fatalf("derive retry Run UUID: %v", err)
+	}
+	if first != legacy || first == second || len(second) != 64 {
+		t.Fatalf("attempt Run UUIDs = first=%q legacy=%q second=%q", first, legacy, second)
+	}
+	if _, err := AgentRunUUIDForAttemptV1("TASK-1", "dipole-agent", "shadow", 0); !errors.Is(err, ErrAgentPolicyInvalid) {
+		t.Fatalf("zero retry attempt should be rejected, got %v", err)
+	}
+}
+
 func TestAgentApprovalV1RejectsReplayAndBindingDrift(t *testing.T) {
 	t.Parallel()
 

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -248,7 +249,8 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 	if !agentTaskMatchesStartV1(task, request) {
 		return nil, fmt.Errorf("%w: existing Agent Task cannot admit Run", application.ErrAgentExecutionPolicyDenied)
 	}
-	if task.Status != application.AgentTaskStatusCreated && task.Status != application.AgentTaskStatusRunning && task.Status != application.AgentTaskStatusCompleted {
+	if task.Status != application.AgentTaskStatusCreated && task.Status != application.AgentTaskStatusRunning &&
+		task.Status != application.AgentTaskStatusCompleted && task.Status != application.AgentTaskStatusFailed {
 		return nil, fmt.Errorf("%w: existing Agent Task cannot admit Run", application.ErrAgentExecutionPolicyDenied)
 	}
 	definition, err := a.store.GetDefinitionVersion(ctx, task.DefinitionUUID, task.DefinitionVersion)
@@ -267,6 +269,40 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 			return nil, err
 		}
 	}
+	invocation := invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes)
+	invocation.RuntimeID, invocation.Mode = admission.RuntimeID, admission.Mode
+	invocation.ApprovedCapabilities = approvedCapabilities
+	result := func(run *application.AgentRunV1) *application.AgentRunAdmissionV1 {
+		return &application.AgentRunAdmissionV1{
+			TaskUUID: task.TaskUUID, RunUUID: run.RunUUID, RunStatus: run.Status,
+			Invocation: invocation,
+		}
+	}
+
+	attempt := uint16(1)
+	retrying := task.Status == application.AgentTaskStatusFailed
+	if retrying {
+		latest, lookupErr := a.store.GetLatestRun(ctx, task.TaskUUID, admission.RuntimeID, admission.Mode)
+		if lookupErr != nil || latest == nil || latest.Status != application.AgentRunStatusFailed ||
+			latest.CandidateVersion != strings.TrimSpace(admission.CandidateVersion) || latest.TraceID != strings.TrimSpace(request.TraceID) ||
+			latest.Attempt == math.MaxUint16 {
+			return nil, fmt.Errorf("%w: failed Agent Task cannot start a retry Run", application.ErrAgentExecutionPolicyDenied)
+		}
+		attempt = latest.Attempt + 1
+		changed, transitionErr := a.store.TransitionTaskStatus(ctx, task.TaskUUID, application.AgentTaskStatusFailed, application.AgentTaskStatusRunning)
+		if transitionErr != nil {
+			return nil, fmt.Errorf("retry Agent Task admission transition: %w", transitionErr)
+		}
+		if changed {
+			task.Status = application.AgentTaskStatusRunning
+		} else {
+			current, lookupErr := a.store.GetTask(ctx, task.TaskUUID)
+			if lookupErr != nil || current == nil || current.Status != application.AgentTaskStatusRunning {
+				return nil, fmt.Errorf("%w: concurrent Agent Task retry unavailable", application.ErrAgentExecutionPolicyDenied)
+			}
+			task = *current
+		}
+	}
 	if task.Status == application.AgentTaskStatusCreated {
 		changed, transitionErr := a.store.TransitionTaskStatus(ctx, task.TaskUUID, application.AgentTaskStatusCreated, application.AgentTaskStatusRunning)
 		if transitionErr != nil {
@@ -282,13 +318,26 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 			task = *current
 		}
 	}
-	runUUID, err := application.AgentRunUUIDV1(task.TaskUUID, admission.RuntimeID, admission.Mode)
+	if !retrying {
+		latest, lookupErr := a.store.GetLatestRun(ctx, task.TaskUUID, admission.RuntimeID, admission.Mode)
+		if lookupErr != nil {
+			return nil, fmt.Errorf("get latest Agent Run admission: %w", lookupErr)
+		}
+		if latest != nil {
+			if latest.CandidateVersion != strings.TrimSpace(admission.CandidateVersion) || latest.TraceID != strings.TrimSpace(request.TraceID) ||
+				(latest.Status != application.AgentRunStatusRunning && latest.Status != application.AgentRunStatusCompleted) {
+				return nil, fmt.Errorf("%w: existing Agent Run is terminal", application.ErrAgentExecutionPolicyDenied)
+			}
+			return result(latest), nil
+		}
+	}
+	runUUID, err := application.AgentRunUUIDForAttemptV1(task.TaskUUID, admission.RuntimeID, admission.Mode, attempt)
 	if err != nil {
 		return nil, err
 	}
 	createdRun, err := a.store.CreateRun(ctx, application.AgentRunV1{
 		RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: admission.RuntimeID, CandidateVersion: strings.TrimSpace(admission.CandidateVersion),
-		TraceID: strings.TrimSpace(request.TraceID), Mode: admission.Mode, Status: application.AgentRunStatusRunning,
+		TraceID: strings.TrimSpace(request.TraceID), Mode: admission.Mode, Attempt: attempt, Status: application.AgentRunStatusRunning,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("admit Agent Run: %w", err)
@@ -303,13 +352,7 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 		}
 		runStatus = existingRun.Status
 	}
-	invocation := invocationFromPolicyStartV1(request, definition.Permissions, definition.Scopes)
-	invocation.RuntimeID, invocation.Mode = admission.RuntimeID, admission.Mode
-	invocation.ApprovedCapabilities = approvedCapabilities
-	return &application.AgentRunAdmissionV1{
-		TaskUUID: task.TaskUUID, RunUUID: runUUID, RunStatus: runStatus,
-		Invocation: invocation,
-	}, nil
+	return result(&application.AgentRunV1{RunUUID: runUUID, Status: runStatus}), nil
 }
 
 // autoEnrollLowRiskAssistant resolves (creating if necessary) the shared
@@ -745,7 +788,7 @@ func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request ap
 		return nil, fmt.Errorf("derive Embedded Agent Run: %w", err)
 	}
 	created, err := p.store.CreateRun(ctx, application.AgentRunV1{
-		RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: embeddedAgentRuntimeIDV1, TraceID: strings.TrimSpace(request.TraceID), Mode: "embedded", Status: application.AgentRunStatusRunning,
+		RunUUID: runUUID, TaskUUID: task.TaskUUID, RuntimeID: embeddedAgentRuntimeIDV1, TraceID: strings.TrimSpace(request.TraceID), Mode: "embedded", Attempt: 1, Status: application.AgentRunStatusRunning,
 	})
 	if err != nil || !created {
 		if err == nil {

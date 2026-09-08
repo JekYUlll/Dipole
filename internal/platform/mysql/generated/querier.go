@@ -142,6 +142,7 @@ type Querier interface {
 	GetGroupByUUID(ctx context.Context, uuid string) (Group, error)
 	GetGroupMember(ctx context.Context, arg GetGroupMemberParams) (GroupMember, error)
 	GetGroupSyncState(ctx context.Context, groupUuid string) (GetGroupSyncStateRow, error)
+	GetLatestAgentRunForTaskRuntimeMode(ctx context.Context, arg GetLatestAgentRunForTaskRuntimeModeParams) (AgentRun, error)
 	GetLatestOwnedAgentDefinition(ctx context.Context, arg GetLatestOwnedAgentDefinitionParams) (AgentDefinitionVersion, error)
 	GetLatestUserSyncSequence(ctx context.Context, userUuid string) (int64, error)
 	GetMessageBySenderAndClientID(ctx context.Context, arg GetMessageBySenderAndClientIDParams) (Message, error)
@@ -267,6 +268,7 @@ type Querier interface {
 	RejectAgentWorkflowRepairProposal(ctx context.Context, proposalUuid string) (int64, error)
 	ReleaseAgentEvent(ctx context.Context, arg ReleaseAgentEventParams) (int64, error)
 	ReleaseAgentOAuthCallbackHandoff(ctx context.Context, arg ReleaseAgentOAuthCallbackHandoffParams) (int64, error)
+	RestartFailedAgentTaskWorkflowState(ctx context.Context, arg RestartFailedAgentTaskWorkflowStateParams) (int64, error)
 	RestoreSyncInboxBaselineEntry(ctx context.Context, arg RestoreSyncInboxBaselineEntryParams) error
 	ReviewAgentMemoryCandidate(ctx context.Context, arg ReviewAgentMemoryCandidateParams) (int64, error)
 	RevokeAgentApproval(ctx context.Context, arg RevokeAgentApprovalParams) (int64, error)
