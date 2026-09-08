@@ -133,7 +133,7 @@ compose() {
 
 cleanup() {
   local status=$?
-  compose exec -T mysql mysql -uroot -proot123 dipole -e "UPDATE agent_runtime_promotion_grants SET revoked_at = COALESCE(revoked_at, UTC_TIMESTAMP(3)) WHERE grant_uuid = '${grant_uuid}'" >/dev/null 2>&1 || true
+  compose exec -T -e MYSQL_PWD=root123 mysql mysql -uroot dipole -e "UPDATE agent_runtime_promotion_grants SET revoked_at = COALESCE(revoked_at, UTC_TIMESTAMP(3)) WHERE grant_uuid = '${grant_uuid}'" >/dev/null 2>&1 || true
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then
     compose down --volumes --remove-orphans >/dev/null 2>&1 || true
     rm -rf "${scratch_dir}"
@@ -148,7 +148,7 @@ trap cleanup EXIT INT TERM
 compose config --quiet
 compose up -d --wait
 
-mysql() { compose exec -T mysql mysql -N -B -uroot -proot123 dipole "$@"; }
+mysql() { compose exec -T -e MYSQL_PWD=root123 mysql mysql -N -B -uroot dipole "$@"; }
 mysql -e "INSERT IGNORE INTO users (uuid, nickname, telephone, password_hash, status, created_at, updated_at) VALUES ('${agent_uuid}', 'Dipole Agent', '13900000002', 'smoke', 1, NOW(3), NOW(3));"
 
 binding=$(compose exec -T agent node --input-type=module - "${owner_telephone}" "${agent_uuid}" "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" <<'NODE'
