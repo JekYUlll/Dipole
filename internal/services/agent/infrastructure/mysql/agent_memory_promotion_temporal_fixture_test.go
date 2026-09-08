@@ -75,8 +75,8 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	}
 	admitted, err := admission.Admit(ctx, application.AgentRunAdmissionRequestV1{
 		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
-			TenantID: definition.TenantID, PrincipalUUID: definition.OwnerUUID, AgentUUID: definition.AgentUUID,
-			DelegatedByUUID: definition.OwnerUUID, TriggerType: "manual", TriggerRef: "temporal-mysql-mtls-fixture",
+			TenantID: definition.TenantID, PrincipalUUID: "U100", AgentUUID: definition.AgentUUID,
+			DelegatedByUUID: "U100", TriggerType: "manual", TriggerRef: "temporal-mysql-mtls-fixture",
 		},
 		RuntimeID: grant.RuntimeID, Mode: "active", CandidateVersion: grant.CandidateVersion,
 	})
@@ -85,8 +85,8 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	}
 	rejected, err := admission.Admit(ctx, application.AgentRunAdmissionRequestV1{
 		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
-			TenantID: definition.TenantID, PrincipalUUID: definition.OwnerUUID, AgentUUID: definition.AgentUUID,
-			DelegatedByUUID: definition.OwnerUUID, TriggerType: "manual", TriggerRef: "temporal-mysql-mtls-revoked-fixture",
+			TenantID: definition.TenantID, PrincipalUUID: "U100", AgentUUID: definition.AgentUUID,
+			DelegatedByUUID: "U100", TriggerType: "manual", TriggerRef: "temporal-mysql-mtls-revoked-fixture",
 		},
 		RuntimeID: grant.RuntimeID, Mode: "active", CandidateVersion: grant.CandidateVersion,
 	})

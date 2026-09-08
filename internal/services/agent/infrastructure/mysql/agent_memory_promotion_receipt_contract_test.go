@@ -69,8 +69,8 @@ func TestAgentMemoryPromotionReceiptCommitMySQLContract(t *testing.T) {
 	}
 	admitted, err := admission.Admit(ctx, application.AgentRunAdmissionRequestV1{
 		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
-			TenantID: definition.TenantID, PrincipalUUID: definition.OwnerUUID, AgentUUID: definition.AgentUUID,
-			DelegatedByUUID: definition.OwnerUUID, TriggerType: "manual", TriggerRef: "receipt-mysql-contract",
+			TenantID: definition.TenantID, PrincipalUUID: "U100", AgentUUID: definition.AgentUUID,
+			DelegatedByUUID: "U100", TriggerType: "manual", TriggerRef: "receipt-mysql-contract",
 		},
 		RuntimeID: grant.RuntimeID, Mode: "active", CandidateVersion: grant.CandidateVersion,
 	})
