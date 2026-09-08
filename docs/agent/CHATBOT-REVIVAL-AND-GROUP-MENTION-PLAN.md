@@ -20,6 +20,14 @@
 - `message.group.created` 主题已发布；群消息**无结构化 mention 字段**，@ 需文本解析。
 - eino 依赖已在 `go.mod`（eino v0.9.17 + ollama/openai ext），core 镜像可直接编译 legacy。
 
+## 0.1 体验环境 B1/B2 验收记录（2026-09-08）
+
+- Remote GPU 的 `dipole-experience` 已将 Core 热更到 `0b1c3f52a`；镜像标签记录同一 revision，容器健康检查通过。
+- Core 显式保持 `DIPOLE_AI_DIRECT_REPLY_ENABLED=false` 与 `DIPOLE_AI_GROUP_REPLY_ENABLED=false`；TS Runtime 的 B1/B2 入站触发保持启用，避免两条路线同时回复。
+- 新注册、无 Definition 与 grant 的用户私聊已通过端到端验收：任务完成、Definition 固定为 `lowrisk-assistant:v1`、只发送一条助手回复，且 `message.assistant_reply.send` 审批已消费。
+- 新注册用户创建群并 `@Dipole AI` 的端到端验收也已通过：任务完成、只发送一条群助手回复，且 `message.group_reply.send` 审批已消费。
+- 下一个正确性切片：失败 workflow 的 event ledger 可 reclaim/retry；订阅路径创建 Definition 后自动发放 owner grant；Definition 抽屉说明明确“私聊和群 @ 无需先创建 Definition”。
+
 ## 1. 目标与验收
 - G1：私信小助手 → 自动 AI 回复，能调用工具（1v1 多轮对话恢复）。
 - G2：在含小助手的群里 @小助手 → 群内 AI 回复（命中 @ 才触发）。
