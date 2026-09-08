@@ -10,7 +10,7 @@ active Runtime 默认只执行 `conversation.list/read`。基础 Compose 固定�
 
 无 Subscription 的交互任务会优先复核 owner 的 active Definition；当 owner 尚未配置或该 Definition 无法被 active candidate 提升时，Core 只可回退到平台共享的 `lowrisk-assistant:v1`。该 Definition 的权限限定为直属 Agent 会话读取与回复，并复用平台级低风险 promotion grant。主 Compose 默认公开经过认证的 `POST /api/v1/agent/definitions`，它只能创建 owner-scoped `read_only` Definition，不能授予写 Capability 或替代 subscription 的 promotion grant。`/api/v1/agent/status` 中的 `taskControlEnabled=true` 只表示认证控制路由已装配。
 
-私聊和群 `@Dipole AI`/`@AI` 不要求用户先创建 Definition；创建默认 Definition 也不会开启聊天或自动授予 active authority。开发期可运行 `scripts/e2e-b1-owner-definition-fallback.sh` 对共享体验栈回归这一边界：它仅创建临时用户与消息，并断言无 grant 的 owner Definition 仍通过 `lowrisk-assistant:v1` 获得一次受治理私聊回复。订阅触发保持更严格的 reviewed-grant 前置条件。
+私聊、群 `@Dipole AI`/`@AI` 与普通显式任务都不要求用户先创建 Definition；创建默认 Definition 也不会开启聊天或自动授予 active authority。开发期可运行 `scripts/e2e-b1-owner-definition-fallback.sh` 和 `scripts/e2e-agent-explicit-lowrisk-task.sh` 对共享体验栈回归这一边界：前者验证无 grant 的 owner Definition 仍可收到一次受治理私聊回复，后者验证认证用户创建的低风险任务会获得 durable Timeline。订阅触发保持更严格的 reviewed-grant 前置条件。
 
 若 Runtime admission 被 Core 拒绝，`POST /api/v1/agent/tasks` 返回 `403` 与 `reason: "admission_denied"`。该响应表示低风险回退也不可用，或请求属于不允许回退的场景（例如 Subscription）；它不公开 grant 状态、评审证据、候选策略或其他 owner 的任何信息。
 

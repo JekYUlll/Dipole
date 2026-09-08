@@ -1,3 +1,5 @@
+- 2026-09-09：新增 `scripts/e2e-agent-explicit-lowrisk-task.sh`，以新认证用户验证公共体验栈的 `POST /api/v1/agent/tasks`：任务固定到 `lowrisk-assistant:v1`、完成 durable Timeline 并只产生一条直属 Agent 回复。用户手册同步改为当前实际语义：普通显式任务不要求先选择 owner Definition；订阅、扩展读取和外部写入仍需 owner-scoped promotion grant。
+
 - 2026-09-09：Remote GPU 的公共 `dipole-experience` 已将 Core 与 TypeScript Agent Runtime 一起滚动至干净同版本 `86d8ffdb`。B1 私聊和 B2 群 `@Dipole AI` 均以新用户、新消息回归为 `completed:completed`，各自产生一条回复并消费一次受治理审批；Route A 回复开关继续关闭。镜像构建脚本同时修复空格分隔服务列表被拼接的缺陷，后续可使用 `DIPOLE_MICROSERVICE_IMAGE_SERVICES="core agent"` 进行窄范围热更。
 
 - 2026-09-09：Remote GPU 在 `0724408d`、Go `1.27.0` 上重跑隔离 Multipart fault matrix。六个确定性 Go 包、七条 Prometheus 规则、真实 MinIO/Redis reconciliation 与 Redis restart 注入均通过；随机命名的容器和 worktree 已清理，公共 `dipole-experience` 与 GPU 任务未被重启。详见 [`multipart-fault-matrix-2026-09-09`](benchmarks/multipart-fault-matrix-2026-09-09/)；默认上传模式继续为 `relay`，预签名直传仍需独立 24 小时证据与审核。
