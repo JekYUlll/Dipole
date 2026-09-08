@@ -6,8 +6,9 @@
 - **状态：** 进行中
 - **发现日期：** 2026-09-08
 - **现状：** 入站 Kafka claim 已随可信 Workflow input 传入 Temporal。Workflow 仅在 `completed` 后调用 `EventLedger.complete`；`failed` 或 `cancelled` 通过既有 token-fenced `release` 归还 lease，后续 consumer 可 reclaim。启动 Workflow 成功不再代表消息处理成功。
-- **缺口：** 当前证据限于 Runtime 定向单测。体验环境仍需以受控失败 Workflow 验证同一事件可重领，并以真实群 @ 事件复验任务终态为 `completed`；在这两项证据完成前，不能将 Route B 表述为已具备完整失败恢复保障。
-- **完成条件：** Remote GPU 受控测试记录失败后 release/reclaim、成功后精确 complete、群 @ 单回复且任务 `completed`，并保留可复核的低敏 receipt 与回滚步骤。
+- **本轮进展：** Remote GPU `915dfe00` 已以新私聊和群 @ 事件复验成功路径；两者均只产生一条助手消息、一次 consumed approval 和 `completed:completed` Task。隔离 MySQL 8.4 合同测试额外通过 released lease reclaim、expired lease reclaim 与 stale token completion rejection，测试数据库和容器均已清理。
+- **缺口：** 体验环境仍需以受控失败 Workflow 验证同一事件在 release 后被真实 Kafka 重投并重领；MySQL 合同测试不能替代该跨 Kafka/Temporal 的证据。在该演练完成前，不能将 Route B 表述为已具备完整失败恢复保障。
+- **完成条件：** Remote GPU 受控测试记录失败后 release、同事件重投与 reclaim、成功后精确 complete，并保留可复核的低敏 receipt 与回滚步骤。
 
 ### AD-063：OAuth token lifecycle 的 Runtime envelope 与长期 refresh authority 尚未接线
 
