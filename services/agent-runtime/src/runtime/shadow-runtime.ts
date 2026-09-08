@@ -7,6 +7,7 @@ import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.j
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
 import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
+import { UserProfileReadCapability } from "../capabilities/user-profile-read.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
@@ -556,6 +557,7 @@ export function createKafkaShadowRuntime(
   let trajectory: MySQLShadowAuditSink | undefined;
   if (usesLocalModel) {
     registry = new CapabilityRegistry();
+    registry.register(new UserProfileReadCapability(rpcTransport!.client));
     registry.register(new ConversationListCapability(rpcTransport!.client));
     registry.register(new ConversationReadCapability(rpcTransport!.client));
     if (config.retrievalEnabled) registry.register(new ConversationSearchCapability(rpcTransport!.client));
@@ -626,6 +628,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   });
   const audit = new MySQLShadowAuditSink(pool);
   const registry = new CapabilityRegistry();
+  registry.register(new UserProfileReadCapability(rpc.client));
   registry.register(new ConversationListCapability(rpc.client));
   registry.register(new ConversationReadCapability(rpc.client));
   if (config.retrievalEnabled) registry.register(new ConversationSearchCapability(rpc.client));
@@ -712,7 +715,7 @@ function isLoopbackTarget(target: string): boolean {
 // Follow-up reads must use the fixed trusted discovery marker. The execution
 // layer resolves it only from the preceding conversation.list result.
 export function singlePassModelCapabilityIDs(_config: ShadowRuntimeConfig): readonly string[] {
-  return ["conversation.list", "conversation.read"];
+  return ["user.profile.read", "conversation.list", "conversation.read"];
 }
 
 function readCapabilityPermissions(config: ShadowRuntimeConfig): readonly string[] {

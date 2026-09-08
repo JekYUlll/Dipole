@@ -107,8 +107,7 @@ func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, invocation ap
 		return nil, err
 	}
 	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
-	agentUUID := strings.TrimSpace(invocation.AgentUUID)
-	if principalUUID == "" || agentUUID == "" || subjectUUID == "" || (subjectUUID != principalUUID && subjectUUID != agentUUID) {
+	if principalUUID == "" || subjectUUID == "" || subjectUUID != principalUUID {
 		return nil, application.ErrAgentCapabilityDenied
 	}
 	user, err := c.core.GetUserByUUID(subjectUUID)

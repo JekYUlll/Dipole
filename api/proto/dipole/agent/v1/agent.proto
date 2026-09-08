@@ -187,6 +187,27 @@ message SearchConversationsResponse {
   repeated ConversationSearchEvidence evidence = 1;
 }
 
+// ReadUserProfile exposes only the task principal's concise public profile.
+// The subject is derived by Core from task/run identity and is never client input.
+message ReadUserProfileRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+}
+
+message UserProfileSnapshot {
+  bool found = 1;
+  string user_id = 2;
+  string nickname = 3;
+  string avatar = 4;
+  int32 user_type = 5;
+  int32 status = 6;
+}
+
+message ReadUserProfileResponse {
+  UserProfileSnapshot profile = 1;
+}
+
 message AuthorizeTaskControlRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -1131,6 +1152,7 @@ service AgentCapabilityService {
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   rpc ReadConversation(ReadConversationRequest) returns (ReadConversationResponse);
   rpc SearchConversations(SearchConversationsRequest) returns (SearchConversationsResponse);
+  rpc ReadUserProfile(ReadUserProfileRequest) returns (ReadUserProfileResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ListOwnedAgentTasks(ListOwnedAgentTasksRequest) returns (ListOwnedAgentTasksResponse);
   rpc ListAgentTaskTimeline(ListAgentTaskTimelineRequest) returns (ListAgentTaskTimelineResponse);

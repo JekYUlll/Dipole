@@ -272,8 +272,10 @@ func (s *admissionStub) Finish(_ context.Context, taskUUID, runUUID, _, _ string
 
 type capabilityStub struct {
 	application.AgentCapabilityV1
-	invocation application.AgentInvocationV1
-	readTarget string
+	invocation     application.AgentInvocationV1
+	readTarget     string
+	profileSubject string
+	profile        *model.User
 }
 
 type approvalServiceStub struct {
@@ -423,6 +425,11 @@ func (s *capabilityStub) SearchConversations(_ context.Context, invocation appli
 	}}, nil
 }
 
+func (s *capabilityStub) GetUserProfile(_ context.Context, invocation application.AgentInvocationV1, subjectUUID string) (*model.User, error) {
+	s.invocation, s.profileSubject = invocation, subjectUUID
+	return s.profile, nil
+}
+
 func TestListConversationsResolvesTrustedTaskIdentity(t *testing.T) {
 	capability := &capabilityStub{}
 	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
@@ -444,6 +451,34 @@ func TestListConversationsRejectsClientPrincipal(t *testing.T) {
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	_, err := server.ListConversations(context.Background(), &agentv1.ListConversationsRequest{
 		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Limit: 20,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+}
+
+func TestReadUserProfileResolvesTrustedTaskPrincipalAndRedactsSensitiveFields(t *testing.T) {
+	capability := &capabilityStub{profile: &model.User{UUID: "U100", Nickname: "Ada", Avatar: "avatar", Telephone: "18800000000", Email: "ada@example.test", UserType: model.UserTypeNormal, Status: model.UserStatusNormal}}
+	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.ReadUserProfile(context.Background(), &agentv1.ReadUserProfileRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
+	})
+	if err != nil {
+		t.Fatalf("read user profile: %v", err)
+	}
+	profile := response.GetProfile()
+	if capability.profileSubject != "U100" || profile.GetUserId() != "U100" || profile.GetNickname() != "Ada" || !profile.GetFound() {
+		t.Fatalf("unexpected trusted profile: subject=%q profile=%+v", capability.profileSubject, profile)
+	}
+}
+
+func TestReadUserProfileRejectsClientPrincipal(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	_, err := server.ReadUserProfile(context.Background(), &agentv1.ReadUserProfileRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)

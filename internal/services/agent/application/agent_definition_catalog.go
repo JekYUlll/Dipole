@@ -69,15 +69,15 @@ func userDefinitionForProfileV1(tenantID, ownerUUID, agentUUID, profile string, 
 func userReadDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.Time) application.AgentDefinitionVersionV1 {
 	// A read plan discovers authorized conversations before reading one. Give the
 	// owner-scoped Definition both halves of that read-only capability pair.
-	digest := sha256.Sum256([]byte("dipole.agent.user-read-definition.v2\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
+	digest := sha256.Sum256([]byte("dipole.agent.user-read-definition.v3\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
 	return application.AgentDefinitionVersionV1{
 		DefinitionUUID: "user:" + hex.EncodeToString(digest[:])[:59], Version: 1, TenantID: tenantID, OwnerUUID: ownerUUID, AgentUUID: agentUUID,
 		Status:      application.AgentDefinitionStatusActive,
-		Permissions: []string{application.AgentPermissionConversationList, application.AgentPermissionConversationRead},
-		Scopes: []application.AgentResourceScopeV1{{
-			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
-			Actions: []string{application.AgentResourceActionList, application.AgentResourceActionRead},
-		}},
+		Permissions: []string{application.AgentPermissionUserProfileRead, application.AgentPermissionConversationList, application.AgentPermissionConversationRead},
+		Scopes: []application.AgentResourceScopeV1{
+			{ResourceType: application.AgentResourceTypeUser, ResourceID: ownerUUID, Actions: []string{application.AgentResourceActionRead}},
+			{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionList, application.AgentResourceActionRead}},
+		},
 		ValidFrom: validFrom,
 	}
 }
@@ -87,15 +87,15 @@ func userSubscriptionAutoReplyDefinitionV1(tenantID, ownerUUID, agentUUID string
 	// before it reads one and replies, mirroring the read-only pair. Grant the list
 	// half alongside conversation.read and message.write. Bumped to v2 to mint a fresh
 	// Definition identity for the widened owner-scoped grant.
-	digest := sha256.Sum256([]byte("dipole.agent.user-subscription-autoreply-definition.v2\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
+	digest := sha256.Sum256([]byte("dipole.agent.user-subscription-autoreply-definition.v3\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
 	return application.AgentDefinitionVersionV1{
 		DefinitionUUID: "user:" + hex.EncodeToString(digest[:])[:59], Version: 1, TenantID: tenantID, OwnerUUID: ownerUUID, AgentUUID: agentUUID,
 		Status:      application.AgentDefinitionStatusActive,
-		Permissions: []string{application.AgentPermissionConversationList, application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
-		Scopes: []application.AgentResourceScopeV1{{
-			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
-			Actions: []string{application.AgentResourceActionList, application.AgentResourceActionRead, application.AgentResourceActionWrite},
-		}},
+		Permissions: []string{application.AgentPermissionUserProfileRead, application.AgentPermissionConversationList, application.AgentPermissionConversationRead, application.AgentPermissionMessageWrite},
+		Scopes: []application.AgentResourceScopeV1{
+			{ResourceType: application.AgentResourceTypeUser, ResourceID: ownerUUID, Actions: []string{application.AgentResourceActionRead}},
+			{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionList, application.AgentResourceActionRead, application.AgentResourceActionWrite}},
+		},
 		ValidFrom: validFrom,
 	}
 }

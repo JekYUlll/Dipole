@@ -102,8 +102,8 @@ func TestLocalAgentCapabilityV1RestrictsProfileSubjects(t *testing.T) {
 	if _, err := capability.GetUserProfile(context.Background(), invocation, "U100"); err != nil || core.requested != "U100" {
 		t.Fatalf("principal profile: requested=%q err=%v", core.requested, err)
 	}
-	if _, err := capability.GetUserProfile(context.Background(), invocation, "UAI"); err != nil || core.requested != "UAI" {
-		t.Fatalf("Agent profile: requested=%q err=%v", core.requested, err)
+	if _, err := capability.GetUserProfile(context.Background(), invocation, "UAI"); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected Agent profile denial, got %v", err)
 	}
 	if _, err := capability.GetUserProfile(context.Background(), invocation, "U999"); !errors.Is(err, application.ErrAgentCapabilityDenied) {
 		t.Fatalf("expected foreign profile denial, got %v", err)
