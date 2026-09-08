@@ -18,6 +18,12 @@ User session JWT
 
 单次 Runtime Tool invocation 默认最长 5 秒，可通过 `DIPOLE_AGENT_MCP_TOOL_TIMEOUT_MS` 在 100 ms 至 60 秒之间调整。超时触发 cooperative `AbortSignal`，审计以 `tool_timeout` 收敛；外部 MCP Client foundation 的 connect、Tool discovery 和 call 默认使用 10 秒 request/total timeout，也接受调用方 AbortSignal。Gateway 保留 Streamable HTTP 长流和 DELETE 清理，不设置会截断 SSE 的全局代理超时；客户端断连由 Runtime 转换为 Request signal。
 
+## 第一方只读工具面
+
+启用第一方 MCP Server 后，Runtime 只投影显式注册的 read Capability：`dipole_user_profile_read`、`dipole_conversation_list` 与 `dipole_conversation_read`。资料工具始终读取 Task owner，不能传入其他用户标识；会话工具的权限和资源 scope 由 Core 从可信 Task/Run 恢复。
+
+`dipole_conversation_search` 仅在 `DIPOLE_AGENT_RETRIEVAL_ENABLED=true` 时注册。该开关只开放已装配检索链路的工具描述，实际查询仍要求 Task 的 `conversation.search` permission 和 conversation/read scope。写工具、外部 MCP 与未注册 Capability 不会因网络入口开启而扩大权限。
+
 ## 第一方授权交换
 
 调用方先使用普通登录令牌请求：

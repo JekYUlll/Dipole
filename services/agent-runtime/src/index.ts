@@ -4,6 +4,7 @@ import { InteractiveTaskStartService } from "./task/interactive-task-request.js"
 import { z } from "zod";
 import { ConversationListCapability } from "./capabilities/conversation-list.js";
 import { ConversationReadCapability } from "./capabilities/conversation-read.js";
+import { ConversationSearchCapability } from "./capabilities/conversation-search.js";
 import { UserProfileReadCapability } from "./capabilities/user-profile-read.js";
 import { CapabilityRegistry } from "./capabilities/registry.js";
 import { createDipoleMcpHttpHandler } from "./mcp/dipole-mcp-http.js";
@@ -190,6 +191,7 @@ const mcpRegistry = mcpEnabled ? new CapabilityRegistry() : undefined;
 if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationListCapability(mcpRPC!.client));
 if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationReadCapability(mcpRPC!.client));
 if (mcpRegistry !== undefined) mcpRegistry.register(new UserProfileReadCapability(mcpRPC!.client));
+if (mcpRegistry !== undefined && shadowConfig.retrievalEnabled) mcpRegistry.register(new ConversationSearchCapability(mcpRPC!.client));
 const mcpAuthExtraSchema = z.object({
   resource: z.literal(mcpResource),
   taskId: z.string().trim().min(1),
@@ -215,7 +217,25 @@ const mcpHandler = mcpRegistry === undefined ? undefined : createDipoleMcpHttpHa
     title: "List conversations",
     description: "List conversations available to the authenticated Dipole Agent Task",
     inputSchema: z.object({ limit: z.number().int().min(1).max(100).default(20) }).strict()
-  }],
+  }, {
+    name: "dipole_conversation_read",
+    capabilityId: "conversation.read",
+    title: "Read conversation",
+    description: "Read one authorized conversation for the authenticated Agent Task",
+    inputSchema: z.object({
+      conversationId: z.string().trim().min(1).max(256),
+      limit: z.number().int().min(1).max(100).default(20)
+    }).strict()
+  }, ...(shadowConfig.retrievalEnabled ? [{
+    name: "dipole_conversation_search",
+    capabilityId: "conversation.search",
+    title: "Search conversations",
+    description: "Search authorized conversation history for the authenticated Agent Task",
+    inputSchema: z.object({
+      query: z.string().trim().min(1).max(256),
+      limit: z.number().int().min(1).max(20).default(10)
+    }).strict()
+  }] : [])],
   resolveContext: (auth) => {
     const binding = mcpAuthExtraSchema.parse(auth.extra);
     return mcpRPC!.client.resolveMcpContext(binding.taskId, binding.runId, auth.clientId, {

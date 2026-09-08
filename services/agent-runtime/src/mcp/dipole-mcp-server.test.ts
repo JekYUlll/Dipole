@@ -47,6 +47,54 @@ describe("Dipole MCP read-only projection", () => {
     await server.close();
   });
 
+  it("projects owner profile, conversation read, and opt-in search as distinct read tools", async () => {
+    const readContext: ExecutionContext = {
+      ...context,
+      permissions: ["user.profile.read", "conversation.read", "conversation.search"],
+      resourceScopes: [
+        { resourceType: "user", resourceId: "U100", actions: ["read"] },
+        { resourceType: "conversation", resourceId: "*", actions: ["read"] }
+      ]
+    };
+    const registry = new CapabilityRegistry();
+    registry.register({
+      descriptor: { id: "user.profile.read", risk: "read", requiredPermission: "user.profile.read" },
+      inputSchema: z.object({}).strict(),
+      resolveResource: (_input, execution) => ({ resourceType: "user", resourceId: execution.principalUuid, action: "read" }),
+      execute: async (_input, execution) => ({ userId: execution.principalUuid, nickname: "Ada" })
+    });
+    registry.register({
+      descriptor: { id: "conversation.read", risk: "read", requiredPermission: "conversation.read" },
+      inputSchema: z.object({ conversationId: z.string().min(1), limit: z.number().int().min(1).max(100).default(20) }).strict(),
+      resolveResource: input => ({ resourceType: "conversation", resourceId: input.conversationId, action: "read" }),
+      execute: async input => ({ conversationId: input.conversationId, limit: input.limit })
+    });
+    registry.register({
+      descriptor: { id: "conversation.search", risk: "read", requiredPermission: "conversation.search" },
+      inputSchema: z.object({ query: z.string().min(1), limit: z.number().int().min(1).max(20).default(10) }).strict(),
+      resolveResource: () => ({ resourceType: "conversation", resourceId: "*", action: "read" }),
+      execute: async input => ({ query: input.query, limit: input.limit })
+    });
+    const server = createDipoleMcpServer({ registry, context: readContext, tools: [
+      { name: "dipole_user_profile_read", capabilityId: "user.profile.read", title: "Read profile", description: "Read task owner profile", inputSchema: z.object({}).strict() },
+      { name: "dipole_conversation_read", capabilityId: "conversation.read", title: "Read conversation", description: "Read an authorized conversation", inputSchema: z.object({ conversationId: z.string().min(1), limit: z.number().int().min(1).max(100).default(20) }).strict() },
+      { name: "dipole_conversation_search", capabilityId: "conversation.search", title: "Search conversations", description: "Search authorized history", inputSchema: z.object({ query: z.string().min(1), limit: z.number().int().min(1).max(20).default(10) }).strict() }
+    ] });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    const client = new AllowlistedMcpToolClient("dipole-agent", ["dipole-agent"], ["dipole_user_profile_read", "dipole_conversation_read", "dipole_conversation_search"], {
+      dipole_user_profile_read: { allowedArgumentNames: [], maximumBytes: 1024 },
+      dipole_conversation_read: { allowedArgumentNames: ["conversationId", "limit"], maximumBytes: 1024 },
+      dipole_conversation_search: { allowedArgumentNames: ["query", "limit"], maximumBytes: 1024 }
+    });
+    await expect(client.connect(clientTransport)).resolves.toHaveLength(3);
+    await expect(client.callTool("dipole_user_profile_read", {})).resolves.toMatchObject({ content: [{ type: "text", text: JSON.stringify({ userId: "U100", nickname: "Ada" }) }] });
+    await expect(client.callTool("dipole_conversation_read", { conversationId: "group:G1", limit: 5 })).resolves.toMatchObject({ content: [{ type: "text", text: JSON.stringify({ conversationId: "group:G1", limit: 5 }) }] });
+    await expect(client.callTool("dipole_conversation_search", { query: "migration", limit: 3 })).resolves.toMatchObject({ content: [{ type: "text", text: JSON.stringify({ query: "migration", limit: 3 }) }] });
+    await client.close();
+    await server.close();
+  });
+
   it("rejects write projections and non-allowlisted servers before connection", () => {
     const registry = new CapabilityRegistry();
     registry.register({
