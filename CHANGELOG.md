@@ -76,6 +76,8 @@
 
 # 更新日志
 
+- 2026-09-08：Remote GPU `dipole-experience` 已以 Core revision `0b1c3f52a` 完成 B1/B2 热更复验。Route A 的私聊和群回复保持关闭，两个全新用户的私聊与群 `@Dipole AI` 均由受治理 Runtime 处理并收敛为 `completed:completed`；每条触发仅产生一条助手消息和一条 consumed approval。
+
 - 2026-09-06：接受好友只向共享私聊写入一条系统提示；前端折叠连续相同系统消息，避免历史会话里「你们已经添加为好友」出现两次。
 - 2026-09-06：重写右上角设置弹窗为侧栏分区布局（资料 / 安全 / Agent / 客户端 / 关于），并保留原 API 契约。
 
