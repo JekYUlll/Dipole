@@ -364,6 +364,12 @@ NODE
     effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content <> ''), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${task_id}' AND memory_uuid = '${memory_uuid}')")
     [[ "${effects}" == $'1\t1\t1' ]] || { printf 'B1 provider Memory effects diverged: %q\n' "${effects}" >&2; return 1; }
   fi
+  local first_reply first_reply_sha256 first_response_contains_canary
+  first_reply=$(mysql -e "SELECT content FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' ORDER BY id DESC LIMIT 1")
+  [[ -n "${first_reply}" ]] || { printf 'B1 Memory reply is empty\n' >&2; return 1; }
+  [[ "${first_reply}" == *"ORBIT-91"* ]] || { printf 'B1 Memory reply did not recall the synthetic canary\n' >&2; return 1; }
+  first_reply_sha256=$(printf '%s' "${first_reply}" | openssl dgst -sha256 -r | awk '{print $1}')
+  first_response_contains_canary=true
 
   compose exec -T agent node --input-type=module - "${owner_telephone}" "${memory_uuid}" "${agent_uuid}" <<'NODE'
 const [telephone, memoryId, agentUuid] = process.argv.slice(2);
@@ -408,7 +414,7 @@ NODE
     revoked_task_sha256=$(printf '%s' "${revoked_task_id}" | openssl dgst -sha256 -r | awk '{print $1}')
     memory_b1_receipt_temp=$(mktemp "$(dirname "${memory_b1_receipt_file}")/.dipole-agent-memory-b1-receipt.XXXXXX")
     cat >"${memory_b1_receipt_temp}" <<JSON
-{"schemaVersion":"dipole.agent.interactive-memory-b1-smoke-receipt.v1","runtimeRevision":"${runtime_revision}","modelSource":"${memory_b1_model_source}","firstTaskSha256":"${first_task_sha256}","revokedTaskSha256":"${revoked_task_sha256}","firstModelCallCount":1,"firstMemoryLineageCount":1,"revokedModelCallCount":1,"revokedMemoryLineageCount":0,"memoryRevoked":true,"completedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+{"schemaVersion":"dipole.agent.interactive-memory-b1-smoke-receipt.v1","runtimeRevision":"${runtime_revision}","modelSource":"${memory_b1_model_source}","firstTaskSha256":"${first_task_sha256}","revokedTaskSha256":"${revoked_task_sha256}","firstReplySha256":"${first_reply_sha256}","firstResponseContainsCanary":${first_response_contains_canary},"firstModelCallCount":1,"firstMemoryLineageCount":1,"revokedModelCallCount":1,"revokedMemoryLineageCount":0,"memoryRevoked":true,"completedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
 JSON
     ln "${memory_b1_receipt_temp}" "${memory_b1_receipt_file}"
     rm -f "${memory_b1_receipt_temp}"
