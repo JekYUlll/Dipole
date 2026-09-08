@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -14,6 +14,17 @@ describe("B1 synthetic Memory Eval CLI", () => {
     const code = await runMemoryB1SyntheticEvalCLI([`--suite=${path}`], { write: value => output.push(String(value)) }, { write: () => undefined });
     expect(code).toBe(0);
     expect(JSON.parse(output.join(""))).toMatchObject({ schemaVersion: "dipole.agent.memory-b1-synthetic-eval-report.v1", passed: true, metrics: { totalCases: 2 } });
+  });
+
+  it("writes a report only to a new absolute path", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "dipole-b1-eval-"));
+    const suitePath = join(directory, "suite.json");
+    const reportPath = join(directory, "report.json");
+    await writeFile(suitePath, JSON.stringify(fixture()));
+    const code = await runMemoryB1SyntheticEvalCLI([`--suite=${suitePath}`, `--report=${reportPath}`], { write: () => undefined }, { write: () => undefined });
+    expect(code).toBe(0);
+    expect(JSON.parse(await readFile(reportPath, "utf8"))).toMatchObject({ passed: true, metrics: { passBps: 10_000 } });
+    await expect(runMemoryB1SyntheticEvalCLI([`--suite=${suitePath}`, `--report=${reportPath}`], { write: () => undefined }, { write: () => undefined })).resolves.toBe(1);
   });
 
   it("rejects invalid arguments", async () => {

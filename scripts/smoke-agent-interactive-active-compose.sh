@@ -11,9 +11,11 @@ compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-active-${RANDOM}-$$}"
 receipt_file="${DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE:-}"
 memory_b1_receipt_file="${DIPOLE_AGENT_MEMORY_B1_SMOKE_RECEIPT_FILE:-}"
+memory_b1_synthetic_eval_file="${DIPOLE_AGENT_MEMORY_B1_SYNTHETIC_EVAL_FILE:-}"
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-interactive-active.XXXXXX")
 receipt_temp=""
 memory_b1_receipt_temp=""
+memory_b1_synthetic_eval_temp=""
 owner_uuid=""
 owner_telephone="13900000001"
 agent_uuid="UAI000000000000000001"
@@ -32,6 +34,12 @@ fi
 if [[ -n "${memory_b1_receipt_file}" ]]; then
   [[ "${memory_b1_receipt_file}" = /* && ! -e "${memory_b1_receipt_file}" && -d "$(dirname "${memory_b1_receipt_file}")" ]] || {
     printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE_RECEIPT_FILE must be a new absolute path in an existing directory\n' >&2
+    exit 2
+  }
+fi
+if [[ -n "${memory_b1_synthetic_eval_file}" ]]; then
+  [[ "${memory_b1_synthetic_eval_file}" = /* && ! -e "${memory_b1_synthetic_eval_file}" && -d "$(dirname "${memory_b1_synthetic_eval_file}")" ]] || {
+    printf 'DIPOLE_AGENT_MEMORY_B1_SYNTHETIC_EVAL_FILE must be a new absolute path in an existing directory\n' >&2
     exit 2
   }
 fi
@@ -72,8 +80,8 @@ memory_b1_model_source="${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}"
 if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
   [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE requires DIPOLE_AGENT_DEFINITION_ONLY=0\n' >&2; exit 2; }
   DIPOLE_AGENT_MEMORY_SMOKE=1
-elif [[ -n "${memory_b1_receipt_file}" ]]; then
-  printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE_RECEIPT_FILE requires DIPOLE_AGENT_MEMORY_B1_SMOKE=1\n' >&2
+elif [[ -n "${memory_b1_receipt_file}" || -n "${memory_b1_synthetic_eval_file}" ]]; then
+  printf 'B1 Memory receipt and synthetic Eval files require DIPOLE_AGENT_MEMORY_B1_SMOKE=1\n' >&2
   exit 2
 fi
 
@@ -188,6 +196,7 @@ cleanup() {
   fi
   [[ -z "${receipt_temp}" ]] || rm -f "${receipt_temp}"
   [[ -z "${memory_b1_receipt_temp}" ]] || rm -f "${memory_b1_receipt_temp}"
+  [[ -z "${memory_b1_synthetic_eval_temp}" ]] || rm -f "${memory_b1_synthetic_eval_temp}"
   rm -rf "${scratch_dir}"
   exit "${status}"
 }
@@ -367,9 +376,9 @@ NODE
   local first_reply first_reply_sha256 first_response_contains_canary
   first_reply=$(mysql -e "SELECT content FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' ORDER BY id DESC LIMIT 1")
   [[ -n "${first_reply}" ]] || { printf 'B1 Memory reply is empty\n' >&2; return 1; }
-  [[ "${first_reply}" == *"ORBIT-91"* ]] || { printf 'B1 Memory reply did not recall the synthetic canary\n' >&2; return 1; }
   first_reply_sha256=$(printf '%s' "${first_reply}" | openssl dgst -sha256 -r | awk '{print $1}')
-  first_response_contains_canary=true
+  first_response_contains_canary=false
+  [[ "${first_reply}" != *"ORBIT-91"* ]] || first_response_contains_canary=true
 
   compose exec -T agent node --input-type=module - "${owner_telephone}" "${memory_uuid}" "${agent_uuid}" <<'NODE'
 const [telephone, memoryId, agentUuid] = process.argv.slice(2);
@@ -405,6 +414,13 @@ NODE
     revoked_effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${revoked_task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content <> ''), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${revoked_task_id}' AND memory_uuid = '${memory_uuid}'), (SELECT status FROM agent_memories WHERE memory_uuid = '${memory_uuid}')")
     [[ "${revoked_effects}" == $'1\t2\t0\trevoked' ]] || { printf 'B1 provider revoked Memory effects diverged: %q\n' "${revoked_effects}" >&2; return 1; }
   fi
+  local revoked_reply revoked_reply_sha256 revoked_response_contains_canary canary_sha256
+  revoked_reply=$(mysql -e "SELECT content FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' ORDER BY id DESC LIMIT 1")
+  [[ -n "${revoked_reply}" ]] || { printf 'B1 revoked Memory reply is empty\n' >&2; return 1; }
+  revoked_reply_sha256=$(printf '%s' "${revoked_reply}" | openssl dgst -sha256 -r | awk '{print $1}')
+  revoked_response_contains_canary=false
+  [[ "${revoked_reply}" != *"ORBIT-91"* ]] || revoked_response_contains_canary=true
+  canary_sha256=$(printf '%s' 'ORBIT-91' | openssl dgst -sha256 -r | awk '{print $1}')
 
   if [[ -n "${memory_b1_receipt_file}" ]]; then
     local runtime_revision first_task_sha256 revoked_task_sha256
@@ -419,6 +435,20 @@ JSON
     ln "${memory_b1_receipt_temp}" "${memory_b1_receipt_file}"
     rm -f "${memory_b1_receipt_temp}"
     memory_b1_receipt_temp=""
+  fi
+  if [[ -n "${memory_b1_synthetic_eval_file}" ]]; then
+    local eval_runtime_revision first_task_sha256 revoked_task_sha256
+    eval_runtime_revision=$(git -C "${root_dir}" rev-parse HEAD)
+    [[ "${eval_runtime_revision}" =~ ^[a-f0-9]{40}$ ]] || { printf 'B1 synthetic Eval runtime revision is invalid\n' >&2; return 1; }
+    first_task_sha256=$(printf '%s' "${task_id}" | openssl dgst -sha256 -r | awk '{print $1}')
+    revoked_task_sha256=$(printf '%s' "${revoked_task_id}" | openssl dgst -sha256 -r | awk '{print $1}')
+    memory_b1_synthetic_eval_temp=$(mktemp "$(dirname "${memory_b1_synthetic_eval_file}")/.dipole-agent-memory-b1-eval.XXXXXX")
+    cat >"${memory_b1_synthetic_eval_temp}" <<JSON
+{"schemaVersion":"dipole.agent.memory-b1-synthetic-eval.v1","candidateVersion":"${DIPOLE_AGENT_CANDIDATE_VERSION}","minimumPassBps":10000,"cases":[{"caseId":"recall-b1","canarySha256":"${canary_sha256}","expectedMemoryLineageCount":1,"recallExpectation":"required"},{"caseId":"revoke-b1","canarySha256":"${canary_sha256}","expectedMemoryLineageCount":0,"recallExpectation":"not_evaluated"}],"observations":[{"caseId":"recall-b1","canarySha256":"${canary_sha256}","taskSha256":"${first_task_sha256}","replySha256":"${first_reply_sha256}","taskCompleted":true,"modelCallCount":1,"memoryLineageCount":1,"responseContainsCanary":${first_response_contains_canary}},{"caseId":"revoke-b1","canarySha256":"${canary_sha256}","taskSha256":"${revoked_task_sha256}","replySha256":"${revoked_reply_sha256}","taskCompleted":true,"modelCallCount":1,"memoryLineageCount":0,"responseContainsCanary":${revoked_response_contains_canary}}]}
+JSON
+    ln "${memory_b1_synthetic_eval_temp}" "${memory_b1_synthetic_eval_file}"
+    rm -f "${memory_b1_synthetic_eval_temp}"
+    memory_b1_synthetic_eval_temp=""
   fi
 }
 
