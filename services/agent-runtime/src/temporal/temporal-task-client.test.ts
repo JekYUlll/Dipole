@@ -19,7 +19,7 @@ describe("Temporal Task client", () => {
     expect(start).toHaveBeenCalledWith("agentTaskWorkflow", {
       taskQueue: "dipole-agent-task-v1",
       workflowId: "dipole-agent-task/task-1",
-      workflowIdConflictPolicy: "USE_EXISTING",
+      workflowIdConflictPolicy: "FAIL",
       workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY",
       args: [{ taskId: "task-1", goal: "summarize G1" }]
     });

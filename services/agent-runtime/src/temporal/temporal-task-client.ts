@@ -60,7 +60,7 @@ export interface TemporalWorkflowStartPort {
   start(workflowType: string, options: {
     taskQueue: string;
     workflowId: string;
-    workflowIdConflictPolicy: "USE_EXISTING";
+    workflowIdConflictPolicy: "FAIL";
     workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY";
     args: [AgentTaskWorkflowHistoryInput];
   }): Promise<TemporalWorkflowStartHandle>;
@@ -245,7 +245,7 @@ async function startTaskWorkflow(
   const handle = await workflow.start("agentTaskWorkflow", {
     taskQueue,
     workflowId: agentTaskWorkflowId(input.taskId),
-    workflowIdConflictPolicy: "USE_EXISTING",
+    workflowIdConflictPolicy: "FAIL",
     workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY",
     args: [input]
   });

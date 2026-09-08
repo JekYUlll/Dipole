@@ -104,7 +104,7 @@ describe("Temporal MCP Workflow execution envelope", () => {
     expect(start).toHaveBeenCalledWith("agentTaskWorkflow", {
       taskQueue: "dipole-agent-task-v1",
       workflowId: "dipole-agent-task/TASK-1",
-      workflowIdConflictPolicy: "USE_EXISTING",
+      workflowIdConflictPolicy: "FAIL",
       workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY",
       args: [{
         taskId: "TASK-1",
