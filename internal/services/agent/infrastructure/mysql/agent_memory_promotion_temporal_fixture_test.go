@@ -7,7 +7,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -27,6 +29,29 @@ type temporalReceiptFixtureState struct {
 	RejectedTaskID, RejectedRunID                                  string
 	RejectedCandidateID, RejectedCandidateSHA256, RejectedReviewID string
 	RevokePath, RevokedPath, RollbackPath, RolledBackPath          string
+	ReadTaskPath, ReadTaskReadyPath                                string
+}
+
+type temporalReceiptFixtureTaskReader struct {
+	mu    sync.RWMutex
+	tasks map[string]*application.AgentTaskV1
+}
+
+func (r *temporalReceiptFixtureTaskReader) GetTask(_ context.Context, taskUUID string) (*application.AgentTaskV1, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	task := r.tasks[taskUUID]
+	if task == nil {
+		return nil, errors.New("fixture Task is unavailable")
+	}
+	copy := *task
+	return &copy, nil
+}
+
+func (r *temporalReceiptFixtureTaskReader) put(task application.AgentTaskV1) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.tasks[task.TaskUUID] = &task
 }
 
 func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
@@ -38,6 +63,7 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	fixtureDir := filepath.Dir(readyPath)
 	revokePath, revokedPath := filepath.Join(fixtureDir, "revoke-grant"), filepath.Join(fixtureDir, "grant-revoked")
 	rollbackPath, rolledBackPath := filepath.Join(fixtureDir, "rollback-memory"), filepath.Join(fixtureDir, "memory-rolled-back")
+	readTaskPath, readTaskReadyPath := filepath.Join(fixtureDir, "admit-memory-read"), filepath.Join(fixtureDir, "memory-read-task.json")
 	ctx := context.Background()
 	db, _ := openContractDatabase(t)
 	runner, err := migration.NewRunner(db, migrations.Files)
@@ -103,6 +129,11 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create Invocation resolver: %v", err)
 	}
+	tasks := &temporalReceiptFixtureTaskReader{tasks: map[string]*application.AgentTaskV1{}}
+	memoryResolver, err := agentapplication.NewPersistentAgentMemoryResolverV1(memories, resolver, tasks, time.Now)
+	if err != nil {
+		t.Fatalf("create Memory resolver: %v", err)
+	}
 	promotions, err := agentapplication.NewPersistentAgentMemoryCandidatePromotionServiceV1(memories, time.Now)
 	if err != nil {
 		t.Fatalf("create Memory promotion service: %v", err)
@@ -115,6 +146,9 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create Core receipt adapter: %v", err)
 	}
+	if _, err := adapter.WithMemories(memoryResolver); err != nil {
+		t.Fatalf("attach Core Memory resolver: %v", err)
+	}
 	certs := generateReceiptContractCertificates(t)
 	server := startReceiptContractRPCServer(t, certs, adapter)
 	state := temporalReceiptFixtureState{
@@ -124,6 +158,7 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 		RejectedTaskID: rejected.TaskUUID, RejectedRunID: rejected.RunUUID,
 		RejectedCandidateID: rejectedCandidateID, RejectedCandidateSHA256: rejectedCandidateSHA256, RejectedReviewID: rejectedReviewID,
 		RevokePath: revokePath, RevokedPath: revokedPath, RollbackPath: rollbackPath, RolledBackPath: rolledBackPath,
+		ReadTaskPath: readTaskPath, ReadTaskReadyPath: readTaskReadyPath,
 	}
 	writeTemporalFixtureState(t, readyPath, state)
 	deadline := time.Now().Add(3 * time.Minute)
@@ -168,6 +203,25 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 			} else if !errors.Is(err, os.ErrNotExist) {
 				t.Fatal(err)
 			}
+		}
+		if _, err := os.Stat(readTaskPath); err == nil {
+			readAdmitted, admitErr := admission.Admit(ctx, application.AgentRunAdmissionRequestV1{
+				AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
+					TenantID: definition.TenantID, PrincipalUUID: "U100", AgentUUID: definition.AgentUUID,
+					DelegatedByUUID: "U100", TriggerType: "manual", TriggerRef: "temporal-mysql-mtls-memory-read-" + strconv.FormatInt(time.Now().UnixNano(), 10),
+				}, RuntimeID: grant.RuntimeID, Mode: "active", CandidateVersion: grant.CandidateVersion,
+			})
+			if admitErr != nil {
+				t.Fatalf("admit fixture Memory read: %v", admitErr)
+			}
+			now := time.Now().UTC()
+			tasks.put(application.AgentTaskV1{TaskUUID: readAdmitted.TaskUUID, TenantID: definition.TenantID, PrincipalUUID: "U100", AgentUUID: definition.AgentUUID, CreatedAt: now, UpdatedAt: now})
+			writeTemporalFixtureState(t, readTaskReadyPath, temporalReceiptFixtureState{TaskID: readAdmitted.TaskUUID, RunID: readAdmitted.RunUUID})
+			if err := os.Remove(readTaskPath); err != nil {
+				t.Fatalf("clear fixture Memory read request: %v", err)
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			t.Fatal(err)
 		}
 		if time.Now().After(deadline) {
 			t.Fatal("Temporal/MySQL mTLS fixture timed out")

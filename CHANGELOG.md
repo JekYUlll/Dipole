@@ -2708,3 +2708,5 @@
 - 2026-09-09：Route B 的低延迟入站 `reply()` 路径现会并发读取同一会话范围内最多六条已授权的持久 Memory，并将内容、类型与 provenance 作为有界的 `untrusted` 数据附入单次回复模型调用。最近 12 条会话消息读取、Temporal Task 边界和默认 Memory 写入策略保持不变；无 Memory 时维持原有提示词形态。
 - 2026-09-09：补充 Route B 持久 Memory 撤销回归：owner 撤销后，下一条入站回复通过 Core Memory reader 获得空集，提示词不再包含被撤销内容或 Memory 区块。
 - 2026-09-09：修复 Agent Memory promotion 隔离演练的身份 fixture：手工任务的 Definition 由 Agent 持有，Task 与 Memory 的 principal 保持为发起用户。Remote GPU 完整 Temporal/MySQL/mTLS 演练通过，覆盖 Core durable commit 后的 Worker 故障重试、同一 Memory 重放、已撤销 promotion grant 的拒绝，以及 owner 回滚测试 Memory；公共体验环境未改动。
+- 2026-09-09：Remote GPU 通过 Agent Context Ablation 的隔离 preflight：Memory-only 条件完成 migration `000056` 与只读评测账户校验，且与 retrieval 条件使用独立队列和互斥开关。该检查不写入共享体验数据，也不启用默认持久 Memory。
+- 2026-09-09：Agent Memory 的 disposable Temporal/MySQL/mTLS drill 扩展为真实受控读取链路：promotion 重试后，独立 read Task 可按固定身份读取已审核的会话 Memory；owner 回滚后同一受控 RPC 返回空集；Runtime promotion grant 撤销后新的 receipt commit 被拒绝。默认持久 Memory 开关和公共体验环境均未改变。

@@ -198,8 +198,8 @@ func createReceiptContractPolicy(t *testing.T, ctx context.Context, policy *sqlc
 		// Keep this fixture aligned with admission policy so it exercises mTLS and
 		// receipt replay instead of failing during unrelated Definition lookup.
 		DefinitionUUID: "DEF-RECEIPT-MYSQL", Version: 1, TenantID: "dipole", OwnerUUID: "UAI", AgentUUID: "UAI",
-		Status: application.AgentDefinitionStatusActive, Permissions: []string{application.AgentPermissionMessageWrite},
-		Scopes:    []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"write"}}},
+		Status: application.AgentDefinitionStatusActive, Permissions: []string{application.AgentPermissionMessageWrite, application.AgentPermissionConversationRead},
+		Scopes:    []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"write", "read"}}},
 		ValidFrom: now.Add(-time.Hour),
 	}
 	if err := policy.CreateDefinitionVersion(ctx, definition); err != nil {

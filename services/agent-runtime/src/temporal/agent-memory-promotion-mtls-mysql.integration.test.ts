@@ -1,5 +1,5 @@
 import * as grpc from "@grpc/grpc-js";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { TestWorkflowEnvironment } from "@temporalio/testing";
 import { Worker } from "@temporalio/worker";
@@ -19,6 +19,7 @@ type Fixture = {
   RejectedTaskID: string; RejectedRunID: string;
   RejectedCandidateID: string; RejectedCandidateSHA256: string; RejectedReviewID: string;
   RevokePath: string; RevokedPath: string; RollbackPath: string; RolledBackPath: string;
+	ReadTaskPath: string; ReadTaskReadyPath: string;
 };
 
 describe.skipIf(!enabled)("Temporal Agent Memory promotion through Core mTLS and MySQL", () => {
@@ -77,20 +78,37 @@ describe.skipIf(!enabled)("Temporal Agent Memory promotion through Core mTLS and
       expect(result.output?.promotionCommit?.receiptSha256).toBe(result.output?.promotionReceipt?.receiptSha256);
       expect(result.output?.promotionCommit?.memoryId).toMatch(/^MEM-/);
 
-      await writeFile(fixture.RevokePath, "revoke\n", { mode: 0o600 });
-      await waitForFile(fixture.RevokedPath);
-      const revokedReceipt = createAgentMemoryPromotionReceipt({
-        tenantId: fixture.TenantID, principalUserId: fixture.PrincipalUserID, agentId: fixture.AgentID,
-        taskId: fixture.RejectedTaskID, runId: fixture.RejectedRunID, candidateId: fixture.RejectedCandidateID,
-        candidateSha256: fixture.RejectedCandidateSHA256, reviewId: fixture.RejectedReviewID,
-        policyVersion: fixture.PolicyVersion, candidateMemoryType: "observational", targetMemoryType: "semantic",
-        expiresAt: new Date(Date.now() + 10 * 60 * 1_000).toISOString()
+      const readTask = await requestReadTask(fixture);
+      const beforeRevoke = await client.listContextMemories({
+        taskId: readTask.TaskID, runId: readTask.RunID, requestId: "REQ-MEMORY-BEFORE-REVOKE", traceId: "TRACE-MEMORY-BEFORE-REVOKE"
+      }, "conversation", "group:G1", 6);
+      expect(beforeRevoke).toHaveLength(1);
+      expect(beforeRevoke[0]).toMatchObject({
+        memoryId: result.output?.promotionCommit?.memoryId, memoryType: "semantic", content: "reviewed project decision",
+        provenance: { sourceType: "memory_candidate", sourceId: fixture.CandidateID }
       });
-      await expect(client.commitMemoryPromotionReceipt(revokedReceipt)).rejects.toThrow(/PERMISSION_DENIED/);
-      const memoryID = result.output?.promotionCommit?.memoryId;
-      if (memoryID === undefined) throw new Error("successful receipt commit did not return a Memory ID");
-      await writeFile(fixture.RollbackPath, `${memoryID}\n`, { mode: 0o600 });
-      await waitForFile(fixture.RolledBackPath);
+	  // Admit an independent future read while the promotion grant remains valid.
+	  // The subsequent lookup occurs only after owner revocation and must be empty.
+	  const readAfterRevoke = await requestReadTask(fixture);
+
+	  const memoryID = result.output?.promotionCommit?.memoryId;
+	  if (memoryID === undefined) throw new Error("successful receipt commit did not return a Memory ID");
+	  await writeFile(fixture.RollbackPath, `${memoryID}\n`, { mode: 0o600 });
+	  await waitForFile(fixture.RolledBackPath);
+	  await expect(client.listContextMemories({
+		taskId: readAfterRevoke.TaskID, runId: readAfterRevoke.RunID, requestId: "REQ-MEMORY-AFTER-REVOKE", traceId: "TRACE-MEMORY-AFTER-REVOKE"
+	  }, "conversation", "group:G1", 6)).resolves.toEqual([]);
+
+	  await writeFile(fixture.RevokePath, "revoke\n", { mode: 0o600 });
+	  await waitForFile(fixture.RevokedPath);
+	  const revokedReceipt = createAgentMemoryPromotionReceipt({
+		tenantId: fixture.TenantID, principalUserId: fixture.PrincipalUserID, agentId: fixture.AgentID,
+		taskId: fixture.RejectedTaskID, runId: fixture.RejectedRunID, candidateId: fixture.RejectedCandidateID,
+		candidateSha256: fixture.RejectedCandidateSHA256, reviewId: fixture.RejectedReviewID,
+		policyVersion: fixture.PolicyVersion, candidateMemoryType: "observational", targetMemoryType: "semantic",
+		expiresAt: new Date(Date.now() + 10 * 60 * 1_000).toISOString()
+	  });
+	  await expect(client.commitMemoryPromotionReceipt(revokedReceipt)).rejects.toThrow(/PERMISSION_DENIED/);
     } finally {
       transport.close();
       await temporal.teardown();
@@ -116,4 +134,16 @@ async function waitForFile(path: string): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error(`fixture did not acknowledge grant revocation: ${path}`);
+}
+
+async function requestReadTask(fixture: Fixture): Promise<Pick<Fixture, "TaskID" | "RunID">> {
+  await unlink(fixture.ReadTaskReadyPath).catch((error: unknown) => {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return;
+    throw error;
+  });
+  await writeFile(fixture.ReadTaskPath, "admit\n", { mode: 0o600 });
+  await waitForFile(fixture.ReadTaskReadyPath);
+  const value = JSON.parse(await readFile(fixture.ReadTaskReadyPath, "utf8")) as Pick<Fixture, "TaskID" | "RunID">;
+  if (!value.TaskID || !value.RunID) throw new Error("fixture did not return a Memory read Task identity");
+  return value;
 }

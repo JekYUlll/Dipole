@@ -2,6 +2,8 @@
 
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据
 
+- 2026-09-09：Remote GPU 在 disposable Temporal/MySQL/mTLS drill 实测 promotion 后的受控读取与 owner 撤销边界。Activity 在 Core durable commit 后重试仍得到同一 Memory；Runtime 通过独立、固定 Task/Run identity 的 RPC 读取到该会话 Memory，owner 回滚后新 read Task 返回空集；随后撤销 Runtime promotion grant，新的 receipt commit 被拒绝。测试容器和 worktree 已清理，公共 `dipole-experience` 未修改；该证据不代表默认持久 Memory 已启用或真实 Provider 多轮质量已验证。
+- 2026-09-09：Remote GPU 复验 Memory-only Context Ablation preflight。隔离 MySQL 已应用 `000056`，`agent_context_ablation_bindings` 存在，`dipole_agent_eval` 对该绑定表没有写权限；Memory 与 retrieval overlay 使用独立 Temporal queue 且保持互斥。此项只建立受控评测数据面，真实多轮 Provider 召回与撤销证据仍待完成。
 - 2026-09-09：Remote GPU 的 disposable Temporal/MySQL/mTLS drill 已通过：Core 首次 durable commit 后注入 Worker failure，Temporal 重试复用同一 promotion receipt 和 Memory；撤销 runtime grant 后的 receipt 被拒绝，owner 随后回滚测试 Memory。fixture 现明确分离 Agent-owned manual Definition 与 user-owned Task/Memory principal。该证据不改变默认关闭的持久 Memory 开关。
 - 2026-09-09：`ModelShadowPlanner.reply()` 已与普通 plan 路径对齐，能从已授权的同会话 Memory reader 并发获取最多六条记录；每条记录按 1024 字符截断，并带 Memory 类型和 provenance 作为不可信数据进入单次低延迟回复。单元测试覆盖 resource scope、上限与 prompt-injection 数据保留，Remote GPU Node 22 typecheck 和 planner 测试均通过。
 - 2026-09-09：新增撤销回归固定 Runtime 侧边界：同一会话的下一条 Route B Task 重新向 Core reader 查询，reader 返回空集时已撤销 Memory 的内容和提示词区块均不可见。该测试与既有 Core owner revoke 契约共同约束“撤销后不再召回”；真实多轮 Provider 演练仍待受控样本。
