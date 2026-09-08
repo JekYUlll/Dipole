@@ -117,10 +117,10 @@ func TestAgentDefinitionCatalogCreatesOwnerScopedReadDefinitionIdempotently(t *t
 	if err != nil || first.DefinitionUUID != replayed.DefinitionUUID || len(store.items) != 1 || first.OwnerUUID != "U100" || first.AgentUUID != "UAI" {
 		t.Fatalf("owner Definition replay drifted: first=%+v replay=%+v items=%+v err=%v", first, replayed, store.items, err)
 	}
-	if len(first.Permissions) != 2 || first.Permissions[0] != application.AgentPermissionConversationList || first.Permissions[1] != application.AgentPermissionConversationRead {
+	if len(first.Permissions) != 3 || first.Permissions[0] != application.AgentPermissionUserProfileRead || first.Permissions[1] != application.AgentPermissionConversationList || first.Permissions[2] != application.AgentPermissionConversationRead {
 		t.Fatalf("read-only permissions = %#v", first.Permissions)
 	}
-	if len(first.Scopes) != 1 || first.Scopes[0].ResourceType != application.AgentResourceTypeConversation || first.Scopes[0].ResourceID != application.AgentResourceWildcard || len(first.Scopes[0].Actions) != 2 || first.Scopes[0].Actions[0] != application.AgentResourceActionList || first.Scopes[0].Actions[1] != application.AgentResourceActionRead {
+	if len(first.Scopes) != 2 || first.Scopes[0].ResourceType != application.AgentResourceTypeUser || first.Scopes[0].ResourceID != "U100" || len(first.Scopes[0].Actions) != 1 || first.Scopes[0].Actions[0] != application.AgentResourceActionRead || first.Scopes[1].ResourceType != application.AgentResourceTypeConversation || first.Scopes[1].ResourceID != application.AgentResourceWildcard || len(first.Scopes[1].Actions) != 2 || first.Scopes[1].Actions[0] != application.AgentResourceActionList || first.Scopes[1].Actions[1] != application.AgentResourceActionRead {
 		t.Fatalf("read-only scopes = %#v", first.Scopes)
 	}
 	foreign, err := service.Create(context.Background(), "U200", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole"})
@@ -154,10 +154,10 @@ func TestAgentDefinitionCatalogCreatesExplicitSubscriptionAutoReplyDefinition(t 
 	if autoReply.DefinitionUUID == readOnly.DefinitionUUID || replayed.DefinitionUUID != autoReply.DefinitionUUID || len(store.items) != 2 {
 		t.Fatalf("auto-reply Definition identity drifted: read=%+v auto=%+v replay=%+v", readOnly, autoReply, replayed)
 	}
-	if len(autoReply.Permissions) != 3 || autoReply.Permissions[0] != application.AgentPermissionConversationList || autoReply.Permissions[1] != application.AgentPermissionConversationRead || autoReply.Permissions[2] != application.AgentPermissionMessageWrite {
+	if len(autoReply.Permissions) != 4 || autoReply.Permissions[0] != application.AgentPermissionUserProfileRead || autoReply.Permissions[1] != application.AgentPermissionConversationList || autoReply.Permissions[2] != application.AgentPermissionConversationRead || autoReply.Permissions[3] != application.AgentPermissionMessageWrite {
 		t.Fatalf("auto-reply permissions = %#v", autoReply.Permissions)
 	}
-	if len(autoReply.Scopes) != 1 || autoReply.Scopes[0].ResourceType != application.AgentResourceTypeConversation || autoReply.Scopes[0].ResourceID != application.AgentResourceWildcard || len(autoReply.Scopes[0].Actions) != 3 || autoReply.Scopes[0].Actions[0] != application.AgentResourceActionList || autoReply.Scopes[0].Actions[1] != application.AgentResourceActionRead || autoReply.Scopes[0].Actions[2] != application.AgentResourceActionWrite {
+	if len(autoReply.Scopes) != 2 || autoReply.Scopes[0].ResourceType != application.AgentResourceTypeUser || autoReply.Scopes[0].ResourceID != "U100" || len(autoReply.Scopes[0].Actions) != 1 || autoReply.Scopes[0].Actions[0] != application.AgentResourceActionRead || autoReply.Scopes[1].ResourceType != application.AgentResourceTypeConversation || autoReply.Scopes[1].ResourceID != application.AgentResourceWildcard || len(autoReply.Scopes[1].Actions) != 3 || autoReply.Scopes[1].Actions[0] != application.AgentResourceActionList || autoReply.Scopes[1].Actions[1] != application.AgentResourceActionRead || autoReply.Scopes[1].Actions[2] != application.AgentResourceActionWrite {
 		t.Fatalf("auto-reply scopes = %#v", autoReply.Scopes)
 	}
 }

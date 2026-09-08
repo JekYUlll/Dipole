@@ -1,3 +1,6 @@
+- 2026-09-08：Route B · B3 新增受治理 `user.profile.read` capability。Core 通过 Task/Run 恢复 principal，RPC 无 subject 参数，只返回 UUID、昵称、头像、用户类型和状态；电话、邮箱、签名、管理员标记及密码字段不会离开 Core。Runtime 额外要求精确 `user/<principal>/read` scope，通用 wildcard scope 也会拒绝执行。新的 read-only 与 subscription-autoreply Definition 模板带 owner-scoped user grant；历史 Definition 维持原权限版本。
+  - 验证：Core RPC principal-forgery 与映射测试、Definition Catalog 契约、Runtime capability 两项权限回归、Go/TS Proto 生成一致性均通过。完整 TS typecheck 仍受已有 MCP fixture 类型漂移和外部 MCP fixture 字段缺失阻塞，详见 AD-064。
+
 - 2026-09-06：Route A · A1 —— 在 microservices core 复活 legacy 对话小助手（1v1 直发自动回复）。计划见 `docs/agent/CHATBOT-REVIVAL-AND-GROUP-MENTION-PLAN.md`（A/B 两路线各自独立成章，先 A 后 B）。
   - 抽出共享包 `internal/services/core/bootstrap/agentchat`（`NewDirectReplyService` + `DirectReplyHandler`），让 embedded 单体与 microservices core 共用同一份装配，消除重复；embedded 原来的 `newAIService`/`handleAIDirectReply` 收敛到此。
   - core runtime 在 `Subscriber.Start` 之前注册 `message.direct.created` → 小助手（消费者按 topic 快照 handler，晚于 Start 注册无效）。transport=grpc 时复用 `messageSender` 与 lazy `messageReader`，并对 `messageReader` 加 nil 守卫，避免与后面的 RPC 装配块二次初始化。仅当 `ai.runtime_mode=embedded|shadow` 时生效，默认 `remote` 下完全惰性、不注册任何 handler。

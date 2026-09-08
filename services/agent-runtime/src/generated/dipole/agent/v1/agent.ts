@@ -581,6 +581,64 @@ export interface SearchConversationsResponse {
     evidence: ConversationSearchEvidence[];
 }
 /**
+ * ReadUserProfile exposes only the task principal's concise public profile.
+ * The subject is derived by Core from task/run identity and is never client input.
+ *
+ * @generated from protobuf message dipole.agent.v1.ReadUserProfileRequest
+ */
+export interface ReadUserProfileRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string task_id = 2
+     */
+    taskId: string;
+    /**
+     * @generated from protobuf field: string run_id = 3
+     */
+    runId: string;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.UserProfileSnapshot
+ */
+export interface UserProfileSnapshot {
+    /**
+     * @generated from protobuf field: bool found = 1
+     */
+    found: boolean;
+    /**
+     * @generated from protobuf field: string user_id = 2
+     */
+    userId: string;
+    /**
+     * @generated from protobuf field: string nickname = 3
+     */
+    nickname: string;
+    /**
+     * @generated from protobuf field: string avatar = 4
+     */
+    avatar: string;
+    /**
+     * @generated from protobuf field: int32 user_type = 5
+     */
+    userType: number;
+    /**
+     * @generated from protobuf field: int32 status = 6
+     */
+    status: number;
+}
+/**
+ * @generated from protobuf message dipole.agent.v1.ReadUserProfileResponse
+ */
+export interface ReadUserProfileResponse {
+    /**
+     * @generated from protobuf field: dipole.agent.v1.UserProfileSnapshot profile = 1
+     */
+    profile?: UserProfileSnapshot;
+}
+/**
  * @generated from protobuf message dipole.agent.v1.AuthorizeTaskControlRequest
  */
 export interface AuthorizeTaskControlRequest {
@@ -5176,6 +5234,201 @@ class SearchConversationsResponse$Type extends MessageType<SearchConversationsRe
  * @generated MessageType for protobuf message dipole.agent.v1.SearchConversationsResponse
  */
 export const SearchConversationsResponse = new SearchConversationsResponse$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ReadUserProfileRequest$Type extends MessageType<ReadUserProfileRequest> {
+    constructor() {
+        super("dipole.agent.v1.ReadUserProfileRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "task_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "run_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<ReadUserProfileRequest>): ReadUserProfileRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.taskId = "";
+        message.runId = "";
+        if (value !== undefined)
+            reflectionMergePartial<ReadUserProfileRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ReadUserProfileRequest): ReadUserProfileRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string task_id */ 2:
+                    message.taskId = reader.string();
+                    break;
+                case /* string run_id */ 3:
+                    message.runId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ReadUserProfileRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string task_id = 2; */
+        if (message.taskId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.taskId);
+        /* string run_id = 3; */
+        if (message.runId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.runId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ReadUserProfileRequest
+ */
+export const ReadUserProfileRequest = new ReadUserProfileRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class UserProfileSnapshot$Type extends MessageType<UserProfileSnapshot> {
+    constructor() {
+        super("dipole.agent.v1.UserProfileSnapshot", [
+            { no: 1, name: "found", kind: "scalar", T: 8 /*ScalarType.BOOL*/ },
+            { no: 2, name: "user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "nickname", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "avatar", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "user_type", kind: "scalar", T: 5 /*ScalarType.INT32*/ },
+            { no: 6, name: "status", kind: "scalar", T: 5 /*ScalarType.INT32*/ }
+        ]);
+    }
+    create(value?: PartialMessage<UserProfileSnapshot>): UserProfileSnapshot {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.found = false;
+        message.userId = "";
+        message.nickname = "";
+        message.avatar = "";
+        message.userType = 0;
+        message.status = 0;
+        if (value !== undefined)
+            reflectionMergePartial<UserProfileSnapshot>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: UserProfileSnapshot): UserProfileSnapshot {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* bool found */ 1:
+                    message.found = reader.bool();
+                    break;
+                case /* string user_id */ 2:
+                    message.userId = reader.string();
+                    break;
+                case /* string nickname */ 3:
+                    message.nickname = reader.string();
+                    break;
+                case /* string avatar */ 4:
+                    message.avatar = reader.string();
+                    break;
+                case /* int32 user_type */ 5:
+                    message.userType = reader.int32();
+                    break;
+                case /* int32 status */ 6:
+                    message.status = reader.int32();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: UserProfileSnapshot, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* bool found = 1; */
+        if (message.found !== false)
+            writer.tag(1, WireType.Varint).bool(message.found);
+        /* string user_id = 2; */
+        if (message.userId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.userId);
+        /* string nickname = 3; */
+        if (message.nickname !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.nickname);
+        /* string avatar = 4; */
+        if (message.avatar !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.avatar);
+        /* int32 user_type = 5; */
+        if (message.userType !== 0)
+            writer.tag(5, WireType.Varint).int32(message.userType);
+        /* int32 status = 6; */
+        if (message.status !== 0)
+            writer.tag(6, WireType.Varint).int32(message.status);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.UserProfileSnapshot
+ */
+export const UserProfileSnapshot = new UserProfileSnapshot$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class ReadUserProfileResponse$Type extends MessageType<ReadUserProfileResponse> {
+    constructor() {
+        super("dipole.agent.v1.ReadUserProfileResponse", [
+            { no: 1, name: "profile", kind: "message", T: () => UserProfileSnapshot }
+        ]);
+    }
+    create(value?: PartialMessage<ReadUserProfileResponse>): ReadUserProfileResponse {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        if (value !== undefined)
+            reflectionMergePartial<ReadUserProfileResponse>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: ReadUserProfileResponse): ReadUserProfileResponse {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.agent.v1.UserProfileSnapshot profile */ 1:
+                    message.profile = UserProfileSnapshot.internalBinaryRead(reader, reader.uint32(), options, message.profile);
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: ReadUserProfileResponse, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.agent.v1.UserProfileSnapshot profile = 1; */
+        if (message.profile)
+            UserProfileSnapshot.internalBinaryWrite(message.profile, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.agent.v1.ReadUserProfileResponse
+ */
+export const ReadUserProfileResponse = new ReadUserProfileResponse$Type();
 // @generated message type with reflection information, may provide speed optimized methods
 class AuthorizeTaskControlRequest$Type extends MessageType<AuthorizeTaskControlRequest> {
     constructor() {
@@ -13710,6 +13963,7 @@ export const AgentCapabilityService = new ServiceType("dipole.agent.v1.AgentCapa
     { name: "ListConversations", options: {}, I: ListConversationsRequest, O: ListConversationsResponse },
     { name: "ReadConversation", options: {}, I: ReadConversationRequest, O: ReadConversationResponse },
     { name: "SearchConversations", options: {}, I: SearchConversationsRequest, O: SearchConversationsResponse },
+    { name: "ReadUserProfile", options: {}, I: ReadUserProfileRequest, O: ReadUserProfileResponse },
     { name: "AuthorizeTaskControl", options: {}, I: AuthorizeTaskControlRequest, O: AuthorizeTaskControlResponse },
     { name: "ListOwnedAgentTasks", options: {}, I: ListOwnedAgentTasksRequest, O: ListOwnedAgentTasksResponse },
     { name: "ListAgentTaskTimeline", options: {}, I: ListAgentTaskTimelineRequest, O: ListAgentTaskTimelineResponse },

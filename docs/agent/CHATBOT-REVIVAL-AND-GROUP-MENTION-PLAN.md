@@ -97,6 +97,7 @@
 
 ## B3. 工具移植与 legacy 退役
 - 把 legacy 的查资料 / 搜历史 / 列读会话移植为新运行时 capability（proto + registry + policy + 单测）。
+- `user.profile.read` 已迁移：Core 从 Task/Run 恢复 owner，Runtime 工具无 subject 参数且要求精确 owner `user/read` scope；只返回低敏简要资料。会话 list/read/search 已有受治理 capability。
 - 迁移完成后停用 A 路线的 core legacy handler，legacy 目录标记 deprecated / 移除接线。
 
 ---

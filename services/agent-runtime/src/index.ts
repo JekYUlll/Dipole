@@ -4,6 +4,7 @@ import { InteractiveTaskStartService } from "./task/interactive-task-request.js"
 import { z } from "zod";
 import { ConversationListCapability } from "./capabilities/conversation-list.js";
 import { ConversationReadCapability } from "./capabilities/conversation-read.js";
+import { UserProfileReadCapability } from "./capabilities/user-profile-read.js";
 import { CapabilityRegistry } from "./capabilities/registry.js";
 import { createDipoleMcpHttpHandler } from "./mcp/dipole-mcp-http.js";
 import { McpToolInvocationRunner } from "./mcp/mcp-tool-invocation.js";
@@ -188,6 +189,7 @@ const controlService = controlEnabled
 const mcpRegistry = mcpEnabled ? new CapabilityRegistry() : undefined;
 if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationListCapability(mcpRPC!.client));
 if (mcpRegistry !== undefined) mcpRegistry.register(new ConversationReadCapability(mcpRPC!.client));
+if (mcpRegistry !== undefined) mcpRegistry.register(new UserProfileReadCapability(mcpRPC!.client));
 const mcpAuthExtraSchema = z.object({
   resource: z.literal(mcpResource),
   taskId: z.string().trim().min(1),
@@ -202,6 +204,12 @@ const mcpHandler = mcpRegistry === undefined ? undefined : createDipoleMcpHttpHa
     finish: (input) => mcpRPC!.client.finishToolInvocation(input)
   }, undefined, undefined, undefined, mcpToolTimeoutMs),
   tools: [{
+    name: "dipole_user_profile_read",
+    capabilityId: "user.profile.read",
+    title: "Read user profile",
+    description: "Read the authenticated Agent Task owner's concise profile",
+    inputSchema: z.object({}).strict()
+  }, {
     name: "dipole_conversation_list",
     capabilityId: "conversation.list",
     title: "List conversations",

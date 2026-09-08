@@ -127,6 +127,28 @@ describe("AgentCapabilityRPCClient", () => {
       .resolves.toEqual({ found: false, reason: "not_found", targetId: "U200", targetType: 1, messages: [] });
   });
 
+  it("binds user profile responses to the trusted Task principal", async () => {
+    const readUserProfile = vi.fn((input, metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1" });
+      expect(input.context?.principalUserId).toBe("");
+      expect(metadata.get("x-dipole-caller-service")).toEqual(["dipole-agent"]);
+      callback(null, { profile: { found: true, userId: "U100", nickname: "Ada", avatar: "", userType: 0, status: 1 } });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ readUserProfile } as unknown as IAgentCapabilityServiceClient, "secret");
+    const context = conversationReadContext({
+      permissions: ["user.profile.read"], resourceScopes: [{ resourceType: "user", resourceId: "U100", actions: ["read"] }]
+    });
+
+    await expect(client.readUserProfile(context)).resolves.toEqual({ found: true, userId: "U100", nickname: "Ada", avatar: "", userType: 0, status: 1 });
+
+    readUserProfile.mockImplementationOnce((_input, _metadata, _options, callback) => {
+      callback(null, { profile: { found: true, userId: "U200", nickname: "Mallory", avatar: "", userType: 0, status: 1 } });
+      return {};
+    });
+    await expect(client.readUserProfile(context)).rejects.toThrow(/invalid profile/);
+  });
+
   it("rejects invalid scopes, oversized responses, and conflicting RPC responses", async () => {
     const readConversation = vi.fn((_input, _metadata, _options, callback) => {
       callback(null, { found: true, reason: "", targetId: "U999", targetType: 1, messages: [] });

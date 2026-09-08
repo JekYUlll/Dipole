@@ -37,6 +37,15 @@ export interface AgentRunIdentity {
 export type AgentRunTerminalStatus = "completed" | "failed" | "cancelled";
 export type AgentRuntimeMode = "shadow" | "active";
 
+export interface UserProfileResult {
+  readonly found: boolean;
+  readonly userId: string;
+  readonly nickname: string;
+  readonly avatar: string;
+  readonly userType: number;
+  readonly status: number;
+}
+
 export interface AgentMcpToolCommand {
   readonly invocationId: string;
   readonly tenantId: string;
@@ -726,6 +735,35 @@ export class AgentCapabilityRPCClient {
           });
         }
         resolve(results);
+      });
+    });
+  }
+
+  async readUserProfile(context: ExecutionContext): Promise<UserProfileResult> {
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.readUserProfile({
+        context: this.requestContext(context.requestId, context.traceId), taskId: context.taskId, runId: context.runId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent user profile read returned no response"));
+          return;
+        }
+        const profile = response.profile;
+        if (profile === undefined || !Number.isInteger(profile.userType) || !Number.isInteger(profile.status)) {
+          reject(new Error("Agent user profile read returned invalid profile"));
+          return;
+        }
+        if (!profile.found) {
+          resolve({ found: false, userId: "", nickname: "", avatar: "", userType: 0, status: 0 });
+          return;
+        }
+        if (!validBoundedIdentifier(profile.userId, 128) || profile.userId !== context.principalUuid ||
+            Array.from(profile.nickname).length > 128 || Array.from(profile.avatar).length > 2048) {
+          reject(new Error("Agent user profile read returned invalid profile"));
+          return;
+        }
+        resolve({ found: true, userId: profile.userId, nickname: profile.nickname, avatar: profile.avatar, userType: profile.userType, status: profile.status });
       });
     });
   }

@@ -186,7 +186,7 @@ describe("ModelShadowPlanner", () => {
     }));
     const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list"]);
 
-    const plan = await planner.plan(event(), context());
+    const plan = await planner.plan(event(), { ...context(), permissions: ["conversation.list"] });
 
     expect(plan).toMatchObject({
       summary: "inspect recent conversations",
@@ -315,7 +315,7 @@ describe("ModelShadowPlanner", () => {
     }));
     const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list", "conversation.read"]);
 
-    await expect(planner.plan(event(), context())).resolves.toMatchObject({ steps: [
+    await expect(planner.plan(event(), { ...context(), permissions: ["conversation.list", "conversation.read"] })).resolves.toMatchObject({ steps: [
       { capabilityId: "conversation.list" },
       { capabilityId: "conversation.read", input: { conversationId: "$discovered.previous" } }
     ] });
@@ -340,7 +340,7 @@ describe("ModelShadowPlanner", () => {
     });
     const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.list", "conversation.read"]);
 
-    await planner.plan(event(), context());
+    await planner.plan(event(), { ...context(), permissions: ["conversation.list", "conversation.read"] });
 
     expect(planSchema?.safeParse({
       summary: "read guessed conversation",
@@ -384,6 +384,27 @@ describe("ModelShadowPlanner", () => {
     expect(request?.prompt).toContain('\\"conversationId\\":{\\"type\\":\\"string\\",\\"maxLength\\":256}');
     expect(request?.prompt).toContain('\\"additionalProperties\\":false');
     expect(request?.prompt).not.toContain('\\"id\\":\\"message.send\\"');
+  });
+
+  it("exposes capability metadata only when the Task holds its permission", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["user.profile.read", "conversation.read"], undefined,
+      undefined, undefined, undefined, undefined,
+      [{ id: "user.profile.read", risk: "read", requiredPermission: "user.profile.read", inputSchema: {
+        type: "object", properties: {}, additionalProperties: false
+      } }]
+    );
+
+    await planner.plan(event(), context());
+    await planner.plan(event(), { ...context(), permissions: ["user.profile.read"] });
+
+    const prompts = (generate.mock.calls as unknown as Array<[{ prompt: string }]>).map(([request]) => request.prompt);
+    expect(prompts[0]).not.toContain('\\"id\\":\\"user.profile.read\\"');
+    expect(prompts[1]).toContain('\\"id\\":\\"user.profile.read\\"');
   });
 
   it("accepts a bounded retrieval Step only when search is in the model allowlist", async () => {

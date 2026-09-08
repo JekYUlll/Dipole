@@ -46,6 +46,7 @@ func TestAgentServiceMethodAllowlistCoversRuntimeInvocations(t *testing.T) {
 		agentv1.AgentCapabilityService_AuthorizeSubscriptionMessage_FullMethodName,
 		agentv1.AgentCapabilityService_AuthorizeInteractiveReply_FullMethodName,
 		agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName,
+		agentv1.AgentCapabilityService_ReadUserProfile_FullMethodName,
 		agentv1.AgentCapabilityService_ListConversations_FullMethodName,
 		agentv1.AgentCapabilityService_ReadConversation_FullMethodName,
 		agentv1.AgentCapabilityService_SearchConversations_FullMethodName,

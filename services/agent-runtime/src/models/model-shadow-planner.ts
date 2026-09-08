@@ -85,6 +85,10 @@ export class ModelShadowPlanner implements ShadowPlanner {
   }
 
   async plan(event: Parameters<ShadowPlanner["plan"]>[0], context: Parameters<ShadowPlanner["plan"]>[1]): ReturnType<ShadowPlanner["plan"]> {
+    // The Runtime may know more capabilities than this Task was granted. Keep
+    // ungranted descriptors out of the model context as well as the executor.
+    const allowedCapabilityIds = [...this.#allowedCapabilityIds].filter((id) => context.permissions.includes(id));
+    const allowedCapabilityIdSet = new Set(allowedCapabilityIds);
     const resourceId = typeof event.payload.conversation_key === "string" ? event.payload.conversation_key.trim() : "";
     const conversationId = conversationIdForEvent(event);
     const retrievalQuery = retrievalQueryForEvent(event);
@@ -115,7 +119,7 @@ export class ModelShadowPlanner implements ShadowPlanner {
       taskId: context.taskId, runId: context.runId,
       attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
     }, async span => {
-      const value = this.compiler.compile({ budget, fragments: contextFragments(event, context, [...this.#allowedCapabilityIds], memories, conversation, retrieval, this.capabilityDescriptors) });
+      const value = this.compiler.compile({ budget, fragments: contextFragments(event, context, allowedCapabilityIds, memories, conversation, retrieval, this.capabilityDescriptors) });
       span.setAttribute("dipole.agent.context.compiler_version", value.compilerVersion);
       span.setAttribute("dipole.agent.context.estimated_tokens", value.estimatedTokens);
       span.setAttribute("dipole.agent.context.selected_count", value.selected.length);
@@ -135,7 +139,7 @@ export class ModelShadowPlanner implements ShadowPlanner {
       return value;
     });
     for (const step of result.output.steps) {
-      if (!this.#allowedCapabilityIds.has(step.capabilityId)) {
+      if (!allowedCapabilityIdSet.has(step.capabilityId)) {
         throw new Error(`model capability ${step.capabilityId} is not allowed in shadow mode`);
       }
     }

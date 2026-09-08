@@ -2486,6 +2486,40 @@ func (s *Server) SearchConversations(ctx context.Context, request *agentv1.Searc
 	return response, nil
 }
 
+func (s *Server) ReadUserProfile(ctx context.Context, request *agentv1.ReadUserProfileRequest) (*agentv1.ReadUserProfileResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	invocation, err := s.resolver.Resolve(ctx, request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task policy denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task policy lookup failed")
+	}
+	profile, err := s.capability.GetUserProfile(ctx, invocation, invocation.PrincipalUUID)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentCapabilityDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Capability denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent user profile read failed")
+	}
+	return &agentv1.ReadUserProfileResponse{Profile: userProfileToProto(profile)}, nil
+}
+
+func userProfileToProto(user *model.User) *agentv1.UserProfileSnapshot {
+	if user == nil {
+		return &agentv1.UserProfileSnapshot{Found: false}
+	}
+	return &agentv1.UserProfileSnapshot{
+		Found: true, UserId: user.UUID, Nickname: user.Nickname, Avatar: user.Avatar,
+		UserType: int32(user.UserType), Status: int32(user.Status),
+	}
+}
+
 func conversationSearchEvidenceToProto(item *application.AgentConversationSearchEvidenceV1) *agentv1.ConversationSearchEvidence {
 	return &agentv1.ConversationSearchEvidence{
 		MessageId: item.MessageUUID, ConversationKey: item.ConversationKey, MessageSeq: item.MessageSeq,
