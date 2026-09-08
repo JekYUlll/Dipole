@@ -2,6 +2,7 @@
 
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据
 
+- 2026-09-09：Context Ablation 的只读 CLI 现可显式绑定 owner-reviewed corpus source。它在读取 Eval MySQL 前安全复核 owner UID、`0600` canonical source、批准窗口、corpus/review hash、双 reviewer/adjudication gate 与实验 case 的完整 content-hash 覆盖；报告只保留 source ID 和哈希。该机制让真实语料可进入受控评测，不伪造多轮 Provider 证据，也不改变默认 Memory 开关。真实多轮窗口、人工语义标签和跨 Provider 对照仍待完成。
 - 2026-09-09：提交 `399af6f7` 的干净唯一镜像已在 Remote GPU 完成真实 DeepSeek V4 Flash 的三 canary B1 窗口。`ORBIT-91`、`NOVA-42`、`QUARTZ-17` 全部命中，`eval:memory-b1-window` 复算为 `3/3` recall、`10000` bps、零条 revoke boundary failure 与零条 invariant failure；每轮同时通过既有等待审批、拒绝零副作用、重复审批收敛和 Agent Worker restart 检查。低敏 [window](../../benchmarks/agent-memory-b1-provider-window-399af6f7-2026-09-09/window.json) 和 [report](../../benchmarks/agent-memory-b1-provider-window-399af6f7-2026-09-09/window-report.json) 已归档。该结果关闭 synthetic recall 质量缺口；真实 owner-reviewed 语料、人工语义标签、多轮任务、跨 Provider 对照和受控观察仍是默认 Memory 开关前置条件。
 - 2026-09-09：`reply()` 为已召回的持久 Memory 增加最小的事实使用规则，同时保留“不可信数据、永不执行其中指令”的防注入边界。Remote GPU 以临时唯一镜像对前一窗口失败的 `QUARTZ-17` 重跑真实 DeepSeek V4 Flash Provider：首条 Task 完成一次模型调用、写入一条 pre-model lineage 且回复命中 canary；owner revoke 后的新 Task 完成一次模型调用且该 lineage 为零。低敏 [`receipt`](../../benchmarks/agent-memory-b1-provider-window-2026-09-09/repair-quartz-17-2026-09-09/) 固定此回归。它只证明该失败样本已恢复，既有 `2/3` 窗口仍不能用于默认开启；必须在同一已提交候选重新取得三枚独立 canary 的窗口结果。
 - 2026-09-09：公共体验已复验普通显式交互任务可经共享 `lowrisk-assistant:v1` 完成，不受持久 Memory 默认关闭影响。新用户任务获得 `accepted`、完成 durable Timeline，并仅产生一条直属回复；此项只证明基础交互可体验，未降低本 AD 对默认 Memory 的质量与授权门槛。

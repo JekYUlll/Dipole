@@ -29,6 +29,11 @@ export interface LoadedMemoryReviewedCorpus {
   readonly review: MemoryReviewedCorpusReview;
 }
 
+/** Reads an owner-only source manifest before following its referenced files. */
+export async function loadMemoryReviewedCorpusSourceManifest(path: string): Promise<MemoryReviewedCorpusSourceManifest> {
+  return manifestSchema.parse(JSON.parse(await secureRead(await securePath(path))) as unknown);
+}
+
 export async function createMemoryReviewedCorpusSourceManifest(
   rawInput: unknown,
   currentUid: number | undefined = typeof process.getuid === "function" ? process.getuid() : undefined

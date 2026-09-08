@@ -1,3 +1,5 @@
+- 2026-09-09：`eval:context-ablation` 增加可选 `--reviewed-source`。它安全加载 owner-bound、`0600` 的 reviewed-corpus source manifest，复核批准窗口、UID、corpus/review hash 和实验 case 的完整 content-hash 覆盖，再输出不含路径、case、reviewer 或正文的 source receipt。未提供该参数的既有只读评测保持兼容；新模式不启用 Memory、候选写入或 Runtime 切流。
+
 - 2026-09-09：公共 `dipole-experience` 的 Core 已热更至 `0b1c3f52a`，TypeScript Agent Runtime 保持已验证的 `86d8ffdb`。新 B1 私聊、B2 群 `@AI` 和无 grant owner Definition fallback 均为 `completed:completed`，各自只有一条助手回复及一条 consumed approval；Route A 回复开关仍关闭。单服务重建固定要求绝对 `DIPOLE_INTERNAL_CERT_DIR`，避免相对缺失证书路径被 Docker 生成为目录而使 mTLS 启动失败。
 
 - 2026-09-09：新增 `memory-corpus:manifest` operator CLI，安全生成 owner-bound reviewed-corpus source manifest。它从当前进程 UID 绑定 owner，复核 `0600`、非符号链接、canonical 的 corpus/review 文件并重算哈希，再以新建 `0600` 文件写入批准时间窗；标准输出仅保留 source ID、哈希与过期时间。该工具只服务离线评测，不授予 Memory 写入、Runtime 切流或自动晋级权限。

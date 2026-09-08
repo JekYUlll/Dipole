@@ -48,6 +48,16 @@ cd services/agent-runtime
 npm run eval:context-ablation -- --manifest=/secure/reviewed-context-ablation.json
 ```
 
+当实验必须使用真实 owner-reviewed corpus 时，额外传入 owner-only source manifest：
+
+```bash
+npm run eval:context-ablation -- \
+  --manifest=/secure/reviewed-context-ablation.json \
+  --reviewed-source=/secure/owner-reviewed-source.json
+```
+
+第二种形式会以当前进程 UID、安全文件属性、批准时间窗、corpus/review 哈希和完整 content-hash 覆盖复核输入；所有实验 case 必须与 reviewed corpus 的 content hash 一一对应。输出只追加 source ID 与两份哈希，不包含路径、case ID、reviewer 或正文。它仍只产生只读评测报告，不能启用 Memory、写入候选或改变 Runtime。
+
 命令拒绝不完整条件、候选版本漂移、非终态记录或不完整的授权、延迟和 Token 计量。输出不包含消息正文、原始资源 ID 或模型正文；成功表示证据输入可复算，效果结论仍须基于受控窗口和人工评审任务集。
 
 ## Context Ablation 条件

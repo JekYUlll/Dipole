@@ -33,7 +33,26 @@ describe("Context Ablation CLI", () => {
     const openStore = vi.fn();
     await expect(runContextAblationCLI([], process.stdout, writer(errors), { openStore })).resolves.toBe(1);
     expect(openStore).not.toHaveBeenCalled();
-    expect(errors.join("")).toContain("exactly one --manifest");
+    expect(errors.join("")).toContain("requires --manifest");
+  });
+
+  it("rejects an invalid owner-reviewed source before opening the read-only store", async () => {
+    const path = join(tmpdir(), `dipole-context-ablation-${process.pid}-${Date.now()}-reviewed.json`);
+    await writeFile(path, JSON.stringify(manifest()), "utf8");
+    const errors: string[] = [];
+    const openStore = vi.fn();
+    const loadReviewedSource = vi.fn(async () => { throw new Error("reviewed source approval expired"); });
+
+    await expect(runContextAblationCLI(
+      [`--manifest=${path}`, "--reviewed-source=/secure/reviewed-source.json"],
+      process.stdout,
+      writer(errors),
+      { openStore, loadReviewedSource }
+    )).resolves.toBe(1);
+
+    expect(loadReviewedSource).toHaveBeenCalledWith("/secure/reviewed-source.json");
+    expect(openStore).not.toHaveBeenCalled();
+    expect(errors.join("")).toContain("approval expired");
   });
 });
 
