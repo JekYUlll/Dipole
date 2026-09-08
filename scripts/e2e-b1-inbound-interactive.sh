@@ -14,7 +14,7 @@ GATEWAY="${GATEWAY:-http://127.0.0.1:8080}"
 TELEPHONE="188$(printf '%08d' $((RANDOM % 100000000)))"
 PASSWORD="b1-e2e-pass-123"
 
-mysql() { docker exec "${PROJECT}-mysql-1" sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N -B dipole -e "'"$1"'"'; }
+mysql() { docker exec "${PROJECT}-mysql-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N -B dipole -e "'"$1"'"'; }
 
 echo "==> register + login new user (${TELEPHONE})"
 reg=$(curl -s -X POST "${GATEWAY}/api/v1/auth/register" -H 'content-type: application/json' \

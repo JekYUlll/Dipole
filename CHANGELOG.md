@@ -2749,3 +2749,4 @@
 - 2026-09-09：Agent Memory 的 disposable Temporal/MySQL/mTLS drill 扩展为真实受控读取链路：promotion 重试后，独立 read Task 可按固定身份读取已审核的会话 Memory；owner 回滚后同一受控 RPC 返回空集；Runtime promotion grant 撤销后新的 receipt commit 被拒绝。默认持久 Memory 开关和公共体验环境均未改变。
 - 2026-09-09：新增默认关闭的 `eval:context-ablation-bind` 运维 CLI。它要求独立的最小权限 `DIPOLE_AGENT_EVAL_BIND_MYSQL_URL` 与 owner-reviewed source，在单一事务内校验完整 baseline/retrieval/memory 矩阵、Task/Run 归属、候选版本与 completed shadow 状态；仅精确重复写入可重放，其余冲突均回滚。运行时启动路径、默认 profile 与候选切流保持不变。
 - 2026-09-09：`eval:context-ablation-bind` 补齐 MySQL 8.4 一次性数据库集成测试，覆盖首次绑定、精确幂等重放与混入失败 shadow Run 时的事务回滚；同时修正 `mysql2` 连接方法的绑定，避免受控写入在真实连接上因丢失调用上下文失败。默认 Runtime、Compose 与体验环境均未改变。
+- 2026-09-09：整理 Route B 公共体验验收脚本：B1 私聊脚本补齐可执行位，B1/B2 均改为在 MySQL 容器内通过 `MYSQL_PWD` 传递临时 CLI 凭据，避免日志输出密码命令行告警。Remote GPU 对新私聊和群 `@AI` 各执行一次直接脚本验收，均收敛为 `completed:completed`、一条助手回复和一条 consumed approval；公共体验栈的 11 个服务保持运行。
