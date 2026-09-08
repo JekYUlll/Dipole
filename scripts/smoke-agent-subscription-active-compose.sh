@@ -81,10 +81,22 @@ EOF
 if [[ "${model_source}" == "stub" ]]; then
 cat >"${DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE}" <<NODE
 import http from "node:http";
-const body = JSON.stringify({ id: "subscription-active-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"summary":"${model_summary}","steps":[]}' } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+const summary = ${model_summary@Q};
 http.createServer((request, response) => {
   if (request.method !== "POST" || request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
-  request.resume(); request.on("end", () => response.writeHead(200, { "content-type": "application/json" }).end(body));
+  let raw = "";
+  request.setEncoding("utf8");
+  request.on("data", chunk => { raw += chunk; });
+  request.on("end", () => {
+    const requestBody = JSON.parse(raw);
+    const schema = requestBody?.response_format?.json_schema?.schema;
+    // The planner requires a strict Plan shape. Reply and synthesis stages use
+    // a distinct strict summary shape, so a shared stub must mirror both.
+    const expectsPlan = schema?.properties?.steps !== undefined || raw.includes("steps");
+    const content = JSON.stringify(expectsPlan ? { summary, steps: [] } : { summary });
+    const body = JSON.stringify({ id: "subscription-active-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+    response.writeHead(200, { "content-type": "application/json" }).end(body);
+  });
 }).listen(8089, "0.0.0.0");
 NODE
 fi

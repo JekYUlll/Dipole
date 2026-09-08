@@ -50,9 +50,14 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
 
     def test_model_stub_stays_inside_the_compose_project(self) -> None:
         overlay = (ROOT / "deploy/microservices/agent-subscription-active-smoke.yml").read_text(encoding="utf-8")
+        smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
         self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE', overlay)
         self.assertIn('entrypoint: ["/bin/sh", "-ec"]', overlay)
         self.assertIn('node /app/model-stub.mjs & exec node dist/index.js', overlay)
+        self.assertIn('requestBody?.response_format?.json_schema?.schema', smoke)
+        self.assertIn('schema?.properties?.steps !== undefined', smoke)
+        self.assertIn('raw.includes("steps")', smoke)
+        self.assertIn('expectsPlan ? { summary, steps: [] } : { summary }', smoke)
 
     def test_provider_mode_uses_a_protected_env_file_and_read_only_overlays(self) -> None:
         smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
