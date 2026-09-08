@@ -39,7 +39,7 @@ func TestAgentArtifactMySQLImmutableConcurrencyContract(t *testing.T) {
 	if _, err := policy.CreateRun(context.Background(), run); err != nil {
 		t.Fatal(err)
 	}
-	artifact := application.AgentArtifactV1{ArtifactUUID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", SchemaVersion: application.AgentArtifactSchemaVersionV1, TaskUUID: task.TaskUUID, RunUUID: run.RunUUID, ArtifactType: "project_report", Version: 1, Title: "Report", MediaType: "text/markdown", ObjectBucket: "dipole-agent-artifacts", ObjectKey: "agent-artifacts/v1/object", ContentSHA256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", SizeBytes: 6, Metadata: json.RawMessage(`{"source":"G1"}`)}
+	artifact := application.AgentArtifactV1{ArtifactUUID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", SchemaVersion: application.AgentArtifactSchemaVersionV1, TaskUUID: task.TaskUUID, RunUUID: run.RunUUID, ArtifactType: "project_report", Version: 1, Title: "Report", MediaType: "text/markdown", ObjectBucket: "dipole-agent-artifacts", ObjectKey: "agent-artifacts/v1/object", ContentSHA256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", SizeBytes: 6, Metadata: json.RawMessage(`{"source":"G1","candidateVersion":"v1"}`)}
 	var inserted atomic.Int64
 	var workers sync.WaitGroup
 	errorsCh := make(chan error, 16)
@@ -66,7 +66,7 @@ func TestAgentArtifactMySQLImmutableConcurrencyContract(t *testing.T) {
 		t.Fatalf("inserted=%d, want 1", inserted.Load())
 	}
 	loaded, err := artifacts.GetAgentArtifactByTaskTypeVersion(context.Background(), task.TaskUUID, artifact.ArtifactType, 1)
-	if err != nil || loaded == nil || loaded.ArtifactUUID != artifact.ArtifactUUID || string(loaded.Metadata) != string(artifact.Metadata) {
+	if err != nil || loaded == nil || loaded.ArtifactUUID != artifact.ArtifactUUID || string(loaded.Metadata) != `{"candidateVersion":"v1","source":"G1"}` {
 		t.Fatalf("loaded=%+v err=%v", loaded, err)
 	}
 	if exists, err := artifacts.ExistsByObjectKey(context.Background(), artifact.ObjectBucket, artifact.ObjectKey); err != nil || !exists {

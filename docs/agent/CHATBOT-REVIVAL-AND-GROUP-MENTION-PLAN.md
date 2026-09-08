@@ -33,7 +33,8 @@
 - 2026-09-08：隔离 `subscription_active` read-only smoke 已验证 Definition、owner-scoped Subscription、短期 fixture grant 和一条 Kafka 事件可收敛为一个 completed durable Task；模型调用存在且 Agent 消息为零，退出后公共体验仍为 11 个健康容器。fixture grant 只用于开发期验收。
 - 2026-09-08：MySQL 契约已将 proposal/review 控制面与 active Subscription admission 串联：review 签发的 grant 可准入匹配 owner Subscription 并固定其 Definition/Subscription binding；revoke 后新 trigger 被拒绝。Remote GPU 的一次性 MySQL 8.4 容器实跑通过，公共体验保持 11 个健康容器。
 - 2026-09-08：`subscription_active` 的 `control` smoke 已用默认关闭的 Gateway operator route 走通真实 proposal/review。fixture 仅预置 immutable completed shadow evidence 与 proposer/reviewer role grant；第二位 reviewer 批准后，Core 为 owner Definition 生成 grant，再投递一条 Kafka 事件并收敛为一个 completed durable read Task、模型调用存在、零 Agent 消息。Gateway 使用服务端 `proposedAt`，测试将 grant 置于短暂未来并等待生效以消除时钟竞争；Remote GPU 清理后候选资源为零、公共体验维持 11 个容器。
-- 后续产品切片：Definition 抽屉需明确“私聊和群 @ 无需先创建 Definition”；Subscription 的可见审核体验、真实评审 evidence 归档与共享环境发布仍待完成，默认 Gateway promotion route 继续关闭。
+- 2026-09-08：`subscription_active` 的 `publication` smoke 已从 Runtime `PromotionEvidencePublisher` 经 mTLS Artifact RPC 发布 content-addressed evidence receipt，并将 receipt 交给同一 Gateway/Core 双人审核链路。Remote GPU 的合成 eligible sample 完成 grant 和一条 owner Subscription Task，模型调用存在、Agent 消息为零；候选容器和卷自动清理，公共体验维持 11 个容器。MySQL JSON metadata 重排导致的 Artifact replay 误冲突已修正为 repository canonicalization。该回执仅证明合成证据的发布与控制面集成，不证明真实模型效果。
+- 后续产品切片：Definition 抽屉需明确“私聊和群 @ 无需先创建 Definition”；Subscription 的可见审核体验、真实评审 evidence corpus、共享环境发布仍待完成，默认 Gateway promotion route 继续关闭。`control` 模式保留 SQL fixture 作为快速回归，`publication` 为 Runtime 发布路径验收。
 
 ## 1. 目标与验收
 - G1：私信小助手 → 自动 AI 回复，能调用工具（1v1 多轮对话恢复）。

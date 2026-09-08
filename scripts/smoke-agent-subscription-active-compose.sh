@@ -16,7 +16,7 @@ promotion_mode="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE:-fixture}"
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
 command -v openssl >/dev/null 2>&1 || { printf 'openssl is required\n' >&2; exit 2; }
 [[ "${model_source}" == "stub" || "${model_source}" == "provider" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
-[[ "${promotion_mode}" == "fixture" || "${promotion_mode}" == "control" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE must be fixture or control\n' >&2; exit 2; }
+[[ "${promotion_mode}" == "fixture" || "${promotion_mode}" == "control" || "${promotion_mode}" == "publication" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE must be fixture, control, or publication\n' >&2; exit 2; }
 if [[ "${model_source}" == "provider" ]]; then
   : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE is required for provider mode}"
   [[ -f "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE}" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE must name a file\n' >&2; exit 2; }
@@ -50,7 +50,7 @@ fi
 : "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY:=0}"
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "0" || "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY must be 0 or 1\n' >&2; exit 2; }
-if [[ "${promotion_mode}" == "control" ]]; then
+if [[ "${promotion_mode}" == "control" || "${promotion_mode}" == "publication" ]]; then
   export DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=true
 fi
 
@@ -213,9 +213,56 @@ NODE
   mysql <<SQL
 INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal) VALUES ('${evidence_task}', '${definition_uuid}', 1, 'dipole', '${owner_uuid}', '${agent_uuid}', 'completed', 'promotion.evaluation', 'subscription-active-smoke', 'isolated promotion evidence');
 INSERT INTO agent_runs (run_uuid, task_uuid, runtime_id, candidate_version, mode, status, started_at, completed_at) VALUES ('${evidence_run}', '${evidence_task}', 'dipole-agent', NULL, 'shadow', 'completed', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3));
-INSERT INTO agent_artifacts (artifact_uuid, schema_version, task_uuid, run_uuid, artifact_type, version, title, media_type, object_bucket, object_key, content_sha256, size_bytes, metadata_json) VALUES ('${evidence_artifact}', 'dipole.agent.artifact.v1', '${evidence_task}', '${evidence_run}', 'promotion_evaluation', 1, 'Subscription promotion smoke', 'application/json', 'agent', 'smoke/${evidence_artifact}', '${evidence_sha}', 2, JSON_OBJECT('runtimeId', 'dipole-agent', 'candidateVersion', '${DIPOLE_AGENT_CANDIDATE_VERSION}', 'definitionId', '${definition_uuid}', 'definitionVersion', 1, 'evalSuiteSHA256', '${eval_sha}'));
 INSERT INTO agent_runtime_promotion_operator_grants (tenant_id, user_uuid, can_propose, can_review, can_revoke, granted_by_uuid, valid_from) VALUES ('dipole', '${proposer_uuid}', TRUE, FALSE, FALSE, 'U-SMOKE-ROOT', DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE)), ('dipole', '${reviewer_uuid}', FALSE, TRUE, FALSE, 'U-SMOKE-ROOT', DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE));
 SQL
+  if [[ "${promotion_mode}" == "control" ]]; then
+    mysql <<SQL
+INSERT INTO agent_artifacts (artifact_uuid, schema_version, task_uuid, run_uuid, artifact_type, version, title, media_type, object_bucket, object_key, content_sha256, size_bytes, metadata_json) VALUES ('${evidence_artifact}', 'dipole.agent.artifact.v1', '${evidence_task}', '${evidence_run}', 'promotion_evaluation', 1, 'Subscription promotion smoke', 'application/json', 'agent', 'smoke/${evidence_artifact}', '${evidence_sha}', 2, JSON_OBJECT('runtimeId', 'dipole-agent', 'candidateVersion', '${DIPOLE_AGENT_CANDIDATE_VERSION}', 'definitionId', '${definition_uuid}', 'definitionVersion', 1, 'evalSuiteSHA256', '${eval_sha}'));
+SQL
+  else
+    # Publish the eligible evidence through the Runtime's mTLS Artifact RPC.
+    # The resulting receipt, rather than a database fixture, binds the review.
+    publication_receipt=$(compose exec -T -e DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true agent node --input-type=module - "${evidence_task}" "${evidence_run}" "${definition_uuid}" "${DIPOLE_AGENT_CANDIDATE_VERSION}" <<'NODE'
+import { createAgentCapabilityRPC, loadShadowRuntimeConfig } from "./dist/runtime/shadow-runtime.js";
+import { PromotionEvidencePublisher } from "./dist/promotion/promotion-evidence-publisher.js";
+import { evaluateOfflineEvalSuite, parseOfflineEvalSuite } from "./dist/evals/offline-evaluator.js";
+
+const [taskId, runId, definitionId, candidateVersion] = process.argv.slice(2);
+const suite = parseOfflineEvalSuite({
+  schemaVersion: "dipole.agent.offline-eval-suite.v1", candidateVersion,
+  cases: [
+    { id: "outcome.case", category: "outcome", expected: { requiredOutputIds: ["output.ok"], forbiddenOutputIds: [] }, observed: { outputIds: ["output.ok"] } },
+    { id: "trajectory.case", category: "trajectory", expected: { steps: ["step.ok"], forbiddenSteps: [] }, observed: { steps: ["step.ok"] } },
+    { id: "permission.case", category: "permission", expected: { decisions: [] }, observed: { decisions: [] } },
+    { id: "retrieval.case", category: "retrieval", expected: { relevantEvidenceIds: ["evidence.ok"], minimumRecall: 1, minimumPrecision: 1 }, observed: { retrievedEvidenceIds: ["evidence.ok"] } },
+    { id: "cost.case", category: "cost", expected: { maximums: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }, observed: { modelCalls: 1, toolCalls: 1, totalTokens: 10, totalCostMicrousd: 10, latencyMs: 10 } }
+  ]
+});
+const started = Date.now() - 24 * 60 * 60 * 1000;
+const evidence = {
+  schemaVersion: "dipole.agent.shadow-promotion-evidence.v2", candidateVersion,
+  windowStartedAt: new Date(started).toISOString(), windowEndedAt: new Date(started + 24 * 60 * 60 * 1000).toISOString(),
+  observations: Array.from({ length: 25 }, (_, index) => ({
+    candidateVersion, observedAt: new Date(started + index * 60 * 60 * 1000).toISOString(),
+    report: { schemaVersion: "dipole.agent.projection-reconcile.v1", consistent: true, scanned: 5, outcomes: { match: 5, missing: 0, stale: 0, ahead: 0, conflict: 0, unavailable: 0 }, examples: [] }
+  })),
+  projectionEvals: { passed: 6, total: 6 }, offlineEvalReport: evaluateOfflineEvalSuite(suite)
+};
+const rpc = createAgentCapabilityRPC(loadShadowRuntimeConfig(process.env));
+try {
+  const receipt = await new PromotionEvidencePublisher(rpc.client).publish({
+    schemaVersion: "dipole.agent.promotion-evidence-publication.v1", tenantId: "dipole", taskId, runId,
+    runtimeId: "dipole-agent", definitionId, definitionVersion: 1, evidence
+  });
+  process.stdout.write(`${receipt.artifactId}\t${receipt.evidenceSHA256}\t${receipt.evalSuiteSHA256}`);
+} finally {
+  rpc.close();
+}
+NODE
+)
+    IFS=$'\t' read -r evidence_artifact evidence_sha eval_sha <<<"${publication_receipt}"
+    [[ "${evidence_artifact}" =~ ^[a-f0-9]{64}$ && "${evidence_sha}" =~ ^[a-f0-9]{64}$ && "${eval_sha}" =~ ^[a-f0-9]{64}$ ]] || { printf 'promotion publication returned an invalid receipt: %q\n' "${publication_receipt}" >&2; exit 1; }
+  fi
   grant_uuid=$(compose exec -T agent node --input-type=module - "${proposer_token}" "${reviewer_token}" "${definition_uuid}" "${evidence_artifact}" "${evidence_sha}" "${eval_sha}" "${DIPOLE_AGENT_CANDIDATE_VERSION}" <<'NODE'
 const [proposerToken, reviewerToken, definitionId, artifactId, evidenceSha256, evalSuiteSha256, candidateVersion] = process.argv.slice(2);
 const headers = token => ({ authorization: `Bearer ${token}`, "content-type": "application/json" });

@@ -29,7 +29,7 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('Subscription active Compose stack retained: project=%s scratch=%s', smoke)
         self.assertIn('UPDATE agent_runtime_promotion_grants SET revoked_at', smoke)
         self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE:-fixture', smoke)
-        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE must be fixture or control', smoke)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE must be fixture, control, or publication', smoke)
         self.assertIn('DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=true', smoke)
 
     def test_autoreply_requires_explicit_opt_in_and_asserts_exact_side_effects(self) -> None:
@@ -70,6 +70,17 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertNotIn('evidence_run="run:', smoke)
         self.assertIn('agent-runtime.subscription-active-compose-smoke', smoke)
         self.assertNotIn('agent-runtime@subscription-active-compose-smoke', smoke)
+
+    def test_publication_mode_uses_runtime_artifact_rpc_and_receipt(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('"${promotion_mode}" == "publication"', smoke)
+        self.assertIn('PromotionEvidencePublisher', smoke)
+        self.assertIn('createAgentCapabilityRPC', smoke)
+        self.assertIn('DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true', smoke)
+        self.assertIn('promotion_evaluation', smoke)
+        self.assertIn('publication_receipt', smoke)
+        self.assertIn('receipt.artifactId', smoke)
+        self.assertIn('receipt.evidenceSHA256', smoke)
 
     def test_model_stub_stays_inside_the_compose_project(self) -> None:
         overlay = (ROOT / "deploy/microservices/agent-subscription-active-smoke.yml").read_text(encoding="utf-8")

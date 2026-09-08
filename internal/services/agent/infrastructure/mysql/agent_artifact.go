@@ -93,15 +93,27 @@ func (r *AgentArtifactRepository) ExistsByObjectKey(ctx context.Context, bucket,
 }
 
 func mapAgentArtifactV1(row generated.AgentArtifact) *application.AgentArtifactV1 {
-	metadata := row.MetadataJson
-	var compact bytes.Buffer
-	if json.Compact(&compact, row.MetadataJson) == nil {
-		metadata = compact.Bytes()
-	}
+	metadata := canonicalAgentArtifactMetadataV1(row.MetadataJson)
 	return &application.AgentArtifactV1{
 		ArtifactUUID: row.ArtifactUuid, SchemaVersion: row.SchemaVersion,
 		TaskUUID: row.TaskUuid, RunUUID: row.RunUuid, ArtifactType: row.ArtifactType, Version: row.Version,
 		Title: row.Title, MediaType: row.MediaType, ObjectBucket: row.ObjectBucket, ObjectKey: row.ObjectKey,
 		ContentSHA256: row.ContentSha256, SizeBytes: row.SizeBytes, Metadata: metadata, CreatedAt: row.CreatedAt,
 	}
+}
+
+// MySQL JSON storage may reorder object keys. Re-canonicalize metadata before
+// comparing an immutable Artifact replay with the original create request.
+func canonicalAgentArtifactMetadataV1(raw json.RawMessage) json.RawMessage {
+	var value map[string]any
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(&value); err != nil || value == nil {
+		return raw
+	}
+	canonical, err := json.Marshal(value)
+	if err != nil {
+		return raw
+	}
+	return canonical
 }
