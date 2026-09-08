@@ -1,3 +1,5 @@
+- 2026-09-09：公共 `dipole-experience` 的 Core 已热更至 `0b1c3f52a`，TypeScript Agent Runtime 保持已验证的 `86d8ffdb`。新 B1 私聊、B2 群 `@AI` 和无 grant owner Definition fallback 均为 `completed:completed`，各自只有一条助手回复及一条 consumed approval；Route A 回复开关仍关闭。单服务重建固定要求绝对 `DIPOLE_INTERNAL_CERT_DIR`，避免相对缺失证书路径被 Docker 生成为目录而使 mTLS 启动失败。
+
 - 2026-09-09：新增 `memory-corpus:manifest` operator CLI，安全生成 owner-bound reviewed-corpus source manifest。它从当前进程 UID 绑定 owner，复核 `0600`、非符号链接、canonical 的 corpus/review 文件并重算哈希，再以新建 `0600` 文件写入批准时间窗；标准输出仅保留 source ID、哈希与过期时间。该工具只服务离线评测，不授予 Memory 写入、Runtime 切流或自动晋级权限。
 
 - 2026-09-09：Remote GPU 在提交 `399af6f7` 的干净 Agent 镜像上重跑真实 DeepSeek V4 Flash B1 Memory 三 canary 窗口。`ORBIT-91`、`NOVA-42` 与 `QUARTZ-17` 均完成 recall，窗口 CLI 复算为 `3/3`、`10000 bps`；三条 owner revoke 后的新 Task 均无目标 Memory lineage，所有既有交互幂等与 Worker restart 检查通过。低敏 suite、receipt 和窗口报告见 [`agent-memory-b1-provider-window-399af6f7-2026-09-09`](benchmarks/agent-memory-b1-provider-window-399af6f7-2026-09-09/)。这解除 synthetic 召回质量阻塞；默认 Memory 继续关闭，真实审核语料、多轮任务和跨 Provider 对照仍是开启前置条件。
