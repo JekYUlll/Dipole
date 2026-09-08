@@ -2707,3 +2707,4 @@
 - 2026-09-09：Agent Subscription 列表新增只读 activation readiness 投影：`active`、`promotion_required`、`revoked` 由 Core 的当前 candidate promotion grant 推导，并仅公开 grant 到期时间。事件触发、grant 签发与默认 Compose 开关保持原状。
 - 2026-09-09：Route B 的低延迟入站 `reply()` 路径现会并发读取同一会话范围内最多六条已授权的持久 Memory，并将内容、类型与 provenance 作为有界的 `untrusted` 数据附入单次回复模型调用。最近 12 条会话消息读取、Temporal Task 边界和默认 Memory 写入策略保持不变；无 Memory 时维持原有提示词形态。
 - 2026-09-09：补充 Route B 持久 Memory 撤销回归：owner 撤销后，下一条入站回复通过 Core Memory reader 获得空集，提示词不再包含被撤销内容或 Memory 区块。
+- 2026-09-09：修复 Agent Memory promotion 隔离演练的身份 fixture：手工任务的 Definition 由 Agent 持有，Task 与 Memory 的 principal 保持为发起用户。Remote GPU 完整 Temporal/MySQL/mTLS 演练通过，覆盖 Core durable commit 后的 Worker 故障重试、同一 Memory 重放、已撤销 promotion grant 的拒绝，以及 owner 回滚测试 Memory；公共体验环境未改动。
