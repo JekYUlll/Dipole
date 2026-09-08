@@ -1666,15 +1666,50 @@ func TestMessageServiceDuplicateHydrationSkipsHistoricalMetadataWithoutSequence(
 	}
 }
 
-type stubDuplicateHydrator struct {
-	message *model.Message
-	err     error
-	locator model.SyncMessageLocator
+func TestMessageServiceDuplicateHydrationHonorsRequestCancellation(t *testing.T) {
+	existing := &model.Message{
+		ID: 42, UUID: "M100", ClientMessageID: "cmid-duplicate", ConversationKey: model.DirectConversationKey("U100", "U200"),
+		Seq: 7, SenderUUID: "U100", TargetUUID: "U200", TargetType: model.MessageTargetDirect,
+		MessageType: model.MessageTypeText, Content: "hello",
+	}
+	repo := &stubMessageRepository{storeWithOutboxErr: &mysqlDriver.MySQLError{Number: 1062}, messagesByUUID: map[string]*model.Message{"M100": existing}}
+	hydrator := &stubDuplicateHydrator{message: existing}
+	messageService := NewMessageService(repo, &stubMessageUserFinder{}, nil, nil, nil, &stubEventPublisher{}, nil)
+	var outcome string
+	messageService.SetDuplicateMessageHydrator(hydrator, func(value string) { outcome = value })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	message, err := messageService.PersistRequestedMessageContext(ctx, MessageEventPayload{
+		MessageID: "M999", ClientMessageID: existing.ClientMessageID, ConversationKey: existing.ConversationKey,
+		MessageSeq: existing.Seq, SenderUUID: existing.SenderUUID, TargetUUID: existing.TargetUUID,
+		TargetType: existing.TargetType, MessageType: existing.MessageType, Content: existing.Content,
+	})
+	if err != nil || message != existing {
+		t.Fatalf("cancelled hydration fallback: message=%+v err=%v", message, err)
+	}
+	if hydrator.contextErr != context.Canceled {
+		t.Fatalf("hydrator context error=%v want %v", hydrator.contextErr, context.Canceled)
+	}
+	if repo.getByUUIDCalls != 1 || outcome != "fallback" {
+		t.Fatalf("cancelled hydration should fall back: reads=%d outcome=%q", repo.getByUUIDCalls, outcome)
+	}
 }
 
-func (h *stubDuplicateHydrator) Hydrate(_ context.Context, locators []model.SyncMessageLocator) (map[string]*model.Message, error) {
+type stubDuplicateHydrator struct {
+	message    *model.Message
+	err        error
+	locator    model.SyncMessageLocator
+	contextErr error
+}
+
+func (h *stubDuplicateHydrator) Hydrate(ctx context.Context, locators []model.SyncMessageLocator) (map[string]*model.Message, error) {
 	if len(locators) == 1 {
 		h.locator = locators[0]
+	}
+	h.contextErr = ctx.Err()
+	if h.contextErr != nil {
+		return nil, h.contextErr
 	}
 	if h.err != nil {
 		return nil, h.err

@@ -760,7 +760,7 @@ func (s *MessageService) PersistRequestedMessageContext(ctx context.Context, pay
 			return nil, fmt.Errorf("persist requested message: %w", err)
 		}
 
-		existing, findErr := s.findExistingMessageForDuplicate(message)
+		existing, findErr := s.findExistingMessageForDuplicate(ctx, message)
 		if findErr != nil {
 			return nil, fmt.Errorf("find duplicate message: %w", findErr)
 		}
@@ -795,7 +795,7 @@ func (s *MessageService) persistLocalMessage(message *model.Message, action stri
 			return nil, fmt.Errorf("%s: %w", action, err)
 		}
 
-		existing, findErr := s.findExistingMessageForDuplicate(message)
+		existing, findErr := s.findExistingMessageForDuplicate(context.Background(), message)
 		if findErr != nil {
 			return nil, fmt.Errorf("%s: find duplicate message: %w", action, findErr)
 		}
@@ -818,7 +818,7 @@ func (s *MessageService) persistLocalMessage(message *model.Message, action stri
 	return message, nil
 }
 
-func (s *MessageService) findExistingMessageForDuplicate(message *model.Message) (*model.Message, error) {
+func (s *MessageService) findExistingMessageForDuplicate(ctx context.Context, message *model.Message) (*model.Message, error) {
 	if message == nil {
 		return nil, nil
 	}
@@ -830,7 +830,7 @@ func (s *MessageService) findExistingMessageForDuplicate(message *model.Message)
 		if err := validateDuplicateMessageMetadata(metadata, message); err != nil {
 			return nil, err
 		}
-		if existing := s.hydrateDuplicateMessage(metadata); existing != nil {
+		if existing := s.hydrateDuplicateMessage(ctx, metadata); existing != nil {
 			return existing, nil
 		}
 		return s.repo.GetByUUID(metadata.MessageUUID)
@@ -848,7 +848,7 @@ func (s *MessageService) findExistingMessageForDuplicate(message *model.Message)
 	return s.repo.GetByUUID(message.UUID)
 }
 
-func (s *MessageService) hydrateDuplicateMessage(metadata *model.MessageMetadata) *model.Message {
+func (s *MessageService) hydrateDuplicateMessage(ctx context.Context, metadata *model.MessageMetadata) *model.Message {
 	if s == nil || s.duplicateBody == nil || metadata == nil {
 		return nil
 	}
@@ -859,7 +859,7 @@ func (s *MessageService) hydrateDuplicateMessage(metadata *model.MessageMetadata
 	locator := model.SyncMessageLocator{
 		MessageUUID: metadata.MessageUUID, ConversationKey: metadata.ConversationKey, MessageSeq: metadata.MessageSeq,
 	}
-	messages, err := s.duplicateBody.Hydrate(context.Background(), []model.SyncMessageLocator{locator})
+	messages, err := s.duplicateBody.Hydrate(ctx, []model.SyncMessageLocator{locator})
 	if err != nil {
 		s.observeDuplicateHydration("fallback")
 		return nil
