@@ -1,3 +1,5 @@
+- 2026-09-08：Remote GPU 两轮入站 Context E2E 已通过：两条独立受治理 Task 均完成、每轮仅一条助手回复，第二轮成功读取第一轮短期会话上下文。Route A 继续关闭，体验栈保持 11 容器；低敏记录见 [`agent-inbound-context-e2e-2026-09-08`](benchmarks/agent-inbound-context-e2e-2026-09-08/)。持久 Memory 默认保持关闭。
+
 - 2026-09-08：校正 Route B 入站多轮语义：每条私聊或群 @ 消息独立生成可恢复 Temporal Task，但 dedicated `reply()` 会以最少一次受权会话读取将最近 12 条消息按序提供给模型。该能力属于短期会话上下文；持久 Memory 默认保持关闭。
 
 - 2026-09-08：Remote GPU 使用 `DIPOLE_ENV_FILE` 完成隔离 Web Sync observability smoke；Core、Message、Sync、Gateway 指标目标与 Prometheus/Alertmanager readiness 均通过，隔离资源清理为零且公共体验栈保持 11 容器。低敏记录见 [`web-sync-observability-smoke-2026-09-08`](benchmarks/web-sync-observability-smoke-2026-09-08/)。该验证未启动真实客户端 24 小时观察窗口。

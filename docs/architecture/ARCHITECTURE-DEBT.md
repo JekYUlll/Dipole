@@ -42,6 +42,8 @@
 
 - 2026-09-08：Route B 文档曾把「一条消息对应一个 Temporal Task」简写为缺少多轮能力，和 Runtime 实际行为不一致。`ModelShadowPlanner.reply()` 已用受权 `conversation.read` 读取同会话最近 12 条消息、按 Seq 排序后作为不可信短期上下文；每条消息继续独立创建可恢复 Task，持久 Memory 默认关闭。此项只校正能力边界，不构成 Memory 默认启用或长会话持久化证据。
 
+- 2026-09-08：Remote GPU 已在公共体验项目完成两轮 Route B 入站 Context E2E：第一条私聊注入唯一代号，第二条独立 Task 通过 `reply()` 的短期会话读取复述该代号。两条 Task 均完成、每轮一条助手回复，Route A 双回复开关保持关闭，运行后公共容器为 11。低敏 [receipt](../../benchmarks/agent-inbound-context-e2e-2026-09-08/) 固定日志哈希。该证据只覆盖两轮短期上下文，不外推到持久 Memory、长期召回质量或任务成功率。
+
 - 2026-09-08：Remote GPU 已在 `3f6398aa3` 用隔离 `dipole-web-sync-observability` 项目复验 A6 observability smoke。受控 `.env` 仅经 Compose `--env-file` 读取，Core、Message、Sync、Gateway 的 `dipole-required` target 与 Prometheus/Alertmanager readiness 全部通过；退出后候选容器为零，公共 `dipole-experience` 保持 11 个容器。低敏 [receipt](../../benchmarks/web-sync-observability-smoke-2026-09-08/) 已记录日志哈希。真实浏览器 24 小时窗口、原始 Prometheus 响应归档、对象版本与责任人批准继续为 A6 前置条件。
 
 - 2026-09-04：`internal/services/core/rpcpolicy` 的 `dipole-agent` 方法许可清单补齐 `AppendAgentTaskTimelineEvent` 与 `SearchConversations` 两条 Runtime 生产调用；缺失时前者被静默吞（`model-router.ts:205` 明确「Timeline is a secondary projection」），后者在 retrieval opt-in 开启后 fail closed。新增 `TestAgentServiceMethodAllowlistCoversRuntimeInvocations` 枚举 `agent-capability-rpc.ts` 的所有 30 个 `this.rpc.<method>` 调用作为回归护栏，未来 Runtime 新加 capability 客户端方法必须同时进 allowlist。策略仍是允许清单+拒绝其余，Gateway/Search/Sync 语义不变。
