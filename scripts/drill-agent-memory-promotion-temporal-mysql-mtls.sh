@@ -52,7 +52,10 @@ if [[ ! -x node_modules/.bin/vitest ]]; then
 fi
 DIPOLE_AGENT_TEMPORAL_MYSQL_MTLS_INTEGRATION=true \
 DIPOLE_AGENT_TEMPORAL_MYSQL_MTLS_FIXTURE="$fixture_dir/ready.json" \
-  npm test -- --run src/temporal/agent-memory-promotion-mtls-mysql.integration.test.ts
+  npm test -- --run src/temporal/agent-memory-promotion-mtls-mysql.integration.test.ts || {
+    cat "$fixture_dir/fixture.log" >&2
+    exit 1
+  }
 
 touch "$fixture_dir/stop"
 wait "$fixture_pid"
