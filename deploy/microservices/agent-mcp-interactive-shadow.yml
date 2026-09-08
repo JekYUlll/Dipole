@@ -1,0 +1,14 @@
+services:
+  agent:
+    environment:
+      # This final overlay combines the governed interactive control plane with
+      # the first-party MCP server for an explicit shadow-only profile.
+      DIPOLE_AGENT_CONTROL_ENABLED: "true"
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "true"
+
+  gateway:
+    environment:
+      DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_MCP_ENABLED: "true"

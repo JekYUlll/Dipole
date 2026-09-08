@@ -455,7 +455,8 @@ mcp_interactive_shadow_config="$(
       -f deploy/microservices/agent-ai-sdk-shadow.yml \
       -f deploy/microservices/agent-temporal-read-shadow.yml \
       -f deploy/microservices/agent-interactive-shadow.yml \
-      -f deploy/microservices/agent-mcp-server-shadow.yml config --format json
+      -f deploy/microservices/agent-mcp-server-shadow.yml \
+      -f deploy/microservices/agent-mcp-interactive-shadow.yml config --format json
 )"
 jq -e '
   .services.agent.environment.DIPOLE_AGENT_MCP_SERVER_ENABLED == "true"

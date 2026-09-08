@@ -39,6 +39,8 @@ Memory prefilter evidence v1 进一步将 embedding/small_model 的逐 case 分�
 
 Runtime binding v1 将该决策映射为 `off/shadow/enforced` 三态。接线前必须复核 decision、候选配置、corpus 和 review 哈希；`shadow` 不改变现有任务创建，`enforced` 只在 `eligible` 时放行，三态均保持 Memory 写权限关闭。
 
+隔离 B1 Provider smoke 的 receipt v1 只记录哈希化 Task 标识、运行时 revision、模型源和模型/lineage 计数，用来复核“首条受权召回、撤销后无 lineage”的链路边界。它不记录自然语言输入输出，也没有 gold label，不能替代 reviewed corpus、context ablation 或 outcome/semantic Eval。
+
 ## 不变量
 
 - Observation 以 `tenant/principal/agent/resource/eventId` scope 幂等；同一 scope 重复收到事件不会生成第二个候选，不同租户或资源复用事件 ID 不会互相丢弃。

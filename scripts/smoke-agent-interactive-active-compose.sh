@@ -10,8 +10,10 @@ root_dir=$(cd "${script_dir}/.." && pwd)
 compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-interactive-active-${RANDOM}-$$}"
 receipt_file="${DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE:-}"
+memory_b1_receipt_file="${DIPOLE_AGENT_MEMORY_B1_SMOKE_RECEIPT_FILE:-}"
 scratch_dir=$(mktemp -d "${TMPDIR:-/tmp}/dipole-agent-interactive-active.XXXXXX")
 receipt_temp=""
+memory_b1_receipt_temp=""
 owner_uuid=""
 owner_telephone="13900000001"
 agent_uuid="UAI000000000000000001"
@@ -24,6 +26,12 @@ command -v node >/dev/null 2>&1 || { printf 'Node.js is required\n' >&2; exit 2;
 if [[ -n "${receipt_file}" ]]; then
   [[ "${receipt_file}" = /* && ! -e "${receipt_file}" && -d "$(dirname "${receipt_file}")" ]] || {
     printf 'DIPOLE_AGENT_INTERACTIVE_SMOKE_RECEIPT_FILE must be a new absolute path in an existing directory\n' >&2
+    exit 2
+  }
+fi
+if [[ -n "${memory_b1_receipt_file}" ]]; then
+  [[ "${memory_b1_receipt_file}" = /* && ! -e "${memory_b1_receipt_file}" && -d "$(dirname "${memory_b1_receipt_file}")" ]] || {
+    printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE_RECEIPT_FILE must be a new absolute path in an existing directory\n' >&2
     exit 2
   }
 fi
@@ -64,6 +72,9 @@ memory_b1_model_source="${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}"
 if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
   [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE requires DIPOLE_AGENT_DEFINITION_ONLY=0\n' >&2; exit 2; }
   DIPOLE_AGENT_MEMORY_SMOKE=1
+elif [[ -n "${memory_b1_receipt_file}" ]]; then
+  printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE_RECEIPT_FILE requires DIPOLE_AGENT_MEMORY_B1_SMOKE=1\n' >&2
+  exit 2
 fi
 
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_AGENT_IMAGE
@@ -176,6 +187,7 @@ cleanup() {
     printf 'Interactive Agent Compose stack retained: project=%s\n' "${project_name}"
   fi
   [[ -z "${receipt_temp}" ]] || rm -f "${receipt_temp}"
+  [[ -z "${memory_b1_receipt_temp}" ]] || rm -f "${memory_b1_receipt_temp}"
   rm -rf "${scratch_dir}"
   exit "${status}"
 }
@@ -386,6 +398,21 @@ NODE
   else
     revoked_effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${revoked_task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content <> ''), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${revoked_task_id}' AND memory_uuid = '${memory_uuid}'), (SELECT status FROM agent_memories WHERE memory_uuid = '${memory_uuid}')")
     [[ "${revoked_effects}" == $'1\t2\t0\trevoked' ]] || { printf 'B1 provider revoked Memory effects diverged: %q\n' "${revoked_effects}" >&2; return 1; }
+  fi
+
+  if [[ -n "${memory_b1_receipt_file}" ]]; then
+    local runtime_revision first_task_sha256 revoked_task_sha256
+    runtime_revision=$(git -C "${root_dir}" rev-parse HEAD)
+    [[ "${runtime_revision}" =~ ^[a-f0-9]{40}$ ]] || { printf 'B1 Memory smoke runtime revision is invalid\n' >&2; return 1; }
+    first_task_sha256=$(printf '%s' "${task_id}" | openssl dgst -sha256 -r | awk '{print $1}')
+    revoked_task_sha256=$(printf '%s' "${revoked_task_id}" | openssl dgst -sha256 -r | awk '{print $1}')
+    memory_b1_receipt_temp=$(mktemp "$(dirname "${memory_b1_receipt_file}")/.dipole-agent-memory-b1-receipt.XXXXXX")
+    cat >"${memory_b1_receipt_temp}" <<JSON
+{"schemaVersion":"dipole.agent.interactive-memory-b1-smoke-receipt.v1","runtimeRevision":"${runtime_revision}","modelSource":"${memory_b1_model_source}","firstTaskSha256":"${first_task_sha256}","revokedTaskSha256":"${revoked_task_sha256}","firstModelCallCount":1,"firstMemoryLineageCount":1,"revokedModelCallCount":1,"revokedMemoryLineageCount":0,"memoryRevoked":true,"completedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+JSON
+    ln "${memory_b1_receipt_temp}" "${memory_b1_receipt_file}"
+    rm -f "${memory_b1_receipt_temp}"
+    memory_b1_receipt_temp=""
   fi
 }
 

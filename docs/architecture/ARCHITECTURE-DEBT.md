@@ -2,6 +2,7 @@
 
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据
 
+- 2026-09-09：B1 provider smoke 已增加原子、低敏 [`receipt`](../../benchmarks/agent-memory-provider-b1-2026-09-09/)，并在 Remote GPU 真正运行。该回执把候选 revision、provider 源、哈希化首条/撤销后 Task 和 `1/1/1/0` 模型/lineage 计数固定为可复核数据；它不保存 prompt、回复、owner、Memory ID 或凭据。回执路径仅接受新建绝对路径，且只有显式 B1 profile 才可写入，避免普通审批 smoke 被误标为 Memory 证据。候选资源自动清理，公共体验保持 11 个容器；它仍不构成语义质量、成功率或默认长会话 Memory 的证据。
 - 2026-09-09：Interactive Active 的隔离 Memory profile 已在 Remote GPU 验收。Runtime 只有在 `DIPOLE_AGENT_MEMORY_ENABLED=true` 与 `DIPOLE_AGENT_INTERACTIVE_MEMORY_PROFILE=true` 同时设置时才允许 Memory；该 profile 还要求 AI SDK，并固定拒绝 retrieval、MCP、external MCP 和 subscription shadow。版本化候选镜像完成 Definition create/list 幂等检查，以及等待审批、拒绝零副作用、重复批准的完整确定性写入 smoke 后自动清理，公共体验栈未修改。
 - 2026-09-09：同一隔离项目完成 B1 持久 Memory 召回闭环：新私聊经 Kafka、Temporal 与 Core scoped reader 读取同会话 semantic canary；`reply()` 在模型调用前写入 `agent_memory_task_lineage`，确定性 OpenAI-compatible stub 仅在 prompt 包含 canary 时返回指定回复。验收固定为一条 completed model call、一条精确回复和一条 lineage；随后拒绝与重复批准演练以 B1 后消息基线继续验证零额外副作用和精确一次写入。`dipole_agent` 的新增权限仅限 lineage `SELECT/INSERT/UPDATE`，候选容器清理为零，公共 `dipole-experience` 保持 11 个健康容器。
 - 2026-09-09：Remote GPU 在 disposable Temporal/MySQL/mTLS drill 实测 promotion 后的受控读取与 owner 撤销边界。Activity 在 Core durable commit 后重试仍得到同一 Memory；Runtime 通过独立、固定 Task/Run identity 的 RPC 读取到该会话 Memory，owner 回滚后新 read Task 返回空集；随后撤销 Runtime promotion grant，新的 receipt commit 被拒绝。测试容器和 worktree 已清理，公共 `dipole-experience` 未修改；该证据不代表默认持久 Memory 已启用或真实 Provider 多轮质量已验证。

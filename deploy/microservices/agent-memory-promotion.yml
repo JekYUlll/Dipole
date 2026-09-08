@@ -5,6 +5,8 @@ services:
 
   agent:
     environment:
+      # Promotion commits reviewed receipts only; interactive task controls stay off.
+      DIPOLE_AGENT_CONTROL_ENABLED: "false"
       DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: promotion_active
       DIPOLE_AGENT_MEMORY_PROMOTION_COMMIT_ENABLED: "true"
       DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY: ${DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY:?DIPOLE_AGENT_MEMORY_PROMOTION_AUTHORITY is required and must be operator_approved}

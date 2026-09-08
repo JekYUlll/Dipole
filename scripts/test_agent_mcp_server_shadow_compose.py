@@ -16,9 +16,9 @@ class AgentMcpServerShadowComposeTest(unittest.TestCase):
         self.assertIn('DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"', overlay)
         self.assertIn('DIPOLE_AGENT_MEMORY_ENABLED: "false"', overlay)
         self.assertIn('DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"', overlay)
-        self.assertNotIn("DIPOLE_AGENT_CONTROL_ENABLED", overlay)
-        self.assertNotIn("DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED", overlay)
-        self.assertNotIn("DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED", overlay)
+        self.assertIn('DIPOLE_AGENT_CONTROL_ENABLED: "false"', overlay)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "false"', overlay)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_DEFINITION_ENABLED: "false"', overlay)
         self.assertNotIn("DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED", overlay)
 
     def test_compose_gate_checks_effective_mcp_profile(self) -> None:
