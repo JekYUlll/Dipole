@@ -88,7 +88,7 @@ export function assertRunTarget(target: Pick<RunTarget, "task_uuid" | "candidate
 
 async function one<T extends RowDataPacket>(connection: Pick<PoolConnection, "execute">, query: string, values: readonly string[]): Promise<T | undefined> {
   // mysql2 loses the generic SQL-string overload when PoolConnection is narrowed.
-  const execute = connection.execute as unknown as (sql: string, parameters: readonly string[]) => Promise<[T[], unknown]>;
+  const execute = connection.execute.bind(connection) as unknown as (sql: string, parameters: readonly string[]) => Promise<[T[], unknown]>;
   const [rows] = await execute(query, values);
   if (rows.length > 1) throw new Error("Context ablation admission expected one locked row");
   return rows[0];
