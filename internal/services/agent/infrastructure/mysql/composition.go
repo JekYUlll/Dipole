@@ -13,30 +13,31 @@ import (
 // Keeping this composition beside the Agent SQLC implementations makes the
 // standalone service boundary explicit while embedded callers use a wrapper.
 type ProcessRepositories struct {
-	AICallLogs            application.AICallLogStore
-	Policy                application.AgentPolicyStoreV1
-	TaskTimeline          application.AgentTaskTimelineStoreV1
-	DefinitionCatalog     application.AgentDefinitionCatalogStoreV1
-	ApprovalGrants        application.AgentApprovalGrantStoreV1
-	Promotions            application.AgentRuntimePromotionGrantStoreV1
-	PromotionControls     application.AgentRuntimePromotionControlStoreV1
-	ReadinessEvidence     application.AgentMCPReadinessEvidenceStoreV1
-	Subscriptions         application.AgentEventSubscriptionStoreV1
-	Repairs               application.AgentWorkflowRepairAuditStoreV1
-	RepairExecutions      application.AgentWorkflowRepairExecutionStoreV1
-	RepairTransactions    application.AgentWorkflowRepairTransactionalStoreV1
-	Artifacts             application.AgentArtifactStoreV1
-	ArtifactCatalog       application.AgentArtifactCatalogStoreV1
-	Memories              application.AgentMemoryStoreV1
-	MemoryOwners          application.AgentMemoryOwnerStoreV1
-	MemoryCandidates      application.AgentMemoryCandidateCatalogStoreV1
-	MemoryPromotions      application.AgentMemoryCandidatePromotionStoreV1
-	ToolAudits            application.AgentToolInvocationStoreV1
-	ToolRounds            application.AgentMCPToolRoundStoreV1
-	OAuthTransactions     application.AgentOAuthAuthorizationTransactionStoreV1
-	OAuthCallbackHandoffs application.AgentOAuthCallbackHandoffStoreV1
-	OAuthCallbackRecorder application.AgentOAuthCallbackHandoffRecorderV1
-	OAuthTokenLifecycles  application.AgentOAuthTokenLifecycleStoreV1
+	AICallLogs             application.AICallLogStore
+	Policy                 application.AgentPolicyStoreV1
+	TaskTimeline           application.AgentTaskTimelineStoreV1
+	DefinitionCatalog      application.AgentDefinitionCatalogStoreV1
+	ApprovalGrants         application.AgentApprovalGrantStoreV1
+	Promotions             application.AgentRuntimePromotionGrantStoreV1
+	PromotionControls      application.AgentRuntimePromotionControlStoreV1
+	ReadinessEvidence      application.AgentMCPReadinessEvidenceStoreV1
+	Subscriptions          application.AgentEventSubscriptionStoreV1
+	Repairs                application.AgentWorkflowRepairAuditStoreV1
+	RepairExecutions       application.AgentWorkflowRepairExecutionStoreV1
+	RepairTransactions     application.AgentWorkflowRepairTransactionalStoreV1
+	Artifacts              application.AgentArtifactStoreV1
+	ArtifactCatalog        application.AgentArtifactCatalogStoreV1
+	Memories               application.AgentMemoryStoreV1
+	MemoryOwners           application.AgentMemoryOwnerStoreV1
+	MemoryCandidates       application.AgentMemoryCandidateCatalogStoreV1
+	MemoryPromotions       application.AgentMemoryCandidatePromotionStoreV1
+	ToolAudits             application.AgentToolInvocationStoreV1
+	ToolRounds             application.AgentMCPToolRoundStoreV1
+	OAuthTransactions      application.AgentOAuthAuthorizationTransactionStoreV1
+	OAuthCallbackHandoffs  application.AgentOAuthCallbackHandoffStoreV1
+	OAuthCallbackRecorder  application.AgentOAuthCallbackHandoffRecorderV1
+	OAuthTokenLifecycles   application.AgentOAuthTokenLifecycleStoreV1
+	OAuthMaintenanceLeases application.AgentOAuthTokenLifecycleMaintenanceLeaseStoreV1
 }
 
 func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
@@ -88,6 +89,10 @@ func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent OAuth token lifecycle repository: %w", err)
 	}
+	oauthMaintenanceLeases, err := NewAgentOAuthTokenLifecycleMaintenanceLeaseRepository(queries)
+	if err != nil {
+		return nil, fmt.Errorf("create sqlc Agent OAuth lifecycle maintenance lease repository: %w", err)
+	}
 	promotionControls, err := NewAgentRuntimePromotionControlRepository(mysqlStore)
 	if err != nil {
 		return nil, fmt.Errorf("create sqlc Agent Runtime promotion control repository: %w", err)
@@ -101,7 +106,7 @@ func NewProcessRepositories(db *sql.DB) (*ProcessRepositories, error) {
 		DefinitionCatalog: policy, ApprovalGrants: policy, Promotions: policy,
 		Subscriptions: policy, Repairs: policy, RepairExecutions: policy, RepairTransactions: policy, Artifacts: artifacts, ArtifactCatalog: artifacts,
 		Memories: memories, MemoryOwners: memories, MemoryCandidates: memories, MemoryPromotions: memories,
-		ToolAudits: toolAudits, ToolRounds: toolRounds, OAuthTransactions: oauthTransactions, OAuthCallbackHandoffs: oauthCallbackHandoffs, OAuthCallbackRecorder: oauthCallbackRecorder, OAuthTokenLifecycles: oauthTokenLifecycles,
+		ToolAudits: toolAudits, ToolRounds: toolRounds, OAuthTransactions: oauthTransactions, OAuthCallbackHandoffs: oauthCallbackHandoffs, OAuthCallbackRecorder: oauthCallbackRecorder, OAuthTokenLifecycles: oauthTokenLifecycles, OAuthMaintenanceLeases: oauthMaintenanceLeases,
 		PromotionControls: promotionControls, ReadinessEvidence: readinessEvidence,
 	}, nil
 }
