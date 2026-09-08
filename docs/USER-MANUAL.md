@@ -263,6 +263,8 @@ Dipole 内置 AI 助手 **Dipole AI**，支持通过受治理的方式参与对�
 2. 点击进入 1v1 对话
 3. 直接发送消息即可
 
+私聊无需预先创建 Agent Definition。Route B1 为这类入站消息固定使用平台提供的 `lowrisk-assistant:v1`，其权限只覆盖本次对话所需的低风险读取和一次性回复。
+
 #### 工作原理
 
 当你发送消息给 AI：
@@ -287,6 +289,8 @@ Dipole 内置 AI 助手 **Dipole AI**，支持通过受治理的方式参与对�
 1. 在任意群聊中输入 `@Dipole AI` 或 `@AI`
 2. 在 @提及之后输入你的问题或指令
 3. 发送消息
+
+群内 @AI 同样无需先创建 Agent Definition。Route B2 固定使用 `lowrisk-assistant:v1`，并将读取与回复 scope 精确绑定到被提及的群会话。
 
 #### 工作原理
 
@@ -432,9 +436,11 @@ Agent 定义 (Definition) 是 Agent 的权限和行为边界声明。
 | Status | `active`（激活）或 `revoked`（已撤销） |
 | Valid From/Until | 有效期范围 |
 
-#### 自动创建
+#### 与入站聊天的关系
 
-对于入站消息场景（1v1 DM / 群 @），如果用户没有预先创建定义，系统会自动创建一个低风险定义（包含 conversation read/write 权限）。
+Definition 用于显式任务和事件订阅的权限边界。私聊 Dipole AI 与群内 @AI 使用平台维护的 `lowrisk-assistant:v1`，不会为用户自动创建或持久化一条 owner Definition。
+
+创建 owner Definition 不会打开私聊或群 @功能；它用于声明订阅和显式任务可使用的能力范围。
 
 ### 4.7 事件订阅
 
@@ -452,7 +458,7 @@ Agent 定义 (Definition) 是 Agent 的权限和行为边界声明。
 订阅 = Agent 定义 + 事件类型 + 资源作用域
 ```
 
-当匹配的事件发生时，Agent Runtime 自动创建一个任务来处理。
+当匹配的事件发生时，Agent Runtime 会在该 Definition 已绑定 active promotion grant 时创建任务。创建 Definition 或 Subscription 本身不发放 grant；订阅记录可以存在，但在平台审核并绑定该 owner 的 active Runtime grant 前不具备可执行权限。
 
 #### 事件类型
 
