@@ -4,6 +4,7 @@ import { z } from "zod";
 import * as grpc from "@grpc/grpc-js";
 
 import { CapabilityRegistry } from "../capabilities/registry.js";
+import type { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { createDipoleMcpServer } from "./dipole-mcp-server.js";
 import { createInteractiveMessageExecutor, createInteractiveReplyExecutor, createSubscriptionMessageExecutor, McpMessageWriteProjection, subscriptionReplyReplayMarker } from "./mcp-message-write-projection.js";
@@ -201,7 +202,7 @@ describe("MCP Message write projection", () => {
   it("mints an owner-scoped assistant_reply grant via AuthorizeInteractiveReply", async () => {
     const invocationIds: string[] = [];
     const client = {
-      authorizeInteractiveReply: vi.fn(async () => undefined),
+      authorizeInteractiveReply: vi.fn<AgentCapabilityRPCClient["authorizeInteractiveReply"]>(async () => undefined),
       consumeApproval: vi.fn(async () => undefined),
       resolveApprovalGrant: vi.fn(async () => ({
         approvalId: "APR-1", capabilityId: "message.assistant_reply.send",
@@ -218,7 +219,7 @@ describe("MCP Message write projection", () => {
         return { resourceType: "message" as const, resourceId: "MSG-1", commandKind: "assistant_reply" as const, commandId: `tool:${input.invocationId}` };
       })
     };
-    const replyContext = { ...context, approvedCapabilities: ["message.assistant_reply.send"] };
+    const replyContext: ExecutionContext = { ...context, approvedCapabilities: ["message.assistant_reply.send"] };
     await createInteractiveReplyExecutor(client).execute(
       { conversationId: "direct:U100:UAI", content: "notice", eventId: "E-INT-1", occurredAtUnixMs: 1_700_000_000_000 }, replyContext
     );

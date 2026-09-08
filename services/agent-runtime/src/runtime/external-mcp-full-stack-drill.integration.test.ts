@@ -250,11 +250,12 @@ function runtimeConfig(database: string, topicPrefix: string, groupId: string): 
   const mysqlUrl = new URL(requiredEnv("DIPOLE_TEST_AGENT_MYSQL_URL"));
   return {
     enabled: true, runtimeMode: "shadow", candidateVersion: "", releaseManifestPath: "", brokers: requiredEnv("DIPOLE_TEST_AGENT_KAFKA_BROKERS").split(","), clientId: `dipole-agent-drill-${randomUUID()}`,
-    groupId, topic: "message.direct.created", topicPrefix, failureMaxAttempts: 2, topicPartitions: 1,
+    groupId, topic: "message.direct.created", groupTopic: "message.group.created", topicPrefix, failureMaxAttempts: 2, topicPartitions: 1,
     topicReplicationFactor: 1, tenantId: "dipole", agentUuid: "UAI-DRILL", triggerMode: "subscription",
     subscriptionShadowEnabled: false,
     subscriptionActiveEnabled: false,
-    inboundInteractiveEnabled: false,
+    inboundInteractiveEnabled: false, inboundGroupInteractiveEnabled: false,
+    mentionAliases: ["AI"], assistantNickname: "Dipole AI",
     ledgerMode: "mysql", leaseMs: 5_000, readScopeConfirmationTtlMs: 900_000, modelMode: "metadata", modelProvider: { kind: "disabled", name: "", baseURL: "", apiKey: "", supportsStructuredOutputs: false, outputMode: "json_schema", thinkingMode: "provider_default" }, modelRoutes: [], contextCompilerVersion: "v1",
     memoryEnabled: false, retrievalEnabled: false, retrievalContextEnabled: false, interactiveMessageWritesEnabled: false, subscriptionMessageWritesEnabled: false, modelContextProfiles: [], modelBudget: { maxCalls: 1, totalTimeoutMs: 1_000, maxOutputTokensPerCall: 128 },
     capabilityRpc: { enabled: true, target: requiredEnv("DIPOLE_TEST_AGENT_RPC_TARGET"),

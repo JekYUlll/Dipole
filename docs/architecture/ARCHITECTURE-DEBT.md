@@ -1938,15 +1938,14 @@
 - **2026-08-30 兼容性补充：** promotion receipt v2 将 observational candidate 与显式目标类型一起绑定至 canonical hash；历史 v1 receipt 保持原语义可读，但因没有目标类型而在 replay 阶段 fail-closed。External MCP Shadow 对 partial enablement 增加零进程启动回归，默认关闭路径继续不构造 Worker、RPC 或网络资源。
 - 2026-09-03：Interactive Agent Task 的 admission 与首次可查询状态之间存在短暂最终一致性窗口。Remote GPU 多会话 scope-confirmation 验收中，`POST /api/v1/agent/tasks` 已返回 `202`，但首个 owner `GET` 在 Core Task 授权记录和 Temporal 投影落库前得到 `404`；约一秒后的有界查询得到 `waiting_input`，精确 input 后收敛 `completed` 并产生 Artifact。前端任务创建页应在提交后的有限时间内仅对 owner 的该 Task 将 `404` 当作 pending admission 重试，超时后保留真实错误；不要把无限重试或跨 owner 的 `404` 隐藏为加载态。该问题不改变读写授权边界，active write、MCP 和 OAuth 继续独立受控。
 - 2026-09-04：隔离 Interactive Agent Compose smoke 现可选写入原子、低敏成功 receipt，保留 runtime revision、profile、模型来源、task SHA-256 与受控计数，使自动清理后的开发期结果能够归档。receipt 不包含主体、原始任务、消息、提示词、模型输出或凭据；它也不覆盖共享 authority、浏览器 HITL、外部 MCP/OAuth、公开写入或性能证据。
-### AD-064：Agent Runtime 全量 TypeScript 门禁存在既有漂移
+### AD-064：Agent Runtime 全量 TypeScript 门禁漂移
 
 - **优先级：** P1
-- **状态：** 进行中
+- **状态：** 已完成
 - **发现日期：** 2026-09-08
 - **影响范围：** Agent Runtime 全量 typecheck 与 B3 capability 的合并门禁
-- **现状：** 完整依赖按 lockfile 重建后，`npm run typecheck` 仍在 B3 切片未修改的 MCP message-write 测试与 external MCP fixture 处失败；受影响文件分别需要同步 `approvedCapabilities` 的窄联合类型，并补齐 Route B2 fixture 字段。
-- **本轮进展：** `user.profile.read` 的专用 Vitest、Core gRPC/Definition Catalog 测试与 `check:proto` 均通过；该 capability 只返回低敏 profile 字段，并要求精确 owner user scope。
-- **下一步：** 在独立 Runtime 工具链治理切片中修复两项既有门禁，再恢复全量 `npm run typecheck` 作为 Agent 合并条件。
+- **结果：** 消息写入投影 mock 改为精确 `AgentCapabilityRPCClient` 方法签名，`approvedCapabilities` 保持 capability 窄联合类型；外部 MCP 全栈 fixture 补齐群入站 topic、mention aliases 与助手昵称。lockfile 重建后 `npm test -- --run` 为 913 passed / 40 skipped，`npm run typecheck` 与 `npm run build` 均通过。
+- **完成条件：** 已满足。未来新增 `ShadowRuntimeConfig` 必填字段或 Capability RPC 方法时，应同步更新测试 fixture 并保持全量 TypeScript 门禁为 Agent 合并条件。
 
 ### AD-062：Gateway 与 embedded Core 共享 HTTP handler 的迁移边界
 
