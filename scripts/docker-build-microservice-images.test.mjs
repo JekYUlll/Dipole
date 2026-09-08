@@ -39,4 +39,5 @@ test("microservice image builds include the TypeScript Agent Runtime at the same
 test("microservice selection accepts documented space- and comma-delimited service lists", () => {
   assert.ok(script.includes('selected_services=",${selected_services// /,},"'));
   assert.ok(script.includes('normalized_selected_services=${selected_services//,/ }'));
+  assert.match(script, /if \[\[ -z "\$\{selected_services\}" \|\| "\$\{selected_services\}" == \*",\$\{agent_service\},"\* \]\]; then/);
 });

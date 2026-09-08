@@ -75,6 +75,9 @@ class WebSyncObservationTest(unittest.TestCase):
         self.assertIn('startup timeout must be between 30 and 1800 seconds', smoke)
         self.assertIn('compose --profile observability down -v --remove-orphans', smoke)
         self.assertIn('api/v1/targets?state=active&scrapePool=dipole-required', smoke)
+        self.assertIn('require_image_revisions', smoke)
+        self.assertIn('org.opencontainers.image.revision', smoke)
+        self.assertIn('build migrate core message sync gateway from this checkout first', smoke)
 
     def test_language_neutral_contracts_are_strict_and_versioned(self):
         root = Path("contracts/web-sync-observation/v1")

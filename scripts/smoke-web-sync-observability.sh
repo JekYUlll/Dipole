@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Verify the isolated service and Prometheus wiring required before an owner can
-# start a real Web Sync shadow observation window.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-COMPOSE_FILE="${DIPOLE_COMPOSE_FILE:-${ROOT_DIR}/deploy/compose/docker-compose.microservices.yml}"
-PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-web-sync-observability}"
-GATEWAY_PORT="${DIPOLE_GATEWAY_PORT:-8080}"
-PROMETHEUS_PORT="${DIPOLE_PROMETHEUS_PORT:-9090}"
-ALERTMANAGER_PORT="${DIPOLE_ALERTMANAGER_PORT:-9093}"
-GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:${GATEWAY_PORT}}"
-PROMETHEUS_URL="${PROMETHEUS_URL:-http://127.0.0.1:${PROMETHEUS_PORT}}"
-ALERTMANAGER_URL="${ALERTMANAGER_URL:-http://127.0.0.1:${ALERTMANAGER_PORT}}"
+# Prepare an isolated Prometheus preflight before opening a real 24-hour Web
+# Sync observation window. It never enables a client sync mode or promotes one.
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root_dir="$(cd "${script_dir}/.." && pwd)"
+compose_file="${DIPOLE_COMPOSE_FILE:-${root_dir}/deploy/compose/docker-compose.microservices.yml}"
+project_name="${COMPOSE_PROJECT_NAME:-dipole-web-sync-observability}"
+gateway_port="${DIPOLE_GATEWAY_PORT:-18080}"
+prometheus_port="${DIPOLE_PROMETHEUS_PORT:-19090}"
+alertmanager_port="${DIPOLE_ALERTMANAGER_PORT:-19093}"
 startup_timeout_seconds="${DIPOLE_WEB_SYNC_OBSERVABILITY_STARTUP_TIMEOUT_SECONDS:-300}"
 env_file="${DIPOLE_ENV_FILE:-}"
 
@@ -32,19 +29,49 @@ fi
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 export DIPOLE_GATEWAY_BIND_ADDRESS="${DIPOLE_GATEWAY_BIND_ADDRESS:-127.0.0.1}"
+export DIPOLE_GATEWAY_PORT="${gateway_port}"
 export DIPOLE_PROMETHEUS_BIND_ADDRESS="${DIPOLE_PROMETHEUS_BIND_ADDRESS:-127.0.0.1}"
+export DIPOLE_PROMETHEUS_PORT="${prometheus_port}"
 export DIPOLE_ALERTMANAGER_BIND_ADDRESS="${DIPOLE_ALERTMANAGER_BIND_ADDRESS:-127.0.0.1}"
+export DIPOLE_ALERTMANAGER_PORT="${alertmanager_port}"
 
 compose_command=(docker compose)
 if [[ -n "${env_file}" ]]; then
-  # Keep credentials out of the shell environment and Compose output.
   compose_command+=(--env-file "${env_file}")
 fi
-compose_command+=(-p "${PROJECT_NAME}" -f "${COMPOSE_FILE}")
+compose_command+=(-p "${project_name}" -f "${compose_file}")
 
 compose() {
   "${compose_command[@]}" "$@"
 }
+
+require_image_revision() {
+  local image="$1"
+  local expected_revision="$2"
+  local actual_revision
+  actual_revision="$(docker image inspect "${image}" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null || true)"
+  if [[ "${actual_revision}" != "${expected_revision}" ]]; then
+    echo "Web Sync observability image ${image} revision ${actual_revision:-missing} does not match ${expected_revision}; build migrate core message sync gateway from this checkout first" >&2
+    return 1
+  fi
+}
+
+require_image_revisions() {
+  local revision
+  revision="$(git -C "${root_dir}" rev-parse HEAD)"
+  require_image_revision "${DIPOLE_MIGRATE_IMAGE:-dipole-migrate:latest}" "${revision}"
+  require_image_revision "${DIPOLE_CORE_IMAGE:-dipole-core:latest}" "${revision}"
+  require_image_revision "${DIPOLE_MESSAGE_IMAGE:-dipole-message:latest}" "${revision}"
+  require_image_revision "${DIPOLE_SYNC_IMAGE:-dipole-sync:latest}" "${revision}"
+  require_image_revision "${DIPOLE_GATEWAY_IMAGE:-dipole-gateway:latest}" "${revision}"
+}
+
+cleanup() {
+  if [[ "${KEEP_STACK:-0}" != "1" ]]; then
+    compose --profile observability down -v --remove-orphans >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
 
 required_targets_are_healthy() {
   python3 -c '
@@ -64,53 +91,64 @@ sys.exit(0 if all(health.get(service) == "up" for service in required) else 1)
 }
 
 wait_for_healthy_targets() {
-  local targets
+  local targets=""
   for _ in $(seq 1 30); do
-    targets="$(curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/api/v1/targets?state=active&scrapePool=dipole-required")"
+    targets="$(curl --connect-timeout 2 --max-time 5 -fsS "http://127.0.0.1:${prometheus_port}/api/v1/targets?state=active&scrapePool=dipole-required")"
     if required_targets_are_healthy "${targets}"; then
-      printf '%s' "${targets}"
       return 0
     fi
     sleep 1
   done
-
-  printf '%s' "${targets:-}" >&2
+  printf '%s\n' "${targets}" >&2
   return 1
 }
 
-cleanup() {
-  if [[ "${KEEP_STACK:-0}" != "1" ]]; then
-    compose --profile observability down -v --remove-orphans >/dev/null 2>&1 || true
-  fi
+rules_are_loaded() {
+  curl --connect-timeout 2 --max-time 5 -fsS "http://127.0.0.1:${prometheus_port}/api/v1/rules" |
+    python3 -c '
+import json
+import sys
+
+required = {
+    "dipole:web_sync_shadow:matches_24h",
+    "dipole:web_sync_shadow:terminal_differences_24h",
+    "dipole:web_sync_shadow:overflows_24h",
+    "dipole:web_sync_shadow:window_complete",
+    "dipole:web_sync_shadow:promotion_ready",
 }
-trap cleanup EXIT
+payload = json.load(sys.stdin)
+names = {
+    rule.get("name")
+    for group in payload.get("data", {}).get("groups", [])
+    for rule in group.get("rules", [])
+}
+sys.exit(0 if required.issubset(names) else 1)
+'
+}
 
-"${SCRIPT_DIR}/check-dev-host.sh" "${DIPOLE_HOST_PROFILE:-remote-gpu}"
-"${SCRIPT_DIR}/generate-internal-certs.sh"
+"${script_dir}/check-dev-host.sh" "${DIPOLE_HOST_PROFILE:-remote-gpu}"
+"${script_dir}/generate-internal-certs.sh"
+require_image_revisions
 compose --profile observability config --quiet
-timeout --preserve-status "${startup_timeout_seconds}s" "${compose_command[@]}" --profile observability up -d --wait gateway prometheus alertmanager
+timeout --preserve-status "${startup_timeout_seconds}s" "${compose_command[@]}" --profile observability up -d --wait core message sync gateway prometheus alertmanager
 
 for _ in $(seq 1 30); do
-  if curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/-/ready" >/dev/null 2>&1; then
+  if curl --connect-timeout 2 --max-time 5 -fsS "http://127.0.0.1:${prometheus_port}/-/ready" >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
-curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/-/ready" >/dev/null
+curl --connect-timeout 2 --max-time 5 -fsS "http://127.0.0.1:${prometheus_port}/-/ready" >/dev/null
 for _ in $(seq 1 30); do
-  if curl --connect-timeout 2 --max-time 5 -fsS "${ALERTMANAGER_URL}/-/ready" >/dev/null 2>&1; then
+  if curl --connect-timeout 2 --max-time 5 -fsS "http://127.0.0.1:${alertmanager_port}/-/ready" >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
-curl --connect-timeout 2 --max-time 5 -fsS "${ALERTMANAGER_URL}/-/ready" >/dev/null
-curl --connect-timeout 2 --max-time 5 -fsS "${GATEWAY_URL}/health" | grep -q '"component":"gateway"'
+curl --connect-timeout 2 --max-time 5 -fsS "http://127.0.0.1:${alertmanager_port}/-/ready" >/dev/null
+curl --connect-timeout 2 --max-time 5 -fsS "http://127.0.0.1:${gateway_port}/health" | grep -q '"component":"gateway"'
+wait_for_healthy_targets
+rules_are_loaded
 
-for service in core message sync gateway; do
-  compose exec -T "${service}" wget -q -O - http://127.0.0.1:9100/metrics | grep -q '^#'
-done
-
-targets="$(wait_for_healthy_targets)"
-
-echo "Web Sync observability smoke passed: loopback gateway=${GATEWAY_URL} prometheus=${PROMETHEUS_URL} alertmanager=${ALERTMANAGER_URL}"
-echo "This smoke does not start a Web Sync promotion observation window."
+echo "Web Sync observability preflight passed: gateway=127.0.0.1:${gateway_port} prometheus=127.0.0.1:${prometheus_port} alertmanager=127.0.0.1:${alertmanager_port}"
+echo "This preflight does not enable a Web Sync client mode or start a promotion observation window."

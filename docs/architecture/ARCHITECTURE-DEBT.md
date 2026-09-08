@@ -110,6 +110,10 @@
 
 - 2026-09-04：Web Sync observability preflight 发现并修正两个隔离环境边界：可选 scrape target 不参与仅启动 Gateway 依赖闭包的健康判定，profile 容器由 cleanup 显式回收。Remote GPU 在 `e04c2e28` 的 loopback-only 隔离项目完成 Gateway、Prometheus、Alertmanager 与 `dipole-required` 指标链路验证，退出后项目容器为零，公共 `dipole-experience` 为 11 个健康容器。它不构成真实客户端观察、Cassandra hydration 主读或默认同步模式切换证据。
 
+- 2026-09-09：将历史收敛时遗漏的 `smoke-web-sync-observability.sh` 恢复为当前 Compose 兼容入口。脚本固定高位 loopback Gateway/Prometheus 端口、30 至 1800 秒启动上限、required target 健康校验和五条 Web Sync recording rule 校验，退出时回收隔离 Compose project。它还在创建容器前要求 `migrate/core/message/sync/gateway` 的 OCI revision 等于当前 checkout，避免不同 `latest` 镜像造成迁移与服务 schema 漂移；显式 Go 服务构建不再无条件构建 Agent 镜像。它只准备真实观察的服务端前置条件，仍不伪造浏览器 match，也不替代候选 bundle 绑定的 24 小时 Session/Evidence。
+
+- 2026-09-09：Remote GPU 已在 `2c81464e` 以同 revision 的 `migrate/core/message/sync/gateway` 镜像完成隔离 Web Sync observability preflight。Core、Message、Sync、Gateway 的 Prometheus target 与五条 recording rule 均可用，Alertmanager 同时健康；项目结束后容器和卷均清理，公共 `dipole-experience` 保持 11 个健康服务。低敏 receipt 见 [`web-sync-observability-preflight-2026-09-09`](../../benchmarks/web-sync-observability-preflight-2026-09-09/)。该证据只覆盖服务端准备条件，真实浏览器 24 小时 Observation Session 与旧 Offline 兼容窗口继续开放。
+
 - 2026-09-04：SQLC 迁移的生产依赖审计确认 `go.mod` 与全部非测试 Go 源均不再包含 GORM；新增仓库级 import 门禁防止后续回流。`internal/compat` 仅保留迁移回归辅助，Go/Eino 旧 Agent 仅由 Core embedded Kafka 回滚路径使用，两者均不构成 GORM 运行依赖。
 
 - 2026-09-04：Subscription Active 的真实 Provider 隔离回执已在 `052d60c7` 通过。单一 owner-scoped Kafka 事件收敛为单一 completed Durable Task，任务内出现一轮或多轮 completed model run 均被记录为合法执行，且 Agent 消息表保持零写入；项目自动清理后公共 `dipole-experience` 为 11 个健康容器。该受控 read-only 场景没有覆盖多样本质量、共享环境、自动写入或默认启用，相关门禁继续保持关闭。
