@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "dipole.agent.memory-b1-synthetic-window.v1",
+  "candidateVersion": "agent-runtime@interactive-compose-smoke",
+  "minimumRecallPassBps": 10000,
+  "suites": [
+    {
+      "schemaVersion": "dipole.agent.memory-b1-synthetic-eval.v1", "candidateVersion": "agent-runtime@interactive-compose-smoke", "minimumPassBps": 10000,
+      "cases": [{"caseId": "recall-b1", "canarySha256": "239b43e02b76a0faaa070ecb7ab1aa2755bfde7db6b5db1c0998332caefa1a80", "expectedMemoryLineageCount": 1, "recallExpectation": "required"}, {"caseId": "revoke-b1", "canarySha256": "239b43e02b76a0faaa070ecb7ab1aa2755bfde7db6b5db1c0998332caefa1a80", "expectedMemoryLineageCount": 0, "recallExpectation": "not_evaluated"}],
+      "observations": [{"caseId": "recall-b1", "canarySha256": "239b43e02b76a0faaa070ecb7ab1aa2755bfde7db6b5db1c0998332caefa1a80", "taskSha256": "37e8b32c65f03ad0c216ed794ca97ec23dccd0582d6ead96a5cc246586485680", "replySha256": "823b7df784cd79dfdb3186f5a91b88b975c85a395ba2ee932fbbadd6ac6b002f", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 1, "responseContainsCanary": true}, {"caseId": "revoke-b1", "canarySha256": "239b43e02b76a0faaa070ecb7ab1aa2755bfde7db6b5db1c0998332caefa1a80", "taskSha256": "8d19a8ea1913dc7f278f0a09c5d14fc24de379d59e735f4f028306649c5b3be5", "replySha256": "0cb1dd2cd2e72afdc6886c8f39d14fe88a22d283ced246054c129fb1c46817ad", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 0, "responseContainsCanary": true}]
+    },
+    {
+      "schemaVersion": "dipole.agent.memory-b1-synthetic-eval.v1", "candidateVersion": "agent-runtime@interactive-compose-smoke", "minimumPassBps": 10000,
+      "cases": [{"caseId": "recall-b1", "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed", "expectedMemoryLineageCount": 1, "recallExpectation": "required"}, {"caseId": "revoke-b1", "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed", "expectedMemoryLineageCount": 0, "recallExpectation": "not_evaluated"}],
+      "observations": [{"caseId": "recall-b1", "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed", "taskSha256": "1699cea9d724abd507d35d7cf3a9d07083e0a898c7a59d295430cb37fa04f438", "replySha256": "dade5b37d23a6a2232fda8174f491f6a5d7ffd025d1bfa5e359585697386b7d3", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 1, "responseContainsCanary": true}, {"caseId": "revoke-b1", "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed", "taskSha256": "3c644a9818df4458872b312374280a81e4fdb34e85ae264a207840b33a54f9af", "replySha256": "dade5b37d23a6a2232fda8174f491f6a5d7ffd025d1bfa5e359585697386b7d3", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 0, "responseContainsCanary": true}]
+    },
+    {
+      "schemaVersion": "dipole.agent.memory-b1-synthetic-eval.v1", "candidateVersion": "agent-runtime@interactive-compose-smoke", "minimumPassBps": 10000,
+      "cases": [{"caseId": "recall-b1", "canarySha256": "fc68ff0ba8c2c7470feac357f517d37f2101ce3c332f504148e2d3461afe6c5a", "expectedMemoryLineageCount": 1, "recallExpectation": "required"}, {"caseId": "revoke-b1", "canarySha256": "fc68ff0ba8c2c7470feac357f517d37f2101ce3c332f504148e2d3461afe6c5a", "expectedMemoryLineageCount": 0, "recallExpectation": "not_evaluated"}],
+      "observations": [{"caseId": "recall-b1", "canarySha256": "fc68ff0ba8c2c7470feac357f517d37f2101ce3c332f504148e2d3461afe6c5a", "taskSha256": "ebca6303e6fa89005fafa2c1e2b66e7c9f9bbce97b9d6edb3f5cfe6ee6394287", "replySha256": "a0bbe3cafb6516bad4588179e68e244fe16f6a95654eeee013a9ea0252f9904b", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 1, "responseContainsCanary": false}, {"caseId": "revoke-b1", "canarySha256": "fc68ff0ba8c2c7470feac357f517d37f2101ce3c332f504148e2d3461afe6c5a", "taskSha256": "148c5f82628887aae908438640fd0813ee8e354220ed481cce67e98668488a14", "replySha256": "1cb47d0dd786c3e6af27b767af375d40c5702d3d4850db204766ddf5e27688d4", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 0, "responseContainsCanary": false}]
+    }
+  ]
+}

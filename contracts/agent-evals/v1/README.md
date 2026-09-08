@@ -79,6 +79,15 @@ npm run eval:memory-b1-synthetic -- \
 
 该 Eval 至少需要两个案例，拒绝重复 case/Task hash、模型调用数漂移、lineage 漂移和缺失 synthetic recall。它不保存消息、Prompt、回复正文、owner、Memory ID 或凭据。fixture 只验证协议；真实语料仍需 owner review、独立人工语义标注和单独的隐私审批。
 
+`memory-b1-synthetic-window.schema.json` 以至少三个独立 canary suite 形成同候选版本的窗口。聚合器重新运行每个 suite 的 Eval，并拒绝候选版本漂移、重复 recall canary、revoke 边界失败或执行不变量失败；窗口仅按 `minimumRecallPassBps` 汇总 recall 命中率，失败 canary 仍只以 SHA-256 输出。
+
+```bash
+cd services/agent-runtime
+npm run eval:memory-b1-window -- --window=../../benchmarks/agent-memory-b1-provider-window-2026-09-09/window.json
+```
+
+当前多 canary 基准预期以退出码 `2` 返回，因为有一个有效 recall 未命中。这是质量基线，不能作为默认 Memory 启用证据。
+
 ## Shadow 样本窗口汇总
 
 `shadow-report.schema.json` 是 `eval:shadow` 的低敏输出 envelope，受限评测环境使用持久化 Run 的 `traceId` 和标准五类报告建立证据关联。`shadow-summary-input.schema.json` 将多个该 envelope 汇总为任务级成功率、五类通过率和失败原因计数。输入只接受同一候选版本、唯一 Suite SHA-256、唯一 Trace ID、每类恰好一个 `*.shadow.<TaskRunDigest>` case 的终态报告；因此合成离线 Suite、重复证据、Trace 复用和混版本样本会 fail closed。公开汇总从 `shadow-summary-report.v2` 起只保留 suite 摘要、聚合数值和固定限制语句；不回显 Task、Run、Trace、用户、消息、Prompt、模型输出、Tool 参数或 Artifact 正文。

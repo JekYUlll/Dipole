@@ -10,6 +10,8 @@
 
 因此，三个 recall 样本中有 `2/3` 命中，三个 owner revoke 后的新 Task 均没有目标 Memory lineage。`QUARTZ-17` 的失败已完整保留为 `synthetic_canary_not_recalled`，没有通过修改门槛或重试覆盖。revoke 回复文本仍只作观察，因为直接会话的短期历史可能包含先前答案；Core lineage 是撤销读取边界的权威依据。
 
+[`window.json`](window.json) 将三份 suite 绑定到同一 candidate，并由 `eval:memory-b1-window` 复算。窗口报告将 `2/3` recall 命中表示为 `6666` bps，并以 `recall_below_minimum` 失败；三条 revoke 边界和所有其余执行不变量通过。
+
 复算新增 suite：
 
 ```bash

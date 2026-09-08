@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dipole.local/contracts/agent-evals/v1/memory-b1-synthetic-window.schema.json",
+  "title": "Dipole Agent B1 Synthetic Memory Window v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "candidateVersion", "minimumRecallPassBps", "suites"],
+  "properties": {
+    "schemaVersion": {"const": "dipole.agent.memory-b1-synthetic-window.v1"},
+    "candidateVersion": {"type": "string", "minLength": 2, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/-]*$"},
+    "minimumRecallPassBps": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "suites": {"type": "array", "minItems": 3, "maxItems": 128, "items": {"$ref": "memory-b1-synthetic-eval.schema.json"}}
+  }
+}
