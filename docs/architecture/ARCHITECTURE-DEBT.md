@@ -29,6 +29,8 @@
 
 - **开发期验证：** Remote GPU 在 `85af1e88` 使用 Go `1.27.0`、Node `22.12.0` 通过 lifecycle contract、Runtime envelope/persistence/processor 的 11 项测试和 TypeScript typecheck；公共体验保持 12 个容器。此项仅证明可重复的源码/工具链验证，完整命令、边界与未覆盖项见 [`agent-oauth-token-lifecycle-2026-09-04`](../../benchmarks/agent-oauth-token-lifecycle-2026-09-04/)。
 
+- 2026-09-08：Subscription Active 的确定性 isolated Compose smoke 曾因固定 Plan stub 被用于 strict synthesis schema 而失败并耗尽模型预算。stub 现按请求 schema 同时支持 Plan 与 summary 形态；Remote GPU 的 `e580619f` 验收确认单一 owner-scoped Kafka 事件完成一个 durable read Task，至少一条 model run 完成、Agent 消息为零、隔离项目自动清理，公共 `dipole-experience` 保持 11 个健康容器。当前仅覆盖临时 fixture grant；operator proposal/review 到 Definition grant 的受审计体验链路仍由 Agent G1/G2 跟踪。
+
 - 2026-09-04：A7 已补齐开发期 Prometheus 到 Alertmanager 的运行时投递证据。`smoke-multipart-alertmanager-routing.sh` 仅启动隔离 Prometheus 和 Alertmanager，复用正式 Multipart rule file 并加入临时 `vector(1)` alert，确认 firing alert 出现在 Alertmanager API；`1b5efc87` Remote GPU 通过，候选容器为零，公共 `dipole-experience` 保持 12 个容器，日志 SHA-256 为 `583dcc7af033211935587320ba951979e78437e68742d0563dff2fa83bfafc65`。该证据限于开发期 `discard` receiver，真实 receiver、升级策略、24 小时预签名流量和默认 relay 切流继续关闭。
 
 - 2026-09-04：A7 在 current `master` `43d86704` 重新通过 [隔离 Multipart restart receipt](../../benchmarks/multipart-restart-smoke-2026-09-04/)。随机命名 MinIO 和持久卷在首个 5 MiB part 后重启，续传、Complete 和内容比对通过；公共 `dipole-experience` 保持 12 个容器，候选容器清理为零。该证据仍限于 disposable fixture，浏览器断网、预签名、Redis 和跨存储故障矩阵继续由 A7 跟踪。
