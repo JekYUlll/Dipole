@@ -1,0 +1,10 @@
+services:
+  agent:
+    volumes:
+      - ${DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE:?DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE is required}:/app/model-stub.mjs:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["node /app/model-stub.mjs & exec node dist/index.js"]
+    environment:
+      DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"
+      DIPOLE_AGENT_MODEL_MODE: ai_sdk
+      DIPOLE_AGENT_MODEL_PROVIDER: openai_compatible

@@ -54,10 +54,13 @@ fi
 : "${DIPOLE_AGENT_DEFINITION_ONLY:=0}"
 : "${DIPOLE_AGENT_MEMORY_SMOKE:=0}"
 : "${DIPOLE_AGENT_MEMORY_B1_SMOKE:=0}"
+: "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE:=stub}"
+memory_b1_model_source="${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}"
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" || "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]] || { printf 'DIPOLE_AGENT_DEFINITION_ONLY must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_MEMORY_SMOKE}" == "0" || "${DIPOLE_AGENT_MEMORY_SMOKE}" == "1" ]] || { printf 'DIPOLE_AGENT_MEMORY_SMOKE must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "0" || "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE must be 0 or 1\n' >&2; exit 2; }
+[[ "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "stub" || "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "provider" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
 if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
   [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE requires DIPOLE_AGENT_DEFINITION_ONLY=0\n' >&2; exit 2; }
   DIPOLE_AGENT_MEMORY_SMOKE=1
@@ -79,7 +82,8 @@ export DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"compose-smoke/determinist
 export DIPOLE_AGENT_MODEL_MAX_CALLS="1"
 export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="1000"
 export DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS="256"
-if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
+memory_b1_model_env_file=""
+if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" && "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "stub" ]]; then
   export DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"
   export DIPOLE_AGENT_MODEL_OUTPUT_MODE="json_text"
   export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="5000"
@@ -100,6 +104,14 @@ http.createServer((request, response) => {
   });
 }).listen(8089, "0.0.0.0");
 NODE
+fi
+if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" && "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "provider" ]]; then
+  : "${DIPOLE_AGENT_MEMORY_B1_MODEL_ENV_FILE:?DIPOLE_AGENT_MEMORY_B1_MODEL_ENV_FILE is required for provider mode}"
+  [[ -f "${DIPOLE_AGENT_MEMORY_B1_MODEL_ENV_FILE}" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_MODEL_ENV_FILE must name a file\n' >&2; exit 2; }
+  memory_b1_model_env_file="${DIPOLE_AGENT_MEMORY_B1_MODEL_ENV_FILE}"
+  unset DIPOLE_AGENT_MODEL_PROVIDER_NAME DIPOLE_AGENT_MODEL_BASE_URL DIPOLE_AGENT_MODEL_API_KEY
+  unset DIPOLE_AGENT_MODEL_ROUTES DIPOLE_AGENT_MODEL_CONTEXT_PROFILES DIPOLE_AGENT_MODEL_MAX_CALLS
+  unset DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS
 fi
 
 cat >"${DIPOLE_AGENT_RELEASE_MANIFEST_FILE}" <<EOF
@@ -133,10 +145,21 @@ if [[ "${DIPOLE_AGENT_MEMORY_SMOKE}" == "1" ]]; then
 fi
 if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
   compose_files+=(-f "${root_dir}/deploy/microservices/agent-interactive-memory-b1-smoke.yml")
+  if [[ "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "stub" ]]; then
+    compose_files+=(-f "${root_dir}/deploy/microservices/agent-interactive-memory-b1-stub.yml")
+  else
+    compose_files+=(
+      -f "${root_dir}/deploy/microservices/agent-interactive-memory-b1-provider.yml"
+      -f "${root_dir}/deploy/microservices/agent-ai-sdk-shadow.yml"
+      -f "${root_dir}/deploy/microservices/agent-deepseek-v4-flash-shadow.yml"
+    )
+  fi
 fi
 
 compose() {
-  docker compose -p "${project_name}" "${compose_files[@]}" "$@"
+  local env_args=()
+  [[ -z "${memory_b1_model_env_file}" ]] || env_args=(--env-file "${memory_b1_model_env_file}")
+  docker compose "${env_args[@]}" -p "${project_name}" "${compose_files[@]}" "$@"
 }
 
 cleanup() {
@@ -323,7 +346,12 @@ NODE
   [[ "$(mysql -e "SELECT definition_uuid FROM agent_tasks WHERE task_uuid = '${task_id}'")" == "lowrisk-assistant:v1" ]] || { printf 'B1 Memory task did not use low-risk Definition\n' >&2; return 1; }
   local effects
   effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content = 'B1_MEMORY_RECALLED_ORBIT_91'), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${task_id}' AND memory_uuid = '${memory_uuid}')")
-  [[ "${effects}" == $'1\t1\t1' ]] || { printf 'B1 Memory effects diverged: %q\n' "${effects}" >&2; return 1; }
+  if [[ "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "stub" ]]; then
+    [[ "${effects}" == $'1\t1\t1' ]] || { printf 'B1 Memory effects diverged: %q\n' "${effects}" >&2; return 1; }
+  else
+    effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content <> ''), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${task_id}' AND memory_uuid = '${memory_uuid}')")
+    [[ "${effects}" == $'1\t1\t1' ]] || { printf 'B1 provider Memory effects diverged: %q\n' "${effects}" >&2; return 1; }
+  fi
 
   compose exec -T agent node --input-type=module - "${owner_telephone}" "${memory_uuid}" "${agent_uuid}" <<'NODE'
 const [telephone, memoryId, agentUuid] = process.argv.slice(2);
@@ -353,7 +381,12 @@ NODE
   [[ -n "${revoked_task_id}" && "${revoked_task_id}" != "${task_id}" ]] || { printf 'B1 revoked Memory task was not created\n' >&2; return 1; }
   local revoked_effects
   revoked_effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${revoked_task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content = 'B1_MEMORY_MISSING'), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${revoked_task_id}' AND memory_uuid = '${memory_uuid}'), (SELECT status FROM agent_memories WHERE memory_uuid = '${memory_uuid}')")
-  [[ "${revoked_effects}" == $'1\t1\t0\trevoked' ]] || { printf 'B1 revoked Memory effects diverged: %q\n' "${revoked_effects}" >&2; return 1; }
+  if [[ "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "stub" ]]; then
+    [[ "${revoked_effects}" == $'1\t1\t0\trevoked' ]] || { printf 'B1 revoked Memory effects diverged: %q\n' "${revoked_effects}" >&2; return 1; }
+  else
+    revoked_effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${revoked_task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content <> ''), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${revoked_task_id}' AND memory_uuid = '${memory_uuid}'), (SELECT status FROM agent_memories WHERE memory_uuid = '${memory_uuid}')")
+    [[ "${revoked_effects}" == $'1\t2\t0\trevoked' ]] || { printf 'B1 provider revoked Memory effects diverged: %q\n' "${revoked_effects}" >&2; return 1; }
+  fi
 }
 
 if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
@@ -607,11 +640,11 @@ if [[ -n "${receipt_file}" ]]; then
   approved_task_sha256=$(printf '%s' "${approved_task}" | openssl dgst -sha256 -r | awk '{print $1}')
   receipt_temp=$(mktemp "$(dirname "${receipt_file}")/.dipole-agent-interactive-active-receipt.XXXXXX")
   cat >"${receipt_temp}" <<JSON
-{"schemaVersion":"dipole.agent.interactive-active-smoke-receipt.v1","runtimeRevision":"${runtime_revision}","profile":"active","modelSource":"deterministic","approvedTaskSha256":"${approved_task_sha256}","deniedToolInvocationCount":0,"deniedMessageCount":0,"approvedToolInvocationCount":1,"approvedApprovalCount":1,"approvedMessageCount":1,"approvedDistinctMessageCount":1,"approvedSyncInboxCount":2,"completedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+{"schemaVersion":"dipole.agent.interactive-active-smoke-receipt.v1","runtimeRevision":"${runtime_revision}","profile":"active","modelSource":"${memory_b1_model_source}","approvedTaskSha256":"${approved_task_sha256}","deniedToolInvocationCount":0,"deniedMessageCount":0,"approvedToolInvocationCount":1,"approvedApprovalCount":1,"approvedMessageCount":1,"approvedDistinctMessageCount":1,"approvedSyncInboxCount":2,"completedAt":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
 JSON
   ln "${receipt_temp}" "${receipt_file}"
   rm -f "${receipt_temp}"
   receipt_temp=""
 fi
 
-printf 'Interactive Agent active Compose smoke passed: owner WebSocket received the waiting locator; deny has zero effects; duplicate approval converged to one Tool invocation, one message, and two Sync inbox entries.\n'
+printf 'Interactive Agent active Compose smoke passed: model=%s; owner WebSocket received the waiting locator; deny has zero effects; duplicate approval converged to one Tool invocation, one message, and two Sync inbox entries.\n' "${memory_b1_model_source}"

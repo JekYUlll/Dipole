@@ -1,0 +1,8 @@
+services:
+  agent:
+    environment:
+      # The caller provides model settings through an explicit Compose env file.
+      # This overlay only opens the disposable B1 inbound route.
+      DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"
+      DIPOLE_AGENT_MODEL_MODE: ai_sdk
+      DIPOLE_AGENT_MODEL_PROVIDER: openai_compatible

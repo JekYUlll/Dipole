@@ -40,12 +40,13 @@ class InteractiveAgentActiveComposeTest(unittest.TestCase):
 
     def test_memory_b1_smoke_is_an_explicit_isolated_profile(self) -> None:
         overlay = (ROOT / "deploy/microservices/agent-interactive-memory-b1-smoke.yml").read_text(encoding="utf-8")
+        stub_overlay = (ROOT / "deploy/microservices/agent-interactive-memory-b1-stub.yml").read_text(encoding="utf-8")
+        provider_overlay = (ROOT / "deploy/microservices/agent-interactive-memory-b1-provider.yml").read_text(encoding="utf-8")
         script = (ROOT / "scripts/smoke-agent-interactive-active-compose.sh").read_text(encoding="utf-8")
-        self.assertIn('DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"', overlay)
         self.assertIn('DIPOLE_AI_DIRECT_REPLY_ENABLED: "false"', overlay)
         self.assertIn('DIPOLE_GATEWAY_AGENT_MEMORY_ENABLED: "true"', overlay)
         self.assertIn('DIPOLE_AI_AGENT_CANDIDATE_VERSION: ${DIPOLE_AGENT_CANDIDATE_VERSION:?DIPOLE_AGENT_CANDIDATE_VERSION is required}', overlay)
-        self.assertIn('DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE', overlay)
+        self.assertIn('DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE', stub_overlay)
         self.assertIn('DIPOLE_AGENT_MEMORY_B1_SMOKE:=0', script)
         self.assertIn('agent-interactive-memory-b1-smoke.yml', script)
         self.assertIn('MEMORY-B1-CANARY: ORBIT-91', script)
@@ -54,6 +55,14 @@ class InteractiveAgentActiveComposeTest(unittest.TestCase):
         self.assertIn('run_memory_b1()', script)
         self.assertIn('/api/v1/agent/memories/${memoryId}/revoke', script)
         self.assertIn('B1_MEMORY_MISSING', script)
+        self.assertIn('DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE:=stub', script)
+        self.assertIn('DIPOLE_AGENT_MEMORY_B1_MODEL_ENV_FILE is required for provider mode', script)
+        self.assertIn('agent-interactive-memory-b1-stub.yml', script)
+        self.assertIn('agent-interactive-memory-b1-provider.yml', script)
+        self.assertIn('modelSource":"${memory_b1_model_source}"', script)
+        self.assertIn('DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"', stub_overlay)
+        self.assertIn('DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"', provider_overlay)
+        self.assertIn('DIPOLE_AGENT_MODEL_PROVIDER: openai_compatible', provider_overlay)
 
     def test_agent_runtime_can_persist_pre_model_memory_lineage(self) -> None:
         grants = (ROOT / "configs/mysql/agent-service-grants.dist.sql").read_text(encoding="utf-8")
