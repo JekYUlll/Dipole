@@ -47,6 +47,9 @@ done
 test -s "$fixture_dir/ready.json" || { cat "$fixture_dir/fixture.log" >&2; exit 1; }
 
 cd "$root_dir/services/agent-runtime"
+if [[ ! -x node_modules/.bin/vitest ]]; then
+  npm ci --no-audit --no-fund
+fi
 DIPOLE_AGENT_TEMPORAL_MYSQL_MTLS_INTEGRATION=true \
 DIPOLE_AGENT_TEMPORAL_MYSQL_MTLS_FIXTURE="$fixture_dir/ready.json" \
   npm test -- --run src/temporal/agent-memory-promotion-mtls-mysql.integration.test.ts
