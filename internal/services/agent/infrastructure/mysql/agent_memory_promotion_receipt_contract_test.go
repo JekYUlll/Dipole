@@ -194,7 +194,10 @@ func dialReceiptContractRPCClient(t *testing.T, ctx context.Context, certs recei
 func createReceiptContractPolicy(t *testing.T, ctx context.Context, policy *sqlcRepository.AgentPolicyRepository, now time.Time) (application.AgentDefinitionVersionV1, application.AgentRuntimePromotionGrantV1) {
 	t.Helper()
 	definition := application.AgentDefinitionVersionV1{
-		DefinitionUUID: "DEF-RECEIPT-MYSQL", Version: 1, TenantID: "dipole", OwnerUUID: "U100", AgentUUID: "UAI",
+		// Manual promotion tasks resolve their Definition under the agent identity.
+		// Keep this fixture aligned with admission policy so it exercises mTLS and
+		// receipt replay instead of failing during unrelated Definition lookup.
+		DefinitionUUID: "DEF-RECEIPT-MYSQL", Version: 1, TenantID: "dipole", OwnerUUID: "UAI", AgentUUID: "UAI",
 		Status: application.AgentDefinitionStatusActive, Permissions: []string{application.AgentPermissionMessageWrite},
 		Scopes:    []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "*", Actions: []string{"write"}}},
 		ValidFrom: now.Add(-time.Hour),
