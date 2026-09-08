@@ -1,3 +1,7 @@
+- 2026-09-09：Remote GPU 在 `0724408d`、Go `1.27.0` 上重跑隔离 Multipart fault matrix。六个确定性 Go 包、七条 Prometheus 规则、真实 MinIO/Redis reconciliation 与 Redis restart 注入均通过；随机命名的容器和 worktree 已清理，公共 `dipole-experience` 与 GPU 任务未被重启。详见 [`multipart-fault-matrix-2026-09-09`](benchmarks/multipart-fault-matrix-2026-09-09/)；默认上传模式继续为 `relay`，预签名直传仍需独立 24 小时证据与审核。
+
+- 2026-09-09：收纳误置于 `docs/` 根目录的架构总览、开发历程和用户手册，分别迁入 `docs/architecture/` 与 `docs/guides/`，并纳入 `architecture-docs.manifest`。架构文档、索引和学习文档门禁恢复通过；文档内容与运行时配置未改变。
+
 - 2026-09-09：复核并收口默认关闭的 Cassandra 重复消息 hydration。Message owner 在幂等冲突后先用 MySQL Metadata 校验并取得 `(message_uuid, conversation_key, message_seq)` locator，命中 Cassandra Timeline 后返回完整原响应而不回读 MySQL 正文；缺失、冲突、历史无 Seq、取消或查询错误继续回退 MySQL。补充请求取消传播回归，避免 gRPC deadline 被替换为后台 Cassandra 查询。该能力仍须满足既有 24 小时观测门禁，未改变 `message.cassandra_duplicate_hydration=false` 默认值或 MySQL 正文保留策略。
 
 - 2026-09-09：新增 `eval:memory-b1-window` 聚合至少三份同候选 B1 synthetic suite，重新执行每份 Eval 并拒绝 candidate drift、重复 canary、revoke 边界或执行不变量失败。Remote GPU 三样本窗口的可复算报告为 `2/3` recall、`6666 bps`，仅以 `recall_below_minimum` 阻止通过；三条 revoke 边界和其余不变量均通过。详见 [`agent-memory-b1-provider-window-2026-09-09`](benchmarks/agent-memory-b1-provider-window-2026-09-09/)；该 synthetic 质量基线不授予默认 Memory 启用权限。

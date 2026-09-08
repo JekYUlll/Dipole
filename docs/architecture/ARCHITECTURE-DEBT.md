@@ -910,6 +910,7 @@
 - **解决方式：** 将架构图更新为当前 Core/Message/Gateway/Sync/Search/Agent Runtime 分层，补充 sqlc、`user_sync_inbox`、Cassandra/Elasticsearch 影子投影和回滚门禁，并移除 `AutoMigrate`、无 Inbox 单体及旧 Eino 主链路的过时表述。图中仍明确标注本地合并启动、影子能力和默认关闭边界。
 - **验证：** `scripts/check-architecture-docs.sh`、SVG XML 解析和 `git diff --check` 通过；本次只修改文档，不改变运行配置或服务权限。
 - **长期约束：** 服务拓扑、数据 ownership、默认开关或语言职责变化时，必须同步更新架构图、对应正式文档、更新日志和台账；架构图不得把 shadow、fallback 或离线契约描述成生产主路径。
+- **本轮进展：** 将误置于 `docs/` 根目录的完整架构总览收纳到 `docs/architecture/ARCHITECTURE.md`，开发历程与用户手册收纳到 `docs/guides/`；三者均加入 architecture manifest，文档组织门禁恢复通过。
 - **本轮进展：** `ARCHITECTURE-QA.md` 已同步当前 Message Store、User Inbox Timeline、Conversation Seq/read_seq、sqlc 和微服务拓扑，移除早期无 Inbox、GORM 与纯模块化单体的现状描述。
 - **本轮进展：** 面试问答、消息存储模型和同步策略已同步当前服务目录与 Timeline 实现；旧 `after_id`、`/messages/offline` 和 `unread_count` 已明确标注为兼容语义，避免当前设计说明继续引用过时主路径。新增项目学习与面试主文档，以状态标签、证据链接和限制项约束简历及现场表述，避免将默认关闭或规划能力描述为已上线成果。
 - **本轮进展：** 学习与面试主文档增加合并切片维护记录，固定对外表述、演示、证据、追问、限制和复核条件；根 README 新增直接入口。该流程持续要求以代码、契约、测试和运行记录校正叙事，文档本身不构成运行时验收。
@@ -1966,6 +1967,7 @@
 - **本轮进展：** 新增 fault-matrix 聚合脚本；Remote GPU 确定性 Go 门禁、真实 MinIO/Redis 基础 reconciliation 与 Redis restart smoke 通过，promtool 依赖镜像拉取因 registry 无进展中止，完整矩阵保持未关闭。
 - **本轮收口：** Remote GPU 使用通过临时反向隧道取得并校验的官方 Prometheus `3.5.0` `promtool` 完成告警规则、firing timeline、确定性 Go 门禁、真实 MinIO/Redis reconciliation 与 Redis restart smoke；矩阵退出码为 `0`，GPU 进程前后均为 `0`，Dipole/Multipart 容器为 `0`，远程工作树干净。
 - **本轮验证：** 在 `7601e78e` 上复跑完整矩阵：6 个确定性 Go package、7 条 Prometheus 规则、真实 MinIO/Redis reconciliation 与 Redis restart 注入均通过，脚本退出后无 `dipole-multipart-reconciliation-*` 容器残留。该证据仍是隔离开发期验证，未提供 24 小时 presigned 流量、生产 Alertmanager receiver 或默认模式切换授权。
+- **本轮验证：** Remote GPU 在 `0724408d`、Go `1.27.0` 上重新执行完整 fault matrix：6 个确定性 Go package、7 条 Prometheus 规则、真实 MinIO/Redis reconciliation 与 Redis restart 注入全部通过；随机命名的隔离容器与 worktree 已清理，公共 `dipole-experience` 和 GPU 任务未被重启。回执见 [`multipart-fault-matrix-2026-09-09`](../../benchmarks/multipart-fault-matrix-2026-09-09/)；该结果仍不构成 24 小时 presigned 流量或默认模式切换授权。
 - **本轮进展：** 新增 `multipart-presigned-rollout/v1` evidence/policy/report 契约与只读 evaluator。候选切流必须绑定精确策略 SHA-256，在最少 24 小时窗口内同时满足直传样本、fallback/failed/expired/checksum 比率、P95、clear alert、已演练 relay 回退和独立 reviewer；输出哈希 receipt，`blocked` 返回退出码 `2`。该工具没有修改运行时策略，默认仍为 `relay`。
 - **本轮进展：** `check-multipart-policy.mjs` 现以 versioned policy 为基准，同时校验 release manifest、示例配置、Go 默认配置和 Web 离线回退值，避免候选切流前发生参数跨层漂移；环境级覆盖和默认 `presigned` 切换仍受独立 receipt 门禁约束。
 - **下一步：** 在受控共享环境生成同版本真实 evidence receipt，并完成 active/expired/abort/retry 生命周期指标、真实 Prometheus/Alertmanager 路由验收；receipt 通过后仍需经过受审策略变更才可切换预签名默认值。
