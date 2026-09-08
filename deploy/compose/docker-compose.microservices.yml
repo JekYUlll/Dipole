@@ -131,9 +131,27 @@ services:
       - path: ../../.env
         required: false
     volumes:
-      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem:/run/dipole/certs/ca.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent.pem:/run/dipole/certs/agent.pem:ro
-      - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
+      # Missing bind sources must fail before startup. Docker's short syntax
+      # creates directories for absent files, which makes the Runtime fail later
+      # while loading its mTLS material.
+      - type: bind
+        source: ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/ca.pem
+        target: /run/dipole/certs/ca.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent.pem
+        target: /run/dipole/certs/agent.pem
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent-key.pem
+        target: /run/dipole/certs/agent-key.pem
+        read_only: true
+        bind:
+          create_host_path: false
       - ${DIPOLE_AGENT_RELEASE_MANIFEST_FILE:-../../deploy/agent/release-manifest.dev.json}:/run/dipole/release/manifest.json:ro
     depends_on:
       core:
