@@ -1,3 +1,5 @@
+- 2026-09-08：独立 Core Runtime 现装配已有的 Agent Runtime promotion control RPC。Gateway 的 proposal/review/revoke 路由在显式开关下可到达 SQLC 审核服务；默认 Gateway 路由和 subscription trigger 保持关闭，避免 Definition 或 Subscription 创建被误解为自动获得 active grant。
+
 - 2026-09-08：Remote GPU `dipole-experience` 的 Core 已热更至 `0b1c3f52a`。新的私聊 B1 与群 `@Dipole AI` B2 均以新用户和新触发事件回归为 `completed`、单条助手回复和单次 consumed approval；Route A 两个回复开关继续保持关闭。额外验证无 grant 的 owner Definition 会仅在 interactive 入站路径回退到 `lowrisk-assistant:v1`，订阅路径仍 fail closed。
 
 - 2026-09-08：Remote GPU 两轮入站 Context E2E 已通过：两条独立受治理 Task 均完成、每轮仅一条助手回复，第二轮成功读取第一轮短期会话上下文。Route A 继续关闭，体验栈保持 11 容器；低敏记录见 [`agent-inbound-context-e2e-2026-09-08`](benchmarks/agent-inbound-context-e2e-2026-09-08/)。持久 Memory 默认保持关闭。

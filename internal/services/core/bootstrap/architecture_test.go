@@ -95,6 +95,22 @@ func TestCoreRuntimeComposesAgentDefinitionAndSubscriptionControlPlane(t *testin
 	}
 }
 
+func TestCoreRuntimeComposesAgentRuntimePromotionControlPlane(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("runtime.go"))
+	if err != nil {
+		t.Fatalf("read Core runtime: %v", err)
+	}
+	text := string(source)
+	for _, requirement := range []string{
+		"NewPersistentAgentRuntimePromotionControlServiceV1",
+		"agentServer.WithPromotionControls(promotionControls)",
+	} {
+		if !strings.Contains(text, requirement) {
+			t.Fatalf("standalone Core Agent promotion control must compose %q", requirement)
+		}
+	}
+}
+
 func TestCoreRuntimeWaitsForConversationProjectionKafkaAssignment(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("runtime.go"))
 	if err != nil {

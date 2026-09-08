@@ -314,6 +314,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose standalone Agent Definition catalog: %w", composeErr)
 		}
+		promotionControls, composeErr := agentapplication.NewPersistentAgentRuntimePromotionControlServiceV1(agentRepos.Policy, agentRepos.Artifacts, agentRepos.PromotionControls)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose standalone Agent Runtime promotion control: %w", composeErr)
+		}
 		memoryControls, composeErr := agentapplication.NewPersistentAgentMemoryOwnerControlV1(agentRepos.MemoryOwners, time.Now)
 		if composeErr != nil {
 			cleanup()
@@ -352,6 +357,10 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		if _, composeErr = agentServer.WithDefinitionCatalog(definitionCatalog); composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("configure standalone Agent Definition catalog rpc adapter: %w", composeErr)
+		}
+		if _, composeErr = agentServer.WithPromotionControls(promotionControls); composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("configure standalone Agent Runtime promotion control rpc adapter: %w", composeErr)
 		}
 		if _, composeErr = agentServer.WithMemoryOwnerControls(memoryControls); composeErr != nil {
 			cleanup()

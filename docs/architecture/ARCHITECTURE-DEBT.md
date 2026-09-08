@@ -1266,6 +1266,7 @@
 
 ### AD-034：Event Subscription 缺少用户界面与语义预筛
 
+- **本轮进展：** 独立 Core Runtime 已装配既有 `PersistentAgentRuntimePromotionControlServiceV1` 到 Agent gRPC server；Gateway 已有的 proposal/review/revoke 适配器在显式 `agent_promotion_enabled` 下可使用同一 SQLC 审核域模型。默认 Gateway 路由与 subscription trigger 均未开启，Definition 或 Subscription 创建不产生 grant；Remote GPU 的 owner-reviewed grant 流程与 subscription active 体验验收仍待完成。
 - **优先级：** P1
 - **状态：** 处理中
 - **本轮进展：** owner Vue 订阅页、Definition 目录与 Auto-Reply 四项执行债（Core 自动审批、overlay、Remote smoke、durable-step 幂等）已齐。标题里的「缺少用户界面」与 2026-09-02「未接线回复合成」、处理门槛「完成用户管理界面」不再代表 HEAD。AD-034 剩余共享环境观察窗口、语义预筛语料与默认 `direct_target`。
