@@ -140,10 +140,11 @@ COMPOSE_PROJECT_NAME="dipole-agent-provider-shadow-<id>" \
 scripts/smoke-agent-interactive-shadow-compose.sh
 ```
 
-复用长驻候选并单独重建 Core 或 Gateway 时，必须显式保留
+复用长驻候选或从干净 worktree 单独重建服务时，必须显式保留
 `DIPOLE_INTERNAL_CERT_DIR`，且该目录需要包含对应服务的 `.pem` 与 `-key.pem`
-文件。候选 `.env` 仅托管其配置与模型凭据，不能替代该宿主证书目录；缺失变量
-会使 Compose 将不存在的证书文件路径创建为目录，导致服务无法通过 mTLS 启动。
+文件。候选 `.env` 仅托管其配置与模型凭据，不能替代该宿主证书目录。Agent
+的 mTLS 挂载已设置 `create_host_path: false`；缺少任一证书文件时，Compose 会在
+启动前失败，避免将文件挂载点创建成目录后才由 Runtime 报错。
 
 实时数据面候选压测沿用 `scripts/bench/candidate_topology.sh`；Agent 默认保持 shadow 或 off，避免外部模型成本和延迟污染 IM 基线。完整 `k6` 基准和 Docker 构建固定在 Remote GPU 执行；本机仅保留脚本静态检查。
 

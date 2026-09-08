@@ -104,6 +104,18 @@ if ! awk '/^  agent:/{inside=1; next} inside && /^  [^[:space:]]/{exit} inside &
   echo "Agent service must load the optional root .env file" >&2
   exit 1
 fi
+agent_cert_mounts="$(awk '
+  /^  agent:/{inside=1; next}
+  inside && /^  [^[:space:]]/{exit}
+  inside {print}
+' deploy/compose/docker-compose.microservices.yml)"
+for target in ca.pem agent.pem agent-key.pem; do
+  if ! grep -F "source: \${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/${target}" <<<"${agent_cert_mounts}" >/dev/null \
+    || ! grep -A4 -F "target: /run/dipole/certs/${target}" <<<"${agent_cert_mounts}" | grep -F 'create_host_path: false' >/dev/null; then
+    echo "Agent mTLS bind mount must fail closed for ${target}" >&2
+    exit 1
+  fi
+done
 jq -e '
   (.services["realtime-cpp"] == null)
   and .services.gateway.environment.DIPOLE_REALTIME_DELIVERY == "go"

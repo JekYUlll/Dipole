@@ -1,3 +1,5 @@
+- 2026-09-08：Agent 微服务 Compose 的 mTLS 文件挂载改为 long bind syntax，并固定 `create_host_path: false`。干净 worktree 未配置 `DIPOLE_INTERNAL_CERT_DIR` 或证书文件缺失时会在启动前 fail closed，避免 Docker 创建同名目录并使 Runtime 在读取证书时以 `EISDIR` 重启；Compose 门禁与远端部署手册已同步。
+
 - 2026-09-08：Route B · B3 补齐第一方 MCP 只读工具面：显式投影 owner profile、会话 list/read，检索开关启用后才注册 conversation search。所有工具继续从可信 Task/Run 恢复权限与 scope，并走既有 Tool invocation 审计；默认 MCP 网络入口保持关闭。
 
 - 2026-09-08：校正 Agent 用户手册与架构图：私聊和群 @ 由平台低风险 Definition 覆盖，无需 owner Definition；Definition/Subscription 创建不自动发放 promotion grant，订阅仅在审核绑定 active grant 后执行。能力图同步纳入 `user.profile.read` 的 owner-bound 语义。
