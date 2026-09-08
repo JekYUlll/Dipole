@@ -9,6 +9,7 @@
 - 2026-09-09：Remote GPU 的 disposable Temporal/MySQL/mTLS drill 已通过：Core 首次 durable commit 后注入 Worker failure，Temporal 重试复用同一 promotion receipt 和 Memory；撤销 runtime grant 后的 receipt 被拒绝，owner 随后回滚测试 Memory。fixture 现明确分离 Agent-owned manual Definition 与 user-owned Task/Memory principal。该证据不改变默认关闭的持久 Memory 开关。
 - 2026-09-09：`ModelShadowPlanner.reply()` 已与普通 plan 路径对齐，能从已授权的同会话 Memory reader 并发获取最多六条记录；每条记录按 1024 字符截断，并带 Memory 类型和 provenance 作为不可信数据进入单次低延迟回复。单元测试覆盖 resource scope、上限与 prompt-injection 数据保留，Remote GPU Node 22 typecheck 和 planner 测试均通过。
 - 2026-09-09：新增撤销回归固定 Runtime 侧边界：同一会话的下一条 Route B Task 重新向 Core reader 查询，reader 返回空集时已撤销 Memory 的内容和提示词区块均不可见。该测试与既有 Core owner revoke 契约共同约束“撤销后不再召回”；真实多轮 Provider 演练仍待受控样本。
+- 2026-09-09：隔离 Interactive Active Compose 已将该撤销边界提升为真实 B1 入站链路演练：首条私聊召回 semantic canary 后，认证 owner 经 Gateway revoke route 撤销该记录；第二条新私聊以新 Task/Run 重新读取，确定性 stub 精确返回 `B1_MEMORY_MISSING`，该已撤销记录没有新 lineage。候选容器和卷自动清理，公共 `dipole-experience` 保持 11 个健康容器；profile 与默认持久 Memory 继续关闭。
 - **剩余边界：** Runtime 仅在显式 `DIPOLE_AGENT_MEMORY_ENABLED=true` 且 Core 返回已审核的持久 Memory 时读取；不会从入站消息自动生成或提升持久 Memory。默认体验环境仍关闭该开关，长期召回质量、写入频率、用户可见记忆控制和真实模型评测尚无证据，不能据此声明默认长会话记忆已启用。
 - **处理门槛：** 先通过 owner review 的 Memory candidate/promotion 流程提供可回滚样本，再在隔离体验项目做多轮召回、注入防护和撤销回归；随后才考虑受控开启 profile。
 

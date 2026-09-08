@@ -324,6 +324,36 @@ NODE
   local effects
   effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content = 'B1_MEMORY_RECALLED_ORBIT_91'), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${task_id}' AND memory_uuid = '${memory_uuid}')")
   [[ "${effects}" == $'1\t1\t1' ]] || { printf 'B1 Memory effects diverged: %q\n' "${effects}" >&2; return 1; }
+
+  compose exec -T agent node --input-type=module - "${owner_telephone}" "${memory_uuid}" "${agent_uuid}" <<'NODE'
+const [telephone, memoryId, agentUuid] = process.argv.slice(2);
+const login = await fetch("http://gateway:8080/api/v1/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ telephone, password: "smoke-pass-123" }) });
+const token = (await login.json())?.data?.token;
+if (login.status !== 200 || typeof token !== "string") throw new Error(`B1 revoke login failed: ${login.status}`);
+const revoke = await fetch(`http://gateway:8080/api/v1/agent/memories/${memoryId}/revoke`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ reason: "smoke revoke" }) });
+if (revoke.status !== 200) throw new Error(`B1 revoke failed: ${revoke.status}`);
+const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=memory-b1-revoke-smoke`);
+await new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error("B1 revoked send timeout")), 15_000);
+  socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: agentUuid, content: "What was my project canary?", client_message_id: `memory-b1-revoked-${Date.now()}` } })));
+  socket.addEventListener("message", ({ data }) => {
+    const event = JSON.parse(String(data));
+    if (event?.type === "chat.sent") { clearTimeout(timer); socket.close(); resolve(); }
+    if (event?.type === "error") reject(new Error(`B1 revoked send failed: ${JSON.stringify(event.data)}`));
+  });
+  socket.addEventListener("error", () => reject(new Error("B1 revoked websocket failed")));
+});
+NODE
+  local revoked_task_id=""
+  for _ in $(seq 1 90); do
+    revoked_task_id=$(mysql -e "SELECT task_uuid FROM agent_tasks WHERE principal_uuid = '${owner_uuid}' AND trigger_type = 'agent.interactive.requested' ORDER BY created_at DESC LIMIT 1" || true)
+    [[ -n "${revoked_task_id}" && "${revoked_task_id}" != "${task_id}" ]] && [[ "$(mysql -e "SELECT workflow_status FROM agent_tasks WHERE task_uuid = '${revoked_task_id}'")" == "completed" ]] && break
+    sleep 1
+  done
+  [[ -n "${revoked_task_id}" && "${revoked_task_id}" != "${task_id}" ]] || { printf 'B1 revoked Memory task was not created\n' >&2; return 1; }
+  local revoked_effects
+  revoked_effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${revoked_task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content = 'B1_MEMORY_MISSING'), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${revoked_task_id}' AND memory_uuid = '${memory_uuid}'), (SELECT status FROM agent_memories WHERE memory_uuid = '${memory_uuid}')")
+  [[ "${revoked_effects}" == $'1\t1\t0\trevoked' ]] || { printf 'B1 revoked Memory effects diverged: %q\n' "${revoked_effects}" >&2; return 1; }
 }
 
 if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then

@@ -9,6 +9,12 @@ services:
       # contract instead of relying on a hand-written grant fixture.
       DIPOLE_AI_AGENT_CANDIDATE_VERSION: ${DIPOLE_AGENT_CANDIDATE_VERSION:?DIPOLE_AGENT_CANDIDATE_VERSION is required}
 
+  gateway:
+    environment:
+      # Enables the authenticated owner revoke route only in the disposable B1
+      # profile so the smoke verifies the real control-plane boundary.
+      DIPOLE_GATEWAY_AGENT_MEMORY_ENABLED: "true"
+
   agent:
     volumes:
       - ${DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE:?DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE is required}:/app/model-stub.mjs:ro

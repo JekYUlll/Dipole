@@ -43,6 +43,7 @@ class InteractiveAgentActiveComposeTest(unittest.TestCase):
         script = (ROOT / "scripts/smoke-agent-interactive-active-compose.sh").read_text(encoding="utf-8")
         self.assertIn('DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"', overlay)
         self.assertIn('DIPOLE_AI_DIRECT_REPLY_ENABLED: "false"', overlay)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_MEMORY_ENABLED: "true"', overlay)
         self.assertIn('DIPOLE_AI_AGENT_CANDIDATE_VERSION: ${DIPOLE_AGENT_CANDIDATE_VERSION:?DIPOLE_AGENT_CANDIDATE_VERSION is required}', overlay)
         self.assertIn('DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE', overlay)
         self.assertIn('DIPOLE_AGENT_MEMORY_B1_SMOKE:=0', script)
@@ -51,6 +52,8 @@ class InteractiveAgentActiveComposeTest(unittest.TestCase):
         self.assertIn('B1_MEMORY_RECALLED_ORBIT_91', script)
         self.assertIn('JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid', script)
         self.assertIn('run_memory_b1()', script)
+        self.assertIn('/api/v1/agent/memories/${memoryId}/revoke', script)
+        self.assertIn('B1_MEMORY_MISSING', script)
 
     def test_agent_runtime_can_persist_pre_model_memory_lineage(self) -> None:
         grants = (ROOT / "configs/mysql/agent-service-grants.dist.sql").read_text(encoding="utf-8")
