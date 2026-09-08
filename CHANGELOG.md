@@ -76,6 +76,8 @@
 
 # 更新日志
 
+- 2026-09-08：校正 Agent 路线计划的当前状态：体验环境以 Route B 的 B1/B2 为入站主链，Route A 保留默认关闭的回退基线；后续排序收敛为失败恢复、订阅审核绑定、B3 工具收口和 legacy 退役评审。
+
 - 2026-09-08：Remote GPU `dipole-experience` 已以 Core revision `0b1c3f52a` 完成 B1/B2 热更复验。Route A 的私聊和群回复保持关闭，两个全新用户的私聊与群 `@Dipole AI` 均由受治理 Runtime 处理并收敛为 `completed:completed`；每条触发仅产生一条助手消息和一条 consumed approval。
 
 - 2026-09-06：接受好友只向共享私聊写入一条系统提示；前端折叠连续相同系统消息，避免历史会话里「你们已经添加为好友」出现两次。

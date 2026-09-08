@@ -1,22 +1,22 @@
 # 小助手对话闭环恢复 + 群 @ 触发 —— 实施计划
 
-> 状态：计划已定，按「先 A 后 B」执行。Route A 与 Route B 完全独立、互不交叉，可各自单独阅读。
+> 状态：Route B 的 B1/B2 已在体验环境作为入站主链运行并完成复验。Route A 保留为默认关闭的 legacy 回退基线；两条路线保持互斥，可各自单独阅读。
 
 ## 0. 背景：仓库里并存两套 Agent
 
 | | 旧「对话机器人」(legacy) | 新「受治理运行时」(current) |
 |---|---|---|
 | 代码 | `internal/services/agent/legacy/`（package `ai`，基于 eino） | `services/agent-runtime/`（TS）+ `internal/services/agent/`（Go） |
-| 触发 | 私信小助手即自动回（`HandleDirectMessage` 消费 `message.direct.created`） | 仅显式建任务（`agent.interactive.requested`） |
+| 触发 | 私信小助手即自动回（`HandleDirectMessage` 消费 `message.direct.created`） | B1 私聊与 B2 群 @ 生成 `agent.interactive.requested`；也支持显式任务 |
 | 多轮 | 有（最近 12 条上下文，`context_builder.go`） | 无（一 task 一回复） |
-| 工具 | 5 个：查用户资料 / 搜历史 / 列会话 / 读会话 / 发系统消息（`tools.go`） | 仅 conversation.list/read/search + message send |
+| 工具 | 5 个：查用户资料 / 搜历史 / 列会话 / 读会话 / 发系统消息（`tools.go`） | user.profile.read、conversation.list/read/search 与受控消息发送 |
 | 模型 | eino：openai / ollama（`model_factory.go`） | DeepSeek via AI SDK |
 | 装配 | 仅 embedded 单体（`embedded/kafka.go:103`） | microservices（体验环境） |
 | 开关 | `ai.enabled`，默认 false | `agent_*_enabled` 分档 |
 
 关键事实：
 - 默认小助手 `UAI000000000000000001`（"Dipole AI"）仍是一等公民用户（`UpsertAssistant`），不加好友也能私信。
-- legacy chatbot 代码活着、带全套测试，但只在单体模式接线，microservices 部署没接。
+- legacy chatbot 代码活着、带全套测试；体验环境保持其回复开关关闭，避免与 Route B 双回复。
 - `message.group.created` 主题已发布；群消息**无结构化 mention 字段**，@ 需文本解析。
 - eino 依赖已在 `go.mod`（eino v0.9.17 + ollama/openai ext），core 镜像可直接编译 legacy。
 
@@ -38,11 +38,11 @@
 
 # Route A —— 快速恢复（基于 legacy eino chatbot）
 
-> 目标：用现成的 legacy chatbot 最快恢复 1v1 与群 @。本节自包含，不依赖 Route B。
+> 定位：保留 legacy chatbot 作为可独立回滚的恢复基线。本节自包含，不依赖 Route B，体验环境默认不启用其回复路径。
 
 ## A0. 边界与并存策略
 - A 路线让 **Go core** 跑 legacy chatbot 消费 `message.direct.created` / `message.group.created`。
-- 体验环境的 TS agent-runtime 在 interactive 档对 direct.created 只观察不回复，触发源是 control API；两者不在同一触发链冲突：**私信/群@ 走 legacy，显式任务走 TS 运行时**。
+- 体验环境的 TS agent-runtime 在 interactive 档负责 B1/B2 入站触发；Core 的 legacy 回复开关保持关闭。因此私信和群 @ 仅由受治理运行时处理。
 - 模型复用体验环境已有的 DeepSeek key，用 eino 的 openai-兼容模型 + `ai.base_url` 指向 DeepSeek。
 
 ## A1. 恢复 1v1 自动对话（先做）
@@ -81,17 +81,19 @@
 
 # Route B —— 架构收敛（折叠进受治理运行时）
 
-> 目标：把 1v1 与群 @ 都做成新运行时的触发源，统一审批/promotion/审计，最终让 legacy 退役。本节自包含，不依赖 Route A。
+> 目标：把 1v1 与群 @ 收敛到新运行时，统一审批、promotion 与审计，并在可靠性门禁满足后退役 legacy 接线。本节自包含，不依赖 Route A。
 
 ## B1. 入站直发触发交互任务
+- 状态：已完成并在体验环境验证。
 - 把发给 `UAI0001` 的 `message.direct.created` 在 `direct_target` 档接成"起 interactive task"（复用 `InteractiveTaskStartService` 的等价链路，或新增 inbound→task dispatcher）。
 - 复用已上线的 assistant_reply 闭环（`AuthorizeInteractiveReply` + `createInteractiveReplyExecutor`），实现真·多轮 1v1。
 - 会话上下文：交互任务读取直属会话最近 N 条作为 prompt。
 验收：私信小助手多轮对话，每轮经 admission/approval/审计。
 
-## B2. 群订阅 + mention（治理版）
-- 走 subscription 档（已支持 `message.group.created`，`agent_subscription.go:170`）。
-- mention 前置过滤：订阅事件先过 `detectAssistantMention`，命中才 admit。
+## B2. 群 @ 触发（治理版）
+- 状态：已完成并在体验环境验证；群 conversation 从 consumed approval 的 resource scope 恢复，不依赖模型参数保存 scope。
+- `direct_target` 档额外消费 `message.group.created`；群消息先过 `detectAssistantMention`，命中才 admit。
+- Subscription 自动触发保持独立，后续仅在 owner Definition 存在 reviewed promotion grant 后启用。
 - 新增自授权原语 `AuthorizeGroupReply`（类比 `AuthorizeInteractiveReply`），scope 精确指向该群会话；新增 group assistant_reply executor（走 `SendSystemGroupMessage`/群 AI 文本）。
 - proto RPC + gateway/core 两处 allowlist + 单测，与现有 interactive 一致。
 验收：群 @小助手 → 群内回复，全程 grant/approval/consumed 审计。
@@ -106,10 +108,10 @@
 
 # 执行顺序与里程碑
 
-1. **A1**（1v1 恢复）→ 体验环境验证 → 提交推送。
-2. **A2**（群 @）→ 体验环境验证 → 提交推送。
-3. **A3**（打磨）。
-4. 之后再启 **B1 → B2 → B3**，逐步把触发链从 legacy 收敛到受治理运行时；B 稳定后 A 退役。
+1. **B1/B2** 已完成：体验环境仅启用 Route B，私聊和群 @ 均使用低风险 Definition、一次性审批和 Temporal 任务。
+2. **P0 可靠性**：修复失败 workflow 的 event ledger reclaim/retry，并让成功群 @ 任务稳定收敛为 `completed`。
+3. **P1 订阅与工具**：将 Definition → Subscription → reviewed promotion grant 串成可见审核流程；继续收口 B3 的 legacy tool capability。
+4. **退役评审**：在幂等、失败恢复、订阅审核和 Eval 门禁均有证据后，移除 Route A 的生产接线；代码目录再单独标记 deprecated 或删除。
 
 边界纪律：
 - A 与 B 不共享触发链；同一时刻同一环境只让一条链对某类触发负责，避免"双回复"。
