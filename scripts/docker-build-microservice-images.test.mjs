@@ -35,3 +35,8 @@ test("microservice image builds include the TypeScript Agent Runtime at the same
   assert.match(script, /--build-arg "DIPOLE_VCS_REVISION=\$\{revision\}"/);
   assert.match(script, /--build-arg "DIPOLE_VCS_DIRTY=\$\{dirty\}"/);
 });
+
+test("microservice selection accepts documented space- and comma-delimited service lists", () => {
+  assert.ok(script.includes('selected_services=",${selected_services// /,},"'));
+  assert.ok(script.includes('normalized_selected_services=${selected_services//,/ }'));
+});

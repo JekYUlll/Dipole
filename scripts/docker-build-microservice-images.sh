@@ -36,7 +36,7 @@ agent_service="agent"
 
 selected_services="${DIPOLE_MICROSERVICE_IMAGE_SERVICES:-}"
 if [[ -n "${selected_services}" ]]; then
-  selected_services=",${selected_services// /},"
+  selected_services=",${selected_services// /,},"
   normalized_selected_services=${selected_services//,/ }
   for requested_service in ${normalized_selected_services}; do
     found=false
