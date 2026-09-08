@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "dipole.agent.memory-b1-synthetic-window.v1",
+  "candidateVersion": "agent-runtime@interactive-compose-smoke",
+  "minimumRecallPassBps": 10000,
+  "suites": [
+    {
+      "schemaVersion": "dipole.agent.memory-b1-synthetic-eval.v1",
+      "candidateVersion": "agent-runtime@interactive-compose-smoke",
+      "minimumPassBps": 10000,
+      "cases": [
+        {
+          "caseId": "recall-b1",
+          "canarySha256": "239b43e02b76a0faaa070ecb7ab1aa2755bfde7db6b5db1c0998332caefa1a80",
+          "expectedMemoryLineageCount": 1,
+          "recallExpectation": "required"
+        },
+        {
+          "caseId": "revoke-b1",
+          "canarySha256": "239b43e02b76a0faaa070ecb7ab1aa2755bfde7db6b5db1c0998332caefa1a80",
+          "expectedMemoryLineageCount": 0,
+          "recallExpectation": "not_evaluated"
+        }
+      ],
+      "observations": [
+        {
+          "caseId": "recall-b1",
+          "canarySha256": "239b43e02b76a0faaa070ecb7ab1aa2755bfde7db6b5db1c0998332caefa1a80",
+          "taskSha256": "80f0bf295b9df16e503a672be578e9e1b95e123c0c0ddaba6ff08ad763e344d7",
+          "replySha256": "823b7df784cd79dfdb3186f5a91b88b975c85a395ba2ee932fbbadd6ac6b002f",
+          "taskCompleted": true,
+          "modelCallCount": 1,
+          "memoryLineageCount": 1,
+          "responseContainsCanary": true
+        },
+        {
+          "caseId": "revoke-b1",
+          "canarySha256": "239b43e02b76a0faaa070ecb7ab1aa2755bfde7db6b5db1c0998332caefa1a80",
+          "taskSha256": "b872b31a951e3bda82ffafc8d0f0b38306d1a227761f591a994280e33311982e",
+          "replySha256": "0cb1dd2cd2e72afdc6886c8f39d14fe88a22d283ced246054c129fb1c46817ad",
+          "taskCompleted": true,
+          "modelCallCount": 1,
+          "memoryLineageCount": 0,
+          "responseContainsCanary": true
+        }
+      ]
+    },
+    {
+      "schemaVersion": "dipole.agent.memory-b1-synthetic-eval.v1",
+      "candidateVersion": "agent-runtime@interactive-compose-smoke",
+      "minimumPassBps": 10000,
+      "cases": [
+        {
+          "caseId": "recall-b1",
+          "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed",
+          "expectedMemoryLineageCount": 1,
+          "recallExpectation": "required"
+        },
+        {
+          "caseId": "revoke-b1",
+          "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed",
+          "expectedMemoryLineageCount": 0,
+          "recallExpectation": "not_evaluated"
+        }
+      ],
+      "observations": [
+        {
+          "caseId": "recall-b1",
+          "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed",
+          "taskSha256": "5b4db00915ddc9e781af39322be4e93a0aa7edf0fd092687aeec1a5dbb90beac",
+          "replySha256": "dade5b37d23a6a2232fda8174f491f6a5d7ffd025d1bfa5e359585697386b7d3",
+          "taskCompleted": true,
+          "modelCallCount": 1,
+          "memoryLineageCount": 1,
+          "responseContainsCanary": true
+        },
+        {
+          "caseId": "revoke-b1",
+          "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed",
+          "taskSha256": "8c40b89d2a1b3ce40bd55e8c6386671dee326685cd8d2572ed9ded33ed49edd8",
+          "replySha256": "b0f8a3363289b85a648f95ea41fbb2fb38d83590d95cb2484623913390796bfc",
+          "taskCompleted": true,
+          "modelCallCount": 1,
+          "memoryLineageCount": 0,
+          "responseContainsCanary": true
+        }
+      ]
+    },
+    {
+      "schemaVersion": "dipole.agent.memory-b1-synthetic-eval.v1",
+      "candidateVersion": "agent-runtime@interactive-compose-smoke",
+      "minimumPassBps": 10000,
+      "cases": [
+        {
+          "caseId": "recall-b1",
+          "canarySha256": "fc68ff0ba8c2c7470feac357f517d37f2101ce3c332f504148e2d3461afe6c5a",
+          "expectedMemoryLineageCount": 1,
+          "recallExpectation": "required"
+        },
+        {
+          "caseId": "revoke-b1",
+          "canarySha256": "fc68ff0ba8c2c7470feac357f517d37f2101ce3c332f504148e2d3461afe6c5a",
+          "expectedMemoryLineageCount": 0,
+          "recallExpectation": "not_evaluated"
+        }
+      ],
+      "observations": [
+        {
+          "caseId": "recall-b1",
+          "canarySha256": "fc68ff0ba8c2c7470feac357f517d37f2101ce3c332f504148e2d3461afe6c5a",
+          "taskSha256": "62cc709676a0287fe875261c6e1680b4b6cb1310158b6710384086b350878cd1",
+          "replySha256": "a6967d5847e54f3ecbb5958cce769fe9befb251fc29a0116a783e6dfb7256f00",
+          "taskCompleted": true,
+          "modelCallCount": 1,
+          "memoryLineageCount": 1,
+          "responseContainsCanary": true
+        },
+        {
+          "caseId": "revoke-b1",
+          "canarySha256": "fc68ff0ba8c2c7470feac357f517d37f2101ce3c332f504148e2d3461afe6c5a",
+          "taskSha256": "34575488ebd8b8df5d84e084ec36531c0941a9bc18b9c924c4299f0e46ba2574",
+          "replySha256": "5588d836108e069203da43f0de75944897b9f471590f18dce830691744da0941",
+          "taskCompleted": true,
+          "modelCallCount": 1,
+          "memoryLineageCount": 0,
+          "responseContainsCanary": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "dipole.agent.memory-b1-synthetic-window-report.v1",
+  "candidateVersion": "agent-runtime@interactive-compose-smoke",
+  "windowSha256": "5548874dc6381f625dc5981d56b4aa9618180c9f0f3d2a0a23c3c30812af796d",
+  "passed": true,
+  "reasons": [],
+  "metrics": {
+    "suites": 3,
+    "recallCases": 3,
+    "recalledCases": 3,
+    "recallPassBps": 10000,
+    "revokeCases": 3,
+    "revokeBoundaryFailures": 0,
+    "invariantFailures": 0
+  },
+  "failedRecallCanarySha256": []
+}
