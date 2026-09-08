@@ -27,7 +27,7 @@
 - 新注册、无 Definition 与 grant 的用户私聊已通过端到端验收：任务完成、Definition 固定为 `lowrisk-assistant:v1`、只发送一条助手回复，且 `message.assistant_reply.send` 审批已消费。
 - 新注册用户创建群并 `@Dipole AI` 的端到端验收也已通过：任务完成、只发送一条群助手回复，且 `message.group_reply.send` 审批已消费。
 - 复验命令（Remote GPU，2026-09-08）：`bash scripts/e2e-b1-inbound-interactive.sh` 与 `bash scripts/e2e-b2-group-mention.sh` 均通过。两次均使用新注册用户和新消息 UUID；B1 任务 `task:17c04102…`、B2 任务 `task:2ed73bfd…` 均收敛为 `completed:completed`，各自只有一条助手消息和一条已消费审批。
-- 2026-09-08：失败 workflow 的 reclaim/retry 已形成可恢复执行代际：同一消息仍映射同一 Task，失败后 EventLedger release 可触发新的 Run attempt；attempt 1 的终态记录和 attempt 2 的新 Temporal execution 均保留。稳定 workflow ID 仅接受 failed-only reuse，完成、取消或运行中的任务不会被新事件重开。真实 Remote GPU 失败后重投演练仍待执行，见 AD-065。
+- 2026-09-08：失败 workflow 的 reclaim/retry 已完成 Remote GPU 受控演练：同一消息仍映射同一 Task，失败后 EventLedger release 可触发新的 Run attempt，且失败 Run 历史保持可审计。业务失败的 Workflow 会在结算 claim 后正常关闭，因此重投允许复用已关闭的 Workflow ID；运行中的 Workflow 继续拒绝并发启动。Runtime 以 Core-bound Run UUID 复核执行上下文，模型预算也按该 Run 分域，最终重投仅产生一条助手回复。见 AD-065。
 - 下一个正确性切片：订阅路径创建 Definition 后提供经审核的 owner grant 绑定；Definition 抽屉说明明确“私聊和群 @ 无需先创建 Definition”。
 
 ## 1. 目标与验收
@@ -110,7 +110,7 @@
 # 执行顺序与里程碑
 
 1. **B1/B2** 已完成：体验环境仅启用 Route B，私聊和群 @ 均使用低风险 Definition、一次性审批和 Temporal 任务。
-2. **P0 可靠性**：事件账本已改为由 Temporal workflow 终态结算：成功才 complete，failed/cancelled release 后可 reclaim；定向与 Temporal 测试已覆盖 dispatcher 交接和终态 activity。Remote GPU 已复验新 B1/B2 事件均为单回复 `completed`。仍需在体验环境注入失败 workflow，并验证后续同事件重投的真实 reclaim。
+2. **P0 可靠性**：已完成。事件账本由 Temporal workflow 终态结算：成功才 complete，failed/cancelled release 后可 reclaim；定向与 Temporal 测试覆盖 dispatcher 交接和终态 activity。Remote GPU 已注入 Provider 故障并重投同一原始事件，确认新的 Run/Workflow generation 成功、账本完成且最终消息副作用精确一次；B1/B2 回归均为单回复 `completed`。
 3. **P1 订阅与工具**：将 Definition → Subscription → reviewed promotion grant 串成可见审核流程；继续收口 B3 的 legacy tool capability。
 4. **退役评审**：在幂等、失败恢复、订阅审核和 Eval 门禁均有证据后，移除 Route A 的生产接线；代码目录再单独标记 deprecated 或删除。
 

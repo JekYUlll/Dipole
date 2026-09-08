@@ -1,4 +1,5 @@
-- 2026-09-08：Remote GPU `dipole-experience` 已运行 EventLedger 终态结算 revision。B1 私聊与 B2 群 @ 新事件均收敛为 `completed:completed`，各自只产生一条助手消息和一次已消费审批；隔离 MySQL 8.4 合同测试通过 release/reclaim、lease crash recovery 与 stale-token 拒绝。真实失败 Workflow 的端到端重投仍由 AD-065 跟踪。
+- 2026-09-08：Remote GPU `dipole-experience` 已完成 Route B 的真实入站失败恢复演练。受控 Provider 故障后的同一原始 Kafka 事件经 lease reclaim 重投，保留失败 Run 历史并创建新的 Temporal execution 与 Core-bound Run；最终 Task 和 EventLedger 均为 `completed`，且只写入一条助手回复。B1 私聊与 B2 群 @ 随后均复验为单回复、单次 consumed approval。
+- 2026-09-08：入站重试修复了三处代际边界：已关闭的 Temporal execution 可由 Core 已批准的失败 Task 重开，Runtime 接受 Core 为 retry 生成的不可变 Run UUID，模型预算按同一 Task 内的 Core Run 分域持久化。因此失败 Run 的已耗尽模型预算不会阻断下一代 Run；运行中的 Workflow 仍以冲突失败保护并发启动。
 
 - 2026-09-08：Route B 的入站 EventLedger 改由 Temporal Task 的终态结算。成功工作流才会完成 Kafka claim；失败或取消会释放带精确 token 的 lease，供既有 reclaim/retry 机制重新取得。Dispatcher 启动成功不再提前确认事件，避免异步工作流随后失败时永久丢失重试机会。
 

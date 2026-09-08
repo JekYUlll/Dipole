@@ -1,14 +1,14 @@
 # 架构债务台账
 
-### AD-065：Route B EventLedger 的真实失败恢复与群 @ 终态证据尚缺
+### AD-065：Route B EventLedger 的真实失败恢复与群 @ 终态证据
 
 - **优先级：** P0
-- **状态：** 进行中
+- **状态：** 已完成（开发期体验环境）
 - **发现日期：** 2026-09-08
 - **现状：** 入站 Kafka claim 已随可信 Workflow input 传入 Temporal。Workflow 仅在 `completed` 后调用 `EventLedger.complete`；`failed` 或 `cancelled` 通过既有 token-fenced `release` 归还 lease，后续 consumer 可 reclaim。启动 Workflow 成功不再代表消息处理成功。
-- **本轮进展：** Remote GPU `915dfe00` 已以新私聊和群 @ 事件复验成功路径；两者均只产生一条助手消息、一次 consumed approval 和 `completed:completed` Task。隔离 MySQL 8.4 合同测试额外通过 released lease reclaim、expired lease reclaim 与 stale token completion rejection，测试数据库和容器均已清理。
-- **缺口：** 体验环境仍需以受控失败 Workflow 验证同一事件在 release 后被真实 Kafka 重投并重领；MySQL 合同测试不能替代该跨 Kafka/Temporal 的证据。在该演练完成前，不能将 Route B 表述为已具备完整失败恢复保障。
-- **完成条件：** Remote GPU 受控测试记录失败后 release、同事件重投与 reclaim、成功后精确 complete，并保留可复核的低敏 receipt 与回滚步骤。
+- **本轮进展：** Remote GPU `dipole-experience` 以受控 Provider 故障注入使入站 Task 失败；同一原始 Kafka 事件在 lease 释放后重投，保留失败 Run 历史并创建新的 Temporal execution 与 Core-bound Run。最终 Task/EventLedger 均为 `completed`，最终助手消息副作用为一条。B1 私聊和 B2 群 @ 随后复验均只有一条回复和一次 consumed approval；Route A 两个开关继续关闭。
+- **实现勘误：** Workflow 为了结算 claim 会在业务失败后正常关闭，故稳定 Workflow ID 对已关闭 execution 使用 `ALLOW_DUPLICATE`；EventLedger 与 Core Admission 才是业务幂等边界，运行中的 execution 仍以 `FAIL` 拒绝并发。模型审计按 Core Run 派生阶段分域，避免失败 Run 的预算耗尽阻断下一代 Run。
+- **完成条件：** 已满足开发期受控验收。后续仅在改变 ledger、admission、Temporal 或模型审计语义时重开该债务并复跑故障演练。
 
 ### AD-063：OAuth token lifecycle 的 Runtime envelope 与长期 refresh authority 尚未接线
 
@@ -1947,16 +1947,6 @@
 - **现状：** 完整依赖按 lockfile 重建后，`npm run typecheck` 仍在 B3 切片未修改的 MCP message-write 测试与 external MCP fixture 处失败；受影响文件分别需要同步 `approvedCapabilities` 的窄联合类型，并补齐 Route B2 fixture 字段。
 - **本轮进展：** `user.profile.read` 的专用 Vitest、Core gRPC/Definition Catalog 测试与 `check:proto` 均通过；该 capability 只返回低敏 profile 字段，并要求精确 owner user scope。
 - **下一步：** 在独立 Runtime 工具链治理切片中修复两项既有门禁，再恢复全量 `npm run typecheck` 作为 Agent 合并条件。
-
-### AD-065：入站失败重投尚缺少共享体验环境故障演练
-
-- **优先级：** P0
-- **状态：** 进行中
-- **发现日期：** 2026-09-08
-- **影响范围：** Route B1/B2、EventLedger reclaim、Temporal durable execution
-- **现状：** EventLedger 已在 Workflow 终态完成或释放 claim；`agent_runs` 现记录不可变 `attempt`，Core 只会从失败 Task 创建下一代 Run，Temporal 仅允许 failed-only workflow ID reuse，且新 execution 只能替换已失败的投影绑定。完成、取消和运行中的 Task 保持原有幂等与冲突语义。
-- **证据：** `internal/services/agent/application/agent_execution_policy_test.go`、`internal/services/agent/infrastructure/mysql/agent_policy_contract_test.go`、`services/agent-runtime/src/temporal/temporal-task-client.test.ts`。
-- **下一步：** 在 Remote GPU 受控环境注入一次可归因的 planner 失败，确认 ledger release、attempt 2、旧 token stale 拒绝、只产生一次最终消息副作用，并将 receipt 归档；完成前不将此链路计入公开可靠性指标。
 
 ### AD-062：Gateway 与 embedded Core 共享 HTTP handler 的迁移边界
 
