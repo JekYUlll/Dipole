@@ -102,13 +102,13 @@ describe("Temporal read Step Activities", () => {
     expect(planner.plan).not.toHaveBeenCalled();
   });
 
-  it("uses the Core-owned Context for an active read Step", async () => {
+  it("uses the Core-owned retry Run binding for an active read Step", async () => {
     const event: AgentEvent = {
       eventId: "E-ACTIVE-READ", eventType: "message.direct.created", aggregateId: "M-ACTIVE-READ",
       occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "active read" }
     };
     const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
-    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const runId = `run:${"a".repeat(60)}`;
     const contextResolver = {
       resolveMcpContext: vi.fn(async () => ({
         tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,

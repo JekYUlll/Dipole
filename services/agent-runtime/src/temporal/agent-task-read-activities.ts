@@ -4,7 +4,6 @@ import { z } from "zod";
 import { executionContextSchema } from "../runtime/execution-context.js";
 import {
   agentEventSchema,
-  agentRunId,
   agentTaskId,
   discoveredConversationMarker,
   executeShadowPlan,
@@ -88,7 +87,7 @@ export function createTemporalReadStepActivities(
         ...(event.subscriptionId === undefined ? {} : { subscriptionId: event.subscriptionId })
       });
       const runtimeMode = dependencies.runtimeMode ?? "shadow";
-      if (input.taskId !== expectedTaskId || input.runId !== agentRunId(expectedTaskId, "dipole-agent", runtimeMode) ||
+      if (input.taskId !== expectedTaskId ||
           admission.eventId !== event.eventId || admission.triggerType !== event.eventType ||
           admission.triggerRef !== event.aggregateId) {
         throw new Error("Temporal read Step Task, Run, admission, and event binding mismatch");
