@@ -1,3 +1,5 @@
+- 2026-09-08：校正 Agent 用户手册与架构图：私聊和群 @ 由平台低风险 Definition 覆盖，无需 owner Definition；Definition/Subscription 创建不自动发放 promotion grant，订阅仅在审核绑定 active grant 后执行。能力图同步纳入 `user.profile.read` 的 owner-bound 语义。
+
 - 2026-09-08：Route B · B3 新增受治理 `user.profile.read` capability。Core 通过 Task/Run 恢复 principal，RPC 无 subject 参数，只返回 UUID、昵称、头像、用户类型和状态；电话、邮箱、签名、管理员标记及密码字段不会离开 Core。Runtime 额外要求精确 `user/<principal>/read` scope，通用 wildcard scope 也会拒绝执行。新的 read-only 与 subscription-autoreply Definition 模板带 owner-scoped user grant；历史 Definition 维持原权限版本。
   - 验证：Core RPC principal-forgery 与映射测试、Definition Catalog 契约、Runtime capability 两项权限回归、Go/TS Proto 生成一致性均通过。完整 TS typecheck 仍受已有 MCP fixture 类型漂移和外部 MCP fixture 字段缺失阻塞，详见 AD-064。
 

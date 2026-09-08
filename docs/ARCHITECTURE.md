@@ -399,7 +399,7 @@ graph TB
             MCP_SERVER["DipóleMcpServer<br/>(tool discovery)"]
             INVOCATION["McpToolInvocation<br/>(begin → execute → finish)"]
             MSG_WRITE["MessageWriteProjection<br/>(interactive / subscription<br/>/ group reply executors)"]
-            CAPS["Capabilities<br/>(conversation.list,<br/>conversation.read,<br/>conversation.search)"]
+            CAPS["Capabilities<br/>(user.profile.read,<br/>conversation.list/read/search)"]
         end
 
         subgraph "Domain Extensions"
@@ -457,7 +457,7 @@ stateDiagram-v2
 | **mcp/** | `mcp/mcp-message-write-projection.ts` | 消息写入执行器（interactive reply / group reply / subscription reply） |
 | **temporal/** | `temporal/agent-task-workflow.ts` | Temporal 工作流定义 |
 | **temporal/** | `temporal/agent-task-read-activities.ts` | Temporal 活动实现（含 `inboundReplyIntent` 快速路径） |
-| **capabilities/** | `capabilities/` | 能力封装：conversation list/read/search RPC 包装器 |
+| **capabilities/** | `capabilities/` | 受治理能力封装：owner-bound user profile 与 conversation list/read/search RPC 包装器 |
 | **control/** | `control/` | HTTP 控制面 API |
 | **task/** | `task/interactive-task-request.ts` | 显式任务创建 |
 | **memory/** | `memory/` | 记忆候选管理 |
