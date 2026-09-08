@@ -2,6 +2,7 @@
 
 ### AD-065：Route B EventLedger 的真实失败恢复与群 @ 终态证据
 
+- 2026-09-08：体验 Core 已热更至 `0b1c3f52a`。新 B1 私聊与 B2 群 `@Dipole AI` 均从未处理事件收敛为 `completed`、单条回复和一次 consumed approval。另以临时、无 grant 的 owner Definition 验证 interactive Admission 回退到平台 `lowrisk-assistant:v1`，完成后删除该 Definition；订阅触发依旧不能使用该回退。该回归未改变默认 Compose 开关，也不构成订阅 promotion grant 的启用证据。
 - 2026-09-08：显式交互 Task 的体验口径已与 B1/B2 对齐。Remote GPU 使用没有 owner Definition 的新用户验证认证 Gateway 创建返回 `202`，Task 经 Temporal 收敛为 `completed` 并固定平台 `lowrisk-assistant:v1`；可复跑 smoke 已加入。Subscription 仍不适用低风险回退，继续要求 owner-reviewed promotion grant。
 - 2026-09-08：Route B · B3 已完成 legacy capability 的治理收口。`user.profile.read`、`conversation.list`、`conversation.read` 与可选 `conversation.search` 均经 Core Task/Run authority、Runtime Registry 和 Tool invocation audit 执行；Eino `legacy` 包已标记为 deprecated，体验环境的 Route A handler 保持关闭。物理删除继续依赖订阅审核、Eval 和正式退役评审，保留独立回退基线。
 

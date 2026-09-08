@@ -26,6 +26,7 @@
 - Core 显式保持 `DIPOLE_AI_DIRECT_REPLY_ENABLED=false` 与 `DIPOLE_AI_GROUP_REPLY_ENABLED=false`；TS Runtime 的 B1/B2 入站触发保持启用，避免两条路线同时回复。
 - 新注册、无 Definition 与 grant 的用户私聊已通过端到端验收：任务完成、Definition 固定为 `lowrisk-assistant:v1`、只发送一条助手回复，且 `message.assistant_reply.send` 审批已消费。
 - 新注册用户创建群并 `@Dipole AI` 的端到端验收也已通过：任务完成、只发送一条群助手回复，且 `message.group_reply.send` 审批已消费。
+- 2026-09-08 热更后复验：以一个临时 owner Definition（无 promotion grant）触发新的私聊，Admission 先拒绝该 owner Definition，再仅对 interactive trigger 回退到 `lowrisk-assistant:v1`。任务收敛为 `completed:completed`、只有一条回复；临时 Definition 已删除。Subscription trigger 保持拒绝，避免静默越权。
 - 复验命令（Remote GPU，2026-09-08）：`bash scripts/e2e-b1-inbound-interactive.sh` 与 `bash scripts/e2e-b2-group-mention.sh` 均通过。两次均使用新注册用户和新消息 UUID；B1 任务 `task:17c04102…`、B2 任务 `task:2ed73bfd…` 均收敛为 `completed:completed`，各自只有一条助手消息和一条已消费审批。
 - 2026-09-08：失败 workflow 的 reclaim/retry 已完成 Remote GPU 受控演练：同一消息仍映射同一 Task，失败后 EventLedger release 可触发新的 Run attempt，且失败 Run 历史保持可审计。业务失败的 Workflow 会在结算 claim 后正常关闭，因此重投允许复用已关闭的 Workflow ID；运行中的 Workflow 继续拒绝并发启动。Runtime 以 Core-bound Run UUID 复核执行上下文，模型预算也按该 Run 分域，最终重投仅产生一条助手回复。见 AD-065。
 - 2026-09-08：两轮入站 Context E2E 已通过：新用户在第一条私聊中提供唯一代号，第二条私聊要求复述；两条独立 Task 均完成且第二条回复包含第一轮代号。Route A 仍关闭，公共体验栈保持 11 容器。见 [receipt](../../benchmarks/agent-inbound-context-e2e-2026-09-08/)。
