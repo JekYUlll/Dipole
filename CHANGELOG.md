@@ -2750,3 +2750,4 @@
 - 2026-09-09：新增默认关闭的 `eval:context-ablation-bind` 运维 CLI。它要求独立的最小权限 `DIPOLE_AGENT_EVAL_BIND_MYSQL_URL` 与 owner-reviewed source，在单一事务内校验完整 baseline/retrieval/memory 矩阵、Task/Run 归属、候选版本与 completed shadow 状态；仅精确重复写入可重放，其余冲突均回滚。运行时启动路径、默认 profile 与候选切流保持不变。
 - 2026-09-09：`eval:context-ablation-bind` 补齐 MySQL 8.4 一次性数据库集成测试，覆盖首次绑定、精确幂等重放与混入失败 shadow Run 时的事务回滚；同时修正 `mysql2` 连接方法的绑定，避免受控写入在真实连接上因丢失调用上下文失败。默认 Runtime、Compose 与体验环境均未改变。
 - 2026-09-09：整理 Route B 公共体验验收脚本：B1 私聊脚本补齐可执行位，B1/B2 均改为在 MySQL 容器内通过 `MYSQL_PWD` 传递临时 CLI 凭据，避免日志输出密码命令行告警。Remote GPU 对新私聊和群 `@AI` 各执行一次直接脚本验收，均收敛为 `completed:completed`、一条助手回复和一条 consumed approval；公共体验栈的 11 个服务保持运行。
+- 2026-09-09：新增默认关闭的 `agent-subscription` 并行体验 Compose overlay。它复用基础 Agent 的镜像、mTLS 和依赖关系，同时为 Subscription Active Read 分配独立 Kafka consumer identity/group 与 Temporal queue；interactive worker 保持原配置。overlay 固定关闭 interactive trigger、Control、MCP 和消息写入，移除 overlay 即可回退。Remote GPU 已完成完整 Compose 渲染，确认两条 worker 配置独立且只读订阅边界不漂移。

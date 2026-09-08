@@ -1,5 +1,11 @@
 # 架构债务台账
 
+### AD-067：共享体验 Subscription Active Read 观察窗口
+
+- 2026-09-09：新增默认关闭的 `agent-subscription` 并行 Compose overlay，保留 public interactive worker，同时以独立 Kafka group 与 Temporal queue 承接 Subscription Active Read。Remote GPU 完整 Compose 渲染已复核 interactive/subscription worker 身份、队列、写入、Control 和 MCP 配置互相隔离。该 overlay 未部署到共享体验栈，自动回复仍为关闭。
+- **剩余边界：** 在共享体验栈启动前，需为 owner-scoped Definition/Subscription 取得双人审核的有效 promotion grant，并归档 Kafka、Temporal、Capability RPC、模型调用、零消息写入和停止 worker 回滚的观察回执。该回执完成后才能宣称 Subscription Active Read 可在公共 URL 体验。
+- **处理门槛：** 使用 `agent-subscription-experience.yml` 启动独立 worker；完成一条已授权 subscription 的只读 Task 后停止该服务并确认 interactive B1/B2 无回归。自动回复需另行加载 `agent-subscription-autoreply.yml` 并沿用 AD-034 门槛。
+
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据
 
 - 2026-09-09：Context Ablation 的只读 CLI 现可显式绑定 owner-reviewed corpus source。它在读取 Eval MySQL 前安全复核 owner UID、`0600` canonical source、批准窗口、corpus/review hash、双 reviewer/adjudication gate 与实验 case 的完整 content-hash 覆盖；报告只保留 source ID 和哈希。该机制让真实语料可进入受控评测，不伪造多轮 Provider 证据，也不改变默认 Memory 开关。真实多轮窗口、人工语义标签和跨 Provider 对照仍待完成。

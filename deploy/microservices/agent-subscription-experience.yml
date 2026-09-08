@@ -1,0 +1,22 @@
+services:
+  # Keep the interactive Agent worker online while this separate consumer owns
+  # subscription-triggered tasks. This overlay is intentionally opt-in.
+  agent-subscription:
+    extends:
+      file: ../compose/docker-compose.microservices.yml
+      service: agent
+    environment:
+      DIPOLE_AGENT_KAFKA_CLIENT_ID: dipole-agent-subscription
+      DIPOLE_AGENT_KAFKA_GROUP_ID: ${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID is required}
+      DIPOLE_AGENT_TRIGGER_MODE: subscription
+      DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "false"
+      DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ENABLED: "true"
+      DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "false"
+      DIPOLE_AGENT_INBOUND_GROUP_INTERACTIVE_ENABLED: "false"
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: subscription_active
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: ${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE is required}
+      DIPOLE_AGENT_CONTROL_ENABLED: "false"
+      DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED: "false"
+      DIPOLE_AGENT_SUBSCRIPTION_MESSAGE_WRITE_ENABLED: "false"
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"

@@ -144,6 +144,27 @@ Content-Type: application/json
 
 Runtime 也会在启动前执行相同的 active read profile 校验，因此直接使用环境变量启动时，开启上述任一入口都会 fail closed。
 
+### Parallel Subscription Experience Worker
+
+公共体验环境同时保留 interactive Agent 时，显式叠加
+`deploy/microservices/agent-subscription-experience.yml`。它以 Compose
+`extends` 复用基础 `agent` 的镜像、mTLS 证书和依赖关系，并创建独立的
+`agent-subscription` consumer；原来的 interactive worker 不会被覆盖。
+
+```bash
+docker compose --env-file .env \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-experience.yml \
+  -f deploy/microservices/agent-subscription-experience.yml up -d agent-subscription
+```
+
+此 overlay 要求设置独立的
+`DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID` 和
+`DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE`。它固定关闭 interactive
+trigger、Control、MCP 以及两类消息写入，因此只承接具备有效 promotion
+grant 的订阅读取任务。移除该 overlay 并停止 `agent-subscription` 即可回退，
+不会影响 interactive Agent。
+
 开发期可用隔离 smoke 复跑 Subscription Active 链路：脚本以认证 owner 创建 Definition 和 Subscription，再通过 Gateway WebSocket 的 `chat.send` 产生真实消息。默认模式验证只读闭环：消息经 Core/Message/Sync、Kafka matcher 和 Temporal 后收敛为一个 completed Task、一次 completed model run、零条 Agent 发送消息。显式开启 Auto-Reply 时，额外断言恰好一次 completed `message.system.send` Tool Invocation、一次 consumed approval、一条 owner-Agent 回复、一个稳定 client message ID 和两条 Sync Inbox 投影。两种模式都会在退出前撤销临时 grant。
 
 ```bash
