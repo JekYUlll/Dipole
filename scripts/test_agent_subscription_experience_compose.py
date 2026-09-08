@@ -15,6 +15,7 @@ class AgentSubscriptionExperienceComposeTest(unittest.TestCase):
         self.assertIn("  agent-subscription:\n", overlay)
         self.assertIn("      file: ../compose/docker-compose.microservices.yml", overlay)
         self.assertIn("      service: agent", overlay)
+        self.assertIn("DIPOLE_AGENT_RELEASE_MANIFEST_FILE:?DIPOLE_AGENT_RELEASE_MANIFEST_FILE is required", overlay)
         self.assertIn("DIPOLE_AGENT_KAFKA_CLIENT_ID: dipole-agent-subscription", overlay)
         self.assertIn("DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID:?", overlay)
         self.assertIn("DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE:?", overlay)

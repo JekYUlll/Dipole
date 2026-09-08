@@ -5,6 +5,10 @@ services:
     extends:
       file: ../compose/docker-compose.microservices.yml
       service: agent
+    volumes:
+      # Cross-file extends inherits the base development manifest. Experience
+      # deployments must bind the manifest that matches their active candidate.
+      - ${DIPOLE_AGENT_RELEASE_MANIFEST_FILE:?DIPOLE_AGENT_RELEASE_MANIFEST_FILE is required}:/run/dipole/release/manifest.json:ro
     environment:
       DIPOLE_AGENT_KAFKA_CLIENT_ID: dipole-agent-subscription
       DIPOLE_AGENT_KAFKA_GROUP_ID: ${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID is required}

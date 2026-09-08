@@ -160,7 +160,9 @@ docker compose --env-file .env \
 
 此 overlay 要求设置独立的
 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID` 和
-`DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE`。它固定关闭 interactive
+`DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE`，以及与
+`DIPOLE_AGENT_CANDIDATE_VERSION` 内容匹配的绝对
+`DIPOLE_AGENT_RELEASE_MANIFEST_FILE`。它固定关闭 interactive
 trigger、Control、MCP 以及两类消息写入，因此只承接具备有效 promotion
 grant 的订阅读取任务。移除该 overlay 并停止 `agent-subscription` 即可回退，
 不会影响 interactive Agent。
