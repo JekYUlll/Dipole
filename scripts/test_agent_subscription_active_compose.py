@@ -28,6 +28,9 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('compose down --volumes --remove-orphans', smoke)
         self.assertIn('Subscription active Compose stack retained: project=%s scratch=%s', smoke)
         self.assertIn('UPDATE agent_runtime_promotion_grants SET revoked_at', smoke)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE:-fixture', smoke)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE must be fixture or control', smoke)
+        self.assertIn('DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=true', smoke)
 
     def test_autoreply_requires_explicit_opt_in_and_asserts_exact_side_effects(self) -> None:
         smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
@@ -49,6 +52,24 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('subscription task completed without a model call', smoke)
         self.assertIn('"${model_calls}" -ge 1', smoke)
         self.assertIn('subscription read task wrote', smoke)
+
+    def test_control_mode_uses_gateway_proposal_and_second_review(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
+        self.assertIn('/api/v1/agent/runtime-promotions', smoke)
+        self.assertIn('/review', smoke)
+        self.assertIn('promotion propose failed', smoke)
+        self.assertIn('promotion review failed', smoke)
+        self.assertIn('const grantValidFromUnixMs = now + 2000;', smoke)
+        self.assertIn('grantValidFromUnixMs - Date.now() + 100', smoke)
+        self.assertNotIn('grantValidFromUnixMs: now - 1000', smoke)
+        self.assertIn('agent_runtime_promotion_operator_grants', smoke)
+        self.assertIn("'shadow', 'completed'", smoke)
+        self.assertIn('evidence-task', smoke)
+        self.assertIn('evidence-run', smoke)
+        self.assertNotIn('evidence_task="task:', smoke)
+        self.assertNotIn('evidence_run="run:', smoke)
+        self.assertIn('agent-runtime.subscription-active-compose-smoke', smoke)
+        self.assertNotIn('agent-runtime@subscription-active-compose-smoke', smoke)
 
     def test_model_stub_stays_inside_the_compose_project(self) -> None:
         overlay = (ROOT / "deploy/microservices/agent-subscription-active-smoke.yml").read_text(encoding="utf-8")

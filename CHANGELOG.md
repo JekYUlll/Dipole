@@ -1,3 +1,5 @@
+- 2026-09-08：Subscription Active 的隔离 Compose smoke 已覆盖真实受控 promotion 闭环：认证 proposer 通过默认关闭的 Gateway route 提交不可变 shadow evidence，第二位 operator 审核后生成 owner Definition 的 active grant；一条 Kafka 订阅事件随即收敛为一个 completed durable read Task，至少一条模型调用完成且 Agent 消息为零。为避免 Gateway 服务端 `proposedAt` 与客户端时钟竞争，smoke 固定 grant 在短暂未来生效后再投递事件。Remote GPU 验收退出后隔离容器和卷为零，公共 `dipole-experience` 保持 11 个容器；Gateway promotion route 的基础 Compose 默认关闭。
+
 - 2026-09-08：补齐 Runtime promotion control 到 active Subscription admission 的 SQLC/MySQL 契约。第二位 operator review 生成的 grant 可放行匹配的 owner Subscription，并持久固定 Definition/Subscription；revoke 后以新 trigger 再次 admission 会 fail closed。Remote GPU 用一次性 MySQL 8.4 容器实跑通过，清理后公共 `dipole-experience` 保持 11 个健康容器。Gateway operator API 的受控产品化入口继续默认关闭。
 
 - 2026-09-08：新增可重复的 Remote GPU B1 owner Definition fallback 回归脚本。它以新 owner 创建默认只读 Definition、确认无 active promotion grant，再发送新私聊；验收任务固定到 `lowrisk-assistant:v1`、`completed:completed`、一条助手回复和一条 consumed `message.assistant_reply.send` 审批。体验环境已实跑通过，公共 `dipole-experience` 保持 11 个健康容器。

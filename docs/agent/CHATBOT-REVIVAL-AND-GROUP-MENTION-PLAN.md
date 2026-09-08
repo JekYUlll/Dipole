@@ -32,7 +32,8 @@
 - 2026-09-08：两轮入站 Context E2E 已通过：新用户在第一条私聊中提供唯一代号，第二条私聊要求复述；两条独立 Task 均完成且第二条回复包含第一轮代号。Route A 仍关闭，公共体验栈保持 11 容器。见 [receipt](../../benchmarks/agent-inbound-context-e2e-2026-09-08/)。
 - 2026-09-08：隔离 `subscription_active` read-only smoke 已验证 Definition、owner-scoped Subscription、短期 fixture grant 和一条 Kafka 事件可收敛为一个 completed durable Task；模型调用存在且 Agent 消息为零，退出后公共体验仍为 11 个健康容器。fixture grant 只用于开发期验收。
 - 2026-09-08：MySQL 契约已将 proposal/review 控制面与 active Subscription admission 串联：review 签发的 grant 可准入匹配 owner Subscription 并固定其 Definition/Subscription binding；revoke 后新 trigger 被拒绝。Remote GPU 的一次性 MySQL 8.4 容器实跑通过，公共体验保持 11 个健康容器。
-- 下一个正确性切片：将受控 Gateway operator proposal/review API 以独立、默认关闭的体验流程接入 Subscription，而不是继续在 smoke 中直接写入 fixture grant；Definition 抽屉需明确“私聊和群 @ 无需先创建 Definition”，该文案由前端改版分支负责。
+- 2026-09-08：`subscription_active` 的 `control` smoke 已用默认关闭的 Gateway operator route 走通真实 proposal/review。fixture 仅预置 immutable completed shadow evidence 与 proposer/reviewer role grant；第二位 reviewer 批准后，Core 为 owner Definition 生成 grant，再投递一条 Kafka 事件并收敛为一个 completed durable read Task、模型调用存在、零 Agent 消息。Gateway 使用服务端 `proposedAt`，测试将 grant 置于短暂未来并等待生效以消除时钟竞争；Remote GPU 清理后候选资源为零、公共体验维持 11 个容器。
+- 后续产品切片：Definition 抽屉需明确“私聊和群 @ 无需先创建 Definition”；Subscription 的可见审核体验、真实评审 evidence 归档与共享环境发布仍待完成，默认 Gateway promotion route 继续关闭。
 
 ## 1. 目标与验收
 - G1：私信小助手 → 自动 AI 回复，能调用工具（1v1 多轮对话恢复）。
@@ -116,7 +117,7 @@
 
 1. **B1/B2** 已完成：体验环境仅启用 Route B，私聊和群 @ 均使用低风险 Definition、一次性审批和 Temporal 任务。
 2. **P0 可靠性**：已完成。事件账本由 Temporal workflow 终态结算：成功才 complete，failed/cancelled release 后可 reclaim；定向与 Temporal 测试覆盖 dispatcher 交接和终态 activity。Remote GPU 已注入 Provider 故障并重投同一原始事件，确认新的 Run/Workflow generation 成功、账本完成且最终消息副作用精确一次；B1/B2 回归均为单回复 `completed`。
-3. **P1 订阅与工具**：将 Definition → Subscription → reviewed promotion grant 串成可见审核流程；继续收口 B3 的 legacy tool capability。
+3. **P1 订阅与工具**：已完成 Definition → Subscription → reviewed promotion grant 的受控 Compose 闭环；继续实现可见审核体验与真实 evidence 归档。B3 legacy tool capability 已收口为受治理 read capability。
 4. **退役评审**：在幂等、失败恢复、订阅审核和 Eval 门禁均有证据后，移除 Route A 的生产接线；代码目录再单独标记 deprecated 或删除。
 
 边界纪律：

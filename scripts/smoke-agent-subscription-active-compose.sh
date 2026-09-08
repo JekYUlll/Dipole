@@ -11,10 +11,12 @@ owner_telephone="13900000004"
 agent_uuid="UAI000000000000000001"
 grant_uuid="PROMOTION-SUBSCRIPTION-ACTIVE-${RANDOM}-$$"
 model_source="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_SOURCE:-stub}"
+promotion_mode="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE:-fixture}"
 
 command -v docker >/dev/null 2>&1 || { printf 'Docker is required\n' >&2; exit 2; }
 command -v openssl >/dev/null 2>&1 || { printf 'openssl is required\n' >&2; exit 2; }
 [[ "${model_source}" == "stub" || "${model_source}" == "provider" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
+[[ "${promotion_mode}" == "fixture" || "${promotion_mode}" == "control" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROMOTION_MODE must be fixture or control\n' >&2; exit 2; }
 if [[ "${model_source}" == "provider" ]]; then
   : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE:?DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE is required for provider mode}"
   [[ -f "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE}" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_MODEL_ENV_FILE must name a file\n' >&2; exit 2; }
@@ -33,7 +35,9 @@ fi
 : "${DIPOLE_SYNC_IMAGE:=dipole-sync:latest}"
 : "${DIPOLE_AGENT_IMAGE:=dipole-agent:latest}"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
-: "${DIPOLE_AGENT_CANDIDATE_VERSION:=agent-runtime@subscription-active-compose-smoke}"
+# Candidate versions pass through the public Gateway control API in control
+# mode, so keep the default within its public ID character contract.
+: "${DIPOLE_AGENT_CANDIDATE_VERSION:=agent-runtime.subscription-active-compose-smoke}"
 : "${DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID:=dipole-agent-active-subscription-smoke-${RANDOM}-$$}"
 : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_KAFKA_GROUP_ID:=dipole-agent-subscription-active-smoke-${RANDOM}-$$}"
 : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_TASK_QUEUE:=dipole-agent-subscription-smoke-${RANDOM}-$$}"
@@ -46,6 +50,9 @@ fi
 : "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY:=0}"
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "0" || "${DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY}" == "1" ]] || { printf 'DIPOLE_AGENT_SUBSCRIPTION_AUTOREPLY must be 0 or 1\n' >&2; exit 2; }
+if [[ "${promotion_mode}" == "control" ]]; then
+  export DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=true
+fi
 
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_AGENT_IMAGE
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_CANDIDATE_VERSION DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID
@@ -173,9 +180,61 @@ NODE
 )
 IFS=$'\t' read -r owner_uuid definition_uuid subscription_uuid conversation_key owner_token <<<"${binding}"
 
+if [[ "${promotion_mode}" == "fixture" ]]; then
 mysql <<SQL
 INSERT INTO agent_runtime_promotion_grants (grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version, policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at) VALUES ('${grant_uuid}', 'dipole', 'dipole-agent', '${DIPOLE_AGENT_CANDIDATE_VERSION}', '${definition_uuid}', 1, 'dipole.agent.shadow-promotion-policy.v2', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'U-SMOKE-GRANTOR', 'U-SMOKE-REVIEWER', DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE), DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 15 MINUTE));
 SQL
+else
+  # The evidence fixture is limited to the isolated project. The grant itself
+  # must be created by the Gateway/Core proposal and second-review path.
+  # Task and Run persistence accepts at most 64 characters, so use the stable
+  # hash directly rather than prefixing it with a display namespace.
+  evidence_task=$(printf '%s' "${project_name}:evidence-task" | sha256sum | awk '{print $1}')
+  evidence_run=$(printf '%s' "${project_name}:evidence-run" | sha256sum | awk '{print $1}')
+  evidence_artifact=$(printf '%s' "${project_name}:promotion-evidence" | sha256sum | awk '{print $1}')
+  evidence_sha=$(printf '%s' "${project_name}:promotion-content" | sha256sum | awk '{print $1}')
+  eval_sha="eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  operators=$(compose exec -T agent node --input-type=module - <<'NODE'
+const makeOperator = async (telephone, nickname) => {
+  const register = await fetch("http://gateway:8080/api/v1/auth/register", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ nickname, telephone, password: "promotion-operator-smoke" }) });
+  const owner = (await register.json())?.data?.user?.uuid;
+  if (register.status !== 200 || typeof owner !== "string") throw new Error(`operator register failed: ${register.status}`);
+  const login = await fetch("http://gateway:8080/api/v1/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ telephone, password: "promotion-operator-smoke" }) });
+  const token = (await login.json())?.data?.token;
+  if (login.status !== 200 || typeof token !== "string") throw new Error(`operator login failed: ${login.status}`);
+  return [owner, token];
+};
+const suffix = String(Date.now()).slice(-8);
+const [proposer, reviewer] = await Promise.all([makeOperator(`188${suffix}`, "Proposer"), makeOperator(`189${suffix}`, "Reviewer")]);
+process.stdout.write(`${proposer[0]}\t${proposer[1]}\t${reviewer[0]}\t${reviewer[1]}`);
+NODE
+)
+  IFS=$'\t' read -r proposer_uuid proposer_token reviewer_uuid reviewer_token <<<"${operators}"
+  mysql <<SQL
+INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal) VALUES ('${evidence_task}', '${definition_uuid}', 1, 'dipole', '${owner_uuid}', '${agent_uuid}', 'completed', 'promotion.evaluation', 'subscription-active-smoke', 'isolated promotion evidence');
+INSERT INTO agent_runs (run_uuid, task_uuid, runtime_id, candidate_version, mode, status, started_at, completed_at) VALUES ('${evidence_run}', '${evidence_task}', 'dipole-agent', NULL, 'shadow', 'completed', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3));
+INSERT INTO agent_artifacts (artifact_uuid, schema_version, task_uuid, run_uuid, artifact_type, version, title, media_type, object_bucket, object_key, content_sha256, size_bytes, metadata_json) VALUES ('${evidence_artifact}', 'dipole.agent.artifact.v1', '${evidence_task}', '${evidence_run}', 'promotion_evaluation', 1, 'Subscription promotion smoke', 'application/json', 'agent', 'smoke/${evidence_artifact}', '${evidence_sha}', 2, JSON_OBJECT('runtimeId', 'dipole-agent', 'candidateVersion', '${DIPOLE_AGENT_CANDIDATE_VERSION}', 'definitionId', '${definition_uuid}', 'definitionVersion', 1, 'evalSuiteSHA256', '${eval_sha}'));
+INSERT INTO agent_runtime_promotion_operator_grants (tenant_id, user_uuid, can_propose, can_review, can_revoke, granted_by_uuid, valid_from) VALUES ('dipole', '${proposer_uuid}', TRUE, FALSE, FALSE, 'U-SMOKE-ROOT', DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE)), ('dipole', '${reviewer_uuid}', FALSE, TRUE, FALSE, 'U-SMOKE-ROOT', DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE));
+SQL
+  grant_uuid=$(compose exec -T agent node --input-type=module - "${proposer_token}" "${reviewer_token}" "${definition_uuid}" "${evidence_artifact}" "${evidence_sha}" "${eval_sha}" "${DIPOLE_AGENT_CANDIDATE_VERSION}" <<'NODE'
+const [proposerToken, reviewerToken, definitionId, artifactId, evidenceSha256, evalSuiteSha256, candidateVersion] = process.argv.slice(2);
+const headers = token => ({ authorization: `Bearer ${token}`, "content-type": "application/json" });
+const now = Date.now();
+// Gateway owns proposedAt. Keep the grant shortly in the future so validFrom
+// cannot precede the server timestamp, then wait before emitting the event.
+const grantValidFromUnixMs = now + 2000;
+const proposalResponse = await fetch("http://gateway:8080/api/v1/agent/runtime-promotions", { method: "POST", headers: headers(proposerToken), body: JSON.stringify({ runtimeId: "dipole-agent", candidateVersion, definitionId, definitionVersion: 1, evidenceArtifactId: artifactId, evidenceSha256, evalSuiteSha256, ticketRef: "SMOKE-1", reason: "isolated subscription admission", expiresAtUnixMs: now + 300000, grantValidFromUnixMs, grantExpiresAtUnixMs: now + 600000 }) });
+const proposal = await proposalResponse.json();
+if (proposalResponse.status !== 200 || proposal?.status !== "proposed" || typeof proposal?.proposalId !== "string") throw new Error(`promotion propose failed: ${proposalResponse.status} ${JSON.stringify(proposal)}`);
+const reviewResponse = await fetch(`http://gateway:8080/api/v1/agent/runtime-promotions/${proposal.proposalId}/review`, { method: "POST", headers: headers(reviewerToken), body: JSON.stringify({ decision: "approved" }) });
+const reviewed = await reviewResponse.json();
+if (reviewResponse.status !== 200 || reviewed?.status !== "approved" || typeof reviewed?.grantId !== "string") throw new Error(`promotion review failed: ${reviewResponse.status} ${JSON.stringify(reviewed)}`);
+await new Promise(resolve => setTimeout(resolve, Math.max(0, grantValidFromUnixMs - Date.now() + 100)));
+process.stdout.write(reviewed.grantId);
+NODE
+)
+  [[ "${grant_uuid}" =~ ^[a-f0-9]{64}$ ]] || { printf 'promotion control did not return a grant ID: %q\n' "${grant_uuid}" >&2; exit 1; }
+fi
 
 compose exec -T agent node --input-type=module - "${owner_token}" "${agent_uuid}" <<'NODE'
 const [token, agentUuid] = process.argv.slice(2);
