@@ -22,6 +22,7 @@ Grant-only options:
   --expires-at RFC3339_UTC      Example: 2026-09-05T12:00:00Z.
 
 Optional:
+  --env-file PATH                Compose environment file; never sourced by this script.
   --tenant ID                   Defaults to dipole.
   --service NAME                MySQL Compose service, defaults to mysql.
   --database NAME               Database, defaults to dipole.
@@ -55,6 +56,7 @@ shift
 tenant_id=dipole
 service=mysql
 database=dipole
+env_file=
 compose_project=
 user_uuid=
 granted_by_uuid=
@@ -69,6 +71,7 @@ while (( $# > 0 )); do
   case "$1" in
     --compose-project) compose_project=${2:-}; shift 2 ;;
     --compose-file) compose_files+=("${2:-}"); shift 2 ;;
+    --env-file) env_file=${2:-}; shift 2 ;;
     --tenant) tenant_id=${2:-}; shift 2 ;;
     --service) service=${2:-}; shift 2 ;;
     --database) database=${2:-}; shift 2 ;;
@@ -86,6 +89,7 @@ done
 
 [[ -n "$compose_project" ]] || die "--compose-project is required"
 (( ${#compose_files[@]} > 0 )) || die "at least one --compose-file is required"
+[[ -z "$env_file" || -r "$env_file" ]] || die "--env-file must name a readable file"
 [[ -n "$user_uuid" && -n "$granted_by_uuid" && -n "$ticket_ref" && -n "$reason" ]] || die "--user, --granted-by, --ticket, and --reason are required"
 require_safe_id tenant "$tenant_id" 64
 require_safe_id service "$service" 64
@@ -133,7 +137,9 @@ fi
 command -v docker >/dev/null 2>&1 || die "docker is required for --apply"
 command -v openssl >/dev/null 2>&1 || die "openssl is required for --apply"
 
-compose=(docker compose -p "$compose_project")
+compose=(docker compose)
+[[ -z "$env_file" ]] || compose+=(--env-file "$env_file")
+compose+=(-p "$compose_project")
 for compose_file in "${compose_files[@]}"; do
   compose+=(-f "$compose_file")
 done

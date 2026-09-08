@@ -86,10 +86,13 @@ receipt 仅包含执行 revision、profile、模型来源、任务 ID 的 SHA-25
 
 受控运维可用 `scripts/manage-agent-promotion-operator-grant.sh` 预置或撤销 proposer/reviewer/revoker 权限。脚本默认 dry-run，执行必须携带 `--apply`、不同的被授权人与记录人、工单号、原因和有限的 UTC 到期时间；每次变更都会追加 `agent_runtime_promotion_operator_grant_audits`。它只改 operator grant，不能审核候选、签发 Runtime promotion grant 或开启 Gateway 路由。共享项目示例：
 
+`--env-file` 只传递 Compose 的部署变量，脚本不会 `source` 该文件。`DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD` 仍必须由部署 Secret 或受控凭据注入，禁止从 `.env` 复制到命令历史或验收回执。
+
 ```bash
 DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" \
   scripts/manage-agent-promotion-operator-grant.sh grant \
   --compose-project dipole-experience \
+  --env-file .env \
   --compose-file deploy/compose/docker-compose.microservices.yml \
   --compose-file deploy/microservices/remote-gpu-mysql-aio-compat.yml \
   --compose-file deploy/microservices/agent-experience.yml \

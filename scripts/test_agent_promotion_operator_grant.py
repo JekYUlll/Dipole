@@ -35,15 +35,18 @@ class AgentPromotionOperatorGrantScriptTest(unittest.TestCase):
     def test_apply_uses_explicit_container_mysql_socket(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertIn("mysql --socket=/var/run/mysqld/mysqld.sock", source)
+        self.assertIn("--env-file PATH", source)
+        self.assertIn('compose+=(--env-file "$env_file")', source)
 
     def test_apply_streams_password_and_writes_grant_audit(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             capture = temp_path / "capture"
+            args_capture = temp_path / "args"
             fake_docker = temp_path / "docker"
             fake_openssl = temp_path / "openssl"
             fake_docker.write_text(
-                "#!/usr/bin/env bash\ncat > \"$CAPTURE\"\nprintf 'granted\\taudit-1\\n'\n",
+                "#!/usr/bin/env bash\nprintf '%s\\n' \"$@\" > \"$ARGS_CAPTURE\"\ncat > \"$CAPTURE\"\nprintf 'granted\\taudit-1\\n'\n",
                 encoding="utf-8",
             )
             fake_openssl.write_text("#!/usr/bin/env bash\nprintf 'a%.0s' {1..64}\nprintf '\\n'\n", encoding="utf-8")
@@ -52,15 +55,25 @@ class AgentPromotionOperatorGrantScriptTest(unittest.TestCase):
             env = os.environ | {
                 "PATH": f"{temp_path}:{os.environ['PATH']}",
                 "CAPTURE": str(capture),
+                "ARGS_CAPTURE": str(args_capture),
                 "DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD": "test-password",
             }
-            result = subprocess.run(self.base_command("--apply"), cwd=ROOT, text=True, capture_output=True, env=env, check=False)
+            env_file = temp_path / "compose.env"
+            env_file.write_text("COMPOSE_PROJECT_NAME=dipole-test\n", encoding="utf-8")
+            result = subprocess.run(self.base_command("--env-file", str(env_file), "--apply"), cwd=ROOT, text=True, capture_output=True, env=env, check=False)
             self.assertEqual(result.returncode, 0, result.stderr)
             sent = capture.read_text(encoding="utf-8")
             self.assertTrue(sent.startswith("test-password\n"))
             self.assertIn("agent_runtime_promotion_operator_grant_audits", sent)
             self.assertIn("'granted'", sent)
             self.assertNotIn("test-password", result.stdout)
+            self.assertEqual(args_capture.read_text(encoding="utf-8").splitlines()[:2], ["compose", "--env-file"])
+            self.assertIn(str(env_file), args_capture.read_text(encoding="utf-8"))
+
+    def test_rejects_unreadable_compose_env_file(self) -> None:
+        result = subprocess.run(self.base_command("--env-file", "/missing/compose.env"), cwd=ROOT, text=True, capture_output=True, check=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("readable file", result.stderr)
 
     def test_rejects_self_grant_and_revoke_roles(self) -> None:
         self_grant = self.base_command()
