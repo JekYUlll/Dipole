@@ -202,6 +202,23 @@ describe("ModelRouter", () => {
     expect(audit.reserve).toHaveBeenCalledWith("TASK-1", expect.any(Object), "primary", "synthesis");
   });
 
+  it("scopes persistent model budgets to the immutable Agent Run", async () => {
+    const audit = auditStore();
+    vi.mocked(audit.reserve).mockResolvedValue({ runId: "MODEL-RUN", callId: "CALL-1", callNo: 1, route: "primary" });
+    const router = new ModelRouter({ generate: vi.fn(async () => ({ output: { summary: "ok" }, usage: { inputTokens: 1, outputTokens: 1 } })) }, ["primary"], {
+      maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
+    }, () => 1000, audit);
+
+    await router.generate({ prompt: "retry one", schema: outputSchema, taskId: "TASK-1", runId: "run:first" });
+    await router.generate({ prompt: "retry two", schema: outputSchema, taskId: "TASK-1", runId: "run:second" });
+
+    const stages = vi.mocked(audit.reserve).mock.calls.map(([, , , stage]) => stage);
+    expect(stages).toHaveLength(2);
+    expect(stages[0]).toMatch(/^plan_r[0-9a-f]{12}$/);
+    expect(stages[1]).toMatch(/^plan_r[0-9a-f]{12}$/);
+    expect(stages[0]).not.toBe(stages[1]);
+  });
+
   it("records one ModelCall span per provider attempt", async () => {
     const spanAttributes: Array<Record<string, unknown>> = [];
     const tracer = {

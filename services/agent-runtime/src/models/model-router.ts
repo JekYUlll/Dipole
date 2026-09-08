@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import type { z } from "zod";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
@@ -96,9 +98,10 @@ export class ModelRouter {
     readonly prompt: string;
     readonly schema: z.ZodType<T>;
     readonly taskId?: string;
+    readonly runId?: string;
     readonly stage?: string;
   }): Promise<ModelRoutingResult<T>> {
-    const stage = modelStage(input.stage);
+    const stage = modelStage(input.stage, input.runId);
     if (this.audit !== undefined && !input.taskId?.trim()) {
       throw new Error("persistent model routing requires a Task ID");
     }
@@ -206,10 +209,16 @@ export class ModelRouter {
   }
 }
 
-function modelStage(value: string | undefined): string {
+function modelStage(value: string | undefined, agentRunId?: string): string {
   const stage = value?.trim() || "plan";
   if (!/^[a-z][a-z0-9_]{0,31}$/.test(stage)) throw new Error("model stage is invalid");
-  return stage;
+  if (agentRunId === undefined) return stage;
+  const run = agentRunId.trim();
+  if (run.length === 0 || run.length > 64) throw new Error("model Agent Run ID is invalid");
+  // Model calls are recoverable within one Core-authorized Agent Run. A retry
+  // receives a distinct audit stage and therefore a fresh bounded budget.
+  const suffix = createHash("sha256").update(run).digest("hex").slice(0, 12);
+  return `${stage.slice(0, 17)}_r${suffix}`;
 }
 
 function elapsed(now: number, startedAt: number): number {
