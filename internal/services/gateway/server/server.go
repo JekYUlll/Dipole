@@ -142,6 +142,7 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 	if dependencies.AgentPromotions != nil {
 		engine.POST("/api/v1/agent/runtime-promotions", auth, agentRuntimePromotionProposeHandler(dependencies.AgentPromotions))
 		engine.GET("/api/v1/agent/runtime-promotions/:proposal_id", auth, agentRuntimePromotionGetHandler(dependencies.AgentPromotions))
+		engine.GET("/api/v1/agent/runtime-promotions/:proposal_id/evidence", auth, agentRuntimePromotionEvidenceHandler(dependencies.AgentPromotions))
 		engine.POST("/api/v1/agent/runtime-promotions/:proposal_id/review", auth, agentRuntimePromotionReviewHandler(dependencies.AgentPromotions))
 		engine.POST("/api/v1/agent/runtime-promotions/grants/:grant_id/revoke", auth, agentRuntimePromotionRevokeHandler(dependencies.AgentPromotions))
 	}

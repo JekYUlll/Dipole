@@ -37,6 +37,8 @@
 
 - 2026-09-08：`publication` Smoke 追加同一 Runtime Artifact publication 的精确重放。两次 `PromotionEvidencePublisher.publish` 使用同一 completed shadow Task/Run 与同一 canonical evidence，要求 content-addressed Artifact receipt 的 ID、evidence hash 与 eval-suite hash 一致；Remote GPU 已通过完整审核和 Subscription Task 链路，且最终仍为单 Task、零 Agent 消息。该回归固定 immutable Artifact replay 语义，不扩大合成 evidence 的模型效果结论。
 
+- 2026-09-08：Gateway 已补齐 operator-scoped Runtime promotion evidence 只读代理。它只在既有 `agent_promotion_enabled` 装配时注册，Core 继续基于 authenticated Gateway principal 与 operator grant 授权；Gateway 随后复核 proposal 绑定的 Artifact ID、`promotion_evaluation` 类型、JSON media type、大小与 SHA-256，且不返回 Artifact metadata 或对象位置。该切片为审核 UI 提供数据面，不启用默认 Gateway route、不会创建 grant，也不替代真实评审 evidence corpus。
+
 - 2026-09-04：A7 已补齐开发期 Prometheus 到 Alertmanager 的运行时投递证据。`smoke-multipart-alertmanager-routing.sh` 仅启动隔离 Prometheus 和 Alertmanager，复用正式 Multipart rule file 并加入临时 `vector(1)` alert，确认 firing alert 出现在 Alertmanager API；`1b5efc87` Remote GPU 通过，候选容器为零，公共 `dipole-experience` 保持 12 个容器，日志 SHA-256 为 `583dcc7af033211935587320ba951979e78437e68742d0563dff2fa83bfafc65`。该证据限于开发期 `discard` receiver，真实 receiver、升级策略、24 小时预签名流量和默认 relay 切流继续关闭。
 
 - 2026-09-04：A7 在 current `master` `43d86704` 重新通过 [隔离 Multipart restart receipt](../../benchmarks/multipart-restart-smoke-2026-09-04/)。随机命名 MinIO 和持久卷在首个 5 MiB part 后重启，续传、Complete 和内容比对通过；公共 `dipole-experience` 保持 12 个容器，候选容器清理为零。该证据仍限于 disposable fixture，浏览器断网、预签名、Redis 和跨存储故障矩阵继续由 A7 跟踪。

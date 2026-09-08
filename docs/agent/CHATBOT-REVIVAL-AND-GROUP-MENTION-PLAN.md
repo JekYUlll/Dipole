@@ -34,7 +34,7 @@
 - 2026-09-08：MySQL 契约已将 proposal/review 控制面与 active Subscription admission 串联：review 签发的 grant 可准入匹配 owner Subscription 并固定其 Definition/Subscription binding；revoke 后新 trigger 被拒绝。Remote GPU 的一次性 MySQL 8.4 容器实跑通过，公共体验保持 11 个健康容器。
 - 2026-09-08：`subscription_active` 的 `control` smoke 已用默认关闭的 Gateway operator route 走通真实 proposal/review。fixture 仅预置 immutable completed shadow evidence 与 proposer/reviewer role grant；第二位 reviewer 批准后，Core 为 owner Definition 生成 grant，再投递一条 Kafka 事件并收敛为一个 completed durable read Task、模型调用存在、零 Agent 消息。Gateway 使用服务端 `proposedAt`，测试将 grant 置于短暂未来并等待生效以消除时钟竞争；Remote GPU 清理后候选资源为零、公共体验维持 11 个容器。
 - 2026-09-08：`subscription_active` 的 `publication` smoke 已从 Runtime `PromotionEvidencePublisher` 经 mTLS Artifact RPC 发布 content-addressed evidence receipt，并将 receipt 交给同一 Gateway/Core 双人审核链路。Remote GPU 的合成 eligible sample 完成 grant 和一条 owner Subscription Task，模型调用存在、Agent 消息为零；候选容器和卷自动清理，公共体验维持 11 个容器。MySQL JSON metadata 重排导致的 Artifact replay 误冲突已修正为 repository canonicalization。该回执仅证明合成证据的发布与控制面集成，不证明真实模型效果。
-- 后续产品切片：Definition 抽屉需明确“私聊和群 @ 无需先创建 Definition”；Subscription 的可见审核体验、真实评审 evidence corpus、共享环境发布仍待完成，默认 Gateway promotion route 继续关闭。`control` 模式保留 SQL fixture 作为快速回归，`publication` 为 Runtime 发布路径验收。
+- 后续产品切片：Definition 抽屉需明确“私聊和群 @ 无需先创建 Definition”；Subscription 的可见审核体验、真实评审 evidence corpus、共享环境发布仍待完成。Gateway 已提供受既有 operator grant 约束的 promotion evidence 只读端点，供审核页面读取已绑定 `promotion_evaluation` JSON；默认 Gateway promotion route 继续关闭。`control` 模式保留 SQL fixture 作为快速回归，`publication` 为 Runtime 发布路径验收。
 
 ## 1. 目标与验收
 - G1：私信小助手 → 自动 AI 回复，能调用工具（1v1 多轮对话恢复）。
@@ -118,7 +118,7 @@
 
 1. **B1/B2** 已完成：体验环境仅启用 Route B，私聊和群 @ 均使用低风险 Definition、一次性审批和 Temporal 任务。
 2. **P0 可靠性**：已完成。事件账本由 Temporal workflow 终态结算：成功才 complete，failed/cancelled release 后可 reclaim；定向与 Temporal 测试覆盖 dispatcher 交接和终态 activity。Remote GPU 已注入 Provider 故障并重投同一原始事件，确认新的 Run/Workflow generation 成功、账本完成且最终消息副作用精确一次；B1/B2 回归均为单回复 `completed`。
-3. **P1 订阅与工具**：已完成 Definition → Subscription → reviewed promotion grant 的受控 Compose 闭环；继续实现可见审核体验与真实 evidence 归档。B3 legacy tool capability 已收口为受治理 read capability。
+3. **P1 订阅与工具**：已完成 Definition → Subscription → reviewed promotion grant 的受控 Compose 闭环；Gateway 已补齐 operator-scoped evidence 只读 API，前端审核页与真实 evidence 归档继续推进。B3 legacy tool capability 已收口为受治理 read capability。
 4. **退役评审**：在幂等、失败恢复、订阅审核和 Eval 门禁均有证据后，移除 Route A 的生产接线；代码目录再单独标记 deprecated 或删除。
 
 边界纪律：

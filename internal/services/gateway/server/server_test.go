@@ -2,6 +2,8 @@ package gateway
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -141,9 +143,11 @@ type gatewayAgentDefinitionStub struct {
 }
 
 type gatewayAgentPromotionStub struct {
-	principal, proposalID, decision, grantID, ticketRef, reason string
-	propose                                                     AgentRuntimePromotionProposeInput
-	proposeCalls, getCalls, reviewCalls, revokeCalls            int
+	principal, proposalID, decision, grantID, ticketRef, reason     string
+	propose                                                         AgentRuntimePromotionProposeInput
+	proposeCalls, getCalls, evidenceCalls, reviewCalls, revokeCalls int
+	evidence                                                        *AgentRuntimePromotionEvidence
+	evidenceErr                                                     error
 }
 
 func (s *gatewayAgentPromotionStub) Propose(_ context.Context, principal string, input AgentRuntimePromotionProposeInput) (*AgentRuntimePromotionProposal, error) {
@@ -156,6 +160,12 @@ func (s *gatewayAgentPromotionStub) Get(_ context.Context, principal, proposalID
 	s.principal, s.proposalID = principal, proposalID
 	s.getCalls++
 	return gatewayPromotionProposalFixture(), nil
+}
+
+func (s *gatewayAgentPromotionStub) GetEvidence(_ context.Context, principal, proposalID string) (*AgentRuntimePromotionEvidence, error) {
+	s.principal, s.proposalID = principal, proposalID
+	s.evidenceCalls++
+	return s.evidence, s.evidenceErr
 }
 
 func (s *gatewayAgentPromotionStub) Review(_ context.Context, principal, proposalID, decision string) (*AgentRuntimePromotionProposal, error) {
@@ -174,6 +184,18 @@ func (s *gatewayAgentPromotionStub) Revoke(_ context.Context, principal, grantID
 
 func gatewayPromotionProposalFixture() *AgentRuntimePromotionProposal {
 	return &AgentRuntimePromotionProposal{ProposalID: strings.Repeat("a", 64), TenantID: "dipole", RuntimeID: "dipole-agent", CandidateVersion: "candidate-v1", DefinitionID: "DEF-1", DefinitionVersion: 1, EvidenceArtifactID: strings.Repeat("b", 64), EvidenceSHA256: strings.Repeat("c", 64), EvalSuiteSHA256: strings.Repeat("d", 64), ProposerID: "U100", TicketRef: "OPS-1", Reason: "enable reviewed read task", Status: "proposed", ProposedAtUnixMS: 1_700_000_000_000, ExpiresAtUnixMS: 1_700_000_100_000, GrantValidFromUnixMS: 1_700_000_000_000, GrantExpiresAtUnixMS: 1_700_000_900_000}
+}
+
+func gatewayPromotionEvidenceFixture() *AgentRuntimePromotionEvidence {
+	content := []byte(`{"schemaVersion":"contracts/agent-promotion/v2","eligible":true}`)
+	digest := sha256.Sum256(content)
+	proposal := gatewayPromotionProposalFixture()
+	proposal.EvidenceSHA256 = hex.EncodeToString(digest[:])
+	return &AgentRuntimePromotionEvidence{
+		Proposal: proposal,
+		Artifact: AgentArtifact{ArtifactID: proposal.EvidenceArtifactID, TaskID: "TASK-1", RunID: "RUN-1", ArtifactType: "promotion_evaluation", Version: 1, Title: "Promotion evidence", MediaType: "application/json", ContentSHA256: proposal.EvidenceSHA256, SizeBytes: uint64(len(content)), CreatedAtUnixMS: 1_700_000_000_000},
+		Content:  string(content),
+	}
 }
 
 func (s *gatewayAgentDefinitionStub) CreateDefinition(_ context.Context, principal, profile string) (*AgentDefinitionCatalogItem, error) {
@@ -755,7 +777,7 @@ func TestGatewayOwnsAuthenticatedAgentRuntimePromotionControl(t *testing.T) {
 	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
 	core := httptest.NewServer(http.NotFoundHandler())
 	defer core.Close()
-	promotions := &gatewayAgentPromotionStub{}
+	promotions := &gatewayAgentPromotionStub{evidence: gatewayPromotionEvidenceFixture()}
 	gateway, err := newTestGatewayServer(core.URL, Dependencies{Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentPromotions: promotions, Limiter: gatewayLimiterStub{}})
 	if err != nil {
 		t.Fatalf("new gateway: %v", err)
@@ -784,6 +806,18 @@ func TestGatewayOwnsAuthenticatedAgentRuntimePromotionControl(t *testing.T) {
 	gateway.Engine().ServeHTTP(getResponse, get)
 	if getResponse.Code != http.StatusOK || promotions.getCalls != 1 || promotions.proposalID != proposalID {
 		t.Fatalf("get code=%d stub=%+v body=%s", getResponse.Code, promotions, getResponse.Body.String())
+	}
+
+	evidence := httptest.NewRequest(http.MethodGet, "/api/v1/agent/runtime-promotions/"+proposalID+"/evidence", nil)
+	evidence.Header.Set("Authorization", "Bearer "+token)
+	evidenceResponse := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(evidenceResponse, evidence)
+	var evidenceBody struct {
+		Content string `json:"content"`
+	}
+	decodeErr := json.Unmarshal(evidenceResponse.Body.Bytes(), &evidenceBody)
+	if evidenceResponse.Code != http.StatusOK || decodeErr != nil || promotions.evidenceCalls != 1 || promotions.principal != "U100" || evidenceBody.Content != `{"schemaVersion":"contracts/agent-promotion/v2","eligible":true}` {
+		t.Fatalf("evidence code=%d stub=%+v body=%s", evidenceResponse.Code, promotions, evidenceResponse.Body.String())
 	}
 
 	review := httptest.NewRequest(http.MethodPost, "/api/v1/agent/runtime-promotions/"+proposalID+"/review", strings.NewReader(`{"decision":"approved"}`))
@@ -821,7 +855,7 @@ func TestGatewayOwnsAuthenticatedAgentRuntimePromotionControl(t *testing.T) {
 			t.Fatalf("invalid request code=%d path=%s body=%s", invalidResponse.Code, invalid.path, invalidResponse.Body.String())
 		}
 	}
-	if promotions.proposeCalls != 1 || promotions.reviewCalls != 1 || promotions.revokeCalls != 1 {
+	if promotions.proposeCalls != 1 || promotions.evidenceCalls != 1 || promotions.reviewCalls != 1 || promotions.revokeCalls != 1 {
 		t.Fatalf("invalid request reached promotion application: %+v", promotions)
 	}
 }

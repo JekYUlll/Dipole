@@ -2,6 +2,8 @@ package gateway
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
 	"time"
@@ -64,8 +66,17 @@ type AgentRuntimePromotionProposeInput struct {
 type AgentRuntimePromotionApplication interface {
 	Propose(context.Context, string, AgentRuntimePromotionProposeInput) (*AgentRuntimePromotionProposal, error)
 	Get(context.Context, string, string) (*AgentRuntimePromotionProposal, error)
+	GetEvidence(context.Context, string, string) (*AgentRuntimePromotionEvidence, error)
 	Review(context.Context, string, string, string) (*AgentRuntimePromotionProposal, error)
 	Revoke(context.Context, string, string, string, string) (*AgentRuntimePromotionGrant, error)
+}
+
+// AgentRuntimePromotionEvidence is visible only after Core authorizes the
+// authenticated operator against the proposal's immutable evidence binding.
+type AgentRuntimePromotionEvidence struct {
+	Proposal *AgentRuntimePromotionProposal `json:"proposal"`
+	Artifact AgentArtifact                  `json:"artifact"`
+	Content  string                         `json:"content"`
 }
 
 type AgentRuntimePromotionGrant struct {
@@ -88,6 +99,7 @@ type AgentRuntimePromotionGrant struct {
 type agentRuntimePromotionRPC interface {
 	ProposeRuntimePromotion(context.Context, *agentv1.ProposeRuntimePromotionRequest, ...grpc.CallOption) (*agentv1.RuntimePromotionProposalResponse, error)
 	GetRuntimePromotion(context.Context, *agentv1.GetRuntimePromotionRequest, ...grpc.CallOption) (*agentv1.RuntimePromotionProposalResponse, error)
+	GetRuntimePromotionEvidence(context.Context, *agentv1.GetRuntimePromotionEvidenceRequest, ...grpc.CallOption) (*agentv1.RuntimePromotionEvidenceResponse, error)
 	ReviewRuntimePromotion(context.Context, *agentv1.ReviewRuntimePromotionRequest, ...grpc.CallOption) (*agentv1.RuntimePromotionProposalResponse, error)
 	RevokeRuntimePromotion(context.Context, *agentv1.RevokeRuntimePromotionRequest, ...grpc.CallOption) (*agentv1.RuntimePromotionGrantResponse, error)
 }
@@ -134,6 +146,44 @@ func (c *AgentRuntimePromotionClient) Get(ctx context.Context, principal, propos
 		return nil, mapAgentRuntimePromotionRPCError(err)
 	}
 	return agentRuntimePromotionProposalFromProto(response, c.tenantID)
+}
+
+func (c *AgentRuntimePromotionClient) GetEvidence(ctx context.Context, principal, proposalID string) (*AgentRuntimePromotionEvidence, error) {
+	proposalID = strings.TrimSpace(proposalID)
+	if !validAgentSubscriptionPublicID(principal, 64) || !validAgentSubscriptionPublicID(proposalID, 64) {
+		return nil, ErrAgentRuntimePromotionInvalid
+	}
+	callCtx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+	response, err := c.rpc.GetRuntimePromotionEvidence(callCtx, &agentv1.GetRuntimePromotionEvidenceRequest{
+		Context: grpccommon.RequestContextFrom(ctx, principal, "dipole-gateway"), TenantId: c.tenantID, ProposalId: proposalID,
+	})
+	if err != nil {
+		return nil, mapAgentRuntimePromotionRPCError(err)
+	}
+	if response == nil || response.GetProposal() == nil || response.GetArtifact() == nil {
+		return nil, ErrAgentRuntimePromotionUnavailable
+	}
+	proposal, err := agentRuntimePromotionProposalFromProto(response.GetProposal(), c.tenantID)
+	if err != nil || proposal.ProposalID != proposalID {
+		return nil, ErrAgentRuntimePromotionUnavailable
+	}
+	raw := response.GetArtifact()
+	content := response.GetContent()
+	if proposal.EvidenceArtifactID != raw.GetArtifactId() || proposal.EvidenceSHA256 != raw.GetContentSha256() ||
+		raw.GetArtifactType() != "promotion_evaluation" || raw.GetMediaType() != "application/json" ||
+		!validAgentArtifactMetadata(raw) || uint64(len(content)) != raw.GetSizeBytes() || !utf8.Valid(content) {
+		return nil, ErrAgentRuntimePromotionUnavailable
+	}
+	digest := sha256.Sum256(content)
+	if !strings.EqualFold(hex.EncodeToString(digest[:]), proposal.EvidenceSHA256) {
+		return nil, ErrAgentRuntimePromotionUnavailable
+	}
+	return &AgentRuntimePromotionEvidence{
+		Proposal: proposal,
+		Artifact: AgentArtifact{ArtifactID: raw.GetArtifactId(), TaskID: raw.GetTaskId(), RunID: raw.GetRunId(), ArtifactType: raw.GetArtifactType(), Version: raw.GetVersion(), Title: raw.GetTitle(), MediaType: raw.GetMediaType(), ContentSHA256: raw.GetContentSha256(), SizeBytes: raw.GetSizeBytes(), CreatedAtUnixMS: raw.GetCreatedAtUnixMs()},
+		Content:  string(content),
+	}, nil
 }
 
 func (c *AgentRuntimePromotionClient) Review(ctx context.Context, principal, proposalID, decision string) (*AgentRuntimePromotionProposal, error) {
@@ -197,6 +247,22 @@ func agentRuntimePromotionGetHandler(promotions AgentRuntimePromotionApplication
 			return
 		}
 		result, err := promotions.Get(c.Request.Context(), user, proposalID)
+		writeAgentRuntimePromotionResult(c, result, err)
+	}
+}
+
+func agentRuntimePromotionEvidenceHandler(promotions AgentRuntimePromotionApplication) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user, ok := currentGatewayUser(c)
+		if !ok {
+			return
+		}
+		proposalID := strings.TrimSpace(c.Param("proposal_id"))
+		if !validAgentSubscriptionPublicID(proposalID, 64) {
+			writeAgentRuntimePromotionResult(c, nil, ErrAgentRuntimePromotionInvalid)
+			return
+		}
+		result, err := promotions.GetEvidence(c.Request.Context(), user, proposalID)
 		writeAgentRuntimePromotionResult(c, result, err)
 	}
 }
