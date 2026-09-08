@@ -107,6 +107,20 @@ type AgentEventSubscriptionResolverV1 interface {
 	MatchEventSubscriptions(ctx context.Context, request AgentEventSubscriptionMatchRequestV1) ([]AgentEventSubscriptionV1, error)
 }
 
+// AgentSubscriptionActivationV1 is the owner-facing runtime readiness of a
+// subscription. It is intentionally separate from subscription status: an
+// active subscription still needs an active promotion grant before it can run.
+type AgentSubscriptionActivationV1 struct {
+	State          string
+	GrantExpiresAt time.Time
+}
+
+// AgentSubscriptionActivationResolverV1 keeps transports independent from the
+// storage-backed implementation used by the Core composition root.
+type AgentSubscriptionActivationResolverV1 interface {
+	Resolve(context.Context, AgentEventSubscriptionV1) (AgentSubscriptionActivationV1, error)
+}
+
 type AgentEventSubscriptionStoreV1 interface {
 	CreateEventSubscription(ctx context.Context, subscription AgentEventSubscriptionV1) (bool, error)
 	GetEventSubscription(ctx context.Context, subscriptionUUID string) (*AgentEventSubscriptionV1, error)

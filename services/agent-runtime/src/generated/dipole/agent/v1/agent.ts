@@ -2599,6 +2599,14 @@ export interface AgentEventSubscription {
      * @generated from protobuf field: int64 revoked_at_unix_ms = 17
      */
     revokedAtUnixMs: bigint;
+    /**
+     * @generated from protobuf field: string activation_state = 18
+     */
+    activationState: string;
+    /**
+     * @generated from protobuf field: int64 promotion_grant_expires_at_unix_ms = 19
+     */
+    promotionGrantExpiresAtUnixMs: bigint;
 }
 /**
  * @generated from protobuf message dipole.agent.v1.MatchEventSubscriptionsResponse
@@ -11102,7 +11110,9 @@ class AgentEventSubscription$Type extends MessageType<AgentEventSubscription> {
             { no: 14, name: "revoke_reason", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 15, name: "created_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
             { no: 16, name: "updated_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
-            { no: 17, name: "revoked_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
+            { no: 17, name: "revoked_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ },
+            { no: 18, name: "activation_state", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 19, name: "promotion_grant_expires_at_unix_ms", kind: "scalar", T: 3 /*ScalarType.INT64*/, L: 0 /*LongType.BIGINT*/ }
         ]);
     }
     create(value?: PartialMessage<AgentEventSubscription>): AgentEventSubscription {
@@ -11124,6 +11134,8 @@ class AgentEventSubscription$Type extends MessageType<AgentEventSubscription> {
         message.createdAtUnixMs = 0n;
         message.updatedAtUnixMs = 0n;
         message.revokedAtUnixMs = 0n;
+        message.activationState = "";
+        message.promotionGrantExpiresAtUnixMs = 0n;
         if (value !== undefined)
             reflectionMergePartial<AgentEventSubscription>(this, message, value);
         return message;
@@ -11183,6 +11195,12 @@ class AgentEventSubscription$Type extends MessageType<AgentEventSubscription> {
                     break;
                 case /* int64 revoked_at_unix_ms */ 17:
                     message.revokedAtUnixMs = reader.int64().toBigInt();
+                    break;
+                case /* string activation_state */ 18:
+                    message.activationState = reader.string();
+                    break;
+                case /* int64 promotion_grant_expires_at_unix_ms */ 19:
+                    message.promotionGrantExpiresAtUnixMs = reader.int64().toBigInt();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -11247,6 +11265,12 @@ class AgentEventSubscription$Type extends MessageType<AgentEventSubscription> {
         /* int64 revoked_at_unix_ms = 17; */
         if (message.revokedAtUnixMs !== 0n)
             writer.tag(17, WireType.Varint).int64(message.revokedAtUnixMs);
+        /* string activation_state = 18; */
+        if (message.activationState !== "")
+            writer.tag(18, WireType.LengthDelimited).string(message.activationState);
+        /* int64 promotion_grant_expires_at_unix_ms = 19; */
+        if (message.promotionGrantExpiresAtUnixMs !== 0n)
+            writer.tag(19, WireType.Varint).int64(message.promotionGrantExpiresAtUnixMs);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

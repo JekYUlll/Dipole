@@ -7430,26 +7430,28 @@ func (x *MatchEventSubscriptionsRequest) GetResourceId() string {
 }
 
 type AgentEventSubscription struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	SubscriptionId    string                 `protobuf:"bytes,1,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
-	DefinitionId      string                 `protobuf:"bytes,2,opt,name=definition_id,json=definitionId,proto3" json:"definition_id,omitempty"`
-	DefinitionVersion uint64                 `protobuf:"varint,3,opt,name=definition_version,json=definitionVersion,proto3" json:"definition_version,omitempty"`
-	TenantId          string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	AgentId           string                 `protobuf:"bytes,5,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
-	EventType         string                 `protobuf:"bytes,6,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
-	ResourceType      string                 `protobuf:"bytes,7,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"`
-	ResourceId        string                 `protobuf:"bytes,8,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
-	FilterKind        string                 `protobuf:"bytes,9,opt,name=filter_kind,json=filterKind,proto3" json:"filter_kind,omitempty"`
-	FilterJson        []byte                 `protobuf:"bytes,10,opt,name=filter_json,json=filterJson,proto3" json:"filter_json,omitempty"`
-	Status            string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedById       string                 `protobuf:"bytes,12,opt,name=created_by_id,json=createdById,proto3" json:"created_by_id,omitempty"`
-	RevokedById       string                 `protobuf:"bytes,13,opt,name=revoked_by_id,json=revokedById,proto3" json:"revoked_by_id,omitempty"`
-	RevokeReason      string                 `protobuf:"bytes,14,opt,name=revoke_reason,json=revokeReason,proto3" json:"revoke_reason,omitempty"`
-	CreatedAtUnixMs   int64                  `protobuf:"varint,15,opt,name=created_at_unix_ms,json=createdAtUnixMs,proto3" json:"created_at_unix_ms,omitempty"`
-	UpdatedAtUnixMs   int64                  `protobuf:"varint,16,opt,name=updated_at_unix_ms,json=updatedAtUnixMs,proto3" json:"updated_at_unix_ms,omitempty"`
-	RevokedAtUnixMs   int64                  `protobuf:"varint,17,opt,name=revoked_at_unix_ms,json=revokedAtUnixMs,proto3" json:"revoked_at_unix_ms,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                         protoimpl.MessageState `protogen:"open.v1"`
+	SubscriptionId                string                 `protobuf:"bytes,1,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
+	DefinitionId                  string                 `protobuf:"bytes,2,opt,name=definition_id,json=definitionId,proto3" json:"definition_id,omitempty"`
+	DefinitionVersion             uint64                 `protobuf:"varint,3,opt,name=definition_version,json=definitionVersion,proto3" json:"definition_version,omitempty"`
+	TenantId                      string                 `protobuf:"bytes,4,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	AgentId                       string                 `protobuf:"bytes,5,opt,name=agent_id,json=agentId,proto3" json:"agent_id,omitempty"`
+	EventType                     string                 `protobuf:"bytes,6,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	ResourceType                  string                 `protobuf:"bytes,7,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"`
+	ResourceId                    string                 `protobuf:"bytes,8,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	FilterKind                    string                 `protobuf:"bytes,9,opt,name=filter_kind,json=filterKind,proto3" json:"filter_kind,omitempty"`
+	FilterJson                    []byte                 `protobuf:"bytes,10,opt,name=filter_json,json=filterJson,proto3" json:"filter_json,omitempty"`
+	Status                        string                 `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedById                   string                 `protobuf:"bytes,12,opt,name=created_by_id,json=createdById,proto3" json:"created_by_id,omitempty"`
+	RevokedById                   string                 `protobuf:"bytes,13,opt,name=revoked_by_id,json=revokedById,proto3" json:"revoked_by_id,omitempty"`
+	RevokeReason                  string                 `protobuf:"bytes,14,opt,name=revoke_reason,json=revokeReason,proto3" json:"revoke_reason,omitempty"`
+	CreatedAtUnixMs               int64                  `protobuf:"varint,15,opt,name=created_at_unix_ms,json=createdAtUnixMs,proto3" json:"created_at_unix_ms,omitempty"`
+	UpdatedAtUnixMs               int64                  `protobuf:"varint,16,opt,name=updated_at_unix_ms,json=updatedAtUnixMs,proto3" json:"updated_at_unix_ms,omitempty"`
+	RevokedAtUnixMs               int64                  `protobuf:"varint,17,opt,name=revoked_at_unix_ms,json=revokedAtUnixMs,proto3" json:"revoked_at_unix_ms,omitempty"`
+	ActivationState               string                 `protobuf:"bytes,18,opt,name=activation_state,json=activationState,proto3" json:"activation_state,omitempty"`
+	PromotionGrantExpiresAtUnixMs int64                  `protobuf:"varint,19,opt,name=promotion_grant_expires_at_unix_ms,json=promotionGrantExpiresAtUnixMs,proto3" json:"promotion_grant_expires_at_unix_ms,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *AgentEventSubscription) Reset() {
@@ -7597,6 +7599,20 @@ func (x *AgentEventSubscription) GetUpdatedAtUnixMs() int64 {
 func (x *AgentEventSubscription) GetRevokedAtUnixMs() int64 {
 	if x != nil {
 		return x.RevokedAtUnixMs
+	}
+	return 0
+}
+
+func (x *AgentEventSubscription) GetActivationState() string {
+	if x != nil {
+		return x.ActivationState
+	}
+	return ""
+}
+
+func (x *AgentEventSubscription) GetPromotionGrantExpiresAtUnixMs() int64 {
+	if x != nil {
+		return x.PromotionGrantExpiresAtUnixMs
 	}
 	return 0
 }
@@ -10905,7 +10921,7 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"event_type\x18\x04 \x01(\tR\teventType\x12#\n" +
 	"\rresource_type\x18\x05 \x01(\tR\fresourceType\x12\x1f\n" +
 	"\vresource_id\x18\x06 \x01(\tR\n" +
-	"resourceId\"\x80\x05\n" +
+	"resourceId\"\xf6\x05\n" +
 	"\x16AgentEventSubscription\x12'\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\tR\x0esubscriptionId\x12#\n" +
 	"\rdefinition_id\x18\x02 \x01(\tR\fdefinitionId\x12-\n" +
@@ -10928,7 +10944,9 @@ const file_dipole_agent_v1_agent_proto_rawDesc = "" +
 	"\rrevoke_reason\x18\x0e \x01(\tR\frevokeReason\x12+\n" +
 	"\x12created_at_unix_ms\x18\x0f \x01(\x03R\x0fcreatedAtUnixMs\x12+\n" +
 	"\x12updated_at_unix_ms\x18\x10 \x01(\x03R\x0fupdatedAtUnixMs\x12+\n" +
-	"\x12revoked_at_unix_ms\x18\x11 \x01(\x03R\x0frevokedAtUnixMs\"p\n" +
+	"\x12revoked_at_unix_ms\x18\x11 \x01(\x03R\x0frevokedAtUnixMs\x12)\n" +
+	"\x10activation_state\x18\x12 \x01(\tR\x0factivationState\x12I\n" +
+	"\"promotion_grant_expires_at_unix_ms\x18\x13 \x01(\x03R\x1dpromotionGrantExpiresAtUnixMs\"p\n" +
 	"\x1fMatchEventSubscriptionsResponse\x12M\n" +
 	"\rsubscriptions\x18\x01 \x03(\v2'.dipole.agent.v1.AgentEventSubscriptionR\rsubscriptions\"\xf4\x02\n" +
 	"\x1eCreateEventSubscriptionRequest\x12:\n" +

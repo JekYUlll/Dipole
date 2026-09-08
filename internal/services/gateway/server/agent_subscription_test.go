@@ -117,7 +117,7 @@ func TestAgentSubscriptionControlClientBindsTrustedOwnerAndCorrelation(t *testin
 		rpc.listRequest.GetTenantId() != "dipole" || rpc.listRequest.GetAfterSubscriptionId() != "SUB-0" || rpc.listRequest.GetLimit() != 20 {
 		t.Fatalf("unexpected trusted list request: %+v", rpc.listRequest)
 	}
-	if len(page.Subscriptions) != 1 || page.NextCursor != "SUB-1" || page.Subscriptions[0].Filter.Terms[1] != "延期" {
+	if len(page.Subscriptions) != 1 || page.NextCursor != "SUB-1" || page.Subscriptions[0].Filter.Terms[1] != "延期" || page.Subscriptions[0].ActivationState != "promotion_required" {
 		t.Fatalf("unexpected page: %+v", page)
 	}
 	options, err := client.ListEligibleConversations(ctx, "U100", "DEF-1", 7)

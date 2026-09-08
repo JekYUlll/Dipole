@@ -47,6 +47,7 @@ type Server struct {
 	artifactCatalog        application.AgentArtifactCatalogServiceV1
 	subscriptions          application.AgentEventSubscriptionResolverV1
 	subscriptionControls   application.AgentEventSubscriptionControlServiceV1
+	subscriptionReadiness  application.AgentSubscriptionActivationResolverV1
 	definitionCatalog      application.AgentDefinitionCatalogServiceV1
 	memories               application.AgentMemoryContextResolverV1
 	memoryControls         application.AgentMemoryOwnerControlServiceV1
@@ -126,6 +127,14 @@ func (s *Server) WithEventSubscriptionControls(controls application.AgentEventSu
 		return nil, errors.New("Agent Event Subscription control service is required")
 	}
 	s.subscriptionControls = controls
+	return s, nil
+}
+
+func (s *Server) WithEventSubscriptionReadiness(readiness application.AgentSubscriptionActivationResolverV1) (*Server, error) {
+	if s == nil || readiness == nil {
+		return nil, errors.New("Agent Event Subscription readiness resolver is required")
+	}
+	s.subscriptionReadiness = readiness
 	return s, nil
 }
 
@@ -609,7 +618,16 @@ func (s *Server) ListEventSubscriptions(ctx context.Context, request *agentv1.Li
 	}
 	response := &agentv1.ListEventSubscriptionsResponse{Subscriptions: make([]*agentv1.AgentEventSubscription, 0, len(page.Subscriptions)), NextCursor: page.NextCursor}
 	for _, item := range page.Subscriptions {
-		response.Subscriptions = append(response.Subscriptions, agentEventSubscriptionResponseV1(item))
+		mapped := agentEventSubscriptionResponseV1(item)
+		if s.subscriptionReadiness != nil {
+			readiness, readinessErr := s.subscriptionReadiness.Resolve(ctx, item)
+			if readinessErr != nil {
+				return nil, status.Error(codes.Unavailable, "Agent Event Subscription readiness is unavailable")
+			}
+			mapped.ActivationState = readiness.State
+			mapped.PromotionGrantExpiresAtUnixMs = readiness.GrantExpiresAt.UnixMilli()
+		}
+		response.Subscriptions = append(response.Subscriptions, mapped)
 	}
 	return response, nil
 }

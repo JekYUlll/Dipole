@@ -827,6 +827,8 @@ message AgentEventSubscription {
   int64 created_at_unix_ms = 15;
   int64 updated_at_unix_ms = 16;
   int64 revoked_at_unix_ms = 17;
+  string activation_state = 18;
+  int64 promotion_grant_expires_at_unix_ms = 19;
 }
 
 message MatchEventSubscriptionsResponse {

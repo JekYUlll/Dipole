@@ -354,6 +354,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("configure standalone Agent Event Subscription control rpc adapter: %w", composeErr)
 		}
+		if candidateVersion := config.AIConfig().AgentCandidateVersion; candidateVersion != "" {
+			readiness, readinessErr := agentapplication.NewAgentSubscriptionActivationResolverV1(agentRepos.Promotions, candidateVersion, time.Now)
+			if readinessErr != nil { cleanup(); return nil, fmt.Errorf("compose Agent Event Subscription readiness: %w", readinessErr) }
+			if _, readinessErr = agentServer.WithEventSubscriptionReadiness(readiness); readinessErr != nil { cleanup(); return nil, fmt.Errorf("configure Agent Event Subscription readiness rpc adapter: %w", readinessErr) }
+		}
 		if _, composeErr = agentServer.WithDefinitionCatalog(definitionCatalog); composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("configure standalone Agent Definition catalog rpc adapter: %w", composeErr)

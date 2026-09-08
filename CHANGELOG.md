@@ -2704,3 +2704,4 @@
 - 2026-09-08：Route B · B3 的 capability 迁移完成收口。受治理 Runtime 已覆盖用户资料、会话 list/read/search；Route A 的 Eino 包标记为 deprecated 且仅保留默认关闭的回退基线。后续新能力不得再接入 legacy 工具面，物理删除仍等待订阅审核、Eval 与正式退役评审。
 - 2026-09-08：补齐显式 Agent Task 的低风险回退验收。全新认证用户无需 owner Definition 或 promotion grant 即可创建 `agent.interactive.requested` Task，并由平台 `lowrisk-assistant:v1` 完成 durable admission；新增 `scripts/e2e-agent-manual-lowrisk-task.sh` 固定该体验。Subscription 路径继续要求 owner-reviewed promotion grant。
 - 2026-09-08：Gateway 的 Agent Runtime promotion 控制面新增只读 evidence 查询：已认证请求经既有 operator grant 进入 Core，Gateway 复核 proposal、`promotion_evaluation` JSON Artifact、内容大小与 SHA-256 后返回审核所需正文。该端点沿用 `agent_promotion_enabled` 的默认关闭装配，不暴露 Artifact metadata 或对象位置，也不改变 promotion、Subscription 或 Compose 默认开关。
+- 2026-09-09：Agent Subscription 列表新增只读 activation readiness 投影：`active`、`promotion_required`、`revoked` 由 Core 的当前 candidate promotion grant 推导，并仅公开 grant 到期时间。事件触发、grant 签发与默认 Compose 开关保持原状。

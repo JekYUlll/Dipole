@@ -29,22 +29,24 @@ type AgentSubscriptionFilter struct {
 }
 
 type AgentSubscription struct {
-	SubscriptionID    string                  `json:"subscriptionId"`
-	DefinitionID      string                  `json:"definitionId"`
-	DefinitionVersion uint64                  `json:"definitionVersion"`
-	AgentID           string                  `json:"agentId"`
-	EventType         string                  `json:"eventType"`
-	ResourceType      string                  `json:"resourceType"`
-	ResourceID        string                  `json:"resourceId"`
-	FilterKind        string                  `json:"filterKind"`
-	Filter            AgentSubscriptionFilter `json:"filter"`
-	Status            string                  `json:"status"`
-	CreatedByID       string                  `json:"createdById"`
-	RevokedByID       string                  `json:"revokedById,omitempty"`
-	RevokeReason      string                  `json:"revokeReason,omitempty"`
-	CreatedAtUnixMS   int64                   `json:"createdAtUnixMs"`
-	UpdatedAtUnixMS   int64                   `json:"updatedAtUnixMs"`
-	RevokedAtUnixMS   int64                   `json:"revokedAtUnixMs,omitempty"`
+	SubscriptionID                string                  `json:"subscriptionId"`
+	DefinitionID                  string                  `json:"definitionId"`
+	DefinitionVersion             uint64                  `json:"definitionVersion"`
+	AgentID                       string                  `json:"agentId"`
+	EventType                     string                  `json:"eventType"`
+	ResourceType                  string                  `json:"resourceType"`
+	ResourceID                    string                  `json:"resourceId"`
+	FilterKind                    string                  `json:"filterKind"`
+	Filter                        AgentSubscriptionFilter `json:"filter"`
+	Status                        string                  `json:"status"`
+	CreatedByID                   string                  `json:"createdById"`
+	RevokedByID                   string                  `json:"revokedById,omitempty"`
+	RevokeReason                  string                  `json:"revokeReason,omitempty"`
+	CreatedAtUnixMS               int64                   `json:"createdAtUnixMs"`
+	UpdatedAtUnixMS               int64                   `json:"updatedAtUnixMs"`
+	RevokedAtUnixMS               int64                   `json:"revokedAtUnixMs,omitempty"`
+	ActivationState               string                  `json:"activationState"`
+	PromotionGrantExpiresAtUnixMS int64                   `json:"promotionGrantExpiresAtUnixMs,omitempty"`
 }
 
 type AgentSubscriptionPage struct {
@@ -385,9 +387,23 @@ func agentSubscriptionFromProto(raw *agentv1.AgentEventSubscription, tenantID st
 	if raw.GetStatus() == "revoked" && (strings.TrimSpace(raw.GetRevokedById()) == "" || strings.TrimSpace(raw.GetRevokeReason()) == "" || raw.GetRevokedAtUnixMs() <= 0) {
 		return nil, ErrAgentSubscriptionUnavailable
 	}
+	activationState := raw.GetActivationState()
+	if activationState == "" && raw.GetStatus() == "active" {
+		activationState = "promotion_required"
+	}
+	if activationState == "" && raw.GetStatus() == "revoked" {
+		activationState = "revoked"
+	}
+	if activationState != "active" && activationState != "promotion_required" && activationState != "revoked" {
+		return nil, ErrAgentSubscriptionUnavailable
+	}
+	if activationState == "active" && raw.GetPromotionGrantExpiresAtUnixMs() <= 0 {
+		return nil, ErrAgentSubscriptionUnavailable
+	}
 	return &AgentSubscription{
 		SubscriptionID: raw.GetSubscriptionId(), DefinitionID: raw.GetDefinitionId(), DefinitionVersion: raw.GetDefinitionVersion(),
 		AgentID: raw.GetAgentId(), EventType: raw.GetEventType(), ResourceType: raw.GetResourceType(), ResourceID: raw.GetResourceId(),
+		ActivationState: activationState, PromotionGrantExpiresAtUnixMS: raw.GetPromotionGrantExpiresAtUnixMs(),
 		FilterKind: raw.GetFilterKind(), Filter: filter, Status: raw.GetStatus(), CreatedByID: raw.GetCreatedById(),
 		RevokedByID: raw.GetRevokedById(), RevokeReason: raw.GetRevokeReason(), CreatedAtUnixMS: raw.GetCreatedAtUnixMs(),
 		UpdatedAtUnixMS: raw.GetUpdatedAtUnixMs(), RevokedAtUnixMS: raw.GetRevokedAtUnixMs(),
