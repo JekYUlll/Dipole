@@ -1,3 +1,5 @@
+- 2026-09-08：Remote GPU `dipole-experience` 已运行 EventLedger 终态结算 revision。B1 私聊与 B2 群 @ 新事件均收敛为 `completed:completed`，各自只产生一条助手消息和一次已消费审批；隔离 MySQL 8.4 合同测试通过 release/reclaim、lease crash recovery 与 stale-token 拒绝。真实失败 Workflow 的端到端重投仍由 AD-065 跟踪。
+
 - 2026-09-08：Route B 的入站 EventLedger 改由 Temporal Task 的终态结算。成功工作流才会完成 Kafka claim；失败或取消会释放带精确 token 的 lease，供既有 reclaim/retry 机制重新取得。Dispatcher 启动成功不再提前确认事件，避免异步工作流随后失败时永久丢失重试机会。
 
 - 2026-09-08：Agent 微服务 Compose 的 mTLS 文件挂载改为 long bind syntax，并固定 `create_host_path: false`。干净 worktree 未配置 `DIPOLE_INTERNAL_CERT_DIR` 或证书文件缺失时会在启动前 fail closed，避免 Docker 创建同名目录并使 Runtime 在读取证书时以 `EISDIR` 重启；Compose 门禁与远端部署手册已同步。
