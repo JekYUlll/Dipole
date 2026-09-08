@@ -859,8 +859,8 @@ environment:
 # Agent Runtime
 environment:
   # 开启 Route B
-  DIPOLE_AGENT_INBOUND_DM_ENABLED: "true"
-  DIPOLE_AGENT_INBOUND_GROUP_MENTION_ENABLED: "true"
+  DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"
+  DIPOLE_AGENT_INBOUND_GROUP_INTERACTIVE_ENABLED: "true"
 ```
 
 ⚠️ **不要同时开启同一触发类型的 Route A 和 Route B**，否则用户会收到两份回复。

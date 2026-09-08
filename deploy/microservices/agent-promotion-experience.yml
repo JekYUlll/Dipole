@@ -1,0 +1,7 @@
+services:
+  # Load only for a reviewed promotion maintenance window. The base and
+  # experience profiles keep this authenticated operator route disabled.
+  gateway:
+    environment:
+      DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_PROMOTION_TENANT_ID: ${DIPOLE_GATEWAY_AGENT_PROMOTION_TENANT_ID:?DIPOLE_GATEWAY_AGENT_PROMOTION_TENANT_ID is required}

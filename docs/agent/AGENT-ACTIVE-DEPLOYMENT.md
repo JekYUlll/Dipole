@@ -98,6 +98,28 @@ DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" \
   --roles propose --expires-at 2026-09-05T12:00:00Z --apply
 ```
 
+如需在已批准的体验维护窗口中实际执行 proposal/review，可显式叠加
+`deploy/microservices/agent-promotion-experience.yml` 并仅重建 Gateway。该
+overlay 只打开受认证的 operator route，要求调用方明确提供 tenant，不会启用
+Agent 写入、MCP、Memory 或 Subscription 自动回复。窗口结束后以不包含该
+overlay 的同一组 Compose 文件重建 Gateway，即可关闭路由；已签发 grant 需
+另行通过 revoke API 撤销。
+
+```bash
+DIPOLE_INTERNAL_CERT_DIR=/absolute/path/to/internal/certs \
+  DIPOLE_GATEWAY_AGENT_PROMOTION_TENANT_ID=dipole \
+  docker compose --env-file .env \
+  -f deploy/compose/docker-compose.microservices.yml \
+  -f deploy/microservices/agent-experience.yml \
+  -f deploy/microservices/agent-promotion-experience.yml \
+  up -d --no-deps --force-recreate gateway
+```
+
+`DIPOLE_INTERNAL_CERT_DIR` 必须为现有证书文件所在的绝对目录。缺少该值时，
+Docker 可能把不存在的相对挂载源创建为目录，Gateway 将因无法读取 mTLS
+证书而拒绝启动。重建前可通过 `docker compose ... config --quiet` 预检；健康
+状态以容器 healthcheck 为准，Gateway 没有 `/healthz` HTTP 路由。
+
 同一 overlay 固定 `direct_target`、Memory、retrieval、retrieval-to-Context、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 
 ### Subscription Active Read
