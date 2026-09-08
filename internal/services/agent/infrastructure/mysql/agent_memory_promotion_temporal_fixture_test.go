@@ -119,7 +119,7 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 	server := startReceiptContractRPCServer(t, certs, adapter)
 	state := temporalReceiptFixtureState{
 		Target: server.Address(), Secret: "receipt-mysql-contract-secret", CAFile: certs.ca, CertFile: certs.agentCert, KeyFile: certs.agentKey, ServerName: "core",
-		TenantID: definition.TenantID, PrincipalUserID: definition.OwnerUUID, AgentID: definition.AgentUUID, TaskID: admitted.TaskUUID, RunID: admitted.RunUUID,
+		TenantID: definition.TenantID, PrincipalUserID: "U100", AgentID: definition.AgentUUID, TaskID: admitted.TaskUUID, RunID: admitted.RunUUID,
 		CandidateID: candidateID, CandidateSHA256: candidateSHA256, ReviewID: reviewID, PolicyVersion: "memory-v1",
 		RejectedTaskID: rejected.TaskUUID, RejectedRunID: rejected.RunUUID,
 		RejectedCandidateID: rejectedCandidateID, RejectedCandidateSHA256: rejectedCandidateSHA256, RejectedReviewID: rejectedReviewID,
