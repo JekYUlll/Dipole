@@ -2,6 +2,7 @@
 
 ### AD-065：Route B EventLedger 的真实失败恢复与群 @ 终态证据
 
+- 2026-09-08：显式交互 Task 的体验口径已与 B1/B2 对齐。Remote GPU 使用没有 owner Definition 的新用户验证认证 Gateway 创建返回 `202`，Task 经 Temporal 收敛为 `completed` 并固定平台 `lowrisk-assistant:v1`；可复跑 smoke 已加入。Subscription 仍不适用低风险回退，继续要求 owner-reviewed promotion grant。
 - 2026-09-08：Route B · B3 已完成 legacy capability 的治理收口。`user.profile.read`、`conversation.list`、`conversation.read` 与可选 `conversation.search` 均经 Core Task/Run authority、Runtime Registry 和 Tool invocation audit 执行；Eino `legacy` 包已标记为 deprecated，体验环境的 Route A handler 保持关闭。物理删除继续依赖订阅审核、Eval 和正式退役评审，保留独立回退基线。
 
 - **优先级：** P0

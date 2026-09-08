@@ -2676,3 +2676,4 @@
 - **A7 Multipart cleanup fail-closed**：MinIO 未完成上传扫描错误现在会进入结构化报告并阻止清理命令成功返回，避免部分扫描被误判为完整生命周期证据。
 - 2026-09-08：恢复 Agent Runtime 全量 TypeScript 门禁。消息写入投影测试现在以 `AgentCapabilityRPCClient` 的精确方法签名声明 mock，并保留 capability 窄联合类型；外部 MCP 全栈夹具同步了群入站 topic、mention aliases 与助手昵称。`npm test -- --run` 通过 913 项测试（40 项环境跳过），`npm run typecheck` 和生产构建通过。
 - 2026-09-08：Route B · B3 的 capability 迁移完成收口。受治理 Runtime 已覆盖用户资料、会话 list/read/search；Route A 的 Eino 包标记为 deprecated 且仅保留默认关闭的回退基线。后续新能力不得再接入 legacy 工具面，物理删除仍等待订阅审核、Eval 与正式退役评审。
+- 2026-09-08：补齐显式 Agent Task 的低风险回退验收。全新认证用户无需 owner Definition 或 promotion grant 即可创建 `agent.interactive.requested` Task，并由平台 `lowrisk-assistant:v1` 完成 durable admission；新增 `scripts/e2e-agent-manual-lowrisk-task.sh` 固定该体验。Subscription 路径继续要求 owner-reviewed promotion grant。

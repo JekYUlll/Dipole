@@ -8,9 +8,9 @@
 
 active Runtime 默认只执行 `conversation.list/read`。基础 Compose 固定开启 Agent Task Control，Gateway 以内部共享密钥转发认证 owner 的控制请求；该控制面本身不授予写 Capability。`DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED=true` 是独立的候选开关：它只允许 owner 在直属 Agent 会话发出显式 `/send <内容>`，Task 先进入 `waiting_approval`，approved Signal 后通过既有 grant、一次性 consume、Tool Invocation 与 Core 消息命令链路执行一条 `system_message`。当前 active overlay 不设置该开关，因此 Artifact、消息发送、外部 MCP 和其他写 Capability 继续保持关闭。
 
-创建请求被 Runtime 接受后，Core 仍会在 durable admission 时复核该 owner 的 active Definition 和同一 candidate 的有效 promotion grant。主 Compose 默认公开经过认证的 `POST /api/v1/agent/definitions`，它只能创建 owner-scoped `read_only` Definition，不能授予写 Capability 或替代 promotion grant。`/api/v1/agent/status` 中的 `taskControlEnabled=true` 只表示认证控制路由已装配，不表示任意用户已经具备 active Run 资格。开发或体验环境必须使用受控短期 grant，并在验收后撤销；共享环境继续遵循本手册的 operator review 与 `user_gray` 证据要求。
+无 Subscription 的交互任务会优先复核 owner 的 active Definition；当 owner 尚未配置或该 Definition 无法被 active candidate 提升时，Core 只可回退到平台共享的 `lowrisk-assistant:v1`。该 Definition 的权限限定为直属 Agent 会话读取与回复，并复用平台级低风险 promotion grant。主 Compose 默认公开经过认证的 `POST /api/v1/agent/definitions`，它只能创建 owner-scoped `read_only` Definition，不能授予写 Capability 或替代 subscription 的 promotion grant。`/api/v1/agent/status` 中的 `taskControlEnabled=true` 只表示认证控制路由已装配。
 
-若 Runtime admission 被 Core 拒绝，`POST /api/v1/agent/tasks` 返回 `403` 与 `reason: "admission_denied"`。该响应只说明需准备 active owner Definition 和同 candidate 的有效 promotion grant；它不公开 grant 状态、评审证据、候选策略或其他 owner 的任何信息。
+若 Runtime admission 被 Core 拒绝，`POST /api/v1/agent/tasks` 返回 `403` 与 `reason: "admission_denied"`。该响应表示低风险回退也不可用，或请求属于不允许回退的场景（例如 Subscription）；它不公开 grant 状态、评审证据、候选策略或其他 owner 的任何信息。
 
 开发期可用隔离 Read Active smoke 验证完整只读 Task。它使用本地 loopback model stub、临时 owner Definition 和 15 分钟 promotion grant，验证请求幂等、owner 隔离、Temporal 完成、两步读取轨迹和零 Agent 消息写入；cleanup 会撤销 grant 并删除容器、卷与临时证书。
 

@@ -88,6 +88,7 @@
 - 状态：已完成并在体验环境验证。
 - 把发给 `UAI0001` 的 `message.direct.created` 在 `direct_target` 档接成"起 interactive task"（复用 `InteractiveTaskStartService` 的等价链路，或新增 inbound→task dispatcher）。
 - 复用已上线的 assistant_reply 闭环（`AuthorizeInteractiveReply` + `createInteractiveReplyExecutor`），实现真·多轮 1v1。
+- 认证用户的显式交互任务使用相同的 `agent.interactive.requested` admission 语义：无 Subscription 且没有可提升 owner Definition 时回退到 `lowrisk-assistant:v1`，不要求用户先创建 Definition。
 - 会话上下文：交互任务读取直属会话最近 N 条作为 prompt。
 验收：私信小助手多轮对话，每轮经 admission/approval/审计。
 
