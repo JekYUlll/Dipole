@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { CapabilityRegistry } from "../capabilities/registry.js";
-import type { EventLedger } from "./event-ledger.js";
+import type { EventClaim, EventLedger } from "./event-ledger.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 const policyVersion = "dipole.agent.policy.persistence.v1";
@@ -129,7 +129,7 @@ export interface ShadowRunAdmission {
 }
 
 export interface ShadowTaskDispatcher {
-  dispatch(event: AgentEvent, identity: AgentIdentity, taskId: string): Promise<void>;
+  dispatch(event: AgentEvent, identity: AgentIdentity, taskId: string, claim?: EventClaim): Promise<void>;
 }
 
 export interface ShadowStepTrajectory extends ShadowAuditSink {
@@ -252,8 +252,10 @@ export class ShadowEventProcessor {
       }
       try {
       if (this.dispatcher !== undefined) {
-        await this.dispatcher.dispatch(event, identity, taskId);
-        await this.ledger.complete(claim);
+        // The Temporal Workflow owns terminal acknowledgement. Marking this
+        // claim complete after only a successful start permanently loses
+        // failures that happen later in the durable task.
+        await this.dispatcher.dispatch(event, identity, taskId, claim);
         taskSpan.setAttribute("dipole.agent.task.outcome", "recorded");
         return { outcome: "recorded", taskId };
       }

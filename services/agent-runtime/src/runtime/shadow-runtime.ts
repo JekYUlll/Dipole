@@ -343,6 +343,7 @@ interface ShadowSubscriptionAdmission extends ShadowRunAdmission, ShadowSubscrip
 export interface TemporalReadActivityResources {
   readonly activities: AgentTaskActivities;
   readonly client: AgentCapabilityRPCClient;
+  readonly eventLedger: EventLedger;
   start(): Promise<void>;
   stop(): Promise<void>;
 }
@@ -626,6 +627,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
     host: config.mysql.host, port: config.mysql.port, user: config.mysql.user, password: config.mysql.password,
     database: config.mysql.database, timezone: "Z", connectionLimit: 10
   });
+  const eventLedger = new MySQLEventLedger(pool, config.leaseMs);
   const audit = new MySQLShadowAuditSink(pool);
   const registry = new CapabilityRegistry();
   registry.register(new UserProfileReadCapability(rpc.client));
@@ -663,6 +665,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
       readPermissions: readCapabilityPermissions(config)
     }),
     client: rpc.client,
+    eventLedger,
     start: async () => {
       await pool.query(PROBE_AGENT_SHADOW_PLANS);
       await pool.query(PROBE_AGENT_MODEL_RUNS);

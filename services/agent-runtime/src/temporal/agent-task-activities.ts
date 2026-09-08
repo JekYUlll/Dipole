@@ -9,6 +9,7 @@ import {
   type AgentMemoryPromotionReceipt
 } from "../memory/agent-memory-promotion-receipt.js";
 import type { AgentMemoryPromotionReceiptCommitResult } from "../capabilities/agent-capability-rpc.js";
+import type { EventClaim } from "../events/event-ledger.js";
 
 export interface AgentTaskActivityInput extends AgentTaskWorkflowInput {
   runId: string;
@@ -75,6 +76,7 @@ export interface AgentTaskLifecycleActivities {
   projectAgentTaskState(input: AgentTaskProjectionInput): Promise<void>;
   requestAgentTaskApproval(input: { taskId: string; runId: string; approval: AgentApprovalBinding; requestId?: string; traceId?: string }): Promise<void>;
   resolveAgentTaskApproval(input: { taskId: string; runId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string; requestId?: string; traceId?: string }): Promise<void>;
+  settleInboundEvent?(input: { claim: EventClaim; status: "completed" | "failed" | "cancelled"; error?: string }): Promise<void>;
 }
 
 export type AgentTaskWorkerActivities = AgentTaskActivities & AgentTaskLifecycleActivities;

@@ -1,3 +1,5 @@
+- 2026-09-08：Route B 的入站 EventLedger 改由 Temporal Task 的终态结算。成功工作流才会完成 Kafka claim；失败或取消会释放带精确 token 的 lease，供既有 reclaim/retry 机制重新取得。Dispatcher 启动成功不再提前确认事件，避免异步工作流随后失败时永久丢失重试机会。
+
 - 2026-09-08：Agent 微服务 Compose 的 mTLS 文件挂载改为 long bind syntax，并固定 `create_host_path: false`。干净 worktree 未配置 `DIPOLE_INTERNAL_CERT_DIR` 或证书文件缺失时会在启动前 fail closed，避免 Docker 创建同名目录并使 Runtime 在读取证书时以 `EISDIR` 重启；Compose 门禁与远端部署手册已同步。
 
 - 2026-09-08：Route B · B3 补齐第一方 MCP 只读工具面：显式投影 owner profile、会话 list/read，检索开关启用后才注册 conversation search。所有工具继续从可信 Task/Run 恢复权限与 scope，并走既有 Tool invocation 审计；默认 MCP 网络入口保持关闭。
