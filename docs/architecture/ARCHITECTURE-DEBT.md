@@ -3,6 +3,7 @@
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据
 
 - 2026-09-09：`ModelShadowPlanner.reply()` 已与普通 plan 路径对齐，能从已授权的同会话 Memory reader 并发获取最多六条记录；每条记录按 1024 字符截断，并带 Memory 类型和 provenance 作为不可信数据进入单次低延迟回复。单元测试覆盖 resource scope、上限与 prompt-injection 数据保留，Remote GPU Node 22 typecheck 和 planner 测试均通过。
+- 2026-09-09：新增撤销回归固定 Runtime 侧边界：同一会话的下一条 Route B Task 重新向 Core reader 查询，reader 返回空集时已撤销 Memory 的内容和提示词区块均不可见。该测试与既有 Core owner revoke 契约共同约束“撤销后不再召回”；真实多轮 Provider 演练仍待受控样本。
 - **剩余边界：** Runtime 仅在显式 `DIPOLE_AGENT_MEMORY_ENABLED=true` 且 Core 返回已审核的持久 Memory 时读取；不会从入站消息自动生成或提升持久 Memory。默认体验环境仍关闭该开关，长期召回质量、写入频率、用户可见记忆控制和真实模型评测尚无证据，不能据此声明默认长会话记忆已启用。
 - **处理门槛：** 先通过 owner review 的 Memory candidate/promotion 流程提供可回滚样本，再在隔离体验项目做多轮召回、注入防护和撤销回归；随后才考虑受控开启 profile。
 
