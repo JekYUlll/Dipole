@@ -32,6 +32,7 @@
     "eval:shadow-review-pack": "tsx src/evals/shadow-eval-review-pack-cli.ts",
     "eval:shadow-summary": "tsx src/evals/shadow-eval-summary-cli.ts",
     "eval:context-ablation": "tsx src/evals/context-ablation-cli.ts",
+    "eval:context-ablation-bind": "tsx src/evals/context-ablation-binding-cli.ts",
     "receipt:temporal-fault": "tsx src/evals/temporal-fault-receipt-cli.ts",
     "reconcile:projection": "tsx src/reconcile/projection-reconcile-cli.ts",
     "promotion:check": "tsx src/promotion/promotion-check-cli.ts",
