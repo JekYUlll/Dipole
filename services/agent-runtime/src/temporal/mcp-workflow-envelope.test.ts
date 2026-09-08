@@ -105,7 +105,7 @@ describe("Temporal MCP Workflow execution envelope", () => {
       taskQueue: "dipole-agent-task-v1",
       workflowId: "dipole-agent-task/TASK-1",
       workflowIdConflictPolicy: "FAIL",
-      workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY",
+      workflowIdReusePolicy: "ALLOW_DUPLICATE",
       args: [{
         taskId: "TASK-1",
         goal: "read one calendar event",

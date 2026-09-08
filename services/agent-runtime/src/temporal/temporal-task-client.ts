@@ -61,7 +61,7 @@ export interface TemporalWorkflowStartPort {
     taskQueue: string;
     workflowId: string;
     workflowIdConflictPolicy: "FAIL";
-    workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY";
+    workflowIdReusePolicy: "ALLOW_DUPLICATE";
     args: [AgentTaskWorkflowHistoryInput];
   }): Promise<TemporalWorkflowStartHandle>;
 }
@@ -246,7 +246,11 @@ async function startTaskWorkflow(
     taskQueue,
     workflowId: agentTaskWorkflowId(input.taskId),
     workflowIdConflictPolicy: "FAIL",
-    workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY",
+    // The workflow records a business failure and then closes successfully so it
+    // can settle the event claim. Core Admission decides whether that failed
+    // task is eligible for another attempt; the ledger prevents completed
+    // events from being dispatched again.
+    workflowIdReusePolicy: "ALLOW_DUPLICATE",
     args: [input]
   });
   const runId = handle.firstExecutionRunId ?? handle.runId;

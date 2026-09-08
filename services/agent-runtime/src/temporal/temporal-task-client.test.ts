@@ -9,7 +9,7 @@ describe("Temporal Task client", () => {
     expect(() => agentTaskWorkflowId("  ")).toThrow(/Task ID/);
   });
 
-  it("reuses a running Workflow and permits a new execution only after failure", async () => {
+  it("rejects a concurrent Workflow while permitting a retry after a closed execution", async () => {
     const start = vi.fn(async () => ({ workflowId: "dipole-agent-task/task-1", firstExecutionRunId: "run-1" }));
     const client = new TemporalTaskClient({ start }, "dipole-agent-task-v1");
 
@@ -20,7 +20,7 @@ describe("Temporal Task client", () => {
       taskQueue: "dipole-agent-task-v1",
       workflowId: "dipole-agent-task/task-1",
       workflowIdConflictPolicy: "FAIL",
-      workflowIdReusePolicy: "ALLOW_DUPLICATE_FAILED_ONLY",
+      workflowIdReusePolicy: "ALLOW_DUPLICATE",
       args: [{ taskId: "task-1", goal: "summarize G1" }]
     });
   });
