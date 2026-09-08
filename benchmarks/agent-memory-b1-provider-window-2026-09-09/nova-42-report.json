@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "dipole.agent.memory-b1-synthetic-eval-report.v1",
+  "candidateVersion": "agent-runtime@interactive-compose-smoke",
+  "suiteSha256": "b71912908d7c8a92706a58cf47523ea46a983f10a60df437ce4e5e924de2c69e",
+  "passed": true,
+  "metrics": {
+    "totalCases": 2,
+    "passedCases": 2,
+    "passBps": 10000,
+    "minimumPassBps": 10000,
+    "recallCases": 1,
+    "revokedCases": 1
+  },
+  "failures": []
+}

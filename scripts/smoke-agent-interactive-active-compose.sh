@@ -71,12 +71,14 @@ fi
 : "${DIPOLE_AGENT_MEMORY_SMOKE:=0}"
 : "${DIPOLE_AGENT_MEMORY_B1_SMOKE:=0}"
 : "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE:=stub}"
+: "${DIPOLE_AGENT_MEMORY_B1_CANARY:=ORBIT-91}"
 memory_b1_model_source="${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}"
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" || "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]] || { printf 'DIPOLE_AGENT_DEFINITION_ONLY must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_MEMORY_SMOKE}" == "0" || "${DIPOLE_AGENT_MEMORY_SMOKE}" == "1" ]] || { printf 'DIPOLE_AGENT_MEMORY_SMOKE must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "0" || "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "stub" || "${DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE}" == "provider" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_MODEL_SOURCE must be stub or provider\n' >&2; exit 2; }
+[[ "${DIPOLE_AGENT_MEMORY_B1_CANARY}" =~ ^[A-Z0-9][A-Z0-9-]{2,31}$ ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_CANARY must be a 3-32 character uppercase token\n' >&2; exit 2; }
 if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
   [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE requires DIPOLE_AGENT_DEFINITION_ONLY=0\n' >&2; exit 2; }
   DIPOLE_AGENT_MEMORY_SMOKE=1
@@ -110,7 +112,7 @@ if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" && "${DIPOLE_AGENT_MEMORY_B1_MODE
   cat >"${DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE}" <<'NODE'
 import http from "node:http";
 
-const canary = "MEMORY-B1-CANARY: ORBIT-91";
+const canary = "MEMORY-B1-CANARY: ${DIPOLE_AGENT_MEMORY_B1_CANARY}";
 http.createServer((request, response) => {
   if (request.method !== "POST" || request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
   let raw = "";
@@ -336,7 +338,7 @@ INSERT INTO agent_memories (
   valid_from, memory_root_uuid, memory_version
 ) VALUES (
   '${memory_uuid}', 'dipole', '${owner_uuid}', '${agent_uuid}', 'semantic', 'active',
-  'conversation', '${conversation_key}', 'MEMORY-B1-CANARY: ORBIT-91', 100, 'smoke', '${memory_uuid}',
+  'conversation', '${conversation_key}', 'MEMORY-B1-CANARY: ${DIPOLE_AGENT_MEMORY_B1_CANARY}', 100, 'smoke', '${memory_uuid}',
   UTC_TIMESTAMP(3), '${memory_uuid}', 1
 );
 SQL
@@ -378,7 +380,7 @@ NODE
   [[ -n "${first_reply}" ]] || { printf 'B1 Memory reply is empty\n' >&2; return 1; }
   first_reply_sha256=$(printf '%s' "${first_reply}" | openssl dgst -sha256 -r | awk '{print $1}')
   first_response_contains_canary=false
-  [[ "${first_reply}" != *"ORBIT-91"* ]] || first_response_contains_canary=true
+  [[ "${first_reply}" != *"${DIPOLE_AGENT_MEMORY_B1_CANARY}"* ]] || first_response_contains_canary=true
 
   compose exec -T agent node --input-type=module - "${owner_telephone}" "${memory_uuid}" "${agent_uuid}" <<'NODE'
 const [telephone, memoryId, agentUuid] = process.argv.slice(2);
@@ -419,8 +421,8 @@ NODE
   [[ -n "${revoked_reply}" ]] || { printf 'B1 revoked Memory reply is empty\n' >&2; return 1; }
   revoked_reply_sha256=$(printf '%s' "${revoked_reply}" | openssl dgst -sha256 -r | awk '{print $1}')
   revoked_response_contains_canary=false
-  [[ "${revoked_reply}" != *"ORBIT-91"* ]] || revoked_response_contains_canary=true
-  canary_sha256=$(printf '%s' 'ORBIT-91' | openssl dgst -sha256 -r | awk '{print $1}')
+  [[ "${revoked_reply}" != *"${DIPOLE_AGENT_MEMORY_B1_CANARY}"* ]] || revoked_response_contains_canary=true
+  canary_sha256=$(printf '%s' "${DIPOLE_AGENT_MEMORY_B1_CANARY}" | openssl dgst -sha256 -r | awk '{print $1}')
 
   if [[ -n "${memory_b1_receipt_file}" ]]; then
     local runtime_revision first_task_sha256 revoked_task_sha256

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "dipole.agent.memory-b1-synthetic-eval.v1",
+  "candidateVersion": "agent-runtime@interactive-compose-smoke",
+  "minimumPassBps": 10000,
+  "cases": [
+    {"caseId": "recall-b1", "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed", "expectedMemoryLineageCount": 1, "recallExpectation": "required"},
+    {"caseId": "revoke-b1", "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed", "expectedMemoryLineageCount": 0, "recallExpectation": "not_evaluated"}
+  ],
+  "observations": [
+    {"caseId": "recall-b1", "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed", "taskSha256": "1699cea9d724abd507d35d7cf3a9d07083e0a898c7a59d295430cb37fa04f438", "replySha256": "dade5b37d23a6a2232fda8174f491f6a5d7ffd025d1bfa5e359585697386b7d3", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 1, "responseContainsCanary": true},
+    {"caseId": "revoke-b1", "canarySha256": "8438f9a1c4a8a60f515b5960c718959ef20601db5cee13cebdc82b8b044677ed", "taskSha256": "3c644a9818df4458872b312374280a81e4fdb34e85ae264a207840b33a54f9af", "replySha256": "dade5b37d23a6a2232fda8174f491f6a5d7ffd025d1bfa5e359585697386b7d3", "taskCompleted": true, "modelCallCount": 1, "memoryLineageCount": 0, "responseContainsCanary": true}
+  ]
+}
