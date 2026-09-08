@@ -1,3 +1,5 @@
+- 2026-09-09：新增 `memory-corpus:manifest` operator CLI，安全生成 owner-bound reviewed-corpus source manifest。它从当前进程 UID 绑定 owner，复核 `0600`、非符号链接、canonical 的 corpus/review 文件并重算哈希，再以新建 `0600` 文件写入批准时间窗；标准输出仅保留 source ID、哈希与过期时间。该工具只服务离线评测，不授予 Memory 写入、Runtime 切流或自动晋级权限。
+
 - 2026-09-09：Remote GPU 在提交 `399af6f7` 的干净 Agent 镜像上重跑真实 DeepSeek V4 Flash B1 Memory 三 canary 窗口。`ORBIT-91`、`NOVA-42` 与 `QUARTZ-17` 均完成 recall，窗口 CLI 复算为 `3/3`、`10000 bps`；三条 owner revoke 后的新 Task 均无目标 Memory lineage，所有既有交互幂等与 Worker restart 检查通过。低敏 suite、receipt 和窗口报告见 [`agent-memory-b1-provider-window-399af6f7-2026-09-09`](benchmarks/agent-memory-b1-provider-window-399af6f7-2026-09-09/)。这解除 synthetic 召回质量阻塞；默认 Memory 继续关闭，真实审核语料、多轮任务和跨 Provider 对照仍是开启前置条件。
 
 - 2026-09-09：修正 Route B 低延迟 `reply()` 对已授权持久 Memory 的提示词约束：Memory 仍作为不可信、受限参考数据，模型现在仅在事实直接回答当前问题时使用该事实，并明确拒绝执行 Memory 中的指令、编造或不相关套用。Remote GPU 的隔离 DeepSeek V4 Flash 回归使此前失败的 `QUARTZ-17` synthetic canary 恢复为 recall 命中，同时 owner revoke 后的新 Task 仍为零条目标 Memory lineage。该单样本修复收据见 [`repair-quartz-17-2026-09-09`](benchmarks/agent-memory-b1-provider-window-2026-09-09/repair-quartz-17-2026-09-09/)；默认 Memory 继续关闭，三样本窗口需要在同一已提交候选上重新执行。

@@ -33,6 +33,8 @@ Memory reviewed corpus v1 采用与订阅语义评测一致的双 reviewer + 独
 
 真实来源通过 source manifest v1 接入：loader 在读取前校验 owner UID、绝对规范路径、父目录 canonical、`O_NOFOLLOW`、regular/single-link、0600 权限、2 MiB 上限、批准窗口及 corpus/review SHA-256。manifest 只授权离线评测，不授予 Memory 写入、Runtime 切流或晋级权限。
 
+Operator 使用 `npm run memory-corpus:manifest` 生成新的 source manifest，显式提供 source ID、两份 owner-only 文件、批准时间窗和新绝对输出路径。CLI 从当前进程 UID 派生 owner，重新读取并校验两份文件，再以 `0600` 和 `wx` 写入 manifest；标准输出只含 source ID、哈希和过期时间。它不输出或上传 corpus/review 内容。生成后用 `npm run eval:memory-corpus-review -- --manifest=/absolute/path/manifest.json` 重新校验该离线批准输入。
+
 Memory prefilter evidence v1 进一步将 embedding/small_model 的逐 case 分数、阈值、延迟和成本绑定 reviewed corpus。`eval:memory-prefilter` 只生成低敏聚合报告，供候选比较和后续灰度门禁使用；当前不调用真实模型、不消费 Kafka，也不改变自动 Memory 写入开关。
 
 在进入后续灰度前使用 `eval:memory-prefilter-rollout`。该 CLI 不信任调用方传入的 review/report 摘要，会重新计算 review agreement、gold label 和候选门禁，并输出绑定哈希的 `eligible|blocked` 决策；`eligible` 仅表示离线证据满足策略，不授予 Runtime 或生产写入权。
