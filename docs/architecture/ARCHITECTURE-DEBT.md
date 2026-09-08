@@ -2,6 +2,7 @@
 
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据
 
+- 2026-09-09：Interactive Active 的隔离 Memory profile 已在 Remote GPU 验收。Runtime 只有在 `DIPOLE_AGENT_MEMORY_ENABLED=true` 与 `DIPOLE_AGENT_INTERACTIVE_MEMORY_PROFILE=true` 同时设置时才允许 Memory；该 profile 还要求 AI SDK，并固定拒绝 retrieval、MCP、external MCP 和 subscription shadow。版本化候选镜像完成 Definition create/list 幂等检查，以及等待审批、拒绝零副作用、重复批准的完整确定性写入 smoke 后自动清理，公共体验栈未修改。该项未调用真实模型，真实 B1 入站回复的 Memory 召回仍待演练。
 - 2026-09-09：Remote GPU 在 disposable Temporal/MySQL/mTLS drill 实测 promotion 后的受控读取与 owner 撤销边界。Activity 在 Core durable commit 后重试仍得到同一 Memory；Runtime 通过独立、固定 Task/Run identity 的 RPC 读取到该会话 Memory，owner 回滚后新 read Task 返回空集；随后撤销 Runtime promotion grant，新的 receipt commit 被拒绝。测试容器和 worktree 已清理，公共 `dipole-experience` 未修改；该证据不代表默认持久 Memory 已启用或真实 Provider 多轮质量已验证。
 - 2026-09-09：Remote GPU 复验 Memory-only Context Ablation preflight。隔离 MySQL 已应用 `000056`，`agent_context_ablation_bindings` 存在，`dipole_agent_eval` 对该绑定表没有写权限；Memory 与 retrieval overlay 使用独立 Temporal queue 且保持互斥。此项只建立受控评测数据面，真实多轮 Provider 召回与撤销证据仍待完成。
 - 2026-09-09：Remote GPU 的 disposable Temporal/MySQL/mTLS drill 已通过：Core 首次 durable commit 后注入 Worker failure，Temporal 重试复用同一 promotion receipt 和 Memory；撤销 runtime grant 后的 receipt 被拒绝，owner 随后回滚测试 Memory。fixture 现明确分离 Agent-owned manual Definition 与 user-owned Task/Memory principal。该证据不改变默认关闭的持久 Memory 开关。

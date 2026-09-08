@@ -1,0 +1,13 @@
+services:
+  agent:
+    environment:
+      # Disposable verification profile only. It never changes the public
+      # experience profile and keeps retrieval disabled to isolate Memory.
+      DIPOLE_AGENT_MEMORY_ENABLED: "true"
+      DIPOLE_AGENT_INTERACTIVE_MEMORY_PROFILE: "true"
+      # Memory requires the AI SDK runtime, although this disposable Definition
+      # smoke never invokes a model.
+      DIPOLE_AGENT_MODEL_MODE: ai_sdk
+      DIPOLE_AGENT_RETRIEVAL_ENABLED: "false"
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "false"
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: ${DIPOLE_AGENT_INTERACTIVE_MEMORY_TASK_QUEUE:?DIPOLE_AGENT_INTERACTIVE_MEMORY_TASK_QUEUE is required}

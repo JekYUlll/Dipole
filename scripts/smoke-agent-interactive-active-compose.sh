@@ -52,13 +52,16 @@ fi
 : "${DIPOLE_GATEWAY_PORT:=$((18000 + RANDOM % 2000))}"
 : "${DIPOLE_MYSQL_AIO_COMPAT:=0}"
 : "${DIPOLE_AGENT_DEFINITION_ONLY:=0}"
+: "${DIPOLE_AGENT_MEMORY_SMOKE:=0}"
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" || "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]] || { printf 'DIPOLE_AGENT_DEFINITION_ONLY must be 0 or 1\n' >&2; exit 2; }
+[[ "${DIPOLE_AGENT_MEMORY_SMOKE}" == "0" || "${DIPOLE_AGENT_MEMORY_SMOKE}" == "1" ]] || { printf 'DIPOLE_AGENT_MEMORY_SMOKE must be 0 or 1\n' >&2; exit 2; }
 
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_AGENT_IMAGE
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_CONTROL_SECRET DIPOLE_AGENT_CANDIDATE_VERSION
 export DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID DIPOLE_AGENT_INTERACTIVE_TASK_QUEUE DIPOLE_GATEWAY_BIND_ADDRESS DIPOLE_GATEWAY_PORT
 export DIPOLE_AGENT_TEMPORAL_ADDRESS DIPOLE_AGENT_TEMPORAL_NAMESPACE DIPOLE_AGENT_TEMPORAL_TASK_QUEUE
+export DIPOLE_AGENT_INTERACTIVE_MEMORY_TASK_QUEUE="dipole-agent-interactive-memory-${RANDOM}-$$"
 export DIPOLE_AGENT_RELEASE_MANIFEST_FILE="${scratch_dir}/release-manifest.json"
 export DIPOLE_INTERNAL_CERT_DIR="${scratch_dir}/certs"
 export INTERNAL_CERT_DIR="${DIPOLE_INTERNAL_CERT_DIR}"
@@ -97,6 +100,9 @@ compose_files=(
 if [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]]; then
   compose_files+=(-f "${root_dir}/deploy/microservices/remote-gpu-mysql-aio-compat.yml")
 fi
+if [[ "${DIPOLE_AGENT_MEMORY_SMOKE}" == "1" ]]; then
+  compose_files+=(-f "${root_dir}/deploy/microservices/agent-interactive-memory-smoke.yml")
+fi
 
 compose() {
   docker compose -p "${project_name}" "${compose_files[@]}" "$@"
@@ -104,6 +110,10 @@ compose() {
 
 cleanup() {
   local status=$?
+  if [[ "${status}" != "0" ]]; then
+    printf 'Interactive Agent Compose smoke failed; recent Core and Agent logs follow.\n' >&2
+    compose logs --no-color --tail=120 core agent >&2 || true
+  fi
   compose exec -T mysql mysql -uroot -proot123 dipole \
     -e "UPDATE agent_runtime_promotion_grants SET revoked_at = COALESCE(revoked_at, UTC_TIMESTAMP(3)) WHERE grant_uuid = '${grant_uuid}'" >/dev/null 2>&1 || true
   if [[ "${KEEP_STACK:-0}" != "1" ]]; then

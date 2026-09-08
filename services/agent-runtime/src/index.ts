@@ -114,6 +114,7 @@ if (temporalConfig.activityMode === "subscription_active") {
     capabilityRPCEnabled: shadowConfig.capabilityRpc.enabled,
     capabilityRPCTLS: shadowConfig.capabilityRpc.tls.enabled,
     interactiveMessageWritesEnabled: shadowConfig.interactiveMessageWritesEnabled,
+    memoryProfileEnabled: process.env.DIPOLE_AGENT_INTERACTIVE_MEMORY_PROFILE?.trim().toLowerCase() === "true",
     ...activeReadSurface
   });
 } else {
