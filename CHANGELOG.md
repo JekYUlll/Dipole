@@ -2747,4 +2747,4 @@
 - 2026-09-09：修复 Agent Memory promotion 隔离演练的身份 fixture：手工任务的 Definition 由 Agent 持有，Task 与 Memory 的 principal 保持为发起用户。Remote GPU 完整 Temporal/MySQL/mTLS 演练通过，覆盖 Core durable commit 后的 Worker 故障重试、同一 Memory 重放、已撤销 promotion grant 的拒绝，以及 owner 回滚测试 Memory；公共体验环境未改动。
 - 2026-09-09：Remote GPU 通过 Agent Context Ablation 的隔离 preflight：Memory-only 条件完成 migration `000056` 与只读评测账户校验，且与 retrieval 条件使用独立队列和互斥开关。该检查不写入共享体验数据，也不启用默认持久 Memory。
 - 2026-09-09：Agent Memory 的 disposable Temporal/MySQL/mTLS drill 扩展为真实受控读取链路：promotion 重试后，独立 read Task 可按固定身份读取已审核的会话 Memory；owner 回滚后同一受控 RPC 返回空集；Runtime promotion grant 撤销后新的 receipt commit 被拒绝。默认持久 Memory 开关和公共体验环境均未改变。
-- 2026-09-09：新增默认关闭的 `eval:context-ablation-bind` 运维 CLI。它要求独立的最小权限 `DIPOLE_AGENT_EVAL_BIND_MYSQL_URL`，在单一事务内校验完整 baseline/retrieval/memory 矩阵、Task/Run 归属、候选版本与 completed shadow 状态；仅精确重复写入可重放，其余冲突均回滚。运行时启动路径、默认 profile 与候选切流保持不变。
+- 2026-09-09：新增默认关闭的 `eval:context-ablation-bind` 运维 CLI。它要求独立的最小权限 `DIPOLE_AGENT_EVAL_BIND_MYSQL_URL` 与 owner-reviewed source，在单一事务内校验完整 baseline/retrieval/memory 矩阵、Task/Run 归属、候选版本与 completed shadow 状态；仅精确重复写入可重放，其余冲突均回滚。运行时启动路径、默认 profile 与候选切流保持不变。

@@ -5,6 +5,8 @@ import { createPool } from "mysql2/promise";
 
 import { buildContextAblationBindingPlan } from "./context-ablation-binding-plan.js";
 import { MySQLContextAblationBindingStore } from "./context-ablation-binding-store.js";
+import { validateContextAblationReviewedSource } from "./context-ablation-reviewed-source.js";
+import { loadMemoryReviewedCorpusSource, loadMemoryReviewedCorpusSourceManifest } from "./memory-reviewed-corpus-source.js";
 
 interface Writable { write(value: string): unknown; }
 
@@ -12,7 +14,7 @@ interface Writable { write(value: string): unknown; }
 export async function runContextAblationBindingCLI(args: readonly string[], stdout: Writable, stderr: Writable): Promise<number> {
   const inputs = parseInputs(args);
   if (inputs === undefined) {
-    stderr.write("context ablation binding requires --manifest=<path> and --bindings=<path>\\n");
+    stderr.write("context ablation binding requires --manifest=<path>, --bindings=<path>, and --reviewed-source=<path>\\n");
     return 1;
   }
   const uri = process.env.DIPOLE_AGENT_EVAL_BIND_MYSQL_URL?.trim();
@@ -22,10 +24,15 @@ export async function runContextAblationBindingCLI(args: readonly string[], stdo
   }
   const pool = createPool({ uri, timezone: "Z", connectionLimit: 1 });
   try {
-    const [manifest, bindings] = await Promise.all([readFile(inputs.manifestPath, "utf8"), readFile(inputs.bindingsPath, "utf8")]);
+    const [manifest, bindings, reviewedSource] = await Promise.all([
+      readFile(inputs.manifestPath, "utf8"),
+      readFile(inputs.bindingsPath, "utf8"),
+      loadMemoryReviewedCorpusSource(await loadMemoryReviewedCorpusSourceManifest(inputs.reviewedSourcePath))
+    ]);
     const plan = buildContextAblationBindingPlan(manifest, bindings);
+    const reviewed = validateContextAblationReviewedSource(manifest, reviewedSource);
     const receipt = await new MySQLContextAblationBindingStore(pool).apply(plan);
-    stdout.write(`${JSON.stringify({ schemaVersion: "dipole.agent.context-ablation-binding-receipt.v1", experimentId: plan.experimentId, candidateVersion: plan.candidateVersion, ...receipt })}\\n`);
+    stdout.write(`${JSON.stringify({ schemaVersion: "dipole.agent.context-ablation-binding-receipt.v1", experimentId: plan.experimentId, candidateVersion: plan.candidateVersion, reviewedSource: reviewed, ...receipt })}\\n`);
     return 0;
   } catch (error) {
     stderr.write(`context ablation binding failed closed: ${error instanceof Error ? error.message : String(error)}\\n`);
@@ -35,17 +42,20 @@ export async function runContextAblationBindingCLI(args: readonly string[], stdo
   }
 }
 
-function parseInputs(args: readonly string[]): { manifestPath: string; bindingsPath: string } | undefined {
-  if (args.length !== 2) return undefined;
+function parseInputs(args: readonly string[]): { manifestPath: string; bindingsPath: string; reviewedSourcePath: string } | undefined {
+  if (args.length !== 3) return undefined;
   const values = new Map<string, string>();
   for (const value of args) {
-    const match = /^--(manifest|bindings)=(.+)$/u.exec(value);
+    const match = /^--(manifest|bindings|reviewed-source)=(.+)$/u.exec(value);
     if (match === null || values.has(match[1]!) || match[2]!.trim() === "") return undefined;
     values.set(match[1]!, match[2]!.trim());
   }
   const manifestPath = values.get("manifest");
   const bindingsPath = values.get("bindings");
-  return manifestPath === undefined || bindingsPath === undefined ? undefined : { manifestPath, bindingsPath };
+  const reviewedSourcePath = values.get("reviewed-source");
+  return manifestPath === undefined || bindingsPath === undefined || reviewedSourcePath === undefined
+    ? undefined
+    : { manifestPath, bindingsPath, reviewedSourcePath };
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
