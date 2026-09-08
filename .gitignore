@@ -6,6 +6,7 @@ acc/
 /agent/
 certs/
 logs/
+.dev-logs/
 dist/
 # Legacy root-level Agent build output; source lives under services/agent-runtime/.
 /agent-runtime/
@@ -49,6 +50,7 @@ go.work.sum
 # env file
 .env
 configs/config.local.yaml
+*.shadow-bak
 
 # Editor/IDE
 # .idea/
