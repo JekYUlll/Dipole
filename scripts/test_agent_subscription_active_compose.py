@@ -10,7 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
     def test_smoke_isolated_and_deterministic(self) -> None:
-        smoke = (ROOT / "scripts/smoke-agent-subscription-active-compose.sh").read_text(encoding="utf-8")
+        smoke_path = ROOT / "scripts/smoke-agent-subscription-active-compose.sh"
+        smoke = smoke_path.read_text(encoding="utf-8")
+        self.assertNotEqual(smoke_path.stat().st_mode & 0o111, 0)
         self.assertIn('project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-subscription-active-', smoke)
         self.assertIn('DIPOLE_GATEWAY_BIND_ADDRESS:=127.0.0.1', smoke)
         self.assertIn('DIPOLE_AGENT_TEMPORAL_ADDRESS:=temporal:7233', smoke)

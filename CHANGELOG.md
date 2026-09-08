@@ -1,3 +1,5 @@
+- 2026-09-08：Subscription Active smoke 现以可执行脚本形式交付，并由静态门禁确认 checkout 后保留执行位；运行手册中的路径命令可直接在干净 Remote GPU worktree 运行。
+
 - 2026-09-08：Subscription Active 的确定性 Compose smoke 已改为按模型请求 schema 返回严格的 Plan 或 synthesis JSON，避免把 `steps` 字段带入 synthesis 而耗尽模型预算。Remote GPU 隔离项目复验：Definition、owner-scoped Subscription、短期 grant 与单个 Kafka 事件收敛为一个 completed durable read Task，至少一条模型调用完成且 Agent 消息为零；退出后隔离资源为零，公共 `dipole-experience` 保持 11 个健康容器。该 smoke 的 grant 仍为受控 fixture，operator proposal/review 到 owner Definition grant 的产品闭环继续待做。
 
 - 2026-09-08：独立 Core Runtime 现装配已有的 Agent Runtime promotion control RPC。Remote GPU 以临时开启的 Gateway route 复核认证请求到达 Core 后因缺少 operator grant 返回 `403`，随后恢复 Gateway 默认镜像和关闭开关；默认 Gateway 路由和 subscription trigger 保持关闭，避免 Definition 或 Subscription 创建被误解为自动获得 active grant。
