@@ -1,3 +1,5 @@
+- 2026-09-08：补齐 Runtime promotion control 到 active Subscription admission 的 SQLC/MySQL 契约。第二位 operator review 生成的 grant 可放行匹配的 owner Subscription，并持久固定 Definition/Subscription；revoke 后以新 trigger 再次 admission 会 fail closed。Remote GPU 用一次性 MySQL 8.4 容器实跑通过，清理后公共 `dipole-experience` 保持 11 个健康容器。Gateway operator API 的受控产品化入口继续默认关闭。
+
 - 2026-09-08：新增可重复的 Remote GPU B1 owner Definition fallback 回归脚本。它以新 owner 创建默认只读 Definition、确认无 active promotion grant，再发送新私聊；验收任务固定到 `lowrisk-assistant:v1`、`completed:completed`、一条助手回复和一条 consumed `message.assistant_reply.send` 审批。体验环境已实跑通过，公共 `dipole-experience` 保持 11 个健康容器。
 
 - 2026-09-08：Subscription Active smoke 现以可执行脚本形式交付，并由静态门禁确认 checkout 后保留执行位；运行手册中的路径命令可直接在干净 Remote GPU worktree 运行。

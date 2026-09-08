@@ -31,7 +31,8 @@
 - 2026-09-08：失败 workflow 的 reclaim/retry 已完成 Remote GPU 受控演练：同一消息仍映射同一 Task，失败后 EventLedger release 可触发新的 Run attempt，且失败 Run 历史保持可审计。业务失败的 Workflow 会在结算 claim 后正常关闭，因此重投允许复用已关闭的 Workflow ID；运行中的 Workflow 继续拒绝并发启动。Runtime 以 Core-bound Run UUID 复核执行上下文，模型预算也按该 Run 分域，最终重投仅产生一条助手回复。见 AD-065。
 - 2026-09-08：两轮入站 Context E2E 已通过：新用户在第一条私聊中提供唯一代号，第二条私聊要求复述；两条独立 Task 均完成且第二条回复包含第一轮代号。Route A 仍关闭，公共体验栈保持 11 容器。见 [receipt](../../benchmarks/agent-inbound-context-e2e-2026-09-08/)。
 - 2026-09-08：隔离 `subscription_active` read-only smoke 已验证 Definition、owner-scoped Subscription、短期 fixture grant 和一条 Kafka 事件可收敛为一个 completed durable Task；模型调用存在且 Agent 消息为零，退出后公共体验仍为 11 个健康容器。fixture grant 只用于开发期验收。
-- 下一个正确性切片：订阅路径通过 proposal/review 控制面向 Definition 签发 owner grant，并让 Definition 抽屉说明明确“私聊和群 @ 无需先创建 Definition”。
+- 2026-09-08：MySQL 契约已将 proposal/review 控制面与 active Subscription admission 串联：review 签发的 grant 可准入匹配 owner Subscription 并固定其 Definition/Subscription binding；revoke 后新 trigger 被拒绝。Remote GPU 的一次性 MySQL 8.4 容器实跑通过，公共体验保持 11 个健康容器。
+- 下一个正确性切片：将受控 Gateway operator proposal/review API 以独立、默认关闭的体验流程接入 Subscription，而不是继续在 smoke 中直接写入 fixture grant；Definition 抽屉需明确“私聊和群 @ 无需先创建 Definition”，该文案由前端改版分支负责。
 
 ## 1. 目标与验收
 - G1：私信小助手 → 自动 AI 回复，能调用工具（1v1 多轮对话恢复）。
