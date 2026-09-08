@@ -201,6 +201,15 @@ export class ModelShadowPlanner implements ShadowPlanner {
       });
     const transcript = replyConversationTranscript(conversation);
     const memory = replyMemoryTranscript(memories);
+    // Keep the fast reply path subject to the same pre-model memory audit as
+    // planned runs. This is deliberately written before model invocation so a
+    // reply cannot consume persisted context without durable lineage.
+    await this.lineage?.recordMemoryContext(context.taskId, {
+      selected: memories.slice(0, replyMemoryLimit).map((item) => ({
+        id: `memory:${item.memoryId}`,
+        representation: "full" as const
+      }))
+    });
     const scene = isGroup
       ? "You were @-mentioned in a group chat. Reply to the mention for the whole group to read."
       : "You are in a 1:1 direct chat with the user.";

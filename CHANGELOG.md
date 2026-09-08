@@ -1,4 +1,4 @@
-- 2026-09-09：新增隔离的 Interactive Memory Compose profile。`DIPOLE_AGENT_MEMORY_ENABLED` 只有与显式 `DIPOLE_AGENT_INTERACTIVE_MEMORY_PROFILE=true` 共同出现时，才可在 `interactive_active` Runtime 启动；profile 同时要求 AI SDK，并固定关闭 retrieval。Remote GPU 使用版本化候选镜像完成 Definition create/list 幂等和完整确定性写入 smoke：等待审批定位、拒绝零副作用、重复批准收敛为一次 Tool 调用、一条消息、两条 Sync inbox。候选项目自动清理，公共 `dipole-experience` 保持 12 个运行服务。该 smoke 未调用真实模型，尚未覆盖真实入站回复的 Memory 召回。
+- 2026-09-09：隔离 Interactive Memory Compose profile 的真实 B1 入站验收已通过。版本化候选镜像将同会话、已审核的 canary Memory 经 Core scoped reader 交给 `reply()`；Temporal Task 完成一次模型调用、发送精确一条 `B1_MEMORY_RECALLED_ORBIT_91` 回复，并在模型调用前写入一条 Memory lineage。`dipole_agent` 仅获得 lineage 的 `SELECT/INSERT/UPDATE` 权限；随后既有拒绝与重复批准演练按 B1 后基线通过。候选项目自动清理，公共 `dipole-experience` 保持 11 个健康容器。profile 和默认持久 Memory 均继续关闭，此项使用确定性模型 stub，不代表真实 Provider 质量或默认写入策略已启用。
 
 - 2026-09-08：`subscription_active` 的 `publication` Smoke 现对完全相同的 Runtime evidence publication 连续执行两次，并要求两个 content-addressed receipt 的 Artifact ID、evidence SHA-256 与 eval-suite SHA-256 完全一致。Remote GPU 隔离验收通过后，Kafka 订阅事件仍只收敛为一个 completed durable read Task、模型调用存在、Agent 消息为零；候选容器和卷自动清理，公共体验栈保持 11 个容器。
 

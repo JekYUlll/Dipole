@@ -8,5 +8,6 @@ GRANT SELECT, INSERT, UPDATE ON dipole.agent_model_runs TO 'dipole_agent'@'%';
 GRANT SELECT, INSERT, UPDATE ON dipole.agent_model_calls TO 'dipole_agent'@'%';
 GRANT SELECT, INSERT ON dipole.agent_shadow_plans TO 'dipole_agent'@'%';
 GRANT SELECT, INSERT, UPDATE ON dipole.agent_shadow_steps TO 'dipole_agent'@'%';
+GRANT SELECT, INSERT, UPDATE ON dipole.agent_memory_task_lineage TO 'dipole_agent'@'%';
 
 FLUSH PRIVILEGES;

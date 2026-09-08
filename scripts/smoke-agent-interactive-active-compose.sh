@@ -53,9 +53,15 @@ fi
 : "${DIPOLE_MYSQL_AIO_COMPAT:=0}"
 : "${DIPOLE_AGENT_DEFINITION_ONLY:=0}"
 : "${DIPOLE_AGENT_MEMORY_SMOKE:=0}"
+: "${DIPOLE_AGENT_MEMORY_B1_SMOKE:=0}"
 [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "0" || "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]] || { printf 'DIPOLE_MYSQL_AIO_COMPAT must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" || "${DIPOLE_AGENT_DEFINITION_ONLY}" == "1" ]] || { printf 'DIPOLE_AGENT_DEFINITION_ONLY must be 0 or 1\n' >&2; exit 2; }
 [[ "${DIPOLE_AGENT_MEMORY_SMOKE}" == "0" || "${DIPOLE_AGENT_MEMORY_SMOKE}" == "1" ]] || { printf 'DIPOLE_AGENT_MEMORY_SMOKE must be 0 or 1\n' >&2; exit 2; }
+[[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "0" || "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE must be 0 or 1\n' >&2; exit 2; }
+if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
+  [[ "${DIPOLE_AGENT_DEFINITION_ONLY}" == "0" ]] || { printf 'DIPOLE_AGENT_MEMORY_B1_SMOKE requires DIPOLE_AGENT_DEFINITION_ONLY=0\n' >&2; exit 2; }
+  DIPOLE_AGENT_MEMORY_SMOKE=1
+fi
 
 export DIPOLE_MIGRATE_IMAGE DIPOLE_CORE_IMAGE DIPOLE_GATEWAY_IMAGE DIPOLE_MESSAGE_IMAGE DIPOLE_SYNC_IMAGE DIPOLE_AGENT_IMAGE
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_CONTROL_SECRET DIPOLE_AGENT_CANDIDATE_VERSION
@@ -73,6 +79,28 @@ export DIPOLE_AGENT_MODEL_CONTEXT_PROFILES='[{"route":"compose-smoke/determinist
 export DIPOLE_AGENT_MODEL_MAX_CALLS="1"
 export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="1000"
 export DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS="256"
+if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
+  export DIPOLE_AGENT_MODEL_BASE_URL="http://127.0.0.1:8089/v1"
+  export DIPOLE_AGENT_MODEL_OUTPUT_MODE="json_text"
+  export DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS="5000"
+  export DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE="${scratch_dir}/memory-b1-model-stub.mjs"
+  cat >"${DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE}" <<'NODE'
+import http from "node:http";
+
+const canary = "MEMORY-B1-CANARY: ORBIT-91";
+http.createServer((request, response) => {
+  if (request.method !== "POST" || request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
+  let raw = "";
+  request.setEncoding("utf8");
+  request.on("data", chunk => { raw += chunk; });
+  request.on("end", () => {
+    const summary = raw.includes(canary) ? "B1_MEMORY_RECALLED_ORBIT_91" : "B1_MEMORY_MISSING";
+    const body = JSON.stringify({ id: "interactive-memory-b1-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: JSON.stringify({ summary }) } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+    response.writeHead(200, { "content-type": "application/json" }).end(body);
+  });
+}).listen(8089, "0.0.0.0");
+NODE
+fi
 
 cat >"${DIPOLE_AGENT_RELEASE_MANIFEST_FILE}" <<EOF
 {
@@ -102,6 +130,9 @@ if [[ "${DIPOLE_MYSQL_AIO_COMPAT}" == "1" ]]; then
 fi
 if [[ "${DIPOLE_AGENT_MEMORY_SMOKE}" == "1" ]]; then
   compose_files+=(-f "${root_dir}/deploy/microservices/agent-interactive-memory-smoke.yml")
+fi
+if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
+  compose_files+=(-f "${root_dir}/deploy/microservices/agent-interactive-memory-b1-smoke.yml")
 fi
 
 compose() {
@@ -250,6 +281,62 @@ fi
 mysql <<SQL
 INSERT IGNORE INTO users (uuid, nickname, telephone, password_hash, status, created_at, updated_at) VALUES
   ('${agent_uuid}', 'Dipole Agent', '13900000002', 'smoke', 1, NOW(3), NOW(3));
+SQL
+
+run_memory_b1() {
+  local memory_uuid="MEMORY-B1-${RANDOM}-$$"
+  mysql <<SQL
+INSERT INTO agent_memories (
+  memory_uuid, tenant_id, principal_uuid, agent_uuid, memory_type, status,
+  resource_type, resource_id, content, priority, source_type, source_id,
+  valid_from, memory_root_uuid, memory_version
+) VALUES (
+  '${memory_uuid}', 'dipole', '${owner_uuid}', '${agent_uuid}', 'semantic', 'active',
+  'conversation', '${conversation_key}', 'MEMORY-B1-CANARY: ORBIT-91', 100, 'smoke', '${memory_uuid}',
+  UTC_TIMESTAMP(3), '${memory_uuid}', 1
+);
+SQL
+  compose exec -T agent node --input-type=module - "${owner_telephone}" "${agent_uuid}" <<'NODE'
+const [telephone, agentUuid] = process.argv.slice(2);
+const login = await fetch("http://gateway:8080/api/v1/auth/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ telephone, password: "smoke-pass-123" }) });
+const token = (await login.json())?.data?.token;
+if (login.status !== 200 || typeof token !== "string") throw new Error(`B1 login failed: ${login.status}`);
+const socket = new WebSocket(`ws://gateway:8080/api/v1/ws?token=${encodeURIComponent(token)}&device=memory-b1-smoke`);
+await new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error("B1 send timeout")), 15_000);
+  socket.addEventListener("open", () => socket.send(JSON.stringify({ type: "chat.send", data: { target_uuid: agentUuid, content: "What is my project canary?", client_message_id: `memory-b1-${Date.now()}` } })));
+  socket.addEventListener("message", ({ data }) => {
+    const event = JSON.parse(String(data));
+    if (event?.type === "chat.sent") { clearTimeout(timer); socket.close(); resolve(); }
+    if (event?.type === "error") reject(new Error(`B1 send failed: ${JSON.stringify(event.data)}`));
+  });
+  socket.addEventListener("error", () => reject(new Error("B1 websocket failed")));
+});
+NODE
+  local task_id=""
+  for _ in $(seq 1 90); do
+    task_id=$(mysql -e "SELECT task_uuid FROM agent_tasks WHERE principal_uuid = '${owner_uuid}' AND trigger_type = 'agent.interactive.requested' ORDER BY created_at DESC LIMIT 1" || true)
+    [[ -n "${task_id}" ]] && [[ "$(mysql -e "SELECT workflow_status FROM agent_tasks WHERE task_uuid = '${task_id}'")" == "completed" ]] && break
+    sleep 1
+  done
+  [[ -n "${task_id}" ]] || { printf 'B1 Memory task was not created\n' >&2; return 1; }
+  [[ "$(mysql -e "SELECT definition_uuid FROM agent_tasks WHERE task_uuid = '${task_id}'")" == "lowrisk-assistant:v1" ]] || { printf 'B1 Memory task did not use low-risk Definition\n' >&2; return 1; }
+  local effects
+  effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_model_calls AS calls JOIN agent_model_runs AS runs ON runs.run_uuid = calls.run_uuid WHERE runs.task_uuid = '${task_id}' AND calls.status = 'completed'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}' AND content = 'B1_MEMORY_RECALLED_ORBIT_91'), (SELECT COUNT(*) FROM agent_memory_task_lineage WHERE task_uuid = '${task_id}' AND memory_uuid = '${memory_uuid}')")
+  [[ "${effects}" == $'1\t1\t1' ]] || { printf 'B1 Memory effects diverged: %q\n' "${effects}" >&2; return 1; }
+}
+
+if [[ "${DIPOLE_AGENT_MEMORY_B1_SMOKE}" == "1" ]]; then
+  run_memory_b1
+fi
+
+# The optional B1 route legitimately writes one reply before this deterministic
+# approval drill. Keep the latter's zero-effect assertions relative to that
+# known baseline, so each phase remains independently meaningful.
+agent_message_baseline=$(mysql -e "SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}'")
+agent_message_inbox_baseline=$(mysql -e "SELECT COUNT(*) FROM user_sync_inbox AS inbox JOIN messages AS message ON message.uuid = inbox.message_uuid WHERE message.sender_uuid = '${agent_uuid}' AND message.target_uuid = '${owner_uuid}'")
+
+mysql <<SQL
 INSERT INTO agent_definition_versions (
   definition_uuid, version, tenant_id, owner_uuid, agent_uuid, status,
   permissions_json, scopes_json, valid_from
@@ -463,7 +550,8 @@ denied_approval=$(wait_for_approval "${denied_task}")
 resolve_twice "${denied_task}" "${denied_approval}" denied >/dev/null
 wait_for_workflow "${denied_task}" cancelled
 denied_effects=$(mysql -e "SELECT (SELECT COUNT(*) FROM agent_tool_invocations WHERE task_uuid = '${denied_task}'), (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}')")
-[[ "${denied_effects}" == $'0\t0' ]] || { printf 'Denied task produced side effects: %q\n' "${denied_effects}" >&2; exit 1; }
+denied_expected=$'0\t'"${agent_message_baseline}"
+[[ "${denied_effects}" == "${denied_expected}" ]] || { printf 'Denied task produced side effects: %q\n' "${denied_effects}" >&2; exit 1; }
 
 approved_task=$(start_task "approve-$(openssl rand -hex 6)" "/send Compose approval replay committed exactly one message.")
 approved_approval=$(wait_for_approval "${approved_task}")
@@ -477,7 +565,8 @@ approved_effects=$(mysql -e "SELECT
   (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}'),
   (SELECT COUNT(DISTINCT client_message_id) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}'),
   (SELECT COUNT(*) FROM user_sync_inbox AS inbox JOIN messages AS message ON message.uuid = inbox.message_uuid WHERE message.sender_uuid = '${agent_uuid}' AND message.target_uuid = '${owner_uuid}')")
-[[ "${approved_effects}" == $'1\t1\t1\t1\t2' ]] || { printf 'Approved task effects diverged: %q\n' "${approved_effects}" >&2; exit 1; }
+approved_expected=$'1\t1\t'"$((agent_message_baseline + 1))"$'\t'"$((agent_message_baseline + 1))"$'\t'"$((agent_message_inbox_baseline + 2))"
+[[ "${approved_effects}" == "${approved_expected}" ]] || { printf 'Approved task effects diverged: %q\n' "${approved_effects}" >&2; exit 1; }
 
 revoked=$(mysql -e "UPDATE agent_runtime_promotion_grants SET revoked_at = UTC_TIMESTAMP(3) WHERE grant_uuid = '${grant_uuid}' AND revoked_at IS NULL; SELECT ROW_COUNT();")
 [[ "${revoked}" == "1" ]] || { printf 'Temporary promotion grant revocation failed: %q\n' "${revoked}" >&2; exit 1; }

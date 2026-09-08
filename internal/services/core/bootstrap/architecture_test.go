@@ -111,6 +111,22 @@ func TestCoreRuntimeComposesAgentRuntimePromotionControlPlane(t *testing.T) {
 	}
 }
 
+func TestCoreRuntimeComposesScopedAgentMemoryResolver(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join("runtime.go"))
+	if err != nil {
+		t.Fatalf("read Core runtime: %v", err)
+	}
+	text := string(source)
+	for _, requirement := range []string{
+		"NewPersistentAgentMemoryResolverV1(agentRepos.Memories, resolver, agentRepos.Policy, time.Now)",
+		"agentServer.WithMemories(memoryResolver)",
+	} {
+		if !strings.Contains(text, requirement) {
+			t.Fatalf("standalone Core Agent Memory resolver must compose %q", requirement)
+		}
+	}
+}
+
 func TestCoreRuntimeWaitsForConversationProjectionKafkaAssignment(t *testing.T) {
 	source, err := os.ReadFile(filepath.Join("runtime.go"))
 	if err != nil {

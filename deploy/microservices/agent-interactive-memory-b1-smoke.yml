@@ -1,0 +1,20 @@
+services:
+  core:
+    environment:
+      # Route B is the sole responder for this disposable inbound fixture.
+      DIPOLE_AI_DIRECT_REPLY_ENABLED: "false"
+      DIPOLE_AI_GROUP_REPLY_ENABLED: "false"
+      # Core provisions the shared low-risk grant at startup for this exact
+      # Runtime candidate. The inbound fallback must exercise that deployment
+      # contract instead of relying on a hand-written grant fixture.
+      DIPOLE_AI_AGENT_CANDIDATE_VERSION: ${DIPOLE_AGENT_CANDIDATE_VERSION:?DIPOLE_AGENT_CANDIDATE_VERSION is required}
+
+  agent:
+    volumes:
+      - ${DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE:?DIPOLE_AGENT_INTERACTIVE_MEMORY_B1_MODEL_STUB_FILE is required}:/app/model-stub.mjs:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["node /app/model-stub.mjs & exec node dist/index.js"]
+    environment:
+      DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"
+      DIPOLE_AGENT_MODEL_MODE: ai_sdk
+      DIPOLE_AGENT_MODEL_PROVIDER: openai_compatible
