@@ -1,3 +1,7 @@
+- 2026-09-08：Remote GPU 使用 `DIPOLE_ENV_FILE` 完成隔离 Web Sync observability smoke；Core、Message、Sync、Gateway 指标目标与 Prometheus/Alertmanager readiness 均通过，隔离资源清理为零且公共体验栈保持 11 容器。低敏记录见 [`web-sync-observability-smoke-2026-09-08`](benchmarks/web-sync-observability-smoke-2026-09-08/)。该验证未启动真实客户端 24 小时观察窗口。
+
+- 2026-09-08：Web Sync observability smoke 新增可选 `DIPOLE_ENV_FILE` 输入，并通过 Compose `--env-file` 统一用于预检、启动与清理。隔离 worktree 可复用受控部署环境的模型配置而不复制、打印或 `source` 凭据；未设置时原有默认路径不变，给出不可读路径时 fail closed。
+
 - 2026-09-08：Remote GPU `dipole-experience` 已完成 Route B 的真实入站失败恢复演练。受控 Provider 故障后的同一原始 Kafka 事件经 lease reclaim 重投，保留失败 Run 历史并创建新的 Temporal execution 与 Core-bound Run；最终 Task 和 EventLedger 均为 `completed`，且只写入一条助手回复。B1 私聊与 B2 群 @ 随后均复验为单回复、单次 consumed approval。
 - 2026-09-08：入站重试修复了三处代际边界：已关闭的 Temporal execution 可由 Core 已批准的失败 Task 重开，Runtime 接受 Core 为 retry 生成的不可变 Run UUID，模型预算按同一 Task 内的 Core Run 分域持久化。因此失败 Run 的已耗尽模型预算不会阻断下一代 Run；运行中的 Workflow 仍以冲突失败保护并发启动。
 

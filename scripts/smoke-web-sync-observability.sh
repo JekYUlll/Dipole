@@ -14,6 +14,7 @@ GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:${GATEWAY_PORT}}"
 PROMETHEUS_URL="${PROMETHEUS_URL:-http://127.0.0.1:${PROMETHEUS_PORT}}"
 ALERTMANAGER_URL="${ALERTMANAGER_URL:-http://127.0.0.1:${ALERTMANAGER_PORT}}"
 startup_timeout_seconds="${DIPOLE_WEB_SYNC_OBSERVABILITY_STARTUP_TIMEOUT_SECONDS:-300}"
+env_file="${DIPOLE_ENV_FILE:-}"
 
 if ! [[ "${startup_timeout_seconds}" =~ ^[0-9]+$ ]] || (( startup_timeout_seconds < 30 || startup_timeout_seconds > 1800 )); then
   echo "Web Sync observability startup timeout must be between 30 and 1800 seconds" >&2
@@ -23,6 +24,10 @@ if ! command -v timeout >/dev/null 2>&1; then
   echo "Web Sync observability smoke requires the timeout command" >&2
   exit 2
 fi
+if [[ -n "${env_file}" && ! -r "${env_file}" ]]; then
+  echo "Web Sync observability env file must be readable when DIPOLE_ENV_FILE is set" >&2
+  exit 2
+fi
 
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
@@ -30,8 +35,15 @@ export DIPOLE_GATEWAY_BIND_ADDRESS="${DIPOLE_GATEWAY_BIND_ADDRESS:-127.0.0.1}"
 export DIPOLE_PROMETHEUS_BIND_ADDRESS="${DIPOLE_PROMETHEUS_BIND_ADDRESS:-127.0.0.1}"
 export DIPOLE_ALERTMANAGER_BIND_ADDRESS="${DIPOLE_ALERTMANAGER_BIND_ADDRESS:-127.0.0.1}"
 
+compose_command=(docker compose)
+if [[ -n "${env_file}" ]]; then
+  # Keep credentials out of the shell environment and Compose output.
+  compose_command+=(--env-file "${env_file}")
+fi
+compose_command+=(-p "${PROJECT_NAME}" -f "${COMPOSE_FILE}")
+
 compose() {
-  docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" "$@"
+  "${compose_command[@]}" "$@"
 }
 
 required_targets_are_healthy() {
@@ -76,7 +88,7 @@ trap cleanup EXIT
 "${SCRIPT_DIR}/check-dev-host.sh" "${DIPOLE_HOST_PROFILE:-remote-gpu}"
 "${SCRIPT_DIR}/generate-internal-certs.sh"
 compose --profile observability config --quiet
-timeout --preserve-status "${startup_timeout_seconds}s" docker compose -p "${PROJECT_NAME}" -f "${COMPOSE_FILE}" --profile observability up -d --wait gateway prometheus alertmanager
+timeout --preserve-status "${startup_timeout_seconds}s" "${compose_command[@]}" --profile observability up -d --wait gateway prometheus alertmanager
 
 for _ in $(seq 1 30); do
   if curl --connect-timeout 2 --max-time 5 -fsS "${PROMETHEUS_URL}/-/ready" >/dev/null 2>&1; then

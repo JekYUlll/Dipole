@@ -67,8 +67,11 @@ class WebSyncObservationTest(unittest.TestCase):
     def test_observability_smoke_bounds_isolated_compose_startup(self):
         smoke = Path("scripts/smoke-web-sync-observability.sh").read_text(encoding="utf-8")
         self.assertIn('DIPOLE_WEB_SYNC_OBSERVABILITY_STARTUP_TIMEOUT_SECONDS', smoke)
+        self.assertIn('DIPOLE_ENV_FILE', smoke)
+        self.assertIn('env file must be readable when DIPOLE_ENV_FILE is set', smoke)
+        self.assertIn('compose_command+=(--env-file "${env_file}")', smoke)
         self.assertIn('command -v timeout', smoke)
-        self.assertIn('timeout --preserve-status "${startup_timeout_seconds}s" docker compose', smoke)
+        self.assertIn('timeout --preserve-status "${startup_timeout_seconds}s" "${compose_command[@]}"', smoke)
         self.assertIn('startup timeout must be between 30 and 1800 seconds', smoke)
         self.assertIn('compose --profile observability down -v --remove-orphans', smoke)
         self.assertIn('api/v1/targets?state=active&scrapePool=dipole-required', smoke)

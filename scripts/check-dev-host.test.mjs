@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import fs from "node:fs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const script = path.join(root, "scripts", "check-dev-host.sh");
@@ -61,4 +62,12 @@ test("uses the available-memory override for pressure-aware checks", () => {
 test("rejects an unknown profile", () => {
   const result = run("unknown");
   assert.equal(result.status, 2);
+});
+
+test("uses an explicit Compose env file only through the Docker Compose command", () => {
+  const source = fs.readFileSync(script, "utf8");
+  assert.match(source, /DIPOLE_ENV_FILE/);
+  assert.match(source, /compose_command\+=\(--env-file "\$\{ENV_FILE\}"\)/);
+  assert.match(source, /compose-env-file=\$\{ENV_FILE\}:unreadable/);
+  assert.doesNotMatch(source, /source "\$\{ENV_FILE\}"/);
 });

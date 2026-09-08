@@ -5,6 +5,7 @@ set -euo pipefail
 PROFILE="${DIPOLE_HOST_PROFILE:-${1:-}}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${DIPOLE_COMPOSE_FILE:-deploy/compose/docker-compose.microservices.yml}"
+ENV_FILE="${DIPOLE_ENV_FILE:-}"
 
 # Compose validation only; production/shared secrets must be supplied by the caller.
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=static-compose-validation-only}"
@@ -13,7 +14,7 @@ export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 usage() {
   echo "Usage: $0 <remote-gpu|tencent-cloud|local>"
   echo "Optional overrides: DIPOLE_HOST_CPU, DIPOLE_HOST_MEMORY_MIB, DIPOLE_HOST_DISK_MIB"
-  echo "Optional checks: DIPOLE_SKIP_DOCKER=1 DIPOLE_SKIP_COMPOSE=1"
+  echo "Optional checks: DIPOLE_SKIP_DOCKER=1 DIPOLE_SKIP_COMPOSE=1 DIPOLE_ENV_FILE=/path/to/.env"
 }
 
 case "${PROFILE}" in
@@ -69,8 +70,16 @@ if [[ "${DIPOLE_SKIP_COMPOSE:-0}" != "1" ]]; then
     failures+=("compose-file=${COMPOSE_FILE}:missing")
   elif ! docker compose version >/dev/null 2>&1; then
     failures+=("compose=plugin-missing")
-  elif ! docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" config --quiet >/dev/null 2>&1; then
-    failures+=("compose=config-invalid")
+  elif [[ -n "${ENV_FILE}" && ! -r "${ENV_FILE}" ]]; then
+    failures+=("compose-env-file=${ENV_FILE}:unreadable")
+  else
+    compose_command=(docker compose)
+    if [[ -n "${ENV_FILE}" ]]; then
+      compose_command+=(--env-file "${ENV_FILE}")
+    fi
+    if ! "${compose_command[@]}" -f "${ROOT_DIR}/${COMPOSE_FILE}" config --quiet >/dev/null 2>&1; then
+      failures+=("compose=config-invalid")
+    fi
   fi
 fi
 
