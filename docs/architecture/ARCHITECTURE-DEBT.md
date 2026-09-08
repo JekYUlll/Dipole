@@ -4,6 +4,7 @@
 
 - 2026-09-09：新增默认关闭的 `agent-subscription` 并行 Compose overlay，保留 public interactive worker，同时以独立 Kafka group 与 Temporal queue 承接 Subscription Active Read。Remote GPU 完整 Compose 渲染已复核 interactive/subscription worker 身份、队列、写入、Control 和 MCP 配置互相隔离。该 overlay 未部署到共享体验栈，自动回复仍为关闭。
 - 2026-09-09：首次共享体验启动暴露跨文件 `extends` 未继承 `agent-experience.yml` release manifest，新增 worker 因 candidate 不匹配 fail-closed 并立即停止。overlay 现强制调用方绑定 `DIPOLE_AGENT_RELEASE_MANIFEST_FILE`；以实际 experience manifest 重启后 `agent-subscription` 健康、零重启，原 interactive worker 仍健康且零重启。自动回复继续关闭。
+- 2026-09-09：共享体验 E2E 进一步发现跨文件 `extends` 未继承 interactive 的模型预算。overlay 已显式固定 `3` 次调用、`180000` ms 总超时和 `16384` 输出 token 上限。Remote GPU 新建 owner/群/只读 Definition/Subscription 后，以短期 fixture grant 触发一条非 mention 群消息；subscription Task 以 `completed:completed` 收敛、完成两次模型调用且 Agent 群消息为零。fixture grant 已撤销，自动回复保持关闭。
 - **剩余边界：** 在共享体验栈启动前，需为 owner-scoped Definition/Subscription 取得双人审核的有效 promotion grant，并归档 Kafka、Temporal、Capability RPC、模型调用、零消息写入和停止 worker 回滚的观察回执。该回执完成后才能宣称 Subscription Active Read 可在公共 URL 体验。
 - **处理门槛：** 使用 `agent-subscription-experience.yml` 启动独立 worker；完成一条已授权 subscription 的只读 Task 后停止该服务并确认 interactive B1/B2 无回归。自动回复需另行加载 `agent-subscription-autoreply.yml` 并沿用 AD-034 门槛。
 
