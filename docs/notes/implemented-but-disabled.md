@@ -29,7 +29,7 @@ Pencil 侧栏「审批记录」没有路由和 API，已从任务/记忆/定义/
 | Interactive `/send` | `DIPOLE_AGENT_INTERACTIVE_MESSAGE_WRITE_ENABLED`；`agent-interactive-active.yml` | 可 opt-in | AD-009 浏览器 HITL、shared tenant、联合故障 |
 | Active Read | `DIPOLE_AGENT_RUNTIME_MODE=remote` + Temporal；`agent-active.yml` | 默认只读 | 主 Compose 已开放 owner-scoped `read_only` Definition API；Task admission 仍需同 candidate 的有效 promotion grant，AD-009 覆盖共享环境体验 |
 | Temporal Worker | `DIPOLE_AGENT_TEMPORAL_ENABLED=true` | 默认只读 | `agent-temporal-read-shadow.yml` 仅用于回退与测试；默认仅运行 `read_active`，AD-009 继续覆盖共享环境体验 |
-| Task Control + 交互创建 + owner 收件箱 | `DIPOLE_AGENT_CONTROL_ENABLED=true` / Gateway 同名；前端 `VITE_AGENT_TIMELINE_ENABLED` | 服务端默认只读 | 收件箱与只读 Definition API 随主 Compose 装配；前端页面仍受 Timeline 配置控制，且 admission 需要同 candidate 的有效 promotion grant |
+| Task Control + 交互创建 + owner 收件箱 | `DIPOLE_AGENT_CONTROL_ENABLED=true` / Gateway 同名；前端 `VITE_AGENT_TIMELINE_ENABLED` | 服务端默认只读 | 收件箱与只读 Definition API 随主 Compose 装配；普通交互任务可回退到共享低风险 Definition，Subscription 与扩展权限仍要求同 candidate 的有效 promotion grant |
 | 多会话 `wait_input` | 无独立开关，随 Temporal read | 可 opt-in | AD-009 E2E |
 | Memory 观察写入 | `DIPOLE_AGENT_MEMORY_ENABLED` + `DIPOLE_AGENT_INTERACTIVE_MEMORY_PROFILE` | 可 opt-in | 专用 Interactive profile 已经隔离启动验收；真实 B1 入站 Memory 召回、AD-009 / AD-061 仍待完成 |
 | Memory Promotion Commit | Core `agent_memory_promotion_receipt_commit_enabled` + Runtime commit flag | 可 opt-in | AD-009 联合 revoke/rollback |

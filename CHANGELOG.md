@@ -1,3 +1,5 @@
+- 2026-09-09：公共 `dipole-experience` 复验普通显式 Agent Task 的低风险闭环。新认证用户经 `POST /api/v1/agent/tasks` 获得 `accepted`，任务固定到 `lowrisk-assistant:v1` 并经 Temporal 收敛为 `completed`；随后查询到 5 条 Timeline 事件和恰好 1 条直属 Agent 回复。该验证不启用持久 Memory、订阅自动回复、外部 MCP 或 OAuth；体验栈容器保持健康。低敏收据见 [`agent-explicit-lowrisk-task-2026-09-09`](benchmarks/agent-explicit-lowrisk-task-2026-09-09/)。
+
 - 2026-09-09：恢复可复跑的 `scripts/smoke-web-sync-observability.sh`。该隔离 preflight 使用 loopback Gateway/Prometheus 端口，先验证 `migrate/core/message/sync/gateway` 镜像的 OCI revision 与当前 checkout 一致，再验证 scrape target 和五条 Web Sync recording rule，并在退出时自动回收项目、容器和卷。Remote GPU 已以 `2c81464e` 实跑通过，低敏收据见 [`web-sync-observability-preflight-2026-09-09`](benchmarks/web-sync-observability-preflight-2026-09-09/)；镜像构建器也会在显式服务列表未包含 `agent` 时跳过无关的 TypeScript Agent 镜像。它不启用客户端 Sync 模式，也不开始 24 小时 promotion 观察窗口。
 
 - 2026-09-09：校正 External MCP Shadow 的运行状态文档：`external_mcp_shadow` 已由 TypeScript Runtime 的独占 mode 装配 Worker、Temporal client 与 Kafka consumer，并要求 Profile、Temporal、subscription trigger 和 Capability RPC 同时显式启用；默认 `foundation` 配置仍不创建 MCP 资源或外部连接。真实 route manifest、凭据、公网 DNS/TLS、readiness 与回滚证据继续保持独立受控。
