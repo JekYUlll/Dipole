@@ -156,7 +156,7 @@ func TestAgentMemoryPromotionTemporalMySQLMTLSFixtureProcess(t *testing.T) {
 					t.Fatalf("validate fixture Memory rollback ID=%q promoted=%q valid=%v err=%v", strings.TrimSpace(string(rollbackID)), promoted.String, promoted.Valid, err)
 				}
 				rolledBack, rollbackErr := owners.RevokeOwnedMemory(ctx, application.AgentMemoryOwnerRevokeRequestV1{
-					TenantID: definition.TenantID, PrincipalUUID: definition.OwnerUUID, MemoryUUID: promoted.String, Reason: "isolated drill rollback",
+					TenantID: definition.TenantID, PrincipalUUID: "U100", MemoryUUID: promoted.String, Reason: "isolated drill rollback",
 				})
 				if rollbackErr != nil || rolledBack == nil || rolledBack.Status != application.AgentMemoryStatusRevoked || rolledBack.RevokedAt == nil {
 					t.Fatalf("rollback fixture promoted Memory=%+v err=%v", rolledBack, rollbackErr)
