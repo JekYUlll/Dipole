@@ -33,6 +33,15 @@ func TestAgentRuntimePromotionControlMySQLContract(t *testing.T) {
 	if err := policies.CreateDefinitionVersion(context.Background(), definition); err != nil {
 		t.Fatal(err)
 	}
+	subscription := application.AgentEventSubscriptionV1{
+		SubscriptionUUID: "SUB-CONTROL", DefinitionUUID: definition.DefinitionUUID, DefinitionVersion: definition.Version,
+		TenantID: definition.TenantID, AgentUUID: definition.AgentUUID, Status: application.AgentSubscriptionStatusActive,
+		EventType: "message.direct.created", ResourceType: "conversation", ResourceID: "direct:U1:UAI",
+		FilterKind: application.AgentSubscriptionFilterAll, FilterJSON: []byte(`{}`), CreatedByUUID: definition.OwnerUUID,
+	}
+	if created, err := policies.CreateEventSubscription(context.Background(), subscription); err != nil || !created {
+		t.Fatalf("create subscription: created=%v err=%v", created, err)
+	}
 	task := application.AgentTaskV1{TaskUUID: "TASK-CONTROL", DefinitionUUID: definition.DefinitionUUID, DefinitionVersion: 1, TenantID: "dipole", PrincipalUUID: "U1", AgentUUID: "UAI", Status: application.AgentTaskStatusRunning, TriggerType: "manual", TriggerRef: "control", Goal: "evaluate"}
 	if _, err := policies.CreateTask(context.Background(), task); err != nil {
 		t.Fatal(err)
@@ -74,6 +83,30 @@ func TestAgentRuntimePromotionControlMySQLContract(t *testing.T) {
 	if replay, err := service.Review(context.Background(), "REVIEWER", proposal.ProposalUUID, application.AgentRuntimePromotionReviewApproved); err != nil || replay.GrantUUID != approved.GrantUUID {
 		t.Fatalf("review replay: proposal=%+v err=%v", replay, err)
 	}
+	authorizer, err := agentapplication.NewPersistentAgentActiveRunPromotionAuthorizerV1(policies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1(policies, authorizer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	activeRequest := application.AgentRunAdmissionRequestV1{
+		AgentExecutionPolicyStartV1: application.AgentExecutionPolicyStartV1{
+			TenantID: definition.TenantID, PrincipalUUID: definition.OwnerUUID, AgentUUID: definition.AgentUUID,
+			DelegatedByUUID: definition.OwnerUUID, TriggerType: subscription.EventType, TriggerRef: "M-CONTROL-GRANTED",
+			SubscriptionUUID: subscription.SubscriptionUUID,
+		},
+		RuntimeID: run.RuntimeID, Mode: "active", CandidateVersion: "candidate-v1",
+	}
+	admitted, err := admission.Admit(context.Background(), activeRequest)
+	if err != nil || admitted.Invocation.Mode != "active" || admitted.TaskUUID == "" || admitted.RunUUID == "" {
+		t.Fatalf("reviewed grant did not admit active subscription: admission=%+v err=%v", admitted, err)
+	}
+	persistedTask, err := policies.GetTask(context.Background(), admitted.TaskUUID)
+	if err != nil || persistedTask == nil || persistedTask.DefinitionUUID != definition.DefinitionUUID || persistedTask.TriggerSubscriptionUUID != subscription.SubscriptionUUID {
+		t.Fatalf("active subscription did not persist reviewed binding: task=%+v err=%v", persistedTask, err)
+	}
 	if _, err := service.Revoke(context.Background(), "REVIEWER", approved.GrantUUID, "INC-1", "rollback"); !errors.Is(err, application.ErrAgentRuntimePromotionControlDenied) {
 		t.Fatalf("unauthorized revoke: %v", err)
 	}
@@ -83,5 +116,9 @@ func TestAgentRuntimePromotionControlMySQLContract(t *testing.T) {
 	}
 	if replay, err := service.Revoke(context.Background(), "REVOKER", approved.GrantUUID, "INC-1", "rollback"); err != nil || replay.RevokedAt == nil {
 		t.Fatalf("revoke replay: grant=%+v err=%v", replay, err)
+	}
+	activeRequest.TriggerRef = "M-CONTROL-REVOKED"
+	if _, err := admission.Admit(context.Background(), activeRequest); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("revoked reviewed grant admitted active subscription: %v", err)
 	}
 }
