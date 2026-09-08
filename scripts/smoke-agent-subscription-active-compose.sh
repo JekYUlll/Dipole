@@ -250,10 +250,17 @@ const evidence = {
 };
 const rpc = createAgentCapabilityRPC(loadShadowRuntimeConfig(process.env));
 try {
-  const receipt = await new PromotionEvidencePublisher(rpc.client).publish({
+  const publisher = new PromotionEvidencePublisher(rpc.client);
+  const publication = {
     schemaVersion: "dipole.agent.promotion-evidence-publication.v1", tenantId: "dipole", taskId, runId,
     runtimeId: "dipole-agent", definitionId, definitionVersion: 1, evidence
-  });
+  };
+  const receipt = await publisher.publish(publication);
+  const replay = await publisher.publish(publication);
+  if (replay.artifactId !== receipt.artifactId || replay.evidenceSHA256 !== receipt.evidenceSHA256 ||
+      replay.evalSuiteSHA256 !== receipt.evalSuiteSHA256) {
+    throw new Error("promotion evidence replay returned a conflicting receipt");
+  }
   process.stdout.write(`${receipt.artifactId}\t${receipt.evidenceSHA256}\t${receipt.evalSuiteSHA256}`);
 } finally {
   rpc.close();

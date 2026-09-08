@@ -81,6 +81,8 @@ class AgentSubscriptionActiveComposeSmokeTest(unittest.TestCase):
         self.assertIn('publication_receipt', smoke)
         self.assertIn('receipt.artifactId', smoke)
         self.assertIn('receipt.evidenceSHA256', smoke)
+        self.assertIn('const replay = await publisher.publish(publication);', smoke)
+        self.assertIn('promotion evidence replay returned a conflicting receipt', smoke)
 
     def test_model_stub_stays_inside_the_compose_project(self) -> None:
         overlay = (ROOT / "deploy/microservices/agent-subscription-active-smoke.yml").read_text(encoding="utf-8")
