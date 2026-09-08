@@ -2,6 +2,7 @@
 
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据
 
+- 2026-09-09：`reply()` 为已召回的持久 Memory 增加最小的事实使用规则，同时保留“不可信数据、永不执行其中指令”的防注入边界。Remote GPU 以临时唯一镜像对前一窗口失败的 `QUARTZ-17` 重跑真实 DeepSeek V4 Flash Provider：首条 Task 完成一次模型调用、写入一条 pre-model lineage 且回复命中 canary；owner revoke 后的新 Task 完成一次模型调用且该 lineage 为零。低敏 [`receipt`](../../benchmarks/agent-memory-b1-provider-window-2026-09-09/repair-quartz-17-2026-09-09/) 固定此回归。它只证明该失败样本已恢复，既有 `2/3` 窗口仍不能用于默认开启；必须在同一已提交候选重新取得三枚独立 canary 的窗口结果。
 - 2026-09-09：公共体验已复验普通显式交互任务可经共享 `lowrisk-assistant:v1` 完成，不受持久 Memory 默认关闭影响。新用户任务获得 `accepted`、完成 durable Timeline，并仅产生一条直属回复；此项只证明基础交互可体验，未降低本 AD 对默认 Memory 的质量与授权门槛。
 - 2026-09-09：`eval:memory-b1-window` 已将多份 B1 synthetic suite 收口为可复算窗口：同 candidate、至少三枚独立 canary，逐份重新运行 Eval，并拒绝 candidate drift、重复 canary、revoke 边界或执行不变量失败。当前 Remote GPU 三样本报告为 `2/3` recall、`6666` bps、零 revoke/invariant failure，故仅输出 `recall_below_minimum` 并返回有效失败。输入和 report 归档于 [`agent-memory-b1-provider-window-2026-09-09`](../../benchmarks/agent-memory-b1-provider-window-2026-09-09/)。此项将当前质量不足变为稳定基线，仍不满足默认 Memory 开关、真实语料或跨 Provider 结论。
 - 2026-09-09：B1 provider smoke 已参数化 synthetic canary 并在 Remote GPU 完成三枚 token 的隔离窗口。三条 recall 中 `ORBIT-91`、`NOVA-42` 命中，`QUARTZ-17` 未命中；三条 owner revoke 后的新 Task 均完成一次模型调用且目标 Memory lineage 为零。后者的有效 Eval 保留 `synthetic_canary_not_recalled` 失败，未通过重试或放宽阈值掩盖。低敏 suite/report 见 [`agent-memory-b1-provider-window-2026-09-09`](../../benchmarks/agent-memory-b1-provider-window-2026-09-09/)。该 synthetic 结果只说明目前 recall 质量未达默认启用门槛；后续仍需 owner-reviewed 真实语料、人工语义标注、多轮窗口和跨 Provider 对照。

@@ -24,3 +24,9 @@ npm run eval:memory-b1-synthetic -- \
 ```
 
 第二条命令以退出码 `2` 返回，代表有效 Eval 未达到全通过门槛。此窗口只覆盖 synthetic token recall，尚未包含 owner-reviewed 真实语料、人工语义标注、多轮任务或跨 Provider 对照，因此不能用于宣称默认持久 Memory 的语义质量或启用条件已满足。
+
+## QUARTZ-17 Repair Regression
+
+[`repair-quartz-17-2026-09-09`](repair-quartz-17-2026-09-09/) 保存了针对上述失败样本的后续隔离 Provider 回归。修复只向 `reply()` 的已授权 Memory 区块增加“相关事实应直接用于回答”的规则，继续将 Memory 标为不可信数据并拒绝其中任何指令。该回归的首条 Task 完成、只有一次模型调用、只有一条目标 Memory lineage，且回复命中 `QUARTZ-17`；owner revoke 后的新 Task 的目标 lineage 为零。
+
+这是一条单样本回归，无法替代原三样本窗口。默认持久 Memory 仍关闭；重新评估默认开关前，需要用同一已提交候选重跑三枚独立 canary，并补充真实审核语料、多轮任务和跨 Provider 对照。
