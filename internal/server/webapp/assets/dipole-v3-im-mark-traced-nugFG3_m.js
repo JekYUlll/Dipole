@@ -1,1 +1,0 @@
-var e=`/app/assets/dipole-v3-im-mark-traced-Ddj_luMr.svg`;export{e as t};

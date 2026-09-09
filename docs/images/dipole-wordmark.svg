@@ -3,19 +3,19 @@
   <desc id="desc">Dipole wordmark with two linked poles and an event pulse.</desc>
   <defs>
     <linearGradient id="signal" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1c6b8a"/>
-      <stop offset="1" stop-color="#0c354c"/>
+      <stop offset="0" stop-color="#16796f"/>
+      <stop offset="1" stop-color="#083d39"/>
     </linearGradient>
     <linearGradient id="pulse" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#e47a36"/>
       <stop offset="1" stop-color="#f0ad4e"/>
     </linearGradient>
   </defs>
-  <rect width="1120" height="250" rx="42" fill="#f5f8fa"/>
+  <rect width="1120" height="250" rx="42" fill="#f4f8f5"/>
   <circle cx="128" cy="125" r="78" fill="url(#signal)"/>
-  <circle cx="92" cy="125" r="18" fill="#f5f8fa"/>
-  <circle cx="164" cy="125" r="18" fill="#f5f8fa"/>
+  <circle cx="92" cy="125" r="18" fill="#f4f8f5"/>
+  <circle cx="164" cy="125" r="18" fill="#f4f8f5"/>
   <path d="M92 125 H119 L128 95 L140 155 L150 125 H164" fill="none" stroke="url(#pulse)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="245" y="143" fill="#102f40" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="104" font-weight="700" letter-spacing="-4">Dipole</text>
-  <text x="251" y="190" fill="#4e6877" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="24" font-weight="600" letter-spacing="4">REALTIME COLLABORATION PLATFORM</text>
+  <text x="245" y="143" fill="#103a35" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="104" font-weight="700" letter-spacing="-4">Dipole</text>
+  <text x="251" y="190" fill="#58716b" font-family="Avenir Next, Noto Sans SC, sans-serif" font-size="24" font-weight="600" letter-spacing="4">REALTIME COLLABORATION PLATFORM</text>
 </svg>
