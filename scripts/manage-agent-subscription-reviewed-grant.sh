@@ -103,7 +103,7 @@ trap 'if (( cleanup_open_window )); then "$(dirname "${BASH_SOURCE[0]}")/run-age
 # Registration requires an eleven-digit telephone. Keep the unique suffix
 # numeric so the temporary operator accounts pass the public validation.
 suffix=$(printf '%08d' $((10#$(date +%N) % 100000000)))
-operator_registration=$(docker exec -e GATEWAY="$internal_gateway" -e SUFFIX="$suffix" "${project}-agent-1" node --input-type=module - <<'NODE'
+operator_registration=$(docker exec -i -e GATEWAY="$internal_gateway" -e SUFFIX="$suffix" "${project}-agent-1" node --input-type=module - <<'NODE'
 const register = async (prefix, nickname) => {
   const telephone = `${prefix}${process.env.SUFFIX}`.slice(0, 11);
   const password = "reviewed-grant-temporary";
@@ -125,7 +125,7 @@ operator grant "$reviewer_uuid" "$owner_uuid" review,revoke "$expiry"
 evidence_task=$(printf '%s' "${definition_uuid}:${subscription_uuid}:evidence-task" | sha256sum | awk '{print $1}')
 evidence_run=$(printf '%s' "${definition_uuid}:${subscription_uuid}:evidence-run" | sha256sum | awk '{print $1}')
 mysql "INSERT INTO agent_tasks (task_uuid, definition_uuid, definition_version, tenant_id, principal_uuid, agent_uuid, status, trigger_type, trigger_ref, goal) VALUES ('${evidence_task}', '${definition_uuid}', ${definition_version}, '${tenant_id}', '${owner_uuid}', 'UAI000000000000000001', 'completed', 'promotion.evaluation', 'subscription-reviewed-grant', 'reviewed subscription evidence'); INSERT INTO agent_runs (run_uuid, task_uuid, runtime_id, candidate_version, mode, status, started_at, completed_at) VALUES ('${evidence_run}', '${evidence_task}', 'dipole-agent', NULL, 'shadow', 'completed', UTC_TIMESTAMP(3), UTC_TIMESTAMP(3));" >/dev/null
-receipt=$(docker exec -e DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true "${project}-agent-1" node --input-type=module - "$evidence_task" "$evidence_run" "$definition_uuid" "$definition_version" "$candidate" <<'NODE'
+receipt=$(docker exec -i -e DIPOLE_AGENT_CAPABILITY_RPC_ENABLED=true "${project}-agent-1" node --input-type=module - "$evidence_task" "$evidence_run" "$definition_uuid" "$definition_version" "$candidate" <<'NODE'
 import { createAgentCapabilityRPC, loadShadowRuntimeConfig } from "./dist/runtime/shadow-runtime.js";
 import { PromotionEvidencePublisher } from "./dist/promotion/promotion-evidence-publisher.js";
 import { evaluateOfflineEvalSuite, parseOfflineEvalSuite } from "./dist/evals/offline-evaluator.js";
@@ -138,7 +138,7 @@ try { const receipt = await new PromotionEvidencePublisher(rpc.client).publish({
 NODE
 )
 IFS=$'\t' read -r artifact_uuid evidence_sha eval_sha <<<"$receipt"; require_sha artifact "$artifact_uuid"; require_sha evidence "$evidence_sha"; require_sha eval "$eval_sha"
-grant_uuid=$(docker exec -e GATEWAY="$internal_gateway" -e PROPOSER_TOKEN="$proposer_token" -e REVIEWER_TOKEN="$reviewer_token" "${project}-agent-1" node --input-type=module - "$definition_uuid" "$definition_version" "$candidate" "$artifact_uuid" "$evidence_sha" "$eval_sha" <<'NODE'
+grant_uuid=$(docker exec -i -e GATEWAY="$internal_gateway" -e PROPOSER_TOKEN="$proposer_token" -e REVIEWER_TOKEN="$reviewer_token" "${project}-agent-1" node --input-type=module - "$definition_uuid" "$definition_version" "$candidate" "$artifact_uuid" "$evidence_sha" "$eval_sha" <<'NODE'
 const [definitionId, definitionVersion, candidateVersion, artifactId, evidenceSha256, evalSuiteSha256] = process.argv.slice(2); const headers = token => ({ authorization: `Bearer ${token}`, "content-type": "application/json" }); const now = Date.now(); const validFrom = now + 2000;
 const proposal = await fetch(`${process.env.GATEWAY}/api/v1/agent/runtime-promotions`, { method: "POST", headers: headers(process.env.PROPOSER_TOKEN), body: JSON.stringify({ runtimeId: "dipole-agent", candidateVersion, definitionId, definitionVersion: Number(definitionVersion), evidenceArtifactId: artifactId, evidenceSha256, evalSuiteSha256, ticketRef: `SUB-E2E-${Date.now()}`, reason: "reviewed subscription active read", expiresAtUnixMs: now + 300000, grantValidFromUnixMs: validFrom, grantExpiresAtUnixMs: now + 600000 }) }).then(async response => ({ status: response.status, body: await response.json() }));
 if (proposal.status !== 200 || proposal.body?.status !== "proposed") throw new Error(`proposal failed: ${proposal.status}`); const reviewed = await fetch(`${process.env.GATEWAY}/api/v1/agent/runtime-promotions/${proposal.body.proposalId}/review`, { method: "POST", headers: headers(process.env.REVIEWER_TOKEN), body: JSON.stringify({ decision: "approved" }) }).then(async response => ({ status: response.status, body: await response.json() })); if (reviewed.status !== 200 || reviewed.body?.status !== "approved" || typeof reviewed.body?.grantId !== "string") throw new Error(`review failed: ${reviewed.status}`); await new Promise(resolve => setTimeout(resolve, Math.max(0, validFrom - Date.now() + 100))); process.stdout.write(reviewed.body.grantId);
