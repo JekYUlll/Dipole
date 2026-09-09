@@ -1,3 +1,5 @@
+- 2026-09-09：Remote GPU 在干净 `8ee998cd` checkout 以隔离 Compose 重跑 `subscription_active` 的 `publication` smoke。Runtime mTLS evidence publication、Gateway proposal、双人 review、owner-scoped grant、单条 Kafka 事件与 Temporal durable read Task 全部收敛，模型调用存在且 Agent 消息为零；退出码为 `0`，候选容器自动清理，公共 `dipole-experience` Gateway 全程健康。该证据使用隔离合成 evaluation，不开放公共 promotion route、Subscription worker 或自动回复。
+
 - 2026-09-09：新增 `run-agent-promotion-window.sh` 管理共享 Gateway promotion 短窗口。它要求严格、无凭据的 JSON 配置，固定绝对 mTLS 证书目录、完整 Compose 输入和目标 tenant；默认仅 dry-run，`open` 只叠加 Gateway-only overlay，`close` 只重建 Gateway 并复核健康和默认关闭的路由。脚本不 `source` env file，不处理 operator/runtime grant，也未改变公共体验默认路由。
 
 - 2026-09-09：`eval:context-ablation` 增加可选 `--reviewed-source`。它安全加载 owner-bound、`0600` 的 reviewed-corpus source manifest，复核批准窗口、UID、corpus/review hash 和实验 case 的完整 content-hash 覆盖，再输出不含路径、case、reviewer 或正文的 source receipt。未提供该参数的既有只读评测保持兼容；新模式不启用 Memory、候选写入或 Runtime 切流。
