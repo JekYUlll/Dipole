@@ -94,8 +94,8 @@ done
 require_safe_id tenant "$tenant_id" 64
 require_safe_id service "$service" 64
 require_safe_id database "$database" 64
-require_safe_id user "$user_uuid" 24
-require_safe_id granted-by "$granted_by_uuid" 24
+require_safe_id user "$user_uuid" 64
+require_safe_id granted-by "$granted_by_uuid" 64
 [[ "$user_uuid" != "$granted_by_uuid" ]] || die "--user and --granted-by must be different operators"
 [[ "$ticket_ref" =~ ^[A-Za-z0-9._:/#-]+$ ]] && (( ${#ticket_ref} <= 128 )) || die "invalid ticket reference"
 [[ "$reason" != *$'\n'* && "$reason" != *$'\r'* && ${#reason} -le 1000 ]] || die "reason must be a single line of at most 1000 characters"

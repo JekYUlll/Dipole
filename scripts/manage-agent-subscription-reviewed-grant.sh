@@ -74,7 +74,7 @@ for key in ("owner_uuid", "proposer_uuid", "reviewer_uuid"):
 PY
 )
   owner_uuid="${state[0]}"; proposer_uuid="${state[1]}"; reviewer_uuid="${state[2]}"
-  require_id owner "$owner_uuid" 24; require_id proposer "$proposer_uuid" 24; require_id reviewer "$reviewer_uuid" 24
+  require_id owner "$owner_uuid" 64; require_id proposer "$proposer_uuid" 64; require_id reviewer "$reviewer_uuid" 64
   mysql "UPDATE agent_runtime_promotion_grants SET revoked_at=COALESCE(revoked_at, UTC_TIMESTAMP(3)) WHERE grant_uuid='${grant_uuid}' AND tenant_id='${tenant_id}'" >/dev/null
   operator revoke "$proposer_uuid" "$owner_uuid"
   operator revoke "$reviewer_uuid" "$owner_uuid"
@@ -92,7 +92,7 @@ fi
 : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_CANDIDATE_VERSION:?missing candidate version}"
 : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GATEWAY:?missing Gateway URL}"
 owner_uuid="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_OWNER_UUID"; definition_uuid="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_DEFINITION_UUID"; definition_version="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_DEFINITION_VERSION"; subscription_uuid="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_SUBSCRIPTION_UUID"; candidate="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_CANDIDATE_VERSION"; gateway="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GATEWAY"
-require_id owner "$owner_uuid" 24; require_id definition "$definition_uuid" 64; [[ "$definition_version" =~ ^[1-9][0-9]*$ ]] || die "invalid Definition version"; require_id subscription "$subscription_uuid" 64; require_id candidate "$candidate" 128; [[ "$gateway" =~ ^https?://[A-Za-z0-9.:_-]+$ ]] || die "invalid Gateway URL"
+require_id owner "$owner_uuid" 64; require_id definition "$definition_uuid" 64; [[ "$definition_version" =~ ^[1-9][0-9]*$ ]] || die "invalid Definition version"; require_id subscription "$subscription_uuid" 64; require_id candidate "$candidate" 128; [[ "$gateway" =~ ^https?://[A-Za-z0-9.:_-]+$ ]] || die "invalid Gateway URL"
 [[ "$project" == "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROJECT:-}" ]] || die "project differs from reviewed grant config"
 [[ ! -e "$state_file" ]] || die "reviewed grant state file already exists"
 
@@ -117,7 +117,7 @@ process.stdout.write(`${proposer[0]}\t${proposer[1]}\t${reviewer[0]}\t${reviewer
 NODE
 )
 IFS=$'\t' read -r proposer_uuid proposer_token reviewer_uuid reviewer_token <<<"$operator_registration"
-require_id proposer "$proposer_uuid" 24; require_id reviewer "$reviewer_uuid" 24
+require_id proposer "$proposer_uuid" 64; require_id reviewer "$reviewer_uuid" 64
 expiry=$(date -u -d '+10 minutes' '+%Y-%m-%dT%H:%M:%SZ')
 operator grant "$proposer_uuid" "$owner_uuid" propose "$expiry"
 operator grant "$reviewer_uuid" "$owner_uuid" review,revoke "$expiry"
