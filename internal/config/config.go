@@ -943,11 +943,20 @@ func RedisConfig() Redis {
 
 func CassandraConfig() Cassandra {
 	MustLoad()
+	return cassandraConfig(cfg)
+}
 
+func cassandraConfig(source *viper.Viper) Cassandra {
 	var cassandra Cassandra
-	if err := cfg.UnmarshalKey("cassandra", &cassandra); err != nil {
+	if err := source.UnmarshalKey("cassandra", &cassandra); err != nil {
 		panic(fmt.Errorf("unmarshal Cassandra config: %w", err))
 	}
+	cassandra.Enabled = source.GetBool("cassandra.enabled")
+	cassandra.Hosts = source.GetStringSlice("cassandra.hosts")
+	cassandra.Keyspace = source.GetString("cassandra.keyspace")
+	cassandra.LocalDatacenter = source.GetString("cassandra.local_datacenter")
+	cassandra.TimelineBucketSize = source.GetUint64("cassandra.timeline_bucket_size")
+	cassandra.ConnectTimeoutSeconds = source.GetInt("cassandra.connect_timeout_seconds")
 
 	return cassandra
 }

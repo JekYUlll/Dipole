@@ -147,6 +147,36 @@ func TestElasticsearchConfigLoadsEnvironmentOverrides(t *testing.T) {
 	}
 }
 
+func TestCassandraConfigLoadsEnvironmentOverrides(t *testing.T) {
+	t.Setenv("DIPOLE_CASSANDRA_ENABLED", "true")
+	t.Setenv("DIPOLE_CASSANDRA_HOSTS", "cassandra-a:9042")
+	t.Setenv("DIPOLE_CASSANDRA_KEYSPACE", "dipole_shadow")
+	t.Setenv("DIPOLE_CASSANDRA_LOCAL_DATACENTER", "dc-shadow")
+	t.Setenv("DIPOLE_CASSANDRA_TIMELINE_BUCKET_SIZE", "20000")
+	t.Setenv("DIPOLE_CASSANDRA_CONNECT_TIMEOUT_SECONDS", "9")
+	v := viper.New()
+	v.SetEnvPrefix("DIPOLE")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+	for _, key := range []string{
+		"cassandra.enabled",
+		"cassandra.hosts",
+		"cassandra.keyspace",
+		"cassandra.local_datacenter",
+		"cassandra.timeline_bucket_size",
+		"cassandra.connect_timeout_seconds",
+	} {
+		if err := v.BindEnv(key); err != nil {
+			t.Fatalf("bind %s: %v", key, err)
+		}
+	}
+
+	got := cassandraConfig(v)
+	if !got.Enabled || !slices.Equal(got.Hosts, []string{"cassandra-a:9042"}) || got.Keyspace != "dipole_shadow" || got.LocalDatacenter != "dc-shadow" || got.TimelineBucketSize != 20000 || got.ConnectTimeoutSeconds != 9 {
+		t.Fatalf("Cassandra environment override = %+v", got)
+	}
+}
+
 func TestCoreMessageConfigUsesProcessSpecificTransportOverride(t *testing.T) {
 	t.Chdir(filepath.Join("..", ".."))
 	t.Setenv("DIPOLE_CONFIG_FILE", filepath.Join("configs", "config.dist.yaml"))
