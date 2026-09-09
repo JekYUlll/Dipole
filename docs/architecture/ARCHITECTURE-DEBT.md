@@ -2,7 +2,7 @@
 
 - 2026-09-09：公共体验以新注册 owner、新群和新 `@Dipole AI` 消息重跑 B2。Task 为 `completed:completed`，低风险 Definition、单条 Agent 群回复和单条已消费 `group_reply` approval 均符合预期；没有观察到历史上“消息已投递但 workflow 失败”的状态分离。该证据只覆盖当前一条新事件，仍需后续重启和故障注入回归。
 
-- 2026-09-09：Subscription Active Read 已补齐 reviewed-grant 的受控运维 helper：它仅接受严格、无凭据的 promotion window JSON 和显式环境 opt-in，临时 proposer/reviewer 通过既有审计工具授权，promotion evidence 经 Runtime mTLS Artifact RPC 发布，再由 Gateway/Core 双人审核生成 owner Definition-bound grant。helper 通过 Compose service 定位 MySQL，并在容器内使用既有凭据，兼容自定义 `container_name`；E2E 可选 cleanup hook 以 owner-only state file 精确回收 Runtime grant、operator grants 与 Gateway maintenance window。该实现仍待 Remote GPU 的完整 shared run 证据；evidence 输入为合成 eligible sample，不能作为真实模型效果或默认 route 启用结论。
+- 2026-09-09：Subscription Active Read 已补齐 reviewed-grant 的受控运维 helper：它仅接受严格、无凭据的 promotion window JSON 和显式环境 opt-in，临时 proposer/reviewer 通过既有审计工具授权，promotion evidence 经 Runtime mTLS Artifact RPC 发布，再由 Gateway/Core 双人审核生成 owner Definition-bound grant。helper 通过 Compose service 定位 MySQL，并在容器内使用既有凭据，兼容自定义 `container_name`；E2E 可选 cleanup hook 以 owner-only state file 精确回收 Runtime grant、operator grants 与 Gateway maintenance window。Remote GPU 公共体验的完整 shared run 已通过；evidence 输入仍为合成 eligible sample，不能作为真实模型效果或默认 route 启用结论。
 
 ### AD-067：共享体验 Subscription Active Read 观察窗口
 
@@ -20,7 +20,8 @@
 - 2026-09-09：Remote GPU 的干净 `8ee998cd` checkout 已以 `publication` 模式重跑隔离 Subscription Active Read。Runtime 通过 mTLS Artifact RPC 发表 eligible evidence，Gateway proposal 与第二位 reviewer 产生 owner-scoped grant；一条 Kafka 订阅事件最终生成一个 completed durable read Task，存在模型调用且 Agent 消息为零。脚本退出码为 `0`，Compose 自动清理为零，公共 Gateway 保持健康。该回归使用合成 evaluation 和隔离 project，不能替代共享 owner、公共 route、停止 `agent-subscription` 回退或实际体验 URL 的证据。
 - 2026-09-09：公共 Subscription Active Read E2E 已收口为默认 `reviewed` grant 模式。调用方必须提供一个未撤销、处于有效窗口、且精确绑定 `dipole-agent`、candidate、owner Definition/version 的 grant；不匹配即拒绝触发 Kafka 事件。开发 fixture 仍可使用，但需要两项显式环境确认且 cleanup 只会撤销 fixture grant。该修改避免将 SQL fixture 误表述为双人审核或共享体验证据。
 - 2026-09-09：reviewed E2E 的 grant 输入已改为 Definition 创建后的受控 helper。helper 只能是绝对、可执行路径，并仅返回单个 grant UUID；它接收当前 owner、Definition/version、Subscription、会话键、candidate、Gateway 与 Compose project 的低敏绑定参数。E2E 仍自行复核 grant 有效期和精确绑定。该修正移除新建资源无法使用预先给定 grant 的阻塞，尚待将 helper 连接到共享窗口的 operator 临时授权、evidence publication、proposal/review 和 revoke 流程。
-- **剩余边界：** 在共享体验栈启动前，需为 owner-scoped Definition/Subscription 取得双人审核的有效 promotion grant，并归档 Kafka、Temporal、Capability RPC、模型调用、零消息写入和停止 worker 回滚的观察回执。该回执完成后才能宣称 Subscription Active Read 可在公共 URL 体验。
+- 2026-09-09：公共 `dipole-experience` 已用 reviewed helper 完成 shared Subscription Active Read。新 owner-scoped Definition/Subscription 先经 Runtime mTLS Artifact RPC 发表合成 evidence，再由临时 proposer/reviewer 生成精确绑定 grant；一条非 mention 群消息最终收敛为一个 `completed:completed` Task、两次模型调用与零条 Agent 群消息。退出码为 `0`，Runtime grant、两个 operator grants、owner-only state file 均已回收，Gateway promotion route 为关闭且 12 个服务健康。该回归只覆盖只读订阅任务与合成 evaluation。
+- **剩余边界：** 共享体验已具备受控只读 Subscription Active Read 验收；仍需独立的长期观察、worker 停止回退、真实评审 evidence 与自动回复风险门槛，才能扩大到默认订阅运行或公共自动动作。
 - **处理门槛：** 使用 `agent-subscription-experience.yml` 启动独立 worker；完成一条已授权 subscription 的只读 Task 后停止该服务并确认 interactive B1/B2 无回归。自动回复需另行加载 `agent-subscription-autoreply.yml` 并沿用 AD-034 门槛。
 
 ### AD-066：Route B 持久 Memory 的默认召回与写入证据

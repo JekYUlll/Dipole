@@ -1,3 +1,5 @@
+- 2026-09-09：Remote GPU 公共 `dipole-experience` 已以新 owner、Definition、Subscription 和非 mention 群消息完成 reviewed Subscription Active Read 闭环。双人审核 grant 在运行后精确回收，任务以 `completed:completed` 收敛，存在模型调用且零 Agent 群消息；Gateway promotion route 已关闭，12 个公共服务恢复健康。该证据使用合成 eligible evaluation，不开启默认自动回复或扩大 active authority。
+
 - 2026-09-09：Subscription Active Read E2E 的 MySQL binding 查询改用 raw batch 输出，避免 MySQL 将比较所需的制表分隔符转义为字面量 `\\t` 而误报 grant binding 不匹配。
 
 - 2026-09-09：reviewed Subscription helper 已移除对宿主机 MySQL 密码变量的强制依赖，operator grant 调用与底层工具统一使用 Compose MySQL service 的容器内凭据；显式 Secret 注入仍作为兼容通道保留。

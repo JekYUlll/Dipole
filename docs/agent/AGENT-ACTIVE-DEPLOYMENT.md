@@ -245,6 +245,8 @@ grant 的有效期与精确绑定。helper 的日志必须写入标准错误，�
 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ALLOW_FIXTURE_GRANT=1`；它的 SQL fixture 不可
 作为公共 route、双人审核或体验能力的证据。
 
+2026-09-09 已在 Remote GPU 公共 `dipole-experience` 以该 reviewed 路径完成一轮新 owner 验收：单个只读订阅 Task 收敛为 `completed:completed`、存在模型调用且无 Agent 群消息；cleanup 后 grant、临时 operator grants 与 state file 均不存在，Gateway promotion route 关闭且 12 个服务健康。evidence 使用合成 eligible evaluation，仅作为开发期受控只读闭环，不开启默认自动回复或长期 active authority。
+
 开发期可用隔离 smoke 复跑 Subscription Active 链路：脚本以认证 owner 创建 Definition 和 Subscription，再通过 Gateway WebSocket 的 `chat.send` 产生真实消息。默认模式验证只读闭环：消息经 Core/Message/Sync、Kafka matcher 和 Temporal 后收敛为一个 completed Task、一次 completed model run、零条 Agent 发送消息。显式开启 Auto-Reply 时，额外断言恰好一次 completed `message.system.send` Tool Invocation、一次 consumed approval、一条 owner-Agent 回复、一个稳定 client message ID 和两条 Sync Inbox 投影。两种模式都会在退出前撤销临时 grant。
 
 ```bash
