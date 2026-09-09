@@ -1,0 +1,15 @@
+services:
+  # Pair this overlay with cassandra-shadow.yml to compare hydration results
+  # without changing the Sync response that clients receive from MySQL.
+  sync:
+    depends_on:
+      cassandra-init:
+        condition: service_completed_successfully
+    environment:
+      DIPOLE_CASSANDRA_ENABLED: "true"
+      DIPOLE_CASSANDRA_HOSTS: cassandra:9042
+      DIPOLE_CASSANDRA_KEYSPACE: dipole_message_shadow
+      DIPOLE_CASSANDRA_LOCAL_DATACENTER: datacenter1
+      DIPOLE_CASSANDRA_TIMELINE_BUCKET_SIZE: "10000"
+      DIPOLE_SYNC_CASSANDRA_SHADOW_HYDRATION: "true"
+      DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION: "false"
