@@ -13,11 +13,13 @@ class SyncCassandraShadowWindowTest(unittest.TestCase):
         script = (ROOT / "scripts/run-sync-cassandra-shadow-window.sh").read_text(encoding="utf-8")
 
         self.assertIn('DIPOLE_SYNC_SHADOW_WINDOW_CONFIRM=yes', script)
+        self.assertIn('DIPOLE_INTERNAL_CERT_DIR must name an absolute readable internal certificate directory', script)
         self.assertIn('window_seconds < 30 || window_seconds > 900', script)
         self.assertIn('DIPOLE_SYNC_SHADOW_WINDOW_EXERCISE must name an executable absolute path', script)
         self.assertIn('DIPOLE_SYNC_SHADOW_WINDOW_OUTPUT_DIR must name a new absolute path', script)
         self.assertIn('compose_shadow_cmd up -d --no-deps sync', script)
         self.assertIn('compose_base_cmd up -d --no-deps sync', script)
+        self.assertIn('wait_for_sync_ready compose_shadow_cmd', script)
         self.assertIn('trap restore_mysql_hydration EXIT INT TERM', script)
         self.assertIn('-mode shadow', script)
         self.assertNotIn('DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION=true', script)

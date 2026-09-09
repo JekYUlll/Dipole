@@ -6,6 +6,7 @@ set -euo pipefail
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 project="${DIPOLE_SYNC_SHADOW_WINDOW_PROJECT:-dipole-experience}"
 env_file="${DIPOLE_ENV_FILE:-${root_dir}/.env}"
+cert_dir="${DIPOLE_INTERNAL_CERT_DIR:-}"
 window_seconds="${DIPOLE_SYNC_SHADOW_WINDOW_SECONDS:-120}"
 exercise="${DIPOLE_SYNC_SHADOW_WINDOW_EXERCISE:-}"
 output_dir="${DIPOLE_SYNC_SHADOW_WINDOW_OUTPUT_DIR:-}"
@@ -19,6 +20,10 @@ if [[ "${confirm}" != "yes" ]]; then
 fi
 if [[ ! -r "${env_file}" ]]; then
   echo "DIPOLE_ENV_FILE must name a readable Compose env file" >&2
+  exit 2
+fi
+if [[ "${cert_dir}" != /* || ! -f "${cert_dir}/ca.pem" || ! -f "${cert_dir}/sync.pem" || ! -f "${cert_dir}/sync-key.pem" ]]; then
+  echo "DIPOLE_INTERNAL_CERT_DIR must name an absolute readable internal certificate directory" >&2
   exit 2
 fi
 if ! [[ "${window_seconds}" =~ ^[0-9]+$ ]] || (( window_seconds < 30 || window_seconds > 900 )); then
@@ -50,6 +55,17 @@ done
 compose_base_cmd() { "${compose_base[@]}" "$@"; }
 compose_shadow_cmd() { "${compose_base[@]}" -f "${shadow_file}" "$@"; }
 
+wait_for_sync_ready() {
+  local command_name=$1
+  for _ in $(seq 1 30); do
+    if "${command_name}" exec -T sync wget -q -O - http://127.0.0.1:9100/readyz 2>/dev/null | grep -qx ready; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 build_sync_image() {
   (
     context=$(mktemp -d -t dipole-sync-shadow-window.XXXXXX)
@@ -65,6 +81,7 @@ build_sync_image() {
 
 restore_mysql_hydration() {
   compose_base_cmd up -d --no-deps sync >/dev/null 2>&1 || true
+  wait_for_sync_ready compose_base_cmd || true
 }
 trap restore_mysql_hydration EXIT INT TERM
 
@@ -72,7 +89,7 @@ build_sync_image
 export DIPOLE_SYNC_IMAGE="${image}"
 compose_shadow_cmd config --quiet
 compose_shadow_cmd up -d --no-deps sync
-test "$(compose_shadow_cmd exec -T sync wget -q -O - http://127.0.0.1:9100/readyz)" = ready
+wait_for_sync_ready compose_shadow_cmd
 compose_shadow_cmd exec -T sync wget -q -O - http://127.0.0.1:9100/metrics >"${output_dir}/metrics-start.prom"
 date -u +%Y-%m-%dT%H:%M:%SZ >"${output_dir}/window-start.txt"
 
