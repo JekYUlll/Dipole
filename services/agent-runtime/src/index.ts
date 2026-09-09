@@ -1,6 +1,6 @@
 import { buildServer } from "./server.js";
 import { AgentTaskControlService } from "./control/agent-task-control.js";
-import { InteractiveTaskStartService } from "./task/interactive-task-request.js";
+import { InteractiveTaskStartService, RetrievalTaskStartService } from "./task/interactive-task-request.js";
 import { z } from "zod";
 import { ConversationListCapability } from "./capabilities/conversation-list.js";
 import { ConversationReadCapability } from "./capabilities/conversation-read.js";
@@ -185,12 +185,15 @@ let temporalReadResourcesOpen = temporalReadResources !== undefined;
 let temporalDispatcherStarted = false;
 let stopPromise: Promise<void> | undefined;
 
-const interactiveTaskStarter = controlEnabled
+const interactiveTaskStarter = controlEnabled && temporalConfig.activityMode !== "retrieval_active"
   ? new InteractiveTaskStartService({ tenantId: shadowConfig.tenantId, agentId: shadowConfig.agentUuid }, temporalDispatcher!)
+  : undefined;
+const retrievalTaskStarter = controlEnabled && temporalConfig.activityMode === "retrieval_active"
+  ? new RetrievalTaskStartService({ tenantId: shadowConfig.tenantId, agentId: shadowConfig.agentUuid }, temporalDispatcher!)
   : undefined;
 const controlService = controlEnabled
   ? Object.assign(new AgentTaskControlService(controlRPC!.client, temporalDispatcher!), {
-    startTask: (input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }) => interactiveTaskStarter!.start(input),
+    startTask: (input: { principalUserId: string; requestId?: string; traceId?: string; body: unknown }) => (retrievalTaskStarter ?? interactiveTaskStarter)!.start(input),
     getRuntimeStatus: async () => ({
       schemaVersion: "dipole.agent.runtime_status.v1",
       runtimeMode: shadowConfig.runtimeMode,

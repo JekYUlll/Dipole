@@ -1,3 +1,5 @@
+- 2026-09-09：`agent-retrieval` Runtime 的 Task 控制面现生成独立 `agent.retrieval.requested` 事件和 deterministic `retrieval:*` idempotency ref，供 Core owner-scoped Definition gate 与专属 Temporal queue 使用；交互 Runtime 继续生成原有 `agent.interactive.requested`。
+
 - 2026-09-09：Gateway 新增默认关闭的认证入口 `POST /api/v1/agent/retrieval/tasks`。启用时仅由 `DIPOLE_GATEWAY_AGENT_RETRIEVAL_TARGET` 选定独立 Retrieval Runtime，复用服务令牌、可信 principal、请求大小与幂等 client request ID 边界；普通 Agent Task 路由不变。
 
 - 2026-09-09：Core Agent admission 将 `agent.retrieval.requested` 识别为 owner-scoped 高权限读取触发。创建或重放该 Task 时会复核固定 Definition 含 `conversation.search`，缺失权限不创建 Task；低风险 interactive fallback 不适用于 Retrieval，防止跨会话检索经 B1/B2 共享 Definition 获得授权。

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createInteractiveTaskRequest, InteractiveTaskStartService } from "./interactive-task-request.js";
+import { createInteractiveTaskRequest, createRetrievalTaskRequest, InteractiveTaskStartService, RetrievalTaskStartService } from "./interactive-task-request.js";
 
 const trusted = { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", requestId: "REQ-1", traceId: "TRACE-1" };
 
@@ -27,6 +27,16 @@ describe("interactive Agent Task request", () => {
 
     expect(otherPrincipal.taskId).not.toBe(first.taskId);
     expect(otherPrincipal.event.eventId).not.toBe(first.event.eventId);
+  });
+
+  it("uses a distinct owner-scoped trigger for retrieval", async () => {
+    const request = createRetrievalTaskRequest({ clientRequestId: "search-1", goal: "Find the migration decision" }, trusted);
+    expect(request.event).toMatchObject({ eventType: "agent.retrieval.requested", payload: { request_kind: "retrieval" } });
+    expect(request.event.eventId).toMatch(/^retrieval:[a-f0-9]{48}$/);
+    const dispatch = vi.fn(async () => undefined);
+    const service = new RetrievalTaskStartService({ tenantId: "dipole", agentId: "UAI" }, { dispatch });
+    await service.start({ principalUserId: "U100", body: { clientRequestId: "search-1", goal: "Find the migration decision" } });
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ eventType: "agent.retrieval.requested" }), expect.anything(), expect.any(String));
   });
 
   it("rejects identity and client input that could make the request ambiguous", () => {

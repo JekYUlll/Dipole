@@ -12,6 +12,7 @@ const interactiveRequestSchema = z.object({
 }).strict();
 
 const interactiveTriggerType = "agent.interactive.requested";
+const retrievalTriggerType = "agent.retrieval.requested";
 
 export interface InteractiveTaskRequestIdentity {
   readonly tenantId: string;
@@ -75,12 +76,60 @@ export class InteractiveTaskStartService {
   }
 }
 
+export class RetrievalTaskStartService {
+  constructor(
+    private readonly trustedAgent: Pick<InteractiveTaskRequestIdentity, "tenantId" | "agentId">,
+    private readonly dispatcher: InteractiveTaskDispatcher
+  ) {}
+
+  async start(input: StartInteractiveTaskInput): Promise<StartInteractiveTaskResult> {
+    let request: InteractiveTaskRequest;
+    try {
+      request = createRetrievalTaskRequest(input.body, {
+        ...this.trustedAgent,
+        principalUserId: input.principalUserId,
+        ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
+        ...(input.traceId === undefined ? {} : { traceId: input.traceId })
+      });
+    } catch (error) {
+      throw new AgentTaskControlError("invalid_argument", error instanceof Error ? error.message : "Retrieval Agent Task input is invalid");
+    }
+    try {
+      await this.dispatcher.dispatch(request.event, request.identity, request.taskId);
+    } catch (error) {
+      if (grpcPermissionDenied(error)) {
+        throw new AgentTaskControlError("admission_denied", "Retrieval requires an active owner Definition with conversation.search and a valid promotion grant");
+      }
+      throw error;
+    }
+    return { taskId: request.taskId, status: "accepted" };
+  }
+}
+
 // The Gateway supplies only the authenticated principal. Runtime-owned identity
 // and deterministic IDs keep client input from changing authority or replay scope.
 export function createInteractiveTaskRequest(
   raw: unknown,
   trusted: InteractiveTaskRequestIdentity,
   now: Date = new Date()
+): InteractiveTaskRequest {
+	return createTaskRequest(raw, trusted, now, interactiveTriggerType, "interactive");
+}
+
+export function createRetrievalTaskRequest(
+  raw: unknown,
+  trusted: InteractiveTaskRequestIdentity,
+  now: Date = new Date()
+): InteractiveTaskRequest {
+	return createTaskRequest(raw, trusted, now, retrievalTriggerType, "retrieval");
+}
+
+function createTaskRequest(
+  raw: unknown,
+  trusted: InteractiveTaskRequestIdentity,
+  now: Date,
+  triggerType: string,
+  requestKind: "interactive" | "retrieval"
 ): InteractiveTaskRequest {
   const input = interactiveRequestSchema.parse(raw);
   const tenantId = required(trusted.tenantId, "tenant ID");
@@ -89,7 +138,7 @@ export function createInteractiveTaskRequest(
   if (!Number.isFinite(now.valueOf())) throw new Error("Interactive Agent Task clock is invalid");
 
   // The browser key is idempotent only inside one authenticated Agent scope.
-  const triggerRef = `interactive:${digest([tenantId, principalUuid, agentUuid, input.clientRequestId])}`;
+	const triggerRef = `${requestKind}:${digest([tenantId, principalUuid, agentUuid, input.clientRequestId])}`;
   const requestId = optional(trusted.requestId);
   const traceId = optional(trusted.traceId);
   const identity: AgentIdentity = {
@@ -99,13 +148,13 @@ export function createInteractiveTaskRequest(
     ...(requestId === undefined ? {} : { requestId }),
     ...(traceId === undefined ? {} : { traceId })
   };
-  const taskId = agentTaskId({ tenantId, agentUuid, triggerType: interactiveTriggerType, triggerRef });
+	const taskId = agentTaskId({ tenantId, agentUuid, triggerType, triggerRef });
   const event: AgentEvent = {
     eventId: triggerRef,
-    eventType: interactiveTriggerType,
+		eventType: triggerType,
     aggregateId: triggerRef,
     occurredAt: now.toISOString(),
-    payload: { content: input.goal, request_kind: "interactive" },
+		payload: { content: input.goal, request_kind: requestKind },
     lineage: { origin: { type: "service", id: "dipole-gateway" } }
   };
   return { taskId, event, identity };
