@@ -1,3 +1,5 @@
+- 2026-09-09：Remote GPU 在已部署 Core revision `daa8582a` 的干净工作树复验隔离 MinIO Multipart lifecycle 与 restart smoke。乱序/替换分片、Complete、内容校验、重复 Abort，以及首个分片后重启 MinIO 再续传均通过；两次执行前后公共 `dipole-experience` 均保持 13 个容器。该证据限于临时 MinIO 与持久卷，默认 `relay` 路径、预签名切流和生产容量口径保持不变。
+
 - 2026-09-09：Remote GPU 公共 `dipole-experience` 已将 Core 热更新至 `daa8582a` 并执行 schema migration `000064`；新注册用户的 B1 私聊和 B2 群 `@AI` 端到端验收均通过，任务均以 `completed:completed` 收敛，固定 low-risk Definition，各自产生一条 Agent 回复与一条 consumed approval。Gateway、Agent、Kafka、MySQL、Redis、MinIO 与 Temporal 均保持运行。
 
 - 2026-09-09：本地 shadow 的 fallback ExecutionContext 现同步包含 `user.profile.read` 及 owner-scoped user/read 范围，与 Core 解析的 Definition 权限一致；Profile Capability 不再出现“模型可见但策略拒绝”的装配差异。

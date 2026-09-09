@@ -111,6 +111,8 @@
 
 - 2026-09-04：A7 在 current `master` `43d86704` 重新通过 [隔离 Multipart restart receipt](../../benchmarks/multipart-restart-smoke-2026-09-04/)。随机命名 MinIO 和持久卷在首个 5 MiB part 后重启，续传、Complete 和内容比对通过；公共 `dipole-experience` 保持 12 个容器，候选容器清理为零。该证据仍限于 disposable fixture，浏览器断网、预签名、Redis 和跨存储故障矩阵继续由 A7 跟踪。
 
+- 2026-09-09：Remote GPU 在 `daa8582a` 的干净工作树连续复验 lifecycle 与 restart smoke。乱序/替换、Complete、内容校验、重复 Abort，以及临时 MinIO 重启后的续传均通过；两次前后公共 `dipole-experience` 保持 13 个容器。该结果复核当前部署附近的工具链与隔离边界，默认 relay、预签名切流、浏览器断网和生产容量证据继续开放。
+
 - 2026-09-04：Remote GPU 的 `build` 曾忽略已配置的 `DIPOLE_REMOTE_NODE_ROOT`，前端依赖在系统 Node 18 上安装并因项目要求 Node 22.12+ 而停止。入口现与 `node-test` 一致地优先选择用户态 Node，并在启动 Docker 构建前 fail-closed；前端 artifact build 还关闭与产物无关的 npm audit/fund registry 请求，避免 audit 尾部等待占用构建窗口。脚本契约测试锁定两项门禁。候选后端镜像与 `258ae82e` Interactive Active Compose smoke 已完成；当前只剩前端 session 的 TypeScript 编译错误阻止完整前端 artifact build，未影响本 Agent 受控验收。
 
 - 2026-09-04：Interactive Active smoke 组合 base、read-shadow 和 active overlays 时，read-shadow 的 `DIPOLE_AGENT_KAFKA_GROUP_ID=dipole-agent-shadow-v1` 曾覆盖到 active Runtime，导致其启动时被 group-isolation 校验拒绝。interactive overlay 现强制要求 `DIPOLE_AGENT_ACTIVE_KAFKA_GROUP_ID` 并映射为容器内 group；静态测试固定该覆盖。`258ae82e` Remote GPU smoke 已通过并自动清理隔离项目，关闭该运行配置缺口；`c9ff05f0` 随后以相同隔离路径生成低敏、原子 [receipt](../../benchmarks/agent-interactive-active-smoke-2026-09-04/)，确认拒绝零副作用、Worker 重启后批准幂等、消息和 Sync 投影计数。该证据依旧限于确定性开发 fixture。
