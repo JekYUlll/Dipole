@@ -57,7 +57,7 @@ interface McpWorkerActivity {
     readonly profileId: string; readonly serverId: string; readonly toolName: string; readonly invocationId: string;
     readonly arguments: Readonly<Record<string, unknown>>; readonly expiresAtUnixMs: number;
   }, signal?: AbortSignal): Promise<McpInputRequiredActivityResult>;
-  resume(checkpoint: McpInputRequiredActivityCheckpointV1, input: McpElicitationResultInput, signal?: AbortSignal): Promise<Extract<McpInputRequiredActivityResult, { kind: "complete" }>>;
+  resume(checkpoint: McpInputRequiredActivityCheckpointV1, input: McpElicitationResultInput, signal?: AbortSignal): Promise<McpInputRequiredActivityResult>;
 }
 
 export class McpWorkerCommandDispatcher {
@@ -99,7 +99,7 @@ export class McpWorkerCommandDispatcher {
     };
   }
 
-  async resume(rawCheckpoint: unknown, input: McpElicitationResultInput, signal?: AbortSignal): Promise<Extract<McpWorkerDispatchResult, { kind: "complete" }>> {
+  async resume(rawCheckpoint: unknown, input: McpElicitationResultInput, signal?: AbortSignal): Promise<McpWorkerDispatchResult> {
     signal?.throwIfAborted();
     const checkpoint = parseDispatchCheckpoint(rawCheckpoint);
     const command = await this.resolve(checkpoint.taskId, checkpoint.runId, checkpoint.invocationId);
@@ -107,7 +107,14 @@ export class McpWorkerCommandDispatcher {
     if (commandBindingSha256(command) !== checkpoint.commandBindingSha256 || !sameActivityBinding(command, checkpoint.activity)) {
       throw new Error("MCP Worker command binding changed before resume");
     }
-    return this.activity.resume(checkpoint.activity, input, signal);
+    const result = await this.activity.resume(checkpoint.activity, input, signal);
+    if (result.kind === "complete") return result;
+    const nextCheckpoint = createDispatchCheckpoint(command, result.checkpoint);
+    return {
+      kind: "wait_input",
+      checkpoint: nextCheckpoint,
+      directive: { ...result.directive, checkpoint: nextCheckpoint }
+    };
   }
 
   private async resolve(taskId: string, runId: string, invocationId: string): Promise<AgentMcpToolCommand> {

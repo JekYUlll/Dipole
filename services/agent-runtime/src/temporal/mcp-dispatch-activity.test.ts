@@ -63,6 +63,7 @@ describe("Temporal MCP dispatch Activity", () => {
   it("re-resolves Context and exact-replays the producer before durable resume", async () => {
     const dependencies = completedDependencies();
     const durableWorkerCheckpoint = workerCheckpoint();
+    const secondWorkerCheckpoint = workerCheckpoint();
     dependencies.worker.begin.mockResolvedValueOnce({
       kind: "wait_input",
       checkpoint: durableWorkerCheckpoint,
@@ -81,21 +82,48 @@ describe("Temporal MCP dispatch Activity", () => {
     });
     if (wait.kind !== "wait_input") throw new Error("expected wait_input");
 
-    await expect(activity.execute({
+    dependencies.worker.resume
+      .mockResolvedValueOnce({
+        kind: "wait_input",
+        checkpoint: secondWorkerCheckpoint,
+        directive: {
+          kind: "wait_input", requestId: "INPUT-2", prompt: "Confirm",
+          form: { schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "confirm", label: "Confirm", type: "text", required: true }] },
+          source: { kind: "mcp", serverId: "calendar.example", toolName: "calendar.read", invocationId, trust: "untrusted" },
+          expiresAtUnixMs: 2_000,
+          checkpoint: secondWorkerCheckpoint
+        }
+      })
+      .mockResolvedValueOnce({
+        kind: "complete", result: { content: [], secretBody: "resumed" }, receipt: { roundId, roundNumber: 2 }
+      });
+    const secondWait = await activity.execute({
       kind: "resume",
       checkpoint: wait.checkpoint,
       resume: { kind: "input", requestId: "INPUT-1", value: { choice: "yes" } }
+    });
+    expect(secondWait).toMatchObject({ kind: "wait_input", requestId: "INPUT-2" });
+    if (secondWait.kind !== "wait_input") throw new Error("expected second wait_input");
+    await expect(activity.execute({
+      kind: "resume",
+      checkpoint: secondWait.checkpoint,
+      resume: { kind: "input", requestId: "INPUT-2", value: { confirm: "yes" } }
     })).resolves.toMatchObject({ kind: "complete", output: { invocationId, artifactId: "c".repeat(64) } });
 
-    expect(dependencies.contexts.resolveMcpContext).toHaveBeenCalledTimes(2);
-    expect(dependencies.producer.produce).toHaveBeenCalledTimes(2);
-    expect(dependencies.producer.produce.mock.calls[1]?.[0]).toEqual({
+    expect(dependencies.contexts.resolveMcpContext).toHaveBeenCalledTimes(3);
+    expect(dependencies.producer.produce).toHaveBeenCalledTimes(3);
+    expect(dependencies.producer.produce.mock.calls[2]?.[0]).toEqual({
       workflowStep: 3, ordinal: 1, capabilityId: "calendar.event.read",
       arguments: { calendarId: "CAL-1", eventId: "EV-1" }
     });
-    expect(dependencies.worker.resume).toHaveBeenCalledWith(
+    expect(dependencies.worker.resume).toHaveBeenNthCalledWith(1,
       durableWorkerCheckpoint,
       { action: "accept", resume: { kind: "input", requestId: "INPUT-1", value: { choice: "yes" } } },
+      expect.any(AbortSignal)
+    );
+    expect(dependencies.worker.resume).toHaveBeenNthCalledWith(2,
+      secondWorkerCheckpoint,
+      { action: "accept", resume: { kind: "input", requestId: "INPUT-2", value: { confirm: "yes" } } },
       expect.any(AbortSignal)
     );
   });

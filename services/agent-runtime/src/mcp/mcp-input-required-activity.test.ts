@@ -47,6 +47,7 @@ describe("MCP input-required Activity boundary", () => {
     expect(completed).toMatchObject({
       kind: "complete", result: { content: [{ type: "text", text: "created" }] }, receipt: { roundNumber: 1 }
     });
+    if (completed.kind !== "complete") throw new Error("expected completed result");
     expect(completed.receipt.roundId).toMatch(/^[a-f0-9]{64}$/);
     expect(factory.open).toHaveBeenCalledTimes(2);
     expect(close).toHaveBeenCalledTimes(2);
@@ -79,11 +80,14 @@ describe("MCP input-required Activity boundary", () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
-  it("rejects outer binding drift and a second input_required round", async () => {
+  it("rejects outer binding drift and preserves a fresh checkpoint for a second input-required round", async () => {
     let calls = 0;
     const factory: McpActivityRoundSessionFactory = {
       open: async () => ({
-        callToolRound: async () => { calls += 1; return inputRequired(); },
+        callToolRound: async () => {
+          calls += 1;
+          return calls < 3 ? inputRequired(`opaque-state-${calls}`) : { content: [{ type: "text" as const, text: "created" }] };
+        },
         close: async () => undefined
       })
     };
@@ -94,10 +98,13 @@ describe("MCP input-required Activity boundary", () => {
     await expect(activity.resume({ ...wait.checkpoint, profileId: "other-profile" }, {
       action: "cancel", requestId: "INPUT-1"
     })).rejects.toThrow(/integrity/i);
-    await expect(activity.resume(wait.checkpoint, {
-      action: "cancel", requestId: "INPUT-1"
-    })).rejects.toThrow(/additional input_required/i);
-    expect(calls).toBe(2);
+    const secondWait = await activity.resume(wait.checkpoint, { action: "cancel", requestId: "INPUT-1" });
+    expect(secondWait).toMatchObject({ kind: "wait_input", checkpoint: { roundNumber: 1 } });
+    if (secondWait.kind !== "wait_input") throw new Error("expected second durable wait");
+    await expect(activity.resume(secondWait.checkpoint, {
+      action: "cancel", requestId: secondWait.directive.requestId
+    })).resolves.toMatchObject({ kind: "complete", receipt: { roundNumber: 2 } });
+    expect(calls).toBe(3);
   });
 
   it("replays a completed receipt without opening a session and fails closed on ambiguity", async () => {
@@ -218,7 +225,7 @@ function receipts(
   };
 }
 
-function inputRequired() {
+function inputRequired(requestState = "opaque-state-1") {
   return {
     resultType: "input_required" as const,
     inputRequests: {
@@ -238,6 +245,6 @@ function inputRequired() {
         }
       }
     },
-    requestState: "opaque-state-1"
+    requestState
   };
 }

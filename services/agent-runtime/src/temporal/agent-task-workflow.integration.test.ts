@@ -212,6 +212,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     };
     const activityInputs: unknown[] = [];
     const checkpoint = { durable: "MCP-CHECKPOINT-1" };
+    const secondCheckpoint = { durable: "MCP-CHECKPOINT-2" };
     const activities: AgentTaskWorkerActivities & TemporalMcpDispatchActivities = {
       async admitAgentTask(input) {
         return { taskId: input.taskId, runId: "RUN-MCP-1", runStatus: "running" };
@@ -243,6 +244,26 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
             },
             expiresAtUnixMs: Date.now() + 60_000,
             checkpoint
+          };
+        }
+        if (input.resume.requestId === "INPUT-MCP-1") {
+          return {
+            kind: "wait_input",
+            requestId: "INPUT-MCP-2",
+            prompt: "Confirm calendar scope",
+            form: {
+              schemaVersion: "dipole.agent.elicitation.v1",
+              fields: [{ id: "confirm", label: "Confirm", type: "boolean", required: true }]
+            },
+            source: {
+              kind: "mcp",
+              serverId: "calendar.example",
+              toolName: "calendar.read_event",
+              invocationId: "c".repeat(64),
+              trust: "untrusted"
+            },
+            expiresAtUnixMs: Date.now() + 60_000,
+            checkpoint: secondCheckpoint
           };
         }
         return { kind: "complete", output: { artifactId: "ARTIFACT-MCP-1" } };
@@ -283,6 +304,11 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       requestId: "INPUT-MCP-1",
       value: { scope: "today" }
     });
+    await waitForStatus(env, handle, "waiting_input");
+    await controls.provideInput("TASK-MCP-1", {
+      requestId: "INPUT-MCP-2",
+      value: { confirm: true }
+    });
 
     await expect(handle.result()).resolves.toMatchObject({
       status: "completed",
@@ -303,6 +329,11 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
         kind: "resume",
         checkpoint,
         resume: { kind: "input", requestId: "INPUT-MCP-1", value: { scope: "today" } }
+      },
+      {
+        kind: "resume",
+        checkpoint: secondCheckpoint,
+        resume: { kind: "input", requestId: "INPUT-MCP-2", value: { confirm: true } }
       }
     ]);
     workerTwo.shutdown();

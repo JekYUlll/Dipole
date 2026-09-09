@@ -102,6 +102,37 @@ describe("MCP Worker command dispatch", () => {
     expect(sessions.open).toHaveBeenCalledTimes(2);
   });
 
+  it("binds every additional elicitation round to the authoritative command", async () => {
+    const resolver = { resolveMcpToolCommand: vi.fn(async () => externalCommand()) };
+    let calls = 0;
+    const sessions: McpActivityRoundSessionFactory = {
+      open: vi.fn(async () => ({
+        callToolRound: vi.fn(async () => {
+          calls += 1;
+          return calls < 3 ? inputRequired() : { content: [{ type: "text" as const, text: "created" }] };
+        }),
+        close: vi.fn(async () => undefined)
+      }))
+    };
+    const dispatcher = new McpWorkerCommandDispatcher(
+      resolver,
+      new McpInputRequiredActivity(sessions, receiptClient(), () => 1_100, () => "c".repeat(64)),
+      () => 1_100
+    );
+    const first = await dispatcher.begin({ taskId: "TASK-1", runId: "RUN-1", invocationId: "INV-1" });
+    if (first.kind !== "wait_input") throw new Error("expected first wait_input");
+    const second = await dispatcher.resume(first.checkpoint, {
+      action: "accept", resume: { kind: "input", requestId: first.directive.requestId, value: { title: "Review" } }
+    });
+    expect(second).toMatchObject({ kind: "wait_input", checkpoint: { activity: { roundNumber: 1 } } });
+    if (second.kind !== "wait_input") throw new Error("expected second wait_input");
+    await expect(dispatcher.resume(second.checkpoint, {
+      action: "accept", resume: { kind: "input", requestId: second.directive.requestId, value: { title: "Review" } }
+    })).resolves.toMatchObject({ kind: "complete", receipt: { roundNumber: 2 } });
+    expect(resolver.resolveMcpToolCommand).toHaveBeenCalledTimes(3);
+    expect(sessions.open).toHaveBeenCalledTimes(3);
+  });
+
   it("stops cancellation during Core resolution before claiming a Tool round", async () => {
     const controller = new AbortController();
     const resolver = {

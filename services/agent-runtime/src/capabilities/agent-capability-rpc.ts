@@ -78,7 +78,7 @@ export interface AgentMcpToolRoundClaim {
   readonly runId: string;
   readonly invocationId: string;
   readonly roundId: string;
-  readonly roundNumber: 0 | 1;
+  readonly roundNumber: number;
   readonly requestSha256: string;
   readonly ownerTokenSha256: string;
 }

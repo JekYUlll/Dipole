@@ -170,7 +170,7 @@ migration v31 把已消费 Approval 绑定到 Tool Invocation Begin，并在成�
 
 checkpoint 使用 SHA-256 绑定 host-owned Request ID、Server、Tool、Invocation、deadline、完整 Form 和信任级别。返回 MCP `accept` 前必须收到同一 Request 的有效 durable input resume，并再次执行 Form response 校验；`decline/cancel` 同样要求精确 Request，过期或 checkpoint 漂移 fail closed。
 
-当前 adapter 与单轮 MRTR continuation 已进入默认关闭的 Activity-safe runner：首次调用可返回 `wait_input` checkpoint，恢复后使用新 Client/Transport 精确回传原参数、用户输入和 opaque request state。生产 Worker 尚未调度这类权威命令；多轮、URL mode、敏感输入和 Server 不支持恢复时的产品策略继续关闭。
+当前 adapter 已进入默认关闭的 Activity-safe runner：首次调用与每次恢复都可返回新的 `wait_input` checkpoint，恢复后使用新 Client/Transport 精确回传原参数、用户输入和 opaque request state。每个 checkpoint 绑定产生它的 round，后续 Request ID 由 Invocation 和 round 派生；Core 持久 receipt、RPC 和 MySQL 共同限制每次 Invocation 最多 8 轮，且共享首次 deadline。旧 checkpoint 缺少 round 时按 round 0 读取。生产 Worker 尚未调度这类权威命令；URL mode、敏感输入和 Server 不支持恢复时的产品策略继续关闭。
 
 默认关闭的 Web Form 只消费 authenticated Task query/input/cancel API，并在查询失败时清空旧请求。浏览器验收覆盖 Chromium、Firefox、WebKit 的精确 Task/request 提交、untrusted Server/Tool/Invocation 来源披露、恢复重试、首个错误字段聚焦和 390x844 单列布局；字段错误通过 `aria-invalid` 与描述节点关联。该页面仍不接受密码、Token、支付信息或 URL mode 授权。
 

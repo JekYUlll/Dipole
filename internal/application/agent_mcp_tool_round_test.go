@@ -15,11 +15,16 @@ func TestAgentMCPToolRoundContracts(t *testing.T) {
 	if err := claim.Validate(); err != nil {
 		t.Fatalf("valid claim: %v", err)
 	}
+	claim.RoundNumber = 7
+	if err := claim.Validate(); err != nil {
+		t.Fatalf("last supported round: %v", err)
+	}
+	claim.RoundNumber = 0
 	for name, mutate := range map[string]func(*AgentMCPToolRoundClaimV1){
 		"bad round id":     func(v *AgentMCPToolRoundClaimV1) { v.RoundUUID = "short" },
 		"drifting task id": func(v *AgentMCPToolRoundClaimV1) { v.TaskUUID = " TASK-1" },
 		"bad request hash": func(v *AgentMCPToolRoundClaimV1) { v.RequestSHA256 = strings.Repeat("g", 64) },
-		"too many rounds":  func(v *AgentMCPToolRoundClaimV1) { v.RoundNumber = 2 },
+		"too many rounds":  func(v *AgentMCPToolRoundClaimV1) { v.RoundNumber = 8 },
 	} {
 		candidate := claim
 		mutate(&candidate)

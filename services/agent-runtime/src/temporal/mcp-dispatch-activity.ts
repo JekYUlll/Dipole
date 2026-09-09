@@ -130,7 +130,7 @@ export interface TemporalMcpInvocationProducer {
 
 export interface TemporalMcpTerminalWorker {
   begin(input: unknown, signal?: AbortSignal): Promise<McpWorkerDispatchResult>;
-  resume(checkpoint: unknown, input: McpElicitationResultInput, signal?: AbortSignal): Promise<Extract<McpWorkerDispatchResult, { kind: "complete" }>>;
+  resume(checkpoint: unknown, input: McpElicitationResultInput, signal?: AbortSignal): Promise<McpWorkerDispatchResult>;
 }
 
 export interface TemporalMcpResultProjector {
@@ -218,7 +218,17 @@ export class TemporalMcpDispatchActivity {
       signal
     );
     signal.throwIfAborted();
-    return this.projectComplete(result, context, produced, signal);
+    return this.projectResult(result, context, produced, checkpoint.arguments, {
+      kind: "begin",
+      routeId: checkpoint.routeId,
+      routeVersion: checkpoint.routeVersion,
+      routeManifestSha256: checkpoint.routeManifestSha256,
+      taskId: checkpoint.taskId,
+      runId: checkpoint.runId,
+      principalUserId: checkpoint.principalUserId,
+      arguments: checkpoint.arguments,
+      ...correlation(checkpoint)
+    }, signal);
   }
 
   private async resolveContext(

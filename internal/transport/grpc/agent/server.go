@@ -1833,7 +1833,7 @@ func (s *Server) ClaimMcpToolRound(ctx context.Context, request *agentv1.ClaimMc
 	if s.toolRounds == nil {
 		return nil, status.Error(codes.Unavailable, "Agent MCP Tool round receipt is unavailable")
 	}
-	if request.GetRoundNumber() > 1 {
+	if request.GetRoundNumber() >= uint32(application.MaxAgentMCPToolRoundsV1) {
 		return nil, mapAgentMCPToolRoundErrorV1(application.ErrAgentMCPToolRoundInvalid)
 	}
 	result, err := s.toolRounds.Claim(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMCPToolRoundClaimV1{

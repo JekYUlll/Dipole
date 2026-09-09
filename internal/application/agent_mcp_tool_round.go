@@ -92,12 +92,14 @@ type AgentMCPToolInvocationTerminalServiceV1 interface {
 var agentMCPToolRoundSHA256PatternV1 = regexp.MustCompile(`^[a-f0-9]{64}$`)
 var agentMCPToolRoundErrorCodePatternV1 = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
 
+const MaxAgentMCPToolRoundsV1 uint8 = 8
+
 func (v AgentMCPToolRoundClaimV1) Validate() error {
 	if !agentMCPToolRoundSHA256PatternV1.MatchString(v.RoundUUID) ||
 		!validExactAgentMCPToolRoundIdentifierV1(v.InvocationUUID, 64) ||
 		!validExactAgentMCPToolRoundIdentifierV1(v.TaskUUID, 64) ||
 		!validExactAgentMCPToolRoundIdentifierV1(v.RunUUID, 64) ||
-		v.RoundNumber > 1 ||
+		v.RoundNumber >= MaxAgentMCPToolRoundsV1 ||
 		!agentMCPToolRoundSHA256PatternV1.MatchString(v.RequestSHA256) ||
 		!agentMCPToolRoundSHA256PatternV1.MatchString(v.OwnerTokenSHA256) {
 		return ErrAgentMCPToolRoundInvalid

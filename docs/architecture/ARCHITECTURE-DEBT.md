@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：External MCP 的 durable elicitation 已从单次恢复扩展为最多 8 轮。每次 `input_required` 都产生包含当前轮次的新 checkpoint，并用派生 Request ID、Core round receipt、权威 command resolve 和原始 deadline 约束下一次恢复；旧 checkpoint 仍按 round 0 兼容读取。TypeScript unit、Temporal worker replacement 两轮输入集成、Go Core gRPC 与 SQLC 门禁均通过。新 migration `000064` 将 MySQL round receipt 上限同步扩展为 `< 8`；外部 MCP 默认 route、URL mode、敏感字段与生产 Server 策略仍关闭。
+
 - 2026-09-09：Remote GPU 已完成 Subscription Auto-Reply 的隔离 Kafka 重放验收：从原始、已发布的 Message Outbox 读取相同 envelope 后再投递到相同 topic，Event Ledger 仍只有一个 completed Task，且消息、已消费 approval、完成 Tool invocation 均保持单一；候选容器和卷清理为零，公共体验保持 12 个运行实例。现有 Runtime 已有确定性 Tool Invocation 的 Activity 重试收敛，本条补齐 consumer 入口的端到端证据。自动回复仍默认关闭，长期观察与 reviewed 门槛保持前置条件。
 
 - 2026-09-09：公共体验以新注册 owner、新群和新 `@Dipole AI` 消息重跑 B2。Task 为 `completed:completed`，低风险 Definition、单条 Agent 群回复和单条已消费 `group_reply` approval 均符合预期；没有观察到历史上“消息已投递但 workflow 失败”的状态分离。该证据只覆盖当前一条新事件，仍需后续重启和故障注入回归。

@@ -16,6 +16,7 @@ import {
 
 const checkpointSchemaVersion = "dipole.mcp.input-required-activity-checkpoint.v1" as const;
 const identityPattern = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
+export const maximumMcpToolRounds = 8;
 
 export interface McpInputRequiredActivityCommand {
   readonly requestId: string;
@@ -37,6 +38,8 @@ export interface McpInputRequiredActivityCheckpointV1 {
   readonly tenantId: string;
   readonly profileId: string;
   readonly serverId: string;
+  /** The persisted round that produced this wait; absent checkpoints are legacy round zero. */
+  readonly roundNumber?: number;
   readonly continuation: McpInputRequiredCheckpointV1;
   readonly bindingSha256: string;
 }
@@ -44,7 +47,7 @@ export interface McpInputRequiredActivityCheckpointV1 {
 export interface McpToolRoundReceiptClient {
   claimMcpToolRound(input: {
     readonly taskId: string; readonly runId: string; readonly invocationId: string; readonly roundId: string;
-    readonly roundNumber: 0 | 1; readonly requestSha256: string; readonly ownerTokenSha256: string;
+    readonly roundNumber: number; readonly requestSha256: string; readonly ownerTokenSha256: string;
   }): Promise<
     | { readonly outcome: "claimed" }
     | { readonly outcome: "replay_completed"; readonly result: unknown; readonly resultJSON: string; readonly resultSha256: string }
@@ -61,7 +64,7 @@ export interface McpToolRoundReceiptClient {
 
 export interface McpToolRoundReceiptLocator {
   readonly roundId: string;
-  readonly roundNumber: 0 | 1;
+  readonly roundNumber: number;
 }
 
 export class McpToolRoundTerminalError extends Error {
@@ -207,8 +210,45 @@ export class McpInputRequiredActivity {
     }, 0, signal);
     if (!isInputRequiredResult(execution.result)) return { kind: "complete", result: execution.result, receipt: execution.receipt };
 
+    return this.#waitForInput(command, execution.result, 0);
+  }
+
+  async resume(
+    checkpoint: McpInputRequiredActivityCheckpointV1,
+    input: McpElicitationResultInput,
+    signal?: AbortSignal
+  ): Promise<McpInputRequiredActivityResult> {
+    validateCheckpoint(checkpoint);
+    const previousRound = checkpoint.roundNumber ?? 0;
+    if (!Number.isSafeInteger(previousRound) || previousRound < 0 || previousRound >= maximumMcpToolRounds - 1) {
+      throw new Error("MCP Activity maximum elicitation rounds exceeded");
+    }
+    const retry = this.#continuation.retry(checkpoint.continuation, input);
+    const roundNumber = previousRound + 1;
+    const command = {
+      taskId: checkpoint.taskId,
+      runId: checkpoint.runId,
+      invocationId: checkpoint.continuation.invocationId,
+      tenantId: checkpoint.tenantId,
+      profileId: checkpoint.profileId,
+      serverId: checkpoint.serverId,
+      toolName: checkpoint.continuation.toolName,
+      requestId: requestIdForRound(checkpoint.continuation.invocationId, roundNumber),
+      arguments: checkpoint.continuation.arguments,
+      expiresAtUnixMs: checkpoint.continuation.elicitation.expiresAtUnixMs
+    };
+    const execution = await this.#executeRound(command, retry, roundNumber, signal);
+    if (!isInputRequiredResult(execution.result)) return { kind: "complete", result: execution.result, receipt: execution.receipt };
+    return this.#waitForInput(command, execution.result, roundNumber);
+  }
+
+  #waitForInput(
+    command: McpInputRequiredActivityCommand,
+    result: Extract<McpToolRoundResult, { resultType: "input_required" }>,
+    roundNumber: number
+  ): Extract<McpInputRequiredActivityResult, { kind: "wait_input" }> {
     const wait = this.#continuation.begin({
-      result: execution.result,
+      result,
       requestId: command.requestId,
       serverId: command.serverId,
       toolName: command.toolName,
@@ -223,6 +263,7 @@ export class McpInputRequiredActivity {
       tenantId: command.tenantId,
       profileId: command.profileId,
       serverId: command.serverId,
+      roundNumber,
       continuation: wait.checkpoint
     };
     const checkpoint: McpInputRequiredActivityCheckpointV1 = {
@@ -236,35 +277,13 @@ export class McpInputRequiredActivity {
     };
   }
 
-  async resume(
-    checkpoint: McpInputRequiredActivityCheckpointV1,
-    input: McpElicitationResultInput,
-    signal?: AbortSignal
-  ): Promise<Extract<McpInputRequiredActivityResult, { kind: "complete" }>> {
-    validateCheckpoint(checkpoint);
-    const retry = this.#continuation.retry(checkpoint.continuation, input);
-    const execution = await this.#executeRound({
-      taskId: checkpoint.taskId,
-      runId: checkpoint.runId,
-      invocationId: checkpoint.continuation.invocationId,
-      tenantId: checkpoint.tenantId,
-      profileId: checkpoint.profileId,
-      serverId: checkpoint.serverId,
-      toolName: checkpoint.continuation.toolName
-    }, retry, 1, signal);
-    if (isInputRequiredResult(execution.result)) {
-      throw new Error("MCP Activity does not support an additional input_required round");
-    }
-    return { kind: "complete", result: execution.result, receipt: execution.receipt };
-  }
-
   async #executeRound(
     binding: {
       readonly taskId: string; readonly runId: string; readonly invocationId: string;
       readonly tenantId: string; readonly profileId: string; readonly serverId: string; readonly toolName: string;
     },
     params: McpToolRoundParams,
-    roundNumber: 0 | 1,
+    roundNumber: number,
     signal?: AbortSignal
   ): Promise<{ readonly result: McpToolRoundResult; readonly receipt: McpToolRoundReceiptLocator }> {
     const requestJSON = canonicalMcpJSON(params);
@@ -346,6 +365,13 @@ function validateCheckpoint(checkpoint: McpInputRequiredActivityCheckpointV1): v
   if (checkpoint.serverId !== checkpoint.continuation.serverId) {
     throw new Error("MCP Activity checkpoint Server lineage is invalid");
   }
+  if (checkpoint.roundNumber !== undefined && (!Number.isSafeInteger(checkpoint.roundNumber) || checkpoint.roundNumber < 0 || checkpoint.roundNumber >= maximumMcpToolRounds)) {
+    throw new Error("MCP Activity checkpoint round is invalid");
+  }
+}
+
+function requestIdForRound(invocationId: string, roundNumber: number): string {
+  return sha256(["dipole.mcp.worker-input.v1", invocationId, roundNumber.toString()].join("\n"));
 }
 
 function sha256(value: string): string {
