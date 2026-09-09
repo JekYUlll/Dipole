@@ -36,6 +36,8 @@ class ReviewedGrantHelperTest(unittest.TestCase):
         self.assertIn("/review", source)
         self.assertIn("run-agent-promotion-window.sh\" open", source)
         self.assertIn("printf '%08d'", source)
+        self.assertIn('require_id definition "$definition_uuid" 64', source)
+        self.assertIn('require_id subscription "$subscription_uuid" 64', source)
 
     def test_cleanup_revokes_scoped_grant_roles_and_window(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")

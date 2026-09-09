@@ -92,7 +92,7 @@ fi
 : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_CANDIDATE_VERSION:?missing candidate version}"
 : "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GATEWAY:?missing Gateway URL}"
 owner_uuid="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_OWNER_UUID"; definition_uuid="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_DEFINITION_UUID"; definition_version="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_DEFINITION_VERSION"; subscription_uuid="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_SUBSCRIPTION_UUID"; candidate="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_CANDIDATE_VERSION"; gateway="$DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GATEWAY"
-require_id owner "$owner_uuid" 24; require_sha definition "$definition_uuid"; [[ "$definition_version" =~ ^[1-9][0-9]*$ ]] || die "invalid Definition version"; require_sha subscription "$subscription_uuid"; require_id candidate "$candidate" 128; [[ "$gateway" =~ ^https?://[A-Za-z0-9.:_-]+$ ]] || die "invalid Gateway URL"
+require_id owner "$owner_uuid" 24; require_id definition "$definition_uuid" 64; [[ "$definition_version" =~ ^[1-9][0-9]*$ ]] || die "invalid Definition version"; require_id subscription "$subscription_uuid" 64; require_id candidate "$candidate" 128; [[ "$gateway" =~ ^https?://[A-Za-z0-9.:_-]+$ ]] || die "invalid Gateway URL"
 [[ "$project" == "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROJECT:-}" ]] || die "project differs from reviewed grant config"
 [[ ! -e "$state_file" ]] || die "reviewed grant state file already exists"
 
