@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：已消除 local shadow fallback Context 与 Core Context 的 Profile Read 权限漂移：fallback 现在授予任务 owner 专属 `user/read` scope 及 `user.profile.read` permission，新增 Activity 回归验证真实 Capability 可执行。外部 Runtime 仍仅信任 Core `ResolveMcpContext` 的权威结果。
+
 - 2026-09-09：已收口 Retrieval Capability 装配差异：当 `retrievalEnabled` 为真时，已注册且已授权的 `conversation.search` 同步进入模型允许清单；关闭时保持最小读集合。搜索的 wildcard resource 继续由 Core 按 Task/Run 与 owner scope 复核，尚不构成默认启用的全文检索服务切流。
 
 - 2026-09-09：Temporal Workflow 级集成验收补齐 failed terminal 的 EventLedger 语义：`finish(failed)` 成功后才执行 claim release，且错误文本被保留。该项与既有 completed settle、活动层 failed/cancelled release 和 MySQL lease reclaim 契约共同防止入站失败被错误去重；Kafka 重投策略仍由 Core Admission 决定。

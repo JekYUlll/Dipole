@@ -1,3 +1,5 @@
+- 2026-09-09：本地 shadow 的 fallback ExecutionContext 现同步包含 `user.profile.read` 及 owner-scoped user/read 范围，与 Core 解析的 Definition 权限一致；Profile Capability 不再出现“模型可见但策略拒绝”的装配差异。
+
 - 2026-09-09：Agent Runtime 在 `retrievalEnabled` 时将受治理的 `conversation.search` 纳入模型可规划 Capability；关闭 retrieval 时仍只暴露 profile、会话列表和基于发现结果的会话读取。搜索继续通过 Core 的任务、运行和 owner scope 授权，不扩大默认权限。
 
 - 2026-09-09：Temporal Agent 集成验收新增失败结算路径：Task 持久化 `failed` 终态后才释放 inbound EventLedger claim，并保留原始失败原因供后续 Kafka 重投；成功任务仍只在持久化 `completed` 后完成 claim，避免失败被误标完成。

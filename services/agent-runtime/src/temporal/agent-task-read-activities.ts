@@ -103,8 +103,11 @@ export function createTemporalReadStepActivities(
           taskId: input.taskId,
           runId: input.runId,
           mode: runtimeMode,
-          permissions: dependencies.readPermissions ?? ["conversation.list", "conversation.read"],
-          resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }],
+          permissions: dependencies.readPermissions ?? ["user.profile.read", "conversation.list", "conversation.read"],
+          resourceScopes: [
+            { resourceType: "user", resourceId: admission.principalUserId, actions: ["read"] },
+            { resourceType: "conversation", resourceId: "*", actions: ["read", "list"] }
+          ],
           approvedCapabilities: [],
           eventId: event.eventId,
           ...(admission.requestId === undefined ? {} : { requestId: admission.requestId }),

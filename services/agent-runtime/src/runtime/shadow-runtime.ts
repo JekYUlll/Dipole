@@ -726,8 +726,8 @@ export function singlePassModelCapabilityIDs(config: ShadowRuntimeConfig): reado
 
 function readCapabilityPermissions(config: ShadowRuntimeConfig): readonly string[] {
   return config.retrievalEnabled
-    ? ["conversation.list", "conversation.read", "conversation.search"]
-    : ["conversation.list", "conversation.read"];
+    ? ["user.profile.read", "conversation.list", "conversation.read", "conversation.search"]
+    : ["user.profile.read", "conversation.list", "conversation.read"];
 }
 
 function physicalTopic(config: ShadowRuntimeConfig): string {

@@ -4,6 +4,7 @@ import type { Span } from "@opentelemetry/api";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
+import { UserProfileReadCapability } from "../capabilities/user-profile-read.js";
 import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import type { ModelRouter } from "../models/model-router.js";
@@ -84,6 +85,43 @@ describe("Temporal read Step Activities", () => {
       metadata: { event_id: event.eventId, event_type: event.eventType, step_count: 2 }
     }));
     expect(spanNames).toEqual(["agent.run", "agent.tool.call", "agent.tool.call", "agent.artifact.create"]);
+  });
+
+  it("gives the local fallback context an owner-scoped profile read grant", async () => {
+    const event: AgentEvent = {
+      eventId: "E-PROFILE-READ", eventType: "message.direct.created", aggregateId: "M-PROFILE-READ",
+      occurredAt: "2026-09-09T08:00:00.000Z", payload: { content: "profile" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const readUserProfile = vi.fn(async (context) => {
+      expect(context).toMatchObject({
+        principalUuid: "U100", permissions: expect.arrayContaining(["user.profile.read"]),
+        resourceScopes: expect.arrayContaining([{ resourceType: "user", resourceId: "U100", actions: ["read"] }])
+      });
+      return { found: true, userId: "U100", nickname: "Owner", avatar: "", userType: 0, status: 1 };
+    });
+    const registry = new CapabilityRegistry();
+    registry.register(new UserProfileReadCapability({ readUserProfile }));
+    const trajectory = {
+      append: vi.fn(async () => undefined),
+      claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "PROFILE-TOKEN" })),
+      recordAuthorization: vi.fn(async () => undefined),
+      completeStep: vi.fn(async () => undefined),
+      failStep: vi.fn(async () => undefined)
+    };
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "read owner profile", steps: [{ capabilityId: "user.profile.read", input: {} }] }) },
+      audit: trajectory, registry, trajectory, stepLeaseMs: 60_000
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId: agentRunId(taskId), goal: "profile", step: 0, shadowEvent: event,
+      admission: {
+        tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+        triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId
+      }
+    })).resolves.toMatchObject({ kind: "complete", output: { summary: "read owner profile", stepCount: 1 } });
+    expect(readUserProfile).toHaveBeenCalledOnce();
   });
 
   it("rejects event or Run drift before planning", async () => {
