@@ -172,6 +172,50 @@ func TestAdmitDoesNotAutoEnrollSubscriptionTriggers(t *testing.T) {
 	}
 }
 
+func TestAdmitRetrievalRequiresOwnerDefinitionWithSearchPermission(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	definition := application.AgentDefinitionVersionV1{
+		DefinitionUUID: "user:read-only", Version: 1,
+		TenantID: "dipole", OwnerUUID: "U100", AgentUUID: "UAI", Status: application.AgentDefinitionStatusActive,
+		Permissions: []string{application.AgentPermissionConversationRead},
+		Scopes: []application.AgentResourceScopeV1{{
+			ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard,
+			Actions: []string{application.AgentResourceActionRead},
+		}},
+		ValidFrom: now.Add(-time.Hour),
+	}
+	store := &agentPolicyStoreStub{
+		latestByOwner: map[string]*application.AgentDefinitionVersionV1{"U100": &definition},
+		definitions: map[string]*application.AgentDefinitionVersionV1{
+			definitionKeyV1(definition.DefinitionUUID, definition.Version): &definition,
+		},
+	}
+	admission, err := agentapplication.NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now }, &activeRunPromotionAuthorizerStub{})
+	if err != nil {
+		t.Fatalf("new Run admission: %v", err)
+	}
+	request := interactiveAdmissionRequest()
+	request.TriggerType = "agent.retrieval.requested"
+	request.TriggerRef = "retrieval:abc"
+
+	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+		t.Fatalf("retrieval without conversation.search error = %v, want denial", err)
+	}
+	if len(store.tasks) != 0 {
+		t.Fatalf("retrieval without conversation.search created a Task")
+	}
+
+	definition.Permissions = append(definition.Permissions, application.AgentPermissionConversationSearch)
+	result, err := admission.Admit(context.Background(), request)
+	if err != nil {
+		t.Fatalf("retrieval with conversation.search: %v", err)
+	}
+	if task := store.tasks[result.TaskUUID]; task == nil || task.DefinitionUUID != definition.DefinitionUUID {
+		t.Fatalf("retrieval Task = %+v, want owner Definition", task)
+	}
+}
+
 func TestAutoApproveInteractiveReplyAllowsLowRiskAgentOwnedDefinition(t *testing.T) {
 	now := time.Date(2026, 9, 6, 8, 0, 0, 0, time.UTC)
 	// The shared low-risk Definition is owned by a platform identity, not the principal.

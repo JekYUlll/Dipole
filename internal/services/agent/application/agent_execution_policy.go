@@ -16,6 +16,7 @@ import (
 const embeddedAgentDefinitionVersionV1 uint64 = 1
 const embeddedAgentRuntimeIDV1 = "dipole-eino"
 const interactiveAgentTriggerTypeV1 = "agent.interactive.requested"
+const retrievalAgentTriggerTypeV1 = "agent.retrieval.requested"
 
 // LowRiskAssistantDefinitionUUIDV1 is the shared, platform-owned low-risk
 // assistant Definition used for first-contact 1v1 auto-enrollment. Its owner is
@@ -193,7 +194,7 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 		if lookupErr != nil {
 			return nil, fmt.Errorf("%w: Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
 		}
-		if authorizeDefinitionAtV1(latest, request, a.now()) != nil {
+		if authorizeDefinitionForTriggerV1(latest, request, a.now()) != nil {
 			// First-contact auto-enrollment: an interactive trigger from a principal
 			// with no usable owner-scoped Definition falls back to the shared
 			// low-risk assistant Definition so a first inbound DM can be answered.
@@ -254,7 +255,7 @@ func (a *PersistentAgentRunAdmissionV1) Admit(ctx context.Context, admission app
 		return nil, fmt.Errorf("%w: existing Agent Task cannot admit Run", application.ErrAgentExecutionPolicyDenied)
 	}
 	definition, err := a.store.GetDefinitionVersion(ctx, task.DefinitionUUID, task.DefinitionVersion)
-	if err != nil || authorizeDefinitionAtV1(definition, request, a.now()) != nil {
+	if err != nil || authorizeDefinitionForTriggerV1(definition, request, a.now()) != nil {
 		return nil, fmt.Errorf("%w: pinned Agent Definition unavailable", application.ErrAgentExecutionPolicyDenied)
 	}
 	if !activeAuthorized {
@@ -661,7 +662,8 @@ func EnsureLowRiskAssistantPromotionGrantV1(ctx context.Context, policyStore app
 }
 
 func executionDefinitionOwnerV1(request application.AgentExecutionPolicyStartV1) string {
-	if strings.TrimSpace(request.SubscriptionUUID) != "" || strings.TrimSpace(request.TriggerType) == interactiveAgentTriggerTypeV1 {
+	triggerType := strings.TrimSpace(request.TriggerType)
+	if strings.TrimSpace(request.SubscriptionUUID) != "" || triggerType == interactiveAgentTriggerTypeV1 || triggerType == retrievalAgentTriggerTypeV1 {
 		return strings.TrimSpace(request.PrincipalUUID)
 	}
 	return strings.TrimSpace(request.AgentUUID)
@@ -734,7 +736,7 @@ func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request ap
 		if lookupErr != nil {
 			return nil, fmt.Errorf("get latest Agent policy: %w", lookupErr)
 		}
-		if err := authorizeDefinitionAtV1(latest, request, p.now()); err != nil {
+		if err := authorizeDefinitionForTriggerV1(latest, request, p.now()); err != nil {
 			return nil, err
 		}
 		if err := authorizeTriggerSubscriptionV1(ctx, p.store, request, latest, p.now()); err != nil {
@@ -768,7 +770,7 @@ func (p *PersistentAgentExecutionPolicyV1) Start(ctx context.Context, request ap
 	if err != nil {
 		return nil, fmt.Errorf("get pinned Agent policy: %w", err)
 	}
-	if err := authorizeDefinitionAtV1(pinned, request, p.now()); err != nil {
+	if err := authorizeDefinitionForTriggerV1(pinned, request, p.now()); err != nil {
 		return nil, err
 	}
 	if task.Status == application.AgentTaskStatusCreated {
@@ -868,6 +870,21 @@ func authorizeDefinitionAtV1(definition *application.AgentDefinitionVersionV1, r
 		return fmt.Errorf("%w: Agent Definition is missing, revoked, expired, or outside scope", application.ErrAgentExecutionPolicyDenied)
 	}
 	return nil
+}
+
+func authorizeDefinitionForTriggerV1(definition *application.AgentDefinitionVersionV1, request application.AgentExecutionPolicyStartV1, at time.Time) error {
+	if err := authorizeDefinitionAtV1(definition, request, at); err != nil {
+		return err
+	}
+	if strings.TrimSpace(request.TriggerType) != retrievalAgentTriggerTypeV1 {
+		return nil
+	}
+	for _, permission := range definition.Permissions {
+		if strings.TrimSpace(permission) == application.AgentPermissionConversationSearch {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: Retrieval trigger requires conversation.search permission", application.ErrAgentExecutionPolicyDenied)
 }
 
 func invocationFromPolicyStartV1(request application.AgentExecutionPolicyStartV1, permissions []string, scopes []application.AgentResourceScopeV1) application.AgentInvocationV1 {
