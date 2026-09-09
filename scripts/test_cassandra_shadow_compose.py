@@ -15,7 +15,7 @@ class CassandraShadowComposeTest(unittest.TestCase):
     def test_profile_runs_an_independent_projector_after_schema_init(self) -> None:
         self.assertEqual(self.overlay.count('profiles: ["cassandra-shadow"]'), 3)
         self.assertIn("cassandra-projector:", self.overlay)
-        self.assertIn('entrypoint: ["/app/dipole-cassandra-projector"]', self.overlay)
+        self.assertIn('entrypoint: ["/app/service"]', self.overlay)
         self.assertIn("${DIPOLE_CASSANDRA_PROJECTOR_IMAGE:-dipole-cassandra-projector:latest}", self.overlay)
         self.assertIn("cassandra-init:\n        condition: service_completed_successfully", self.overlay)
         self.assertIn("kafka:\n        condition: service_healthy", self.overlay)

@@ -36,7 +36,8 @@ services:
   cassandra-projector:
     profiles: ["cassandra-shadow"]
     image: ${DIPOLE_CASSANDRA_PROJECTOR_IMAGE:-dipole-cassandra-projector:latest}
-    entrypoint: ["/app/dipole-cassandra-projector"]
+    # Microservice images stage their selected binary at this stable path.
+    entrypoint: ["/app/service"]
     restart: unless-stopped
     env_file:
       - path: ../../.env
