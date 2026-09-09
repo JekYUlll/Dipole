@@ -57,6 +57,13 @@ describe("Temporal runtime configuration", () => {
     })).toMatchObject({ enabled: true, activityMode: "interactive_active" });
   });
 
+  it("loads the explicit active retrieval Activity profile", () => {
+    expect(loadTemporalRuntimeConfig({
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "retrieval_active"
+    })).toMatchObject({ enabled: true, activityMode: "retrieval_active" });
+  });
+
   it("loads the explicit active Memory promotion Activity profile", () => {
     expect(loadTemporalRuntimeConfig({
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true",

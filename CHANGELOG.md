@@ -1,3 +1,5 @@
+- 2026-09-09：Agent Runtime 新增默认关闭的 `retrieval_active` Temporal Worker profile 与独立 Compose overlay。该 Worker 使用 `dipole-agent-retrieval-*` 专属队列、mTLS Capability RPC 和显式 retrieval/context 开关，同时拒绝消息写入、Memory、MCP、订阅与 Kafka 入站消费；B1/B2 交互 Worker 保持原有最小能力面。Gateway/Core 的 owner-reviewed 路由和体验验收将在独立切片接线。
+
 - 2026-09-09：微服务镜像构建支持归档 release 的显式 `DIPOLE_BUILD_REVISION` 与 `DIPOLE_BUILD_DIRTY` provenance。输入需为完整小写 Git SHA 与 `true|false`，通过后无需 `.git`；未提供时保持原有工作树探测，便于不可变 Remote GPU release 构建与回滚。
 
 - 2026-09-09：新增 owner-scoped `retrieval_read_only` Agent Definition profile。它在既有会话读取 scope 上显式加入 `conversation.search`，不授予 `message.write`；Definition API 可创建该 profile，公共 B1/B2 的 shared low-risk Definition 及默认 Retrieval 开关保持不变。
