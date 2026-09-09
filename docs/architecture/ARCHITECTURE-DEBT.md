@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Remote GPU 隔离 Retrieval candidate 已验证 Core/Search 启动解环、Gateway 认证入口和独立无 Kafka Worker 健康；公共栈未受影响。剩余风险收敛为 owner Definition + reviewed grant + Search evidence 的认证 E2E，完成前 Retrieval overlay 保持默认关闭。
+
 - 2026-09-09：Retrieval candidate 的孤立 Worker 已将 Kafka ingress 关闭与 Runtime 配置校验对齐：仅显式 retrieval active profile 可省略 Kafka，普通 active 路径继续 fail-closed。待以新 Agent 镜像复验 Worker、Gateway 与 owner-scoped Search E2E。
 
 - 2026-09-09：Search-to-Core 启动连接现限定使用延迟拨号，解除 Core/Search 的运行时 eager-dial 循环；Search 的 `/readyz` 仍由 Core RPC dependency probe 约束，实际调用也保持 fail-closed。Remote GPU 需要重新执行候选联合健康和 owner-scoped Search E2E。

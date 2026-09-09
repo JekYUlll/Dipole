@@ -1,3 +1,5 @@
+- 2026-09-09：Remote GPU 隔离 Retrieval candidate 在 `c9e5441e` 通过联合健康验收：Core/Search 双向 RPC、Gateway、独立 `agent-retrieval` Temporal Worker 与其 `/readyz` 均健康，未认证 Retrieval API 返回 `401`；公共 `dipole-experience` 未出现不健康容器。owner Definition、reviewed grant 与 Search 结果的认证 E2E 继续作为独立验收切片。
+
 - 2026-09-09：独立 `retrieval_active` Worker 可在关闭 Kafka ingress 时启动，因为请求只经认证 Gateway Control API 进入专属 Temporal queue；普通 active、入站和订阅 Runtime 仍强制 Kafka。配置回归同时覆盖该允许边界与拒绝边界。
 
 - 2026-09-09：Search Service 新增仅用于双向启动依赖的延迟 Core RPC 连接：Search 先绑定 RPC listener，Core 可完成 Search 健康拨号；Search readiness 继续探测 Core，未恢复时检索调用保持 fail-closed。其它服务沿用阻塞式健康拨号。
