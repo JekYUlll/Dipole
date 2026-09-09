@@ -1,4 +1,4 @@
-- 2026-09-09：新增 `search-shadow` Compose overlay，将 Elasticsearch 和 Search Indexer 作为仅索引 profile 装配，并强制 Gateway `DIPOLE_SEARCH_ENABLED=false`；即使部署环境传入该变量为 `true`，查询路由也不会随影子索引启动而开放。公共 Elasticsearch 镜像下载与运行回执仍待完成。
+- 2026-09-09：Remote GPU 公共 `dipole-experience` 已通过 `search-shadow` profile 启动 Elasticsearch 与独立 Search Indexer，二者均为 healthy；Gateway 保持 `DIPOLE_SEARCH_ENABLED=false`，Query Service 未启动。新建的 B1 私聊及其单条 Agent 回复使 `dipole-messages-v1` 文档数从 `0` 增至 `2`，确认 Kafka 消息事件可异步写入影子索引。权限感知查询、查询路由、P99 与读切流继续关闭并待独立验收。
 
 - 2026-09-09：新增显式 `cassandra-shadow` Compose profile。它只启动 Cassandra、schema initializer 与独立 Kafka `cassandra-projector` consumer，持久化写入影子 Timeline；Core、Message、Sync 和 Gateway 不被覆盖，关闭 profile 即可停止影子投影。静态 Compose 契约锁定该隔离边界；Remote GPU 已以同版本专用 projector 镜像完成新 B1 私聊投影，Timeline 写入两行，consumer 的 fetched/handled/committed 均为 `2` 且无 commit/DLQ 错误。
 

@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-09：新增 `search-shadow` Compose overlay，允许 Elasticsearch 与 Search Indexer 独立消费索引事件，并在有效 Compose 配置中强制 Gateway `DIPOLE_SEARCH_ENABLED=false`。原 `search` profile 仍保留 Query Service 的独立启动语义；Search Indexer 镜像下载、共享环境索引观察、权限感知 Query 路由和回滚 receipt 继续作为 Search 读切流前置。
+- 2026-09-09：`search-shadow` Compose overlay 已在 Remote GPU 公共体验完成运行验收：Elasticsearch 与独立 Search Indexer 均 healthy，Gateway 在有效配置中保持 `DIPOLE_SEARCH_ENABLED=false`，Query Service 未随影子索引启动。新 B1 私聊及其 Agent 回复使 `dipole-messages-v1` 从 `0` 增至 `2`，证明 Kafka 事件可写入影子索引。权限感知 Query 路由、会话可见性/发送者/时间范围/重放验证、查询 P99、Query Service 启动与读切流回滚 receipt 仍是 Search 读切流前置。
 
 - 2026-09-09：Cassandra 共享环境接入增加可回滚的 `cassandra-shadow` Compose profile。它仅运行独立 Timeline schema 与 `dipole-cassandra-projector` Kafka consumer，明确不覆盖 Core、Message、Sync、Gateway，也不启用任一 hydration 或 Cassandra read flag。Remote GPU 已验证新 B1 私聊的用户消息和 Agent 回复投影为同一会话的两条 Seq Timeline 行，projector fetched/handled/committed 均为 `2`、commit/DLQ 错误为零；Sync 容器的 Cassandra、shadow hydration 与 primary hydration 开关均仍为 `false`。关闭 profile 可直接停止影子写入；持续 lag/行数观察和后续受控 read cohort 仍是 A4 读灰度前置。
 
