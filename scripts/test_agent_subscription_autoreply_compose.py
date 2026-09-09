@@ -48,6 +48,13 @@ class SubscriptionAutoReplyComposeTest(unittest.TestCase):
         self.assertIn('JSON.stringify({ profile: "subscription_autoreply" })', smoke)
         self.assertNotIn('UPDATE agent_definition_versions', smoke)
 
+    def test_smoke_stub_matches_plan_and_summary_schemas(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-autoreply-compose.sh").read_text(encoding="utf-8")
+        self.assertIn("requestBody?.response_format?.json_schema?.schema", smoke)
+        self.assertIn("expectsPlan", smoke)
+        self.assertIn('? { summary: "subscription autoreply smoke reply", steps: [] }', smoke)
+        self.assertIn(': { summary: "subscription autoreply smoke reply" }', smoke)
+
 
 if __name__ == "__main__":
     unittest.main()

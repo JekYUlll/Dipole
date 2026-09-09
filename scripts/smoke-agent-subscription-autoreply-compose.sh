@@ -67,10 +67,22 @@ EOF
 
 cat >"${DIPOLE_AGENT_SUBSCRIPTION_MODEL_STUB_FILE}" <<'NODE'
 import http from "node:http";
-const body = JSON.stringify({ id: "subscription-autoreply-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"summary":"subscription autoreply smoke reply","steps":[]}' } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
 http.createServer((request, response) => {
   if (request.method !== "POST" || request.url !== "/v1/chat/completions") { response.writeHead(404).end(); return; }
-  request.resume(); request.on("end", () => response.writeHead(200, { "content-type": "application/json" }).end(body));
+  let raw = "";
+  request.setEncoding("utf8");
+  request.on("data", chunk => { raw += chunk; });
+  request.on("end", () => {
+    const requestBody = JSON.parse(raw);
+    const schema = requestBody?.response_format?.json_schema?.schema;
+    // Planner requests require steps; reply and synthesis requests require only a summary.
+    const expectsPlan = schema?.properties?.steps !== undefined || raw.includes("steps");
+    const content = JSON.stringify(expectsPlan
+      ? { summary: "subscription autoreply smoke reply", steps: [] }
+      : { summary: "subscription autoreply smoke reply" });
+    const body = JSON.stringify({ id: "subscription-autoreply-smoke", object: "chat.completion", choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content } }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
+    response.writeHead(200, { "content-type": "application/json" }).end(body);
+  });
 }).listen(8089, "0.0.0.0");
 NODE
 

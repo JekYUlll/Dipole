@@ -1,3 +1,5 @@
+- 2026-09-09：Subscription Auto-Reply 隔离 smoke 的确定性模型 stub 已按请求 JSON schema 区分 Planner 与 reply/synthesis 输出，避免固定 `steps` 字段触发当前 Runtime 严格 schema 校验并耗尽模型预算。
+
 - 2026-09-09：Remote GPU 对 `agent-subscription` 执行短暂停止与恢复演练。停止期间 B1 私聊和 B2 群 `@` 交互均维持单次受治理回复与单次 approval consume；worker 恢复后 12 个服务均为 healthy。该项固定只读订阅 worker 的可逆部署边界。
 
 - 2026-09-09：Remote GPU 公共 `dipole-experience` 已以新 owner、Definition、Subscription 和非 mention 群消息完成 reviewed Subscription Active Read 闭环。双人审核 grant 在运行后精确回收，任务以 `completed:completed` 收敛，存在模型调用且零 Agent 群消息；Gateway promotion route 已关闭，12 个公共服务恢复健康。该证据使用合成 eligible evaluation，不开启默认自动回复或扩大 active authority。
