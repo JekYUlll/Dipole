@@ -15,6 +15,8 @@ class RuntimeReadinessContractTest(unittest.TestCase):
         self.assertNotIn("- ./certs/internal/", compose)
         self.assertIn("${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}", compose)
         self.assertIn('INTERNAL_CERT_DIR="${cert_dir}"', smoke)
+        self.assertIn('DIPOLE_AGENT_MODEL_API_KEY:=runtime-readiness-smoke-no-network', smoke)
+        self.assertIn('DIPOLE_AGENT_MODEL_BASE_URL:=https://models.invalid/v1', smoke)
         self.assertIn("assert_dependency_ready gateway kafka-assignment", smoke)
         self.assertIn("timeout --kill-after=2s 10s docker compose", smoke)
 

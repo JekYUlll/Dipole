@@ -30,7 +30,14 @@ if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then
 fi
 
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=$(openssl rand -hex 32)}"
+: "${DIPOLE_AGENT_MODEL_PROVIDER_NAME:=runtime-readiness-smoke}"
+: "${DIPOLE_AGENT_MODEL_BASE_URL:=https://models.invalid/v1}"
+: "${DIPOLE_AGENT_MODEL_API_KEY:=runtime-readiness-smoke-no-network}"
+: "${DIPOLE_AGENT_MODEL_ROUTES:=runtime-readiness-smoke/deterministic}"
+: "${DIPOLE_AGENT_MODEL_CONTEXT_PROFILES:=[{\"route\":\"runtime-readiness-smoke/deterministic\",\"contextWindowTokens\":32768,\"utf8BytesPerToken\":3,\"safetyMarginBps\":1500}]}"
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
+export DIPOLE_AGENT_MODEL_PROVIDER_NAME DIPOLE_AGENT_MODEL_BASE_URL DIPOLE_AGENT_MODEL_API_KEY
+export DIPOLE_AGENT_MODEL_ROUTES DIPOLE_AGENT_MODEL_CONTEXT_PROFILES
 export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
 export DIPOLE_SEARCH_ENABLED=true
 
