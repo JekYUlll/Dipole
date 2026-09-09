@@ -38,6 +38,9 @@ class ReviewedGrantHelperTest(unittest.TestCase):
         self.assertIn("printf '%08d'", source)
         self.assertIn('require_id definition "$definition_uuid" 64', source)
         self.assertIn('require_id subscription "$subscription_uuid" 64', source)
+        self.assertIn('docker compose --env-file "$env_file" -p "$project"', source)
+        self.assertIn('exec -T mysql sh -ceu', source)
+        self.assertNotIn('docker exec "${project}-mysql-1"', source)
 
     def test_cleanup_revokes_scoped_grant_roles_and_window(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")

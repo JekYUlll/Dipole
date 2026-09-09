@@ -28,10 +28,11 @@ Optional:
   --database NAME               Database, defaults to dipole.
   --apply                       Execute. Without it the command is a dry run.
 
-The script reads DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD only when --apply
-is present. It streams that password over stdin to the container, avoiding
-command-line password arguments. Every successful grant or revoke appends an
-audit row. The action must be reviewed before running it in a shared project.
+When supplied, DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD is streamed over
+stdin to the container and never placed on a command line. When it is absent,
+the script uses the MySQL container's existing MYSQL_ROOT_PASSWORD locally.
+Every successful grant or revoke appends an audit row. The action must be
+reviewed before running it in a shared project.
 EOF
 }
 
@@ -133,7 +134,6 @@ if (( ! apply )); then
   exit 0
 fi
 
-: "${DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD:?set DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD before --apply}"
 command -v docker >/dev/null 2>&1 || die "docker is required for --apply"
 command -v openssl >/dev/null 2>&1 || die "openssl is required for --apply"
 
@@ -192,11 +192,19 @@ EOF
 )
 fi
 
-result=$(printf '%s\n%s\n' "$DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD" "$sql" | "${compose[@]}" exec -T "$service" sh -ceu '
-  IFS= read -r MYSQL_PWD
-  export MYSQL_PWD
-  mysql --socket=/var/run/mysqld/mysqld.sock --connect-timeout=2 -N -B -u root "$1"
-' sh "$database")
+if [[ -n "${DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD:-}" ]]; then
+  result=$(printf '%s\n%s\n' "$DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD" "$sql" | "${compose[@]}" exec -T "$service" sh -ceu '
+    IFS= read -r MYSQL_PWD
+    export MYSQL_PWD
+    mysql --socket=/var/run/mysqld/mysqld.sock --connect-timeout=2 -N -B -u root "$1"
+  ' sh "$database")
+else
+  result=$(printf '%s\n' "$sql" | "${compose[@]}" exec -T "$service" sh -ceu '
+    MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?missing MYSQL_ROOT_PASSWORD}"
+    export MYSQL_PWD
+    mysql --socket=/var/run/mysqld/mysqld.sock --connect-timeout=2 -N -B -u root "$1"
+  ' sh "$database")
+fi
 
 if [[ "$action" == "revoke" && "$result" == not_active$'\t'* ]]; then
   printf 'No active operator grant was revoked.\n' >&2

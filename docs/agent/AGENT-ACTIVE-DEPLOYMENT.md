@@ -12,7 +12,7 @@ active Runtime 默认只执行 `conversation.list/read`。基础 Compose 固定�
 
 私聊、群 `@Dipole AI`/`@AI` 与普通显式任务都不要求用户先创建 Definition；创建默认 Definition 也不会开启聊天或自动授予 active authority。开发期可运行 `scripts/e2e-b1-owner-definition-fallback.sh` 和 `scripts/e2e-agent-explicit-lowrisk-task.sh` 对共享体验栈回归这一边界：前者验证无 grant 的 owner Definition 仍可收到一次受治理私聊回复，后者验证认证用户创建的低风险任务会获得 durable Timeline。订阅触发保持更严格的 reviewed-grant 前置条件。
 
-共享 Subscription Active Read 验收使用 `scripts/e2e-agent-subscription-active-read.sh`。脚本会先创建临时 owner、Definition 和 Subscription，再调用 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND` 指向的受控 helper。该 helper 必须是可执行的绝对路径，只从标准输出返回一个 64 位 grant UUID；它通过环境变量接收本次 owner、Definition/version、Subscription、会话键、candidate、Gateway 和 Compose project 标识。E2E 随后独立复核 grant 的有效期和精确绑定，再触发事件并断言单个 completed Task、模型调用与零消息写入。相比预先提供 grant UUID，这一交接方式可让双人审核在资源创建后完成绑定，避免无法匹配新建 Definition 的伪验收。仓库内 helper 只在显式 opt-in、受限配置文件和临时 MySQL operator 密钥都可用时运行；它通过 Runtime mTLS Artifact RPC 发布合成 evidence，再走 Gateway/Core 双人审核。E2E 的退出钩子会用同一 helper 撤销 Runtime grant、临时 operator 权限并关闭 Gateway 窗口；E2E 自身不写入 fixture grant。
+共享 Subscription Active Read 验收使用 `scripts/e2e-agent-subscription-active-read.sh`。脚本会先创建临时 owner、Definition 和 Subscription，再调用 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND` 指向的受控 helper。该 helper 必须是可执行的绝对路径，只从标准输出返回一个 64 位 grant UUID；它通过环境变量接收本次 owner、Definition/version、Subscription、会话键、candidate、Gateway 和 Compose project 标识。E2E 随后独立复核 grant 的有效期和精确绑定，再触发事件并断言单个 completed Task、模型调用与零消息写入。相比预先提供 grant UUID，这一交接方式可让双人审核在资源创建后完成绑定，避免无法匹配新建 Definition 的伪验收。仓库内 helper 只在显式 opt-in 和受限配置文件可用时运行；它通过 Compose MySQL service 在容器内使用既有凭据，必要时也可接收临时 MySQL operator 密钥，再经 Runtime mTLS Artifact RPC 发布合成 evidence，最后走 Gateway/Core 双人审核。E2E 的退出钩子会用同一 helper 撤销 Runtime grant、临时 operator 权限并关闭 Gateway 窗口；E2E 自身不写入 fixture grant。
 
 若 Runtime admission 被 Core 拒绝，`POST /api/v1/agent/tasks` 返回 `403` 与 `reason: "admission_denied"`。该响应表示低风险回退也不可用，或请求属于不允许回退的场景（例如 Subscription）；它不公开 grant 状态、评审证据、候选策略或其他 owner 的任何信息。
 
@@ -88,7 +88,7 @@ receipt 仅包含执行 revision、profile、模型来源、任务 ID 的 SHA-25
 
 受控运维可用 `scripts/manage-agent-promotion-operator-grant.sh` 预置或撤销 proposer/reviewer/revoker 权限。脚本默认 dry-run，执行必须携带 `--apply`、不同的被授权人与记录人、工单号、原因和有限的 UTC 到期时间；每次变更都会追加 `agent_runtime_promotion_operator_grant_audits`。它只改 operator grant，不能审核候选、签发 Runtime promotion grant 或开启 Gateway 路由。共享项目示例：
 
-`--env-file` 只传递 Compose 的部署变量，脚本不会 `source` 该文件。`DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD` 仍必须由部署 Secret 或受控凭据注入，禁止从 `.env` 复制到命令历史或验收回执。
+`--env-file` 只传递 Compose 的部署变量，脚本不会 `source` 该文件。默认执行会在已经授权的 MySQL Compose service 内使用其现有 root 凭据；若部署策略要求外部 Secret，`DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD` 可经受控进程环境注入，禁止从 `.env` 复制到命令历史或验收回执。
 
 ```bash
 DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" \
@@ -238,7 +238,7 @@ helper 必须是可执行的绝对路径，且只向标准输出写入一个 64 
 E2E 通过环境变量将本次 owner、Definition/version、Subscription、会话键、
 candidate、Gateway 和 Compose project 标识传入 helper，并在返回后再次复核
 grant 的有效期与精确绑定。helper 的日志必须写入标准错误，避免污染 grant
-输出；受控 helper 还要求 `DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD` 仅通过进程环境传入现有 operator-grant 工具，既不 `source` `.env`，也不打印该值。未配置 helper 时 reviewed 路径会失败关闭。
+输出；受控 helper 通过 Compose MySQL service 在容器内使用既有凭据，也支持将 `DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD` 仅通过进程环境传入现有 operator-grant 工具；两种方式都不 `source` `.env`，也不打印该值。未配置 helper 时 reviewed 路径会失败关闭。
 
 `fixture` 模式仅用于隔离开发回归，必须同时设置
 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_MODE=fixture` 和

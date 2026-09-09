@@ -1,3 +1,5 @@
+- 2026-09-09：reviewed Subscription grant 运维脚本改为通过 Compose MySQL service 在容器内读取现有 root 凭据，修复自定义 `container_name` 部署下的硬编码容器寻址问题。显式注入的临时密码通道仍保留，默认聊天路由、promotion 开关和权限范围均未改变。
+
 - 2026-09-09：新增受控 Subscription Active Read reviewed-grant helper。它要求显式 opt-in、严格的无凭据 promotion-window 配置与 owner-only state file，使用 Runtime mTLS Artifact RPC 发布合成 evidence，再经 Gateway/Core 双人审核生成 owner Definition-bound grant。E2E 的可选 cleanup hook 会撤销该 grant、临时 operator grants 并关闭 Gateway 窗口；默认路径和 fixture 模式均未改变。
 
 - 2026-09-09：修正 Subscription Active Read 运行手册的 reviewed 验收示例，使其与当前 E2E 一致地传入 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND`。旧的静态 grant UUID 输入已移除；E2E 在创建本次 Definition 后才要求 helper 输出精确绑定的 grant。

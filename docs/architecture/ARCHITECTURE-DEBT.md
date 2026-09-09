@@ -2,7 +2,7 @@
 
 - 2026-09-09：公共体验以新注册 owner、新群和新 `@Dipole AI` 消息重跑 B2。Task 为 `completed:completed`，低风险 Definition、单条 Agent 群回复和单条已消费 `group_reply` approval 均符合预期；没有观察到历史上“消息已投递但 workflow 失败”的状态分离。该证据只覆盖当前一条新事件，仍需后续重启和故障注入回归。
 
-- 2026-09-09：Subscription Active Read 已补齐 reviewed-grant 的受控运维 helper：它仅接受严格、无凭据的 promotion window JSON 和显式环境 opt-in，临时 proposer/reviewer 通过既有审计工具授权，promotion evidence 经 Runtime mTLS Artifact RPC 发布，再由 Gateway/Core 双人审核生成 owner Definition-bound grant。E2E 可选 cleanup hook 以 owner-only state file 精确回收 Runtime grant、operator grants 与 Gateway maintenance window。该实现仍待 Remote GPU 的完整 shared run 证据；evidence 输入为合成 eligible sample，不能作为真实模型效果或默认 route 启用结论。
+- 2026-09-09：Subscription Active Read 已补齐 reviewed-grant 的受控运维 helper：它仅接受严格、无凭据的 promotion window JSON 和显式环境 opt-in，临时 proposer/reviewer 通过既有审计工具授权，promotion evidence 经 Runtime mTLS Artifact RPC 发布，再由 Gateway/Core 双人审核生成 owner Definition-bound grant。helper 通过 Compose service 定位 MySQL，并在容器内使用既有凭据，兼容自定义 `container_name`；E2E 可选 cleanup hook 以 owner-only state file 精确回收 Runtime grant、operator grants 与 Gateway maintenance window。该实现仍待 Remote GPU 的完整 shared run 证据；evidence 输入为合成 eligible sample，不能作为真实模型效果或默认 route 启用结论。
 
 ### AD-067：共享体验 Subscription Active Read 观察窗口
 

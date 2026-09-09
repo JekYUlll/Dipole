@@ -44,9 +44,17 @@ compose_files=("${config_values[@]:6}")
 require_id project "$project" 96; require_id tenant "$tenant_id" 96
 internal_gateway="http://${gateway_service}:8080"
 
-compose_args=(--env-file "$env_file" -p "$project")
-for file in "${compose_files[@]}"; do compose_args+=(-f "$file"); done
-mysql() { docker exec "${project}-mysql-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N -B dipole -e "'"$1"'"'; }
+compose=(docker compose --env-file "$env_file" -p "$project")
+for file in "${compose_files[@]}"; do compose+=(-f "$file"); done
+# Keep the root credential inside the already-authorized MySQL container.
+# Compose service discovery also works when the deployment sets container_name.
+mysql() {
+  printf '%s\n' "$1" | "${compose[@]}" exec -T mysql sh -ceu '
+    MYSQL_PWD="${MYSQL_ROOT_PASSWORD:?missing MYSQL_ROOT_PASSWORD}"
+    export MYSQL_PWD
+    mysql --socket=/var/run/mysqld/mysqld.sock --connect-timeout=2 -N -B -u root "$1"
+  ' sh dipole
+}
 operator() {
   local subaction=$1 user=$2 actor=$3 roles=${4:-} expiry=${5:-}
   local args=("$(dirname "${BASH_SOURCE[0]}")/manage-agent-promotion-operator-grant.sh" "$subaction" --compose-project "$project" --env-file "$env_file" --user "$user" --granted-by "$actor" --ticket "SUB-E2E-${state_key}" --reason "subscription active reviewed grant")
