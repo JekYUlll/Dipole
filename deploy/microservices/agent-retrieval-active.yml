@@ -1,4 +1,13 @@
 services:
+  # Core blocks while establishing its Search RPC. The Search process can start
+  # before Core health and then complete the reciprocal RPC dependency.
+  search:
+    depends_on:
+      core:
+        condition: service_started
+      search-indexer:
+        condition: service_healthy
+
   core:
     environment:
       # Core remains the authorization point for every retrieval capability call.

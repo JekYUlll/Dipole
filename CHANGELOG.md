@@ -1,3 +1,5 @@
+- 2026-09-09：Retrieval candidate overlay 将 Search 对 Core 的 Compose 依赖从 `service_healthy` 收敛为 `service_started`，解除 Core 启动期建立 Search RPC 与 Search 等待 Core 健康之间的循环等待；基础 Search profile 与默认运行路径保持不变。
+
 - 2026-09-09：Retrieval 隔离启动验证暴露 Core Search RPC 在缺少 Search service 时会 fail-closed。Compose 的 `profiles: []` 不能移除基础 profile，因此候选运行命令必须显式携带 `--profile search`；异步 Search Indexer 继续独立管理。
 
 - 2026-09-09：Retrieval candidate Compose overlay 现同时装配独立 `agent-retrieval` Worker、Gateway retrieval target 和 Core `SearchConversations` RPC。该组合仅在显式叠加 overlay 时开启；基础 Compose 的 Gateway route、Core search RPC 与交互 Worker retrieval 开关继续为关闭。
