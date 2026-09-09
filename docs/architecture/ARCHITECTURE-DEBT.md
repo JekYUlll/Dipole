@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：`docker-build-microservice-images.sh` 现可从无 `.git` 的不可变 archive release 构建服务镜像：显式 `DIPOLE_BUILD_REVISION` 必须是 40 位小写 SHA，`DIPOLE_BUILD_DIRTY` 必须是布尔字面量；两者缺省时仍采用工作树 Git provenance。此项消除了 Remote GPU release snapshot 只能手工构建镜像的路径差异，后续独立 Retrieval Worker 可复用同一可追溯构建入口。
+
 - 2026-09-09：公共 Retrieval overlay 试运行确认 `interactive_active` Runtime profile 会对 `retrieval` 与 `retrieval Context` fail closed，Agent 因而进入重启循环；原始 Core/Agent Compose 已立即恢复，二者均 healthy。该 overlay 已从主线移除，避免将交互 Worker 的单会话低延迟职责扩展为跨会话检索。owner-scoped `retrieval_read_only` Definition profile 保留，后续必须由独立 Temporal queue/Worker、Core Search RPC overlay 和 owner-scope E2E 接线。
 
 - 2026-09-09：Agent Definition catalog 新增 owner-scoped `retrieval_read_only` profile。它只在 owner 的既有 `conversation/*` read scope 上加入独立 `conversation.search` permission，并明确不包含 `message.write`；公共 shared low-risk Definition、B1/B2 入站路径与 `DIPOLE_AGENT_RETRIEVAL_ENABLED=false` 保持不变。后续需在独立 active candidate、owner promotion grant 与 Search owner-scope E2E 下启用 Runtime retrieval，才可形成可体验的跨会话检索任务。

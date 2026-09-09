@@ -27,6 +27,14 @@ test("Go microservice images cache base dependencies before service-specific bui
   assert.ok(provenanceLayer > binaryArgument, "provenance labels must follow service-specific build arguments");
 });
 
+test("immutable release builds accept explicit provenance without a Git worktree", () => {
+  assert.match(script, /revision=\$\{DIPOLE_BUILD_REVISION:-\}/);
+  assert.match(script, /if \[\[ -z "\$\{revision\}" \]\]; then\n  revision=\$\(git rev-parse HEAD\)/);
+  assert.match(script, /DIPOLE_BUILD_REVISION must be a full lowercase Git SHA/);
+  assert.match(script, /dirty=\$\{DIPOLE_BUILD_DIRTY:-\}/);
+  assert.match(script, /DIPOLE_BUILD_DIRTY must be true or false/);
+});
+
 test("microservice image builds include the TypeScript Agent Runtime at the same revision", () => {
   assert.match(script, /agent_service="agent"/);
   assert.match(script, /\[\[ "\$\{requested_service\}" != "\$\{agent_service\}" \]\] \|\| found=true/);

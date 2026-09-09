@@ -14,12 +14,20 @@ if [[ ! -x dist/dipole-server ]]; then
   exit 1
 fi
 
-revision=$(git rev-parse HEAD)
-created=${DIPOLE_BUILD_CREATED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
-dirty=false
-if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
-  dirty=true
+revision=${DIPOLE_BUILD_REVISION:-}
+if [[ -z "${revision}" ]]; then
+  revision=$(git rev-parse HEAD)
 fi
+[[ "${revision}" =~ ^[0-9a-f]{40}$ ]] || { echo "DIPOLE_BUILD_REVISION must be a full lowercase Git SHA" >&2; exit 2; }
+created=${DIPOLE_BUILD_CREATED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
+dirty=${DIPOLE_BUILD_DIRTY:-}
+if [[ -z "${dirty}" ]]; then
+  dirty=false
+  if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    dirty=true
+  fi
+fi
+[[ "${dirty}" == "true" || "${dirty}" == "false" ]] || { echo "DIPOLE_BUILD_DIRTY must be true or false" >&2; exit 2; }
 context_dir="${root_dir}/dist"
 
 declare -a services=(
