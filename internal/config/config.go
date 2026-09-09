@@ -35,6 +35,8 @@ type Gateway struct {
 	AgentControlEnabled                    bool   `mapstructure:"agent_control_enabled"`
 	AgentControlTarget                     string `mapstructure:"agent_control_target"`
 	AgentControlSecret                     string `mapstructure:"agent_control_secret"`
+	AgentRetrievalEnabled                  bool   `mapstructure:"agent_retrieval_enabled"`
+	AgentRetrievalTarget                   string `mapstructure:"agent_retrieval_target"`
 	AgentPromotionEnabled                  bool   `mapstructure:"agent_promotion_enabled"`
 	AgentPromotionTenantID                 string `mapstructure:"agent_promotion_tenant_id"`
 	AgentDefinitionEnabled                 bool   `mapstructure:"agent_definition_enabled"`
@@ -401,6 +403,8 @@ func Load() error {
 		v.SetDefault("gateway.agent_control_enabled", false)
 		v.SetDefault("gateway.agent_control_target", "http://127.0.0.1:8091")
 		v.SetDefault("gateway.agent_control_secret", "")
+		v.SetDefault("gateway.agent_retrieval_enabled", false)
+		v.SetDefault("gateway.agent_retrieval_target", "http://127.0.0.1:8092")
 		v.SetDefault("gateway.agent_definition_enabled", false)
 		v.SetDefault("gateway.agent_subscription_enabled", false)
 		v.SetDefault("gateway.agent_subscription_tenant_id", "dipole")
@@ -606,6 +610,8 @@ func Load() error {
 			"gateway.core_http_target",
 			"gateway.agent_control_enabled",
 			"gateway.agent_control_target",
+			"gateway.agent_retrieval_enabled",
+			"gateway.agent_retrieval_target",
 			"gateway.agent_definition_enabled",
 			"gateway.agent_subscription_enabled",
 			"gateway.agent_subscription_tenant_id",
@@ -862,6 +868,8 @@ func GatewayConfig() Gateway {
 		AgentControlEnabled:                    cfg.GetBool("gateway.agent_control_enabled"),
 		AgentControlTarget:                     strings.TrimSpace(cfg.GetString("gateway.agent_control_target")),
 		AgentControlSecret:                     strings.TrimSpace(cfg.GetString("gateway.agent_control_secret")),
+		AgentRetrievalEnabled:                  cfg.GetBool("gateway.agent_retrieval_enabled"),
+		AgentRetrievalTarget:                   strings.TrimSpace(cfg.GetString("gateway.agent_retrieval_target")),
 		AgentPromotionEnabled:                  cfg.GetBool("gateway.agent_promotion_enabled"),
 		AgentPromotionTenantID:                 strings.TrimSpace(cfg.GetString("gateway.agent_promotion_tenant_id")),
 		AgentDefinitionEnabled:                 cfg.GetBool("gateway.agent_definition_enabled"),

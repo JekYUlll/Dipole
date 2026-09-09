@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Gateway 已具备默认关闭的 Retrieval Task 启动路由，目标仅可由 `DIPOLE_GATEWAY_AGENT_RETRIEVAL_TARGET` 在服务端配置，浏览器不能选择 Runtime 或队列。该路由依赖 Core 的 `conversation.search` admission gate；独立 `agent-retrieval` 候选镜像、Core Search RPC 开关和 owner-scoped 公共 E2E 尚未同时启用。
+
 - 2026-09-09：Core admission 现将 `agent.retrieval.requested` 固定为 principal owner 的 Definition 选择，并在创建和 pinned Definition 复核时要求 `conversation.search`。这使 Retrieval 无法经 shared low-risk interactive fallback 获得能力；Gateway 到独立 Worker 的默认关闭路由、reviewed promotion grant 和 owner-scope Search E2E 仍待接线。
 
 - 2026-09-09：`retrieval_active` 现作为默认关闭的独立 Temporal Worker profile 存在：它要求 `dipole-agent-retrieval-*` 队列与 mTLS Capability RPC，且只允许 retrieval/context；消息写入、Memory、MCP、订阅和 Kafka 入站都被 Runtime profile 与 Compose overlay 拒绝。该边界避免重演将 Retrieval 叠入 `interactive_active` 的启动失败。Gateway/Core 尚未按 owner-reviewed Definition 将请求路由到该 Worker，未形成公开体验能力。

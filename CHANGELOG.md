@@ -1,3 +1,5 @@
+- 2026-09-09：Gateway 新增默认关闭的认证入口 `POST /api/v1/agent/retrieval/tasks`。启用时仅由 `DIPOLE_GATEWAY_AGENT_RETRIEVAL_TARGET` 选定独立 Retrieval Runtime，复用服务令牌、可信 principal、请求大小与幂等 client request ID 边界；普通 Agent Task 路由不变。
+
 - 2026-09-09：Core Agent admission 将 `agent.retrieval.requested` 识别为 owner-scoped 高权限读取触发。创建或重放该 Task 时会复核固定 Definition 含 `conversation.search`，缺失权限不创建 Task；低风险 interactive fallback 不适用于 Retrieval，防止跨会话检索经 B1/B2 共享 Definition 获得授权。
 
 - 2026-09-09：Agent Runtime 新增默认关闭的 `retrieval_active` Temporal Worker profile 与独立 Compose overlay。该 Worker 使用 `dipole-agent-retrieval-*` 专属队列、mTLS Capability RPC 和显式 retrieval/context 开关，同时拒绝消息写入、Memory、MCP、订阅与 Kafka 入站消费；B1/B2 交互 Worker 保持原有最小能力面。Gateway/Core 的 owner-reviewed 路由和体验验收将在独立切片接线。

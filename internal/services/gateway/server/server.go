@@ -35,6 +35,7 @@ type Dependencies struct {
 	Core                   application.CoreCapability
 	Search                 application.SearchApplication
 	AgentTasks             AgentTaskControlApplication
+	AgentRetrievalTasks    AgentTaskControlApplication
 	AgentTaskInbox         AgentTaskInboxApplication
 	AgentPromotions        AgentRuntimePromotionApplication
 	AgentSubscriptions     AgentSubscriptionControlApplication
@@ -138,6 +139,9 @@ func NewServerWithDependencies(coreTarget string, dependencies Dependencies) (*S
 		engine.POST("/api/v1/agent/tasks/:task_id/cancel", auth, agentTaskCancelHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/approvals/:approval_id", auth, agentTaskApprovalHandler(dependencies.AgentTasks))
 		engine.POST("/api/v1/agent/tasks/:task_id/inputs/:request_id", auth, agentTaskInputHandler(dependencies.AgentTasks))
+	}
+	if dependencies.AgentRetrievalTasks != nil {
+		engine.POST("/api/v1/agent/retrieval/tasks", auth, agentTaskStartHandler(dependencies.AgentRetrievalTasks))
 	}
 	if dependencies.AgentPromotions != nil {
 		engine.POST("/api/v1/agent/runtime-promotions", auth, agentRuntimePromotionProposeHandler(dependencies.AgentPromotions))

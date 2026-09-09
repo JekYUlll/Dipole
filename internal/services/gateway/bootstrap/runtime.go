@@ -254,6 +254,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		runtime.searchConn = searchConnection
 	}
 	var agentTasks gateway.AgentTaskControlApplication
+	var agentRetrievalTasks gateway.AgentTaskControlApplication
 	var agentTaskInbox *gateway.AgentTaskInboxClient
 	if gatewayCfg.AgentControlEnabled {
 		agentTasks, err = gateway.NewAgentTaskControlClient(
@@ -278,6 +279,16 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Agent Task inbox client: %w", err)
+		}
+	}
+	if gatewayCfg.AgentRetrievalEnabled {
+		agentRetrievalTasks, err = gateway.NewAgentTaskControlClient(
+			gatewayCfg.AgentRetrievalTarget, agentControlSecret(gatewayCfg.AgentControlSecret, rpcCfg.SharedSecret),
+			time.Duration(rpcCfg.DialTimeoutSeconds)*time.Second,
+		)
+		if err != nil {
+			cleanup()
+			return nil, fmt.Errorf("initialize Agent Retrieval control client: %w", err)
 		}
 	}
 	var agentMCP gateway.AgentMCPApplication
@@ -386,6 +397,7 @@ func Initialize(ctx context.Context) (*GatewayRuntime, error) {
 		Core:                   core,
 		Search:                 search,
 		AgentTasks:             agentTasks,
+		AgentRetrievalTasks:    agentRetrievalTasks,
 		AgentTaskInbox:         agentTaskInbox,
 		AgentPromotions:        agentPromotions,
 		AgentSubscriptions:     agentSubscriptions,

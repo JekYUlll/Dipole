@@ -1017,6 +1017,33 @@ func TestGatewayOwnsAuthenticatedAgentTaskControlRoutes(t *testing.T) {
 	}
 }
 
+func TestGatewayOwnsAuthenticatedRetrievalTaskStartRoute(t *testing.T) {
+	t.Chdir("../../../..")
+	mr, _ := miniredis.Run()
+	defer mr.Close()
+	previousRedis := cache.RDB
+	cache.RDB = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = cache.RDB.Close(); cache.RDB = previousRedis })
+	core := httptest.NewServer(http.NotFoundHandler())
+	defer core.Close()
+	retrieval := &gatewayAgentTaskStub{}
+	gateway, err := newTestGatewayServer(core.URL, Dependencies{
+		Messages: gatewayMessageStub{}, Core: gatewayCoreStub{}, AgentRetrievalTasks: retrieval, Limiter: gatewayLimiterStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, _ := coreauth.NewTokenService().Issue(&model.User{UUID: "U100"})
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/agent/retrieval/tasks", strings.NewReader(`{"client_request_id":"retrieval-1","goal":"Find the migration decision"}`))
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	gateway.Engine().ServeHTTP(response, request)
+	if response.Code != http.StatusAccepted || retrieval.principal != "U100" || retrieval.clientRequestID != "retrieval-1" || retrieval.goal != "Find the migration decision" {
+		t.Fatalf("retrieval Task: code=%d stub=%+v body=%s", response.Code, retrieval, response.Body.String())
+	}
+}
+
 func TestAgentTaskControlHandlersRejectOversizedJSONBeforeRuntime(t *testing.T) {
 	for _, test := range []struct {
 		name    string
