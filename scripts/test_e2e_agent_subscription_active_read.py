@@ -33,6 +33,12 @@ class AgentSubscriptionActiveReadE2ETest(unittest.TestCase):
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertIn('if (( fixture_grant )) && [[ -n "${grant_uuid}" ]]', source)
 
+    def test_reviewed_grant_cleanup_is_an_explicit_absolute_hook(self) -> None:
+        source = SCRIPT.read_text(encoding="utf-8")
+        self.assertIn("DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_CLEANUP_COMMAND", source)
+        self.assertIn("DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_ACTION=revoke", source)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_UUID="${grant_uuid}"', source)
+
 
 if __name__ == "__main__":
     unittest.main()

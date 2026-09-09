@@ -13,6 +13,7 @@ GRANT_MODE="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_MODE:-reviewed}"
 # responsible for the separately approved proposal/review flow and returns
 # only its resulting grant UUID on stdout.
 REVIEWED_GRANT_COMMAND="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND:-}"
+REVIEWED_GRANT_CLEANUP_COMMAND="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_CLEANUP_COMMAND:-}"
 TELEPHONE="186$(printf '%08d' $((10#$(date +%N) % 100000000)))"
 PASSWORD="subscription-read-e2e-pass-123"
 grant_uuid=""
@@ -27,6 +28,10 @@ else
     printf 'reviewed grant mode requires an executable absolute DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND\n' >&2
     exit 2
   }
+  [[ -z "${REVIEWED_GRANT_CLEANUP_COMMAND}" || ( "${REVIEWED_GRANT_CLEANUP_COMMAND}" == /* && -x "${REVIEWED_GRANT_CLEANUP_COMMAND}" ) ]] || {
+    printf 'reviewed grant cleanup command must be an executable absolute path when provided\n' >&2
+    exit 2
+  }
 fi
 
 mysql() { docker exec "${PROJECT}-mysql-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N -B dipole -e "'"$1"'"'; }
@@ -34,6 +39,13 @@ mysql() { docker exec "${PROJECT}-mysql-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWOR
 cleanup() {
   if (( fixture_grant )) && [[ -n "${grant_uuid}" ]]; then
     mysql "UPDATE agent_runtime_promotion_grants SET revoked_at=COALESCE(revoked_at, UTC_TIMESTAMP(3)) WHERE grant_uuid='${grant_uuid}'" >/dev/null
+  fi
+  if (( ! fixture_grant )) && [[ -n "${grant_uuid}" && -n "${REVIEWED_GRANT_CLEANUP_COMMAND}" ]]; then
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_ACTION=revoke \
+      DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_UUID="${grant_uuid}" \
+      DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_OWNER_UUID="${owner_uuid:-}" \
+      DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROJECT="${PROJECT}" \
+      "${REVIEWED_GRANT_CLEANUP_COMMAND}" || printf 'reviewed grant cleanup failed for %s\n' "${grant_uuid}" >&2
   fi
 }
 trap cleanup EXIT
