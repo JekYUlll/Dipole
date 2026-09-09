@@ -12,6 +12,8 @@ active Runtime 默认只执行 `conversation.list/read`。基础 Compose 固定�
 
 私聊、群 `@Dipole AI`/`@AI` 与普通显式任务都不要求用户先创建 Definition；创建默认 Definition 也不会开启聊天或自动授予 active authority。开发期可运行 `scripts/e2e-b1-owner-definition-fallback.sh` 和 `scripts/e2e-agent-explicit-lowrisk-task.sh` 对共享体验栈回归这一边界：前者验证无 grant 的 owner Definition 仍可收到一次受治理私聊回复，后者验证认证用户创建的低风险任务会获得 durable Timeline。订阅触发保持更严格的 reviewed-grant 前置条件。
 
+共享 Subscription Active Read 验收使用 `scripts/e2e-agent-subscription-active-read.sh`。脚本会先创建临时 owner、Definition 和 Subscription，再调用 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND` 指向的受控 helper。该 helper 必须是可执行的绝对路径，只从标准输出返回一个 64 位 grant UUID；它通过环境变量接收本次 owner、Definition/version、Subscription、会话键、candidate、Gateway 和 Compose project 标识。E2E 随后独立复核 grant 的有效期和精确绑定，再触发事件并断言单个 completed Task、模型调用与零消息写入。相比预先提供 grant UUID，这一交接方式可让双人审核在资源创建后完成绑定，避免无法匹配新建 Definition 的伪验收。helper 的 proposal/review、operator 临时授权、Gateway 窗口和 grant revoke 仍由受控运维流程负责；E2E 不写入 fixture grant。
+
 若 Runtime admission 被 Core 拒绝，`POST /api/v1/agent/tasks` 返回 `403` 与 `reason: "admission_denied"`。该响应表示低风险回退也不可用，或请求属于不允许回退的场景（例如 Subscription）；它不公开 grant 状态、评审证据、候选策略或其他 owner 的任何信息。
 
 开发期可用隔离 Read Active smoke 验证完整只读 Task。它使用本地 loopback model stub、临时 owner Definition 和 15 分钟 promotion grant，验证请求幂等、owner 隔离、Temporal 完成、两步读取轨迹和零 Agent 消息写入；cleanup 会撤销 grant 并删除容器、卷与临时证书。

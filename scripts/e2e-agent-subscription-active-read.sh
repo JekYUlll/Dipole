@@ -9,7 +9,10 @@ AGENT_UUID="${AGENT_UUID:-UAI000000000000000001}"
 GATEWAY="${GATEWAY:-http://127.0.0.1:8080}"
 CANDIDATE_VERSION="${DIPOLE_AGENT_CANDIDATE_VERSION:-experience-v1}"
 GRANT_MODE="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_MODE:-reviewed}"
-REVIEWED_GRANT_UUID="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_UUID:-}"
+# A reviewed grant must bind the Definition created by this run. The helper is
+# responsible for the separately approved proposal/review flow and returns
+# only its resulting grant UUID on stdout.
+REVIEWED_GRANT_COMMAND="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND:-}"
 TELEPHONE="186$(printf '%08d' $((10#$(date +%N) % 100000000)))"
 PASSWORD="subscription-read-e2e-pass-123"
 grant_uuid=""
@@ -20,7 +23,10 @@ if [[ "${GRANT_MODE}" == "fixture" ]]; then
   [[ "${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ALLOW_FIXTURE_GRANT:-0}" == "1" ]] || { printf 'fixture grant mode requires DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ALLOW_FIXTURE_GRANT=1\n' >&2; exit 2; }
   fixture_grant=1
 else
-  [[ "${REVIEWED_GRANT_UUID}" =~ ^[a-f0-9]{64}$ ]] || { printf 'reviewed grant mode requires a 64-character DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_UUID\n' >&2; exit 2; }
+  [[ "${REVIEWED_GRANT_COMMAND}" == /* && -x "${REVIEWED_GRANT_COMMAND}" ]] || {
+    printf 'reviewed grant mode requires an executable absolute DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND\n' >&2
+    exit 2
+  }
 fi
 
 mysql() { docker exec "${PROJECT}-mysql-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N -B dipole -e "'"$1"'"'; }
@@ -91,8 +97,19 @@ if (( fixture_grant )); then
   grant_uuid=$(openssl rand -hex 32)
   mysql "INSERT INTO agent_runtime_promotion_grants (grant_uuid, tenant_id, runtime_id, candidate_version, definition_uuid, definition_version, policy_version, evidence_sha256, eval_suite_sha256, granted_by_uuid, reviewed_by_uuid, valid_from, expires_at) VALUES ('${grant_uuid}', 'dipole', 'dipole-agent', '${CANDIDATE_VERSION}', '${definition_uuid}', ${definition_version}, 'dipole.agent.shadow-promotion-policy.v2', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'U-E2E-GRANTOR', 'U-E2E-REVIEWER', DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 1 MINUTE), DATE_ADD(UTC_TIMESTAMP(3), INTERVAL 10 MINUTE))"
 else
+  echo "==> obtain a reviewed grant bound to this Definition"
+  grant_uuid=$(DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_OWNER_UUID="${owner_uuid}" \
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_DEFINITION_UUID="${definition_uuid}" \
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_DEFINITION_VERSION="${definition_version}" \
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_SUBSCRIPTION_UUID="${subscription_uuid}" \
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_CONVERSATION_KEY="${conversation_key}" \
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_CANDIDATE_VERSION="${CANDIDATE_VERSION}" \
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GATEWAY="${GATEWAY}" \
+    DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_PROJECT="${PROJECT}" \
+    "${REVIEWED_GRANT_COMMAND}")
+  [[ "${grant_uuid}" =~ ^[a-f0-9]{64}$ ]] || { printf 'reviewed grant helper must output one 64-character grant UUID\n' >&2; exit 1; }
+
   echo "==> verify the reviewed grant is active and bound to this Definition"
-  grant_uuid="${REVIEWED_GRANT_UUID}"
   grant_binding=$(mysql "SELECT CONCAT(runtime_id, CHAR(9), candidate_version, CHAR(9), definition_uuid, CHAR(9), definition_version) FROM agent_runtime_promotion_grants WHERE grant_uuid='${grant_uuid}' AND tenant_id='dipole' AND revoked_at IS NULL AND valid_from <= UTC_TIMESTAMP(3) AND expires_at > UTC_TIMESTAMP(3)")
   expected_binding=$(printf 'dipole-agent\t%s\t%s\t%s' "${CANDIDATE_VERSION}" "${definition_uuid}" "${definition_version}")
   [[ "${grant_binding}" == "${expected_binding}" ]] || { printf 'reviewed grant binding mismatch: %q\n' "${grant_binding}" >&2; exit 1; }

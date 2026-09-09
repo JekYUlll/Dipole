@@ -10,12 +10,15 @@ SCRIPT = ROOT / "scripts/e2e-agent-subscription-active-read.sh"
 
 
 class AgentSubscriptionActiveReadE2ETest(unittest.TestCase):
-    def test_reviewed_grant_is_default_and_fixture_is_explicit(self) -> None:
+    def test_reviewed_grant_is_created_after_definition_binding_and_fixture_is_explicit(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertIn('GRANT_MODE="${DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_MODE:-reviewed}"', source)
         self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ALLOW_FIXTURE_GRANT=1', source)
-        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_UUID', source)
-        self.assertIn('reviewed grant mode requires a 64-character', source)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND', source)
+        self.assertIn('requires an executable absolute', source)
+        self.assertIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_DEFINITION_UUID="${definition_uuid}"', source)
+        self.assertIn('reviewed grant helper must output one 64-character grant UUID', source)
+        self.assertNotIn('DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_UUID', source)
 
     def test_reviewed_grant_must_be_active_and_definition_bound(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")

@@ -1,3 +1,5 @@
+- 2026-09-09：公共 Subscription Active Read E2E 的 reviewed 路径改为调用一个绝对路径、可执行的受控 grant helper。helper 在临时 owner Definition/Subscription 创建后取得精确绑定的双人审核 grant，并只输出 grant UUID；E2E 继续复核有效期和绑定后才触发 Kafka。该调整消除了“新建 Definition 却要求预先存在 matching grant”的不可执行输入，fixture 路径仍需显式开启。
+
 - 2026-09-09：公共 Subscription Active Read E2E 默认改为消费 reviewed grant。脚本会在触发事件前复核 grant 未撤销、处于有效窗口，并精确绑定运行时、candidate、owner Definition 与版本；开发 SQL fixture 需要两个显式环境确认，且只在 fixture 模式 cleanup 时撤销。此项阻止 fixture 路径被误用作共享双人审核证据。
 
 - 2026-09-09：Remote GPU 在干净 `8ee998cd` checkout 以隔离 Compose 重跑 `subscription_active` 的 `publication` smoke。Runtime mTLS evidence publication、Gateway proposal、双人 review、owner-scoped grant、单条 Kafka 事件与 Temporal durable read Task 全部收敛，模型调用存在且 Agent 消息为零；退出码为 `0`，候选容器自动清理，公共 `dipole-experience` Gateway 全程健康。该证据使用隔离合成 evaluation，不开放公共 promotion route、Subscription worker 或自动回复。
