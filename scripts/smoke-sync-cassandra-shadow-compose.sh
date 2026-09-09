@@ -7,6 +7,7 @@ project="${COMPOSE_PROJECT_NAME:-dipole-sync-cassandra-shadow-${RANDOM}-$$}"
 compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 shadow_file="${root_dir}/deploy/microservices/cassandra-shadow.yml"
 sync_shadow_file="${root_dir}/deploy/microservices/cassandra-sync-shadow.yml"
+revision=$(git -C "${root_dir}" rev-parse --short=12 HEAD)
 cert_dir="${DIPOLE_INTERNAL_CERT_DIR:-$(mktemp -d -t dipole-sync-cassandra-shadow-certs.XXXXXX)}"
 remove_cert_dir=0
 if [[ -z "${DIPOLE_INTERNAL_CERT_DIR:-}" ]]; then
@@ -22,6 +23,25 @@ fi
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_MODEL_PROVIDER_NAME DIPOLE_AGENT_MODEL_BASE_URL
 export DIPOLE_AGENT_MODEL_API_KEY DIPOLE_AGENT_MODEL_ROUTES DIPOLE_AGENT_MODEL_CONTEXT_PROFILES
 export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
+: "${DIPOLE_SYNC_IMAGE:=dipole-sync:cassandra-shadow-${revision}}"
+export DIPOLE_SYNC_IMAGE
+
+build_sync_image() {
+  (
+    build_context=$(mktemp -d -t dipole-sync-cassandra-shadow-image.XXXXXX)
+    trap 'rm -rf "${build_context}"' EXIT
+
+    GOFLAGS=-mod=mod CGO_ENABLED=0 go build -o "${build_context}/dipole-sync" ./cmd/services/sync
+    docker build \
+      --file "${root_dir}/deploy/images/go-service.Dockerfile" \
+      --tag "${DIPOLE_SYNC_IMAGE}" \
+      --build-arg DIPOLE_BINARY=dipole-sync \
+      --build-arg "DIPOLE_VCS_REVISION=$(git -C "${root_dir}" rev-parse HEAD)" \
+      --build-arg "DIPOLE_BUILD_CREATED=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      --build-arg DIPOLE_BUILD_DIRTY=false \
+      "${build_context}"
+  )
+}
 
 compose() {
   docker compose -p "${project}" --profile cassandra-shadow \
@@ -43,6 +63,9 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 INTERNAL_CERT_DIR="${cert_dir}" "${script_dir}/generate-internal-certs.sh" >/dev/null
+if [[ "${DIPOLE_SYNC_SMOKE_BUILD_IMAGE:-1}" == "1" ]]; then
+  build_sync_image
+fi
 compose config --quiet
 compose up -d --wait --wait-timeout "${CASSANDRA_SHADOW_READY_TIMEOUT_SECONDS:-240}" cassandra-init cassandra-projector sync
 

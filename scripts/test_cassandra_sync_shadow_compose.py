@@ -33,6 +33,9 @@ class CassandraSyncShadowComposeTest(unittest.TestCase):
         self.assertIn('mktemp -d -t dipole-sync-cassandra-shadow-certs.', smoke)
         self.assertIn('INTERNAL_CERT_DIR="${cert_dir}"', smoke)
         self.assertIn('DIPOLE_AGENT_MODEL_API_KEY:=sync-cassandra-shadow-smoke-no-network', smoke)
+        self.assertIn('DIPOLE_SYNC_IMAGE:=dipole-sync:cassandra-shadow-${revision}', smoke)
+        self.assertIn('go build -o "${build_context}/dipole-sync" ./cmd/services/sync', smoke)
+        self.assertIn('DIPOLE_SYNC_SMOKE_BUILD_IMAGE:-1', smoke)
         self.assertIn('test "${sync_env}" = "true:true:false"', smoke)
         self.assertIn('rm -rf "${cert_dir}"', smoke)
 
