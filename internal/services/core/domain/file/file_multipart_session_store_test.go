@@ -97,6 +97,31 @@ func TestRedisMultipartSessionHasPartReportsExistingPart(t *testing.T) {
 	}
 }
 
+func TestRedisMultipartSessionRouteMarkersPersistUntilTTL(t *testing.T) {
+	server := miniredis.RunT(t)
+	previousRedis := platformCache.RDB
+	platformCache.RDB = redis.NewClient(&redis.Options{Addr: server.Addr()})
+	t.Cleanup(func() {
+		_ = platformCache.RDB.Close()
+		platformCache.RDB = previousRedis
+	})
+
+	store := &redisMultipartUploadSessionStore{}
+	if err := store.Create(context.Background(), &multipartUploadSession{SessionID: "route-session", UploaderUUID: "user", TotalParts: 1}, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MarkPresigned(context.Background(), "route-session"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MarkRelayFallback(context.Background(), "route-session"); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Get(context.Background(), "route-session")
+	if err != nil || got == nil || !got.UsesPresigned || !got.RelayFallback {
+		t.Fatalf("route markers were not persisted: session=%+v err=%v", got, err)
+	}
+}
+
 func TestRedisMultipartSessionCompletionUsesIndependentTTL(t *testing.T) {
 	server := miniredis.RunT(t)
 	previousRedis := platformCache.RDB

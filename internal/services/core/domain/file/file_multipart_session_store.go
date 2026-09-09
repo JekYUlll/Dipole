@@ -17,18 +17,20 @@ import (
 )
 
 type multipartUploadSession struct {
-	SessionID    string    `json:"session_id"`
-	UploaderUUID string    `json:"uploader_uuid"`
-	Bucket       string    `json:"bucket"`
-	ObjectKey    string    `json:"object_key"`
-	UploadID     string    `json:"upload_id"`
-	FileName     string    `json:"file_name"`
-	FileSize     int64     `json:"file_size"`
-	ContentType  string    `json:"content_type"`
-	FileSHA256   string    `json:"file_sha256,omitempty"`
-	ChunkSize    int64     `json:"chunk_size"`
-	TotalParts   int       `json:"total_parts"`
-	CreatedAt    time.Time `json:"created_at"`
+	SessionID     string    `json:"session_id"`
+	UploaderUUID  string    `json:"uploader_uuid"`
+	Bucket        string    `json:"bucket"`
+	ObjectKey     string    `json:"object_key"`
+	UploadID      string    `json:"upload_id"`
+	FileName      string    `json:"file_name"`
+	FileSize      int64     `json:"file_size"`
+	ContentType   string    `json:"content_type"`
+	FileSHA256    string    `json:"file_sha256,omitempty"`
+	ChunkSize     int64     `json:"chunk_size"`
+	TotalParts    int       `json:"total_parts"`
+	UsesPresigned bool      `json:"uses_presigned,omitempty"`
+	RelayFallback bool      `json:"relay_fallback,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 type multipartUploadSessionStore interface {
@@ -45,6 +47,13 @@ type multipartUploadSessionStore interface {
 // keep serving uploads while retry observation is rolled out.
 type multipartPartPresence interface {
 	HasPart(ctx context.Context, sessionID string, partNumber int) (bool, error)
+}
+
+// multipartTransferRouteMarker is optional to preserve compatibility with
+// session stores used by focused tests and embedded rollback paths.
+type multipartTransferRouteMarker interface {
+	MarkPresigned(ctx context.Context, sessionID string) error
+	MarkRelayFallback(ctx context.Context, sessionID string) error
 }
 
 type redisMultipartUploadSessionStore struct{}
@@ -176,6 +185,54 @@ func (s *redisMultipartUploadSessionStore) HasPart(ctx context.Context, sessionI
 		return false, fmt.Errorf("check multipart part: %w", err)
 	}
 	return present, nil
+}
+
+func (s *redisMultipartUploadSessionStore) MarkPresigned(ctx context.Context, sessionID string) error {
+	return s.updateSession(ctx, sessionID, func(session *multipartUploadSession) {
+		session.UsesPresigned = true
+	})
+}
+
+func (s *redisMultipartUploadSessionStore) MarkRelayFallback(ctx context.Context, sessionID string) error {
+	return s.updateSession(ctx, sessionID, func(session *multipartUploadSession) {
+		if session.UsesPresigned {
+			session.RelayFallback = true
+		}
+	})
+}
+
+func (s *redisMultipartUploadSessionStore) updateSession(ctx context.Context, sessionID string, update func(*multipartUploadSession)) error {
+	if !platformCache.Available() {
+		return fmt.Errorf("redis is not initialized")
+	}
+	key := multipartSessionMetaKey(sessionID)
+	raw, err := platformCache.GetBytes(ctx, key)
+	if err != nil {
+		if err == redis.Nil {
+			return fmt.Errorf("multipart session is not found")
+		}
+		return fmt.Errorf("get multipart session for update: %w", err)
+	}
+	var session multipartUploadSession
+	if err := json.Unmarshal(raw, &session); err != nil {
+		return fmt.Errorf("unmarshal multipart session for update: %w", err)
+	}
+	update(&session)
+	payload, err := json.Marshal(&session)
+	if err != nil {
+		return fmt.Errorf("marshal multipart session update: %w", err)
+	}
+	ttl, err := platformCache.RDB.TTL(ctx, key).Result()
+	if err != nil {
+		return fmt.Errorf("read multipart session ttl: %w", err)
+	}
+	if ttl <= 0 {
+		return fmt.Errorf("multipart session ttl is invalid")
+	}
+	if err := platformCache.RDB.Set(ctx, key, payload, ttl).Err(); err != nil {
+		return fmt.Errorf("update multipart session: %w", err)
+	}
+	return nil
 }
 
 func (s *redisMultipartUploadSessionStore) ListParts(ctx context.Context, sessionID string) ([]platformStorage.MultipartCompletePart, error) {

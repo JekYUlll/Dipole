@@ -11,6 +11,7 @@ import (
 type MultipartMetrics struct {
 	operations *prometheus.CounterVec
 	duration   *prometheus.HistogramVec
+	terminal   *prometheus.CounterVec
 }
 
 func NewMultipartMetrics() *MultipartMetrics {
@@ -23,6 +24,10 @@ func NewMultipartMetrics() *MultipartMetrics {
 			Name: "dipole_multipart_operation_duration_seconds",
 			Help: "Multipart operation duration by operation.",
 		}, []string{"operation"}),
+		terminal: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "dipole_multipart_upload_terminal_total",
+			Help: "Multipart upload terminal outcomes by server-observed transfer route.",
+		}, []string{"route", "outcome"}),
 	}
 }
 
@@ -43,12 +48,23 @@ func (m *MultipartMetrics) ObserveOutcome(operation, outcome string) {
 	m.operations.WithLabelValues(operation, outcome).Inc()
 }
 
+// ObserveTerminal records a terminal upload outcome. Route is derived from the
+// persisted session state, never from a client-provided request field.
+func (m *MultipartMetrics) ObserveTerminal(route, outcome string) {
+	if m == nil {
+		return
+	}
+	m.terminal.WithLabelValues(route, outcome).Inc()
+}
+
 func (m *MultipartMetrics) Describe(ch chan<- *prometheus.Desc) {
 	m.operations.Describe(ch)
 	m.duration.Describe(ch)
+	m.terminal.Describe(ch)
 }
 
 func (m *MultipartMetrics) Collect(ch chan<- prometheus.Metric) {
 	m.operations.Collect(ch)
 	m.duration.Collect(ch)
+	m.terminal.Collect(ch)
 }

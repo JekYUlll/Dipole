@@ -2040,6 +2040,7 @@
 - **本轮验证：** Remote GPU 在 `0724408d`、Go `1.27.0` 上重新执行完整 fault matrix：6 个确定性 Go package、7 条 Prometheus 规则、真实 MinIO/Redis reconciliation 与 Redis restart 注入全部通过；随机命名的隔离容器与 worktree 已清理，公共 `dipole-experience` 和 GPU 任务未被重启。回执见 [`multipart-fault-matrix-2026-09-09`](../../benchmarks/multipart-fault-matrix-2026-09-09/)；该结果仍不构成 24 小时 presigned 流量或默认模式切换授权。
 - **本轮进展：** 新增 `multipart-presigned-rollout/v1` evidence/policy/report 契约与只读 evaluator。候选切流必须绑定精确策略 SHA-256，在最少 24 小时窗口内同时满足直传样本、fallback/failed/expired/checksum 比率、P95、clear alert、已演练 relay 回退和独立 reviewer；输出哈希 receipt，`blocked` 返回退出码 `2`。该工具没有修改运行时策略，默认仍为 `relay`。
 - **本轮进展：** `check-multipart-policy.mjs` 现以 versioned policy 为基准，同时校验 release manifest、示例配置、Go 默认配置和 Web 离线回退值，避免候选切流前发生参数跨层漂移；环境级覆盖和默认 `presigned` 切换仍受独立 receipt 门禁约束。
+- **本轮进展：** Core 增加低基数 `dipole_multipart_upload_terminal_total{route,outcome}`。路径由 Redis session 的服务端标记恢复：`direct` 表示已签发预签名 URL 且未使用 relay，`direct_fallback` 表示同一会话随后经 relay 完成，`relay` 表示未签发预签名 URL；完成与中止终态各只记录一次。Redis TTL 内标记持久化、直传完成与直传后 relay fallback 的回归均通过。该指标不带用户、session、文件或对象标识，也不单独构成 24 小时 evidence receipt。
 - **下一步：** 在受控共享环境生成同版本真实 evidence receipt，并完成 active/expired/abort/retry 生命周期指标、真实 Prometheus/Alertmanager 路由验收；receipt 通过后仍需经过受审策略变更才可切换预签名默认值。
 
 ### AD-061：Agent Memory active promotion 仍缺少共享环境 authority 证据

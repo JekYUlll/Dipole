@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/JekYUlll/Dipole/internal/model"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 )
@@ -231,6 +233,128 @@ func (s *stubMultipartSessionStore) Delete(ctx context.Context, sessionID string
 	delete(s.sessions, sessionID)
 	delete(s.parts, sessionID)
 	return nil
+}
+
+func (s *stubMultipartSessionStore) MarkPresigned(ctx context.Context, sessionID string) error {
+	_ = ctx
+	if session := s.sessions[sessionID]; session != nil {
+		session.UsesPresigned = true
+	}
+	return nil
+}
+
+func (s *stubMultipartSessionStore) MarkRelayFallback(ctx context.Context, sessionID string) error {
+	_ = ctx
+	if session := s.sessions[sessionID]; session != nil && session.UsesPresigned {
+		session.RelayFallback = true
+	}
+	return nil
+}
+
+func TestFileServiceMultipartDirectCompletionEmitsTerminalMetric(t *testing.T) {
+	t.Parallel()
+
+	service := newFileService(&stubFileRepository{}, nil, &stubUploader{
+		initiateMultipartFn: func(context.Context, string, string) (*platformStorage.MultipartUpload, error) {
+			return &platformStorage.MultipartUpload{Bucket: "files", ObjectKey: "message-files/direct.bin", UploadID: "upload-direct"}, nil
+		},
+		presignPartFn: func(context.Context, string, string, int, time.Duration) (string, error) {
+			return "https://minio.test/direct", nil
+		},
+		inspectPartFn: func(context.Context, string, string, int) (*platformStorage.UploadedPart, error) {
+			return &platformStorage.UploadedPart{PartNumber: 1, ETag: "etag-1", Size: 4}, nil
+		},
+		completeMultipartFn: func(_ context.Context, _, objectKey, fileName, contentType string, fileSize int64, _ []platformStorage.MultipartCompletePart) (*platformStorage.UploadedObject, error) {
+			return &platformStorage.UploadedObject{Bucket: "files", ObjectKey: objectKey, FileName: fileName, ContentType: contentType, FileSize: fileSize}, nil
+		},
+	}, 50*1024*1024, 5, time.Hour, time.Minute)
+	service.sessionStore = &stubMultipartSessionStore{}
+	metrics := NewMultipartMetrics()
+	service.WithMultipartMetrics(metrics)
+
+	initiated, err := service.InitiateMultipartUpload("U100", InitiateMultipartUploadInput{FileName: "direct.bin", FileSize: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.PresignMultipartParts("U100", initiated.SessionID, []int{1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.RegisterMultipartPart("U100", initiated.SessionID, 1, RegisterMultipartPartInput{ETag: "etag-1", Size: 4}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CompleteMultipartUpload("U100", initiated.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CompleteMultipartUpload("U100", initiated.SessionID); err != nil {
+		t.Fatalf("idempotent complete: %v", err)
+	}
+
+	assertMultipartTerminalMetric(t, metrics, "direct", "completed")
+}
+
+func TestFileServiceMultipartRelayFallbackEmitsTerminalMetric(t *testing.T) {
+	t.Parallel()
+
+	service := newFileService(&stubFileRepository{}, nil, &stubUploader{
+		initiateMultipartFn: func(context.Context, string, string) (*platformStorage.MultipartUpload, error) {
+			return &platformStorage.MultipartUpload{Bucket: "files", ObjectKey: "message-files/fallback.bin", UploadID: "upload-fallback"}, nil
+		},
+		presignPartFn: func(context.Context, string, string, int, time.Duration) (string, error) {
+			return "https://minio.test/direct", nil
+		},
+		uploadPartFn: func(_ context.Context, _ string, _ string, partNumber int, reader io.Reader, size int64) (*platformStorage.UploadedPart, error) {
+			_, _ = io.Copy(io.Discard, reader)
+			return &platformStorage.UploadedPart{PartNumber: partNumber, ETag: "etag-1", Size: size}, nil
+		},
+		completeMultipartFn: func(_ context.Context, _, objectKey, fileName, contentType string, fileSize int64, _ []platformStorage.MultipartCompletePart) (*platformStorage.UploadedObject, error) {
+			return &platformStorage.UploadedObject{Bucket: "files", ObjectKey: objectKey, FileName: fileName, ContentType: contentType, FileSize: fileSize}, nil
+		},
+	}, 50*1024*1024, 5, time.Hour, time.Minute)
+	service.sessionStore = &stubMultipartSessionStore{}
+	metrics := NewMultipartMetrics()
+	service.WithMultipartMetrics(metrics)
+
+	initiated, err := service.InitiateMultipartUpload("U100", InitiateMultipartUploadInput{FileName: "fallback.bin", FileSize: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.PresignMultipartParts("U100", initiated.SessionID, []int{1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.UploadMultipartPart("U100", initiated.SessionID, 1, 4, "", bytes.NewReader([]byte("data"))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CompleteMultipartUpload("U100", initiated.SessionID); err != nil {
+		t.Fatal(err)
+	}
+
+	assertMultipartTerminalMetric(t, metrics, "direct_fallback", "completed")
+}
+
+func assertMultipartTerminalMetric(t *testing.T, metrics *MultipartMetrics, route, outcome string) {
+	t.Helper()
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(metrics)
+	families, err := registry.Gather()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, family := range families {
+		if family.GetName() != "dipole_multipart_upload_terminal_total" {
+			continue
+		}
+		for _, metric := range family.GetMetric() {
+			var routeFound, outcomeFound bool
+			for _, label := range metric.GetLabel() {
+				routeFound = routeFound || label.GetName() == "route" && label.GetValue() == route
+				outcomeFound = outcomeFound || label.GetName() == "outcome" && label.GetValue() == outcome
+			}
+			if routeFound && outcomeFound && metric.GetCounter().GetValue() == 1 {
+				return
+			}
+		}
+	}
+	t.Fatalf("terminal metric %s/%s was not emitted", route, outcome)
 }
 
 func TestFileServiceUploadMessageFileSuccess(t *testing.T) {

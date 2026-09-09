@@ -456,6 +456,11 @@ func (s *FileService) PresignMultipartParts(uploaderUUID, sessionID string, part
 		}
 		result = append(result, MultipartPartUploadURL{PartNumber: partNumber, URL: presignedURL, ExpiresAt: expiresAt})
 	}
+	if marker, ok := s.sessionStore.(multipartTransferRouteMarker); ok {
+		if err := marker.MarkPresigned(ctx, session.SessionID); err != nil {
+			return nil, fmt.Errorf("mark multipart presigned route: %w", err)
+		}
+	}
 	outcome = "success"
 	return result, nil
 }
@@ -538,6 +543,11 @@ func (s *FileService) UploadMultipartPart(uploaderUUID, sessionID string, partNu
 	}
 	if err := s.sessionStore.SavePart(ctx, session.SessionID, part, s.effectiveMultipartSessionTTL()); err != nil {
 		return fmt.Errorf("persist multipart part: %w", err)
+	}
+	if marker, ok := s.sessionStore.(multipartTransferRouteMarker); ok {
+		if err := marker.MarkRelayFallback(ctx, session.SessionID); err != nil {
+			return fmt.Errorf("mark multipart relay fallback: %w", err)
+		}
 	}
 	outcome = "success"
 	return nil
@@ -668,6 +678,7 @@ func (s *FileService) CompleteMultipartUpload(uploaderUUID, sessionID string) (*
 	if err := s.sessionStore.Delete(ctx, session.SessionID); err != nil {
 		return nil, fmt.Errorf("delete multipart session: %w", err)
 	}
+	s.multipartMetrics.ObserveTerminal(multipartTerminalRoute(session), "completed")
 	outcome = "success"
 
 	return record, nil
@@ -705,6 +716,7 @@ func (s *FileService) AbortMultipartUpload(uploaderUUID, sessionID string) error
 	if err := s.sessionStore.Delete(ctx, session.SessionID); err != nil {
 		return fmt.Errorf("delete multipart session: %w", err)
 	}
+	s.multipartMetrics.ObserveTerminal(multipartTerminalRoute(session), "aborted")
 	outcome = "success"
 	return nil
 }
@@ -861,6 +873,16 @@ func (s *FileService) effectiveMultipartSessionTTL() time.Duration {
 		return s.multipartSessionTTL
 	}
 	return time.Hour
+}
+
+func multipartTerminalRoute(session *multipartUploadSession) string {
+	if session != nil && session.UsesPresigned {
+		if session.RelayFallback {
+			return "direct_fallback"
+		}
+		return "direct"
+	}
+	return "relay"
 }
 
 func validateMultipartParts(parts []platformStorage.MultipartCompletePart, totalParts int, fileSize, chunkSize int64) error {
