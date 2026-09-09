@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Cassandra Sync shadow hydration 已有同 revision 的隔离 Compose 运行证据。smoke 显式构建 Sync、迁移器和 Cassandra projector，避免遗留 `latest` 镜像与当前 schema/配置契约漂移；同时修复 `CassandraConfig()` 漏读环境覆盖的问题。Remote GPU 候选以 `DIPOLE_CASSANDRA_ENABLED=true`、`shadow=true`、`primary=false` 健康收敛并自动清理，公共体验仍保持 MySQL hydration。后续仍需在受控公共窗口收集真实 Sync 请求的 shadow 比对、冲突/缺失/回退计数、延迟和可执行回退收据，才可评估 primary hydration。
+
 - 2026-09-09：Cassandra primary hydration Compose smoke 已移除共享证书目录和真实 Agent 模型配置依赖，改用临时证书与不可联网占位模型配置。Remote GPU 隔离项目验证 Cassandra schema init、Message 和 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION=true` Sync 的健康收敛，退出后候选容器与卷为零。公共 MySQL 主读、Cassandra cohort、24 小时 observation evidence、责任人批准与自动回切仍保持未完成。
 
 - 2026-09-09：Search dependency readiness smoke 已移除两项与 Search 无关的共享环境耦合：完整 Compose 渲染使用不可联网模型占位配置，候选 Gateway 通过临时 override 取消宿主端口发布。Remote GPU 隔离实测覆盖 Kafka assignment、Elasticsearch 停止后的 Search/Search Indexer not-ready、恢复后的 ready 和 Core/Message/Sync/Gateway 无重启级联，候选容器清理为零。该证据未开放公共 Gateway 搜索路由，也不替代可见性、查询 P99 与读切流门禁。
