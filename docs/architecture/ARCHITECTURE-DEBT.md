@@ -12,6 +12,8 @@
 
 - 2026-09-09：Search dependency readiness smoke 已移除两项与 Search 无关的共享环境耦合：完整 Compose 渲染使用不可联网模型占位配置，候选 Gateway 通过临时 override 取消宿主端口发布。Remote GPU 隔离实测覆盖 Kafka assignment、Elasticsearch 停止后的 Search/Search Indexer not-ready、恢复后的 ready 和 Core/Message/Sync/Gateway 无重启级联，候选容器清理为零。该证据未开放公共 Gateway 搜索路由，也不替代可见性、查询 P99 与读切流门禁。
 
+- 2026-09-09：公共体验已通过 `search-experience.yml` 开启受认证的 Gateway 查询路由。Search Service 保持只读并从 Core 获取 principal 派生的会话范围；两个新 owner 的实测确认自身标记消息可检索、对方私聊标记不可见，未认证请求返回 `401`。回滚可移除 overlay 后仅重建 Gateway。此项不包含查询 P99、长窗口索引 lag 或生产容量结论。
+
 - 2026-09-09：Agent Runtime 的 deterministic security suite 已覆盖五条执行边界：untrusted prompt provenance、越权 Tool 执行前拒绝、MCP 敏感或超限参数的有界 egress 阻断、EventLedger 重复事件预算收敛和同源 Agent lineage 循环抑制。该证据只覆盖确定性 Policy/Capability/事件路径；真实候选模型、人工标注 adversarial corpus 与值级敏感信息外发评测仍是 `AD-037`、`AD-038` 前置。
 
 - 2026-09-09：`search-shadow` Compose overlay 已在 Remote GPU 公共体验完成运行验收：Elasticsearch 与独立 Search Indexer 均 healthy，Gateway 在有效配置中保持 `DIPOLE_SEARCH_ENABLED=false`，Query Service 未随影子索引启动。新 B1 私聊及其 Agent 回复使 `dipole-messages-v1` 从 `0` 增至 `2`，证明 Kafka 事件可写入影子索引。权限感知 Query 路由、会话可见性/发送者/时间范围/重放验证、查询 P99、Query Service 启动与读切流回滚 receipt 仍是 Search 读切流前置。

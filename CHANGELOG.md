@@ -2782,6 +2782,9 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-09-09：新增 `search-experience` 可回滚 overlay，并在 Remote GPU 公共体验栈启用 Elasticsearch 查询服务。Gateway 搜索路由通过内部 mTLS 调用 Search Service，由 Core 从认证 JWT 派生会话范围；未认证请求返回 `401`，跨用户私聊检索保持不可见。
+  - 验证：Search Service 与 Gateway 均健康；两名新用户的消息范围 E2E 确认 owner 命中自己的标记消息，另一用户的私聊标记为零结果。
+
 - 2026-09-09：公共 Remote GPU 体验栈重新验证显式低风险任务创建：新认证用户经 Gateway 获得 `accepted` Task，Temporal 收敛为 `completed`，持久 Timeline 产生 5 个事件并只发送 1 条受治理直属回复。验收期间 16 个体验服务保持健康，临时 E2E runner 已清理。
 
 - 2026-09-09：Agent 体验 Compose 增加 Route B 单一入站响应者回归：B1 私聊和 B2 群 @ 同时要求关闭 legacy Route A、启用 Temporal `interactive_active` 与对应入站消费者，防止 overlay 漂移造成重复回复。

@@ -58,6 +58,33 @@ scripts/smoke-search-service.sh
 
 脚本在隔离 Elasticsearch 9.5.2 中写入一个可见文档和一个越权文档，经 Core scope、Search RPC 与 read Alias 查询后只返回可见文档，并自动清理容器与 volume。
 
+### Remote GPU 体验栈
+
+长驻 `dipole-experience` 先启动 `search` 服务，再使用版本化
+`search-experience.yml` 只重建 Gateway。release snapshot、体验 `.env`、mTLS
+证书和 Agent overlay 都必须显式传入：
+
+```bash
+release=/home/admin1/agent/releases/dipole-<revision>
+work=/home/admin1/workspaces/Dipole
+
+DIPOLE_INTERNAL_CERT_DIR="$work/certs/internal" \
+docker compose --env-file "$work/.env" -p dipole-experience \
+  -f "$release/deploy/compose/docker-compose.microservices.yml" \
+  -f "$work/deploy/microservices/agent-experience.yml" \
+  --profile search up -d --no-deps search
+
+DIPOLE_INTERNAL_CERT_DIR="$work/certs/internal" \
+docker compose --env-file "$work/.env" -p dipole-experience \
+  -f "$release/deploy/compose/docker-compose.microservices.yml" \
+  -f "$work/deploy/microservices/agent-experience.yml" \
+  -f "$release/deploy/microservices/search-experience.yml" \
+  --profile search up -d --no-deps gateway
+```
+
+验收先确认未认证请求得到 `401`，再以两个不同用户验证一方能检索自己的会话消息、无法检索另一方的私聊。回滚时使用相同的基础文件但移除
+`search-experience.yml` 重建 Gateway；确认路由关闭后，再停止 `search` 服务。共享 project 不使用 `--remove-orphans`。
+
 ## 验收与回滚
 
 上线前确认 Search Indexer lag 为零、read/write Alias 只有一个共同 owner、Search 与 Core mTLS 身份匹配。Search Service 启动失败时保持 Gateway 搜索入口关闭。回滚时先以 `DIPOLE_SEARCH_ENABLED=false` 重建 Gateway，再停止 `search` profile；索引与消息主链路无需逆向迁移。
