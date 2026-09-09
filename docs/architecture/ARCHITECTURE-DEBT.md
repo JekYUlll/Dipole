@@ -2,6 +2,8 @@
 
 ### AD-067：共享体验 Subscription Active Read 观察窗口
 
+- 2026-09-09：受控 Gateway promotion window 内，公共体验以新用户、新 owner Definition 和新私聊真实完成 B1 fallback 验收：Temporal Task 为 `completed:completed`，固定回退 `lowrisk-assistant:v1`，并只产生一条受治理回复及一条 consumed approval。窗口结束后 Gateway 已复核 `healthy` 且 promotion route 为关闭、12 个服务运行。初始 `close` 曾在网关刚重建的 `starting` 状态过早报错；runner 已改为明确的有界轮询并追加无 Docker 回归。该验证不涉及 Subscription Active Read 的双人审核 grant、订阅 worker 或自动回复，剩余门槛不变。
+
 - 2026-09-09：新增默认关闭的 `agent-subscription` 并行 Compose overlay，保留 public interactive worker，同时以独立 Kafka group 与 Temporal queue 承接 Subscription Active Read。Remote GPU 完整 Compose 渲染已复核 interactive/subscription worker 身份、队列、写入、Control 和 MCP 配置互相隔离。该 overlay 未部署到共享体验栈，自动回复仍为关闭。
 - 2026-09-09：首次共享体验启动暴露跨文件 `extends` 未继承 `agent-experience.yml` release manifest，新增 worker 因 candidate 不匹配 fail-closed 并立即停止。overlay 现强制调用方绑定 `DIPOLE_AGENT_RELEASE_MANIFEST_FILE`；以实际 experience manifest 重启后 `agent-subscription` 健康、零重启，原 interactive worker 仍健康且零重启。自动回复继续关闭。
 - 2026-09-09：共享体验 E2E 进一步发现跨文件 `extends` 未继承 interactive 的模型预算。overlay 已显式固定 `3` 次调用、`180000` ms 总超时和 `16384` 输出 token 上限。Remote GPU 新建 owner/群/只读 Definition/Subscription 后，以短期 fixture grant 触发一条非 mention 群消息；subscription Task 以 `completed:completed` 收敛、完成两次模型调用且 Agent 群消息为零。fixture grant 已撤销，自动回复保持关闭。
