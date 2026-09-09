@@ -76,6 +76,45 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(lifecycle).toEqual(["finish", "settle"]);
   });
 
+  it("releases an inbound claim only after a failed Task is persisted", async () => {
+    const taskQueue = `dipole-agent-ledger-failure-${Date.now()}`;
+    const claim = { eventId: "event-ledger-failure-1", taskId: "task-ledger-failure-1", token: "claim-token-failure-1" };
+    const lifecycle: string[] = [];
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "run-ledger-failure-1", runStatus: "running" };
+      },
+      async finishAgentTask(input) {
+        expect(input).toMatchObject({
+          taskId: "task-ledger-failure-1", runStatus: "failed", lastError: "provider temporarily unavailable"
+        });
+        lifecycle.push("finish");
+      },
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      async executeAgentTaskStep() {
+        return { kind: "failed", message: "provider temporarily unavailable" };
+      },
+      async settleInboundEvent(input) {
+        expect(input).toEqual({ claim, status: "failed", error: "provider temporarily unavailable" });
+        lifecycle.push("release");
+      }
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+
+    const result = await worker.runUntil(() => env.client.workflow.execute("agentTaskWorkflow", {
+      taskQueue,
+      workflowId: "dipole-agent-task/task-ledger-failure-1",
+      args: [{ taskId: "task-ledger-failure-1", goal: "reply", eventClaim: claim }]
+    }));
+
+    expect(result).toMatchObject({
+      taskId: "task-ledger-failure-1", status: "failed", failure: { message: "provider temporarily unavailable" }
+    });
+    expect(lifecycle).toEqual(["finish", "release"]);
+  });
+
   it("completes a governed group mention only after its reply and inbound claim settle", async () => {
     const taskQueue = `dipole-agent-group-reply-${Date.now()}`;
     const event: AgentEvent = {

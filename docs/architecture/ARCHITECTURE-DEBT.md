@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Temporal Workflow 级集成验收补齐 failed terminal 的 EventLedger 语义：`finish(failed)` 成功后才执行 claim release，且错误文本被保留。该项与既有 completed settle、活动层 failed/cancelled release 和 MySQL lease reclaim 契约共同防止入站失败被错误去重；Kafka 重投策略仍由 Core Admission 决定。
+
 - 2026-09-09：学习与面试材料以独立 IM/Agent Mermaid 图固定受控边界：IM 表达 Timeline、Outbox 与 Sync 投影；Agent 表达可信 ExecutionContext、Temporal 和 Capability 审批。默认关闭的 Cassandra、Elasticsearch 和 Agent 写入仍须满足各自证据门禁；本项不改变运行路径。
 
 - 2026-09-09：Temporal Task client 现对运行中的 `WorkflowExecutionAlreadyStartedError` 返回稳定 workflow ID，调用者可继续通过 Task ID 查询、控制或等待既有 execution；已关闭 execution 继续由 `ALLOW_DUPLICATE` 允许新 run，业务重放资格仍由 Core Admission/EventLedger 决定。Task workflow 的 16 项 Temporal integration 全部通过，其中恢复案例按 stage 分离 plan 与 synthesis 收据，确认 Activity completion acknowledgement 丢失后不重复模型调用或 capability 副作用；新增 B2 群 `@` Workflow 集成验收固定一条 `reply()`、一条群回复，并要求 `finish → EventLedger settle` 的终态顺序。

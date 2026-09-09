@@ -1,3 +1,5 @@
+- 2026-09-09：Temporal Agent 集成验收新增失败结算路径：Task 持久化 `failed` 终态后才释放 inbound EventLedger claim，并保留原始失败原因供后续 Kafka 重投；成功任务仍只在持久化 `completed` 后完成 claim，避免失败被误标完成。
+
 - 2026-09-09：学习与面试材料新增 IM 与 Agent Mermaid 主链路图，分别固定 Timeline/Outbox/Sync 投影和可信 ExecutionContext/Temporal/Capability 审批边界；Cassandra、Elasticsearch 与写能力继续标注为需独立证据门禁的演进路径。
 
 - 2026-09-09：Temporal Agent 集成验收补齐 Route B2 群 `@` 成功路径：真实 read Activity 在单次 `reply()` 后只投递一条群回复，Workflow 持久化 `completed` 终态后才结算 inbound EventLedger claim。该用例覆盖短路 planner、群会话 scope、回复副作用与终态顺序；Route A 继续保持关闭。
