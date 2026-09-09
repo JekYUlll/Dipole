@@ -1,0 +1,12 @@
+services:
+  # The shadow profile builds only the asynchronous index. Search remains
+  # unavailable at the Gateway until its own read and rollback gate passes.
+  elasticsearch:
+    profiles: ["search-shadow"]
+
+  search-indexer:
+    profiles: ["search-shadow"]
+
+  gateway:
+    environment:
+      DIPOLE_SEARCH_ENABLED: "false"

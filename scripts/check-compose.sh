@@ -665,6 +665,20 @@ jq -e '
   and .services.sync.environment.DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION == "true"
 ' <<<"${primary_hydration_config}" >/dev/null
 
+search_shadow_config="$({
+  DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
+  DIPOLE_SEARCH_ENABLED=true \
+    docker compose --profile search-shadow \
+      -f deploy/compose/docker-compose.microservices.yml \
+      -f deploy/microservices/search-shadow.yml config --format json
+})"
+jq -e '
+  .services.gateway.environment.DIPOLE_SEARCH_ENABLED == "false"
+  and (.services.elasticsearch.profiles | index("search-shadow") != null)
+  and (.services["search-indexer"].profiles | index("search-shadow") != null)
+  and .services.search == null
+' <<<"${search_shadow_config}" >/dev/null
+
 primary_profile_config="$({
   DIPOLE_INTERNAL_RPC_SHARED_SECRET=static-compose-validation-only \
     docker compose --profile cassandra-primary \
