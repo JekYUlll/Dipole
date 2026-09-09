@@ -1,4 +1,12 @@
 services:
+  # Retrieval requires the Core-mediated Search RPC dependency. Activate only
+  # the read path here; the asynchronous indexer remains separately managed.
+  elasticsearch:
+    profiles: []
+
+  search:
+    profiles: []
+
   core:
     environment:
       # Core remains the authorization point for every retrieval capability call.
