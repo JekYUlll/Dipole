@@ -1,3 +1,5 @@
+- 2026-09-09：独立 `retrieval_active` Worker 可在关闭 Kafka ingress 时启动，因为请求只经认证 Gateway Control API 进入专属 Temporal queue；普通 active、入站和订阅 Runtime 仍强制 Kafka。配置回归同时覆盖该允许边界与拒绝边界。
+
 - 2026-09-09：Search Service 新增仅用于双向启动依赖的延迟 Core RPC 连接：Search 先绑定 RPC listener，Core 可完成 Search 健康拨号；Search readiness 继续探测 Core，未恢复时检索调用保持 fail-closed。其它服务沿用阻塞式健康拨号。
 
 - 2026-09-09：Retrieval candidate overlay 将 Search 对 Core 的 Compose 依赖从 `service_healthy` 收敛为 `service_started`，解除 Core 启动期建立 Search RPC 与 Search 等待 Core 健康之间的循环等待；基础 Search profile 与默认运行路径保持不变。

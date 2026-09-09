@@ -183,6 +183,21 @@ describe("shadow runtime composition", () => {
     });
   });
 
+  it("allows only the isolated retrieval active Worker to omit Kafka ingress", () => {
+    const retrieval = {
+      ...activeRuntimeEnvironment(),
+      DIPOLE_AGENT_KAFKA_ENABLED: "false",
+      DIPOLE_AGENT_RETRIEVAL_ENABLED: "true",
+      DIPOLE_AGENT_RETRIEVAL_CONTEXT_ENABLED: "true"
+    };
+    expect(loadShadowRuntimeConfig(retrieval)).toMatchObject({
+      runtimeMode: "active", enabled: false, retrievalEnabled: true, retrievalContextEnabled: true
+    });
+    expect(() => loadShadowRuntimeConfig({
+      ...activeRuntimeEnvironment(), DIPOLE_AGENT_KAFKA_ENABLED: "false"
+    })).toThrow(/requires Kafka unless it is isolated retrieval/);
+  });
+
   it("decodes a Kafka envelope and records a read-only plan", async () => {
     let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
     const consumer: KafkaConsumerPort = {

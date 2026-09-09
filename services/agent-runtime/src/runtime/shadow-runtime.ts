@@ -122,8 +122,10 @@ const shadowRuntimeConfigSchema = z.object({
     database: z.string().trim()
   }).strict()
 }).strict().superRefine((config, refinement) => {
-  if (config.runtimeMode === "active" && !config.enabled) {
-    refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires Kafka", path: ["enabled"] });
+  // Retrieval tasks enter through the authenticated control API and use a
+  // dedicated Temporal queue. They do not consume any Kafka ingress.
+  if (config.runtimeMode === "active" && !config.enabled && !config.retrievalEnabled) {
+    refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires Kafka unless it is isolated retrieval", path: ["enabled"] });
   }
   if (config.runtimeMode === "active" && config.ledgerMode !== "mysql") {
     refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires the persistent MySQL ledger", path: ["ledgerMode"] });

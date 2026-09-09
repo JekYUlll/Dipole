@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Retrieval candidate 的孤立 Worker 已将 Kafka ingress 关闭与 Runtime 配置校验对齐：仅显式 retrieval active profile 可省略 Kafka，普通 active 路径继续 fail-closed。待以新 Agent 镜像复验 Worker、Gateway 与 owner-scoped Search E2E。
+
 - 2026-09-09：Search-to-Core 启动连接现限定使用延迟拨号，解除 Core/Search 的运行时 eager-dial 循环；Search 的 `/readyz` 仍由 Core RPC dependency probe 约束，实际调用也保持 fail-closed。Remote GPU 需要重新执行候选联合健康和 owner-scoped Search E2E。
 
 - 2026-09-09：Retrieval candidate 已解除 Compose 启动环：overlay 允许 Search 在 Core 容器已启动后并行启动，同时继续等待 Search Indexer 健康；Core 对 Search RPC 的 fail-closed 行为保持。Remote GPU 联合健康、owner-scoped Search E2E 与回滚证据仍待执行。
