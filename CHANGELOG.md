@@ -1,3 +1,5 @@
+- 2026-09-09：修正 Subscription Active Read 运行手册的 reviewed 验收示例，使其与当前 E2E 一致地传入 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND`。旧的静态 grant UUID 输入已移除；E2E 在创建本次 Definition 后才要求 helper 输出精确绑定的 grant。
+
 - 2026-09-09：公共 `dipole-experience` 以新用户和新群复验 B2 群 `@Dipole AI` 交互链路。Temporal Task 收敛为 `completed:completed`，共享低风险 Definition 仅写入一条群回复，并消费一条 `group_reply` approval；Route A 仍关闭。该回归确认此前“消息已发出但 Task 失败”的现象未在当前公共栈复现。
 
 - 2026-09-09：公共 Subscription Active Read E2E 的 reviewed 路径改为调用一个绝对路径、可执行的受控 grant helper。helper 在临时 owner Definition/Subscription 创建后取得精确绑定的双人审核 grant，并只输出 grant UUID；E2E 继续复核有效期和绑定后才触发 Kafka。该调整消除了“新建 Definition 却要求预先存在 matching grant”的不可执行输入，fixture 路径仍需显式开启。

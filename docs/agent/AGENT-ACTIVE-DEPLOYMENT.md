@@ -217,17 +217,24 @@ grant 的订阅读取任务。移除该 overlay 并停止 `agent-subscription` �
 不会影响 interactive Agent。
 
 公共体验环境可运行以下验收脚本。它创建新的 owner、群、只读 Definition
-和 Subscription；默认要求调用方提供 Gateway/Core 双人审核生成、且精确绑定
-新 Definition 的 active grant。脚本断言一个 `completed:completed` subscription
-Task、至少一次模型调用和零条 Agent 群消息。验收结束后应由 reviewer 撤销该
-Runtime grant，再关闭 promotion window。
+和 Subscription；默认在资源创建后调用受控 reviewed-grant helper，由 helper
+完成 Gateway/Core 双人审核并输出精确绑定新 Definition 的 active grant。脚本
+断言一个 `completed:completed` subscription Task、至少一次模型调用和零条
+Agent 群消息。验收结束后应由 reviewer 撤销该 Runtime grant，再关闭 promotion
+window。
 
 ```bash
 PROJECT=dipole-experience GATEWAY=http://127.0.0.1:8080 \
 DIPOLE_AGENT_CANDIDATE_VERSION=experience-v1 \
-DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_UUID=<reviewed-grant-uuid> \
+DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_REVIEWED_GRANT_COMMAND=/secure/dipole-reviewed-grant-helper \
 bash scripts/e2e-agent-subscription-active-read.sh
 ```
+
+helper 必须是可执行的绝对路径，且只向标准输出写入一个 64 位 grant UUID。
+E2E 通过环境变量将本次 owner、Definition/version、Subscription、会话键、
+candidate、Gateway 和 Compose project 标识传入 helper，并在返回后再次复核
+grant 的有效期与精确绑定。helper 的日志必须写入标准错误，避免污染 grant
+输出；未配置 helper 时 reviewed 路径会失败关闭。
 
 `fixture` 模式仅用于隔离开发回归，必须同时设置
 `DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_MODE=fixture` 和
