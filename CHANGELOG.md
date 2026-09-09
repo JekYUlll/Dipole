@@ -1,4 +1,4 @@
-- 2026-09-09：Subscription Auto-Reply 的隔离 Compose smoke 现会将同一条已发布 Message Outbox 信封重新投递到 Kafka，并在 Event Ledger 消费后复核单一 Task、单条 Agent 回复、单次 approval consume 与单次 Tool invocation 均不变。该重放验收保持自动回复 overlay 默认关闭，Remote GPU 实跑证据待本切片提交后补齐。
+- 2026-09-09：Remote GPU 已完成 Subscription Auto-Reply 的隔离 Kafka 重放 smoke：将同一条已发布 Message Outbox 信封重新投递后，Event Ledger 仍收敛为单一 completed Task，且单条 Agent 回复、单次 approval consume 与单次 Tool invocation 均不变。隔离资源自动清理，公共体验栈保持 12 个运行实例；自动回复 overlay 继续默认关闭。
 
 - 2026-09-09：Remote GPU 以当前主线镜像完成隔离 Subscription Auto-Reply smoke。一个 owner-scoped Kafka 事件收敛为一个 durable Task、两次有界模型调用、一条自动回复、一次 Core 铸造并消费的 `message.system.send` approval 与一次完成的 Tool invocation；隔离容器和卷自动清理，公共体验栈未重启。自动回复 overlay 继续默认关闭。
 
