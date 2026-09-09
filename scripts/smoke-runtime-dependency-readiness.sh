@@ -7,6 +7,7 @@ compose_file="${root_dir}/deploy/compose/docker-compose.microservices.yml"
 isolated_images_file="${root_dir}/deploy/microservices/isolated-images.yml"
 project_name="${COMPOSE_PROJECT_NAME:-dipole-readiness-${RANDOM}-$$}"
 cert_dir="${DIPOLE_INTERNAL_CERT_DIR:-$(mktemp -d -t dipole-readiness-certs.XXXXXX)}"
+ports_file=$(mktemp -t dipole-readiness-ports.XXXXXX.yml)
 remove_cert_dir=0
 if [[ -z "${DIPOLE_INTERNAL_CERT_DIR:-}" ]]; then
   remove_cert_dir=1
@@ -41,11 +42,20 @@ export DIPOLE_AGENT_MODEL_ROUTES DIPOLE_AGENT_MODEL_CONTEXT_PROFILES
 export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
 export DIPOLE_SEARCH_ENABLED=true
 
+# This smoke uses only container-local readiness endpoints. Do not claim a
+# host port that could belong to the public experience stack.
+cat >"${ports_file}" <<'YAML'
+services:
+  gateway:
+    ports: !override []
+YAML
+
 compose() {
   local -a compose_files=(-f "${compose_file}")
   if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then
     compose_files+=(-f "${isolated_images_file}")
   fi
+  compose_files+=(-f "${ports_file}")
   docker compose -p "${project_name}" "${compose_files[@]}" --profile search "$@"
 }
 
@@ -56,6 +66,7 @@ compose_exec_with_timeout() {
   if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then
     compose_files+=(-f "${isolated_images_file}")
   fi
+  compose_files+=(-f "${ports_file}")
   timeout --kill-after=2s 10s docker compose -p "${project_name}" "${compose_files[@]}" --profile search exec -T "${service}" "$@"
 }
 
@@ -69,6 +80,7 @@ cleanup() {
   else
 	printf 'Runtime readiness stack retained: project=%s cert_dir=%s\n' "${project_name}" "${cert_dir}"
   fi
+  rm -f "${ports_file}"
   exit "${exit_code}"
 }
 trap cleanup EXIT INT TERM
