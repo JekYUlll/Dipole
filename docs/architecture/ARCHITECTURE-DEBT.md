@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：公共 `agent-subscription` 已用 reviewed Subscription Active Read 真实验收复核其最小权限边界。临时 owner 的 read-only Definition/Subscription 仅在 Gateway/Core 双人审核 grant 的短窗口内触发一条 `completed:completed` Temporal Task；有 2 次模型调用、零 Agent 群消息。cleanup 已撤销本次 grant、临时 operator 权限并删除 state file，Gateway promotion route 回到 `false`，Search 保持 `true`，17 个服务 healthy。订阅自动回复、长期 active authority、真实语料/成本灰度仍保持关闭。
+
 - 2026-09-09：Cassandra Sync hydration 在不可变 release `aede9ccf` 再次完成共享 Remote GPU 的可回滚 shadow 窗口。65 秒内 B1 私聊触发一条 Agent 回复和 2 条 Inbox 投影，5 次真实 Sync 拉取均命中 Cassandra；落盘 evidence 为 fallback/missing/conflict/error 均 `0`、Cassandra P95 `5 ms`。脚本退出后复核 Sync 的 Cassandra、shadow hydration 与 primary hydration 开关均为 `false`，17 个公共服务 healthy。该短窗口只增加可复现的开发期对账证据，Cassandra primary、长期 SLO 和简历 P99 仍需独立验收。
 
 - 2026-09-09：公共 Agent Runtime 已滚动到 `de325c7a` 并实测 status capability surface；B1 新用户任务仍为单回复、单次审批消费。首次滚动遗漏 Remote GPU Compose 的 `DIPOLE_INTERNAL_CERT_DIR`，Docker 在相对源路径缺失时拒绝创建 Agent；未写入运行容器后即以绝对证书目录恢复。Remote `.env` 现固定该路径并通过 Compose 渲染，后续单服务重建不应依赖临时 shell 覆盖。该配置治理不替代镜像 revision、schema 位点或服务健康复核。
