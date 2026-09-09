@@ -1,0 +1,7 @@
+services:
+  # This overlay is paired with the base `search` profile after the read-only
+  # Search Service is healthy. Removing it closes the public route while the
+  # asynchronous index can remain available for diagnostics.
+  gateway:
+    environment:
+      DIPOLE_SEARCH_ENABLED: "true"

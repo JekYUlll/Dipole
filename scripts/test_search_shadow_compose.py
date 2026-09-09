@@ -22,6 +22,13 @@ class SearchShadowComposeTest(unittest.TestCase):
         self.assertIn("gateway:", self.overlay)
         self.assertIn('DIPOLE_SEARCH_ENABLED: "false"', self.overlay)
 
+    def test_experience_profile_opens_only_the_gateway_query_route(self) -> None:
+        overlay = (ROOT / "deploy/microservices/search-experience.yml").read_text(encoding="utf-8")
+        self.assertIn("gateway:", overlay)
+        self.assertIn('DIPOLE_SEARCH_ENABLED: "true"', overlay)
+        self.assertNotIn("search-indexer:", overlay)
+        self.assertNotIn("elasticsearch:", overlay)
+
     def test_base_profile_keeps_the_indexer_and_query_service_separate(self) -> None:
         base = (ROOT / "deploy/compose/docker-compose.microservices.yml").read_text(encoding="utf-8")
         self.assertIn('search-indexer:\n    profiles: ["search"]', base)
