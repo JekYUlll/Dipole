@@ -101,7 +101,9 @@ describe("agent runtime Task control API", () => {
   it("exposes low-sensitivity Runtime status only to the trusted Gateway", async () => {
     const getRuntimeStatus = vi.fn(async () => ({
       schemaVersion: "dipole.agent.runtime_status.v1", runtimeMode: "shadow", temporal: { enabled: true, activityMode: "read_shadow" },
-      taskControlEnabled: true, interactiveMessageWritesEnabled: false
+      taskControlEnabled: true, interactiveMessageWritesEnabled: false,
+      subscriptionActiveEnabled: false, subscriptionMessageWritesEnabled: false,
+      memoryEnabled: false, retrievalEnabled: false
     }));
     const server = buildServer({ isReady: () => true }, {
       secret: "control-secret", service: { getRuntimeStatus, getTask: vi.fn(), cancelTask: vi.fn(), resolveApproval: vi.fn(), provideInput: vi.fn() }
@@ -109,7 +111,11 @@ describe("agent runtime Task control API", () => {
     expect((await server.inject({ method: "GET", url: "/internal/v1/agent/status" })).statusCode).toBe(401);
     const response = await server.inject({ method: "GET", url: "/internal/v1/agent/status", headers });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(expect.objectContaining({ schemaVersion: "dipole.agent.runtime_status.v1", taskControlEnabled: true }));
+    expect(response.json()).toEqual(expect.objectContaining({
+      schemaVersion: "dipole.agent.runtime_status.v1", taskControlEnabled: true,
+      subscriptionActiveEnabled: false, subscriptionMessageWritesEnabled: false,
+      memoryEnabled: false, retrievalEnabled: false
+    }));
     expect(getRuntimeStatus).toHaveBeenCalledWith({ principalUserId: "U100", requestId: "R1", traceId: "T1" });
     await server.close();
   });

@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Gateway 代理的认证 Agent Runtime status 现同时返回 Subscription Active、Subscription message write、Memory 与 Retrieval 的低敏开关，供体验页面解释当前可用边界。该接口不暴露 grant、Definition、证据或资源 scope，且任何写入与读取仍由 Core 在实际调用时授权；页面状态不能用于推断或绕过权限。
+
 - 2026-09-09：Cassandra Sync hydration 已获得一次共享 Remote GPU 的可回滚 shadow 窗口证据。revision `f939c7c6` 在 65 秒窗口内以 `shadow=true/primary=false` 完成 B1 回复与 5 次 Sync 拉取，evidence 记录 Cassandra match `5`、fallback/missing/conflict/error 均为 `0`、P95 `10 ms`；脚本随后自动恢复 MySQL hydration，Sync healthy 且 Cassandra 开关均为 `false`。此前公共窗口使用相对证书目录会使 Docker 创建目录并阻断 mTLS 启动，runner 现强制绝对且完整的证书目录并等待回滚 ready。单次短窗口不构成 primary hydration、长期 SLO 或简历 P99 claim 的证据。
 
 - 2026-09-09：Cassandra Sync shadow hydration 已有同 revision 的隔离 Compose 运行证据。smoke 显式构建 Sync、迁移器和 Cassandra projector，避免遗留 `latest` 镜像与当前 schema/配置契约漂移；同时修复 `CassandraConfig()` 漏读环境覆盖的问题。Remote GPU 候选以 `DIPOLE_CASSANDRA_ENABLED=true`、`shadow=true`、`primary=false` 健康收敛并自动清理，公共体验仍保持 MySQL hydration。后续仍需在受控公共窗口收集真实 Sync 请求的 shadow 比对、冲突/缺失/回退计数、延迟和可执行回退收据，才可评估 primary hydration。

@@ -185,7 +185,11 @@ const controlService = controlEnabled
       runtimeMode: shadowConfig.runtimeMode,
       temporal: { enabled: temporalConfig.enabled, activityMode: temporalConfig.activityMode },
       taskControlEnabled: true,
-      interactiveMessageWritesEnabled: shadowConfig.runtimeMode === "active" && shadowConfig.interactiveMessageWritesEnabled
+      interactiveMessageWritesEnabled: shadowConfig.runtimeMode === "active" && shadowConfig.interactiveMessageWritesEnabled,
+      subscriptionActiveEnabled: shadowConfig.subscriptionActiveEnabled,
+      subscriptionMessageWritesEnabled: shadowConfig.subscriptionMessageWritesEnabled,
+      memoryEnabled: shadowConfig.memoryEnabled,
+      retrievalEnabled: shadowConfig.retrievalEnabled
     })
   })
   : undefined;
