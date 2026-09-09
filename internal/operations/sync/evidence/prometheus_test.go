@@ -66,6 +66,31 @@ dipole_sync_hydration_route_duration_seconds_count{outcome="hit"} 12
 	}
 }
 
+func TestEvidenceFromPrometheusWindowUsesShadowComparisonMetrics(t *testing.T) {
+	start := []byte(`# TYPE dipole_sync_hydration_shadow_total counter
+dipole_sync_hydration_shadow_total{outcome="match"} 4
+# TYPE dipole_sync_hydration_shadow_duration_seconds histogram
+dipole_sync_hydration_shadow_duration_seconds_bucket{outcome="match",le="0.005"} 4
+dipole_sync_hydration_shadow_duration_seconds_bucket{outcome="match",le="+Inf"} 4
+dipole_sync_hydration_shadow_duration_seconds_count{outcome="match"} 4
+`)
+	end := []byte(`# TYPE dipole_sync_hydration_shadow_total counter
+dipole_sync_hydration_shadow_total{outcome="match"} 6
+dipole_sync_hydration_shadow_total{outcome="mismatch"} 1
+# TYPE dipole_sync_hydration_shadow_duration_seconds histogram
+dipole_sync_hydration_shadow_duration_seconds_bucket{outcome="match",le="0.005"} 6
+dipole_sync_hydration_shadow_duration_seconds_bucket{outcome="match",le="+Inf"} 6
+dipole_sync_hydration_shadow_duration_seconds_count{outcome="match"} 6
+`)
+	evidence, err := EvidenceFromPrometheusWindow(start, end, PrometheusSnapshotMetadata{Service: "sync", DeploymentRevision: "r1", Mode: "shadow", WindowStart: "2026-08-29T00:00:00Z", WindowEnd: "2026-08-29T01:00:00Z"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evidence.Requests != (Counts{Total: 3, CassandraHit: 2, Conflict: 1}) || evidence.Latency.CassandraP95Micros != 5000 {
+		t.Fatalf("shadow window evidence = %+v latency=%+v", evidence.Requests, evidence.Latency)
+	}
+}
+
 func TestEvidenceFromPrometheusWindowRejectsCounterReset(t *testing.T) {
 	start := []byte(`# TYPE dipole_sync_hydration_route_total counter
 dipole_sync_hydration_route_total{outcome="hit"} 2

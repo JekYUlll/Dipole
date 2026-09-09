@@ -13,6 +13,8 @@ import (
 const (
 	routeMetricName    = "dipole_sync_hydration_route_total"
 	durationMetricName = "dipole_sync_hydration_route_duration_seconds"
+	shadowMetricName   = "dipole_sync_hydration_shadow_total"
+	shadowDurationName = "dipole_sync_hydration_shadow_duration_seconds"
 )
 
 // PrometheusSnapshotMetadata binds an untrusted metrics snapshot to its operator-supplied window identity.
@@ -36,6 +38,9 @@ func EvidenceFromPrometheus(data []byte, metadata PrometheusSnapshotMetadata) (E
 
 // EvidenceFromPrometheusWindow converts two cumulative collector outputs into bounded-window evidence.
 func EvidenceFromPrometheusWindow(startData, endData []byte, metadata PrometheusSnapshotMetadata) (Evidence, error) {
+	if metadata.Mode == "shadow" {
+		return EvidenceFromShadowPrometheusWindow(startData, endData, metadata)
+	}
 	start, err := parsePrometheusSnapshot(startData, false)
 	if err != nil {
 		return Evidence{}, fmt.Errorf("parse start snapshot: %w", err)
@@ -55,9 +60,88 @@ func EvidenceFromPrometheusWindow(startData, endData []byte, metadata Prometheus
 	return evidenceFromSnapshot(delta, hitHistogram, metadata)
 }
 
+// EvidenceFromShadowPrometheusWindow converts asynchronous MySQL-versus-
+// Cassandra comparison metrics into the common rollout evidence format.
+func EvidenceFromShadowPrometheusWindow(startData, endData []byte, metadata PrometheusSnapshotMetadata) (Evidence, error) {
+	start, err := parseShadowPrometheusSnapshot(startData, false)
+	if err != nil {
+		return Evidence{}, fmt.Errorf("parse start shadow snapshot: %w", err)
+	}
+	end, err := parseShadowPrometheusSnapshot(endData, true)
+	if err != nil {
+		return Evidence{}, fmt.Errorf("parse end shadow snapshot: %w", err)
+	}
+	if start.hitHistogram == nil && end.hitHistogram != nil {
+		start.hitHistogram = zeroHistogramLike(end.hitHistogram)
+	}
+	delta, err := subtractCounts(end.routes, start.routes)
+	if err != nil {
+		return Evidence{}, err
+	}
+	histogram, err := subtractHistograms(end.hitHistogram, start.hitHistogram)
+	if err != nil {
+		return Evidence{}, err
+	}
+	return evidenceFromSnapshot(delta, histogram, metadata)
+}
+
 type prometheusSnapshot struct {
 	routes       Counts
 	hitHistogram *dto.Histogram
+}
+
+func parseShadowPrometheusSnapshot(data []byte, requireRequests bool) (prometheusSnapshot, error) {
+	if len(bytes.TrimSpace(data)) == 0 {
+		return prometheusSnapshot{}, fmt.Errorf("Prometheus snapshot is empty")
+	}
+	var routes Counts
+	var histogram *dto.Histogram
+	routesSeen, durationSeen := false, false
+	decoder := expfmt.NewDecoder(bytes.NewReader(data), expfmt.NewFormat(expfmt.TypeTextPlain))
+	for {
+		var family dto.MetricFamily
+		if err := decoder.Decode(&family); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return prometheusSnapshot{}, fmt.Errorf("decode Prometheus snapshot: %w", err)
+		}
+		switch family.GetName() {
+		case shadowMetricName:
+			if routesSeen || family.GetType() != dto.MetricType_COUNTER {
+				return prometheusSnapshot{}, fmt.Errorf("Prometheus shadow metric family is duplicated or has the wrong type")
+			}
+			routesSeen = true
+			if err := collectShadowCounts(&routes, family.GetMetric()); err != nil {
+				return prometheusSnapshot{}, err
+			}
+		case shadowDurationName:
+			if durationSeen || family.GetType() != dto.MetricType_HISTOGRAM {
+				return prometheusSnapshot{}, fmt.Errorf("Prometheus shadow duration family is duplicated or has the wrong type")
+			}
+			durationSeen = true
+			for _, metric := range family.GetMetric() {
+				outcome, err := exactOutcome(metric.GetLabel())
+				if err != nil {
+					return prometheusSnapshot{}, err
+				}
+				if outcome != "match" || metric.Histogram == nil {
+					continue
+				}
+				if histogram != nil {
+					return prometheusSnapshot{}, fmt.Errorf("Prometheus shadow snapshot contains duplicate match histograms")
+				}
+				histogram = metric.GetHistogram()
+				if err := validateHistogram(histogram); err != nil {
+					return prometheusSnapshot{}, err
+				}
+			}
+		}
+	}
+	if requireRequests && routes.Total == 0 {
+		return prometheusSnapshot{}, fmt.Errorf("Prometheus snapshot has no shadow hydration requests")
+	}
+	return prometheusSnapshot{routes: routes, hitHistogram: histogram}, nil
 }
 
 func parsePrometheusSnapshot(data []byte, requireRequests bool) (prometheusSnapshot, error) {
@@ -155,6 +239,14 @@ func subtractHistograms(end, start *dto.Histogram) (*dto.Histogram, error) {
 	return result, nil
 }
 
+func zeroHistogramLike(source *dto.Histogram) *dto.Histogram {
+	result := &dto.Histogram{SampleCount: uint64Ptr(0), SampleSum: float64Ptr(0)}
+	for _, bucket := range source.GetBucket() {
+		result.Bucket = append(result.Bucket, &dto.Bucket{UpperBound: float64Ptr(bucket.GetUpperBound()), CumulativeCount: uint64Ptr(0)})
+	}
+	return result
+}
+
 func uint64Ptr(value uint64) *uint64 { return &value }
 
 func float64Ptr(value float64) *float64 { return &value }
@@ -184,6 +276,38 @@ func collectRouteCounts(counts *Counts, metrics []*dto.Metric) error {
 			counts.Error += count
 		default:
 			return fmt.Errorf("Prometheus route outcome is unsupported")
+		}
+		counts.Total += count
+	}
+	return nil
+}
+
+func collectShadowCounts(counts *Counts, metrics []*dto.Metric) error {
+	seen := make(map[string]struct{}, len(metrics))
+	for _, metric := range metrics {
+		outcome, err := exactOutcome(metric.GetLabel())
+		if err != nil {
+			return err
+		}
+		if _, exists := seen[outcome]; exists || metric.Counter == nil {
+			return fmt.Errorf("Prometheus shadow outcome is invalid or duplicated")
+		}
+		seen[outcome] = struct{}{}
+		value := metric.GetCounter().GetValue()
+		if value < 0 || math.Trunc(value) != value {
+			return fmt.Errorf("Prometheus shadow metric is invalid")
+		}
+		count := uint64(value)
+		switch outcome {
+		case "match":
+			counts.CassandraHit += count
+		case "mismatch":
+			counts.Conflict += count
+		case "error":
+			counts.Error += count
+		case "skipped":
+		default:
+			return fmt.Errorf("Prometheus shadow outcome is unsupported")
 		}
 		counts.Total += count
 	}
