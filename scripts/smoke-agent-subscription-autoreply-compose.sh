@@ -183,8 +183,11 @@ done
 task_uuid=$(mysql -e "SELECT task_uuid FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'")
 task_count=$(mysql -e "SELECT COUNT(*) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'")
 [[ "${task_count}" == "1" ]] || { printf 'expected one subscription task, got %s\n' "${task_count}" >&2; exit 1; }
+# The active subscription path makes a bounded Planner call followed by a
+# reply/synthesis call before it mints the autonomous message grant.
+expected_model_calls=2
 model_calls=$(mysql -e "SELECT COUNT(*) FROM agent_model_runs AS r JOIN agent_tasks AS t ON t.task_uuid = r.task_uuid WHERE t.trigger_subscription_uuid = '${subscription_uuid}' AND r.status = 'completed'")
-[[ "${model_calls}" == "1" ]] || { printf 'expected one completed model call, got %s\n' "${model_calls}" >&2; exit 1; }
+[[ "${model_calls}" == "${expected_model_calls}" ]] || { printf 'expected %s completed model calls, got %s\n' "${expected_model_calls}" "${model_calls}" >&2; exit 1; }
 
 # The autonomous reply must produce exactly one owner-directed Agent message,
 # via exactly one auto-minted-and-consumed message.system.send approval, with a

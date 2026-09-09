@@ -55,6 +55,11 @@ class SubscriptionAutoReplyComposeTest(unittest.TestCase):
         self.assertIn('? { summary: "subscription autoreply smoke reply", steps: [] }', smoke)
         self.assertIn(': { summary: "subscription autoreply smoke reply" }', smoke)
 
+    def test_smoke_locks_the_bounded_two_call_runtime_path(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-autoreply-compose.sh").read_text(encoding="utf-8")
+        self.assertIn("expected_model_calls=2", smoke)
+        self.assertIn('[[ "${model_calls}" == "${expected_model_calls}" ]]', smoke)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,5 @@
+- 2026-09-09：Subscription Auto-Reply smoke 的模型调用断言更新为当前受治理路径的两次有界调用：Planner 后接 reply/synthesis。该调整只校准验收期望，不改变 Runtime 调用预算或自动回复默认关闭策略。
+
 - 2026-09-09：Subscription Auto-Reply 隔离 smoke 的确定性模型 stub 已按请求 JSON schema 区分 Planner 与 reply/synthesis 输出，避免固定 `steps` 字段触发当前 Runtime 严格 schema 校验并耗尽模型预算。
 
 - 2026-09-09：Remote GPU 对 `agent-subscription` 执行短暂停止与恢复演练。停止期间 B1 私聊和 B2 群 `@` 交互均维持单次受治理回复与单次 approval consume；worker 恢复后 12 个服务均为 healthy。该项固定只读订阅 worker 的可逆部署边界。
