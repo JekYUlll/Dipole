@@ -11,7 +11,14 @@ window_seconds="${DIPOLE_SYNC_SHADOW_WINDOW_SECONDS:-120}"
 exercise="${DIPOLE_SYNC_SHADOW_WINDOW_EXERCISE:-}"
 output_dir="${DIPOLE_SYNC_SHADOW_WINDOW_OUTPUT_DIR:-}"
 confirm="${DIPOLE_SYNC_SHADOW_WINDOW_CONFIRM:-}"
-revision=$(git -C "${root_dir}" rev-parse HEAD)
+revision="${DIPOLE_SYNC_SHADOW_WINDOW_REVISION:-}"
+if [[ -z "${revision}" ]]; then
+  revision=$(git -C "${root_dir}" rev-parse HEAD)
+fi
+if ! [[ "${revision}" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "DIPOLE_SYNC_SHADOW_WINDOW_REVISION must be a 40-character lowercase Git revision" >&2
+  exit 2
+fi
 image="${DIPOLE_SYNC_IMAGE:-dipole-sync:sync-shadow-${revision:0:12}}"
 
 if [[ "${confirm}" != "yes" ]]; then

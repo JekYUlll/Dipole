@@ -17,6 +17,8 @@ class SyncCassandraShadowWindowTest(unittest.TestCase):
         self.assertIn('window_seconds < 30 || window_seconds > 900', script)
         self.assertIn('DIPOLE_SYNC_SHADOW_WINDOW_EXERCISE must name an executable absolute path', script)
         self.assertIn('DIPOLE_SYNC_SHADOW_WINDOW_OUTPUT_DIR must name a new absolute path', script)
+        self.assertIn('DIPOLE_SYNC_SHADOW_WINDOW_REVISION', script)
+        self.assertIn('must be a 40-character lowercase Git revision', script)
         self.assertIn('compose_shadow_cmd up -d --no-deps sync', script)
         self.assertIn('compose_base_cmd up -d --no-deps sync', script)
         self.assertIn('wait_for_sync_ready compose_shadow_cmd', script)
