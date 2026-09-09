@@ -29,6 +29,18 @@ class InteractiveAgentActiveComposeTest(unittest.TestCase):
         self.assertIn('DIPOLE_GATEWAY_AGENT_SUBSCRIPTION_ENABLED == "false"', checker)
         self.assertIn('DIPOLE_GATEWAY_AGENT_ARTIFACT_ENABLED == "false"', checker)
 
+    def test_experience_profile_keeps_route_b_as_the_sole_inbound_responder(self) -> None:
+        overlay = (ROOT / "deploy/microservices/agent-experience.yml").read_text(encoding="utf-8")
+        for expected in (
+            'DIPOLE_AI_DIRECT_REPLY_ENABLED: "false"',
+            'DIPOLE_AI_GROUP_REPLY_ENABLED: "false"',
+            'DIPOLE_AGENT_TEMPORAL_ENABLED: "true"',
+            'DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: interactive_active',
+            'DIPOLE_AGENT_INBOUND_INTERACTIVE_ENABLED: "true"',
+            'DIPOLE_AGENT_INBOUND_GROUP_INTERACTIVE_ENABLED: "true"',
+        ):
+            self.assertIn(expected, overlay)
+
     def test_memory_smoke_is_explicit_and_isolates_retrieval(self) -> None:
         overlay = (ROOT / "deploy/microservices/agent-interactive-memory-smoke.yml").read_text(encoding="utf-8")
         self.assertIn('DIPOLE_AGENT_MEMORY_ENABLED: "true"', overlay)

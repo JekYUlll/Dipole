@@ -2782,6 +2782,9 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-09-09：Agent 体验 Compose 增加 Route B 单一入站响应者回归：B1 私聊和 B2 群 @ 同时要求关闭 legacy Route A、启用 Temporal `interactive_active` 与对应入站消费者，防止 overlay 漂移造成重复回复。
+  - 验证：Agent interactive Compose 契约 `6/6`、订阅审核/E2E 契约 `9/9`、Temporal/MCP/交互请求 Runtime 测试 `22/22` 及 `scripts/check-compose.sh` 通过。
+
 - 2026-09-09：Remote GPU 长驻体验栈改用持久 revision release snapshot 承载 Core/Gateway 的 Compose 配置与 bind mount，避免临时源码目录清理后下一次容器重启失去配置文件。体验 `.env`、mTLS 证书和 Agent overlay 继续从受控工作目录显式传入；共享 project 禁止 `--remove-orphans`。本轮以新的 B1 私聊和 B2 群 `@AI` 事件复验 Route B，均收敛为一次受治理回复和 `completed` 任务，owner Definition 无 grant 时仍回退到 `lowrisk-assistant:v1`。
   - 验证：Remote GPU 的 Core/Gateway 均绑定 `82418438` 的持久 release 配置且健康，公共 `dipole-experience` 保持 16 个服务；B1/B2 E2E 分别通过，Route A 两开关保持关闭。
 

@@ -85,6 +85,7 @@
 
 ### AD-065：Route B EventLedger 的真实失败恢复与群 @ 终态证据
 
+- 2026-09-09：体验 Compose 的静态契约已同时固定 B1 与 B2：legacy direct/group reply 均关闭，Temporal `interactive_active` 和两类 Route B 入站消费者均开启。该门禁防止 overlay 漂移重启 Route A 而造成双回复；它不替代 Remote GPU 的事件到终态 E2E。
 - 2026-09-09：公共体验的 Core/Gateway 已迁移到持久 release snapshot 配置，消除临时源码 bind mount 在清理后导致服务下次重启失败的风险。新 B1 私聊和 B2 群 `@AI` 事件分别复验为 `completed`、一次受治理回复和一次 consumed approval；owner Definition 没有 active grant 时仍选择平台 `lowrisk-assistant:v1`。Route A 两个开关继续关闭。该回归只覆盖当前 16 服务开发体验栈，订阅 promotion grant 与生产发布流程继续独立受控。
 - 2026-09-09：公共体验环境的 Core 已以 `0b1c3f52a` 单服务热更，Agent Runtime 保持已验证的 `86d8ffdb`。全新 B1、B2 和无 grant owner Definition fallback 分别复验为 `completed:completed`、单条助手回复和一次 consumed approval；Route A 两开关仍关闭。部署时必须用绝对 `DIPOLE_INTERNAL_CERT_DIR` 挂载 mTLS 文件，避免 Docker 将缺失相对路径创建为目录。该回归只覆盖当前开发期 B1/B2 闭环，不外推 Runtime/Core 的通用版本兼容性。
 - 2026-09-08：体验 Core 已热更至 `0b1c3f52a`。新 B1 私聊与 B2 群 `@Dipole AI` 均从未处理事件收敛为 `completed`、单条回复和一次 consumed approval。另以临时、无 grant 的 owner Definition 验证 interactive Admission 回退到平台 `lowrisk-assistant:v1`，完成后删除该 Definition；订阅触发依旧不能使用该回退。该回归未改变默认 Compose 开关，也不构成订阅 promotion grant 的启用证据。
