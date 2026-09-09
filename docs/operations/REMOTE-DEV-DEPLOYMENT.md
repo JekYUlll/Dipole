@@ -93,6 +93,33 @@ docker compose --env-file .env -p "${DIPOLE_PROJECT}" \
 scripts/smoke-microservices.sh
 ```
 
+### 长驻体验栈的 release snapshot
+
+共享 `dipole-experience` 这类长驻开发体验栈不能将配置 bind mount 指向会在
+部署后删除的临时源码目录。每次更新先把目标 Git revision 归档到 Remote GPU 的
+持久 release 目录，例如 `/home/admin1/agent/releases/dipole-<revision>`，再仅重建
+本次变更的服务。体验栈的 `.env`、内部证书目录和体验 overlay 继续从受控工作目录
+显式传入；归档源码只提供版本化 Compose 与配置文件。
+
+```bash
+release_dir="/home/admin1/agent/releases/dipole-$(git rev-parse --short=8 HEAD)"
+ssh LAB113-OPS "test ! -e '${release_dir}' && mkdir -p '${release_dir}'"
+git archive --format=tar HEAD | ssh LAB113-OPS "tar -xf - -C '${release_dir}'"
+
+ssh LAB113-OPS "cd '${release_dir}' && \
+  DIPOLE_INTERNAL_CERT_DIR=/home/admin1/workspaces/Dipole/certs/internal \
+  docker compose --env-file /home/admin1/workspaces/Dipole/.env \
+    -p dipole-experience \
+    -f '${release_dir}/deploy/compose/docker-compose.microservices.yml' \
+    -f /home/admin1/workspaces/Dipole/deploy/microservices/agent-experience.yml \
+    up -d --no-deps core gateway"
+```
+
+随后用 `docker inspect` 确认容器的配置文件 bind mount 位于该 release 目录、目标服务
+健康，并确认公共 project 的服务数未减少。禁止对共享 project 使用
+`--remove-orphans`；该选项会误清理由体验 overlay 管理的服务。保留上一个已验证的
+release 目录，回退时以同一命令将目标服务指向该 revision。
+
 ### Agent Interactive Shadow 候选
 
 DeepSeek V4 Flash 的交互体验候选使用同一 revision 的镜像和下列只读

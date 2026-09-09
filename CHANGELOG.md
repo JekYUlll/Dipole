@@ -2782,6 +2782,9 @@
 - 2026-08-30：使用 `bench_group.js` 和 `PHONE_PREFIX=157` 完成 200 成员热群观察：warm-up `60`、正式消息 `20`、`3980/3980` 预期回执、投递率 `100%`、HTTP failure `0%`；群 Inbox 写入 `0`，Conversation message projection `80`，Kafka peak/settled lag `54/0`，P50/P95/P99 `296.5/2241.55/2521ms`。报告当时的阈值字段为空，行为证据用于验证 notify + pull，阈值元数据由后续入口修复补齐。
 ## Unreleased
 
+- 2026-09-09：Remote GPU 长驻体验栈改用持久 revision release snapshot 承载 Core/Gateway 的 Compose 配置与 bind mount，避免临时源码目录清理后下一次容器重启失去配置文件。体验 `.env`、mTLS 证书和 Agent overlay 继续从受控工作目录显式传入；共享 project 禁止 `--remove-orphans`。本轮以新的 B1 私聊和 B2 群 `@AI` 事件复验 Route B，均收敛为一次受治理回复和 `completed` 任务，owner Definition 无 grant 时仍回退到 `lowrisk-assistant:v1`。
+  - 验证：Remote GPU 的 Core/Gateway 均绑定 `82418438` 的持久 release 配置且健康，公共 `dipole-experience` 保持 16 个服务；B1/B2 E2E 分别通过，Route A 两开关保持关闭。
+
 - 2026-09-09：微服务 Compose 现将外部 Multipart 签名 Host 和同源代理配置同时注入 Core 与 Gateway；示例配置不再携带旧 LAN 存储地址。受控部署可通过 Gateway 代理验证预签名 PUT，MinIO `9000` 保持未公开，默认 `relay` 策略与前端预签名开关保持关闭。
   - 验证：Remote GPU 的 `82418438` Core/Gateway 均健康；受控 4-byte Multipart 完成签名、同源代理 PUT、ETag 登记和 Complete，Core 记录 `dipole_multipart_upload_terminal_total{route="direct",outcome="completed"} 1`。
 
