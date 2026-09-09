@@ -41,6 +41,7 @@ class ReviewedGrantHelperTest(unittest.TestCase):
         self.assertIn('docker compose --env-file "$env_file" -p "$project"', source)
         self.assertIn('exec -T mysql sh -ceu', source)
         self.assertNotIn('docker exec "${project}-mysql-1"', source)
+        self.assertNotIn('DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD:?set', source)
 
     def test_cleanup_revokes_scoped_grant_roles_and_window(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")

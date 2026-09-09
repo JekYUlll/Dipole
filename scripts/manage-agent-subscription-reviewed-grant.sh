@@ -60,7 +60,7 @@ operator() {
   local args=("$(dirname "${BASH_SOURCE[0]}")/manage-agent-promotion-operator-grant.sh" "$subaction" --compose-project "$project" --env-file "$env_file" --user "$user" --granted-by "$actor" --ticket "SUB-E2E-${state_key}" --reason "subscription active reviewed grant")
   for file in "${compose_files[@]}"; do args+=(--compose-file "$file"); done
   [[ "$subaction" != grant ]] || args+=(--roles "$roles" --expires-at "$expiry")
-  DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD="${DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD:?set DIPOLE_AGENT_PROMOTION_MYSQL_ROOT_PASSWORD}" "${args[@]}" --apply >/dev/null
+  "${args[@]}" --apply >/dev/null
 }
 
 state_key=$(printf '%s' "$state_file" | sha256sum | awk '{print substr($1,1,12)}')
