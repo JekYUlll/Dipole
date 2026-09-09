@@ -1,3 +1,5 @@
+- 2026-09-09：Remote GPU 已通过隔离 Cassandra-first Sync hydration Compose smoke：临时 Cassandra schema 初始化后，Message 与启用 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION=true` 的 Sync 均健康就绪；候选容器、卷与临时证书自动清理，公共体验栈未重启。该验收不改变公共 MySQL 主读或 Cassandra 灰度比例。
+
 - 2026-09-09：Search dependency readiness smoke 现可在无真实模型凭据、无 Gateway 宿主端口的隔离 Compose 项目中运行。Remote GPU 实测 Gateway Kafka assignment 建立后，停止 Elasticsearch 会使 Search 与 Search Indexer 降为 not-ready，Core、Message、Sync、Gateway 保持 ready 且不重启；恢复 Elasticsearch 后依赖服务重新 ready，候选容器和卷自动清理。
 
 - 2026-09-09：Agent Runtime 的确定性安全回归矩阵已通过，统一验证 untrusted prompt provenance、越权 Capability 执行前拒绝、MCP 敏感/超限参数外发阻断、重复事件预算收敛和同源 Agent 事件循环抑制。该门禁覆盖执行层策略，不替代真实候选模型与人工标注对抗语料评测。
