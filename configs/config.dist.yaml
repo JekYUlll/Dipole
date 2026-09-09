@@ -242,8 +242,11 @@ storage:
   enabled: true
   provider: minio
   endpoint: minio:9000
-  presign_endpoint: 192.168.1.8:9000
-  # OSS MinIO lacks Bucket CORS; keep the same-origin Gateway proxy disabled by default.
+  # Deployment overlays provide the externally advertised signed host. Keeping
+  # this empty prevents example configuration from leaking a stale LAN address.
+  presign_endpoint: ""
+  # OSS MinIO lacks Bucket CORS; deployment overlays can opt into the
+  # same-origin Gateway proxy after a controlled direct-upload verification.
   presigned_upload_proxy_enabled: false
   presigned_upload_proxy_timeout_seconds: 30
   multipart_require_checksum: false
@@ -268,7 +271,8 @@ storage:
   # Supplied only to the offline maintenance evaluator; this identity has Stat/Get evidence access and no Delete.
   artifact_maintenance_access_key: ""
   artifact_maintenance_secret_key: ""
-  public_base_url: http://192.168.1.8:9000/dipole-files
+  # Deployment overlays provide the externally reachable download origin.
+  public_base_url: ""
   file_max_size_mb: 50
   multipart_policy_version: v1
   multipart_mode: relay

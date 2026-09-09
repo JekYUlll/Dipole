@@ -28,6 +28,20 @@ func TestConfigDistDeclaresSafeDependencyReadinessDefaults(t *testing.T) {
 	}
 }
 
+func TestConfigDistDoesNotEmbedDeploymentSpecificStorageOrigins(t *testing.T) {
+	v := viper.New()
+	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
+	if err := v.ReadInConfig(); err != nil {
+		t.Fatal(err)
+	}
+	if got := v.GetString("storage.presign_endpoint"); got != "" {
+		t.Fatalf("example presign endpoint = %q, want empty deployment overlay", got)
+	}
+	if got := v.GetString("storage.public_base_url"); got != "" {
+		t.Fatalf("example public storage base URL = %q, want empty deployment overlay", got)
+	}
+}
+
 func TestConfigDistKeepsDeliveryObservationShadowDisabled(t *testing.T) {
 	v := viper.New()
 	v.SetConfigFile(filepath.Join("..", "..", "configs", "config.dist.yaml"))
