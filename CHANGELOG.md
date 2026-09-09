@@ -1,3 +1,5 @@
+- 2026-09-09：Retrieval candidate Compose overlay 现同时装配独立 `agent-retrieval` Worker、Gateway retrieval target 和 Core `SearchConversations` RPC。该组合仅在显式叠加 overlay 时开启；基础 Compose 的 Gateway route、Core search RPC 与交互 Worker retrieval 开关继续为关闭。
+
 - 2026-09-09：`agent-retrieval` Runtime 的 Task 控制面现生成独立 `agent.retrieval.requested` 事件和 deterministic `retrieval:*` idempotency ref，供 Core owner-scoped Definition gate 与专属 Temporal queue 使用；交互 Runtime 继续生成原有 `agent.interactive.requested`。
 
 - 2026-09-09：Gateway 新增默认关闭的认证入口 `POST /api/v1/agent/retrieval/tasks`。启用时仅由 `DIPOLE_GATEWAY_AGENT_RETRIEVAL_TARGET` 选定独立 Retrieval Runtime，复用服务令牌、可信 principal、请求大小与幂等 client request ID 边界；普通 Agent Task 路由不变。

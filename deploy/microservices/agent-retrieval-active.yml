@@ -1,4 +1,15 @@
 services:
+  core:
+    environment:
+      # Core remains the authorization point for every retrieval capability call.
+      DIPOLE_INTERNAL_RPC_AGENT_CONVERSATION_SEARCH_ENABLED: "true"
+
+  gateway:
+    environment:
+      # The public route is enabled only with this opt-in candidate overlay.
+      DIPOLE_GATEWAY_AGENT_RETRIEVAL_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_RETRIEVAL_TARGET: http://agent-retrieval:8091
+
   # Opt-in Worker for owner-reviewed cross-conversation retrieval. It has no
   # Kafka trigger, so it cannot consume the B1/B2 interactive event stream.
   agent-retrieval:

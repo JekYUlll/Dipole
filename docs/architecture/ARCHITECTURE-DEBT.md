@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：`agent-retrieval-active.yml` 已将独立 Worker、Gateway target 和 Core Search RPC 收敛进同一默认关闭候选 overlay，避免手工环境变量把 retrieval 叠入 B1/B2。静态 Compose 已通过；不可变 Remote GPU release 的 owner Definition/grant/Search E2E、回滚与健康证据仍待执行。
+
 - 2026-09-09：Retrieval Runtime 控制面已产生 `agent.retrieval.requested`，与 `retrieval:*` idempotency ref 和 Core owner Definition gate 对齐；同一 HTTP 内部路径在 `retrieval_active` mode 下不会误生成为 interactive trigger。公共候选仍缺少独立 Worker、Core Search RPC 与 Gateway route 的联合部署证据。
 
 - 2026-09-09：Gateway 已具备默认关闭的 Retrieval Task 启动路由，目标仅可由 `DIPOLE_GATEWAY_AGENT_RETRIEVAL_TARGET` 在服务端配置，浏览器不能选择 Runtime 或队列。该路由依赖 Core 的 `conversation.search` admission gate；独立 `agent-retrieval` 候选镜像、Core Search RPC 开关和 owner-scoped 公共 E2E 尚未同时启用。
