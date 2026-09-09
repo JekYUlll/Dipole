@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：`agent-retrieval-experience` 是独立、默认关闭的 Core/Agent-only overlay：Core 才能接受 Agent 的 owner-scoped `conversation.search` RPC，Runtime 才会将有界检索证据注入 Context。它不修改 Gateway、Message、Sync 或默认 Compose，移除文件可直接回退。公共启用仍需新 Core revision、owner profile/reviewed grant 和 Search owner-scope E2E。
+
 - 2026-09-09：Agent Definition catalog 新增 owner-scoped `retrieval_read_only` profile。它只在 owner 的既有 `conversation/*` read scope 上加入独立 `conversation.search` permission，并明确不包含 `message.write`；公共 shared low-risk Definition、B1/B2 入站路径与 `DIPOLE_AGENT_RETRIEVAL_ENABLED=false` 保持不变。后续需在独立 active candidate、owner promotion grant 与 Search owner-scope E2E 下启用 Runtime retrieval，才可形成可体验的跨会话检索任务。
 
 - 2026-09-09：公共 `agent-subscription` 已用 reviewed Subscription Active Read 真实验收复核其最小权限边界。临时 owner 的 read-only Definition/Subscription 仅在 Gateway/Core 双人审核 grant 的短窗口内触发一条 `completed:completed` Temporal Task；有 2 次模型调用、零 Agent 群消息。cleanup 已撤销本次 grant、临时 operator 权限并删除 state file，Gateway promotion route 回到 `false`，Search 保持 `true`，17 个服务 healthy。订阅自动回复、长期 active authority、真实语料/成本灰度仍保持关闭。
