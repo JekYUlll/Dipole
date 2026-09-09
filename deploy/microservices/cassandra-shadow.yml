@@ -1,0 +1,65 @@
+services:
+  # This profile owns only a shadow Timeline. It deliberately leaves Core,
+  # Message, Sync, and Gateway unchanged so it can be removed as one unit.
+  cassandra:
+    profiles: ["cassandra-shadow"]
+    image: cassandra:5.0.9
+    restart: unless-stopped
+    environment:
+      CASSANDRA_CLUSTER_NAME: DipoleMicroservicesShadow
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 100M
+    volumes:
+      - cassandra_shadow_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 8s
+      retries: 30
+      start_period: 60s
+
+  cassandra-init:
+    profiles: ["cassandra-shadow"]
+    image: cassandra:5.0.9
+    restart: "no"
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - ../../db/cassandra/001_timeline.cql:/schema/001_timeline.cql:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["cqlsh cassandra -f /schema/001_timeline.cql"]
+
+  cassandra-projector:
+    profiles: ["cassandra-shadow"]
+    image: ${DIPOLE_CASSANDRA_PROJECTOR_IMAGE:-dipole-core:latest}
+    entrypoint: ["/app/dipole-cassandra-projector"]
+    restart: unless-stopped
+    env_file:
+      - path: ../../.env
+        required: false
+    volumes:
+      - ../../configs/config.cassandra-primary.yaml:/app/configs/config.yaml:ro
+    depends_on:
+      cassandra-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    environment:
+      DIPOLE_CASSANDRA_ENABLED: "true"
+      DIPOLE_CASSANDRA_HOSTS: cassandra:9042
+      DIPOLE_KAFKA_ENABLED: "true"
+      DIPOLE_KAFKA_BROKERS: kafka:9092
+      DIPOLE_METRICS_ENABLED: "true"
+      DIPOLE_METRICS_ADDRESS: 0.0.0.0:9100
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:9100/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  cassandra_shadow_data:
