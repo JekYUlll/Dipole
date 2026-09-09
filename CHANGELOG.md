@@ -1,3 +1,5 @@
+- 2026-09-09：Search dependency readiness smoke 现可在无真实模型凭据、无 Gateway 宿主端口的隔离 Compose 项目中运行。Remote GPU 实测 Gateway Kafka assignment 建立后，停止 Elasticsearch 会使 Search 与 Search Indexer 降为 not-ready，Core、Message、Sync、Gateway 保持 ready 且不重启；恢复 Elasticsearch 后依赖服务重新 ready，候选容器和卷自动清理。
+
 - 2026-09-09：Agent Runtime 的确定性安全回归矩阵已通过，统一验证 untrusted prompt provenance、越权 Capability 执行前拒绝、MCP 敏感/超限参数外发阻断、重复事件预算收敛和同源 Agent 事件循环抑制。该门禁覆盖执行层策略，不替代真实候选模型与人工标注对抗语料评测。
 
 - 2026-09-09：Remote GPU 公共 `dipole-experience` 已通过 `search-shadow` profile 启动 Elasticsearch 与独立 Search Indexer，二者均为 healthy；Gateway 保持 `DIPOLE_SEARCH_ENABLED=false`，Query Service 未启动。新建的 B1 私聊及其单条 Agent 回复使 `dipole-messages-v1` 文档数从 `0` 增至 `2`，确认 Kafka 消息事件可异步写入影子索引。权限感知查询、查询路由、P99 与读切流继续关闭并待独立验收。
