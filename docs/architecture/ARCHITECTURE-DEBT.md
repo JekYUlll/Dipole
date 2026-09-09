@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：公共体验以新注册 owner、新群和新 `@Dipole AI` 消息重跑 B2。Task 为 `completed:completed`，低风险 Definition、单条 Agent 群回复和单条已消费 `group_reply` approval 均符合预期；没有观察到历史上“消息已投递但 workflow 失败”的状态分离。该证据只覆盖当前一条新事件，仍需后续重启和故障注入回归。
+
 ### AD-067：共享体验 Subscription Active Read 观察窗口
 
 - 2026-09-09：受控 Gateway promotion window 内，公共体验以新用户、新 owner Definition 和新私聊真实完成 B1 fallback 验收：Temporal Task 为 `completed:completed`，固定回退 `lowrisk-assistant:v1`，并只产生一条受治理回复及一条 consumed approval。窗口结束后 Gateway 已复核 `healthy` 且 promotion route 为关闭、12 个服务运行。初始 `close` 曾在网关刚重建的 `starting` 状态过早报错；runner 已改为明确的有界轮询并追加无 Docker 回归。该验证不涉及 Subscription Active Read 的双人审核 grant、订阅 worker 或自动回复，剩余门槛不变。
