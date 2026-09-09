@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：公共 Retrieval overlay 试运行确认 `interactive_active` Runtime profile 会对 `retrieval` 与 `retrieval Context` fail closed，Agent 因而进入重启循环；原始 Core/Agent Compose 已立即恢复，二者均 healthy。该 overlay 已从主线移除，避免将交互 Worker 的单会话低延迟职责扩展为跨会话检索。owner-scoped `retrieval_read_only` Definition profile 保留，后续必须由独立 Temporal queue/Worker、Core Search RPC overlay 和 owner-scope E2E 接线。
+
 - 2026-09-09：Agent Definition catalog 新增 owner-scoped `retrieval_read_only` profile。它只在 owner 的既有 `conversation/*` read scope 上加入独立 `conversation.search` permission，并明确不包含 `message.write`；公共 shared low-risk Definition、B1/B2 入站路径与 `DIPOLE_AGENT_RETRIEVAL_ENABLED=false` 保持不变。后续需在独立 active candidate、owner promotion grant 与 Search owner-scope E2E 下启用 Runtime retrieval，才可形成可体验的跨会话检索任务。
 
 - 2026-09-09：公共 `agent-subscription` 已用 reviewed Subscription Active Read 真实验收复核其最小权限边界。临时 owner 的 read-only Definition/Subscription 仅在 Gateway/Core 双人审核 grant 的短窗口内触发一条 `completed:completed` Temporal Task；有 2 次模型调用、零 Agent 群消息。cleanup 已撤销本次 grant、临时 operator 权限并删除 state file，Gateway promotion route 回到 `false`，Search 保持 `true`，17 个服务 healthy。订阅自动回复、长期 active authority、真实语料/成本灰度仍保持关闭。
