@@ -7,10 +7,14 @@ acc/
 certs/
 logs/
 dist/
+build/
 configs/config.yaml
+temp.txt
 # Repository documentation is classified under docs/ and reviewed in Git.
 # Keep only generated/local planning output ignored below.
 scripts/bench/results
+.planning/
+.codex
 __pycache__/
 *.py[cod]
 
@@ -50,4 +54,4 @@ configs/config.local.yaml
 
 # Editor/IDE
 # .idea/
-# .vscode/
+.vscode/
