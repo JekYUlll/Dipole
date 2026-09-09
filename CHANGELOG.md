@@ -1,4 +1,4 @@
-- 2026-09-09：`agent-retrieval-active.yml` 现自包含启用 Elasticsearch 与 Search read service。此前隔离启动验证暴露 Core Search RPC 在缺少 Search service 时会 fail-closed；修正后 Retrieval overlay 无需额外 Compose profile，异步 Search Indexer 继续独立管理。
+- 2026-09-09：Retrieval 隔离启动验证暴露 Core Search RPC 在缺少 Search service 时会 fail-closed。Compose 的 `profiles: []` 不能移除基础 profile，因此候选运行命令必须显式携带 `--profile search`；异步 Search Indexer 继续独立管理。
 
 - 2026-09-09：Retrieval candidate Compose overlay 现同时装配独立 `agent-retrieval` Worker、Gateway retrieval target 和 Core `SearchConversations` RPC。该组合仅在显式叠加 overlay 时开启；基础 Compose 的 Gateway route、Core search RPC 与交互 Worker retrieval 开关继续为关闭。
 

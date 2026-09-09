@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-09：首次隔离 Retrieval candidate 启动确认 Core 在 `SearchConversations` RPC 启用而 Search service 缺席时会 fail-closed，公共栈未受影响且候选已清理。`agent-retrieval-active.yml` 因而显式激活 Elasticsearch/Search read path，后续不依赖额外 `--profile search`；Search Indexer 仍不属于此读取验证范围。
+- 2026-09-09：首次隔离 Retrieval candidate 启动确认 Core 在 `SearchConversations` RPC 启用而 Search service 缺席时会 fail-closed，公共栈未受影响且候选已清理。Compose 的 `profiles: []` 不移除基础 profile，候选命令须显式携带 `--profile search`；Search Indexer 仍不属于此读取验证范围。
 
 - 2026-09-09：`agent-retrieval-active.yml` 已将独立 Worker、Gateway target 和 Core Search RPC 收敛进同一默认关闭候选 overlay，避免手工环境变量把 retrieval 叠入 B1/B2。静态 Compose 已通过；不可变 Remote GPU release 的 owner Definition/grant/Search E2E、回滚与健康证据仍待执行。
 
