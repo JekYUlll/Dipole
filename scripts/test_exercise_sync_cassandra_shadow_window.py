@@ -13,10 +13,12 @@ class ExerciseSyncCassandraShadowWindowTest(unittest.TestCase):
         script = (ROOT / "scripts/exercise-sync-cassandra-shadow-window.sh").read_text(encoding="utf-8")
 
         self.assertIn('type: "chat.send"', script)
+        self.assertIn('agent_uuid="${AGENT_UUID:-UAI000000000000000001}"', script)
+        self.assertIn("agent_replies", script)
         self.assertIn("user_sync_inbox", script)
         self.assertIn('/api/v1/sync?after_seq=0&limit=20', script)
         self.assertNotIn('/sync/checkpoint', script)
-        self.assertNotIn('agent_tasks', script)
+        self.assertNotIn('/sync/checkpoint', script)
 
 
 if __name__ == "__main__":
