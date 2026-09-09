@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Cassandra Sync hydration 已获得一次共享 Remote GPU 的可回滚 shadow 窗口证据。revision `f939c7c6` 在 65 秒窗口内以 `shadow=true/primary=false` 完成 B1 回复与 5 次 Sync 拉取，evidence 记录 Cassandra match `5`、fallback/missing/conflict/error 均为 `0`、P95 `10 ms`；脚本随后自动恢复 MySQL hydration，Sync healthy 且 Cassandra 开关均为 `false`。此前公共窗口使用相对证书目录会使 Docker 创建目录并阻断 mTLS 启动，runner 现强制绝对且完整的证书目录并等待回滚 ready。单次短窗口不构成 primary hydration、长期 SLO 或简历 P99 claim 的证据。
+
 - 2026-09-09：Cassandra Sync shadow hydration 已有同 revision 的隔离 Compose 运行证据。smoke 显式构建 Sync、迁移器和 Cassandra projector，避免遗留 `latest` 镜像与当前 schema/配置契约漂移；同时修复 `CassandraConfig()` 漏读环境覆盖的问题。Remote GPU 候选以 `DIPOLE_CASSANDRA_ENABLED=true`、`shadow=true`、`primary=false` 健康收敛并自动清理，公共体验仍保持 MySQL hydration。后续仍需在受控公共窗口收集真实 Sync 请求的 shadow 比对、冲突/缺失/回退计数、延迟和可执行回退收据，才可评估 primary hydration。
 
 - 2026-09-09：Cassandra primary hydration Compose smoke 已移除共享证书目录和真实 Agent 模型配置依赖，改用临时证书与不可联网占位模型配置。Remote GPU 隔离项目验证 Cassandra schema init、Message 和 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION=true` Sync 的健康收敛，退出后候选容器与卷为零。公共 MySQL 主读、Cassandra cohort、24 小时 observation evidence、责任人批准与自动回切仍保持未完成。
@@ -1197,6 +1199,7 @@
 - **验证记录：** 2026-08-30 重新执行 `scripts/smoke-sync-cassandra-primary-compose.sh`，真实验证 Cassandra schema init、Core/Message/Sync 依赖 readiness、primary hydration 配置和 Sync `/readyz`；临时拓扑自动清理，生产 Cassandra 主读、共享环境长期观测、责任人批准和生产回切演练仍待完成。
 - **本轮进展：** Cassandra read-rollout evaluator 已按运行时语义将 `mysql_fallback` 校验为 MySQL 最终路由子集；真实 Cassandra 错误回退不再被误拒绝为无效 evidence。默认比例、MySQL 即时回退和共享环境门槛保持不变。
 - **本轮进展：** 新增只读 Cassandra read-rollout 起止 Prometheus 快照采集脚本，固定 deployment revision 与配置比例，拒绝覆盖既有窗口。evidence JSON 转换、共享环境采集和回切演练继续待完成。
+- **验证记录：** 2026-09-09 在 Remote GPU 公共 `dipole-experience` revision `f939c7c6` 运行 65 秒 bounded shadow window。B1 受治理回复完成后执行 5 次 Sync 拉取；`evidence.json` 为 Cassandra match `5`、fallback/missing/conflict/error `0`、P95 `10000` 微秒。脚本自动恢复默认 MySQL hydration 并等待 Sync ready。该短窗口不提升 primary 比例。
 - **建议方向：** 将 Prometheus snapshot 与脱敏服务 revision、Cassandra schema revision、配置比例、窗口和回切演练 ID 合成为 hydration evidence，再交给既有 evaluator；同时独立建立 Cassandra 历史读取 cohort 的 read-rollout evidence。两条服务端 Cassandra 轨道可与 Agent 和 Web Sync 客户端观察并行执行；Web Sync 窗口只约束旧 Offline 协议退役与客户端 locator 主路径。
 - **处理门槛：** 任一 Cassandra 服务端比例提升前，必须归档对应共享环境 evidence、复核人批准和自动回切记录。evidence 间断、fallback、payload mismatch、冲突或延迟越界时立即将该轨道比例归零并回退 MySQL；MySQL 完整消息持续保留，直到各自替代契约完成验收。
 

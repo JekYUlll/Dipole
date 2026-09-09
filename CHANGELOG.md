@@ -1,3 +1,5 @@
+- 2026-09-09：Remote GPU 公共 `dipole-experience` 已完成 65 秒受控 Cassandra Sync shadow hydration 窗口。当前 revision `f939c7c6` 的 Sync 在 `shadow=true/primary=false` 下完成 B1 私聊触发的一条 Agent 回复、2 条 Inbox 投影和 5 次 Sync 拉取；Prometheus 起止快照生成的 evidence 为 5/5 Cassandra match、0 fallback/missing/conflict/error、Cassandra P95 `10 ms`。窗口结束自动恢复 MySQL hydration，Sync healthy 且所有 Cassandra hydration 开关为 `false`。该单窗口样本不满足 Cassandra primary 启用门槛。
+
 - 2026-09-09：Remote GPU 已通过隔离 Cassandra Sync shadow hydration Compose smoke。脚本从当前 revision 构建 Sync、迁移器和 Cassandra projector，完成 schema init 后验证 Sync `shadow=true/primary=false` 与 projector 同时 healthy；候选容器、卷和临时证书自动清理，公共 `dipole-experience` 保持 16 个运行容器。该验收不切换公共 MySQL 主读，也不启动 hydration 观察窗口。
 
 - 2026-09-09：Remote GPU 已通过隔离 Cassandra-first Sync hydration Compose smoke：临时 Cassandra schema 初始化后，Message 与启用 `DIPOLE_SYNC_CASSANDRA_PRIMARY_HYDRATION=true` 的 Sync 均健康就绪；候选容器、卷与临时证书自动清理，公共体验栈未重启。该验收不改变公共 MySQL 主读或 Cassandra 灰度比例。
