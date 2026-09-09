@@ -139,11 +139,16 @@ container_id() {
 }
 
 assert_gateway_state() {
-  local expected=$1 id health route
-  id=$(container_id)
-  [[ -n "$id" ]] || die "Gateway container is absent from project ${compose_project}"
-  health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$id")
-  route=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$id" | sed -n 's/^DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=//p' | tail -n 1)
+  local expected=$1 id health route attempt=0
+  while (( attempt < 30 )); do
+    id=$(container_id)
+    [[ -n "$id" ]] || die "Gateway container is absent from project ${compose_project}"
+    health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$id")
+    route=$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$id" | sed -n 's/^DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED=//p' | tail -n 1)
+    [[ "$health" == "healthy" && "$route" == "$expected" ]] && break
+    ((attempt += 1))
+    sleep 2
+  done
   [[ "$health" == "healthy" ]] || die "Gateway is not healthy: ${health}"
   [[ "$route" == "$expected" ]] || die "Gateway promotion route is ${route:-unset}, expected ${expected}"
   printf 'Gateway verified: health=%s promotion_route=%s\n' "$health" "$route"
