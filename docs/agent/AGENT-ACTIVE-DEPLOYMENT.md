@@ -216,6 +216,11 @@ trigger、Control、MCP 以及两类消息写入，因此只承接具备有效 p
 grant 的订阅读取任务。移除该 overlay 并停止 `agent-subscription` 即可回退，
 不会影响 interactive Agent。
 
+2026-09-09 的 Remote GPU 演练已短暂停止该 worker，并在停止期间重跑 B1 私聊
+和 B2 群 `@` 交互：两条路径均保持一个 completed Task、一条 Agent 回复和一次
+approval consume。随后恢复 worker 并等待 12 个服务均为 healthy。该结果证明
+worker 的部署回退不干扰当前 interactive Agent；它不验证订阅自动回复。
+
 公共体验环境可运行以下验收脚本。它创建新的 owner、群、只读 Definition
 和 Subscription；默认在资源创建后调用受控 reviewed-grant helper，由 helper
 完成 Gateway/Core 双人审核并输出精确绑定新 Definition 的 active grant。脚本
