@@ -76,6 +76,101 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     expect(lifecycle).toEqual(["finish", "settle"]);
   });
 
+  it("completes a governed group mention only after its reply and inbound claim settle", async () => {
+    const taskQueue = `dipole-agent-group-reply-${Date.now()}`;
+    const event: AgentEvent = {
+      eventId: "event-group-reply-1",
+      eventType: "agent.interactive.requested",
+      aggregateId: "message-group-reply-1",
+      occurredAt: "2026-09-09T08:00:00.000Z",
+      payload: {
+        content: "@Dipole AI help",
+        request_kind: "interactive",
+        conversation_key: "group:G-1",
+        group_uuid: "G-1"
+      },
+      lineage: { origin: { type: "service", id: "dipole-inbound-group" } }
+    };
+    const taskId = agentTaskId({
+      tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId
+    });
+    const claim = { eventId: event.eventId, taskId, token: "group-claim-1" };
+    const lifecycle: string[] = [];
+    const reply = vi.fn(async () => "I can help with that.");
+    const deliver = vi.fn(async () => "group-message-action-1");
+    const read = createTemporalReadStepActivities({
+      planner: {
+        plan: async () => {
+          throw new Error("inbound group replies must use the dedicated reply path");
+        },
+        reply
+      },
+      audit: { append: async () => undefined },
+      registry: new CapabilityRegistry(),
+      trajectory: {
+        append: async () => undefined,
+        claimStep: async () => ({ outcome: "claimed" as const, token: "unused" }),
+        completeStep: async () => undefined,
+        failStep: async () => undefined
+      },
+      runtimeMode: "active",
+      contextResolver: {
+        resolveMcpContext: async (resolvedTaskId, runId) => ({
+          tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: resolvedTaskId, runId,
+          mode: "active" as const, permissions: ["conversation.read"],
+          resourceScopes: [{ resourceType: "conversation", resourceId: "group:G-1", actions: ["read", "write"] }],
+          approvedCapabilities: ["message.group_reply.send" as const]
+        })
+      },
+      groupReply: { execute: deliver },
+      stepLeaseMs: 60_000
+    });
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) {
+        return { taskId: input.taskId, runId: "run-group-reply-1", runStatus: "running" };
+      },
+      async finishAgentTask(input) {
+        expect(input).toMatchObject({ taskId, runId: "run-group-reply-1", runStatus: "completed" });
+        lifecycle.push("finish");
+      },
+      async projectAgentTaskState() {},
+      async requestAgentTaskApproval() {},
+      async resolveAgentTaskApproval() {},
+      executeAgentTaskStep: (input) => read.executeAgentTaskStep(input),
+      async settleInboundEvent(input) {
+        expect(input).toEqual({ claim, status: "completed" });
+        lifecycle.push("settle");
+      }
+    };
+    const worker = await createWorker(env, taskQueue, activities);
+    const tasks = new TemporalTaskClient(env.client.workflow, taskQueue);
+
+    const result = await worker.runUntil(async () => {
+      const started = await tasks.start({
+        taskId, goal: "reply to group mention", shadowEvent: event, eventClaim: claim,
+        admission: {
+          tenantId: "dipole", principalUserId: "U100", agentId: "UAI",
+          triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId
+        }
+      });
+      return env.client.workflow.getHandle(started.workflowId).result();
+    });
+
+    expect(result).toMatchObject({
+      taskId, status: "completed",
+      output: { summary: "I can help with that.", replyMessageAction: "group-message-action-1" }
+    });
+    expect(reply).toHaveBeenCalledOnce();
+    expect(deliver).toHaveBeenCalledWith(
+      {
+        conversationId: "group:G-1", content: "I can help with that.", eventId: event.eventId,
+        occurredAtUnixMs: Date.parse(event.occurredAt)
+      },
+      expect.objectContaining({ taskId, runId: "run-group-reply-1", principalUuid: "U100" })
+    );
+    expect(lifecycle).toEqual(["finish", "settle"]);
+  });
+
   it("retries Activities, converges duplicate starts, and resumes after Worker replacement", async () => {
     const taskQueue = `dipole-agent-task-test-${Date.now()}`;
     const approvalDeadline = Date.now() + 5 * 60_000;
