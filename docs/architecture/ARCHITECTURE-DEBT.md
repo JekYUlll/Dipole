@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：公共 Agent Runtime 已滚动到 `de325c7a` 并实测 status capability surface；B1 新用户任务仍为单回复、单次审批消费。首次滚动遗漏 Remote GPU Compose 的 `DIPOLE_INTERNAL_CERT_DIR`，Docker 在相对源路径缺失时拒绝创建 Agent；未写入运行容器后即以绝对证书目录恢复。Remote `.env` 现固定该路径并通过 Compose 渲染，后续单服务重建不应依赖临时 shell 覆盖。该配置治理不替代镜像 revision、schema 位点或服务健康复核。
+
 - 2026-09-09：Gateway 代理的认证 Agent Runtime status 现同时返回 Subscription Active、Subscription message write、Memory 与 Retrieval 的低敏开关，供体验页面解释当前可用边界。该接口不暴露 grant、Definition、证据或资源 scope，且任何写入与读取仍由 Core 在实际调用时授权；页面状态不能用于推断或绕过权限。
 
 - 2026-09-09：Cassandra Sync hydration 已获得一次共享 Remote GPU 的可回滚 shadow 窗口证据。revision `f939c7c6` 在 65 秒窗口内以 `shadow=true/primary=false` 完成 B1 回复与 5 次 Sync 拉取，evidence 记录 Cassandra match `5`、fallback/missing/conflict/error 均为 `0`、P95 `10 ms`；脚本随后自动恢复 MySQL hydration，Sync healthy 且 Cassandra 开关均为 `false`。此前公共窗口使用相对证书目录会使 Docker 创建目录并阻断 mTLS 启动，runner 现强制绝对且完整的证书目录并等待回滚 ready。单次短窗口不构成 primary hydration、长期 SLO 或简历 P99 claim 的证据。

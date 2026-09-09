@@ -1,3 +1,5 @@
+- 2026-09-09：Remote GPU 公共 `dipole-agent` 已滚动至 `de325c7a`，认证 Runtime status 实测返回 Subscription、Memory 与 Retrieval 状态字段。滚动后新注册用户的 B1 私聊仍收敛为 `completed:completed`，只产生一条助手回复和一条 consumed approval。Remote Compose `.env` 已固定绝对 `DIPOLE_INTERNAL_CERT_DIR`，防止单服务重建将相对证书挂载解释为缺失宿主目录。
+
 - 2026-09-09：认证用户可通过既有 `GET /api/v1/agent/status` 查看低敏 Agent surface：Subscription Active、Subscription 自动回复写入、Memory 与 Retrieval 的当前开关，连同既有 runtime mode、Temporal、Task Control 和交互写入状态一并返回。该响应只用于体验层状态展示，不授予 Capability 或替代 Core 的授权复核。
 
 - 2026-09-09：Remote GPU 公共 `dipole-experience` 已完成 65 秒受控 Cassandra Sync shadow hydration 窗口。当前 revision `f939c7c6` 的 Sync 在 `shadow=true/primary=false` 下完成 B1 私聊触发的一条 Agent 回复、2 条 Inbox 投影和 5 次 Sync 拉取；Prometheus 起止快照生成的 evidence 为 5/5 Cassandra match、0 fallback/missing/conflict/error、Cassandra P95 `10 ms`。窗口结束自动恢复 MySQL hydration，Sync healthy 且所有 Cassandra hydration 开关为 `false`。该单窗口样本不满足 Cassandra primary 启用门槛。
