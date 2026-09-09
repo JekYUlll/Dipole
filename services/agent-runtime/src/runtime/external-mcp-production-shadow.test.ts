@@ -22,13 +22,16 @@ describe("external MCP production Shadow startup", () => {
     const cases = [
       [enabledEnv(), shadow(false), temporal(true)],
       [enabledEnv(), shadow(true, "direct_target"), temporal(true)],
-      [{}, shadow(true), temporal(true)],
       [enabledEnv(), shadow(true), temporal(false)]
     ] as const;
     for (const [env, shadowConfig, temporalConfig] of cases) {
       expect(() => validateExternalMcpProductionShadowMode(env, shadowConfig, temporalConfig))
         .toThrow(/^External MCP production Shadow mode configuration is invalid$/);
     }
+  });
+
+  it("keeps an unrequested external MCP profile outside the Runtime path", () => {
+    expect(validateExternalMcpProductionShadowMode({}, shadow(true), temporal(true))).toBe(false);
   });
 
   it("hands exact configuration and the sealed route factory to the process owner", async () => {

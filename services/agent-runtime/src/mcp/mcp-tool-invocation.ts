@@ -22,7 +22,7 @@ export interface McpToolInvocationBegin {
 export interface McpToolActionReference {
   readonly resourceType: "message";
   readonly resourceId: string;
-  readonly commandKind: "assistant_reply" | "system_message";
+  readonly commandKind: "assistant_reply" | "group_reply" | "system_message";
   readonly commandId: string;
 }
 
@@ -44,7 +44,8 @@ export class McpToolInvocationRunner {
     private readonly tracer: Tracer = trace.getTracer("dipole-agent-runtime"),
     private readonly idGenerator: () => string = randomUUID,
     private readonly now: () => number = performance.now.bind(performance),
-    private readonly timeoutMs: number = 5_000
+    private readonly timeoutMs: number = 5_000,
+    private readonly preserveOpenInvocationOnFailure: (error: unknown) => boolean = () => false
   ) {
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 60_000) {
       throw new Error("MCP Tool timeout must be between 100 and 60000 milliseconds");
@@ -58,8 +59,12 @@ export class McpToolInvocationRunner {
     operation: (signal: AbortSignal, invocationId: string) => Promise<unknown>,
     actionReference?: (result: unknown) => McpToolActionReference
   ): Promise<string> {
-    if ((tool.approvalId === undefined) !== (actionReference === undefined)) {
-      throw new Error("MCP write audit requires both Approval and action reference binding");
+    if (tool.approvalId !== undefined && actionReference === undefined) {
+      throw new Error("Approval-bound MCP write requires an action reference binding");
+    }
+    if (tool.approvalId === undefined && actionReference !== undefined &&
+        tool.capabilityId !== "message.assistant_reply.send" && tool.capabilityId !== "message.group_reply.send") {
+      throw new Error("Unapproved action references are limited to assistant replies");
     }
     return this.tracer.startActiveSpan("agent.tool.call", {}, async (span) => {
       const invocationId = this.idGenerator();
@@ -87,8 +92,10 @@ export class McpToolInvocationRunner {
         try {
           rawResult = await operationWithTimeout(signal => operation(signal, invocationId), this.timeoutMs);
         } catch (error) {
+          // Idempotent commands may have committed when a transport response is lost.
+          if (this.preserveOpenInvocationOnFailure(error)) throw new ToolInvocationFailure(error);
           await this.finishFailed(invocationId, context, startedAt, error instanceof ToolOperationTimeout ? "tool_timeout" : "tool_execution_failed");
-          throw new ToolInvocationFailure();
+          throw new ToolInvocationFailure(error);
         }
         const result = canonicalMcpJSON(rawResult);
         const resultBytes = Buffer.byteLength(result);
@@ -113,7 +120,8 @@ export class McpToolInvocationRunner {
           }
         }
         this.failSpan(span, error);
-        throw new Error("Tool invocation failed");
+        const detail = error instanceof Error ? error.message : "unknown tool failure";
+        throw new Error(`Tool invocation failed: ${detail}`, { cause: error });
       } finally {
         span.end();
       }
@@ -141,7 +149,11 @@ export class McpToolInvocationRunner {
   }
 }
 
-class ToolInvocationFailure extends Error {}
+class ToolInvocationFailure extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : "Tool operation failed", { cause });
+  }
+}
 class ToolOperationTimeout extends Error {}
 
 function operationWithTimeout(operation: (signal: AbortSignal) => Promise<unknown>, timeoutMs: number): Promise<unknown> {

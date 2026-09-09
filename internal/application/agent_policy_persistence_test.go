@@ -128,6 +128,18 @@ func TestAgentTaskV1TransitionsAreExplicit(t *testing.T) {
 	}
 }
 
+func TestAgentRunV1AllowsActiveRuntimeWithoutCandidateVersion(t *testing.T) {
+	t.Parallel()
+
+	run := AgentRunV1{
+		RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent",
+		Mode: "active", Status: AgentRunStatusRunning,
+	}
+	if err := run.Validate(); err != nil {
+		t.Fatalf("active runtime without a promotion candidate should be valid: %v", err)
+	}
+}
+
 func TestAgentTaskWorkflowProjectionValidatesStableBindingAndState(t *testing.T) {
 	t.Parallel()
 	valid := AgentTaskWorkflowProjectionV1{

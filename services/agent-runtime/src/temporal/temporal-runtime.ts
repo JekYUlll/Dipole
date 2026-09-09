@@ -12,7 +12,7 @@ const temporalRuntimeConfigSchema = z.object({
   address: z.string().trim().min(1),
   namespace: z.string().trim().min(1),
   taskQueue: z.string().trim().min(1),
-  activityMode: z.enum(["foundation", "persistent_shadow", "read_shadow", "read_active", "external_mcp_shadow"])
+  runtimeMode: z.enum(["shadow", "active"])
 }).strict();
 
 export type TemporalRuntimeConfig = z.infer<typeof temporalRuntimeConfigSchema>;
@@ -38,6 +38,7 @@ export interface TemporalWorkerRuntime {
 }
 
 export function loadTemporalRuntimeConfig(env: NodeJS.ProcessEnv): TemporalRuntimeConfig {
+  const runtimeMode = resolveRuntimeMode(env);
   return temporalRuntimeConfigSchema.parse({
     enabled: env.DIPOLE_AGENT_TEMPORAL_ENABLED?.trim().toLowerCase() === "true",
     address: env.DIPOLE_AGENT_TEMPORAL_ADDRESS === undefined ? "127.0.0.1:7233" : env.DIPOLE_AGENT_TEMPORAL_ADDRESS,
@@ -45,8 +46,19 @@ export function loadTemporalRuntimeConfig(env: NodeJS.ProcessEnv): TemporalRunti
     taskQueue: env.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE === undefined
       ? "dipole-agent-task-v1"
       : env.DIPOLE_AGENT_TEMPORAL_TASK_QUEUE,
-    activityMode: env.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE?.trim().toLowerCase() || "foundation"
+    runtimeMode
   });
+}
+
+function resolveRuntimeMode(env: NodeJS.ProcessEnv): "shadow" | "active" {
+  const configured = env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase();
+  if (configured === "active" || configured === "remote") return "active";
+  if (configured === "shadow" || configured === undefined || configured === "") {
+    // Legacy activity profiles map to the one active worker. They no longer
+    // select separate runtimes or task queues.
+    return env.DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE?.trim().toLowerCase().endsWith("_active") ? "active" : "shadow";
+  }
+  throw new Error("DIPOLE_AGENT_RUNTIME_MODE must be shadow or active");
 }
 
 export function createTemporalWorkerRuntime(

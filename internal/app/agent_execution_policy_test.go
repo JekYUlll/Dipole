@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -437,7 +436,7 @@ func TestPersistentAgentRunAdmissionCreatesAndReplaysShadowRun(t *testing.T) {
 	}
 }
 
-func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t *testing.T) {
+func TestPersistentAgentRunAdmissionUsesDefinitionPolicyForActiveRun(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 8, 28, 8, 0, 0, 0, time.UTC)
@@ -445,57 +444,23 @@ func TestPersistentAgentRunAdmissionRequiresPromotionAuthorizationForActiveRun(t
 	definition.Scopes[0].Actions = []string{application.AgentResourceActionWrite}
 	store := policyStoreWithDefinitionV1(definition)
 	request := application.AgentRunAdmissionRequestV1{
-		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "active", CandidateVersion: "runtime-v7",
+		AgentExecutionPolicyStartV1: agentPolicyStartRequestV1(), RuntimeID: "dipole-agent", Mode: "active", CandidateVersion: "legacy-candidate",
 	}
 	admission, err := NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now })
 	if err != nil {
 		t.Fatalf("new Run admission: %v", err)
 	}
-	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
-		t.Fatalf("active admission without promotion authorization error = %v, want policy denied", err)
-	}
-	if len(store.tasks) != 0 || len(store.runs) != 0 {
-		t.Fatalf("denied active admission created state: tasks=%+v runs=%+v", store.tasks, store.runs)
-	}
-
-	authorizer := &activeRunPromotionAuthorizerStub{}
-	admission, err = NewPersistentAgentRunAdmissionV1WithClock(store, func() time.Time { return now }, authorizer)
-	if err != nil {
-		t.Fatalf("new authorized Run admission: %v", err)
-	}
-	missingCandidate := request
-	missingCandidate.CandidateVersion = ""
-	if _, err := admission.Admit(context.Background(), missingCandidate); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
-		t.Fatalf("active admission without candidate version error = %v, want policy denied", err)
-	}
-	authorizer.err = fmt.Errorf("promotion evidence unavailable: %w", application.ErrAgentExecutionPolicyDenied)
-	if _, err := admission.Admit(context.Background(), request); !errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
-		t.Fatalf("denied promotion error = %v, want policy denied", err)
-	}
-	if len(store.tasks) != 0 || len(store.runs) != 0 {
-		t.Fatalf("denied promotion created state: tasks=%+v runs=%+v", store.tasks, store.runs)
-	}
-	authorizer.err = nil
 	execution, err := admission.Admit(context.Background(), request)
 	if err != nil {
-		t.Fatalf("admit promoted active Run: %v", err)
+		t.Fatalf("admit active Run: %v", err)
 	}
 	if execution.Invocation.RuntimeID != "dipole-agent" || execution.Invocation.Mode != "active" ||
-		len(execution.Invocation.ApprovedCapabilities) != 1 || execution.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend ||
-		authorizer.request.RuntimeID != "dipole-agent" || authorizer.request.CandidateVersion != "runtime-v7" || authorizer.request.Task.DefinitionVersion != 7 ||
-		authorizer.request.Definition.Version != 7 {
-		t.Fatalf("promotion binding drifted: execution=%+v request=%+v", execution, authorizer.request)
+		len(execution.Invocation.ApprovedCapabilities) != 1 || execution.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend {
+		t.Fatalf("definition capability binding drifted: execution=%+v", execution)
 	}
-}
-
-type activeRunPromotionAuthorizerStub struct {
-	request application.AgentActiveRunPromotionRequestV1
-	err     error
-}
-
-func (s *activeRunPromotionAuthorizerStub) AuthorizeActiveRun(_ context.Context, request application.AgentActiveRunPromotionRequestV1) error {
-	s.request = request
-	return s.err
+	if run := store.runs[execution.RunUUID]; run == nil || run.CandidateVersion != "" {
+		t.Fatalf("legacy candidate version must not become Runtime authority: run=%+v", run)
+	}
 }
 
 func TestPersistentAgentRunAdmissionRejectsUnknownTriggerSubscription(t *testing.T) {

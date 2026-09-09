@@ -222,8 +222,9 @@ func (s *admissionStub) Finish(_ context.Context, taskUUID, runUUID, _, _ string
 
 type capabilityStub struct {
 	application.AgentCapabilityV1
-	invocation application.AgentInvocationV1
-	readTarget string
+	invocation  application.AgentInvocationV1
+	readTarget  string
+	searchQuery string
 }
 
 type approvalServiceStub struct {
@@ -338,6 +339,13 @@ func (s *capabilityStub) ReadConversation(_ context.Context, invocation applicat
 	}, nil
 }
 
+func (s *capabilityStub) SearchConversations(_ context.Context, invocation application.AgentInvocationV1, query string, _ int) ([]*application.AgentConversationSearchResultV1, error) {
+	s.invocation, s.searchQuery = invocation, query
+	return []*application.AgentConversationSearchResultV1{{
+		MessageUUID: "M1", ConversationKey: "group:G1", MessageSeq: 7, SenderUUID: "U200", Content: "Cassandra decision", SentAtUnixMillis: 1000,
+	}}, nil
+}
+
 func TestListConversationsResolvesTrustedTaskIdentity(t *testing.T) {
 	capability := &capabilityStub{}
 	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
@@ -386,6 +394,33 @@ func TestReadConversationRejectsClientPrincipal(t *testing.T) {
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	_, err := server.ReadConversation(context.Background(), &agentv1.ReadConversationRequest{
 		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", TargetId: "G1", Limit: 20,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+}
+
+func TestSearchConversationsResolvesTrustedTaskIdentity(t *testing.T) {
+	capability := &capabilityStub{}
+	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "Cassandra", Limit: 20,
+	})
+	if err != nil {
+		t.Fatalf("search conversations: %v", err)
+	}
+	if capability.invocation.PrincipalUUID != "U100" || capability.searchQuery != "Cassandra" || len(response.GetMessages()) != 1 || response.GetMessages()[0].GetConversationKey() != "group:G1" {
+		t.Fatalf("unexpected trusted search response: invocation=%+v query=%q response=%+v", capability.invocation, capability.searchQuery, response)
+	}
+}
+
+func TestSearchConversationsRejectsClientPrincipal(t *testing.T) {
+	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
+	_, err := server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "Cassandra", Limit: 20,
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
@@ -677,10 +712,10 @@ func TestExecuteMcpMessageCommandUsesBoundRuntimeService(t *testing.T) {
 	}
 	response, err := server.ExecuteMcpMessageCommand(context.Background(), &agentv1.ExecuteMcpMessageCommandRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", InvocationId: "INV-1",
-		CommandKind: "system_message", Content: "notice",
+		CommandKind: "system_message", Content: "notice", ConversationKey: "direct:U100:UAI",
 	})
 	if err != nil || response.GetActionReference().GetResourceId() != "MSG-1" || response.GetClientMessageId() != strings.Repeat("a", 64) ||
-		commands.request.InvocationUUID != "INV-1" || commands.request.Content != "notice" {
+		commands.request.InvocationUUID != "INV-1" || commands.request.Content != "notice" || commands.request.ConversationKey != "direct:U100:UAI" {
 		t.Fatalf("unexpected Message Command response=%+v request=%+v err=%v", response, commands.request, err)
 	}
 	_, err = server.ExecuteMcpMessageCommand(context.Background(), &agentv1.ExecuteMcpMessageCommandRequest{
@@ -711,7 +746,7 @@ func TestProjectTaskWorkflowStateUsesFixedRuntimeBinding(t *testing.T) {
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
 		WorkflowId: "dipole-agent-task/TASK-1", WorkflowRunId: "temporal-run-1", WorkflowStatus: "waiting_input", WorkflowRevision: 2,
 	})
-	if err != nil || response.GetWorkflowRevision() != 2 || projection.request.RuntimeID != "dipole-agent" || projection.request.Mode != "shadow" || projection.request.RunUUID != "RUN-1" {
+	if err != nil || response.GetWorkflowRevision() != 2 || projection.request.RuntimeID != "dipole-agent" || projection.request.Mode != "" || projection.request.RunUUID != "RUN-1" {
 		t.Fatalf("unexpected Workflow projection: response=%+v request=%+v err=%v", response, projection.request, err)
 	}
 }
@@ -1119,7 +1154,7 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 		CapabilityId: "message.bulk.send", ResourceScope: &agentv1.AgentResourceScope{ResourceType: "conversation", ResourceId: "G1", Actions: []string{"write"}},
 		ScopeSha256: strings.Repeat("a", 64), ArgumentsSha256: strings.Repeat("b", 64), NonceSha256: strings.Repeat("c", 64), ExpiresAtUnixMs: time.Now().Add(time.Hour).UnixMilli(),
 	})
-	if err != nil || response.GetStatus() != "pending" || approvals.requested.RuntimeID != "dipole-agent" || approvals.requested.Mode != "shadow" {
+	if err != nil || response.GetStatus() != "pending" || approvals.requested.RuntimeID != "dipole-agent" || approvals.requested.Mode != "active" {
 		t.Fatalf("request Approval response=%+v request=%+v err=%v", response, approvals.requested, err)
 	}
 	if len(timeline.events) != 1 || timeline.events[0].Kind != application.AgentTaskTimelineEventApproval || timeline.events[0].Status != "pending" {
@@ -1128,7 +1163,7 @@ func TestApprovalRPCUsesServerRuntimeAndExactBinding(t *testing.T) {
 	resolved, err := server.ResolveApproval(context.Background(), &agentv1.ResolveApprovalRequest{
 		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", ApprovalId: "APR-1", ActorUserId: "U100", Decision: "approved",
 	})
-	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
+	if err != nil || resolved.GetStatus() != "approved" || approvals.resolved.Mode != "active" || approvals.resolved.ActorUUID != "U100" || approvals.resolved.Decision != application.AgentApprovalDecisionApproved {
 		t.Fatalf("resolve Approval response=%+v resolution=%+v err=%v", resolved, approvals.resolved, err)
 	}
 	if len(timeline.events) != 2 || timeline.events[1].Kind != application.AgentTaskTimelineEventApproval || timeline.events[1].Status != "approved" {

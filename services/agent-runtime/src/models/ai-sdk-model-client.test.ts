@@ -32,7 +32,28 @@ describe("AISDKStructuredModelClient", () => {
       finishReason: "stop"
     });
     expect(model.doGenerateCalls).toHaveLength(1);
-    expect(model.doGenerateCalls[0]).toMatchObject({ maxOutputTokens: 96 });
+    expect(model.doGenerateCalls[0]).toMatchObject({
+      maxOutputTokens: 96,
+      providerOptions: { openai: { reasoningEffort: "none" } }
+    });
+  });
+
+  it("parses fenced JSON with the caller schema", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "test",
+      modelId: "planner",
+      doGenerate: {
+        content: [{ type: "text", text: "```json\n{\"summary\":\"ready\"}\n```" }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 1, text: 1, reasoning: 0 } },
+        warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model);
+
+    await expect(client.generate({
+      route: "test/planner", prompt: "plan event", schema: z.object({ summary: z.string() }), maxOutputTokens: 96, timeoutMs: 2000
+    })).resolves.toMatchObject({ output: { summary: "ready" } });
   });
 
   it("does not retry inside AI SDK when the provider fails", async () => {

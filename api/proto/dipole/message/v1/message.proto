@@ -79,12 +79,31 @@ message SendSystemDirectMessageRequest {
   string sender_user_id = 2;
   string target_user_id = 3;
   string content = 4;
+  string client_message_id = 5;
 }
 
 message SendSystemGroupMessageRequest {
   dipole.common.v1.RequestContext context = 1;
   string group_id = 2;
   string content = 3;
+}
+
+// These commands are reserved for Core after Agent capability authorization.
+// They preserve AIText semantics without allowing a browser to forge an AI sender.
+message SendAssistantTextRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string assistant_user_id = 2;
+  string target_user_id = 3;
+  string content = 4;
+  string client_message_id = 5;
+}
+
+message SendAssistantGroupMessageRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string assistant_user_id = 2;
+  string group_id = 3;
+  string content = 4;
+  string client_message_id = 5;
 }
 
 message SendMessageResponse {
@@ -148,6 +167,8 @@ service MessageService {
   rpc SendGroupFile(SendGroupFileRequest) returns (SendMessageResponse);
   rpc SendSystemDirectMessage(SendSystemDirectMessageRequest) returns (SendMessageResponse);
   rpc SendSystemGroupMessage(SendSystemGroupMessageRequest) returns (SendMessageResponse);
+  rpc SendAssistantText(SendAssistantTextRequest) returns (SendMessageResponse);
+  rpc SendAssistantGroupMessage(SendAssistantGroupMessageRequest) returns (SendMessageResponse);
   rpc GetMessageCommandReceipt(GetMessageCommandReceiptRequest) returns (GetMessageCommandReceiptResponse);
   rpc ListDirectHistory(ListDirectHistoryRequest) returns (ListMessagesResponse);
   rpc ListGroupHistory(ListGroupHistoryRequest) returns (ListMessagesResponse);

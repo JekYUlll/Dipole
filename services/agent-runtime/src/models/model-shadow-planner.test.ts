@@ -143,7 +143,7 @@ describe("ModelShadowPlanner", () => {
     expect(plan.model?.context).not.toHaveProperty("estimatorId");
   });
 
-  it("compiles registered capability metadata into trusted context", async () => {
+  it("compiles the bounded capability allowlist into trusted context", async () => {
     const generate = vi.fn(async () => ({
       output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
       usage: { inputTokens: 10, outputTokens: 5 }
@@ -158,10 +158,9 @@ describe("ModelShadowPlanner", () => {
     await planner.plan(event(), context());
 
     const request = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]?.[0];
-    expect(request?.prompt).toContain('\\"inputSchema\\":{\\"type\\":\\"object\\"');
-    expect(request?.prompt).toContain('\\"conversationId\\":{\\"type\\":\\"string\\",\\"maxLength\\":256}');
-    expect(request?.prompt).toContain('\\"additionalProperties\\":false');
-    expect(request?.prompt).not.toContain('\\"id\\":\\"message.send\\"');
+    expect(request?.prompt).toContain('\\"allowedCapabilityIds\\":[\\"conversation.read\\"]');
+    expect(request?.prompt).toContain('\\"capabilities\\":[{\\"id\\":\\"conversation.read\\",\\"inputSchema\\":{\\"type\\":\\"object\\"');
+    expect(request?.prompt).not.toContain('\\"message.send\\"');
   });
 
   it("rejects capabilities outside the read-only shadow allowlist", async () => {

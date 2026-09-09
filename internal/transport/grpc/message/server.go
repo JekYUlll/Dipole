@@ -21,6 +21,11 @@ type Server struct {
 	application application.MessageApplication
 }
 
+type assistantMessageSender interface {
+	SendAssistantTextMessageContext(context.Context, string, string, string, string) (*model.Message, error)
+	SendAssistantGroupMessageContext(context.Context, string, string, string, string) (*model.Message, []string, error)
+}
+
 func NewServer(application application.MessageApplication) (*Server, error) {
 	if application == nil {
 		return nil, errors.New("message application is required")
@@ -110,7 +115,19 @@ func (s *Server) SendSystemDirectMessage(ctx context.Context, request *messagev1
 	if !ok {
 		return nil, status.Error(codes.Unimplemented, "system message sender is unavailable")
 	}
-	message, err := sender.SendSystemDirectMessage(request.GetSenderUserId(), request.GetTargetUserId(), request.GetContent())
+	var message *model.Message
+	var err error
+	if clientMessageID := request.GetClientMessageId(); clientMessageID != "" {
+		if contextual, ok := s.application.(interface {
+			SendSystemDirectMessageCommandContext(context.Context, string, string, string, string) (*model.Message, error)
+		}); ok {
+			message, err = contextual.SendSystemDirectMessageCommandContext(ctx, request.GetSenderUserId(), request.GetTargetUserId(), request.GetContent(), clientMessageID)
+		} else {
+			message, err = sender.SendSystemDirectMessage(request.GetSenderUserId(), request.GetTargetUserId(), request.GetContent())
+		}
+	} else {
+		message, err = sender.SendSystemDirectMessage(request.GetSenderUserId(), request.GetTargetUserId(), request.GetContent())
+	}
 	if err != nil {
 		return nil, rpcError(err)
 	}
@@ -129,6 +146,38 @@ func (s *Server) SendSystemGroupMessage(ctx context.Context, request *messagev1.
 		return nil, rpcError(err)
 	}
 	return &messagev1.SendMessageResponse{}, nil
+}
+
+func (s *Server) SendAssistantText(ctx context.Context, request *messagev1.SendAssistantTextRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
+	if err := requireCoreCaller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	sender, ok := s.application.(assistantMessageSender)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "assistant message sender is unavailable")
+	}
+	message, err := sender.SendAssistantTextMessageContext(ctx, request.GetAssistantUserId(), request.GetTargetUserId(), request.GetContent(), request.GetClientMessageId())
+	if err != nil {
+		return nil, rpcError(err)
+	}
+	return sendResponse(message, nil), nil
+}
+
+func (s *Server) SendAssistantGroupMessage(ctx context.Context, request *messagev1.SendAssistantGroupMessageRequest) (*messagev1.SendMessageResponse, error) {
+	ctx = grpccommon.Correlation(ctx, request.GetContext())
+	if err := requireCoreCaller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	sender, ok := s.application.(assistantMessageSender)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "assistant message sender is unavailable")
+	}
+	message, recipients, err := sender.SendAssistantGroupMessageContext(ctx, request.GetAssistantUserId(), request.GetGroupId(), request.GetContent(), request.GetClientMessageId())
+	if err != nil {
+		return nil, rpcError(err)
+	}
+	return sendResponse(message, recipients), nil
 }
 
 func requireCoreCaller(ctx context.Context, requestContext *commonv1.RequestContext) error {

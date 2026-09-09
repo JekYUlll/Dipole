@@ -15,6 +15,7 @@ describe("shadow runtime composition", () => {
     });
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
     expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote" })).toThrow(/Kafka/);
+    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "active" })).toThrow(/Kafka/);
     expect(loadShadowRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true",
       DIPOLE_AGENT_KAFKA_BROKERS: "kafka-1:9092, kafka-2:9092"
@@ -142,6 +143,30 @@ describe("shadow runtime composition", () => {
 
     expect(planner.plan).not.toHaveBeenCalled();
     expect(audit.append).not.toHaveBeenCalled();
+  });
+
+  it("starts one Task only for an explicit group AI mention", async () => {
+    let eachMessage: ((payload: KafkaInboundPayload) => Promise<void>) | undefined;
+    const consumer: KafkaConsumerPort = {
+      connect: async () => undefined,
+      subscribe: vi.fn(async () => undefined),
+      run: async (config) => { eachMessage = config.eachMessage; },
+      disconnect: async () => undefined
+    };
+    const planner = { plan: vi.fn(async () => ({ summary: "group reply", steps: [] })) };
+    const audit = { append: vi.fn(async () => undefined) };
+    const config = loadShadowRuntimeConfig({
+      DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_UUID: "UAI"
+    });
+    const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, planner, audit);
+    await runtime.start();
+    await eachMessage!(payload(groupMessageEnvelope("plain discussion", "E-GROUP-1")));
+    await eachMessage!(payload(groupMessageEnvelope("@AI summarize this", "E-GROUP-2")));
+
+    expect(consumer.subscribe).toHaveBeenCalledWith({ topic: "dipole.message.group.created", fromBeginning: false });
+    expect(planner.plan).toHaveBeenCalledOnce();
+    expect(planner.plan).toHaveBeenCalledWith(expect.objectContaining({ eventType: "message.group.created" }), expect.objectContaining({ principalUuid: "U100" }));
+    expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({ eventId: "E-GROUP-2" }));
   });
 
   it("stops before the ledger and planner when no deterministic subscription matches", async () => {
@@ -337,6 +362,19 @@ function messageEnvelope(targetUuid = "UAI", eventId = "E1"): object {
       mutation_type: "created", revision: 1, actor_uuid: "U100", message_id: "M100",
       conversation_key: "direct:U100:UAI", message_seq: 1, sender_uuid: "U100", target_uuid: targetUuid,
       target_type: 0, message_type: 0, content: "hello", sent_at: "2026-08-27T08:00:00.000Z"
+    }
+  };
+}
+
+function groupMessageEnvelope(content: string, eventId: string): object {
+  return {
+    event_id: eventId, request_id: "R1", trace_id: "T1",
+    event_type: "message.group.created", version: "v1", source: "dipole",
+    occurred_at: "2026-08-27T08:00:00.000Z",
+    payload: {
+      mutation_type: "created", revision: 1, actor_uuid: "U100", message_id: `M-${eventId}`,
+      conversation_key: "group:G100", message_seq: 1, sender_uuid: "U100", target_uuid: "G100",
+      target_type: 1, message_type: 0, content, sent_at: "2026-08-27T08:00:00.000Z"
     }
   };
 }

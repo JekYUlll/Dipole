@@ -186,7 +186,10 @@ function canonicalJSON(value: unknown): string {
 }
 
 function canonicalValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
+	if (typeof value === "bigint") {
+		return value.toString();
+	}
+	if (Array.isArray(value)) {
     return value.map(canonicalValue);
   }
   if (value !== null && typeof value === "object") {

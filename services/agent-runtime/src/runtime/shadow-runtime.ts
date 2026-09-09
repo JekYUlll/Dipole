@@ -6,6 +6,7 @@ import { createPool, type Pool } from "mysql2/promise";
 import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
+import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
@@ -13,7 +14,7 @@ import { InMemoryEventLedger, type EventLedger } from "../events/event-ledger.js
 import { matchEventSubscriptions, type AgentEventSubscription } from "../events/event-subscription.js";
 import { KafkaFailureRouter, PermanentKafkaEventError } from "../events/kafka-failure-router.js";
 import { KafkaJSConsumerFactory, KafkaShadowConsumer, type KafkaConsumerFactoryPort } from "../events/kafka-shadow-consumer.js";
-import { decodeMessageCreatedEvent } from "../events/message-event.js";
+import { decodeMessageCreatedEvent, isAssistantMention } from "../events/message-event.js";
 import { MySQLEventLedger } from "../events/mysql-event-ledger.js";
 import { PROBE_AGENT_EVENT_LEDGER } from "../events/mysql-event-ledger-queries.js";
 import { MySQLShadowAuditSink } from "../events/mysql-shadow-audit-sink.js";
@@ -97,9 +98,6 @@ const shadowRuntimeConfigSchema = z.object({
   if (config.runtimeMode === "active" && config.modelMode !== "ai_sdk") {
     refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires AI SDK model mode", path: ["modelMode"] });
   }
-  if (config.runtimeMode === "active" && config.candidateVersion.length === 0) {
-    refinement.addIssue({ code: "custom", message: "Active Agent Runtime requires a candidate version", path: ["candidateVersion"] });
-  }
   if (config.enabled && config.brokers.length === 0) {
     refinement.addIssue({ code: "custom", message: "Kafka brokers are required when shadow runtime is enabled", path: ["brokers"] });
   }
@@ -175,7 +173,7 @@ export type ShadowRuntimeConfig = z.infer<typeof shadowRuntimeConfigSchema>;
 export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeConfig {
   return shadowRuntimeConfigSchema.parse({
     enabled: env.DIPOLE_AGENT_KAFKA_ENABLED?.trim().toLowerCase() === "true",
-    runtimeMode: env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase() === "remote" ? "active" : "shadow",
+    runtimeMode: ["active", "remote"].includes(env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase() ?? "") ? "active" : "shadow",
     candidateVersion: env.DIPOLE_AGENT_CANDIDATE_VERSION ?? "",
     brokers: (env.DIPOLE_AGENT_KAFKA_BROKERS ?? "").split(",").map((broker) => broker.trim()).filter(Boolean),
     clientId: env.DIPOLE_AGENT_KAFKA_CLIENT_ID ?? "dipole-agent",
@@ -277,14 +275,17 @@ export function buildKafkaShadowRuntime(
   subscriptionRuntimeGate?: SubscriptionRuntimeGate
 ): KafkaShadowConsumer {
   const processor = new ShadowEventProcessor(planner, audit, ledger, admission, registry, trajectory, config.leaseMs, dispatcher);
-  return new KafkaShadowConsumer(factory, { groupId: config.groupId, topic: physicalTopic(config) }, async (raw) => {
+  return new KafkaShadowConsumer(factory, {
+    groupId: config.groupId, topic: physicalTopic(config), additionalTopics: [physicalGroupTopic(config)]
+  }, async (raw) => {
     let decoded;
     try {
       decoded = decodeMessageCreatedEvent(raw);
     } catch (error) {
       throw new PermanentKafkaEventError(error);
     }
-    const directTargetAccepted = decoded.targetUuid === config.agentUuid;
+    const directTargetAccepted = decoded.event.eventType === "message.direct.created" && decoded.targetUuid === config.agentUuid;
+    const groupMentionAccepted = decoded.event.eventType === "message.group.created" && isAssistantMention(String(decoded.event.payload.content ?? ""));
     const identity: AgentIdentity = {
       tenantId: config.tenantId,
       principalUuid: decoded.principalUuid,
@@ -311,7 +312,7 @@ export function buildKafkaShadowRuntime(
         subscriptionShadowObserver.observe({ directTargetAccepted, subscriptionOutcome: "error", candidateCount });
       }
     }
-    if (config.triggerMode === "direct_target" && !directTargetAccepted) return;
+    if (config.triggerMode === "direct_target" && !directTargetAccepted && !groupMentionAccepted) return;
     if (config.triggerMode === "subscription") {
       if (subscriptionRuntimeGate !== undefined && !subscriptionRuntimeGate.evaluate().taskCreationAllowed) return;
       const matcher = subscriptionMatcher ?? admission;
@@ -375,18 +376,19 @@ export function createKafkaShadowRuntime(
     registry = new CapabilityRegistry();
     registry.register(new ConversationListCapability(rpcTransport!.client));
     registry.register(new ConversationReadCapability(rpcTransport!.client));
+    registry.register(new ConversationSearchCapability(rpcTransport!.client));
     trajectory = persistentAudit!;
   }
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
+    ), ["conversation.list", "conversation.read", "conversation.search"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
     : new MetadataShadowPlanner();
   const consumer = buildKafkaShadowRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
     dispatcher, subscriptionMatcher ?? (config.subscriptionShadowEnabled ? rpcTransport?.client : undefined), subscriptionShadowObserver
   );
-  const mainTopic = physicalTopic(config);
+  const mainTopics = [physicalTopic(config), physicalGroupTopic(config)];
   return {
     start: async () => {
       if (pool !== undefined) {
@@ -397,7 +399,7 @@ export function createKafkaShadowRuntime(
         }
       }
       await factory.ensureTopics(
-        [mainTopic, `${mainTopic}.retry`, `${mainTopic}.dead`],
+        mainTopics.flatMap((topic) => [topic, `${topic}.retry`, `${topic}.dead`]),
         config.topicPartitions,
         config.topicReplicationFactor
       );
@@ -437,9 +439,10 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   const registry = new CapabilityRegistry();
   registry.register(new ConversationListCapability(rpc.client));
   registry.register(new ConversationReadCapability(rpc.client));
+  registry.register(new ConversationSearchCapability(rpc.client));
   const planner = new ModelShadowPlanner(new ModelRouter(
     new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
-  ), ["conversation.list", "conversation.read"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
+  ), ["conversation.list", "conversation.read", "conversation.search"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({
@@ -447,7 +450,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
       runtimeMode: config.runtimeMode,
       busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 },
       ...(config.runtimeMode === "shadow" ? { artifacts: rpc.client } : {}),
-      ...(config.runtimeMode === "active" ? { contextResolver: rpc.client } : {})
+      ...(config.runtimeMode === "active" ? { contextResolver: rpc.client, replyWriter: rpc.client, approvalWriter: rpc.client } : {})
     }),
     client: rpc.client,
     start: async () => {
@@ -475,7 +478,9 @@ export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client:
   } : {};
   const transport = new AgentCapabilityServiceClient(config.capabilityRpc.target, credentials, options);
   return {
-    client: new AgentCapabilityRPCClient(transport, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs, config.runtimeMode, config.candidateVersion),
+    // Candidate versions are retained for shadow evaluation only. Active
+    // authority comes from the persisted definition and capability scope.
+    client: new AgentCapabilityRPCClient(transport, config.capabilityRpc.secret, config.capabilityRpc.timeoutMs, config.runtimeMode, config.runtimeMode === "shadow" ? config.candidateVersion : ""),
     close: () => transport.close()
   };
 }
@@ -491,6 +496,13 @@ function isLoopbackTarget(target: string): boolean {
 
 function physicalTopic(config: ShadowRuntimeConfig): string {
   return config.topicPrefix ? `${config.topicPrefix}.${config.topic}` : config.topic;
+}
+
+function physicalGroupTopic(config: ShadowRuntimeConfig): string {
+  const groupTopic = config.topic === "message.direct.created"
+    ? "message.group.created"
+    : `${config.topic}.group`;
+  return config.topicPrefix ? `${config.topicPrefix}.${groupTopic}` : groupTopic;
 }
 
 function routeContextCompiler(config: ShadowRuntimeConfig): DeterministicContextCompiler {

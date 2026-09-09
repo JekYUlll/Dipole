@@ -80,6 +80,26 @@ services:
       timeout: 3s
       retries: 20
 
+  # Development-only durable execution backend for the Agent Runtime.
+  temporal:
+    image: temporalio/auto-setup:1.28.1
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB: mysql8
+      DB_PORT: "3306"
+      MYSQL_SEEDS: mysql
+      MYSQL_USER: root
+      MYSQL_PWD: root123
+      MYSQL_DB: temporal
+    healthcheck:
+      test: ["CMD-SHELL", "temporal operator cluster health --address \"$$(hostname -i):7233\""]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
   agent:
     build:
       context: ../../services/agent-runtime
@@ -92,6 +112,8 @@ services:
       - ${DIPOLE_INTERNAL_CERT_DIR:-../../certs/internal}/agent-key.pem:/run/dipole/certs/agent-key.pem:ro
     depends_on:
       kafka:
+        condition: service_healthy
+      temporal:
         condition: service_healthy
       mysql-permissions:
         condition: service_completed_successfully

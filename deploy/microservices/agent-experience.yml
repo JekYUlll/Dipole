@@ -1,0 +1,36 @@
+services:
+  agent:
+    environment:
+      DIPOLE_AGENT_RUNTIME_MODE: active
+      DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-active-v1
+      DIPOLE_AGENT_MODEL_MODE: ai_sdk
+      DIPOLE_AGENT_MODEL_ROUTES: ${DIPOLE_AGENT_MODEL_ROUTES:?set DIPOLE_AGENT_MODEL_ROUTES}
+      DIPOLE_AGENT_MODEL_API_KEY: ${DIPOLE_AGENT_MODEL_API_KEY:-${DEEPSEEK_API_KEY:-${DIPOLE_AI_API_KEY:?set DIPOLE_AI_API_KEY}}}
+      DIPOLE_AGENT_MODEL_BASE_URL: ${DIPOLE_AGENT_MODEL_BASE_URL:-${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}}
+      # Reasoning-capable compatible models need room to emit a structured plan
+      # after their internal reasoning tokens.
+      DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "2048"
+      DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: "60000"
+      DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v2
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true"
+      DIPOLE_AGENT_TEMPORAL_ADDRESS: temporal:7233
+      DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: dipole-agent-task-v1
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: interactive_active
+      DIPOLE_AGENT_CONTROL_ENABLED: "true"
+      # Gateway authenticates Agent control calls with the existing internal RPC
+      # service credential, so both ends must use the same value.
+      DIPOLE_AGENT_CONTROL_SECRET: ${DIPOLE_INTERNAL_RPC_SHARED_SECRET:?set DIPOLE_INTERNAL_RPC_SHARED_SECRET}
+      DIPOLE_AGENT_MCP_SERVER_ENABLED: "false"
+      DIPOLE_AGENT_EXTERNAL_MCP_ENABLED: "false"
+  core:
+    environment:
+      # Core owns the persistent Assistant account; reply events still belong
+      # exclusively to the TypeScript runtime in this experience profile.
+      DIPOLE_AI_ENABLED: "true"
+      DIPOLE_AI_RUNTIME_MODE: remote
+  gateway:
+    environment:
+      DIPOLE_AI_ENABLED: "false"
+      DIPOLE_AI_RUNTIME_MODE: remote
+      DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"
+      DIPOLE_GATEWAY_AGENT_CONTROL_TARGET: http://agent:8091

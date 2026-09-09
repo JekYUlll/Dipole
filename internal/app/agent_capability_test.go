@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/model"
@@ -61,6 +62,19 @@ func (s *agentCapabilityMessagesStub) ListGroupMessages(_ string, target string,
 type agentCapabilityConversationsStub struct {
 	items []*model.Conversation
 	found *model.Conversation
+}
+
+type agentCapabilitySearchStub struct {
+	principal string
+	text      string
+	limit     int
+	items     []*model.MessageSearchDocument
+	err       error
+}
+
+func (s *agentCapabilitySearchStub) Search(principal, text string, limit int) ([]*model.MessageSearchDocument, error) {
+	s.principal, s.text, s.limit = principal, text, limit
+	return s.items, s.err
 }
 
 func (s *agentCapabilityConversationsStub) ListForAgent(string, int) ([]*model.Conversation, error) {
@@ -167,6 +181,36 @@ func TestLocalAgentCapabilityV1EnforcesInvocationPolicy(t *testing.T) {
 	}
 }
 
+func TestLocalAgentCapabilityV1SearchesAuthorizedConversations(t *testing.T) {
+	t.Parallel()
+
+	search := &agentCapabilitySearchStub{items: []*model.MessageSearchDocument{{
+		MessageUUID: "M1", ConversationKey: model.DirectConversationKey("U100", "U200"), MessageSeq: 7,
+		SenderUUID: "U200", Content: "Cassandra decision", SentAt: time.UnixMilli(1_700_000_000_000).UTC(),
+	}}}
+	capability, err := NewLocalAgentCapabilityV1(
+		&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{}, search,
+	)
+	if err != nil {
+		t.Fatalf("new Agent Capability: %v", err)
+	}
+	results, err := capability.SearchConversations(context.Background(), agentCapabilityTestInvocation(), "  Cassandra ", 10)
+	if err != nil || search.principal != "U100" || search.text != "Cassandra" || search.limit != 10 {
+		t.Fatalf("search route: results=%+v search=%+v err=%v", results, search, err)
+	}
+	if len(results) != 1 || results[0].MessageUUID != "M1" || results[0].ConversationKey != model.DirectConversationKey("U100", "U200") || results[0].SentAtUnixMillis != 1_700_000_000_000 {
+		t.Fatalf("unexpected Agent search result: %+v", results)
+	}
+
+	withoutSearch, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
+	if err != nil {
+		t.Fatalf("new capability without Search: %v", err)
+	}
+	if _, err := withoutSearch.SearchConversations(context.Background(), agentCapabilityTestInvocation(), "Cassandra", 10); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected fail-closed Search capability, got %v", err)
+	}
+}
+
 func TestLocalAgentCapabilityV1EnforcesResourceScope(t *testing.T) {
 	t.Parallel()
 
@@ -198,11 +242,12 @@ func agentCapabilityTestInvocation() application.AgentInvocationV1 {
 			application.AgentPermissionUserProfileRead,
 			application.AgentPermissionConversationList,
 			application.AgentPermissionConversationRead,
+			application.AgentPermissionConversationSearch,
 			application.AgentPermissionMessageWrite,
 		},
 		ResourceScopes: []application.AgentResourceScopeV1{
 			{ResourceType: application.AgentResourceTypeUser, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead}},
-			{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead, application.AgentResourceActionList, application.AgentResourceActionWrite}},
+			{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionRead, application.AgentResourceActionList, application.AgentResourceActionSearch, application.AgentResourceActionWrite}},
 		},
 	}
 }

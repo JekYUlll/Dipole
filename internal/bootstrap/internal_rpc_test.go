@@ -549,6 +549,11 @@ func TestAgentArtifactRPCSeparatesRuntimeCreateAndPrincipalRead(t *testing.T) {
 	if err != nil || created.GetArtifact().GetArtifactId() != strings.Repeat("a", 64) {
 		t.Fatalf("Agent Artifact create=%+v err=%v", created, err)
 	}
+	if _, err := agentClient.ExecuteMcpMessageCommand(context.Background(), &agentv1.ExecuteMcpMessageCommandRequest{
+		Context: &commonv1.RequestContext{CallerService: agentServiceName},
+	}); status.Code(err) != codes.Unavailable {
+		t.Fatalf("Agent message command must pass the service allowlist before command validation, code=%s", status.Code(err))
+	}
 	if _, err := agentClient.GetArtifact(context.Background(), &agentv1.GetArtifactRequest{Context: &commonv1.RequestContext{CallerService: agentServiceName, PrincipalUserId: "U100"}, ArtifactId: created.GetArtifact().GetArtifactId()}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("Agent Artifact read code=%s", status.Code(err))
 	}

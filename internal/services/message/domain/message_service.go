@@ -431,6 +431,21 @@ func (s *MessageService) SendGroupMessage(senderUUID, groupUUID, content, client
 }
 
 func (s *MessageService) SendGroupMessageContext(ctx context.Context, senderUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	return s.sendGroupMessageContext(ctx, senderUUID, groupUUID, content, clientMessageID, model.MessageTypeText)
+}
+
+func (s *MessageService) SendAssistantGroupMessageContext(ctx context.Context, assistantUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	assistant, err := s.userFinder.GetByUUID(strings.TrimSpace(assistantUUID))
+	if err != nil {
+		return nil, nil, fmt.Errorf("find assistant user in send group message: %w", err)
+	}
+	if assistant == nil || !assistant.IsAssistant() || assistant.Status == model.UserStatusDisabled {
+		return nil, nil, ErrMessageTargetUnavailable
+	}
+	return s.sendGroupMessageContext(ctx, assistantUUID, groupUUID, content, clientMessageID, model.MessageTypeAIText)
+}
+
+func (s *MessageService) sendGroupMessageContext(ctx context.Context, senderUUID, groupUUID, content, clientMessageID string, messageType int8) (*model.Message, []string, error) {
 	groupUUID = strings.TrimSpace(groupUUID)
 	content = strings.TrimSpace(content)
 	if groupUUID == "" {
@@ -460,7 +475,7 @@ func (s *MessageService) SendGroupMessageContext(ctx context.Context, senderUUID
 		SenderUUID:      strings.TrimSpace(senderUUID),
 		TargetType:      model.MessageTargetGroup,
 		TargetUUID:      groupUUID,
-		MessageType:     model.MessageTypeText,
+		MessageType:     messageType,
 		Content:         content,
 		SentAt:          time.Now().UTC(),
 	}

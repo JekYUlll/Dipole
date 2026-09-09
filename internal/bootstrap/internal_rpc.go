@@ -283,20 +283,28 @@ func NewSearchRPCServer(cfg config.InternalRPC, search application.SearchApplica
 	if err != nil {
 		return nil, fmt.Errorf("create Search rpc adapter: %w", err)
 	}
-	return newInternalRPCServer(cfg, cfg.SearchListenAddress, []string{gatewayServiceName}, func(server *grpc.Server) {
+	return newInternalRPCServer(cfg, cfg.SearchListenAddress, []string{gatewayServiceName, coreServiceName}, func(server *grpc.Server) {
 		searchv1.RegisterSearchServiceServer(server, adapter)
 	})
 }
 
 func DialSearchApplication(ctx context.Context, cfg config.InternalRPC) (*searchgrpc.Client, *grpc.ClientConn, error) {
+	return dialSearchApplicationAs(ctx, cfg, gatewayServiceName)
+}
+
+func DialCoreSearchApplication(ctx context.Context, cfg config.InternalRPC) (*searchgrpc.Client, *grpc.ClientConn, error) {
+	return dialSearchApplicationAs(ctx, cfg, coreServiceName)
+}
+
+func dialSearchApplicationAs(ctx context.Context, cfg config.InternalRPC, callerService string) (*searchgrpc.Client, *grpc.ClientConn, error) {
 	connection, err := dialInternalRPC(ctx, cfg, cfg.SearchTarget, grpcauth.Credentials{
-		Service: gatewayServiceName,
+		Service: callerService,
 		Secret:  cfg.SharedSecret,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("dial Search rpc: %w", err)
 	}
-	client, err := searchgrpc.NewClientForService(searchv1.NewSearchServiceClient(connection), gatewayServiceName)
+	client, err := searchgrpc.NewClientForService(searchv1.NewSearchServiceClient(connection), callerService)
 	if err != nil {
 		_ = connection.Close()
 		return nil, nil, fmt.Errorf("create Search application client: %w", err)
@@ -346,8 +354,11 @@ func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.Una
 		info.FullMethod != agentv1.AgentCapabilityService_FinishRun_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_RequestApproval_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveApproval_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ResolveApprovalGrant_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ConsumeApproval_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListConversations_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ReadConversation_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_SearchConversations_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_AuthorizeTaskControl_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ResolveMcpContext_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_BeginMcpToolInvocation_FullMethodName &&
@@ -356,6 +367,7 @@ func restrictCoreServiceMethods(ctx context.Context, request any, info *grpc.Una
 		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolRound_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolInvocation_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName &&
+		info.FullMethod != agentv1.AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName &&
 		info.FullMethod != agentv1.AgentCapabilityService_CreateArtifact_FullMethodName &&

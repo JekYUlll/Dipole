@@ -56,6 +56,16 @@ func (s *persistentAgentToolInvocationAuditServiceV1) Begin(ctx context.Context,
 		if begin.ApprovalUUID != "" {
 			return nil, fmt.Errorf("%w: read capability cannot bind an approval", application.ErrAgentToolInvocationDenied)
 		}
+	} else if begin.CapabilityID == application.AgentCapabilityAssistantReplySend || begin.CapabilityID == application.AgentCapabilityGroupReplySend {
+		if begin.ApprovalUUID != "" {
+			return nil, fmt.Errorf("%w: assistant replies are pre-authorized only", application.ErrAgentToolInvocationDenied)
+		}
+		if begin.CapabilityID == application.AgentCapabilityAssistantReplySend && application.AuthorizeAgentCapabilityForResourceV1(
+			invocation, descriptor, application.AgentResourceTypeConversation,
+			model.DirectConversationKey(invocation.PrincipalUUID, invocation.AgentUUID), application.AgentResourceActionWrite,
+		) != nil {
+			return nil, fmt.Errorf("%w: assistant reply is unavailable for the direct conversation", application.ErrAgentToolInvocationDenied)
+		}
 	} else if err := s.authorizeWriteApproval(ctx, begin, invocation, descriptor); err != nil {
 		return nil, err
 	}
@@ -219,34 +229,59 @@ func (s *persistentAgentToolInvocationAuditServiceV1) authorizeWriteApproval(ctx
 }
 
 func (s *persistentAgentToolInvocationAuditServiceV1) verifyMessageActionReference(invocation *application.AgentToolInvocationV1, reference *application.AgentToolActionReferenceV1) error {
-	if reference == nil || reference.Validate() != nil || invocation.ApprovalUUID == "" {
+	if reference == nil || reference.Validate() != nil {
 		return application.ErrAgentToolInvocationConflict
 	}
 	wantCapability := application.AgentCapabilityAssistantReplySend
 	wantType := int8(model.MessageTypeAIText)
-	if reference.CommandKind == application.AgentMessageCommandSystemMessageV1 {
+	wantTargetType := int8(model.MessageTargetDirect)
+	if reference.CommandKind == application.AgentMessageCommandGroupReplyV1 {
+		wantCapability = application.AgentCapabilityGroupReplySend
+		wantTargetType = model.MessageTargetGroup
+	} else if reference.CommandKind == application.AgentMessageCommandSystemMessageV1 {
 		wantCapability = application.AgentCapabilitySystemMessageSend
 		wantType = model.MessageTypeSystem
 	}
-	if invocation.CapabilityID != wantCapability {
+	if invocation.CapabilityID != wantCapability || (reference.CommandKind == application.AgentMessageCommandSystemMessageV1 && invocation.ApprovalUUID == "") ||
+		((reference.CommandKind == application.AgentMessageCommandAssistantReplyV1 || reference.CommandKind == application.AgentMessageCommandGroupReplyV1) && invocation.ApprovalUUID != "") {
 		return application.ErrAgentToolInvocationConflict
 	}
 	clientMessageID, err := application.AgentCommandClientMessageIDV1(reference.CommandKind, reference.CommandID)
 	if err != nil {
 		return application.ErrAgentToolInvocationConflict
 	}
-	receipt, err := s.receipts.GetMessageCommandReceipt(invocation.AgentUUID, clientMessageID)
+	receipt, err := s.awaitMessageCommandReceipt(invocation.AgentUUID, clientMessageID)
 	if err != nil {
-		return fmt.Errorf("verify Agent Tool Message receipt: %w", err)
-	}
-	if receipt == nil {
-		return application.ErrAgentToolInvocationConflict
+		return err
 	}
 	message := receipt.Message
 	if receipt.Status != application.MessageCommandReceiptStatusCommitted || message == nil || message.UUID != strings.TrimSpace(reference.ResourceUUID) ||
-		message.ClientMessageID != clientMessageID || message.SenderUUID != invocation.AgentUUID || message.TargetUUID != invocation.PrincipalUUID ||
-		message.TargetType != model.MessageTargetDirect || message.ConversationKey != model.DirectConversationKey(invocation.AgentUUID, invocation.PrincipalUUID) || message.MessageType != wantType {
+		message.ClientMessageID != clientMessageID || message.SenderUUID != invocation.AgentUUID || message.TargetType != wantTargetType || message.MessageType != wantType {
+		return application.ErrAgentToolInvocationConflict
+	}
+	if reference.CommandKind == application.AgentMessageCommandGroupReplyV1 {
+		if message.TargetUUID == "" || message.ConversationKey != model.GroupConversationKey(message.TargetUUID) {
+			return application.ErrAgentToolInvocationConflict
+		}
+	} else if message.TargetUUID != invocation.PrincipalUUID || message.ConversationKey != model.DirectConversationKey(invocation.AgentUUID, invocation.PrincipalUUID) {
 		return application.ErrAgentToolInvocationConflict
 	}
 	return nil
+}
+
+func (s *persistentAgentToolInvocationAuditServiceV1) awaitMessageCommandReceipt(senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error) {
+	deadline := time.Now().Add(agentCommandReceiptRecoveryTimeoutV1)
+	for {
+		receipt, err := s.receipts.GetMessageCommandReceipt(senderUUID, clientMessageID)
+		if err != nil {
+			return nil, fmt.Errorf("verify Agent Tool Message receipt: %w", err)
+		}
+		if receipt != nil && receipt.Status != application.MessageCommandReceiptStatusAbsent {
+			return receipt, nil
+		}
+		if !time.Now().Before(deadline) {
+			return nil, application.ErrAgentToolInvocationConflict
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
 }

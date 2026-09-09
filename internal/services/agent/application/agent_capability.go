@@ -27,11 +27,12 @@ type LocalAgentCapabilityV1 struct {
 	messages      AgentCapabilityMessages
 	conversations AgentCapabilityConversations
 	commands      application.AgentCommandV1
+	search        application.SearchApplication
 }
 
 var _ application.AgentCapabilityV1 = (*LocalAgentCapabilityV1)(nil)
 
-func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCapabilityMessages, conversations AgentCapabilityConversations, commands application.AgentCommandV1) (*LocalAgentCapabilityV1, error) {
+func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCapabilityMessages, conversations AgentCapabilityConversations, commands application.AgentCommandV1, searches ...application.SearchApplication) (*LocalAgentCapabilityV1, error) {
 	if core == nil {
 		return nil, errors.New("Agent Capability Core dependency is required")
 	}
@@ -44,7 +45,14 @@ func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCa
 	if commands == nil {
 		return nil, errors.New("Agent Capability Command dependency is required")
 	}
-	return &LocalAgentCapabilityV1{core: core, messages: messages, conversations: conversations, commands: commands}, nil
+	var search application.SearchApplication
+	if len(searches) > 1 {
+		return nil, errors.New("Agent Capability accepts at most one Search dependency")
+	}
+	if len(searches) == 1 {
+		search = searches[0]
+	}
+	return &LocalAgentCapabilityV1{core: core, messages: messages, conversations: conversations, commands: commands, search: search}, nil
 }
 
 func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, invocation application.AgentInvocationV1, subjectUUID string) (*model.User, error) {
@@ -132,6 +140,31 @@ func (c *LocalAgentCapabilityV1) ReadConversation(_ context.Context, invocation 
 	return &application.AgentConversationReadV1{
 		Found: true, TargetUUID: targetUUID, TargetType: conversation.TargetType, Messages: messages,
 	}, nil
+}
+
+func (c *LocalAgentCapabilityV1) SearchConversations(_ context.Context, invocation application.AgentInvocationV1, text string, limit int) ([]*application.AgentConversationSearchResultV1, error) {
+	if c.search == nil || authorizeLocalAgentCapabilityForResourceV1(
+		invocation, application.AgentCapabilityConversationSearch, application.AgentResourceTypeConversation,
+		application.AgentResourceWildcard, application.AgentResourceActionSearch,
+	) != nil {
+		return nil, application.ErrAgentCapabilityDenied
+	}
+	documents, err := c.search.Search(strings.TrimSpace(invocation.PrincipalUUID), strings.TrimSpace(text), limit)
+	if err != nil {
+		return nil, fmt.Errorf("search Agent conversations: %w", err)
+	}
+	results := make([]*application.AgentConversationSearchResultV1, 0, len(documents))
+	for _, document := range documents {
+		if document == nil {
+			continue
+		}
+		results = append(results, &application.AgentConversationSearchResultV1{
+			MessageUUID: strings.TrimSpace(document.MessageUUID), ConversationKey: strings.TrimSpace(document.ConversationKey),
+			MessageSeq: document.MessageSeq, SenderUUID: strings.TrimSpace(document.SenderUUID),
+			Content: document.Content, SentAtUnixMillis: document.SentAt.UTC().UnixMilli(),
+		})
+	}
+	return results, nil
 }
 
 func (c *LocalAgentCapabilityV1) SendSystemMessage(ctx context.Context, invocation application.AgentInvocationV1, content string) (*model.Message, error) {

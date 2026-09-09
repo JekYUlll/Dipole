@@ -307,6 +307,54 @@ func TestPersistentAgentToolInvocationAuditBindsConsumedWriteApproval(t *testing
 	}
 }
 
+func TestPersistentAgentToolInvocationAuditAllowsScopedAssistantReplyWithoutApproval(t *testing.T) {
+	store := &agentToolAuditStoreStub{}
+	invocation := application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", Permissions: []string{application.AgentPermissionMessageWrite},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "direct:U100:UAI", Actions: []string{"write"}}},
+	}
+	service, err := NewPersistentAgentToolInvocationAuditServiceV1WithClock(
+		store, agentToolAuditResolverStub{invocation: invocation}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now,
+	)
+	if err != nil {
+		t.Fatalf("new audit service: %v", err)
+	}
+	record, err := service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
+		InvocationUUID: "INV-REPLY", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
+		ToolName: "dipole_assistant_reply", CapabilityID: application.AgentCapabilityAssistantReplySend, ArgumentsSHA256: testAuditSHA,
+	})
+	if err != nil || record.ApprovalUUID != "" || store.begun.CapabilityID != application.AgentCapabilityAssistantReplySend {
+		t.Fatalf("assistant reply record=%+v err=%v", record, err)
+	}
+	_, err = service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
+		InvocationUUID: "INV-REPLY-APPROVED", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
+		ToolName: "dipole_assistant_reply", CapabilityID: application.AgentCapabilityAssistantReplySend, ArgumentsSHA256: testAuditSHA, ApprovalUUID: "APR-1",
+	})
+	if !errors.Is(err, application.ErrAgentToolInvocationDenied) {
+		t.Fatalf("approval-bound assistant reply error = %v", err)
+	}
+}
+
+func TestPersistentAgentToolInvocationAuditAllowsAuthorizedGroupReplyWithoutApproval(t *testing.T) {
+	store := &agentToolAuditStoreStub{}
+	invocation := application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", Permissions: []string{application.AgentPermissionMessageWrite},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: "group:G100", Actions: []string{"write"}}},
+	}
+	service, err := NewPersistentAgentToolInvocationAuditServiceV1WithClock(
+		store, agentToolAuditResolverStub{invocation: invocation}, agentToolApprovalReaderStub{}, agentToolReceiptQueryStub{}, time.Now,
+	)
+	if err != nil {
+		t.Fatalf("new audit service: %v", err)
+	}
+	if _, err := service.Begin(context.Background(), application.AgentToolInvocationBeginV1{
+		InvocationUUID: "INV-GROUP-REPLY", TaskUUID: "TASK-1", RunUUID: "RUN-1", Transport: application.AgentToolTransportMCP,
+		ToolName: "dipole_group_reply", CapabilityID: application.AgentCapabilityGroupReplySend, ArgumentsSHA256: testAuditSHA,
+	}); err != nil || store.begun.ApprovalUUID != "" {
+		t.Fatalf("group reply record=%+v err=%v", store.begun, err)
+	}
+}
+
 func TestPersistentAgentToolInvocationAuditVerifiesMessageActionReference(t *testing.T) {
 	clientMessageID, err := application.AgentCommandClientMessageIDV1(application.AgentMessageCommandSystemMessageV1, "CMD-1")
 	if err != nil {

@@ -24,6 +24,7 @@ import (
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
 	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
+	searchapplication "github.com/JekYUlll/Dipole/internal/services/search/application"
 	wsTransport "github.com/JekYUlll/Dipole/internal/transport/ws"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -161,7 +162,11 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Command: %w", composeErr)
 		}
-		agentCapability, composeErr := agentapplication.NewLocalAgentCapabilityV1(localMessaging.Core, localMessaging.Messages, localMessaging.Conversations, agentCommands)
+		localSearch, composeErr := searchapplication.NewSearchApplication(localMessaging.Core, repos.Search)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose local Agent Search: %w", composeErr)
+		}
+		agentCapability, composeErr := agentapplication.NewLocalAgentCapabilityV1(localMessaging.Core, localMessaging.Messages, localMessaging.Conversations, agentCommands, localSearch)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
 		}
@@ -466,7 +471,11 @@ type aiAssistantUserRepository interface {
 
 func ensureAIAssistantUser(users aiAssistantUserRepository) error {
 	cfg := config.AIConfig()
-	if !cfg.Enabled {
+	runtimeMode, err := cfg.ResolvedRuntimeMode()
+	if err != nil {
+		return fmt.Errorf("resolve AI runtime mode: %w", err)
+	}
+	if !cfg.Enabled && runtimeMode != config.AIRuntimeRemote {
 		return nil
 	}
 

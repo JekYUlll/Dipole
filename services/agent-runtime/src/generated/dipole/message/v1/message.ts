@@ -181,6 +181,97 @@ export interface SendGroupFileRequest {
     clientMessageId: string;
 }
 /**
+ * @generated from protobuf message dipole.message.v1.SendSystemDirectMessageRequest
+ */
+export interface SendSystemDirectMessageRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string sender_user_id = 2
+     */
+    senderUserId: string;
+    /**
+     * @generated from protobuf field: string target_user_id = 3
+     */
+    targetUserId: string;
+    /**
+     * @generated from protobuf field: string content = 4
+     */
+    content: string;
+}
+/**
+ * @generated from protobuf message dipole.message.v1.SendSystemGroupMessageRequest
+ */
+export interface SendSystemGroupMessageRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string group_id = 2
+     */
+    groupId: string;
+    /**
+     * @generated from protobuf field: string content = 3
+     */
+    content: string;
+}
+/**
+ * These commands are reserved for Core after Agent capability authorization.
+ * They preserve AIText semantics without allowing a browser to forge an AI sender.
+ *
+ * @generated from protobuf message dipole.message.v1.SendAssistantTextRequest
+ */
+export interface SendAssistantTextRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string assistant_user_id = 2
+     */
+    assistantUserId: string;
+    /**
+     * @generated from protobuf field: string target_user_id = 3
+     */
+    targetUserId: string;
+    /**
+     * @generated from protobuf field: string content = 4
+     */
+    content: string;
+    /**
+     * @generated from protobuf field: string client_message_id = 5
+     */
+    clientMessageId: string;
+}
+/**
+ * @generated from protobuf message dipole.message.v1.SendAssistantGroupMessageRequest
+ */
+export interface SendAssistantGroupMessageRequest {
+    /**
+     * @generated from protobuf field: dipole.common.v1.RequestContext context = 1
+     */
+    context?: RequestContext;
+    /**
+     * @generated from protobuf field: string assistant_user_id = 2
+     */
+    assistantUserId: string;
+    /**
+     * @generated from protobuf field: string group_id = 3
+     */
+    groupId: string;
+    /**
+     * @generated from protobuf field: string content = 4
+     */
+    content: string;
+    /**
+     * @generated from protobuf field: string client_message_id = 5
+     */
+    clientMessageId: string;
+}
+/**
  * @generated from protobuf message dipole.message.v1.SendMessageResponse
  */
 export interface SendMessageResponse {
@@ -900,6 +991,294 @@ class SendGroupFileRequest$Type extends MessageType<SendGroupFileRequest> {
  */
 export const SendGroupFileRequest = new SendGroupFileRequest$Type();
 // @generated message type with reflection information, may provide speed optimized methods
+class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMessageRequest> {
+    constructor() {
+        super("dipole.message.v1.SendSystemDirectMessageRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "sender_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "target_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SendSystemDirectMessageRequest>): SendSystemDirectMessageRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.senderUserId = "";
+        message.targetUserId = "";
+        message.content = "";
+        if (value !== undefined)
+            reflectionMergePartial<SendSystemDirectMessageRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SendSystemDirectMessageRequest): SendSystemDirectMessageRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string sender_user_id */ 2:
+                    message.senderUserId = reader.string();
+                    break;
+                case /* string target_user_id */ 3:
+                    message.targetUserId = reader.string();
+                    break;
+                case /* string content */ 4:
+                    message.content = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SendSystemDirectMessageRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string sender_user_id = 2; */
+        if (message.senderUserId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.senderUserId);
+        /* string target_user_id = 3; */
+        if (message.targetUserId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.targetUserId);
+        /* string content = 4; */
+        if (message.content !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.content);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.message.v1.SendSystemDirectMessageRequest
+ */
+export const SendSystemDirectMessageRequest = new SendSystemDirectMessageRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SendSystemGroupMessageRequest$Type extends MessageType<SendSystemGroupMessageRequest> {
+    constructor() {
+        super("dipole.message.v1.SendSystemGroupMessageRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "group_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SendSystemGroupMessageRequest>): SendSystemGroupMessageRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.groupId = "";
+        message.content = "";
+        if (value !== undefined)
+            reflectionMergePartial<SendSystemGroupMessageRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SendSystemGroupMessageRequest): SendSystemGroupMessageRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string group_id */ 2:
+                    message.groupId = reader.string();
+                    break;
+                case /* string content */ 3:
+                    message.content = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SendSystemGroupMessageRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string group_id = 2; */
+        if (message.groupId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.groupId);
+        /* string content = 3; */
+        if (message.content !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.content);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.message.v1.SendSystemGroupMessageRequest
+ */
+export const SendSystemGroupMessageRequest = new SendSystemGroupMessageRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SendAssistantTextRequest$Type extends MessageType<SendAssistantTextRequest> {
+    constructor() {
+        super("dipole.message.v1.SendAssistantTextRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "assistant_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "target_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "client_message_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SendAssistantTextRequest>): SendAssistantTextRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.assistantUserId = "";
+        message.targetUserId = "";
+        message.content = "";
+        message.clientMessageId = "";
+        if (value !== undefined)
+            reflectionMergePartial<SendAssistantTextRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SendAssistantTextRequest): SendAssistantTextRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string assistant_user_id */ 2:
+                    message.assistantUserId = reader.string();
+                    break;
+                case /* string target_user_id */ 3:
+                    message.targetUserId = reader.string();
+                    break;
+                case /* string content */ 4:
+                    message.content = reader.string();
+                    break;
+                case /* string client_message_id */ 5:
+                    message.clientMessageId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SendAssistantTextRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string assistant_user_id = 2; */
+        if (message.assistantUserId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.assistantUserId);
+        /* string target_user_id = 3; */
+        if (message.targetUserId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.targetUserId);
+        /* string content = 4; */
+        if (message.content !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.content);
+        /* string client_message_id = 5; */
+        if (message.clientMessageId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.clientMessageId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.message.v1.SendAssistantTextRequest
+ */
+export const SendAssistantTextRequest = new SendAssistantTextRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
+class SendAssistantGroupMessageRequest$Type extends MessageType<SendAssistantGroupMessageRequest> {
+    constructor() {
+        super("dipole.message.v1.SendAssistantGroupMessageRequest", [
+            { no: 1, name: "context", kind: "message", T: () => RequestContext },
+            { no: 2, name: "assistant_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 3, name: "group_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 4, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "client_message_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+        ]);
+    }
+    create(value?: PartialMessage<SendAssistantGroupMessageRequest>): SendAssistantGroupMessageRequest {
+        const message = globalThis.Object.create((this.messagePrototype!));
+        message.assistantUserId = "";
+        message.groupId = "";
+        message.content = "";
+        message.clientMessageId = "";
+        if (value !== undefined)
+            reflectionMergePartial<SendAssistantGroupMessageRequest>(this, message, value);
+        return message;
+    }
+    internalBinaryRead(reader: IBinaryReader, length: number, options: BinaryReadOptions, target?: SendAssistantGroupMessageRequest): SendAssistantGroupMessageRequest {
+        let message = target ?? this.create(), end = reader.pos + length;
+        while (reader.pos < end) {
+            let [fieldNo, wireType] = reader.tag();
+            switch (fieldNo) {
+                case /* dipole.common.v1.RequestContext context */ 1:
+                    message.context = RequestContext.internalBinaryRead(reader, reader.uint32(), options, message.context);
+                    break;
+                case /* string assistant_user_id */ 2:
+                    message.assistantUserId = reader.string();
+                    break;
+                case /* string group_id */ 3:
+                    message.groupId = reader.string();
+                    break;
+                case /* string content */ 4:
+                    message.content = reader.string();
+                    break;
+                case /* string client_message_id */ 5:
+                    message.clientMessageId = reader.string();
+                    break;
+                default:
+                    let u = options.readUnknownField;
+                    if (u === "throw")
+                        throw new globalThis.Error(`Unknown field ${fieldNo} (wire type ${wireType}) for ${this.typeName}`);
+                    let d = reader.skip(wireType);
+                    if (u !== false)
+                        (u === true ? UnknownFieldHandler.onRead : u)(this.typeName, message, fieldNo, wireType, d);
+            }
+        }
+        return message;
+    }
+    internalBinaryWrite(message: SendAssistantGroupMessageRequest, writer: IBinaryWriter, options: BinaryWriteOptions): IBinaryWriter {
+        /* dipole.common.v1.RequestContext context = 1; */
+        if (message.context)
+            RequestContext.internalBinaryWrite(message.context, writer.tag(1, WireType.LengthDelimited).fork(), options).join();
+        /* string assistant_user_id = 2; */
+        if (message.assistantUserId !== "")
+            writer.tag(2, WireType.LengthDelimited).string(message.assistantUserId);
+        /* string group_id = 3; */
+        if (message.groupId !== "")
+            writer.tag(3, WireType.LengthDelimited).string(message.groupId);
+        /* string content = 4; */
+        if (message.content !== "")
+            writer.tag(4, WireType.LengthDelimited).string(message.content);
+        /* string client_message_id = 5; */
+        if (message.clientMessageId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.clientMessageId);
+        let u = options.writeUnknownFields;
+        if (u !== false)
+            (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);
+        return writer;
+    }
+}
+/**
+ * @generated MessageType for protobuf message dipole.message.v1.SendAssistantGroupMessageRequest
+ */
+export const SendAssistantGroupMessageRequest = new SendAssistantGroupMessageRequest$Type();
+// @generated message type with reflection information, may provide speed optimized methods
 class SendMessageResponse$Type extends MessageType<SendMessageResponse> {
     constructor() {
         super("dipole.message.v1.SendMessageResponse", [
@@ -1381,6 +1760,10 @@ export const MessageService = new ServiceType("dipole.message.v1.MessageService"
     { name: "SendGroupText", options: {}, I: SendGroupTextRequest, O: SendMessageResponse },
     { name: "SendDirectFile", options: {}, I: SendDirectFileRequest, O: SendMessageResponse },
     { name: "SendGroupFile", options: {}, I: SendGroupFileRequest, O: SendMessageResponse },
+    { name: "SendSystemDirectMessage", options: {}, I: SendSystemDirectMessageRequest, O: SendMessageResponse },
+    { name: "SendSystemGroupMessage", options: {}, I: SendSystemGroupMessageRequest, O: SendMessageResponse },
+    { name: "SendAssistantText", options: {}, I: SendAssistantTextRequest, O: SendMessageResponse },
+    { name: "SendAssistantGroupMessage", options: {}, I: SendAssistantGroupMessageRequest, O: SendMessageResponse },
     { name: "GetMessageCommandReceipt", options: {}, I: GetMessageCommandReceiptRequest, O: GetMessageCommandReceiptResponse },
     { name: "ListDirectHistory", options: {}, I: ListDirectHistoryRequest, O: ListMessagesResponse },
     { name: "ListGroupHistory", options: {}, I: ListGroupHistoryRequest, O: ListMessagesResponse },

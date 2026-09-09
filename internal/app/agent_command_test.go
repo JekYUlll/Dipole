@@ -50,6 +50,21 @@ func (s *agentCommandMessagesStub) SendSystemDirectMessageCommandContext(ctx con
 	return commandStubMessage("M-SYSTEM", sender, target, content, clientMessageID, model.MessageTypeSystem), nil
 }
 
+func (s *agentCommandMessagesStub) SendAssistantGroupMessageContext(ctx context.Context, sender, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	s.record(ctx, application.AgentMessageCommandGroupReplyV1, sender, groupUUID, content, clientMessageID)
+	if s.sendErr != nil {
+		return nil, nil, s.sendErr
+	}
+	if s.sendMessage != nil {
+		return s.sendMessage, nil, nil
+	}
+	return &model.Message{
+		UUID: "M-GROUP-REPLY", SenderUUID: sender, TargetUUID: groupUUID, TargetType: model.MessageTargetGroup,
+		ConversationKey: model.GroupConversationKey(groupUUID), Content: content,
+		ClientMessageID: clientMessageID, MessageType: model.MessageTypeAIText,
+	}, nil, nil
+}
+
 func (s *agentCommandMessagesStub) GetMessageCommandReceiptContext(ctx context.Context, sender, clientMessageID string) (*application.MessageCommandReceipt, error) {
 	s.receiptSender, s.receiptClientID = sender, clientMessageID
 	s.receiptContextErr = ctx.Err()
@@ -137,6 +152,38 @@ func TestLocalAgentCommandV1UsesStableIdempotencyKey(t *testing.T) {
 	}
 	if first.ClientMessageID == "" || first.ClientMessageID != second.ClientMessageID {
 		t.Fatalf("command replay changed idempotency key: first=%q second=%q", first.ClientMessageID, second.ClientMessageID)
+	}
+}
+
+func TestLocalAgentCommandV1SendsAssistantReplyToAuthorizedGroup(t *testing.T) {
+	t.Parallel()
+
+	messages := &agentCommandMessagesStub{}
+	commands, err := NewLocalAgentCommandV1(messages)
+	if err != nil {
+		t.Fatalf("new Agent Command: %v", err)
+	}
+	invocation := agentCapabilityTestInvocation()
+	invocation.ResourceScopes = []application.AgentResourceScopeV1{{
+		ResourceType: application.AgentResourceTypeConversation,
+		ResourceID:   model.GroupConversationKey("G100"),
+		Actions:      []string{application.AgentResourceActionWrite},
+	}}
+	message, err := commands.SendMessage(context.Background(), application.AgentMessageCommandV1{
+		CommandID:       "trigger:M100:group-reply",
+		Kind:            application.AgentMessageCommandGroupReplyV1,
+		Invocation:      invocation,
+		ConversationKey: model.GroupConversationKey("G100"),
+		Content:         "summary",
+	})
+	if err != nil {
+		t.Fatalf("send group Agent Message Command: %v", err)
+	}
+	if messages.kind != application.AgentMessageCommandGroupReplyV1 || messages.sender != "UAI" || messages.target != "G100" {
+		t.Fatalf("unexpected group command route: %+v", messages)
+	}
+	if message.TargetType != model.MessageTargetGroup || message.ConversationKey != model.GroupConversationKey("G100") || message.MessageType != model.MessageTypeAIText {
+		t.Fatalf("unexpected group reply: %+v", message)
 	}
 }
 

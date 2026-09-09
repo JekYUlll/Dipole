@@ -20,6 +20,8 @@ import (
 	platformRuntime "github.com/JekYUlll/Dipole/internal/platform/runtime"
 	platformStorage "github.com/JekYUlll/Dipole/internal/platform/storage"
 	"github.com/JekYUlll/Dipole/internal/server"
+	agentapplication "github.com/JekYUlll/Dipole/internal/services/agent/application"
+	agentmysql "github.com/JekYUlll/Dipole/internal/services/agent/infrastructure/mysql"
 	coremysql "github.com/JekYUlll/Dipole/internal/services/core/infrastructure/mysql"
 	"go.uber.org/zap"
 )
@@ -32,6 +34,7 @@ type CoreRuntime struct {
 	coreRPC       *InternalRPCServer
 	metrics       *platformObservability.MetricsServer
 	messageSender *lazyCoreMessageSender
+	search        *lazyCoreSearchApplication
 }
 
 func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
@@ -62,6 +65,10 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 	}
 	if err := ensureAIAssistantUser(coreRepos.Users); err != nil {
 		return nil, fmt.Errorf("ensure AI assistant user: %w", err)
+	}
+	agentRepos, err := agentmysql.NewProcessRepositories(platformmysql.SQLDB)
+	if err != nil {
+		return nil, fmt.Errorf("compose Agent repositories: %w", err)
 	}
 	if err := platformBloom.Init(); err != nil {
 		return nil, fmt.Errorf("Core bloom filter init failed: %w", err)
@@ -104,6 +111,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		runtime.messageSender = newLazyCoreMessageSender(config.InternalRPCConfig())
 		systemMessages = runtime.messageSender
 	}
+	runtime.search = newLazyCoreSearchApplication(config.InternalRPCConfig())
 	cleanup := func() { runtime.Close() }
 	runtime.server = server.NewWithDependencies(processRepos, server.Dependencies{Messaging: messaging, SystemMessages: systemMessages})
 	if err := RegisterCoreProjectionKafkaHandlers(messaging); err != nil {
@@ -119,7 +127,75 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 
 	rpcCfg := config.InternalRPCConfig()
 	if rpcCfg.Enabled {
-		runtime.coreRPC, err = NewCoreRPCServer(rpcCfg, messaging.Core)
+		if runtime.messageSender == nil {
+			cleanup()
+			return nil, fmt.Errorf("Agent RPC requires core.message.transport=grpc")
+		}
+		permissions, scopes := applicationPort.EmbeddedAgentPolicyGrantV1()
+		if err := agentapplication.EnsureEmbeddedAgentDefinitionV1(ctx, agentRepos.Policy, "dipole", config.AIConfig().AssistantUUID, permissions, scopes); err != nil {
+			cleanup()
+			return nil, fmt.Errorf("ensure embedded Agent Definition: %w", err)
+		}
+		commands, composeErr := agentapplication.NewLocalAgentCommandV1(runtime.messageSender)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent Command: %w", composeErr)
+		}
+		agentCapability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, runtime.messageSender, messaging.Conversations, commands, runtime.search)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent Capability: %w", composeErr)
+		}
+		resolver, composeErr := agentapplication.NewPersistentAgentInvocationResolverV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent resolver: %w", composeErr)
+		}
+		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent admission: %w", composeErr)
+		}
+		approvals, composeErr := agentapplication.NewPersistentAgentApprovalServiceV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent approvals: %w", composeErr)
+		}
+		controls, composeErr := agentapplication.NewPersistentAgentTaskControlAuthorizerV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent controls: %w", composeErr)
+		}
+		projection, composeErr := agentapplication.NewPersistentAgentTaskWorkflowProjectionServiceV1(agentRepos.Policy)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent projection: %w", composeErr)
+		}
+		repairs, composeErr := agentapplication.NewPersistentAgentWorkflowRepairAuditServiceV1(agentRepos.Policy, agentRepos.Repairs)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent repair audit: %w", composeErr)
+		}
+		toolAudits, composeErr := agentapplication.NewPersistentAgentToolInvocationAuditServiceV1(agentRepos.ToolAudits, resolver, agentRepos.Policy, runtime.messageSender)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent Tool audit: %w", composeErr)
+		}
+		messageCommands, composeErr := agentapplication.NewAgentMessageCommandExecutionV1(agentRepos.ToolAudits, resolver, commands)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
+		}
+		approvalGrants, composeErr := agentapplication.NewPersistentAgentApprovalGrantResolverV1(agentRepos.ApprovalGrants)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent approval grants: %w", composeErr)
+		}
+		runtime.coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
+			rpcCfg, messaging.Core, agentCapability, resolver, admission, approvals, controls, projection, repairs,
+			nil, nil, nil, nil, toolAudits, nil, nil, messageCommands, approvalGrants,
+			nil, nil, nil, nil, nil, nil, agentRepos.TaskTimeline,
+		)
 		if err != nil {
 			cleanup()
 			return nil, fmt.Errorf("initialize Core capability RPC: %w", err)
@@ -172,6 +248,12 @@ func (r *CoreRuntime) Close() {
 			logger.Warn("Core Message sender close failed", zap.Error(err))
 		}
 		r.messageSender = nil
+	}
+	if r.search != nil {
+		if err := r.search.Close(); err != nil {
+			logger.Warn("Core Search client close failed", zap.Error(err))
+		}
+		r.search = nil
 	}
 	if err := platformRuntime.CloseMetrics(r.metrics); err != nil {
 		logger.Warn("Core metrics close failed", zap.Error(err))

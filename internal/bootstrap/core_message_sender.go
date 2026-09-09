@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/JekYUlll/Dipole/internal/application"
 	"github.com/JekYUlll/Dipole/internal/config"
 	"github.com/JekYUlll/Dipole/internal/model"
 	messagegrpc "github.com/JekYUlll/Dipole/internal/transport/grpc/message"
@@ -39,6 +40,58 @@ func (s *lazyCoreMessageSender) SendSystemGroupMessage(groupUUID, content string
 		return err
 	}
 	return client.SendSystemGroupMessage(groupUUID, content)
+}
+
+func (s *lazyCoreMessageSender) SendAssistantTextMessageContext(ctx context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	client, err := s.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.SendAssistantTextMessageContext(ctx, assistantUUID, targetUUID, content, clientMessageID)
+}
+
+func (s *lazyCoreMessageSender) SendSystemDirectMessageCommandContext(ctx context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	client, err := s.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.SendSystemDirectMessageContext(ctx, senderUUID, targetUUID, content, clientMessageID)
+}
+
+func (s *lazyCoreMessageSender) SendAssistantGroupMessageContext(ctx context.Context, assistantUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	client, err := s.getClient()
+	if err != nil {
+		return nil, nil, err
+	}
+	return client.SendAssistantGroupMessageContext(ctx, assistantUUID, groupUUID, content, clientMessageID)
+}
+
+func (s *lazyCoreMessageSender) GetMessageCommandReceiptContext(ctx context.Context, senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error) {
+	client, err := s.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.GetMessageCommandReceiptContext(ctx, senderUUID, clientMessageID)
+}
+
+func (s *lazyCoreMessageSender) GetMessageCommandReceipt(senderUUID, clientMessageID string) (*application.MessageCommandReceipt, error) {
+	return s.GetMessageCommandReceiptContext(context.Background(), senderUUID, clientMessageID)
+}
+
+func (s *lazyCoreMessageSender) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {
+	client, err := s.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.ListDirectMessages(currentUserUUID, targetUUID, beforeID, limit)
+}
+
+func (s *lazyCoreMessageSender) ListGroupMessages(currentUserUUID, groupUUID string, beforeID uint, limit int) ([]*model.Message, error) {
+	client, err := s.getClient()
+	if err != nil {
+		return nil, err
+	}
+	return client.ListGroupMessages(currentUserUUID, groupUUID, beforeID, limit)
 }
 
 func (s *lazyCoreMessageSender) getClient() (*messagegrpc.Client, error) {

@@ -136,6 +136,15 @@ export interface ConversationReadResult {
   readonly messages: readonly AgentMessage[];
 }
 
+export interface ConversationSearchResult {
+  readonly messageId: string;
+  readonly conversationKey: string;
+  readonly messageSeq: string;
+  readonly senderId: string;
+  readonly content: string;
+  readonly sentAtUnixMs: string;
+}
+
 export interface AgentTaskControlAuthorization {
   readonly taskId: string;
   readonly taskStatus: string;
@@ -229,7 +238,7 @@ export interface AgentToolInvocationBegin {
 export interface AgentToolActionReference {
   readonly resourceType: "message";
   readonly resourceId: string;
-  readonly commandKind: "assistant_reply" | "system_message";
+  readonly commandKind: "assistant_reply" | "group_reply" | "system_message";
   readonly commandId: string;
 }
 
@@ -237,8 +246,9 @@ export interface AgentMessageCommandExecutionInput {
   readonly taskId: string;
   readonly runId: string;
   readonly invocationId: string;
-  readonly commandKind: "assistant_reply" | "system_message";
+  readonly commandKind: "assistant_reply" | "group_reply" | "system_message";
   readonly content: string;
+  readonly conversationKey?: string;
   readonly requestId?: string;
   readonly traceId?: string;
 }
@@ -260,9 +270,6 @@ export class AgentCapabilityRPCClient {
   ) {
     if (!secret.trim()) {
       throw new Error("Agent Capability RPC secret is required");
-    }
-    if (mode === "active" && !candidateVersion.trim()) {
-      throw new Error("Active Agent Capability RPC requires a candidate version");
     }
   }
 
@@ -592,6 +599,40 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async searchConversations(context: ExecutionContext, query: string, limit: number): Promise<readonly ConversationSearchResult[]> {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery || normalizedQuery.length > 512 || !Number.isInteger(limit) || limit < 1 || limit > 50) {
+      throw new Error("Agent conversation search request is invalid");
+    }
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.searchConversations({
+        context: this.requestContext(context.requestId, context.traceId),
+        taskId: context.taskId,
+        runId: context.runId,
+        query: normalizedQuery,
+        limit
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent conversation search returned no response"));
+          return;
+        }
+        if (response.messages.length > limit) {
+          reject(new Error("Agent conversation search returned too many messages"));
+          return;
+        }
+        resolve(response.messages.map((item) => ({
+          messageId: item.messageId,
+          conversationKey: item.conversationKey,
+          messageSeq: item.messageSeq.toString(),
+          senderId: item.senderId,
+          content: item.content,
+          sentAtUnixMs: item.sentAtUnixMs.toString()
+        })));
+      });
+    });
+  }
+
   async authorizeTaskControl(taskId: string, principalUserId: string, context?: { requestId?: string; traceId?: string }): Promise<AgentTaskControlAuthorization> {
     const metadata = this.metadata(context?.requestId, context?.traceId);
     return new Promise((resolve, reject) => {
@@ -879,7 +920,8 @@ export class AgentCapabilityRPCClient {
     return new Promise((resolve, reject) => {
       this.rpc.executeMcpMessageCommand({
         context: this.requestContext(input.requestId, input.traceId), taskId: input.taskId, runId: input.runId,
-        invocationId: input.invocationId, commandKind: input.commandKind, content
+        invocationId: input.invocationId, commandKind: input.commandKind, content,
+        conversationKey: input.conversationKey?.trim() ?? ""
       }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
         if (error !== null || response?.actionReference === undefined) {
           reject(error ?? new Error("Agent Message Command returned no action reference"));

@@ -67,8 +67,9 @@ export class McpWriteApprovalGate {
       grant = await this.grants.resolve({
         capabilityId: prepared.descriptor.id, resource: prepared.resource, arguments: prepared.input, context
       });
-    } catch {
-      throw new Error("MCP write Approval is unavailable");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "unknown error";
+      throw new Error(`MCP write Approval is unavailable: ${reason}`);
     }
     const scope = {
       resourceType: prepared.resource.resourceType,

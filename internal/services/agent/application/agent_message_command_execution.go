@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/JekYUlll/Dipole/internal/application"
+	"github.com/JekYUlll/Dipole/internal/model"
 	"github.com/JekYUlll/Dipole/internal/platform/eventlineage"
 )
 
@@ -27,7 +28,7 @@ func NewAgentMessageCommandExecutionV1(tools application.AgentToolInvocationRead
 
 func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, request application.AgentMessageCommandExecutionRequestV1) (*application.AgentMessageCommandExecutionResultV1, error) {
 	request.TaskUUID, request.RunUUID, request.InvocationUUID = strings.TrimSpace(request.TaskUUID), strings.TrimSpace(request.RunUUID), strings.TrimSpace(request.InvocationUUID)
-	request.Content = strings.TrimSpace(request.Content)
+	request.Content, request.ConversationKey = strings.TrimSpace(request.Content), strings.TrimSpace(request.ConversationKey)
 	if request.TaskUUID == "" || request.RunUUID == "" || request.InvocationUUID == "" || request.Content == "" {
 		return nil, application.ErrAgentCommandDenied
 	}
@@ -40,14 +41,23 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 		return nil, fmt.Errorf("load Agent Tool invocation for Message Command: %w", err)
 	}
 	if tool == nil || tool.InvocationUUID != request.InvocationUUID || tool.TaskUUID != request.TaskUUID || tool.RunUUID != request.RunUUID ||
-		tool.Transport != application.AgentToolTransportMCP || tool.Status != application.AgentToolInvocationStatusRunning || strings.TrimSpace(tool.ApprovalUUID) == "" || tool.CapabilityID != wantCapability {
+		tool.Transport != application.AgentToolTransportMCP || tool.Status != application.AgentToolInvocationStatusRunning || tool.CapabilityID != wantCapability ||
+		(request.Kind == application.AgentMessageCommandSystemMessageV1 && strings.TrimSpace(tool.ApprovalUUID) == "") ||
+		((request.Kind == application.AgentMessageCommandAssistantReplyV1 || request.Kind == application.AgentMessageCommandGroupReplyV1) && strings.TrimSpace(tool.ApprovalUUID) != "") {
 		return nil, application.ErrAgentCommandDenied
 	}
 	invocation, err := s.resolver.Resolve(ctx, request.TaskUUID, request.RunUUID)
 	if err != nil || invocation.TenantID != tool.TenantID || invocation.PrincipalUUID != tool.PrincipalUUID || invocation.AgentUUID != tool.AgentUUID {
 		return nil, application.ErrAgentCommandDenied
 	}
-	wantArgumentsSHA, err := application.AgentMessageCommandToolArgumentsSHA256V1(invocation.PrincipalUUID, invocation.AgentUUID, request.Content)
+	conversationKey := request.ConversationKey
+	if conversationKey == "" {
+		conversationKey = model.DirectConversationKey(invocation.PrincipalUUID, invocation.AgentUUID)
+	}
+	if request.Kind == application.AgentMessageCommandGroupReplyV1 && !strings.HasPrefix(conversationKey, "group:") {
+		return nil, application.ErrAgentCommandDenied
+	}
+	wantArgumentsSHA, err := application.AgentMessageCommandToolArgumentsSHA256ForConversationV1(request.Content, conversationKey)
 	if err != nil || tool.ArgumentsSHA256 != wantArgumentsSHA {
 		return nil, application.ErrAgentCommandDenied
 	}
@@ -57,7 +67,7 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 	}
 	invocation.RequestID, invocation.TraceID = strings.TrimSpace(tool.RequestID), strings.TrimSpace(tool.TraceID)
 	ctx = eventlineage.AgentAction(ctx, invocation.AgentUUID, request.TaskUUID, "")
-	message, err := s.commands.SendMessage(ctx, application.AgentMessageCommandV1{CommandID: commandID, Kind: request.Kind, Invocation: invocation, Content: request.Content})
+	message, err := s.commands.SendMessage(ctx, application.AgentMessageCommandV1{CommandID: commandID, Kind: request.Kind, Invocation: invocation, Content: request.Content, ConversationKey: conversationKey})
 	if err != nil {
 		return nil, fmt.Errorf("execute Agent Message Command: %w", err)
 	}

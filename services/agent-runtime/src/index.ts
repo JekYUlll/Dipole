@@ -30,11 +30,6 @@ import {
   createAgentObservabilityRuntime,
   loadAgentObservabilityConfig
 } from "./observability/agent-observability-runtime.js";
-import {
-  startExternalMcpProductionShadow,
-  validateExternalMcpProductionShadowMode
-} from "./runtime/external-mcp-production-shadow.js";
-import type { ExternalMcpShadowProcess } from "./runtime/external-mcp-shadow-process.js";
 import { SubscriptionShadowMetrics } from "./observability/subscription-shadow-metrics.js";
 
 const port = Number.parseInt(process.env.DIPOLE_AGENT_PORT ?? "8091", 10);
@@ -42,20 +37,14 @@ const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
 let ready = false;
 const shadowConfig = loadShadowRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
-if (shadowConfig.runtimeMode === "active" && temporalConfig.activityMode !== "read_active") {
-  throw new Error("Active Agent Runtime requires read_active Temporal Activities");
+if (shadowConfig.runtimeMode !== temporalConfig.runtimeMode) {
+  throw new Error("Agent Runtime and Temporal runtime modes must match");
 }
 if (shadowConfig.runtimeMode === "active" && !temporalConfig.enabled) {
   throw new Error("Active Agent Runtime requires Temporal");
 }
 const observabilityRuntime = createAgentObservabilityRuntime(loadAgentObservabilityConfig(process.env));
 const subscriptionShadowMetrics = new SubscriptionShadowMetrics(shadowConfig.subscriptionShadowEnabled);
-const externalMcpEnvironment = Object.freeze({ ...process.env });
-const externalMcpShadowEnabled = validateExternalMcpProductionShadowMode(
-  externalMcpEnvironment,
-  shadowConfig,
-  temporalConfig
-);
 const controlEnabled = process.env.DIPOLE_AGENT_CONTROL_ENABLED?.trim().toLowerCase() === "true";
 const controlSecret = process.env.DIPOLE_AGENT_CONTROL_SECRET ?? process.env.DIPOLE_INTERNAL_RPC_SHARED_SECRET ?? "";
 const mcpEnabled = process.env.DIPOLE_AGENT_MCP_SERVER_ENABLED?.trim().toLowerCase() === "true";
@@ -79,23 +68,21 @@ if (mcpEnabled) {
 }
 observabilityRuntime.start();
 let temporalRuntime: TemporalWorkerRuntime | undefined;
-let temporalRPC: ReturnType<typeof createAgentCapabilityRPC> | undefined;
 const controlRPC = controlEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
 const mcpRPC = mcpEnabled ? createAgentCapabilityRPC(shadowConfig) : undefined;
-const temporalReadResources = temporalConfig.enabled && (temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active")
+const temporalReadResources = temporalConfig.enabled && shadowConfig.enabled && shadowConfig.capabilityRpc.enabled
   ? createTemporalReadActivityResources(shadowConfig)
   : undefined;
 let temporalDispatcher: TemporalTaskDispatchRuntime | undefined;
-if (temporalConfig.enabled && (((temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active") && shadowConfig.enabled) || controlEnabled)) {
+if (temporalConfig.enabled && (shadowConfig.enabled || controlEnabled)) {
   temporalDispatcher = createTemporalTaskDispatchRuntime(temporalConfig);
 }
-const shadowRuntime = shadowConfig.enabled && !externalMcpShadowEnabled
+const shadowRuntime = shadowConfig.enabled
   ? createKafkaShadowRuntime(
     shadowConfig, temporalDispatcher, undefined,
     shadowConfig.subscriptionShadowEnabled ? subscriptionShadowMetrics : undefined
   )
   : undefined;
-let externalMcpShadowProcess: ExternalMcpShadowProcess | undefined;
 let serverStarted = false;
 let shadowStarted = false;
 let temporalStarted = false;
@@ -147,14 +134,6 @@ const stop = (): Promise<void> => {
   stopPromise ??= (async () => {
     ready = false;
     const failures: unknown[] = [];
-    if (externalMcpShadowProcess !== undefined) {
-      try {
-        await externalMcpShadowProcess.stop();
-      } catch (error) {
-        failures.push(error);
-      }
-      externalMcpShadowProcess = undefined;
-    }
     if (shadowStarted && shadowRuntime !== undefined) {
       try {
         await shadowRuntime.stop();
@@ -187,8 +166,6 @@ const stop = (): Promise<void> => {
       }
       temporalReadResourcesOpen = false;
     }
-    temporalRPC?.close();
-    temporalRPC = undefined;
     controlRPC?.close();
     if (serverStarted) {
       try {
@@ -227,22 +204,13 @@ const onTemporalFailure = (error: unknown): void => {
   });
 };
 
-if (temporalConfig.enabled && !externalMcpShadowEnabled) {
+if (temporalConfig.enabled) {
   let activities: AgentTaskWorkerActivities = foundationAgentTaskActivities;
-  if (temporalConfig.activityMode === "persistent_shadow") {
-    if (!shadowConfig.capabilityRpc.enabled) {
-      throw new Error("Persistent Temporal shadow Activities require Agent Capability RPC");
-    }
-    temporalRPC = createAgentCapabilityRPC(shadowConfig);
-    activities = {
-      ...foundationAgentTaskActivities,
-      ...createPersistentAgentTaskLifecycleActivities(temporalRPC.client)
-    };
-  } else if (temporalConfig.activityMode === "read_shadow" || temporalConfig.activityMode === "read_active") {
+  if (temporalReadResources !== undefined) {
     activities = {
       ...foundationAgentTaskActivities,
       ...createPersistentAgentTaskLifecycleActivities(temporalReadResources!.client),
-      ...temporalReadResources!.activities
+      ...temporalReadResources.activities
     };
   }
   temporalRuntime = createTemporalWorkerRuntime(
@@ -262,16 +230,6 @@ try {
   if (temporalRuntime !== undefined) {
     temporalStarted = true;
     await temporalRuntime.start();
-  }
-  if (externalMcpShadowEnabled) {
-    externalMcpShadowProcess = await startExternalMcpProductionShadow(
-      externalMcpEnvironment,
-      shadowConfig,
-      temporalConfig,
-      foundationAgentTaskActivities,
-      {},
-      onTemporalFailure
-    );
   }
   if (temporalDispatcher !== undefined) {
     temporalDispatcherStarted = true;

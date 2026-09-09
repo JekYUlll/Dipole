@@ -1367,7 +1367,7 @@ func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.
 	}
 	result, err := s.messageCommands.Execute(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMessageCommandExecutionRequestV1{
 		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), InvocationUUID: request.GetInvocationId(),
-		Kind: application.AgentMessageCommandKindV1(request.GetCommandKind()), Content: request.GetContent(),
+		Kind: application.AgentMessageCommandKindV1(request.GetCommandKind()), Content: request.GetContent(), ConversationKey: request.GetConversationKey(),
 	})
 	if err != nil {
 		switch {
@@ -1376,7 +1376,7 @@ func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.
 		case errors.Is(err, application.ErrAgentCommandConflict):
 			return nil, status.Error(codes.Aborted, "Agent Message Command result conflicts")
 		default:
-			return nil, status.Error(codes.Internal, "Agent Message Command execution failed")
+			return nil, status.Errorf(codes.Internal, "Agent Message Command execution failed: %v", err)
 		}
 	}
 	return &agentv1.ExecuteMcpMessageCommandResponse{
@@ -1408,7 +1408,7 @@ func mapAgentToolInvocationErrorV1(err error) error {
 	case errors.Is(err, application.ErrAgentToolInvocationConflict):
 		return status.Error(codes.Aborted, "Agent Tool invocation state conflicts")
 	default:
-		return status.Error(codes.Internal, "Agent Tool invocation audit failed")
+		return status.Errorf(codes.Internal, "Agent Tool invocation audit failed: %v", err)
 	}
 }
 
@@ -1444,7 +1444,7 @@ func (s *Server) ProjectTaskWorkflowState(ctx context.Context, request *agentv1.
 			TaskUUID: request.GetTaskId(), WorkflowID: request.GetWorkflowId(), RunID: request.GetWorkflowRunId(),
 			Status: application.AgentTaskWorkflowStatusV1(request.GetWorkflowStatus()), Revision: request.GetWorkflowRevision(),
 		},
-		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		RunUUID: request.GetRunId(), RuntimeID: "dipole-agent",
 	})
 	if err != nil {
 		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
@@ -1498,7 +1498,7 @@ func (s *Server) RequestApproval(ctx context.Context, request *agentv1.RequestAp
 		return nil, status.Error(codes.InvalidArgument, "Agent Approval request is invalid")
 	}
 	approval, err := s.approvals.Request(ctx, application.AgentApprovalRequestV1{
-		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "active",
 		Approval: application.AgentApprovalV1{
 			ApprovalUUID: request.GetApprovalId(), TaskUUID: request.GetTaskId(), CapabilityID: request.GetCapabilityId(),
 			ResourceScope: application.AgentResourceScopeV1{ResourceType: request.GetResourceScope().GetResourceType(), ResourceID: request.GetResourceScope().GetResourceId(), Actions: request.GetResourceScope().GetActions()},
@@ -1525,7 +1525,7 @@ func (s *Server) ResolveApproval(ctx context.Context, request *agentv1.ResolveAp
 		return nil, status.Error(codes.InvalidArgument, "Agent Approval resolution is invalid")
 	}
 	approval, err := s.approvals.Resolve(ctx, application.AgentApprovalResolutionV1{
-		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "shadow",
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), RuntimeID: "dipole-agent", Mode: "active",
 		ApprovalUUID: request.GetApprovalId(), ActorUUID: request.GetActorUserId(), Decision: application.AgentApprovalDecisionV1(request.GetDecision()),
 	})
 	if err != nil {
@@ -1776,6 +1776,45 @@ func (s *Server) ReadConversation(ctx context.Context, request *agentv1.ReadConv
 		if message != nil {
 			response.Messages = append(response.Messages, grpcmapping.MessageToProto(message))
 		}
+	}
+	return response, nil
+}
+
+func (s *Server) SearchConversations(ctx context.Context, request *agentv1.SearchConversationsRequest) (*agentv1.SearchConversationsResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	query := strings.TrimSpace(request.GetQuery())
+	limit := int(request.GetLimit())
+	if query == "" || limit < 1 || limit > 50 {
+		return nil, status.Error(codes.InvalidArgument, "query is required and limit must be between 1 and 50")
+	}
+	invocation, err := s.resolver.Resolve(ctx, request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task policy denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task policy lookup failed")
+	}
+	items, err := s.capability.SearchConversations(ctx, invocation, query, limit)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentCapabilityDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Capability denied")
+		}
+		return nil, status.Errorf(codes.Internal, "Agent conversation search failed: %v", err)
+	}
+	response := &agentv1.SearchConversationsResponse{Messages: make([]*agentv1.SearchConversationResult, 0, len(items))}
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		response.Messages = append(response.Messages, &agentv1.SearchConversationResult{
+			MessageId: item.MessageUUID, ConversationKey: item.ConversationKey, MessageSeq: item.MessageSeq,
+			SenderId: item.SenderUUID, Content: item.Content, SentAtUnixMs: item.SentAtUnixMillis,
+		})
 	}
 	return response, nil
 }

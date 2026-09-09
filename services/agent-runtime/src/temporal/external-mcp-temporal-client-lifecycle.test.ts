@@ -21,7 +21,7 @@ const config: TemporalRuntimeConfig = {
   address: "127.0.0.1:7233",
   namespace: "default",
   taskQueue: "dipole-agent-task-v1",
-  activityMode: "persistent_shadow"
+  runtimeMode: "shadow"
 };
 const event: AgentEvent = {
   eventId: "EVENT-1",

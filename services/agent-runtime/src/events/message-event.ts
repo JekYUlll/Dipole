@@ -13,7 +13,7 @@ const messagePayloadSchema = z.object({
   message_seq: z.number().int().min(1),
   sender_uuid: z.string().trim().min(1),
   target_uuid: z.string().trim().min(1),
-  target_type: z.literal(0),
+  target_type: z.union([z.literal(0), z.literal(1)]),
   message_type: z.number().int(),
   content: z.string(),
   sent_at: z.iso.datetime()
@@ -37,7 +37,7 @@ const messageCreatedEnvelopeSchema = z.object({
   request_id: z.string().trim().min(1).optional(),
   trace_id: z.string().trim().min(1).optional(),
   lineage: wireLineageSchema.optional(),
-  event_type: z.literal("message.direct.created"),
+  event_type: z.enum(["message.direct.created", "message.group.created"]),
   version: z.string().regex(/^v1(?:\.[0-9]+)*$/, "unsupported version"),
   source: z.literal("dipole"),
   occurred_at: z.iso.datetime(),
@@ -74,4 +74,8 @@ export function decodeMessageCreatedEvent(raw: string): DecodedMessageCreatedEve
     ...(envelope.request_id === undefined ? {} : { requestId: envelope.request_id }),
     ...(envelope.trace_id === undefined ? {} : { traceId: envelope.trace_id })
   };
+}
+
+export function isAssistantMention(content: string): boolean {
+  return /(^|\s)@(?:dipole\s+)?ai(?=$|\s|[,:，。：!?！？])/i.test(content.trim());
 }

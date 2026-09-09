@@ -16,19 +16,23 @@ const (
 	AgentCapabilityDirectMessagesRead = "message.direct.read"
 	AgentCapabilityConversationsList  = "conversation.list"
 	AgentCapabilityConversationRead   = "conversation.read"
+	AgentCapabilityConversationSearch = "conversation.search"
 	AgentCapabilityAssistantReplySend = "message.assistant_reply.send"
+	AgentCapabilityGroupReplySend     = "message.group_reply.send"
 	AgentCapabilitySystemMessageSend  = "message.system.send"
 
-	AgentPermissionUserProfileRead  = "user.profile.read"
-	AgentPermissionConversationList = "conversation.list"
-	AgentPermissionConversationRead = "conversation.read"
-	AgentPermissionMessageWrite     = "message.write"
+	AgentPermissionUserProfileRead    = "user.profile.read"
+	AgentPermissionConversationList   = "conversation.list"
+	AgentPermissionConversationRead   = "conversation.read"
+	AgentPermissionConversationSearch = "conversation.search"
+	AgentPermissionMessageWrite       = "message.write"
 
 	AgentResourceTypeUser         = "user"
 	AgentResourceTypeConversation = "conversation"
 	AgentResourceWildcard         = "*"
 	AgentResourceActionRead       = "read"
 	AgentResourceActionList       = "list"
+	AgentResourceActionSearch     = "search"
 	AgentResourceActionWrite      = "write"
 )
 
@@ -59,10 +63,11 @@ func EmbeddedAgentPolicyGrantV1() ([]string, []AgentResourceScopeV1) {
 		AgentPermissionUserProfileRead,
 		AgentPermissionConversationList,
 		AgentPermissionConversationRead,
+		AgentPermissionConversationSearch,
 		AgentPermissionMessageWrite,
 	}, []AgentResourceScopeV1{
 		{ResourceType: AgentResourceTypeUser, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
-		{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead, AgentResourceActionList, AgentResourceActionWrite}},
+		{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead, AgentResourceActionList, AgentResourceActionSearch, AgentResourceActionWrite}},
 	}
 }
 
@@ -104,8 +109,14 @@ var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	AgentCapabilityConversationRead: {
 		ID: AgentCapabilityConversationRead, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionConversationRead,
 	},
+	AgentCapabilityConversationSearch: {
+		ID: AgentCapabilityConversationSearch, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionConversationSearch,
+	},
 	AgentCapabilityAssistantReplySend: {
 		ID: AgentCapabilityAssistantReplySend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,
+	},
+	AgentCapabilityGroupReplySend: {
+		ID: AgentCapabilityGroupReplySend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,
 	},
 	AgentCapabilitySystemMessageSend: {
 		ID: AgentCapabilitySystemMessageSend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,

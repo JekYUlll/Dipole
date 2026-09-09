@@ -151,10 +151,14 @@ func (c *Client) SendGroupFileMessageContext(parent context.Context, senderUUID,
 }
 
 func (c *Client) SendSystemDirectMessage(senderUUID, targetUUID, content string) (*model.Message, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	return c.SendSystemDirectMessageContext(context.Background(), senderUUID, targetUUID, content, "")
+}
+
+func (c *Client) SendSystemDirectMessageContext(parent context.Context, senderUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
 	defer cancel()
 	response, err := c.rpc.SendSystemDirectMessage(ctx, &messagev1.SendSystemDirectMessageRequest{
-		Context: c.invocation(ctx, senderUUID), SenderUserId: senderUUID, TargetUserId: targetUUID, Content: content,
+		Context: c.invocation(ctx, senderUUID), SenderUserId: senderUUID, TargetUserId: targetUUID, Content: content, ClientMessageId: clientMessageID,
 	})
 	if err != nil {
 		return nil, domainError(err)
@@ -169,6 +173,30 @@ func (c *Client) SendSystemGroupMessage(groupUUID, content string) error {
 		Context: c.invocation(ctx, "dipole-core"), GroupId: groupUUID, Content: content,
 	})
 	return domainError(err)
+}
+
+func (c *Client) SendAssistantTextMessageContext(parent context.Context, assistantUUID, targetUUID, content, clientMessageID string) (*model.Message, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
+	defer cancel()
+	response, err := c.rpc.SendAssistantText(ctx, &messagev1.SendAssistantTextRequest{
+		Context: c.invocation(ctx, assistantUUID), AssistantUserId: assistantUUID, TargetUserId: targetUUID, Content: content, ClientMessageId: clientMessageID,
+	})
+	if err != nil {
+		return nil, domainError(err)
+	}
+	return grpcmapping.MessageFromProto(response.GetMessage()), nil
+}
+
+func (c *Client) SendAssistantGroupMessageContext(parent context.Context, assistantUUID, groupUUID, content, clientMessageID string) (*model.Message, []string, error) {
+	ctx, cancel := context.WithTimeout(parent, commandTimeout)
+	defer cancel()
+	response, err := c.rpc.SendAssistantGroupMessage(ctx, &messagev1.SendAssistantGroupMessageRequest{
+		Context: c.invocation(ctx, assistantUUID), AssistantUserId: assistantUUID, GroupId: groupUUID, Content: content, ClientMessageId: clientMessageID,
+	})
+	if err != nil {
+		return nil, nil, domainError(err)
+	}
+	return grpcmapping.MessageFromProto(response.GetMessage()), response.GetRecipientUserIds(), nil
 }
 
 func (c *Client) ListDirectMessages(currentUserUUID, targetUUID string, beforeID uint, limit int) ([]*model.Message, error) {

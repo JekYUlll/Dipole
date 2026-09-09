@@ -71,6 +71,32 @@ func TestAgentMessageCommandExecutionBindsApprovedToolAndDerivesCommand(t *testi
 	}
 }
 
+func TestAgentMessageCommandExecutionBindsAuthorizedAssistantReplyWithoutApproval(t *testing.T) {
+	invocation := application.AgentInvocationV1{
+		TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", Permissions: []string{application.AgentPermissionMessageWrite},
+		ResourceScopes: []application.AgentResourceScopeV1{{ResourceType: "conversation", ResourceID: model.DirectConversationKey("U100", "UAI"), Actions: []string{application.AgentResourceActionWrite}}},
+	}
+	argumentsSHA, err := application.AgentMessageCommandToolArgumentsSHA256V1(invocation.PrincipalUUID, invocation.AgentUUID, "hello")
+	if err != nil {
+		t.Fatalf("derive Tool arguments digest: %v", err)
+	}
+	tool := &application.AgentToolInvocationV1{
+		InvocationUUID: "INV-REPLY", TenantID: "dipole", PrincipalUUID: "U100", AgentUUID: "UAI", TaskUUID: "TASK-1", RunUUID: "RUN-1",
+		Transport: application.AgentToolTransportMCP, CapabilityID: application.AgentCapabilityAssistantReplySend, ArgumentsSHA256: argumentsSHA, Status: application.AgentToolInvocationStatusRunning,
+	}
+	sender := &agentMessageCommandSenderStub{message: &model.Message{UUID: "MSG-REPLY"}}
+	service, err := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: tool}, agentToolAuditResolverStub{invocation: invocation}, sender)
+	if err != nil {
+		t.Fatalf("new Message Command execution: %v", err)
+	}
+	result, err := service.Execute(context.Background(), application.AgentMessageCommandExecutionRequestV1{
+		TaskUUID: "TASK-1", RunUUID: "RUN-1", InvocationUUID: "INV-REPLY", Kind: application.AgentMessageCommandAssistantReplyV1, Content: "hello",
+	})
+	if err != nil || result.Kind != application.AgentMessageCommandAssistantReplyV1 || sender.command.Kind != application.AgentMessageCommandAssistantReplyV1 {
+		t.Fatalf("assistant reply result=%+v command=%+v err=%v", result, sender.command, err)
+	}
+}
+
 func TestAgentMessageCommandExecutionRejectsUnboundOrDriftingTool(t *testing.T) {
 	argumentsSHA, err := application.AgentMessageCommandToolArgumentsSHA256V1("U100", "UAI", "notice")
 	if err != nil {

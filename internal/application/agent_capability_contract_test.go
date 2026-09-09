@@ -25,12 +25,12 @@ func TestAgentCapabilityV1HasLanguageNeutralContract(t *testing.T) {
 		t.Fatalf("unexpected Agent Capability schema ID %q", schema["$id"])
 	}
 	operations, ok := schema["x-dipole-operations"].([]any)
-	if !ok || len(operations) != 5 {
-		t.Fatalf("Agent Capability contract must declare five operations, got %#v", schema["x-dipole-operations"])
+	if !ok || len(operations) != 6 {
+		t.Fatalf("Agent Capability contract must declare six operations, got %#v", schema["x-dipole-operations"])
 	}
 	want := map[string]bool{
 		"get_user_profile": true, "list_direct_messages": true, "list_conversations": true,
-		"read_conversation": true, "send_system_message": true,
+		"read_conversation": true, "search_conversations": true, "send_system_message": true,
 	}
 	for _, operation := range operations {
 		name, ok := operation.(string)
@@ -43,8 +43,8 @@ func TestAgentCapabilityV1HasLanguageNeutralContract(t *testing.T) {
 		t.Fatalf("missing Agent Capability operations: %#v", want)
 	}
 	descriptors, ok := schema["x-dipole-capabilities"].([]any)
-	if !ok || len(descriptors) != 5 {
-		t.Fatalf("Agent Capability contract must publish five descriptors, got %#v", schema["x-dipole-capabilities"])
+	if !ok || len(descriptors) != 6 {
+		t.Fatalf("Agent Capability contract must publish six descriptors, got %#v", schema["x-dipole-capabilities"])
 	}
 	wantDescriptors := map[string]application.AgentCapabilityDescriptorV1{}
 	for _, id := range []string{
@@ -52,6 +52,7 @@ func TestAgentCapabilityV1HasLanguageNeutralContract(t *testing.T) {
 		application.AgentCapabilityDirectMessagesRead,
 		application.AgentCapabilityConversationsList,
 		application.AgentCapabilityConversationRead,
+		application.AgentCapabilityConversationSearch,
 		application.AgentCapabilitySystemMessageSend,
 	} {
 		descriptor, ok := application.AgentCapabilityDescriptorByIDV1(id)

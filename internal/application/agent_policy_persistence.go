@@ -265,7 +265,10 @@ func (r AgentRunV1) Validate() error {
 	if r.Mode != "embedded" && r.Mode != "shadow" && r.Mode != "active" {
 		return ErrAgentPolicyInvalid
 	}
-	if (r.Mode == "active") != (strings.TrimSpace(r.CandidateVersion) != "") || len(r.CandidateVersion) > 128 {
+	// Candidate versions remain available for archived promotion experiments.
+	// The normal active runtime is authorized by its pinned definition and
+	// capability policy, so it does not require a rollout candidate.
+	if len(r.CandidateVersion) > 128 {
 		return ErrAgentPolicyInvalid
 	}
 	switch r.Status {

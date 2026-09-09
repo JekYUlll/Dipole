@@ -16,7 +16,7 @@ describe("Temporal runtime configuration", () => {
       address: "127.0.0.1:7233",
       namespace: "default",
       taskQueue: "dipole-agent-task-v1",
-      activityMode: "foundation"
+      runtimeMode: "shadow"
     });
   });
 
@@ -26,28 +26,42 @@ describe("Temporal runtime configuration", () => {
       DIPOLE_AGENT_TEMPORAL_ADDRESS: "temporal:7233",
       DIPOLE_AGENT_TEMPORAL_NAMESPACE: "dipole",
       DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: "dipole-agent-task-canary-v1",
-      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "persistent_shadow"
+      DIPOLE_AGENT_RUNTIME_MODE: "shadow"
     })).toEqual({
       enabled: true,
       address: "temporal:7233",
       namespace: "dipole",
       taskQueue: "dipole-agent-task-canary-v1",
-      activityMode: "persistent_shadow"
+      runtimeMode: "shadow"
     });
   });
 
   it("loads the default-off Temporal read shadow profile", () => {
     expect(loadTemporalRuntimeConfig({
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
-      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "read_shadow"
-    })).toMatchObject({ enabled: true, activityMode: "read_shadow" });
+      DIPOLE_AGENT_RUNTIME_MODE: "shadow"
+    })).toMatchObject({ enabled: true, runtimeMode: "shadow" });
   });
 
   it("loads the explicit active read Activity profile", () => {
     expect(loadTemporalRuntimeConfig({
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
+      DIPOLE_AGENT_RUNTIME_MODE: "active"
+    })).toMatchObject({ enabled: true, runtimeMode: "active" });
+  });
+
+  it("maps the legacy read_active activity setting to active mode", () => {
+    expect(loadTemporalRuntimeConfig({
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
       DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "read_active"
-    })).toMatchObject({ enabled: true, activityMode: "read_active" });
+    })).toMatchObject({ enabled: true, runtimeMode: "active" });
+  });
+
+  it("maps legacy interactive profiles to the unified active mode", () => {
+    expect(loadTemporalRuntimeConfig({
+      DIPOLE_AGENT_TEMPORAL_ENABLED: "true",
+      DIPOLE_AGENT_TEMPORAL_ACTIVITY_MODE: "interactive_active"
+    })).toMatchObject({ enabled: true, runtimeMode: "active" });
   });
 
   it("rejects empty required values when enabled", () => {

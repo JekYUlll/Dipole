@@ -23,9 +23,8 @@ export function validateExternalMcpProductionShadowMode(
   temporal: TemporalRuntimeConfig
 ): boolean {
   const externalEnabled = loadExternalMcpConfig(env).enabled;
-  const modeSelected = temporal.activityMode === "external_mcp_shadow";
-  if (!externalEnabled && !modeSelected) return false;
-  if (!externalEnabled || !modeSelected || !temporal.enabled || !shadow.enabled ||
+  if (!externalEnabled) return false;
+  if (!temporal.enabled || !shadow.enabled || shadow.runtimeMode !== "shadow" ||
       shadow.triggerMode !== "subscription" || !shadow.capabilityRpc.enabled) {
     throw new Error("External MCP production Shadow mode configuration is invalid");
   }

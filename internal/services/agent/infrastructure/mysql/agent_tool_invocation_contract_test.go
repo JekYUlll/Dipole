@@ -116,6 +116,46 @@ func TestAgentToolInvocationRepositoryContract(t *testing.T) {
 	if approvalUUID != "APR-1" || resourceType != "message" || resourceUUID != "MSG-1" || commandKind != "system_message" || commandID != "CMD-1" {
 		t.Fatalf("unexpected Tool action lineage: %q %q %q %q %q", approvalUUID, resourceType, resourceUUID, commandKind, commandID)
 	}
+
+	lowRiskRecord := record
+	lowRiskRecord.InvocationUUID = "INV-LOW-RISK"
+	lowRiskRecord.ToolName = "dipole_assistant_reply"
+	lowRiskRecord.CapabilityID = application.AgentCapabilityAssistantReplySend
+	created, err = store.BeginToolInvocation(context.Background(), lowRiskRecord)
+	if err != nil || !created {
+		t.Fatalf("begin low-risk assistant reply: created=%v err=%v", created, err)
+	}
+	finished, err = store.FinishToolInvocation(context.Background(), application.AgentToolInvocationFinishV1{
+		InvocationUUID: "INV-LOW-RISK", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
+		ResultSHA256: testToolInvocationSHA, ResultBytes: 64, LatencyMS: 8,
+		ActionReference: &application.AgentToolActionReferenceV1{
+			ResourceType: application.AgentToolActionResourceMessage, ResourceUUID: "MSG-LOW-RISK",
+			CommandKind: application.AgentMessageCommandAssistantReplyV1, CommandID: "CMD-LOW-RISK",
+		},
+	})
+	if err != nil || !finished {
+		t.Fatalf("finish low-risk assistant reply: finished=%v err=%v", finished, err)
+	}
+
+	groupReplyRecord := record
+	groupReplyRecord.InvocationUUID = "INV-GROUP-REPLY"
+	groupReplyRecord.ToolName = "dipole_group_reply"
+	groupReplyRecord.CapabilityID = application.AgentCapabilityGroupReplySend
+	created, err = store.BeginToolInvocation(context.Background(), groupReplyRecord)
+	if err != nil || !created {
+		t.Fatalf("begin group reply: created=%v err=%v", created, err)
+	}
+	finished, err = store.FinishToolInvocation(context.Background(), application.AgentToolInvocationFinishV1{
+		InvocationUUID: "INV-GROUP-REPLY", TaskUUID: "TASK-1", RunUUID: "RUN-1", Status: application.AgentToolInvocationStatusCompleted,
+		ResultSHA256: testToolInvocationSHA, ResultBytes: 64, LatencyMS: 8,
+		ActionReference: &application.AgentToolActionReferenceV1{
+			ResourceType: application.AgentToolActionResourceMessage, ResourceUUID: "MSG-GROUP-REPLY",
+			CommandKind: application.AgentMessageCommandGroupReplyV1, CommandID: "CMD-GROUP-REPLY",
+		},
+	})
+	if err != nil || !finished {
+		t.Fatalf("finish group reply: finished=%v err=%v", finished, err)
+	}
 }
 
 const testToolInvocationSHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

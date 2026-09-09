@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Span } from "@opentelemetry/api";
+import { createHash } from "node:crypto";
 
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
@@ -110,6 +111,115 @@ describe("Temporal read Step Activities", () => {
       admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
     })).resolves.toEqual({ kind: "complete", output: { summary: "active observe", stepCount: 0 } });
     expect(contextResolver.resolveMcpContext).toHaveBeenCalledWith(taskId, runId, "U100", {});
+  });
+
+  it("writes one audited assistant reply for an active direct-message Task", async () => {
+    const event: AgentEvent = {
+      eventId: "E-ACTIVE-REPLY", eventType: "message.direct.created", aggregateId: "M-ACTIVE-REPLY",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "hello", conversation_key: "direct:U100:UAI" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["write"] }],
+      approvedCapabilities: [], eventId: event.eventId
+    };
+    const replyWriter = {
+      begin: vi.fn(async () => undefined),
+      finishToolInvocation: vi.fn(async () => undefined),
+      executeMessageCommand: vi.fn(async () => ({ resourceType: "message" as const, resourceId: "MSG-1", commandKind: "assistant_reply" as const, commandId: "CMD-1" }))
+    };
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "Hello from Dipole", steps: [] }) },
+      audit: { append: vi.fn(async () => undefined) }, registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-ACTIVE" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) }, replyWriter, stepLeaseMs: 60_000
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "reply", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).resolves.toEqual({ kind: "complete", output: { summary: "Hello from Dipole", stepCount: 0, replyMessageId: "MSG-1" } });
+    expect(replyWriter.begin).toHaveBeenCalledWith(expect.objectContaining({
+      taskId, runId, capabilityId: "message.assistant_reply.send"
+    }));
+    expect(replyWriter.executeMessageCommand).toHaveBeenCalledWith(expect.objectContaining({
+      taskId, runId, commandKind: "assistant_reply", conversationKey: "direct:U100:UAI", content: "Hello from Dipole"
+    }));
+    expect(replyWriter.finishToolInvocation).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
+  });
+
+  it("waits for approval before delivering an explicit system message", async () => {
+    const event: AgentEvent = {
+      eventId: "E-APPROVAL", eventType: "message.direct.created", aggregateId: "M-APPROVAL",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "/system Deployment starts at 18:00", conversation_key: "direct:U100:UAI" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }],
+      approvedCapabilities: ["message.system.send"] as "message.system.send"[], eventId: event.eventId
+    };
+    const approvalWriter = {
+      begin: vi.fn(async () => undefined),
+      finishToolInvocation: vi.fn(async () => undefined),
+      consumeApproval: vi.fn(async () => undefined),
+      resolveApprovalGrant: vi.fn(async (_taskId: string, _runId: string, capabilityId: string, resourceScope: { resourceType: string; resourceId: string; actions: string[] }, argumentsSha256: string) => ({
+        approvalId: "APR-1", capabilityId, resourceScope,
+        scopeSha256: createHash("sha256").update(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions].join("\n"), "utf8").digest("hex"),
+        argumentsSha256, nonceSha256: "1".repeat(64), expiresAtUnixMs: Date.now() + 60_000
+      })),
+      executeMessageCommand: vi.fn(async () => ({ resourceType: "message" as const, resourceId: "MSG-SYSTEM-1", commandKind: "system_message" as const, commandId: "CMD-SYSTEM-1" }))
+    };
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: vi.fn(async () => ({ summary: "unused", steps: [] })) }, audit: { append: vi.fn(async () => undefined) }, registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) }, approvalWriter, stepLeaseMs: 60_000
+    });
+
+    const initial = await activities.executeAgentTaskStep({
+      taskId, runId, goal: "notify", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    });
+    expect(initial).toMatchObject({ kind: "wait_approval", approval: { capabilityId: "message.system.send" } });
+    expect(approvalWriter.executeMessageCommand).not.toHaveBeenCalled();
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "notify", step: 1, resume: { kind: "approval", requestId: (initial as { requestId: string }).requestId, approvalId: (initial as { approval: { approvalId: string } }).approval.approvalId, decision: "approved" }, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).resolves.toMatchObject({ kind: "complete", output: { summary: "Approved system message delivered" } });
+    expect(approvalWriter.consumeApproval).toHaveBeenCalledOnce();
+    expect(approvalWriter.executeMessageCommand).toHaveBeenCalledOnce();
+  });
+
+  it("writes a group reply to the triggering conversation", async () => {
+    const event: AgentEvent = {
+      eventId: "E-GROUP-REPLY", eventType: "message.group.created", aggregateId: "M-GROUP-REPLY",
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "@AI summarize", conversation_key: "group:G100" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const replyWriter = {
+      begin: vi.fn(async () => undefined), finishToolInvocation: vi.fn(async () => undefined),
+      executeMessageCommand: vi.fn(async () => ({ resourceType: "message" as const, resourceId: "MSG-GROUP-1", commandKind: "group_reply" as const, commandId: "CMD-GROUP-1" }))
+    };
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: async () => ({ summary: "Group summary", steps: [] }) }, audit: { append: vi.fn(async () => undefined) }, registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-GROUP" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => ({
+        tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+        permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: "group:G100", actions: ["write"] }], approvedCapabilities: [], eventId: event.eventId
+      })) }, replyWriter, stepLeaseMs: 60_000
+    });
+
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "reply", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).resolves.toEqual({ kind: "complete", output: { summary: "Group summary", stepCount: 0, replyMessageId: "MSG-GROUP-1" } });
+    expect(replyWriter.begin).toHaveBeenCalledWith(expect.objectContaining({ capabilityId: "message.group_reply.send" }));
+    expect(replyWriter.executeMessageCommand).toHaveBeenCalledWith(expect.objectContaining({ commandKind: "group_reply", conversationKey: "group:G100" }));
   });
 
   it("waits for a crashed Step lease and accepts its completed replay", async () => {

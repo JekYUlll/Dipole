@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decodeMessageCreatedEvent } from "./message-event.js";
+import { decodeMessageCreatedEvent, isAssistantMention } from "./message-event.js";
 
 const envelope = {
   event_id: "E1",
@@ -57,11 +57,23 @@ describe("decodeMessageCreatedEvent", () => {
     });
   });
 
+  it("accepts group events and detects explicit AI mentions", () => {
+    const group = decodeMessageCreatedEvent(JSON.stringify({
+      ...envelope,
+      event_type: "message.group.created",
+      payload: { ...envelope.payload, conversation_key: "group:G1", target_uuid: "G1", target_type: 1, content: "@AI summarize this" }
+    }));
+    expect(group.event.eventType).toBe("message.group.created");
+    expect(group.targetUuid).toBe("G1");
+    expect(isAssistantMention("@AI summarize this")).toBe(true);
+    expect(isAssistantMention("please @Dipole AI summarize")).toBe(true);
+    expect(isAssistantMention("plain conversation")).toBe(false);
+  });
+
   it.each([
     [{ ...envelope, version: "v2" }, "version"],
-    [{ ...envelope, event_type: "message.group.created" }, "event_type"],
     [{ ...envelope, source: "foreign" }, "source"],
-    [{ ...envelope, payload: { ...envelope.payload, target_type: 1 } }, "target_type"],
+    [{ ...envelope, payload: { ...envelope.payload, target_type: 2 } }, "target_type"],
     [{ ...envelope, payload: { ...envelope.payload, sender_uuid: "" } }, "sender_uuid"],
     [{ ...envelope, lineage: { origin: { type: "agent", id: "UAI" } } }, "agent_task_id"],
     [{ ...envelope, lineage: { origin: { type: "agent", id: "bad id" }, agent_task_id: "TASK-1" } }, "lineage"]

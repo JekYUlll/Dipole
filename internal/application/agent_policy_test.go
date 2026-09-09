@@ -53,6 +53,7 @@ func TestAgentCapabilityV1DescriptorsAreVersionedAndRiskClassified(t *testing.T)
 		AgentCapabilityDirectMessagesRead: AgentCapabilityRiskRead,
 		AgentCapabilityConversationsList:  AgentCapabilityRiskRead,
 		AgentCapabilityConversationRead:   AgentCapabilityRiskRead,
+		AgentCapabilityConversationSearch: AgentCapabilityRiskRead,
 		AgentCapabilitySystemMessageSend:  AgentCapabilityRiskWrite,
 	}
 	for id, risk := range want {

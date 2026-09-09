@@ -21,6 +21,7 @@ export interface KafkaConsumerFactoryPort {
 export interface KafkaShadowConsumerConfig {
   readonly groupId: string;
   readonly topic: string;
+  readonly additionalTopics?: readonly string[];
   readonly startupAttempts?: number;
   readonly startupRetryDelayMs?: number;
 }
@@ -104,10 +105,10 @@ export class KafkaShadowConsumer {
     private readonly failureRouter?: KafkaFailureRouter
   ) {
     const groupId = config.groupId.trim();
-    if (!groupId.startsWith("dipole-agent-shadow-")) {
-      throw new Error("Kafka shadow consumer requires an isolated dipole-agent-shadow-* group");
+    if (!groupId.startsWith("dipole-agent-")) {
+      throw new Error("Kafka Agent consumer requires an isolated dipole-agent-* group");
     }
-    if (!config.topic.trim()) {
+    if (!config.topic.trim() || (config.additionalTopics ?? []).some((topic) => !topic.trim())) {
       throw new Error("Kafka shadow consumer topic is required");
     }
     if ((config.startupAttempts ?? 5) < 1 || (config.startupRetryDelayMs ?? 1000) < 0) {
@@ -122,9 +123,12 @@ export class KafkaShadowConsumer {
       const consumer = this.factory.create(this.#groupId);
       try {
         await consumer.connect();
-        await consumer.subscribe({ topic: this.config.topic.trim(), fromBeginning: false });
-        if (this.failureRouter !== undefined) {
-          await consumer.subscribe({ topic: `${this.config.topic.trim()}.retry`, fromBeginning: false });
+        const topics = [this.config.topic.trim(), ...(this.config.additionalTopics ?? []).map((topic) => topic.trim())];
+        for (const topic of topics) {
+          await consumer.subscribe({ topic, fromBeginning: false });
+          if (this.failureRouter !== undefined) {
+            await consumer.subscribe({ topic: `${topic}.retry`, fromBeginning: false });
+          }
         }
         await consumer.run({
           eachMessage: async ({ topic, message }) => {

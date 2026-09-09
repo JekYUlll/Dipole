@@ -30,7 +30,7 @@ func (s *PersistentAgentTaskWorkflowProjectionServiceV1) Project(ctx context.Con
 	projection.WorkflowID = strings.TrimSpace(projection.WorkflowID)
 	projection.RunID = strings.TrimSpace(projection.RunID)
 	request.RunUUID, request.RuntimeID, request.Mode = strings.TrimSpace(request.RunUUID), strings.TrimSpace(request.RuntimeID), strings.TrimSpace(request.Mode)
-	if err := projection.Validate(); err != nil || request.RunUUID == "" || request.RuntimeID == "" || request.Mode == "" ||
+	if err := projection.Validate(); err != nil || request.RunUUID == "" || request.RuntimeID == "" ||
 		projection.WorkflowID != agentTaskWorkflowPrefixV1+projection.TaskUUID {
 		return nil, fmt.Errorf("%w: Agent Task Workflow projection identity is invalid", application.ErrAgentExecutionPolicyDenied)
 	}
@@ -42,7 +42,8 @@ func (s *PersistentAgentTaskWorkflowProjectionServiceV1) Project(ctx context.Con
 	if err != nil {
 		return nil, fmt.Errorf("get Agent Run Workflow projection policy: %w", err)
 	}
-	if task == nil || run == nil || run.TaskUUID != projection.TaskUUID || run.RuntimeID != request.RuntimeID || run.Mode != request.Mode ||
+	if task == nil || run == nil || run.TaskUUID != projection.TaskUUID || run.RuntimeID != request.RuntimeID ||
+		(request.Mode != "" && run.Mode != request.Mode) ||
 		!workflowProjectionMatchesRunStatus(projection.Status, run.Status) {
 		return nil, fmt.Errorf("%w: Agent Task Workflow projection binding is unavailable", application.ErrAgentExecutionPolicyDenied)
 	}
@@ -68,7 +69,7 @@ func (s *PersistentAgentTaskWorkflowProjectionServiceV1) ListProjectionSnapshots
 	if limit < 1 || limit > 1000 {
 		return nil, fmt.Errorf("%w: Agent Task Workflow projection page size is invalid", application.ErrAgentExecutionPolicyDenied)
 	}
-	tasks, err := s.store.ListTaskWorkflowProjectionSnapshots(ctx, "dipole-agent", "shadow", afterTaskUUID, limit)
+	tasks, err := s.store.ListTaskWorkflowProjectionSnapshots(ctx, "dipole-agent", "active", afterTaskUUID, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list Agent Task Workflow projection snapshots: %w", err)
 	}

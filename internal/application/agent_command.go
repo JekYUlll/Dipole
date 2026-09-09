@@ -23,13 +23,15 @@ type AgentMessageCommandKindV1 string
 const (
 	AgentMessageCommandAssistantReplyV1 AgentMessageCommandKindV1 = "assistant_reply"
 	AgentMessageCommandSystemMessageV1  AgentMessageCommandKindV1 = "system_message"
+	AgentMessageCommandGroupReplyV1     AgentMessageCommandKindV1 = "group_reply"
 )
 
 type AgentMessageCommandV1 struct {
-	CommandID  string                    `json:"command_id"`
-	Kind       AgentMessageCommandKindV1 `json:"kind"`
-	Invocation AgentInvocationV1         `json:"invocation"`
-	Content    string                    `json:"content"`
+	CommandID       string                    `json:"command_id"`
+	Kind            AgentMessageCommandKindV1 `json:"kind"`
+	Invocation      AgentInvocationV1         `json:"invocation"`
+	Content         string                    `json:"content"`
+	ConversationKey string                    `json:"conversation_key,omitempty"`
 }
 
 // AgentCommandV1 is the transport-neutral write boundary for Agent runtimes.
@@ -39,11 +41,12 @@ type AgentCommandV1 interface {
 }
 
 type AgentMessageCommandExecutionRequestV1 struct {
-	TaskUUID       string
-	RunUUID        string
-	InvocationUUID string
-	Kind           AgentMessageCommandKindV1
-	Content        string
+	TaskUUID        string
+	RunUUID         string
+	InvocationUUID  string
+	Kind            AgentMessageCommandKindV1
+	Content         string
+	ConversationKey string
 }
 
 type AgentMessageCommandExecutionResultV1 struct {
@@ -63,7 +66,7 @@ func AgentCommandClientMessageIDV1(kind AgentMessageCommandKindV1, commandID str
 		return "", ErrAgentCommandDenied
 	}
 	switch kind {
-	case AgentMessageCommandAssistantReplyV1, AgentMessageCommandSystemMessageV1:
+	case AgentMessageCommandAssistantReplyV1, AgentMessageCommandSystemMessageV1, AgentMessageCommandGroupReplyV1:
 	default:
 		return "", ErrAgentCommandDenied
 	}
@@ -77,10 +80,18 @@ func AgentMessageCommandToolArgumentsSHA256V1(principalUUID, agentUUID, content 
 	if principalUUID == "" || agentUUID == "" || content == "" {
 		return "", ErrAgentCommandDenied
 	}
+	return AgentMessageCommandToolArgumentsSHA256ForConversationV1(content, model.DirectConversationKey(principalUUID, agentUUID))
+}
+
+func AgentMessageCommandToolArgumentsSHA256ForConversationV1(content, conversationKey string) (string, error) {
+	content, conversationKey = strings.TrimSpace(content), strings.TrimSpace(conversationKey)
+	if content == "" || conversationKey == "" {
+		return "", ErrAgentCommandDenied
+	}
 	payload, err := json.Marshal(struct {
 		Content        string `json:"content"`
 		ConversationID string `json:"conversationId"`
-	}{Content: content, ConversationID: model.DirectConversationKey(principalUUID, agentUUID)})
+	}{Content: content, ConversationID: conversationKey})
 	if err != nil {
 		return "", ErrAgentCommandDenied
 	}
@@ -94,7 +105,7 @@ func AgentMessageCommandIDV1(invocationUUID string, kind AgentMessageCommandKind
 		return "", ErrAgentCommandDenied
 	}
 	switch kind {
-	case AgentMessageCommandAssistantReplyV1, AgentMessageCommandSystemMessageV1:
+	case AgentMessageCommandAssistantReplyV1, AgentMessageCommandSystemMessageV1, AgentMessageCommandGroupReplyV1:
 	default:
 		return "", ErrAgentCommandDenied
 	}

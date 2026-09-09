@@ -42,9 +42,9 @@ describe("AgentCapabilityRPCClient", () => {
     await expect(client.finish("TASK-1", "RUN-1", "failed", "failure")).resolves.toBeUndefined();
   });
 
-  it("requires a candidate version for active RPC clients", () => {
+  it("allows active RPC clients to rely on Core policy without a candidate version", () => {
     expect(() => new AgentCapabilityRPCClient({} as IAgentCapabilityServiceClient, "secret", 2_000, "active"))
-      .toThrow("candidate version");
+      .not.toThrow();
   });
 
   it("maps canonical group conversation ids to trusted RPC targets", async () => {
