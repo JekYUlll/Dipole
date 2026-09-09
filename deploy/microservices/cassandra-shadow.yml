@@ -35,7 +35,7 @@ services:
 
   cassandra-projector:
     profiles: ["cassandra-shadow"]
-    image: ${DIPOLE_CASSANDRA_PROJECTOR_IMAGE:-dipole-core:latest}
+    image: ${DIPOLE_CASSANDRA_PROJECTOR_IMAGE:-dipole-cassandra-projector:latest}
     entrypoint: ["/app/dipole-cassandra-projector"]
     restart: unless-stopped
     env_file:

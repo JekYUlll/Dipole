@@ -16,7 +16,7 @@ class CassandraShadowComposeTest(unittest.TestCase):
         self.assertEqual(self.overlay.count('profiles: ["cassandra-shadow"]'), 3)
         self.assertIn("cassandra-projector:", self.overlay)
         self.assertIn('entrypoint: ["/app/dipole-cassandra-projector"]', self.overlay)
-        self.assertIn("DIPOLE_CASSANDRA_PROJECTOR_IMAGE", self.overlay)
+        self.assertIn("${DIPOLE_CASSANDRA_PROJECTOR_IMAGE:-dipole-cassandra-projector:latest}", self.overlay)
         self.assertIn("cassandra-init:\n        condition: service_completed_successfully", self.overlay)
         self.assertIn("kafka:\n        condition: service_healthy", self.overlay)
         self.assertIn("cassandra_shadow_data:/var/lib/cassandra", self.overlay)
@@ -33,6 +33,11 @@ class CassandraShadowComposeTest(unittest.TestCase):
         self.assertIn("DIPOLE_CASSANDRA_HOSTS: cassandra:9042", self.overlay)
         self.assertIn("DIPOLE_KAFKA_BROKERS: kafka:9092", self.overlay)
         self.assertIn("DIPOLE_METRICS_ENABLED: \"true\"", self.overlay)
+
+    def test_microservice_image_builder_can_publish_the_projector_binary(self) -> None:
+        builder = (ROOT / "scripts/docker-build-microservice-images.sh").read_text(encoding="utf-8")
+        self.assertIn('"cassandra-projector:dipole-cassandra-projector"', builder)
+        self.assertIn("cassandra-projector) image_variable=DIPOLE_CASSANDRA_PROJECTOR_IMAGE", builder)
 
 
 if __name__ == "__main__":
