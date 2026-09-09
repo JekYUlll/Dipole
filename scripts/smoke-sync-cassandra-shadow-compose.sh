@@ -24,8 +24,10 @@ export DIPOLE_INTERNAL_RPC_SHARED_SECRET DIPOLE_AGENT_MODEL_PROVIDER_NAME DIPOLE
 export DIPOLE_AGENT_MODEL_API_KEY DIPOLE_AGENT_MODEL_ROUTES DIPOLE_AGENT_MODEL_CONTEXT_PROFILES
 export DIPOLE_INTERNAL_CERT_DIR="${cert_dir}"
 : "${DIPOLE_SYNC_IMAGE:=dipole-sync:cassandra-shadow-${revision}}"
+: "${DIPOLE_MIGRATE_IMAGE:=dipole-migrate:cassandra-shadow-${revision}}"
 : "${DIPOLE_CASSANDRA_PROJECTOR_IMAGE:=dipole-cassandra-projector:cassandra-shadow-${revision}}"
 export DIPOLE_SYNC_IMAGE
+export DIPOLE_MIGRATE_IMAGE
 export DIPOLE_CASSANDRA_PROJECTOR_IMAGE
 
 build_service_image() {
@@ -70,6 +72,7 @@ trap cleanup EXIT INT TERM
 INTERNAL_CERT_DIR="${cert_dir}" "${script_dir}/generate-internal-certs.sh" >/dev/null
 if [[ "${DIPOLE_SYNC_SMOKE_BUILD_IMAGE:-1}" == "1" ]]; then
   build_service_image dipole-sync ./cmd/services/sync "${DIPOLE_SYNC_IMAGE}"
+  build_service_image dipole-migrate ./cmd/tools/migrate "${DIPOLE_MIGRATE_IMAGE}"
   build_service_image dipole-cassandra-projector ./cmd/tools/cassandra-projector "${DIPOLE_CASSANDRA_PROJECTOR_IMAGE}"
 fi
 compose config --quiet
