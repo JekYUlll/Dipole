@@ -1,3 +1,5 @@
+- 2026-09-09：公共 Subscription Active Read E2E 默认改为消费 reviewed grant。脚本会在触发事件前复核 grant 未撤销、处于有效窗口，并精确绑定运行时、candidate、owner Definition 与版本；开发 SQL fixture 需要两个显式环境确认，且只在 fixture 模式 cleanup 时撤销。此项阻止 fixture 路径被误用作共享双人审核证据。
+
 - 2026-09-09：Remote GPU 在干净 `8ee998cd` checkout 以隔离 Compose 重跑 `subscription_active` 的 `publication` smoke。Runtime mTLS evidence publication、Gateway proposal、双人 review、owner-scoped grant、单条 Kafka 事件与 Temporal durable read Task 全部收敛，模型调用存在且 Agent 消息为零；退出码为 `0`，候选容器自动清理，公共 `dipole-experience` Gateway 全程健康。该证据使用隔离合成 evaluation，不开放公共 promotion route、Subscription worker 或自动回复。
 
 - 2026-09-09：新增 `run-agent-promotion-window.sh` 管理共享 Gateway promotion 短窗口。它要求严格、无凭据的 JSON 配置，固定绝对 mTLS 证书目录、完整 Compose 输入和目标 tenant；默认仅 dry-run，`open` 只叠加 Gateway-only overlay，`close` 只重建 Gateway 并复核健康和默认关闭的路由。脚本不 `source` env file，不处理 operator/runtime grant，也未改变公共体验默认路由。

@@ -215,15 +215,22 @@ grant 的订阅读取任务。移除该 overlay 并停止 `agent-subscription` �
 不会影响 interactive Agent。
 
 公共体验环境可运行以下验收脚本。它创建新的 owner、群、只读 Definition
-和 Subscription，并写入退出即撤销的短期 fixture grant；脚本断言一个
-`completed:completed` subscription Task、至少一次模型调用和零条 Agent 群消息。
-proposal/review 的双人审核流程继续由隔离 control smoke 覆盖。
+和 Subscription；默认要求调用方提供 Gateway/Core 双人审核生成、且精确绑定
+新 Definition 的 active grant。脚本断言一个 `completed:completed` subscription
+Task、至少一次模型调用和零条 Agent 群消息。验收结束后应由 reviewer 撤销该
+Runtime grant，再关闭 promotion window。
 
 ```bash
 PROJECT=dipole-experience GATEWAY=http://127.0.0.1:8080 \
 DIPOLE_AGENT_CANDIDATE_VERSION=experience-v1 \
+DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_UUID=<reviewed-grant-uuid> \
 bash scripts/e2e-agent-subscription-active-read.sh
 ```
+
+`fixture` 模式仅用于隔离开发回归，必须同时设置
+`DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_GRANT_MODE=fixture` 和
+`DIPOLE_AGENT_SUBSCRIPTION_ACTIVE_ALLOW_FIXTURE_GRANT=1`；它的 SQL fixture 不可
+作为公共 route、双人审核或体验能力的证据。
 
 开发期可用隔离 smoke 复跑 Subscription Active 链路：脚本以认证 owner 创建 Definition 和 Subscription，再通过 Gateway WebSocket 的 `chat.send` 产生真实消息。默认模式验证只读闭环：消息经 Core/Message/Sync、Kafka matcher 和 Temporal 后收敛为一个 completed Task、一次 completed model run、零条 Agent 发送消息。显式开启 Auto-Reply 时，额外断言恰好一次 completed `message.system.send` Tool Invocation、一次 consumed approval、一条 owner-Agent 回复、一个稳定 client message ID 和两条 Sync Inbox 投影。两种模式都会在退出前撤销临时 grant。
 
