@@ -115,7 +115,9 @@ trap cleanup EXIT INT TERM
 compose config --quiet
 compose up -d --wait
 
-mysql() { compose exec -T mysql mysql -N -B -uroot -proot123 dipole "$@"; }
+# Raw batch output preserves the tab delimiter used by the replay receipt and
+# prevents the MySQL client from escaping it as a literal backslash sequence.
+mysql() { compose exec -T mysql mysql -N -B -r -uroot -proot123 dipole "$@"; }
 mysql -e "INSERT IGNORE INTO users (uuid, nickname, telephone, password_hash, status, created_at, updated_at) VALUES ('${agent_uuid}', 'Dipole Agent', '13900000002', 'smoke', 1, NOW(3), NOW(3));"
 
 # Register the owner, create a Definition + owner-scoped Subscription on the
@@ -211,7 +213,7 @@ trigger_message_uuid=$(mysql -e "SELECT uuid FROM messages WHERE sender_uuid = '
 [[ -n "${trigger_message_uuid}" ]] || { printf 'subscription trigger message was not found\n' >&2; exit 1; }
 replay_outbox=""
 for _ in $(seq 1 30); do
-  replay_outbox=$(mysql -e "SELECT CONCAT(topic, CHAR(9), TO_BASE64(value)) FROM outbox_events WHERE message_key = '${trigger_message_uuid}' AND event_type = 'message.direct.created' AND status = 'published' ORDER BY id DESC LIMIT 1" || true)
+  replay_outbox=$(mysql -e "SELECT CONCAT(topic, CHAR(9), REPLACE(TO_BASE64(value), CHAR(10), '')) FROM outbox_events WHERE message_key = '${trigger_message_uuid}' AND event_type = 'message.direct.created' AND status = 'published' ORDER BY id DESC LIMIT 1" || true)
   [[ -n "${replay_outbox}" ]] && break
   sleep 1
 done
