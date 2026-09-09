@@ -1,6 +1,6 @@
 # 架构债务台账
 
-- 2026-09-09：公共体验 Core 从旧 revision 热更到 `daa8582a` 时因 MySQL 仍停在 migration `000063` 而 fail-closed；同提交 `migrate` 执行 `000064_agent_mcp_tool_round_limit` 后，Core 健康恢复，B1 新事件验收完整通过。后续服务滚动必须先检查 schema 位点，并为每个提交绑定的服务镜像保留可回滚 tag。
+- 2026-09-09：公共体验 Core 从旧 revision 热更到 `daa8582a` 时因 MySQL 仍停在 migration `000063` 而 fail-closed；同提交 `migrate` 执行 `000064_agent_mcp_tool_round_limit` 后，Core 健康恢复，B1 私聊与 B2 群 `@AI` 新事件验收完整通过。后续服务滚动必须先检查 schema 位点，并为每个提交绑定的服务镜像保留可回滚 tag。
 
 - 2026-09-09：已消除 local shadow fallback Context 与 Core Context 的 Profile Read 权限漂移：fallback 现在授予任务 owner 专属 `user/read` scope 及 `user.profile.read` permission，新增 Activity 回归验证真实 Capability 可执行。外部 Runtime 仍仅信任 Core `ResolveMcpContext` 的权威结果。
 
