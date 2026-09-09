@@ -1,3 +1,5 @@
+- 2026-09-09：新增 owner-scoped `retrieval_read_only` Agent Definition profile。它在既有会话读取 scope 上显式加入 `conversation.search`，不授予 `message.write`；Definition API 可创建该 profile，公共 B1/B2 的 shared low-risk Definition 及默认 Retrieval 开关保持不变。
+
 - 2026-09-09：Remote GPU 公共 `dipole-experience` 通过 reviewed Subscription Active Read 验收：临时 owner 的 Definition/Subscription 经 Gateway/Core 双人审核 grant 触发一个 `completed:completed` Temporal Task，产生 2 次模型调用且零 Agent 群消息。验收后本次 grant、临时 operator 权限和 state file 均已回收，Gateway promotion route 恢复关闭，Search 保持启用，17 个服务 healthy；自动回复写入仍关闭。
 
 - 2026-09-09：Remote GPU 公共 `dipole-experience` 在不可变 release `aede9ccf` 完成第二次 65 秒 Cassandra Sync shadow hydration 窗口。B1 回复产生 2 条 Inbox 投影，5 次 Sync 拉取均命中 Cassandra，evidence 记录 fallback/missing/conflict/error 均为 `0`、Cassandra P95 `5 ms`；脚本退出后自动恢复 MySQL hydration，17 个公共服务均 healthy。此为短时开发证据，不构成 Cassandra primary、长期 SLO 或简历 P99 claim。

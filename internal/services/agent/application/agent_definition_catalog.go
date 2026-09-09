@@ -59,6 +59,8 @@ func userDefinitionForProfileV1(tenantID, ownerUUID, agentUUID, profile string, 
 	switch profile {
 	case "", application.AgentDefinitionCatalogProfileReadOnly:
 		return userReadDefinitionV1(tenantID, ownerUUID, agentUUID, validFrom), nil
+	case application.AgentDefinitionCatalogProfileRetrievalReadOnly:
+		return userRetrievalReadDefinitionV1(tenantID, ownerUUID, agentUUID, validFrom), nil
 	case application.AgentDefinitionCatalogProfileSubscriptionAutoReply:
 		return userSubscriptionAutoReplyDefinitionV1(tenantID, ownerUUID, agentUUID, validFrom), nil
 	default:
@@ -74,6 +76,22 @@ func userReadDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.
 		DefinitionUUID: "user:" + hex.EncodeToString(digest[:])[:59], Version: 1, TenantID: tenantID, OwnerUUID: ownerUUID, AgentUUID: agentUUID,
 		Status:      application.AgentDefinitionStatusActive,
 		Permissions: []string{application.AgentPermissionUserProfileRead, application.AgentPermissionConversationList, application.AgentPermissionConversationRead},
+		Scopes: []application.AgentResourceScopeV1{
+			{ResourceType: application.AgentResourceTypeUser, ResourceID: ownerUUID, Actions: []string{application.AgentResourceActionRead}},
+			{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionList, application.AgentResourceActionRead}},
+		},
+		ValidFrom: validFrom,
+	}
+}
+
+func userRetrievalReadDefinitionV1(tenantID, ownerUUID, agentUUID string, validFrom time.Time) application.AgentDefinitionVersionV1 {
+	// Retrieval uses the same owner-scoped read boundary as the basic profile,
+	// with a separate permission so callers must opt in explicitly.
+	digest := sha256.Sum256([]byte("dipole.agent.user-retrieval-read-definition.v1\n" + tenantID + "\n" + ownerUUID + "\n" + agentUUID))
+	return application.AgentDefinitionVersionV1{
+		DefinitionUUID: "user:" + hex.EncodeToString(digest[:])[:59], Version: 1, TenantID: tenantID, OwnerUUID: ownerUUID, AgentUUID: agentUUID,
+		Status:      application.AgentDefinitionStatusActive,
+		Permissions: []string{application.AgentPermissionUserProfileRead, application.AgentPermissionConversationList, application.AgentPermissionConversationRead, application.AgentPermissionConversationSearch},
 		Scopes: []application.AgentResourceScopeV1{
 			{ResourceType: application.AgentResourceTypeUser, ResourceID: ownerUUID, Actions: []string{application.AgentResourceActionRead}},
 			{ResourceType: application.AgentResourceTypeConversation, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionList, application.AgentResourceActionRead}},

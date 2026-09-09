@@ -11,6 +11,7 @@ var ErrAgentDefinitionCatalogConflict = errors.New("Agent Definition catalog aut
 
 const (
 	AgentDefinitionCatalogProfileReadOnly              = "read_only"
+	AgentDefinitionCatalogProfileRetrievalReadOnly     = "retrieval_read_only"
 	AgentDefinitionCatalogProfileSubscriptionAutoReply = "subscription_autoreply"
 )
 

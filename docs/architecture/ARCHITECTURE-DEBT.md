@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Agent Definition catalog 新增 owner-scoped `retrieval_read_only` profile。它只在 owner 的既有 `conversation/*` read scope 上加入独立 `conversation.search` permission，并明确不包含 `message.write`；公共 shared low-risk Definition、B1/B2 入站路径与 `DIPOLE_AGENT_RETRIEVAL_ENABLED=false` 保持不变。后续需在独立 active candidate、owner promotion grant 与 Search owner-scope E2E 下启用 Runtime retrieval，才可形成可体验的跨会话检索任务。
+
 - 2026-09-09：公共 `agent-subscription` 已用 reviewed Subscription Active Read 真实验收复核其最小权限边界。临时 owner 的 read-only Definition/Subscription 仅在 Gateway/Core 双人审核 grant 的短窗口内触发一条 `completed:completed` Temporal Task；有 2 次模型调用、零 Agent 群消息。cleanup 已撤销本次 grant、临时 operator 权限并删除 state file，Gateway promotion route 回到 `false`，Search 保持 `true`，17 个服务 healthy。订阅自动回复、长期 active authority、真实语料/成本灰度仍保持关闭。
 
 - 2026-09-09：Cassandra Sync hydration 在不可变 release `aede9ccf` 再次完成共享 Remote GPU 的可回滚 shadow 窗口。65 秒内 B1 私聊触发一条 Agent 回复和 2 条 Inbox 投影，5 次真实 Sync 拉取均命中 Cassandra；落盘 evidence 为 fallback/missing/conflict/error 均 `0`、Cassandra P95 `5 ms`。脚本退出后复核 Sync 的 Cassandra、shadow hydration 与 primary hydration 开关均为 `false`，17 个公共服务 healthy。该短窗口只增加可复现的开发期对账证据，Cassandra primary、长期 SLO 和简历 P99 仍需独立验收。

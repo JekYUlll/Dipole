@@ -162,6 +162,38 @@ func TestAgentDefinitionCatalogCreatesExplicitSubscriptionAutoReplyDefinition(t 
 	}
 }
 
+func TestAgentDefinitionCatalogCreatesExplicitRetrievalReadOnlyDefinition(t *testing.T) {
+	now := time.Unix(1000, 0).UTC()
+	store := &agentDefinitionCatalogStoreStub{}
+	service, err := NewPersistentAgentDefinitionCatalogV1(store, "UAI", func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	definition, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{
+		TenantID: "dipole", Profile: application.AgentDefinitionCatalogProfileRetrievalReadOnly,
+	})
+	if err != nil {
+		t.Fatalf("create retrieval Definition: %v", err)
+	}
+	if len(definition.Permissions) != 4 || definition.Permissions[0] != application.AgentPermissionUserProfileRead || definition.Permissions[1] != application.AgentPermissionConversationList || definition.Permissions[2] != application.AgentPermissionConversationRead || definition.Permissions[3] != application.AgentPermissionConversationSearch {
+		t.Fatalf("retrieval permissions = %#v", definition.Permissions)
+	}
+	for _, permission := range definition.Permissions {
+		if permission == application.AgentPermissionMessageWrite {
+			t.Fatalf("retrieval profile must not grant message.write: %#v", definition.Permissions)
+		}
+	}
+	if len(definition.Scopes) != 2 || definition.Scopes[1].ResourceType != application.AgentResourceTypeConversation || definition.Scopes[1].ResourceID != application.AgentResourceWildcard || len(definition.Scopes[1].Actions) != 2 || definition.Scopes[1].Actions[0] != application.AgentResourceActionList || definition.Scopes[1].Actions[1] != application.AgentResourceActionRead {
+		t.Fatalf("retrieval scopes = %#v", definition.Scopes)
+	}
+	replayed, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{
+		TenantID: "dipole", Profile: application.AgentDefinitionCatalogProfileRetrievalReadOnly,
+	})
+	if err != nil || replayed.DefinitionUUID != definition.DefinitionUUID || len(store.items) != 1 {
+		t.Fatalf("retrieval Definition replay drifted: definition=%+v replay=%+v items=%+v err=%v", definition, replayed, store.items, err)
+	}
+}
+
 func TestAgentDefinitionCatalogRejectsUnknownCreateProfile(t *testing.T) {
 	service, _ := NewPersistentAgentDefinitionCatalogV1(&agentDefinitionCatalogStoreStub{}, "UAI", time.Now)
 	if _, err := service.Create(context.Background(), "U100", application.AgentDefinitionCatalogCreateRequestV1{TenantID: "dipole", Profile: "write_everywhere"}); err != application.ErrAgentDefinitionCatalogInvalid {
