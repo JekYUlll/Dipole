@@ -123,6 +123,28 @@ Docker 可能把不存在的相对挂载源创建为目录，Gateway 将因无�
 证书而拒绝启动。重建前可通过 `docker compose ... config --quiet` 预检；健康
 状态以容器 healthcheck 为准，Gateway 没有 `/healthz` HTTP 路由。
 
+共享体验环境统一使用
+`scripts/run-agent-promotion-window.sh` 管理这个短窗口，避免临时 shell 命令
+遗漏证书目录、基础 Compose 文件或关闭步骤。将
+[`promotion-window.example.json`](../../deploy/agent/promotion-window.example.json)
+复制到不提交的受控路径，并把所有路径替换为该环境真实的绝对路径；该 JSON
+只能包含 Compose 位置和非敏感标识，不能保存数据库密码、JWT、Provider key
+或 operator token。先 dry-run，确认后才执行每一步：
+
+```bash
+scripts/run-agent-promotion-window.sh open --config /secure/dipole-promotion-window.json
+scripts/run-agent-promotion-window.sh status --config /secure/dipole-promotion-window.json --apply
+scripts/run-agent-promotion-window.sh open --config /secure/dipole-promotion-window.json --apply
+
+# 另行完成已批准的 proposal/review，并归档结果后立即恢复默认路由。
+scripts/run-agent-promotion-window.sh close --config /secure/dipole-promotion-window.json --apply
+```
+
+`open` 和 `close` 都只使用 `--no-deps --force-recreate gateway`，并在完成后
+检查容器 `healthy` 与有效 `DIPOLE_GATEWAY_AGENT_PROMOTION_ENABLED` 值。脚本
+从不 `source` env file，也不会管理 operator grant 或 Runtime grant；前者仍由
+`manage-agent-promotion-operator-grant.sh` 和 Gateway/Core 双人审核流程负责。
+
 同一 overlay 固定 `direct_target`、Memory、retrieval、retrieval-to-Context、Control、MCP Server 和 External MCP 为关闭。host 环境即使带有这些基础 Compose 开关，也不能在 user-gray read profile 中扩张 Capability 边界。
 
 ### Subscription Active Read

@@ -1,3 +1,5 @@
+- 2026-09-09：新增 `run-agent-promotion-window.sh` 管理共享 Gateway promotion 短窗口。它要求严格、无凭据的 JSON 配置，固定绝对 mTLS 证书目录、完整 Compose 输入和目标 tenant；默认仅 dry-run，`open` 只叠加 Gateway-only overlay，`close` 只重建 Gateway 并复核健康和默认关闭的路由。脚本不 `source` env file，不处理 operator/runtime grant，也未改变公共体验默认路由。
+
 - 2026-09-09：`eval:context-ablation` 增加可选 `--reviewed-source`。它安全加载 owner-bound、`0600` 的 reviewed-corpus source manifest，复核批准窗口、UID、corpus/review hash 和实验 case 的完整 content-hash 覆盖，再输出不含路径、case、reviewer 或正文的 source receipt。未提供该参数的既有只读评测保持兼容；新模式不启用 Memory、候选写入或 Runtime 切流。
 
 - 2026-09-09：公共 `dipole-experience` 的 Core 已热更至 `0b1c3f52a`，TypeScript Agent Runtime 保持已验证的 `86d8ffdb`。新 B1 私聊、B2 群 `@AI` 和无 grant owner Definition fallback 均为 `completed:completed`，各自只有一条助手回复及一条 consumed approval；Route A 回复开关仍关闭。单服务重建固定要求绝对 `DIPOLE_INTERNAL_CERT_DIR`，避免相对缺失证书路径被 Docker 生成为目录而使 mTLS 启动失败。

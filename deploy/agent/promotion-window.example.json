@@ -1,0 +1,13 @@
+{
+  "compose_project": "dipole-experience",
+  "env_file": "/absolute/path/to/dipole/.env",
+  "compose_files": [
+    "/absolute/path/to/dipole/deploy/compose/docker-compose.microservices.yml",
+    "/absolute/path/to/dipole/deploy/microservices/remote-gpu-mysql-aio-compat.yml",
+    "/absolute/path/to/dipole/deploy/microservices/agent-experience.yml"
+  ],
+  "promotion_overlay": "/absolute/path/to/dipole/deploy/microservices/agent-promotion-experience.yml",
+  "certificate_dir": "/absolute/path/to/dipole/certs/internal",
+  "gateway_service": "gateway",
+  "tenant_id": "dipole"
+}
