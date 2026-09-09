@@ -2783,6 +2783,7 @@
 ## Unreleased
 
 - 2026-09-09：微服务 Compose 现将外部 Multipart 签名 Host 和同源代理配置同时注入 Core 与 Gateway；示例配置不再携带旧 LAN 存储地址。受控部署可通过 Gateway 代理验证预签名 PUT，MinIO `9000` 保持未公开，默认 `relay` 策略与前端预签名开关保持关闭。
+  - 验证：Remote GPU 的 `82418438` Core/Gateway 均健康；受控 4-byte Multipart 完成签名、同源代理 PUT、ETag 登记和 Complete，Core 记录 `dipole_multipart_upload_terminal_total{route="direct",outcome="completed"} 1`。
 
 - 2026-09-08：Route B 入站事件的失败重投新增不可变 Run attempt。`agent_runs` 以 `(task_uuid, runtime_id, mode, attempt)` 唯一化，失败 Task 仅可由同一入站事件重新打开并创建下一代 Run；Temporal 只允许前一 execution 失败后复用稳定 Task workflow ID。任务投影仅接受新 execution 接管已失败绑定，投影分页同步避免因多 attempt 重复列出同一任务。
   - 验证：Agent persistence、admission 与 MySQL repository 定向 Go 测试通过；Temporal client/MCP workflow Vitest `9/9` 通过。完整 Runtime typecheck 仍有 AD-064 已记录的既有 fixture 漂移。

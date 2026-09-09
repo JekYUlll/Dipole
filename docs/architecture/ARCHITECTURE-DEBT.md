@@ -2043,6 +2043,7 @@
 - **本轮进展：** Core 增加低基数 `dipole_multipart_upload_terminal_total{route,outcome}`。路径由 Redis session 的服务端标记恢复：`direct` 表示已签发预签名 URL 且未使用 relay，`direct_fallback` 表示同一会话随后经 relay 完成，`relay` 表示未签发预签名 URL；完成与中止终态各只记录一次。Redis TTL 内标记持久化、直传完成与直传后 relay fallback 的回归均通过。该指标不带用户、session、文件或对象标识，也不单独构成 24 小时 evidence receipt。
 - **运行时验证：** Remote GPU 公共 Core 已滚动至 `b527af52` 并保持 healthy。一次性开发用户经 Gateway 完成 4-byte relay Multipart 上传后，Core `/metrics` 返回 `dipole_multipart_upload_terminal_total{outcome="completed",route="relay"}`。该验证仅证明指标在默认 relay 路径上的接线；不改变默认策略，也不证明直传、fallback、过期、失败、P95 或 24 小时切流门禁。
 - **本轮进展：** 微服务 Compose 已将 `storage.presign_endpoint`、同源代理开关和超时同时传入 Core/Gateway；示例配置清除旧 LAN 端点。受控体验部署可将签名 Host 配置为 Gateway 公网入口，使浏览器 PUT 维持同源并由 Gateway 转发到 Docker 内 MinIO，避免暴露 `9000`。默认 `relay`、前端预签名开关与 A7 的 24 小时 evidence 门禁均保持不变。
+- **运行时验证：** Remote GPU 的 Core/Gateway 已滚动至 `82418438` 且健康。一次性开发用户完成 4-byte 预签名 Multipart：URL host 为 Gateway 公网入口、同源代理 PUT 返回 `200`、ETag 登记和 Complete 成功，Core 指标记录 `dipole_multipart_upload_terminal_total{route="direct",outcome="completed"} 1`；MinIO `9000` 没有主机监听，体验项目仍为 16 个容器。该单样本只验证候选链路，不构成 24 小时切流 receipt。
 - **下一步：** 在受控共享环境生成同版本真实 evidence receipt，并完成 active/expired/abort/retry 生命周期指标、真实 Prometheus/Alertmanager 路由验收；receipt 通过后仍需经过受审策略变更才可切换预签名默认值。
 
 ### AD-061：Agent Memory active promotion 仍缺少共享环境 authority 证据

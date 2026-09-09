@@ -388,6 +388,7 @@ Sync 暂时可以随 Message Service 部署，待阶段二具备可重放事件�
 - [x] 建立 MinIO 预签名 Multipart part URL 契约：Core 按归属会话校验 part 编号并批量签发绑定 `uploadId + partNumber` 的短期 URL；现有 Core 中转路径继续作为默认回滚路径。
 - [x] Web 端接入默认关闭的预签名直传试运行：按 part 批量签发 URL，浏览器直接 PUT 到 MinIO，再经 Core 登记并核验 ETag/尺寸；失败保留会话供恢复，默认 relay 路径可立即回切。
 - [x] 为预签名直传落地可运行的跨域边界：Gateway 提供默认关闭的同源 S3 PUT 代理，仅转发带完整签名的合法分片并限制请求体；开源 MinIO 的 Bucket CORS API 仍不可用，XML 策略仅作为兼容实现的部署参考。
+  - [x] Remote GPU 体验环境已将签名 Host 配置为 Gateway 公网入口，并通过同源代理完成受控单分片上传、ETag 登记和 Complete；MinIO `9000` 仍未公开，默认 `relay` 与 Web 预签名开关未切换。
 - [ ] 将分片上传流量切换为 MinIO 预签名 URL 直传，Core 只负责初始化、签发受限 part URL、登记 ETag/尺寸、完成和取消，降低大文件对业务服务带宽与连接的占用。
   - [x] 建立 `multipart-presigned-rollout/v1` 机器可判定的晋级 receipt：同版本 24 小时窗口、直传样本、fallback/failed/expired/checksum/P95 指标、clear alert、relay 回切演练与独立 reviewer 缺一即拒绝；该门禁不改变默认 `relay`。
 - [x] 增加前端有界并发、指数退避和单 part 重试；当前默认 3 路并发、最多 2 次重试，失败保留 session 供后续状态查询与续传。
