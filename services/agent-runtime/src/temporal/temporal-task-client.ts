@@ -3,6 +3,7 @@ import type { EventClaim } from "../events/event-ledger.js";
 import type { AgentTaskWorkflowControlPort } from "../control/agent-task-control.js";
 import type { AgentTaskState } from "../task/agent-task-state.js";
 import type { Connection } from "@temporalio/client";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type { AgentTaskWorkflowInspector } from "../reconcile/agent-task-projection-reconciler.js";
 import {
   TemporalMcpWorkflowExecutionCatalog,
@@ -242,17 +243,26 @@ async function startTaskWorkflow(
   taskQueue: string,
   input: AgentTaskWorkflowHistoryInput
 ): Promise<TemporalWorkflowHandle> {
-  const handle = await workflow.start("agentTaskWorkflow", {
-    taskQueue,
-    workflowId: agentTaskWorkflowId(input.taskId),
-    workflowIdConflictPolicy: "FAIL",
-    // The workflow records a business failure and then closes successfully so it
-    // can settle the event claim. Core Admission decides whether that failed
-    // task is eligible for another attempt; the ledger prevents completed
-    // events from being dispatched again.
-    workflowIdReusePolicy: "ALLOW_DUPLICATE",
-    args: [input]
-  });
+  const workflowId = agentTaskWorkflowId(input.taskId);
+  let handle: TemporalWorkflowStartHandle;
+  try {
+    handle = await workflow.start("agentTaskWorkflow", {
+      taskQueue,
+      workflowId,
+      workflowIdConflictPolicy: "FAIL",
+      // The workflow records a business failure and then closes successfully so it
+      // can settle the event claim. Core Admission decides whether that failed
+      // task is eligible for another attempt; the ledger prevents completed
+      // events from being dispatched again.
+      workflowIdReusePolicy: "ALLOW_DUPLICATE",
+      args: [input]
+    });
+  } catch (error) {
+    if (error instanceof WorkflowExecutionAlreadyStartedError && error.workflowId === workflowId) {
+      return { workflowId };
+    }
+    throw error;
+  }
   const runId = handle.firstExecutionRunId ?? handle.runId;
   return { workflowId: handle.workflowId, ...(runId === undefined ? {} : { runId }) };
 }

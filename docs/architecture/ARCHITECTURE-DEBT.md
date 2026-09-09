@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Temporal Task client 现对运行中的 `WorkflowExecutionAlreadyStartedError` 返回稳定 workflow ID，调用者可继续通过 Task ID 查询、控制或等待既有 execution；已关闭 execution 继续由 `ALLOW_DUPLICATE` 允许新 run，业务重放资格仍由 Core Admission/EventLedger 决定。Task workflow 的 15 项 Temporal integration 全部通过，其中恢复案例按 stage 分离 plan 与 synthesis 收据，确认 Activity completion acknowledgement 丢失后不重复模型调用或 capability 副作用。
+
 - 2026-09-09：External MCP 的 durable elicitation 已从单次恢复扩展为最多 8 轮。每次 `input_required` 都产生包含当前轮次的新 checkpoint，并用派生 Request ID、Core round receipt、权威 command resolve 和原始 deadline 约束下一次恢复；旧 checkpoint 仍按 round 0 兼容读取。TypeScript unit、Temporal worker replacement 两轮输入集成、Go Core gRPC 与 SQLC 门禁均通过。新 migration `000064` 将 MySQL round receipt 上限同步扩展为 `< 8`；外部 MCP 默认 route、URL mode、敏感字段与生产 Server 策略仍关闭。
 
 - 2026-09-09：Remote GPU 已完成 Subscription Auto-Reply 的隔离 Kafka 重放验收：从原始、已发布的 Message Outbox 读取相同 envelope 后再投递到相同 topic，Event Ledger 仍只有一个 completed Task，且消息、已消费 approval、完成 Tool invocation 均保持单一；候选容器和卷清理为零，公共体验保持 12 个运行实例。现有 Runtime 已有确定性 Tool Invocation 的 Activity 重试收敛，本条补齐 consumer 入口的端到端证据。自动回复仍默认关闭，长期观察与 reviewed 门槛保持前置条件。

@@ -137,7 +137,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
 
     const first = await client.start({ taskId: "task-recovery-1", goal: "publish a digest" });
     const duplicate = await client.start({ taskId: "task-recovery-1", goal: "ignored duplicate payload" });
-    expect(duplicate.runId).toBe(first.runId);
+    expect(duplicate.workflowId).toBe(first.workflowId);
 
     const handle = env.client.workflow.getHandle(first.workflowId);
     const controls = new TemporalTaskControlClient(env.client.workflow);
@@ -198,7 +198,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     }, new TemporalTaskWorkflowInspector(env.client.workflow)).run({ pageSize: 10, maxExamples: 10 });
     expect(report).toMatchObject({ consistent: true, scanned: 1, outcomes: { match: 1 } });
 
-    await expect(client.start({ taskId: "task-recovery-1", goal: "late replay" })).rejects.toThrow(/already started/i);
+    await expect(client.start({ taskId: "task-recovery-1", goal: "late replay" })).resolves.toMatchObject({
+      workflowId: first.workflowId
+    });
     workerTwo.shutdown();
     await workerTwoRun;
   }, 120_000);
@@ -826,12 +828,14 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     let providerCalls = 0;
     let capabilityCalls = 0;
     let authorizationAudits = 0;
-    let completedModel: ModelCallRecovery | undefined;
+    const completedModels = new Map<string, ModelCallRecovery>();
     const modelAudit: ModelAuditStore = {
-      recover: async () => completedModel,
-      reserve: async () => ({ runId: "MODEL-RUN-1", callId: "MODEL-CALL-1", callNo: 1, route: "primary" }),
+      recover: async (_taskId, _policy, stage) => completedModels.get(stage ?? "plan"),
+      reserve: async (_taskId, _policy, _route, stage) => ({
+        runId: `MODEL-RUN-${stage ?? "plan"}`, callId: stage ?? "plan", callNo: 1, route: "primary"
+      }),
       completeCall: async (reservation, output, usage) => {
-        completedModel = { ...reservation, output, usage };
+        completedModels.set(reservation.callId, { ...reservation, output, usage });
       },
       failCall: async () => undefined,
       completeRun: async () => undefined,
@@ -839,10 +843,11 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       failTask: async () => undefined
     };
     const router = new ModelRouter({
-      generate: async () => {
+      generate: async input => {
         providerCalls += 1;
+        const plan = { summary: "read", steps: [{ capabilityId: "conversation.list", input: { limit: 10 } }] };
         return {
-          output: { summary: "read", steps: [{ capabilityId: "conversation.list", input: { limit: 10 } }] },
+          output: input.schema.safeParse(plan).success ? plan : { summary: "read" },
           usage: { inputTokens: 20, outputTokens: 8 }, finishReason: "stop"
         };
       }
@@ -901,7 +906,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
 
     expect(result).toMatchObject({ status: "completed", output: { summary: "read", stepCount: 1 } });
     expect(activityAttempts).toBe(2);
-    expect(providerCalls).toBe(1);
+    // The initial plan and synthesis each use one stage-scoped model call;
+    // the Activity retry must replay both receipts without a third call.
+    expect(providerCalls).toBe(2);
     expect(capabilityCalls).toBe(1);
     expect(authorizationAudits).toBe(1);
   }, 120_000);

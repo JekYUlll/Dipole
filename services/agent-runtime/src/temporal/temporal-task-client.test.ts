@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
 import { agentTaskWorkflowId, TemporalShadowTaskDispatcher, TemporalTaskClient, TemporalTaskControlClient, TemporalTaskWorkflowInspector } from "./temporal-task-client.js";
 
@@ -23,6 +24,17 @@ describe("Temporal Task client", () => {
       workflowIdReusePolicy: "ALLOW_DUPLICATE",
       args: [{ taskId: "task-1", goal: "summarize G1" }]
     });
+  });
+
+  it("converges a concurrent duplicate start to its stable Workflow ID", async () => {
+    const workflowId = "dipole-agent-task/task-1";
+    const start = vi.fn()
+      .mockResolvedValueOnce({ workflowId, firstExecutionRunId: "run-1" })
+      .mockRejectedValueOnce(new WorkflowExecutionAlreadyStartedError("already running", workflowId, "agentTaskWorkflow"));
+    const client = new TemporalTaskClient({ start }, "dipole-agent-task-v1");
+
+    await client.start({ taskId: "task-1", goal: "first request" });
+    await expect(client.start({ taskId: "task-1", goal: "duplicate request" })).resolves.toEqual({ workflowId });
   });
 });
 
