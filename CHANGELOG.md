@@ -1,4 +1,4 @@
-- 2026-09-09：新增显式 `cassandra-shadow` Compose profile。它只启动 Cassandra、schema initializer 与独立 Kafka `cassandra-projector` consumer，持久化写入影子 Timeline；Core、Message、Sync 和 Gateway 不被覆盖，关闭 profile 即可停止影子投影。静态 Compose 契约锁定该隔离边界，Remote GPU 运行回执待本切片归档。
+- 2026-09-09：新增显式 `cassandra-shadow` Compose profile。它只启动 Cassandra、schema initializer 与独立 Kafka `cassandra-projector` consumer，持久化写入影子 Timeline；Core、Message、Sync 和 Gateway 不被覆盖，关闭 profile 即可停止影子投影。静态 Compose 契约锁定该隔离边界；Remote GPU 已以同版本专用 projector 镜像完成新 B1 私聊投影，Timeline 写入两行，consumer 的 fetched/handled/committed 均为 `2` 且无 commit/DLQ 错误。
 
 - 2026-09-09：Remote GPU 在已部署 Core revision `daa8582a` 的干净工作树复验隔离 MinIO Multipart lifecycle 与 restart smoke。乱序/替换分片、Complete、内容校验、重复 Abort，以及首个分片后重启 MinIO 再续传均通过；两次执行前后公共 `dipole-experience` 均保持 13 个容器。该证据限于临时 MinIO 与持久卷，默认 `relay` 路径、预签名切流和生产容量口径保持不变。
 
