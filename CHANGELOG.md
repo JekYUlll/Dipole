@@ -1,3 +1,5 @@
+- 2026-09-09：Subscription Active Read E2E 的 MySQL binding 查询改用 raw batch 输出，避免 MySQL 将比较所需的制表分隔符转义为字面量 `\\t` 而误报 grant binding 不匹配。
+
 - 2026-09-09：reviewed Subscription helper 已移除对宿主机 MySQL 密码变量的强制依赖，operator grant 调用与底层工具统一使用 Compose MySQL service 的容器内凭据；显式 Secret 注入仍作为兼容通道保留。
 
 - 2026-09-09：reviewed Subscription grant 运维脚本改为通过 Compose MySQL service 在容器内读取现有 root 凭据，修复自定义 `container_name` 部署下的硬编码容器寻址问题。显式注入的临时密码通道仍保留，默认聊天路由、promotion 开关和权限范围均未改变。

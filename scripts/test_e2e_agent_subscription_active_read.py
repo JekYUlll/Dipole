@@ -28,6 +28,7 @@ class AgentSubscriptionActiveReadE2ETest(unittest.TestCase):
         self.assertIn("candidate_version", source)
         self.assertIn("definition_uuid", source)
         self.assertIn("reviewed grant binding mismatch", source)
+        self.assertIn("mysql -uroot -N -B -r dipole", source)
 
     def test_cleanup_only_revokes_a_fixture_grant(self) -> None:
         source = SCRIPT.read_text(encoding="utf-8")

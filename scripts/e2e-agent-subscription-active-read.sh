@@ -34,7 +34,8 @@ else
   }
 fi
 
-mysql() { docker exec "${PROJECT}-mysql-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N -B dipole -e "'"$1"'"'; }
+# Raw batch output preserves the tab-delimited grant binding used below.
+mysql() { docker exec "${PROJECT}-mysql-1" sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -N -B -r dipole -e "'"$1"'"'; }
 
 cleanup() {
   if (( fixture_grant )) && [[ -n "${grant_uuid}" ]]; then
