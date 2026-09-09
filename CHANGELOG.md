@@ -1,3 +1,5 @@
+- 2026-09-09：Agent Runtime 的确定性安全回归矩阵已通过，统一验证 untrusted prompt provenance、越权 Capability 执行前拒绝、MCP 敏感/超限参数外发阻断、重复事件预算收敛和同源 Agent 事件循环抑制。该门禁覆盖执行层策略，不替代真实候选模型与人工标注对抗语料评测。
+
 - 2026-09-09：Remote GPU 公共 `dipole-experience` 已通过 `search-shadow` profile 启动 Elasticsearch 与独立 Search Indexer，二者均为 healthy；Gateway 保持 `DIPOLE_SEARCH_ENABLED=false`，Query Service 未启动。新建的 B1 私聊及其单条 Agent 回复使 `dipole-messages-v1` 文档数从 `0` 增至 `2`，确认 Kafka 消息事件可异步写入影子索引。权限感知查询、查询路由、P99 与读切流继续关闭并待独立验收。
 
 - 2026-09-09：新增显式 `cassandra-shadow` Compose profile。它只启动 Cassandra、schema initializer 与独立 Kafka `cassandra-projector` consumer，持久化写入影子 Timeline；Core、Message、Sync 和 Gateway 不被覆盖，关闭 profile 即可停止影子投影。静态 Compose 契约锁定该隔离边界；Remote GPU 已以同版本专用 projector 镜像完成新 B1 私聊投影，Timeline 写入两行，consumer 的 fetched/handled/committed 均为 `2` 且无 commit/DLQ 错误。
