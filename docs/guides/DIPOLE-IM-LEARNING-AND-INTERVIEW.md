@@ -2,6 +2,24 @@
 
 本文件只描述 Dipole 的即时通信、存储、同步、微服务与文件数据面。Agent Runtime 请使用 [Dipole Agent 项目材料](DIPOLE-AGENT-LEARNING-AND-INTERVIEW.md)。
 
+```mermaid
+flowchart LR
+    Client[Web and mobile clients] --> Gateway[IM Gateway]
+    Gateway --> Message[Message Service]
+    Message --> MySQL[(MySQL message metadata)]
+    Message --> Outbox[Transactional Outbox]
+    Outbox --> Kafka[Kafka event bus]
+    Kafka --> Conversation[Conversation projection]
+    Kafka --> Sync[Sync Service and User Inbox Timeline]
+    Kafka --> Search[Search projection]
+    Kafka --> Delivery[Realtime delivery]
+    Sync --> Cursor[Device Cursor]
+    Message -. shadow and migration .-> Cassandra[(Cassandra Timeline)]
+    Search -. index .-> ES[(Elasticsearch)]
+```
+
+消息事实、会话投影和用户同步流分别建模；Kafka 承担服务间事件，Device Cursor 承担客户端增量位置。Cassandra 与 Elasticsearch 路径保留影子、回退和证据门禁，当前材料仅描述已验证范围。
+
 ## 1. 使用规则
 
 只依据代码、测试、基准报告和归档运行记录描述能力。状态使用“已验证”“默认关闭”“规划中”；隔离环境结果必须注明环境，不能外推为生产结论。

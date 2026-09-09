@@ -2,6 +2,23 @@
 
 本文件将 Dipole Agent Runtime 作为独立 AI 工程项目描述。IM 数据面和同步能力请使用 [Dipole IM 项目材料](DIPOLE-IM-LEARNING-AND-INTERVIEW.md)。
 
+```mermaid
+flowchart LR
+    Event[IM event or authenticated request] --> Admission[Core admission]
+    Admission --> Context[Trusted ExecutionContext]
+    Context --> Workflow[Temporal Agent Task]
+    Workflow --> Compiler[Context Compiler]
+    Compiler --> Model[Model Router]
+    Model --> Policy[Capability Policy]
+    Policy -->|read| Core[Core Capability RPC]
+    Policy -->|write| Approval[Owner approval or scoped grant]
+    Approval --> Core
+    Core --> Audit[Task, run and tool audit]
+    Workflow --> Memory[Reviewed Memory and Artifact]
+```
+
+身份、租户、资源范围和权限由 admission 与 Core 恢复；模型只接收受限上下文并选择已声明 Capability。Temporal 保留任务、等待、重试和终态，审计与副作用由 Core authority 收敛。
+
 ## 1. 使用规则
 
 Agent 口径必须区分已验证、默认关闭和规划中。模型、MCP、Memory 或 active 写入的实现不能替代权限、评测、可观测性和共享环境证据。
