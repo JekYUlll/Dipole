@@ -204,4 +204,4 @@ approved_by=$(mysql -e "SELECT approved_by_uuid FROM agent_approvals WHERE task_
 [[ "${approved_by}" == "${owner_uuid}" ]] || { printf 'auto-minted approval principal diverged: got=%q want=%q\n' "${approved_by}" "${owner_uuid}" >&2; exit 1; }
 
 mysql -e "UPDATE agent_runtime_promotion_grants SET revoked_at = UTC_TIMESTAMP(3) WHERE grant_uuid = '${grant_uuid}' AND revoked_at IS NULL"
-printf 'Agent Subscription auto-reply Compose smoke passed: one owner-scoped Kafka event completed one durable read Task with one model call and one autonomous reply, via one Core-minted-and-consumed message.system.send grant approved by the owner.\n'
+printf 'Agent Subscription auto-reply Compose smoke passed: one owner-scoped Kafka event completed one durable read Task with two bounded model calls and one autonomous reply, via one Core-minted-and-consumed message.system.send grant approved by the owner.\n'
