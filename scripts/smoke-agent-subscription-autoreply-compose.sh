@@ -203,5 +203,35 @@ reply_effects=$(mysql -e "SELECT
 approved_by=$(mysql -e "SELECT approved_by_uuid FROM agent_approvals WHERE task_uuid = '${task_uuid}' AND capability_id = 'message.system.send'")
 [[ "${approved_by}" == "${owner_uuid}" ]] || { printf 'auto-minted approval principal diverged: got=%q want=%q\n' "${approved_by}" "${owner_uuid}" >&2; exit 1; }
 
+# Re-deliver the original Message Store Outbox envelope through Kafka. This
+# exercises the consumer-facing Event Ledger dedupe path after all autonomous
+# write effects have committed; the duplicate must not create a second Task or
+# any additional message, approval, or Tool Invocation.
+trigger_message_uuid=$(mysql -e "SELECT uuid FROM messages WHERE sender_uuid = '${owner_uuid}' AND target_uuid = '${agent_uuid}' AND client_message_id LIKE 'subscription-autoreply-%' ORDER BY id DESC LIMIT 1")
+[[ -n "${trigger_message_uuid}" ]] || { printf 'subscription trigger message was not found\n' >&2; exit 1; }
+replay_outbox=""
+for _ in $(seq 1 30); do
+  replay_outbox=$(mysql -e "SELECT CONCAT(topic, CHAR(9), TO_BASE64(value)) FROM outbox_events WHERE message_key = '${trigger_message_uuid}' AND event_type = 'message.direct.created' AND status = 'published' ORDER BY id DESC LIMIT 1" || true)
+  [[ -n "${replay_outbox}" ]] && break
+  sleep 1
+done
+[[ -n "${replay_outbox}" ]] || { printf 'published subscription trigger Outbox envelope was not found\n' >&2; exit 1; }
+IFS=$'\t' read -r replay_topic replay_payload_b64 <<<"${replay_outbox}"
+[[ "${replay_topic}" == "message.direct.created" && -n "${replay_payload_b64}" ]] || { printf 'subscription trigger Outbox replay binding is invalid: %q\n' "${replay_outbox}" >&2; exit 1; }
+printf '%s' "${replay_payload_b64}" | base64 --decode | compose exec -T kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server kafka:9092 --topic "dipole.${replay_topic}" >/dev/null
+
+replay_effects=""
+for _ in $(seq 1 30); do
+  replay_effects=$(mysql -e "SELECT
+  (SELECT COUNT(*) FROM agent_tasks WHERE trigger_subscription_uuid = '${subscription_uuid}'),
+  (SELECT COUNT(*) FROM agent_event_ledger WHERE task_uuid = '${task_uuid}' AND status = 'completed'),
+  (SELECT COUNT(*) FROM messages WHERE sender_uuid = '${agent_uuid}' AND target_uuid = '${owner_uuid}'),
+  (SELECT COUNT(*) FROM agent_approvals WHERE task_uuid = '${task_uuid}' AND capability_id = 'message.system.send' AND status = 'consumed'),
+  (SELECT COUNT(*) FROM agent_tool_invocations WHERE task_uuid = '${task_uuid}' AND status = 'completed')")
+  [[ "${replay_effects}" == $'1\t1\t1\t1\t1' ]] && break
+  sleep 1
+done
+[[ "${replay_effects}" == $'1\t1\t1\t1\t1' ]] || { printf 'subscription Kafka replay diverged (tasks, completed_ledger, messages, consumed_approvals, tool_invocations): %q\n' "${replay_effects}" >&2; exit 1; }
+
 mysql -e "UPDATE agent_runtime_promotion_grants SET revoked_at = UTC_TIMESTAMP(3) WHERE grant_uuid = '${grant_uuid}' AND revoked_at IS NULL"
-printf 'Agent Subscription auto-reply Compose smoke passed: one owner-scoped Kafka event completed one durable read Task with two bounded model calls and one autonomous reply, via one Core-minted-and-consumed message.system.send grant approved by the owner.\n'
+printf 'Agent Subscription auto-reply Compose smoke passed: one owner-scoped Kafka event and its replay completed one durable read Task with two bounded model calls and one autonomous reply, via one Core-minted-and-consumed message.system.send grant approved by the owner.\n'

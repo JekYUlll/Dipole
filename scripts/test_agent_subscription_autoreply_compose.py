@@ -60,6 +60,14 @@ class SubscriptionAutoReplyComposeTest(unittest.TestCase):
         self.assertIn("expected_model_calls=2", smoke)
         self.assertIn('[[ "${model_calls}" == "${expected_model_calls}" ]]', smoke)
 
+    def test_smoke_replays_the_published_outbox_envelope_without_extra_effects(self) -> None:
+        smoke = (ROOT / "scripts/smoke-agent-subscription-autoreply-compose.sh").read_text(encoding="utf-8")
+        self.assertIn("TO_BASE64(value)", smoke)
+        self.assertIn("kafka-console-producer.sh", smoke)
+        self.assertIn('"dipole.${replay_topic}"', smoke)
+        self.assertIn("subscription Kafka replay diverged", smoke)
+        self.assertIn("agent_event_ledger", smoke)
+
 
 if __name__ == "__main__":
     unittest.main()
