@@ -30,6 +30,22 @@ func DialSearchCoreCapability(ctx context.Context, cfg config.InternalRPC) (*cor
 	return client, connection, nil
 }
 
+// DialSearchCoreCapabilityDeferred permits Search to bind its RPC listener
+// before Core has finished its own startup. Search readiness still probes the
+// Core connection and requests fail closed until the peer becomes available.
+func DialSearchCoreCapabilityDeferred(ctx context.Context, cfg config.InternalRPC) (*coregrpc.Client, *grpc.ClientConn, error) {
+	connection, err := platformrpc.DialDeferred(ctx, cfg, cfg.CoreTarget, grpcauth.Credentials{Service: searchServiceName, Secret: cfg.SharedSecret})
+	if err != nil {
+		return nil, nil, fmt.Errorf("dial core rpc: %w", err)
+	}
+	client, err := coregrpc.NewClientForService(corev1.NewCoreCapabilityServiceClient(connection), searchServiceName)
+	if err != nil {
+		_ = connection.Close()
+		return nil, nil, fmt.Errorf("create core capability client: %w", err)
+	}
+	return client, connection, nil
+}
+
 func NewSearchRPCServer(cfg config.InternalRPC, search application.SearchApplication) (*InternalRPCServer, error) {
 	adapter, err := searchgrpc.NewServer(search)
 	if err != nil {

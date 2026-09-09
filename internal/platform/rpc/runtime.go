@@ -108,6 +108,35 @@ func Dial(ctx context.Context, cfg config.InternalRPC, target string, credential
 	return connection, nil
 }
 
+// DialDeferred opens an authenticated connection without waiting for the peer
+// health check. Callers must expose their own readiness probe before serving a
+// dependency that needs this connection. It is intended for a narrow startup
+// cycle where two services depend on each other's RPC surface.
+func DialDeferred(ctx context.Context, cfg config.InternalRPC, target string, credentials grpcauth.Credentials) (*grpc.ClientConn, error) {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return nil, errors.New("internal rpc target is required")
+	}
+	interceptor, err := grpcauth.NewUnaryClientInterceptor(credentials)
+	if err != nil {
+		return nil, err
+	}
+	transportCredentials, err := clientCredentials(cfg, target)
+	if err != nil {
+		return nil, err
+	}
+	connection, err := grpc.DialContext(
+		ctx,
+		target,
+		grpc.WithTransportCredentials(transportCredentials),
+		grpc.WithUnaryInterceptor(interceptor),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return connection, nil
+}
+
 func serverCredentials(cfg config.InternalRPC, address string) (grpcCredentials.TransportCredentials, error) {
 	if !cfg.TLSEnabled {
 		if !loopbackAddress(address) {

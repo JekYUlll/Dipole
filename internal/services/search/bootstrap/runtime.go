@@ -56,7 +56,10 @@ func InitializeWithConfig(ctx context.Context, rpcCfg config.InternalRPC, elasti
 		runtime.Close()
 		return nil, fmt.Errorf("validate Elasticsearch Search readiness: %w", err)
 	}
-	core, coreConnection, err := DialSearchCoreCapability(ctx, rpcCfg)
+	// Search must expose its listener before Core attempts its reciprocal Search
+	// dial. The deferred Core connection stays behind the existing readiness
+	// probe, so Search cannot become ready while Core remains unavailable.
+	core, coreConnection, err := DialSearchCoreCapabilityDeferred(ctx, rpcCfg)
 	if err != nil {
 		runtime.Close()
 		return nil, err

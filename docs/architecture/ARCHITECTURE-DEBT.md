@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：Search-to-Core 启动连接现限定使用延迟拨号，解除 Core/Search 的运行时 eager-dial 循环；Search 的 `/readyz` 仍由 Core RPC dependency probe 约束，实际调用也保持 fail-closed。Remote GPU 需要重新执行候选联合健康和 owner-scoped Search E2E。
+
 - 2026-09-09：Retrieval candidate 已解除 Compose 启动环：overlay 允许 Search 在 Core 容器已启动后并行启动，同时继续等待 Search Indexer 健康；Core 对 Search RPC 的 fail-closed 行为保持。Remote GPU 联合健康、owner-scoped Search E2E 与回滚证据仍待执行。
 
 - 2026-09-09：首次隔离 Retrieval candidate 启动确认 Core 在 `SearchConversations` RPC 启用而 Search service 缺席时会 fail-closed，公共栈未受影响且候选已清理。Compose 的 `profiles: []` 不移除基础 profile，候选命令须显式携带 `--profile search`；Search Indexer 仍不属于此读取验证范围。

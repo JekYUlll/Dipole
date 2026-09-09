@@ -11,6 +11,19 @@ import (
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 )
 
+func TestDialDeferredReturnsBeforePeerStarts(t *testing.T) {
+	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", DialTimeoutSeconds: 5}
+	startedAt := time.Now()
+	connection, err := DialDeferred(context.Background(), cfg, "127.0.0.1:1", grpcauth.Credentials{Service: "dipole-gateway", Secret: cfg.SharedSecret})
+	if err != nil {
+		t.Fatalf("defer rpc dial: %v", err)
+	}
+	t.Cleanup(func() { _ = connection.Close() })
+	if elapsed := time.Since(startedAt); elapsed >= time.Second {
+		t.Fatalf("deferred dial waited for unavailable peer: %s", elapsed)
+	}
+}
+
 func TestServerAndDialOwnAuthenticatedHealthLifecycle(t *testing.T) {
 	cfg := config.InternalRPC{Enabled: true, SharedSecret: "test-secret", DialTimeoutSeconds: 2}
 	server, err := NewServer(cfg, "127.0.0.1:0", []string{"dipole-gateway"}, func(_ *grpc.Server) {})
