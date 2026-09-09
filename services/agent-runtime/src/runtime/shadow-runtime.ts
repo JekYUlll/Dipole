@@ -716,9 +716,12 @@ function isLoopbackTarget(target: string): boolean {
 }
 
 // Follow-up reads must use the fixed trusted discovery marker. The execution
-// layer resolves it only from the preceding conversation.list result.
-export function singlePassModelCapabilityIDs(_config: ShadowRuntimeConfig): readonly string[] {
-  return ["user.profile.read", "conversation.list", "conversation.read"];
+// layer resolves it only from the preceding conversation.list result. Search
+// remains opt-in because Core authorizes its owner-scoped wildcard separately.
+export function singlePassModelCapabilityIDs(config: ShadowRuntimeConfig): readonly string[] {
+  return config.retrievalEnabled
+    ? ["user.profile.read", "conversation.list", "conversation.read", "conversation.search"]
+    : ["user.profile.read", "conversation.list", "conversation.read"];
 }
 
 function readCapabilityPermissions(config: ShadowRuntimeConfig): readonly string[] {

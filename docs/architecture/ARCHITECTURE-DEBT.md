@@ -1,5 +1,7 @@
 # 架构债务台账
 
+- 2026-09-09：已收口 Retrieval Capability 装配差异：当 `retrievalEnabled` 为真时，已注册且已授权的 `conversation.search` 同步进入模型允许清单；关闭时保持最小读集合。搜索的 wildcard resource 继续由 Core 按 Task/Run 与 owner scope 复核，尚不构成默认启用的全文检索服务切流。
+
 - 2026-09-09：Temporal Workflow 级集成验收补齐 failed terminal 的 EventLedger 语义：`finish(failed)` 成功后才执行 claim release，且错误文本被保留。该项与既有 completed settle、活动层 failed/cancelled release 和 MySQL lease reclaim 契约共同防止入站失败被错误去重；Kafka 重投策略仍由 Core Admission 决定。
 
 - 2026-09-09：学习与面试材料以独立 IM/Agent Mermaid 图固定受控边界：IM 表达 Timeline、Outbox 与 Sync 投影；Agent 表达可信 ExecutionContext、Temporal 和 Capability 审批。默认关闭的 Cassandra、Elasticsearch 和 Agent 写入仍须满足各自证据门禁；本项不改变运行路径。

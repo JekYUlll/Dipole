@@ -1,3 +1,5 @@
+- 2026-09-09：Agent Runtime 在 `retrievalEnabled` 时将受治理的 `conversation.search` 纳入模型可规划 Capability；关闭 retrieval 时仍只暴露 profile、会话列表和基于发现结果的会话读取。搜索继续通过 Core 的任务、运行和 owner scope 授权，不扩大默认权限。
+
 - 2026-09-09：Temporal Agent 集成验收新增失败结算路径：Task 持久化 `failed` 终态后才释放 inbound EventLedger claim，并保留原始失败原因供后续 Kafka 重投；成功任务仍只在持久化 `completed` 后完成 claim，避免失败被误标完成。
 
 - 2026-09-09：学习与面试材料新增 IM 与 Agent Mermaid 主链路图，分别固定 Timeline/Outbox/Sync 投影和可信 ExecutionContext/Temporal/Capability 审批边界；Cassandra、Elasticsearch 与写能力继续标注为需独立证据门禁的演进路径。
