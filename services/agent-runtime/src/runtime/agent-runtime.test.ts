@@ -4,36 +4,36 @@ import type { KafkaConsumerFactoryPort, KafkaConsumerPort, KafkaInboundPayload }
 import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-processor.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
 import type { ExecutionContext } from "./execution-context.js";
-import { buildKafkaShadowRuntime, loadShadowRuntimeConfig } from "./shadow-runtime.js";
+import { buildKafkaAgentRuntime, loadAgentRuntimeConfig } from "./agent-runtime.js";
 import { SubscriptionShadowMetrics } from "../observability/subscription-shadow-metrics.js";
 
 describe("shadow runtime composition", () => {
   it("requires brokers only when Kafka shadow mode is enabled", () => {
-    expect(loadShadowRuntimeConfig({})).toMatchObject({
+    expect(loadAgentRuntimeConfig({})).toMatchObject({
       enabled: false, runtimeMode: "shadow", candidateVersion: "", groupId: "dipole-agent-shadow-v1", ledgerMode: "memory", modelMode: "metadata",
       contextCompilerVersion: "v1", memoryEnabled: false, triggerMode: "direct_target", capabilityRpc: { enabled: false }
     });
-    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
-    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote" })).toThrow(/Kafka/);
-    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "active" })).toThrow(/Kafka/);
-    expect(loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({ DIPOLE_AGENT_KAFKA_ENABLED: "true" })).toThrow(/brokers/);
+    expect(() => loadAgentRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "remote" })).toThrow(/Kafka/);
+    expect(() => loadAgentRuntimeConfig({ DIPOLE_AGENT_RUNTIME_MODE: "active" })).toThrow(/Kafka/);
+    expect(loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true",
       DIPOLE_AGENT_KAFKA_BROKERS: "kafka-1:9092, kafka-2:9092"
     }).brokers).toEqual(["kafka-1:9092", "kafka-2:9092"]);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_LEDGER_MODE: "mysql"
     })).toThrow(/MySQL/);
-    expect(loadShadowRuntimeConfig({
+    expect(loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_LEDGER_MODE: "mysql",
       DIPOLE_AGENT_MYSQL_HOST: "mysql", DIPOLE_AGENT_MYSQL_USER: "agent", DIPOLE_AGENT_MYSQL_PASSWORD: "secret",
       DIPOLE_AGENT_MYSQL_DATABASE: "dipole"
     })).toMatchObject({ ledgerMode: "mysql", mysql: { host: "mysql", port: 3306, user: "agent", database: "dipole" } });
-    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_MODEL_MODE: "ai_sdk" })).toThrow(/model routes/);
-    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_MEMORY_ENABLED: "true" })).toThrow(/Memory.*AI SDK/);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({ DIPOLE_AGENT_MODEL_MODE: "ai_sdk" })).toThrow(/model routes/);
+    expect(() => loadAgentRuntimeConfig({ DIPOLE_AGENT_MEMORY_ENABLED: "true" })).toThrow(/Memory.*AI SDK/);
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "provider/model"
     })).toThrow(/persistent MySQL model audit/);
-    expect(loadShadowRuntimeConfig({
+    expect(loadAgentRuntimeConfig({
       DIPOLE_AGENT_MODEL_MODE: "ai_sdk",
       DIPOLE_AGENT_MODEL_ROUTES: "openai/gpt-5-mini,anthropic/claude-sonnet-4.5",
       DIPOLE_AGENT_LEDGER_MODE: "mysql",
@@ -58,39 +58,39 @@ describe("shadow runtime composition", () => {
         route: "openai/gpt-5-mini", contextWindowTokens: 32_768, utf8BytesPerToken: 3, safetyMarginBps: 1_500
       }]
     });
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: "not-json"
     })).toThrow(/JSON/);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_MODEL_ROUTES: "provider/model",
       DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"provider/model","contextWindowTokens":8192,"utf8BytesPerToken":3,"safetyMarginBps":1000}]'
     })).toThrow(/require Context Compiler v2/);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_MODEL_ROUTES: "provider/model",
       DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
       DIPOLE_AGENT_MODEL_CONTEXT_PROFILES: '[{"route":"other/model","contextWindowTokens":8192,"utf8BytesPerToken":3,"safetyMarginBps":1000}]'
     })).toThrow(/unknown route/);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_MODEL_MODE: "ai_sdk", DIPOLE_AGENT_MODEL_ROUTES: "provider/model",
       DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: "v2",
       DIPOLE_AGENT_LEDGER_MODE: "mysql", DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
       DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "5000"
     })).toThrow(/context window/);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
       DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "core:9091",
       DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
     })).toThrow(/loopback/);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
       DIPOLE_AGENT_TRIGGER_MODE: "subscription"
     })).toThrow(/subscription.*Capability RPC/i);
-    expect(() => loadShadowRuntimeConfig({ DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true" })).toThrow(/Kafka/i);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({ DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true" })).toThrow(/Kafka/i);
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
       DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true"
     })).toThrow(/Capability RPC/i);
-    expect(() => loadShadowRuntimeConfig({
+    expect(() => loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
       DIPOLE_AGENT_TRIGGER_MODE: "subscription", DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true",
       DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",
@@ -109,10 +109,10 @@ describe("shadow runtime composition", () => {
     const factory: KafkaConsumerFactoryPort = { create: () => consumer };
     const planner = { plan: vi.fn(async (_event: AgentEvent, _context: ExecutionContext) => ({ summary: "observe", steps: [] })) };
     const audit = { append: vi.fn(async () => undefined) };
-    const config = loadShadowRuntimeConfig({
+    const config = loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_UUID: "UAI"
     });
-    const runtime = buildKafkaShadowRuntime(config, factory, planner, audit);
+    const runtime = buildKafkaAgentRuntime(config, factory, planner, audit);
     await runtime.start();
     await eachMessage!(payload(messageEnvelope()));
 
@@ -133,10 +133,10 @@ describe("shadow runtime composition", () => {
     };
     const planner = { plan: vi.fn(async () => ({ summary: "observe", steps: [] })) };
     const audit = { append: vi.fn(async () => undefined) };
-    const config = loadShadowRuntimeConfig({
+    const config = loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_UUID: "UAI"
     });
-    const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, planner, audit);
+    const runtime = buildKafkaAgentRuntime(config, { create: () => consumer }, planner, audit);
 
     await runtime.start();
     await eachMessage!(payload(messageEnvelope("OTHER")));
@@ -155,10 +155,10 @@ describe("shadow runtime composition", () => {
     };
     const planner = { plan: vi.fn(async () => ({ summary: "group reply", steps: [] })) };
     const audit = { append: vi.fn(async () => undefined) };
-    const config = loadShadowRuntimeConfig({
+    const config = loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_UUID: "UAI"
     });
-    const runtime = buildKafkaShadowRuntime(config, { create: () => consumer }, planner, audit);
+    const runtime = buildKafkaAgentRuntime(config, { create: () => consumer }, planner, audit);
     await runtime.start();
     await eachMessage!(payload(groupMessageEnvelope("plain discussion", "E-GROUP-1")));
     await eachMessage!(payload(groupMessageEnvelope("@AI summarize this", "E-GROUP-2")));
@@ -175,7 +175,7 @@ describe("shadow runtime composition", () => {
       subscription("SUB-1", "message_contains_any", { terms: ["incident"] })
     ]);
     const config = subscriptionConfig();
-    const runtime = buildKafkaShadowRuntime(
+    const runtime = buildKafkaAgentRuntime(
       config, fixture.factory, fixture.planner, fixture.audit, fixture.ledger, undefined, subscriptions
     );
 
@@ -195,7 +195,7 @@ describe("shadow runtime composition", () => {
       mode: "enforced" as const, outcome: "blocked" as const, taskCreationAllowed: false,
       reason: "subscription_rollout_blocked"
     })) };
-    const runtime = buildKafkaShadowRuntime(
+    const runtime = buildKafkaAgentRuntime(
       subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger,
       undefined, subscriptions, undefined, undefined, undefined, undefined, undefined, gate
     );
@@ -214,7 +214,7 @@ describe("shadow runtime composition", () => {
       subscription("SUB-B", "all", {}),
       subscription("SUB-A", "message_contains_any", { terms: ["hello"] })
     ]);
-    const runtime = buildKafkaShadowRuntime(
+    const runtime = buildKafkaAgentRuntime(
       subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger, undefined, subscriptions
     );
 
@@ -244,7 +244,7 @@ describe("shadow runtime composition", () => {
       matchEventSubscriptions: vi.fn(async () => [subscription("SUB-A", "all", {})])
     };
     const dispatcher = { dispatch: vi.fn(async () => undefined) };
-    const runtime = buildKafkaShadowRuntime(
+    const runtime = buildKafkaAgentRuntime(
       subscriptionConfig(), fixture.factory, fixture.planner, fixture.audit, fixture.ledger,
       undefined, undefined, undefined, undefined, dispatcher, matcher
     );
@@ -271,12 +271,12 @@ describe("shadow runtime composition", () => {
       .mockResolvedValueOnce([])
       .mockRejectedValueOnce(new Error("Core unavailable")) };
     const metrics = new SubscriptionShadowMetrics();
-    const config = loadShadowRuntimeConfig({
+    const config = loadAgentRuntimeConfig({
       DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092", DIPOLE_AGENT_UUID: "UAI",
       DIPOLE_AGENT_SUBSCRIPTION_SHADOW_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
       DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091", DIPOLE_INTERNAL_RPC_SHARED_SECRET: "rpc-secret"
     });
-    const runtime = buildKafkaShadowRuntime(
+    const runtime = buildKafkaAgentRuntime(
       config, fixture.factory, fixture.planner, fixture.audit, fixture.ledger,
       undefined, undefined, undefined, undefined, undefined, matcher, metrics
     );
@@ -297,7 +297,7 @@ describe("shadow runtime composition", () => {
 });
 
 function subscriptionConfig() {
-  return loadShadowRuntimeConfig({
+  return loadAgentRuntimeConfig({
     DIPOLE_AGENT_KAFKA_ENABLED: "true",
     DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
     DIPOLE_AGENT_UUID: "UAI",

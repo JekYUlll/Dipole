@@ -40,7 +40,7 @@ import { AgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent
 import { createTemporalReadStepActivities } from "../temporal/agent-task-read-activities.js";
 import type { AgentTaskActivities } from "../temporal/agent-task-activities.js";
 
-const shadowRuntimeConfigSchema = z.object({
+const agentRuntimeConfigSchema = z.object({
   enabled: z.boolean(),
   runtimeMode: z.enum(["shadow", "active"]),
   candidateVersion: z.string().trim(),
@@ -168,10 +168,10 @@ const shadowRuntimeConfigSchema = z.object({
   }
 });
 
-export type ShadowRuntimeConfig = z.infer<typeof shadowRuntimeConfigSchema>;
+export type AgentRuntimeConfig = z.infer<typeof agentRuntimeConfigSchema>;
 
-export function loadShadowRuntimeConfig(env: NodeJS.ProcessEnv): ShadowRuntimeConfig {
-  return shadowRuntimeConfigSchema.parse({
+export function loadAgentRuntimeConfig(env: NodeJS.ProcessEnv): AgentRuntimeConfig {
+  return agentRuntimeConfigSchema.parse({
     enabled: env.DIPOLE_AGENT_KAFKA_ENABLED?.trim().toLowerCase() === "true",
     runtimeMode: ["active", "remote"].includes(env.DIPOLE_AGENT_RUNTIME_MODE?.trim().toLowerCase() ?? "") ? "active" : "shadow",
     candidateVersion: env.DIPOLE_AGENT_CANDIDATE_VERSION ?? "",
@@ -259,8 +259,8 @@ export class ConsoleShadowAuditSink implements ShadowAuditSink {
   }
 }
 
-export function buildKafkaShadowRuntime(
-  config: ShadowRuntimeConfig,
+export function buildKafkaAgentRuntime(
+  config: AgentRuntimeConfig,
   factory: KafkaConsumerFactoryPort,
   planner: ShadowPlanner = new MetadataShadowPlanner(),
   audit: ShadowAuditSink = new ConsoleShadowAuditSink(),
@@ -338,8 +338,8 @@ export function buildKafkaShadowRuntime(
   }, failureRouter);
 }
 
-export function createKafkaShadowRuntime(
-  config: ShadowRuntimeConfig,
+export function createKafkaAgentRuntime(
+  config: AgentRuntimeConfig,
   dispatcher?: ShadowTaskDispatcher,
   subscriptionMatcher?: ShadowSubscriptionMatcher,
   subscriptionShadowObserver?: SubscriptionShadowObserver
@@ -384,7 +384,7 @@ export function createKafkaShadowRuntime(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
     ), ["conversation.list", "conversation.read", "conversation.search"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
     : new MetadataShadowPlanner();
-  const consumer = buildKafkaShadowRuntime(
+  const consumer = buildKafkaAgentRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
     dispatcher, subscriptionMatcher ?? (config.subscriptionShadowEnabled ? rpcTransport?.client : undefined), subscriptionShadowObserver
   );
@@ -426,7 +426,7 @@ export function createKafkaShadowRuntime(
   };
 }
 
-export function createTemporalReadActivityResources(config: ShadowRuntimeConfig): TemporalReadActivityResources {
+export function createTemporalReadActivityResources(config: AgentRuntimeConfig): TemporalReadActivityResources {
   if (config.ledgerMode !== "mysql" || config.modelMode !== "ai_sdk" || !config.capabilityRpc.enabled) {
     throw new Error("Temporal read shadow requires MySQL ledger, AI SDK model, and Agent Capability RPC");
   }
@@ -467,7 +467,7 @@ export function createTemporalReadActivityResources(config: ShadowRuntimeConfig)
   };
 }
 
-export function createAgentCapabilityRPC(config: ShadowRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {
+export function createAgentCapabilityRPC(config: AgentRuntimeConfig): { client: AgentCapabilityRPCClient; close(): void } {
   const tls = config.capabilityRpc.tls;
   const credentials = tls.enabled
     ? grpc.credentials.createSsl(readFileSync(tls.caFile), readFileSync(tls.keyFile), readFileSync(tls.certFile))
@@ -494,18 +494,18 @@ function isLoopbackTarget(target: string): boolean {
   return host === "127.0.0.1" || host === "localhost" || host === "::1";
 }
 
-function physicalTopic(config: ShadowRuntimeConfig): string {
+function physicalTopic(config: AgentRuntimeConfig): string {
   return config.topicPrefix ? `${config.topicPrefix}.${config.topic}` : config.topic;
 }
 
-function physicalGroupTopic(config: ShadowRuntimeConfig): string {
+function physicalGroupTopic(config: AgentRuntimeConfig): string {
   const groupTopic = config.topic === "message.direct.created"
     ? "message.group.created"
     : `${config.topic}.group`;
   return config.topicPrefix ? `${config.topicPrefix}.${groupTopic}` : groupTopic;
 }
 
-function routeContextCompiler(config: ShadowRuntimeConfig): DeterministicContextCompiler {
+function routeContextCompiler(config: AgentRuntimeConfig): DeterministicContextCompiler {
   if (config.contextCompilerVersion === "v1") return new DeterministicContextCompiler();
   const estimator = createConservativeRouteEstimator(config.modelRoutes, config.modelContextProfiles);
   const requiredWindow = 4_096 + config.modelBudget.maxOutputTokensPerCall;
