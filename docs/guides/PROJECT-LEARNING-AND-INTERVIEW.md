@@ -1,76 +1,96 @@
-# Dipole 学习与面试主文档
+# Dipole 项目介绍与讲解指南
 
-> 这份文档是简历、项目介绍、现场演示和持续学习的入口。技术事实以当前代码、契约、测试和归档证据为准；目标架构与候选能力必须显式标注状态。
+## 项目概述
 
-## 1. 项目拆分
+Dipole 是一个面向实时协作的即时通信与 Agent 平台。项目由两部分组成：
 
-Dipole 对外讲解时拆成两个相互协作的项目：
-
-| 项目 | 面试定位 | 主文档 |
+| 项目 | 定位 | 核心问题 |
 | --- | --- | --- |
-| Dipole IM | Go 实时通信后端、分布式消息链路和多端同步 | [INTERVIEW-IM.md](INTERVIEW-IM.md) |
-| Dipole Agent | TypeScript Agent Runtime、可靠任务、能力授权和 MCP | [INTERVIEW-AGENT.md](INTERVIEW-AGENT.md) |
+| Dipole IM | Go 实时通信后端 | 如何可靠地发送、投递、同步和检索消息 |
+| Dipole Agent | TypeScript Durable Agent Runtime | 如何让 Agent 在受控权限下完成长任务并从中断恢复 |
 
-公共实现和技术细节见 [INTERVIEW-TECHNICAL-REFERENCE.md](INTERVIEW-TECHNICAL-REFERENCE.md)。旧问答入口 [INTERVIEW-QA.md](INTERVIEW-QA.md) 保留兼容链接，并逐步收敛到两份分册。
+两者通过 Kafka 事件和 Core Capability RPC 协作：IM 负责消息、会话和权限事实；
+Agent 负责任务编排、上下文、工具调用与审批等待。
 
-## 2. 简历口径
+## 完整产品链路
+
+```text
+Client
+  | HTTP / WebSocket
+  v
+Gateway
+  | authentication, connection, realtime route
+  v
+Core / Message -------------------> MySQL
+  |                                  | message + outbox transaction
+  v                                  v
+Kafka --------------------------> Sync / Search / Realtime Delivery / Agent
+  |                                  |                |
+  |                                  v                v
+  |                           user inbox         Redis presence
+  |                           device cursor
+  v
+Agent Runtime -> Temporal -> Core Capability -> Message Command
+```
+
+### 消息发送与实时投递
+
+客户端通过 HTTP 或 WebSocket 发送消息。Gateway 完成认证、限流和连接路由；
+Message Service 用 Client Message ID 保证重试幂等，并在一个数据库事务内写入消息
+事实和 Outbox。Outbox Relay 将 `message.created` 发送到 Kafka，后续的会话更新、
+同步投影、搜索索引、在线投递和 Agent 触发都从该事实事件派生。
+
+Redis 保存在线节点与连接状态。普通群聊采用接收者投递；热点群使用轻量通知和
+按序补拉，减少单条消息的写扩散与连接扇出。
+
+### 历史、同步与搜索
+
+消息历史按会话内单调 `seq` 读取。同步路径维护用户 Inbox Timeline、Read Seq 和
+Device Cursor：历史顺序、已读位置和设备同步位置分别表达，客户端可以稳定地补拉
+离线消息并在多端恢复。
+
+搜索由 Kafka 驱动异步索引。Agent 与普通客户端都必须通过 Core 提供的权限边界
+查询会话，搜索结果只返回当前主体有权读取的消息。
+
+### Durable Agent
+
+私聊 AI、群聊 `@AI` 或显式任务会创建稳定的 Agent Task。Runtime 从可信服务端
+状态构建 ExecutionContext，再编译当前消息、会话窗口与有界检索证据。模型只能选择
+已经注册的 Capability：
+
+- `conversation.list`、`conversation.read`、`conversation.search` 用于只读会话检索。
+- 写操作先进入 `WAITING_APPROVAL`，由用户批准或拒绝。
+- 批准后的写入通过 Core 再次校验权限与资源范围，最终以幂等 Message Command 写回 IM。
+
+Temporal 持久化 Workflow 状态、Activity 重试和 Approval 等待点。Worker 重启后，
+同一 Task 会从历史继续执行；稳定的 invocation ID 使已经提交的写入不会重复产生副作用。
+
+## 演示脚本
+
+1. 登录两个账户，建立单聊或群聊，发送一条普通消息并观察实时到达。
+2. 断开一个客户端，继续发送消息；重新连接后用同步游标补拉。
+3. 在群中发送 `@AI 总结刚才讨论的内容`，展示同一群内的 Agent 回复与 Task 状态。
+4. 私聊 AI：`帮我找之前关于 Cassandra 的讨论并总结结论`，展示受权限约束的会话搜索与回答。
+5. 私聊 AI：`/system 提醒我明天检查发布`，展示任务进入 Approval；拒绝后没有消息写入，批准后只写入一条消息。
+6. 在 Approval 等待期间重启 Agent Worker，再批准，展示同一 Task 恢复并完成。
+
+## 简历描述
 
 ### Dipole IM
 
-面向多端实时通信与智能协作场景构建的分布式 IM 后端。使用 Go、WebSocket、gRPC、Kafka、Redis、MySQL、sqlc、Cassandra、Elasticsearch 和 MinIO，围绕消息幂等、Transactional Outbox、会话序列、用户同步游标、热点群 notify + pull 和服务渐进拆分建立可测试、可回滚的消息链路。
+面向多端实时协作构建 Go 即时通信后端，基于 WebSocket、Kafka、Redis、MySQL/sqlc、
+Elasticsearch 与 MinIO 实现可靠消息发送、实时投递、双 Timeline 多端同步、热点群
+`notify + pull`、权限感知搜索与分片文件上传。
 
 ### Dipole Agent
 
-面向 IM 场景构建的 Agent Runtime。保留 Go/Eino 作为兼容基线，并以 TypeScript/Node.js 承载独立 Runtime；通过可信 ExecutionContext、Capability Registry、资源范围 Policy、模型路由、Memory、MCP、Temporal 和 OpenTelemetry 组织可审计的 Agent Task。高风险能力默认需要人工审批，外部连接和生产写入按独立证据门禁推进。
+基于 TypeScript、Temporal、gRPC 与 MCP 构建 IM-native Agent Runtime；通过可信
+ExecutionContext、Capability 授权、上下文编译、Human-in-the-loop 和幂等 Message
+Command 支持会话检索、受控写操作与 Worker 重启后的 Durable Task 恢复。
 
-## 3. 当前事实分层
+## 面试入口
 
-| 标签 | 含义 | 面试表达 |
-| --- | --- | --- |
-| `verified` | 代码和测试/运行证据已覆盖 | 可以直接陈述，并给出文件或测试入口 |
-| `shadow` | 已有观察或对照路径，不承接默认副作用 | 说明观察目标、退出条件和回滚边界 |
-| `candidate` | 候选实现或隔离演练 | 说明它还没有成为默认权威 |
-| `default-off` | 代码存在但默认关闭 | 说明启用条件，不把它写成线上默认能力 |
-| `planned` | 架构计划或后续工作 | 只能作为演进方向 |
-
-## 4. 90 秒介绍
-
-Dipole 是我持续演进的一套实时协作平台，核心包含两个项目。Dipole IM 用 Go 处理用户、群组、消息、会话和连接接入，通过 Kafka 与 outbox 解耦持久化、会话投影和实时投递，Redis 管理在线状态与热点群策略，MySQL/sqlc 负责事务元数据，Cassandra 和 Elasticsearch 作为独立 Timeline 与搜索投影逐步接管。Dipole Agent 以 Go/Eino 兼容链路为基线，逐步迁移到独立 TypeScript Runtime，Runtime 通过 ExecutionContext、Capability Policy、MCP、Memory 和 Temporal 处理长任务、审批、恢复和审计。整个项目采用先契约、再边界、后独立部署的方式，每个存储或投递切换都保留 shadow、证据和回滚路径。
-
-## 5. 现场讲解顺序
-
-1. 先讲 Dipole IM 的消息事实、异步事件、实时投递和同步游标。
-2. 展示一次单聊或群聊链路，解释 `send_requested`、落库、outbox、`created` 和投递的区别。
-3. 解释热点群为什么从完整 fan-out 变成 notify + pull，并给出测试/benchmark 位置。
-4. 再切到 Dipole Agent，区分 Go/Eino 兼容路径和 TypeScript Runtime。
-5. 展示 Agent 的 ExecutionContext、Capability 授权、审批、Task Timeline 和 Memory 证据。
-6. 最后讲一个尚未切流的能力，并说明为什么保持默认关闭以及如何回滚。
-
-## 6. 统一回答模板
-
-回答实现类问题时按四句话组织：
-
-1. 先定义组件的职责和数据所有权。
-2. 再描述调用或事件顺序。
-3. 然后说明失败、幂等、超时和回滚处理。
-4. 最后给出代码、契约、测试或 benchmark 证据。
-
-回答取舍类问题时补充：规模假设、替代方案、当前限制和下一步验证。
-
-## 7. 证据入口
-
-- 架构路线：[PLATFORM-EVOLUTION-PLAN.md](../architecture/PLATFORM-EVOLUTION-PLAN.md)
-- 服务边界：[SERVICE-BOUNDARIES.md](../architecture/SERVICE-BOUNDARIES.md)
-- 消息存储与同步：[MESSAGE-STORAGE-AND-SYNC.md](../architecture/MESSAGE-STORAGE-AND-SYNC.md)
-- Agent Runtime：[AGENT-RUNTIME-DESIGN.md](../architecture/AGENT-RUNTIME-DESIGN.md)
-- Go/Eino baseline：[contracts/agent-evals/v1/README.md](../../contracts/agent-evals/v1/README.md)
-- 性能证据：[benchmarks/](../../benchmarks/)
-- 更新日志：[CHANGELOG.md](../../CHANGELOG.md)
-
-## 8. 持续维护规则
-
-- 每次架构切片同时更新本目录相关分册、`CHANGELOG.md` 和架构债务台账。
-- 新增简历数字必须绑定 benchmark、测试输出或归档报告；没有证据就使用 `[待测]` 或删去数字。
-- API、事件、迁移和配置名称以代码/契约为准，文档中的旧名称必须标记兼容期。
-- Go/Eino 与 TypeScript Runtime 的职责变化要同时更新迁移状态，避免把 baseline 误写为主路径。
-- 面试材料只记录可公开的低敏信息，不放凭据、真实用户标识、消息正文或内部地址。
+- [Dipole IM 问答](INTERVIEW-IM.md)
+- [Dipole Agent 问答](INTERVIEW-AGENT.md)
+- [技术参考](INTERVIEW-TECHNICAL-REFERENCE.md)
+- [架构设计](../architecture/AGENT-RUNTIME-DESIGN.md)

@@ -27,7 +27,7 @@ import { TemporalMcpShadowTaskDispatcher } from "../temporal/mcp-shadow-task-dis
 import { TemporalMcpSubscriptionRouteSelector } from "../temporal/mcp-subscription-route-selector.js";
 import { agentTaskWorkflowId, TemporalMcpTaskClient } from "../temporal/temporal-task-client.js";
 import { TemporalMcpWorkflowExecutionCatalog } from "../temporal/mcp-workflow-envelope.js";
-import { createAgentCapabilityRPC, createKafkaShadowRuntime, type ShadowRuntimeConfig } from "./shadow-runtime.js";
+import { createAgentCapabilityRPC, createKafkaAgentRuntime, type AgentRuntimeConfig } from "./agent-runtime.js";
 import { createExternalMcpShadowDrillEvidence } from "./external-mcp-shadow-drill-evidence.js";
 
 const enabled = process.env.DIPOLE_AGENT_FULL_STACK_DRILL === "true";
@@ -122,7 +122,7 @@ integration("external MCP isolated full-stack Shadow drill", () => {
       ),
       new TemporalMcpSubscriptionRouteSelector(loaded.subscriptionRoutes)
     );
-    let runtime = createKafkaShadowRuntime(shadowConfig, dispatcher, core);
+    let runtime = createKafkaAgentRuntime(shadowConfig, dispatcher, core);
 
     try {
       await runtime.start();
@@ -137,7 +137,7 @@ integration("external MCP isolated full-stack Shadow drill", () => {
       });
 
       await runtime.stop();
-      runtime = createKafkaShadowRuntime(shadowConfig, dispatcher, core);
+      runtime = createKafkaAgentRuntime(shadowConfig, dispatcher, core);
       await runtime.start();
       await waitForConsumerGroup(shadowConfig);
       await publish(shadowConfig, eventEnvelope("EVENT-MCP-DRILL-1", "MESSAGE-MCP-DRILL-1"));
@@ -237,7 +237,7 @@ function routeManifest() {
   }] };
 }
 
-function runtimeConfig(database: string, topicPrefix: string, groupId: string): ShadowRuntimeConfig {
+function runtimeConfig(database: string, topicPrefix: string, groupId: string): AgentRuntimeConfig {
   const mysqlUrl = new URL(requiredEnv("DIPOLE_TEST_AGENT_MYSQL_URL"));
   return {
     enabled: true, runtimeMode: "shadow", candidateVersion: "", brokers: requiredEnv("DIPOLE_TEST_AGENT_KAFKA_BROKERS").split(","), clientId: `dipole-agent-drill-${randomUUID()}`,
@@ -269,7 +269,7 @@ function eventEnvelope(eventId: string, messageId: string): string {
   });
 }
 
-async function publish(config: ShadowRuntimeConfig, value: string): Promise<void> {
+async function publish(config: AgentRuntimeConfig, value: string): Promise<void> {
   const kafka = new Kafka({ clientId: "dipole-agent-drill-producer", brokers: [...config.brokers] });
   const producer = kafka.producer({ createPartitioner: Partitioners.DefaultPartitioner });
   await producer.connect();
@@ -280,7 +280,7 @@ async function publish(config: ShadowRuntimeConfig, value: string): Promise<void
   }
 }
 
-async function waitForConsumerGroup(config: ShadowRuntimeConfig): Promise<void> {
+async function waitForConsumerGroup(config: AgentRuntimeConfig): Promise<void> {
   const kafka = new Kafka({ clientId: "dipole-agent-drill-observer", brokers: [...config.brokers] });
   const admin = kafka.admin();
   await admin.connect();

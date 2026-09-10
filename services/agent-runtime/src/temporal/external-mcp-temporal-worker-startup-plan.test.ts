@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ExternalMcpCapabilityDefinitionRegistry } from "../mcp/external-mcp-deployment-route-manifest.js";
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
-import type { ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
+import type { ShadowSubscriptionMatcher } from "../runtime/agent-runtime.js";
 import { foundationAgentTaskActivities } from "./agent-task-activities.js";
 import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
 import {

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ExternalMcpCapabilityDefinitionRegistry } from "../mcp/external-mcp-deployment-route-manifest.js";
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
-import { loadShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import { loadAgentRuntimeConfig } from "../runtime/agent-runtime.js";
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
 import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
 import type { ExternalMcpTemporalWorkerLifecycle } from "./external-mcp-temporal-worker-lifecycle.js";
@@ -196,7 +196,7 @@ function bootstrapHarness(options: { readonly closeError?: Error } = {}) {
 }
 
 function shadowConfig() {
-  return loadShadowRuntimeConfig({
+  return loadAgentRuntimeConfig({
     DIPOLE_AGENT_TENANT_ID: "dipole",
     DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true",
     DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:50061",

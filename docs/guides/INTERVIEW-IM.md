@@ -1,104 +1,93 @@
-# Dipole IM 面试分册
+# Dipole IM 面试问答
 
-## 项目定位
+## 30 秒介绍
 
-Dipole IM 是 Go 实现的实时通信后端，重点展示消息可靠性、连接管理、异步事件、分层存储、热点群优化和渐进式微服务化。
+Dipole IM 是一个 Go 实现的实时通信后端。Gateway 负责 HTTP/WebSocket 接入和
+连接路由，Message Service 负责消息事实与 Outbox，Sync Service 维护用户同步流和
+设备游标，Search Service 提供权限感知的全文检索。Kafka 解耦消息事实与各类投影，
+Redis 维护在线状态和热点群投递策略，MySQL/sqlc 保存事务性领域数据。
 
-## 一句话架构
-
-```text
-Client -- HTTP / WebSocket --> Gateway
-                                  |
-                                  v
-                         Core / Message Service
-                           |             |
-                           v             v
-                     MySQL + sqlc      Kafka
-                           |             |
-                           v             +--> Conversation / Sync / Search / Agent consumers
-                     Metadata         Redis Presence / MinIO / Cassandra / Elasticsearch
-```
-
-服务边界以 [SERVICE-BOUNDARIES.md](../architecture/SERVICE-BOUNDARIES.md) 和 `cmd/services/` 为准。embedded 路径用于兼容和回滚，独立服务路径通过 gRPC 和契约逐步接管。
-
-## 消息发送链路
+## 架构图
 
 ```text
-WS chat.send
-  -> Gateway 鉴权、限流、request/trace 注入
-  -> Message Service 校验关系、群成员和消息类型
-  -> message.*.send_requested
-  -> Consumer: MySQL transaction(message + outbox)
-  -> outbox relay: message.*.created
-  -> Conversation / Sync / Search / Agent / Delivery projections
-  -> chat.sent ACK and online delivery
+Client -> Gateway -> Core / Message -> MySQL + Outbox -> Kafka
+                    |                                |       |
+                    v                                v       +-> Search Indexer -> Elasticsearch
+             Redis Presence                    Sync Service
+                                                    |
+                                                    v
+                                          Inbox Timeline + Device Cursor
 ```
-
-`send_requested` 表示接入层接受了发送意图，`created` 表示消息事实已经落库并可以驱动后续投影。这个区分让重试和故障定位更清楚。
-
-## 重点设计
-
-### 消息事实与会话状态
-
-Message 保存事实；Conversation 保存用户侧的最近消息、未读和排序摘要。首页会话列表不需要每次扫描消息事实表重新聚合。
-
-### 双 Timeline 与游标
-
-Conversation Timeline 用会话内 `seq` 组织历史；User Sync Timeline 用用户/设备游标组织离线补拉和多端增量同步。消息 ID 用于唯一性，`conversation_seq`、`read_seq` 和 `device_cursor` 用于顺序与恢复。
-
-### 热点群
-
-冷群可以完整 push；热点群发送轻量 `notify`，客户端携带序号进行增量 pull。服务端用 Redis 保存热点判断和在线状态，单机重复 pull 通过 `singleflight` 合并。该策略把写扩散和连接 fan-out 从同一条热路径拆开。
-
-### 可靠性
-
-- 入口使用 Client Message ID 等幂等键。
-- 消息事实和 outbox 在同一数据库事务中提交。
-- 消费者用稳定事件 ID、投影唯一键和重试边界避免重复副作用。
-- Redis、Kafka、Cassandra、Elasticsearch 都有明确的数据所有权：消息事实和元数据仍由主存储负责。
-- 默认路径切换前需要 shadow、故障证据、责任人批准和可执行回滚。
-
-## Go 在 IM 中的使用
-
-| Go 特性 | 在 Dipole 的用途 | 面试重点 |
-| --- | --- | --- |
-| goroutine | HTTP/WS 服务、Kafka worker、投影和后台生命周期 | 每个 goroutine 都有退出条件，使用 context 取消 |
-| channel | 服务错误回传、worker 队列、关闭信号 | 有界队列背压，关闭顺序可观测 |
-| `context.Context` | 请求、trace、超时、服务关闭和 Agent trusted context | 不把用户输入放进身份字段 |
-| interface | Application Store、Service、RPC client、投递 sink | 先稳定边界再替换本地实现为 RPC |
-| `sync.Once` | Snowflake/运行时初始化等一次性资源 | 避免并发初始化和重复副作用 |
-| mutex/atomic | 连接队列、去重表、状态和计数器 | 明确锁范围，避免锁内网络调用 |
-| `singleflight` | 热点群重复增量 pull 合并 | 降低读放大，保留请求超时 |
-| `errgroup`/取消树 | 并行 worker 与优雅退出 | 任一关键 worker 失败可收敛服务状态 |
-| `database/sql` + sqlc | 类型安全查询、事务和 Querier | SQL 是显式资产，生成代码与迁移版本化 |
-| protobuf/gRPC | 跨服务接口、兼容 adapter 和错误边界 | proto 是契约，业务服务不共享数据库连接 |
 
 ## 高频问题
 
-### 为什么用 Go 做 IM 后端？
+### 一条消息如何可靠发送？
 
-Go 的 goroutine、channel、context 和标准网络库适合大量 I/O 连接与后台 worker；静态类型和 interface 让服务边界容易测试。真正的可靠性来自幂等、事务、事件契约和证据门禁，语言本身只提供实现基础。
+客户端携带 Client Message ID。服务端先完成身份、关系或群成员校验，再在同一 MySQL
+事务中写入消息和 Outbox 事件；Consumer 以事件 ID 与投影唯一键去重。Kafka 负责
+可靠传递领域事件，消息、投影和外部副作用仍由应用层幂等键约束。
 
-### Kafka 和 WebSocket 各解决什么问题？
+### 为什么需要 Outbox？
 
-Kafka 负责服务间持久化事件流、消费组和重放；WebSocket 负责单个客户端连接和实时交付。Kafka 的 offset 不等于用户同步游标，用户离线同步仍由 Sync Timeline 承担。
+数据库提交和 Kafka 发布是两个独立系统。直接先后执行会出现“消息已落库但事件未发出”
+或“事件已发出但消息回滚”的不一致窗口。Outbox 将待发布事件与消息事实一起提交，
+Relay 可安全重试发布，Consumer 则用幂等处理重复事件。
 
-### 为什么使用 sqlc？
+### Conversation Timeline 与 Sync Timeline 分别解决什么问题？
 
-SQL 查询和 schema 变更显式可审查，生成的 Go 类型减少手写映射错误，也更方便把 SQL 语义对齐到其他语言服务。Repository 通过接口暴露领域语义，sqlc 只位于数据访问实现层。
+Conversation Timeline 以会话 `seq` 表达历史消息顺序，服务于分页、漫游和定位。
+Sync Timeline 以用户 Inbox 与设备 Cursor 表达“该设备还缺哪些消息”，服务于离线补拉
+和多端同步。Read Seq 记录用户已读进度，未读状态可以由位置关系稳定恢复。
 
-### 为什么 Cassandra 不直接替换 MySQL？
+### Kafka offset 能替代用户同步游标吗？
 
-消息正文顺序存储和元数据事务是不同负载。先用 MySQL 保持可验证的事实源，再对 Cassandra 做回填、影子读、对账和灰度，能把存储迁移与服务拆分分开验证。
+不能。Kafka offset 属于消费组的基础设施状态，用户同步游标属于具体用户和设备的业务
+状态。用户长时间离线、重装客户端或跨设备登录时，都需要由 Sync Timeline 提供独立、
+可持久化的补拉位置。
 
-### 大群优化的代价是什么？
+### WebSocket、Redis 与 Kafka 如何分工？
 
-notify + pull 把即时完整 push 延迟转成客户端补拉和游标管理，客户端、Sync Timeline、权限校验和重试复杂度会上升。它适合热点群，普通群仍使用更简单的完整投递。
+WebSocket 管理客户端长连接和低延迟交付；Redis 保存用户在线节点、连接路由和热点群
+状态；Kafka 承接服务间的持久化事件与异步投影。三者分别处理连接、实时状态和事件流，
+使任一层重启时都能从业务事实恢复。
 
-### 如何证明消息没有重复副作用？
+### 热点群为什么使用 notify + pull？
 
-说明稳定事件 ID、入口幂等键、outbox、投影唯一约束、投递 ID、重启重放测试和最终状态对账。不要只说“Kafka exactly once”，因为客户端 WebSocket 和外部副作用仍需应用层幂等。
+普通群可直接向成员投递完整消息。热点群若对每条消息执行全量扇出，会放大数据库写入、
+跨节点路由和连接队列压力。Dipole 对热点群广播新序号通知，客户端按会话 Seq 增量拉取；
+服务端用 `singleflight` 合并重复补拉，兼顾顺序和读放大控制。
 
-## IM 现状边界
+### 如何保证搜索不会越权？
 
-当前可直接展示的内容包括 Go 服务入口、Kafka/outbox、Redis presence、消息和会话链路、sqlc 数据访问、Cassandra/Elasticsearch 的独立投影与回滚材料。C++ realtime delivery 仍属于候选数据面，必须用 shadow/primary 状态和对应 benchmark 口径描述。
+Search Indexer 负责构建索引，Search Service 不把索引命中直接视为授权结果。查询会带入
+经认证的主体，Core 复核会话范围与成员关系后才返回结果。Agent 使用同一条 Capability
+路径，因此模型无法通过 Tool 参数伪造其他用户身份。
+
+### 为什么选择 sqlc？
+
+消息、同步游标和事务写入依赖明确的 SQL 语义。sqlc 让查询、输入输出类型和数据库迁移
+一同进入代码审查，减少手写 ORM 映射的隐式行为；跨服务时也更容易保持数据模型与查询
+边界清晰。
+
+### 大文件如何上传？
+
+文件元数据由 IM 域管理，二进制内容写入 MinIO。Multipart Upload 将大文件拆分为多个
+Part，可在网络中断后续传，完成时再合并对象并关联文件消息。下载仍通过 IM 的授权边界
+确认访问权限。
+
+## 追问：故障时发生什么？
+
+| 场景 | 处理方式 |
+| --- | --- |
+| 客户端重试发送 | Client Message ID 返回既有消息或拒绝冲突写入 |
+| Relay 重复发布 | Consumer 以事件 ID 和投影键去重 |
+| Gateway 重启 | 客户端重连；Presence 过期后由新节点重新登记 |
+| 设备离线 | 设备携带 Cursor 从 Sync Timeline 增量补拉 |
+| 搜索索引延迟 | 消息事实和历史查询保持可用，索引异步追赶 |
+| 热点群瞬时高峰 | 通知携带 Seq，客户端按需拉取并合并重复请求 |
+
+## 讲解重点
+
+面试时先画出“消息事实 + Outbox + Kafka + 投影”的主线，再解释双 Timeline 如何将
+历史与设备同步拆开，最后以热点群和权限感知搜索展示性能与安全边界。不要承诺 Kafka
+天然提供端到端 exactly-once；Dipole 的重复控制来自稳定幂等键、事务和投影约束。

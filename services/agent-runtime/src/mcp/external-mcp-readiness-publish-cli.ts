@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 
-import { createAgentCapabilityRPC, loadShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import { createAgentCapabilityRPC, loadAgentRuntimeConfig } from "../runtime/agent-runtime.js";
 import { loadExternalMcpConfig } from "./external-mcp-profile.js";
 import { loadExternalMcpProductionIoManifest } from "./external-mcp-production-io-manifest.js";
 import { createExternalMcpProductionIoRuntime } from "./external-mcp-production-io.js";
@@ -84,7 +84,7 @@ function defaultDependencies(): ExternalMcpReadinessPublishCLIDependencies {
       if (!externalConfig.enabled) throw new Error("External MCP must be enabled");
       const loaded = await loadExternalMcpProductionIoManifest(externalConfig, process.env);
       if (loaded === undefined) throw new Error("External MCP production I/O must be configured");
-      const shadowConfig = loadShadowRuntimeConfig(process.env);
+      const shadowConfig = loadAgentRuntimeConfig(process.env);
       if (!shadowConfig.capabilityRpc.enabled) throw new Error("Agent Capability RPC must be enabled");
       const runtime = createExternalMcpProductionIoRuntime(externalConfig, loaded.io, loaded.options);
       const rpc = createAgentCapabilityRPC(shadowConfig);

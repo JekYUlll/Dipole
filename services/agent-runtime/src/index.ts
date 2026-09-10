@@ -8,10 +8,10 @@ import { createDipoleMcpHttpHandler } from "./mcp/dipole-mcp-http.js";
 import { McpToolInvocationRunner } from "./mcp/mcp-tool-invocation.js";
 import {
   createAgentCapabilityRPC,
-  createKafkaShadowRuntime,
+  createKafkaAgentRuntime,
   createTemporalReadActivityResources,
-  loadShadowRuntimeConfig
-} from "./runtime/shadow-runtime.js";
+  loadAgentRuntimeConfig
+} from "./runtime/agent-runtime.js";
 import {
   foundationAgentTaskActivities,
   type AgentTaskWorkerActivities
@@ -35,7 +35,7 @@ import { SubscriptionShadowMetrics } from "./observability/subscription-shadow-m
 const port = Number.parseInt(process.env.DIPOLE_AGENT_PORT ?? "8091", 10);
 const host = process.env.DIPOLE_AGENT_HOST?.trim() || "0.0.0.0";
 let ready = false;
-const shadowConfig = loadShadowRuntimeConfig(process.env);
+const shadowConfig = loadAgentRuntimeConfig(process.env);
 const temporalConfig = loadTemporalRuntimeConfig(process.env);
 if (shadowConfig.runtimeMode !== temporalConfig.runtimeMode) {
   throw new Error("Agent Runtime and Temporal runtime modes must match");
@@ -78,7 +78,7 @@ if (temporalConfig.enabled && (shadowConfig.enabled || controlEnabled)) {
   temporalDispatcher = createTemporalTaskDispatchRuntime(temporalConfig);
 }
 const shadowRuntime = shadowConfig.enabled
-  ? createKafkaShadowRuntime(
+  ? createKafkaAgentRuntime(
     shadowConfig, temporalDispatcher, undefined,
     shadowConfig.subscriptionShadowEnabled ? subscriptionShadowMetrics : undefined
   )

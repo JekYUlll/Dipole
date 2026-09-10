@@ -3,7 +3,7 @@ import type {
   ExternalMcpDeploymentPlanOptions
 } from "../mcp/external-mcp-deployment-composition.js";
 import type { AgentEvent, AgentIdentity, ShadowTaskDispatcher } from "../events/shadow-processor.js";
-import type { ShadowRuntimeConfig, ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
+import type { AgentRuntimeConfig, ShadowSubscriptionMatcher } from "../runtime/agent-runtime.js";
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
 import {
   startExternalMcpTemporalClientLifecycle,
@@ -36,7 +36,7 @@ const defaultSeams: ExternalMcpShadowTemporalRuntimeSeams = {
 
 export async function startExternalMcpShadowTemporalRuntime(
   env: NodeJS.ProcessEnv,
-  shadowConfig: ShadowRuntimeConfig,
+  shadowConfig: AgentRuntimeConfig,
   temporalConfig: TemporalRuntimeConfig,
   baseActivities: AgentTaskWorkerActivities,
   createRoutes: ExternalMcpTemporalRouteSelectorFactory,

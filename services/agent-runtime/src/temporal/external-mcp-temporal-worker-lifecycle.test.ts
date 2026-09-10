@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
-import type { ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
+import type { ShadowSubscriptionMatcher } from "../runtime/agent-runtime.js";
 import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
 import type { ExternalMcpTemporalWorkerStartupPlan } from "./external-mcp-temporal-worker-startup-plan.js";
 import {

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
-import { loadShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import { loadAgentRuntimeConfig } from "../runtime/agent-runtime.js";
 import { foundationAgentTaskActivities } from "./agent-task-activities.js";
 import {
   createExternalMcpAgentCapabilityRPCResourceFactory,
@@ -147,7 +147,7 @@ describe("external MCP Agent Capability RPC resource", () => {
 });
 
 function config(enabled = true, tenantId = "dipole") {
-  return loadShadowRuntimeConfig({
+  return loadAgentRuntimeConfig({
     DIPOLE_AGENT_TENANT_ID: tenantId,
     DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: String(enabled),
     DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:50061",

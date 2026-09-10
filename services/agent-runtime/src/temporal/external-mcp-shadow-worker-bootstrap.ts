@@ -1,6 +1,6 @@
 import { createExternalMcpReadCapabilityDefinitions } from "../mcp/external-mcp-read-capability-definitions.js";
 import type { ExternalMcpDeploymentPlanOptions } from "../mcp/external-mcp-deployment-composition.js";
-import type { ShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import type { AgentRuntimeConfig } from "../runtime/agent-runtime.js";
 import {
   createExternalMcpAgentCapabilityRPCResourceFactory
 } from "./external-mcp-agent-capability-rpc-resource.js";
@@ -32,7 +32,7 @@ const defaultSeams: ExternalMcpShadowWorkerBootstrapSeams = {
 
 export async function startExternalMcpShadowWorkerBootstrap(
   env: NodeJS.ProcessEnv,
-  shadowConfig: ShadowRuntimeConfig,
+  shadowConfig: AgentRuntimeConfig,
   temporalConfig: TemporalRuntimeConfig,
   baseActivities: AgentTaskWorkerActivities,
   options: ExternalMcpDeploymentPlanOptions = {},

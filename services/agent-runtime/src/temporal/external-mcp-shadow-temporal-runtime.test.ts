@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ExternalMcpDeploymentPlan } from "../mcp/external-mcp-deployment-composition.js";
 import {
-  loadShadowRuntimeConfig,
+  loadAgentRuntimeConfig,
   type ShadowSubscriptionMatcher
-} from "../runtime/shadow-runtime.js";
+} from "../runtime/agent-runtime.js";
 import type { AgentTaskWorkerActivities } from "./agent-task-activities.js";
 import type { ExternalMcpTemporalClientLifecycle } from "./external-mcp-temporal-client-lifecycle.js";
 import type { ExternalMcpTemporalWorkerComposition } from "./external-mcp-temporal-worker-composition.js";
@@ -140,7 +140,7 @@ function runtimeHarness(options: {
   readonly workerStopError?: Error;
 } = {}) {
   const order: string[] = [];
-  const shadow = loadShadowRuntimeConfig({});
+  const shadow = loadAgentRuntimeConfig({});
   const temporal = loadTemporalRuntimeConfig({ DIPOLE_AGENT_TEMPORAL_ENABLED: "true" });
   const activities = { executeAgentTaskStep: vi.fn() } as unknown as AgentTaskWorkerActivities;
   const deployment = {} as ExternalMcpDeploymentPlan;

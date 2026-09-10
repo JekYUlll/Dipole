@@ -7,7 +7,7 @@ import {
   validateExternalMcpProductionShadowMode,
   type ExternalMcpProductionShadowSeams
 } from "./external-mcp-production-shadow.js";
-import { loadShadowRuntimeConfig } from "./shadow-runtime.js";
+import { loadAgentRuntimeConfig } from "./agent-runtime.js";
 
 describe("external MCP production Shadow startup", () => {
   it("keeps disabled configuration free of process side effects", async () => {
@@ -80,7 +80,7 @@ function enabledEnv(): NodeJS.ProcessEnv {
 }
 
 function shadow(enabled: boolean, triggerMode: "direct_target" | "subscription" = "subscription") {
-  return loadShadowRuntimeConfig(enabled ? {
+  return loadAgentRuntimeConfig(enabled ? {
     DIPOLE_AGENT_KAFKA_ENABLED: "true", DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
     DIPOLE_AGENT_TRIGGER_MODE: triggerMode,
     DIPOLE_AGENT_CAPABILITY_RPC_ENABLED: "true", DIPOLE_AGENT_CAPABILITY_RPC_TARGET: "127.0.0.1:9091",

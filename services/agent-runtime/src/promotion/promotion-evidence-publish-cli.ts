@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
-import { createAgentCapabilityRPC, loadShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import { createAgentCapabilityRPC, loadAgentRuntimeConfig } from "../runtime/agent-runtime.js";
 import {
   PromotionEvidencePublisher, type PromotionEvidencePublicationInput, type PromotionEvidenceReceipt
 } from "./promotion-evidence-publisher.js";
@@ -50,7 +50,7 @@ export async function runPromotionEvidencePublishCLI(
 function defaultDependencies(): PromotionEvidencePublishCLIDependencies {
   return {
     openPublisher: () => {
-      const config = loadShadowRuntimeConfig(process.env);
+      const config = loadAgentRuntimeConfig(process.env);
       if (!config.capabilityRpc.enabled) throw new Error("Agent Capability RPC must be enabled for evidence publication");
       const rpc = createAgentCapabilityRPC(config);
       const publisher = new PromotionEvidencePublisher(rpc.client);

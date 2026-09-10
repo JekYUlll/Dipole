@@ -9,10 +9,10 @@ import {
   type ExternalMcpShadowProcessSeams
 } from "./external-mcp-shadow-process.js";
 import {
-  loadShadowRuntimeConfig,
+  loadAgentRuntimeConfig,
   type ShadowRuntime,
   type ShadowSubscriptionMatcher
-} from "./shadow-runtime.js";
+} from "./agent-runtime.js";
 
 describe("external MCP Shadow process owner", () => {
   it("keeps disabled Kafka configuration free of Temporal and Kafka side effects", async () => {
@@ -174,7 +174,7 @@ function processHarness(options: {
   readonly omitSubscriptionMatcher?: boolean;
 } = {}) {
   const order: string[] = [];
-  const shadow = loadShadowRuntimeConfig(options.shadowEnabled === false ? {} : {
+  const shadow = loadAgentRuntimeConfig(options.shadowEnabled === false ? {} : {
     DIPOLE_AGENT_KAFKA_ENABLED: "true",
     DIPOLE_AGENT_KAFKA_BROKERS: "kafka:9092",
     DIPOLE_AGENT_TRIGGER_MODE: options.triggerMode ?? "subscription",

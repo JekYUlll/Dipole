@@ -1,13 +1,13 @@
 import { Client, Connection } from "@temporalio/client";
 
-import { createAgentCapabilityRPC, loadShadowRuntimeConfig } from "../runtime/shadow-runtime.js";
+import { createAgentCapabilityRPC, loadAgentRuntimeConfig } from "../runtime/agent-runtime.js";
 import { loadTemporalRuntimeConfig } from "../temporal/temporal-runtime.js";
 import { TemporalTaskWorkflowInspector } from "../temporal/temporal-task-client.js";
 import { AgentTaskProjectionReconciler } from "./agent-task-projection-reconciler.js";
 
 const pageSize = argument("--page-size", 100);
 const maxExamples = argument("--max-examples", 100);
-const shadow = loadShadowRuntimeConfig(process.env);
+const shadow = loadAgentRuntimeConfig(process.env);
 const temporal = loadTemporalRuntimeConfig(process.env);
 if (!shadow.capabilityRpc.enabled || !temporal.enabled) {
   throw new Error("Projection reconciliation requires Agent Capability RPC and Temporal");

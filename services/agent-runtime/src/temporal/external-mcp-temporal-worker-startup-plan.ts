@@ -11,7 +11,7 @@ import {
   validateExternalMcpTemporalWorkerCompositionPlan
 } from "./external-mcp-temporal-worker-composition.js";
 import type { TemporalMcpMultiRouteRuntimeDependencies } from "./mcp-multi-route-runtime.js";
-import type { ShadowSubscriptionMatcher } from "../runtime/shadow-runtime.js";
+import type { ShadowSubscriptionMatcher } from "../runtime/agent-runtime.js";
 
 export interface ExternalMcpTemporalWorkerResource {
   readonly dependencies: TemporalMcpMultiRouteRuntimeDependencies;

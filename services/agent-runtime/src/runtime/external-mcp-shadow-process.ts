@@ -7,10 +7,10 @@ import {
 } from "../temporal/external-mcp-shadow-temporal-runtime.js";
 import type { TemporalRuntimeConfig } from "../temporal/temporal-runtime.js";
 import {
-  createKafkaShadowRuntime,
+  createKafkaAgentRuntime,
   type ShadowRuntime,
-  type ShadowRuntimeConfig
-} from "./shadow-runtime.js";
+  type AgentRuntimeConfig
+} from "./agent-runtime.js";
 
 export interface ExternalMcpShadowProcess {
   readonly temporal: ExternalMcpShadowTemporalRuntime;
@@ -19,17 +19,17 @@ export interface ExternalMcpShadowProcess {
 
 export interface ExternalMcpShadowProcessSeams {
   readonly startTemporal: typeof startExternalMcpShadowTemporalRuntime;
-  readonly createKafka: typeof createKafkaShadowRuntime;
+  readonly createKafka: typeof createKafkaAgentRuntime;
 }
 
 const defaultSeams: ExternalMcpShadowProcessSeams = {
   startTemporal: startExternalMcpShadowTemporalRuntime,
-  createKafka: createKafkaShadowRuntime
+  createKafka: createKafkaAgentRuntime
 };
 
 export async function startExternalMcpShadowProcess(
   env: NodeJS.ProcessEnv,
-  shadowConfig: ShadowRuntimeConfig,
+  shadowConfig: AgentRuntimeConfig,
   temporalConfig: TemporalRuntimeConfig,
   baseActivities: AgentTaskWorkerActivities,
   createRoutes: ExternalMcpTemporalRouteSelectorFactory,

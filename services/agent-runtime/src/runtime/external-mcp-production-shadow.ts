@@ -7,7 +7,7 @@ import {
   startExternalMcpShadowProcess,
   type ExternalMcpShadowProcess
 } from "./external-mcp-shadow-process.js";
-import type { ShadowRuntimeConfig } from "./shadow-runtime.js";
+import type { AgentRuntimeConfig } from "./agent-runtime.js";
 
 export interface ExternalMcpProductionShadowSeams {
   readonly startProcess: typeof startExternalMcpShadowProcess;
@@ -19,7 +19,7 @@ const defaultSeams: ExternalMcpProductionShadowSeams = {
 
 export function validateExternalMcpProductionShadowMode(
   env: NodeJS.ProcessEnv,
-  shadow: ShadowRuntimeConfig,
+  shadow: AgentRuntimeConfig,
   temporal: TemporalRuntimeConfig
 ): boolean {
   const externalEnabled = loadExternalMcpConfig(env).enabled;
@@ -33,7 +33,7 @@ export function validateExternalMcpProductionShadowMode(
 
 export async function startExternalMcpProductionShadow(
   env: NodeJS.ProcessEnv,
-  shadow: ShadowRuntimeConfig,
+  shadow: AgentRuntimeConfig,
   temporal: TemporalRuntimeConfig,
   baseActivities: AgentTaskWorkerActivities,
   options: ExternalMcpDeploymentPlanOptions = {},

@@ -1,8 +1,8 @@
 import type { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.js";
 import {
   createAgentCapabilityRPC,
-  type ShadowRuntimeConfig
-} from "../runtime/shadow-runtime.js";
+  type AgentRuntimeConfig
+} from "../runtime/agent-runtime.js";
 import {
   foundationAgentTaskActivities,
   type AgentTaskWorkerActivities
@@ -19,7 +19,7 @@ export interface ExternalMcpAgentCapabilityRPCResource {
 }
 
 export type ExternalMcpAgentCapabilityRPCFactory = (
-  config: ShadowRuntimeConfig
+  config: AgentRuntimeConfig
 ) => ExternalMcpAgentCapabilityRPCResource;
 
 export interface ExternalMcpAgentCapabilityRPCResourceFactoryOptions {
@@ -28,7 +28,7 @@ export interface ExternalMcpAgentCapabilityRPCResourceFactoryOptions {
 }
 
 export function createExternalMcpAgentCapabilityRPCResourceFactory(
-  config: ShadowRuntimeConfig,
+  config: AgentRuntimeConfig,
   options: ExternalMcpAgentCapabilityRPCResourceFactoryOptions = {}
 ): ExternalMcpTemporalWorkerResourceFactory {
   const createRPC = options.createRPC ?? createAgentCapabilityRPC;
