@@ -7,6 +7,28 @@ cd "$ROOT_DIR"
 : "${DIPOLE_INTERNAL_RPC_SHARED_SECRET:=static-compose-validation-only}"
 export DIPOLE_INTERNAL_RPC_SHARED_SECRET
 
+# Validate the documented demo with only the current model credential variable.
+experience_config="$(
+  unset DEEPSEEK_API_KEY DIPOLE_AI_API_KEY
+  DIPOLE_AGENT_MODEL_ROUTES=validation-model \
+  DIPOLE_AGENT_MODEL_API_KEY=validation-only \
+  docker compose --env-file /dev/null --profile search \
+    -f deploy/compose/docker-compose.microservices.yml \
+    -f deploy/microservices/agent-experience.yml config --format json
+)"
+jq -e '
+  .services.agent.environment.DIPOLE_AGENT_MODEL_API_KEY == "validation-only"
+  and .services.agent.environment.DIPOLE_AGENT_RUNTIME_MODE == "active"
+  and .services.agent.environment.DIPOLE_AGENT_TEMPORAL_ENABLED == "true"
+  and .services.agent.depends_on.search.condition == "service_healthy"
+  and .services.gateway.environment.DIPOLE_SEARCH_ENABLED == "true"
+  and .services.gateway.depends_on.search.condition == "service_healthy"
+  and .services.core.environment.DIPOLE_AI_RUNTIME_MODE == "remote"
+  and .services.search != null
+  and .services["search-indexer"] != null
+  and .services.elasticsearch != null
+' <<<"${experience_config}" >/dev/null
+
 for file in docker-compose.yml deploy/compose/docker-compose*.yml; do
   docker compose -f "$file" config --quiet
 done

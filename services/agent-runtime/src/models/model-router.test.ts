@@ -124,7 +124,7 @@ describe("ModelRouter", () => {
     expect(generate).not.toHaveBeenCalled();
     expect(audit.recover).toHaveBeenCalledWith("TASK-1", {
       maxCalls: 1, totalTimeoutMs: 5000, maxOutputTokensPerCall: 64
-    });
+    }, undefined);
     expect(audit.reserve).not.toHaveBeenCalled();
     expect(audit.completeRun).toHaveBeenCalledWith("RUN-1");
   });
@@ -182,7 +182,7 @@ describe("ModelRouter", () => {
       attempts: 0, exhaustedBudget: true
     });
     expect(generate).not.toHaveBeenCalled();
-    expect(audit.failTask).toHaveBeenCalledWith("TASK-1", expect.any(ModelRoutingError));
+    expect(audit.failTask).toHaveBeenCalledWith("TASK-1", expect.any(ModelRoutingError), undefined);
   });
 
   it("records one ModelCall span per provider attempt", async () => {

@@ -5,8 +5,9 @@
 Dipole Agent 是一个服务于 IM 场景的 TypeScript Durable Agent Runtime。用户私聊 AI、
 在群里 `@AI` 或发起检索任务后，Runtime 创建稳定的 Temporal Workflow，基于可信
 ExecutionContext 编译上下文，并通过受 Core 授权的 Capability 读取会话或执行操作。
-写入动作必须经过人工审批，批准后由 Core 复核资源范围并以幂等 Message Command
+系统消息提案经过人工审批，批准后由 Core 复核资源范围并以幂等 Message Command
 写回 IM；Worker 重启后，Workflow 可从 Temporal 历史恢复。
+普通私聊与群 @AI 回复使用受限回复授权，不逐条弹出人工审批。
 
 ## 核心流程
 
@@ -49,11 +50,14 @@ Runtime 先根据 Tool 输入计算目标资源，再把可信主体和资源范
 返回有界结果，Context Compiler 将结果作为不可信 evidence 注入下一轮模型调用。检索
 不拥有独立身份、独立任务队列或独立产品入口。
 
-### 为什么写操作必须等待 Approval？
+### 哪些写操作等待 Approval？
 
 读会话和发送消息的风险不同。写 Capability 先生成精确的 Task、Run、Capability、资源
 范围和参数摘要绑定，Workflow 进入 `WAITING_APPROVAL`。用户拒绝时任务取消且没有
 副作用；用户批准后，Core 再次检查权限、范围和批准绑定，随后执行一次 Message Command。
+当前自然语言写提案仅支持在用户与 AI 的当前私聊发布系统消息，例如“在这里发布系统消息：18 点部署”。
+模型只提供正文，目标会话由可信上下文确定；批准后使用原 checkpoint，避免重新生成内容。
+普通 AI 回复另走范围受限的 reply Capability。当前不声称支持任意目标群的自然语言代发。
 
 ### Temporal 在这里的价值是什么？
 

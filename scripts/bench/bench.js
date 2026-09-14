@@ -11,6 +11,7 @@
  */
 
 import http from "k6/http";
+export { handleSummary } from "./summary.js";
 import ws   from "k6/ws";
 import exec from "k6/execution";
 import { sleep } from "k6";

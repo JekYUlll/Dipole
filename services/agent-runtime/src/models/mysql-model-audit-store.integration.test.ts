@@ -27,6 +27,7 @@ integration("MySQLModelAuditStore MySQL 8.4 contract", () => {
     await pool.query(migration);
     const outputReplay = await readFile(new URL("../../../../db/migrations/000023_agent_model_output_replay.up.sql", import.meta.url), "utf8");
     await pool.query(outputReplay);
+    await pool.query(await readFile(new URL("../../../../db/migrations/000052_agent_model_stage.up.sql", import.meta.url), "utf8"));
   });
 
   afterAll(async () => {
@@ -47,6 +48,19 @@ integration("MySQLModelAuditStore MySQL 8.4 contract", () => {
     expect(granted).toHaveLength(3);
     expect(granted.map((reservation) => reservation!.callNo).sort()).toEqual([1, 2, 3]);
     expect(new Set(granted.map((reservation) => reservation!.runId))).toHaveProperty("size", 1);
+  });
+
+  it("recovers plan and answer independently under the same task", async () => {
+    const store = new MySQLModelAuditStore(pool);
+    const generate = async (stage: "plan" | "answer") => {
+      const reservation = (await store.reserve("TASK-STAGES", policy, "model", stage))!;
+      await store.completeCall(reservation, { summary: stage }, { inputTokens: 1, outputTokens: 1 }, "stop", 1);
+      await store.completeRun(reservation.runId);
+      return reservation.runId;
+    };
+    expect(await generate("plan")).not.toBe(await generate("answer"));
+    await expect(store.recover("TASK-STAGES", policy, "plan")).resolves.toMatchObject({ output: { summary: "plan" } });
+    await expect(store.recover("TASK-STAGES", policy, "answer")).resolves.toMatchObject({ output: { summary: "answer" } });
   });
 
   it("reuses the Task run and rejects policy drift", async () => {

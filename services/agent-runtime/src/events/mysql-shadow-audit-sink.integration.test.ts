@@ -199,7 +199,7 @@ integration("MySQLShadowAuditSink MySQL 8.4 contract", () => {
     if (retry.outcome !== "claimed") throw new Error("expected retry Step owner");
     await expect(sink.completeStep(record.taskId, 1, first.token, { stale: true })).rejects.toThrow(/stale/);
     await sink.completeStep(record.taskId, 1, retry.token, { conversations: [] });
-    await expect(sink.claimStep(record.taskId, 1, 60_000)).resolves.toEqual({ outcome: "completed" });
+    await expect(sink.claimStep(record.taskId, 1, 60_000)).resolves.toEqual({ outcome: "completed", output: { conversations: [] } });
   });
 
   it("marks completed Model output without a Plan as an unattributed completeness gap", async () => {

@@ -168,7 +168,7 @@ capture_process_metrics
 echo "==> Running ${BENCH_SCRIPT} with run_id=${RUN_ID}"
 set +e
 k6 run \
-  --summary-export "${SUMMARY_JSON}" \
+  -e SUMMARY_JSON="${SUMMARY_JSON}" \
   --summary-trend-stats "avg,min,med,max,p(50),p(90),p(95),p(99)" \
   -e RUN_ID="${RUN_ID}" \
   -e BASE_URL="${BASE_URL}" \

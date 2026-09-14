@@ -1,11 +1,14 @@
 services:
   agent:
+    depends_on:
+      search:
+        condition: service_healthy
     environment:
       DIPOLE_AGENT_RUNTIME_MODE: active
       DIPOLE_AGENT_KAFKA_GROUP_ID: dipole-agent-active-v1
       DIPOLE_AGENT_MODEL_MODE: ai_sdk
       DIPOLE_AGENT_MODEL_ROUTES: ${DIPOLE_AGENT_MODEL_ROUTES:?set DIPOLE_AGENT_MODEL_ROUTES}
-      DIPOLE_AGENT_MODEL_API_KEY: ${DIPOLE_AGENT_MODEL_API_KEY:-${DEEPSEEK_API_KEY:-${DIPOLE_AI_API_KEY:?set DIPOLE_AI_API_KEY}}}
+      DIPOLE_AGENT_MODEL_API_KEY: ${DIPOLE_AGENT_MODEL_API_KEY:-${DEEPSEEK_API_KEY:-${DIPOLE_AI_API_KEY:-}}}
       DIPOLE_AGENT_MODEL_BASE_URL: ${DIPOLE_AGENT_MODEL_BASE_URL:-${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}}
       # Reasoning-capable compatible models need room to emit a structured plan
       # after their internal reasoning tokens.
@@ -29,7 +32,11 @@ services:
       DIPOLE_AI_ENABLED: "true"
       DIPOLE_AI_RUNTIME_MODE: remote
   gateway:
+    depends_on:
+      search:
+        condition: service_healthy
     environment:
+      DIPOLE_SEARCH_ENABLED: "true"
       DIPOLE_AI_ENABLED: "false"
       DIPOLE_AI_RUNTIME_MODE: remote
       DIPOLE_GATEWAY_AGENT_CONTROL_ENABLED: "true"

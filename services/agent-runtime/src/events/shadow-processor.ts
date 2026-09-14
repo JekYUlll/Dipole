@@ -63,6 +63,7 @@ export interface AgentIdentity {
 
 export interface ShadowPlan {
   readonly summary: string;
+  readonly proposedWrite?: { readonly content: string };
   readonly steps: readonly ShadowPlanStep[];
   readonly model?: {
     readonly route: string;
@@ -96,6 +97,7 @@ export interface ShadowPlanStep {
 
 export interface ShadowPlanner {
   plan(event: AgentEvent, context: ExecutionContext): Promise<ShadowPlan>;
+  answer?(event: AgentEvent, context: ExecutionContext, evidence: readonly unknown[]): Promise<string>;
 }
 
 export interface ShadowAuditRecord {
@@ -124,7 +126,7 @@ export interface ShadowTaskDispatcher {
 
 export interface ShadowStepTrajectory extends ShadowAuditSink {
   claimStep(taskId: string, stepNo: number, leaseMs: number): Promise<
-    { readonly outcome: "claimed"; readonly token: string } | { readonly outcome: "completed" | "busy" }
+    { readonly outcome: "claimed"; readonly token: string } | { readonly outcome: "completed" | "busy"; readonly output?: unknown }
   >;
   completeStep(taskId: string, stepNo: number, token: string, output: unknown): Promise<void>;
   failStep(taskId: string, stepNo: number, token: string, error: unknown): Promise<void>;
@@ -255,10 +257,13 @@ export async function executeShadowPlan(
 ): Promise<ShadowPlan> {
   const plan = await dependencies.planner.plan(event, context);
   await dependencies.audit.append({ eventId: event.eventId, taskId: context.taskId, eventType: event.eventType, plan });
-  await executeShadowPlanSteps(
+  const evidence = await executeShadowPlanSteps(
     plan, context, dependencies.registry, dependencies.trajectory,
     dependencies.stepLeaseMs, dependencies.busyStepRetry, dependencies.telemetry ?? new AgentTelemetry()
   );
+  if (context.mode === "active" && plan.steps.length > 0 && dependencies.planner.answer !== undefined) {
+    return { ...plan, summary: await dependencies.planner.answer(event, context, evidence) };
+  }
   return plan;
 }
 
@@ -270,7 +275,8 @@ async function executeShadowPlanSteps(
   stepLeaseMs: number,
   busyStepRetry?: ShadowPlanExecutionDependencies["busyStepRetry"],
   telemetry: Pick<AgentTelemetry, "withSpan"> = new AgentTelemetry()
-): Promise<void> {
+): Promise<unknown[]> {
+  const evidence: unknown[] = [];
   for (const [index, step] of plan.steps.entries()) {
     const stepNo = index + 1;
     let claim = await trajectory.claimStep(context.taskId, stepNo, stepLeaseMs);
@@ -282,7 +288,11 @@ async function executeShadowPlanSteps(
       claim = await trajectory.claimStep(context.taskId, stepNo, stepLeaseMs);
     }
     if (claim.outcome !== "claimed") {
-      if (claim.outcome === "completed") continue;
+      if (claim.outcome === "completed") {
+        if (claim.output === undefined && context.mode === "active") throw new Error("Completed tool evidence is missing");
+        evidence.push({ capabilityId: step.capabilityId, output: claim.output });
+        continue;
+      }
       throw new Error(`Agent Step ${stepNo} is owned by another worker`);
     }
     const claimToken = claim.token;
@@ -296,11 +306,13 @@ async function executeShadowPlanSteps(
         }
       }, async () => registry.execute(step.capabilityId, step.input, context));
       await trajectory.completeStep(context.taskId, stepNo, claimToken, output);
+      evidence.push({ capabilityId: step.capabilityId, output });
     } catch (error) {
       await trajectory.failStep(context.taskId, stepNo, claimToken, error);
       throw error;
     }
   }
+  return evidence;
 }
 
 function delay(milliseconds: number): Promise<void> {

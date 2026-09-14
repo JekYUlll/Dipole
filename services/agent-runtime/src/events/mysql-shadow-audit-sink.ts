@@ -24,11 +24,12 @@ interface ExistingPlanRow extends RowDataPacket {
 interface ExistingStepRow extends RowDataPacket {
   status: "planned" | "running" | "completed" | "failed" | "denied";
   claim_token: string | null;
+  output_json: unknown;
 }
 
 export type ShadowStepClaim =
   | { readonly outcome: "claimed"; readonly token: string }
-  | { readonly outcome: "completed" }
+  | { readonly outcome: "completed"; readonly output: unknown }
   | { readonly outcome: "busy" };
 
 export class MySQLShadowAuditSink implements ShadowAuditSink {
@@ -119,7 +120,9 @@ export class MySQLShadowAuditSink implements ShadowAuditSink {
     if (row === undefined) {
       throw new Error(`Agent shadow Step ${taskId}/${stepNo} is missing`);
     }
-    return row.status === "completed" ? { outcome: "completed" } : { outcome: "busy" };
+    return row.status === "completed"
+      ? { outcome: "completed", output: typeof row.output_json === "string" ? JSON.parse(row.output_json) : row.output_json }
+      : { outcome: "busy" };
   }
 
   async completeStep(taskId: string, stepNo: number, token: string, output: unknown): Promise<void> {

@@ -16,6 +16,11 @@ import { McpToolInvocationRunner } from "../mcp/mcp-tool-invocation.js";
 import { createInteractiveMessageExecutor } from "../mcp/mcp-message-write-projection.js";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 import { createHash } from "node:crypto";
+import { z } from "zod";
+
+const messageCheckpointSchema = z.object({
+  kind: z.literal("system_message"), content: z.string().trim().min(1).max(2000), conversationKey: z.string().min(1)
+}).strict();
 
 interface AgentArtifactWriter {
   createArtifact(input: AgentArtifactCreateInput): Promise<AgentArtifactRecord>;
@@ -86,9 +91,26 @@ export function createTemporalReadStepActivities(
         taskId: context.taskId, runId: context.runId,
         attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
       }, async span => {
-        const systemMessage = requestedSystemMessage(event, context);
+        const restored = input.resume?.kind === "approval" && input.checkpoint !== undefined
+          ? messageCheckpointSchema.parse(input.checkpoint) : undefined;
+        if (restored !== undefined && restored.conversationKey !== activeReplyConversationKey(event, context)) {
+          throw new Error("Approval checkpoint conversation mismatch");
+        }
+        const explicitMessage = requestedSystemMessage(event, context, restored?.content);
+        // Approval resumes use the exact checkpoint, without another model call.
+        const plan = explicitMessage === undefined && input.resume === undefined
+          ? await executeShadowPlan(event, context, { ...dependencies, telemetry }) : undefined;
+        const systemMessage = explicitMessage ?? (plan?.proposedWrite === undefined
+          ? undefined : requestedSystemMessage(event, context, plan.proposedWrite.content));
+        if ((input.resume !== undefined || plan?.proposedWrite !== undefined) && systemMessage === undefined) {
+          throw new Error("Message proposal is outside authorized scope");
+        }
         if (systemMessage !== undefined && dependencies.approvalWriter !== undefined) {
           if (input.resume?.kind === "approval") {
+            if (input.resume.decision !== "approved" || input.resume.requestId !== systemMessage.requestId ||
+                input.resume.approvalId !== systemMessage.approval.approvalId) {
+              throw new Error("Approval resume binding mismatch");
+            }
             const result = await createInteractiveMessageExecutor(dependencies.approvalWriter).execute({
               conversationId: systemMessage.conversationKey,
               content: systemMessage.content
@@ -106,7 +128,7 @@ export function createTemporalReadStepActivities(
             checkpoint: { kind: "system_message", content: systemMessage.content, conversationKey: systemMessage.conversationKey }
           };
         }
-        const plan = await executeShadowPlan(event, context, { ...dependencies, telemetry });
+        if (systemMessage !== undefined || plan === undefined) throw new Error("Message approval writer is unavailable");
         const conversationKey = activeReplyConversationKey(event, context);
         const reply = runtimeMode === "active" && conversationKey !== undefined && dependencies.replyWriter !== undefined
           ? await writeAssistantReply(dependencies.replyWriter, context, plan.summary, conversationKey)
@@ -146,7 +168,7 @@ export function createTemporalReadStepActivities(
   };
 }
 
-function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>, context: ExecutionContext): {
+function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>, context: ExecutionContext, proposedContent?: string): {
   content: string;
   conversationKey: string;
   requestId: string;
@@ -162,10 +184,11 @@ function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>
 } | undefined {
   if (event.eventType !== "message.direct.created") return undefined;
   const conversationKey = activeReplyConversationKey(event, context);
-  const content = typeof event.payload.content === "string"
+  const content = proposedContent ?? (typeof event.payload.content === "string"
     ? event.payload.content.trim().replace(/^\/system\s+/i, "").trim()
-    : "";
-  if (conversationKey === undefined || content.length === 0 || !/^\/system\s+/i.test(String(event.payload.content ?? ""))) return undefined;
+    : "");
+  if (context.mode !== "active" || conversationKey === undefined || content.length === 0 || content.length > 2000 ||
+      (proposedContent === undefined && !/^\/system\s+/i.test(String(event.payload.content ?? "")))) return undefined;
   const scope = { resourceType: "conversation", resourceId: conversationKey, actions: ["write"] };
   if (!context.permissions.includes("message.write") || !hasWriteScope(context, scope)) return undefined;
   const argumentsJson = canonicalMcpJSON({ conversationId: conversationKey, content });

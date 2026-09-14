@@ -35,7 +35,7 @@ WHERE task_uuid = ? AND step_no = ? AND (
 );
 
 -- name: GetAgentShadowStep :one
-SELECT status, claim_token FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = ? LIMIT 1;
+SELECT status, claim_token, output_json FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = ? LIMIT 1;
 
 -- name: CompleteAgentShadowStep :execrows
 UPDATE agent_shadow_steps

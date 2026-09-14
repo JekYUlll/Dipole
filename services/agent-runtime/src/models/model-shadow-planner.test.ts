@@ -3,6 +3,9 @@ import type { Span, Tracer } from "@opentelemetry/api";
 
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEvent } from "../events/shadow-processor.js";
+import { executeShadowPlan } from "../events/shadow-processor.js";
+import { CapabilityRegistry } from "../capabilities/registry.js";
+import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
 import { ModelShadowPlanner } from "./model-shadow-planner.js";
 import type { ModelRouter } from "./model-router.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
@@ -10,6 +13,60 @@ import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import type { ConversationReadResult } from "../capabilities/agent-capability-rpc.js";
 
 describe("ModelShadowPlanner", () => {
+  it("answers from retrieved evidence in the original task and restores completed tools", async () => {
+    const active = { ...context(), mode: "active" as const };
+    const generate = vi.fn(async (input: { stage?: string; prompt: string; taskId?: string }) => {
+      expect(input.taskId).toBe(active.taskId);
+      if (input.stage === "answer") {
+        expect(input.prompt).toContain("Cassandra decision: retain MySQL");
+        expect(input.prompt).toContain('"trust":"untrusted"');
+        return { output: { summary: "Retain MySQL (M42)" }, route: "model", attempts: 1, usage: {} };
+      }
+      return { output: { summary: "Searching", steps: [{ capabilityId: "conversation.search", input: { query: "Cassandra" } }] }, route: "model", attempts: 1, usage: {} };
+    });
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, ["conversation.search"]);
+    const registry = new CapabilityRegistry();
+    const output = { messages: [{ id: "M42", content: "Cassandra decision: retain MySQL" }] };
+    const execute = vi.spyOn(registry, "execute").mockResolvedValue(output);
+    let completed = false;
+    const trajectory = {
+      append: vi.fn(async () => undefined),
+      claimStep: async () => completed ? { outcome: "completed" as const, output } : { outcome: "claimed" as const, token: "T" },
+      completeStep: async () => { completed = true; }, failStep: vi.fn(async () => undefined)
+    };
+    const dependencies = { planner, registry, trajectory, audit: trajectory, stepLeaseMs: 1000 };
+    await expect(executeShadowPlan(event(), active, dependencies)).resolves.toMatchObject({ summary: "Retain MySQL (M42)" });
+    await expect(executeShadowPlan(event(), active, dependencies)).resolves.toMatchObject({ summary: "Retain MySQL (M42)" });
+    expect(execute).toHaveBeenCalledOnce();
+    execute.mockRestore();
+  });
+
+  it("does not synthesize an answer after a denied retrieval", async () => {
+    const registry = new CapabilityRegistry();
+    const searchConversations = vi.fn();
+    registry.register(new ConversationSearchCapability({ searchConversations }));
+    const answer = vi.fn();
+    const trajectory = { append: vi.fn(), claimStep: async () => ({ outcome: "claimed" as const, token: "T" }), completeStep: vi.fn(), failStep: vi.fn() };
+    await expect(executeShadowPlan(event(), { ...context(), mode: "active" }, {
+      planner: { plan: async () => ({ summary: "Search", steps: [{ capabilityId: "conversation.search", input: { query: "Cassandra" } }] }), answer },
+      registry, trajectory, audit: trajectory, stepLeaseMs: 1000
+    })).rejects.toThrow();
+    expect(answer).not.toHaveBeenCalled();
+    expect(searchConversations).not.toHaveBeenCalled();
+  });
+
+  it("bounds answer evidence and explicitly handles empty results", async () => {
+    const generate = vi.fn(async () => ({ output: { summary: "No evidence" }, route: "model", attempts: 1, usage: {} }));
+    const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, []);
+    await planner.answer(event(), context(), [{ output: [] }]);
+    await planner.answer(event(), context(), [{ output: "x".repeat(100_000) + "UNBOUNDED_TAIL" }]);
+    const calls = generate.mock.calls as unknown as Array<[{ prompt: string; stage: string }]>;
+    expect(calls[0]![0].prompt).toContain("evidence is empty or insufficient");
+    expect(calls[0]![0].stage).toBe("answer");
+    expect(calls[1]![0].prompt).not.toContain("UNBOUNDED_TAIL");
+    expect(calls[1]![0].prompt.length).toBeLessThan(20000);
+  });
+
   it("reads the authorized conversation and compiles messages as untrusted evidence", async () => {
     const generate = vi.fn(async () => ({
       output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,

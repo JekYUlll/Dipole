@@ -121,7 +121,7 @@ func (q *Queries) GetAgentShadowPlan(ctx context.Context, taskUuid string) (GetA
 }
 
 const getAgentShadowStep = `-- name: GetAgentShadowStep :one
-SELECT status, claim_token FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = ? LIMIT 1
+SELECT status, claim_token, output_json FROM agent_shadow_steps WHERE task_uuid = ? AND step_no = ? LIMIT 1
 `
 
 type GetAgentShadowStepParams struct {
@@ -132,12 +132,13 @@ type GetAgentShadowStepParams struct {
 type GetAgentShadowStepRow struct {
 	Status     string
 	ClaimToken sql.NullString
+	OutputJson json.RawMessage
 }
 
 func (q *Queries) GetAgentShadowStep(ctx context.Context, arg GetAgentShadowStepParams) (GetAgentShadowStepRow, error) {
 	row := q.db.QueryRowContext(ctx, getAgentShadowStep, arg.TaskUuid, arg.StepNo)
 	var i GetAgentShadowStepRow
-	err := row.Scan(&i.Status, &i.ClaimToken)
+	err := row.Scan(&i.Status, &i.ClaimToken, &i.OutputJson)
 	return i, err
 }
 

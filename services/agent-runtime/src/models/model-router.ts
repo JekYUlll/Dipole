@@ -48,13 +48,13 @@ export interface ModelCallRecovery extends ModelCallReservation {
 }
 
 export interface ModelAuditStore {
-  recover(taskId: string, policy: ModelRunBudgetPolicy): Promise<ModelCallRecovery | undefined>;
-  reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string): Promise<ModelCallReservation | undefined>;
+  recover(taskId: string, policy: ModelRunBudgetPolicy, stage?: "plan" | "answer"): Promise<ModelCallRecovery | undefined>;
+  reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string, stage?: "plan" | "answer"): Promise<ModelCallReservation | undefined>;
   completeCall(reservation: ModelCallReservation, output: unknown, usage: ModelUsage, finishReason: string, latencyMs: number): Promise<void>;
   failCall(reservation: ModelCallReservation, error: unknown, latencyMs: number): Promise<void>;
   completeRun(runId: string): Promise<void>;
   failRun(runId: string, error: unknown): Promise<void>;
-  failTask(taskId: string, error: unknown): Promise<void>;
+  failTask(taskId: string, error: unknown, stage?: "plan" | "answer"): Promise<void>;
 }
 
 export interface ModelTimelineSink {
@@ -96,12 +96,13 @@ export class ModelRouter {
     readonly prompt: string;
     readonly schema: z.ZodType<T>;
     readonly taskId?: string;
+    readonly stage?: "plan" | "answer";
   }): Promise<ModelRoutingResult<T>> {
     if (this.audit !== undefined && !input.taskId?.trim()) {
       throw new Error("persistent model routing requires a Task ID");
     }
     if (this.audit !== undefined) {
-      const recovered = await this.audit.recover(input.taskId!, this.#policy);
+      const recovered = await this.audit.recover(input.taskId!, this.#policy, input.stage);
       if (recovered !== undefined) {
         const output = input.schema.parse(recovered.output);
         await this.audit.completeRun(recovered.runId);
@@ -125,7 +126,7 @@ export class ModelRouter {
       }
       const reservation = this.audit === undefined
         ? undefined
-        : await this.audit.reserve(input.taskId!, this.#policy, route);
+        : await this.audit.reserve(input.taskId!, this.#policy, route, input.stage);
       if (this.audit !== undefined && reservation === undefined) {
         break;
       }
@@ -193,7 +194,7 @@ export class ModelRouter {
     if (runId !== undefined) {
       await this.audit!.failRun(runId, failure);
     } else if (this.audit !== undefined) {
-      await this.audit.failTask(input.taskId!, failure);
+      await this.audit.failTask(input.taskId!, failure, input.stage);
     }
     throw failure;
   }

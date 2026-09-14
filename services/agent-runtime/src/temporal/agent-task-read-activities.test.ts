@@ -150,10 +150,10 @@ describe("Temporal read Step Activities", () => {
     expect(replyWriter.finishToolInvocation).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
   });
 
-  it("waits for approval before delivering an explicit system message", async () => {
+  it.each(["/system Deployment starts at 18:00", "Please publish a system notice that deployment starts at 18:00"])("waits for approval and restores the exact proposal: %s", async (request) => {
     const event: AgentEvent = {
       eventId: "E-APPROVAL", eventType: "message.direct.created", aggregateId: "M-APPROVAL",
-      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: "/system Deployment starts at 18:00", conversation_key: "direct:U100:UAI" }
+      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: request, conversation_key: "direct:U100:UAI" }
     };
     const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
     const runId = agentRunId(taskId, "dipole-agent", "active");
@@ -173,8 +173,9 @@ describe("Temporal read Step Activities", () => {
       })),
       executeMessageCommand: vi.fn(async () => ({ resourceType: "message" as const, resourceId: "MSG-SYSTEM-1", commandKind: "system_message" as const, commandId: "CMD-SYSTEM-1" }))
     };
+    const plan = vi.fn(async () => ({ summary: "Please approve", steps: [], proposedWrite: { content: "Deployment starts at 18:00" } }));
     const activities = createTemporalReadStepActivities({
-      planner: { plan: vi.fn(async () => ({ summary: "unused", steps: [] })) }, audit: { append: vi.fn(async () => undefined) }, registry: new CapabilityRegistry(),
+      planner: { plan }, audit: { append: vi.fn(async () => undefined) }, registry: new CapabilityRegistry(),
       trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
       runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) }, approvalWriter, stepLeaseMs: 60_000
     });
@@ -185,12 +186,21 @@ describe("Temporal read Step Activities", () => {
     });
     expect(initial).toMatchObject({ kind: "wait_approval", approval: { capabilityId: "message.system.send" } });
     expect(approvalWriter.executeMessageCommand).not.toHaveBeenCalled();
+    const callsBeforeResume = plan.mock.calls.length;
+    const checkpoint = (initial as { checkpoint: unknown }).checkpoint;
 
     await expect(activities.executeAgentTaskStep({
-      taskId, runId, goal: "notify", step: 1, resume: { kind: "approval", requestId: (initial as { requestId: string }).requestId, approvalId: (initial as { approval: { approvalId: string } }).approval.approvalId, decision: "approved" }, shadowEvent: event,
+      taskId, runId, goal: "notify", step: 1, checkpoint, resume: { kind: "approval", requestId: (initial as { requestId: string }).requestId, approvalId: (initial as { approval: { approvalId: string } }).approval.approvalId, decision: "approved" }, shadowEvent: event,
       admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
     })).resolves.toMatchObject({ kind: "complete", output: { summary: "Approved system message delivered" } });
     expect(approvalWriter.consumeApproval).toHaveBeenCalledOnce();
+    expect(approvalWriter.executeMessageCommand).toHaveBeenCalledOnce();
+    expect(plan).toHaveBeenCalledTimes(callsBeforeResume);
+    await expect(activities.executeAgentTaskStep({
+      taskId, runId, goal: "notify", step: 1, checkpoint,
+      resume: { kind: "approval", requestId: "wrong-request", approvalId: (initial as { approval: { approvalId: string } }).approval.approvalId, decision: "approved" }, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    })).rejects.toThrow(/binding/);
     expect(approvalWriter.executeMessageCommand).toHaveBeenCalledOnce();
   });
 

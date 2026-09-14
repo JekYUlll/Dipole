@@ -70,10 +70,25 @@ Gateway -> Core / Message -> MySQL + Transactional Outbox -> Kafka
 
 ## Quick Start
 
+Requirements: Docker Compose v2, Go (see `go.mod`), Node.js 22+, and OpenSSL.
+Run the following commands from the repository root. In your local `.env`, set
+`DIPOLE_INTERNAL_RPC_SHARED_SECRET` to a random value generated with
+`openssl rand -hex 32`. Keep `.env` private and pass it to Compose with `--env-file`.
+
+Generate development certificates once and build the Go service images:
+
+```bash
+test -f certs/internal/ca.pem || scripts/generate-internal-certs.sh
+scripts/docker-build.sh backend
+scripts/docker-build-microservice-images.sh
+```
+
+The certificate generator replaces existing certificates when invoked directly;
+reuse a valid set or deliberately renew the entire set when it expires.
 Start the IM stack:
 
 ```bash
-docker compose -f deploy/compose/docker-compose.microservices.yml up -d
+docker compose --env-file .env -f deploy/compose/docker-compose.microservices.yml up -d --wait
 ```
 
 Start the frontend during development:
@@ -81,18 +96,45 @@ Start the frontend during development:
 ```bash
 cd frontend
 npm ci
-npm run dev
+DIPOLE_WEB_PROXY_TARGET=http://127.0.0.1:8080 npm run dev
 ```
 
-To run the complete Agent demo, provide a compatible model API key in `.env` and
-add the experience profile. It enables the active TypeScript Runtime and Temporal
-while keeping the legacy responder disabled:
+Open `http://localhost:5173/app/` (or the port printed by Vite).
+
+For the Agent demo, also set these values in `.env`. Use the exact model ID
+accepted by your OpenAI-compatible provider; `DIPOLE_AGENT_MODEL_ROUTES` accepts
+a comma-separated list of model IDs for fallback:
+
+```dotenv
+DIPOLE_AGENT_MODEL_ROUTES=your-model-id
+DIPOLE_AGENT_MODEL_API_KEY=your-private-api-key
+DIPOLE_AGENT_MODEL_BASE_URL=https://api.deepseek.com/v1
+```
+
+Enable Search, Indexer and Elasticsearch with the existing `search` profile.
+The experience overlay enables the active TypeScript Runtime, Temporal and
+Gateway search; Core uses remote AI execution. Agent and Gateway wait for Search:
 
 ```bash
-docker compose --env-file .env \
+docker compose --env-file .env --profile search \
   -f deploy/compose/docker-compose.microservices.yml \
-  -f deploy/microservices/agent-experience.yml up -d --build
+  -f deploy/microservices/agent-experience.yml up -d --build --wait
 ```
+
+The `migrate` service applies schema updates before application startup, including
+`000052` for Agent model stages. After source updates, rebuild the Go binaries and
+images above so migrations and services match the source revision. Existing data
+volumes are reused; back them up before upgrading. This Compose setup is for local
+development and uses single-node infrastructure and development database passwords.
+
+Verify `http://localhost:8080/health`, register two users and send a message with a
+distinctive phrase. Wait for it to appear in search, then ask AI to find and summarize
+it. Direct AI chat and group `@AI` should reply once. In the AI direct conversation,
+ask "Publish a system message here: deployment at 18:00" to propose a system
+notice for approval. Reject to verify no write, or approve to send the approved
+content once. `/system <text>` remains a deterministic shortcut. Proposals are
+limited to the current direct conversation; ordinary AI replies use their
+existing restricted reply authorization without an approval prompt.
 
 ## Verification
 

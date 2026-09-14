@@ -18,6 +18,7 @@ import { agentRunId, agentTaskId, type AgentEvent } from "../events/shadow-proce
 import { ModelShadowPlanner } from "../models/model-shadow-planner.js";
 import { ModelRouter, type ModelAuditStore, type ModelCallRecovery } from "../models/model-router.js";
 import { createTemporalReadStepActivities } from "./agent-task-read-activities.js";
+import type { AgentApprovalBinding } from "../capabilities/agent-capability-rpc.js";
 
 const integrationEnabled = process.env.DIPOLE_AGENT_TEMPORAL_INTEGRATION === "true";
 
@@ -31,6 +32,85 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
   afterAll(async () => {
     await env?.teardown();
   });
+
+  it.each(["approved", "denied"] as const)("restores a natural-language proposal after worker replacement: %s", async (decision) => {
+    const event: AgentEvent = {
+      eventId: `E-NATURAL-${decision}`, eventType: "message.direct.created", aggregateId: `M-NATURAL-${decision}`,
+      occurredAt: "2026-09-14T00:00:00.000Z",
+      payload: { content: "Please publish a system notice: deployment at 18:00", conversation_key: "direct:U100:UAI" }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }],
+      approvedCapabilities: ["message.system.send"] as "message.system.send"[], eventId: event.eventId
+    };
+    let modelCalls = 0;
+    let binding: AgentApprovalBinding | undefined;
+    let approved = false;
+    let attempts = 0;
+    const messages = new Map<string, string>();
+    const planner = new ModelShadowPlanner(new ModelRouter({ generate: async () => {
+      modelCalls++;
+      return { output: { summary: "Approve this notice", steps: [], proposedWrite: { content: "Deployment at 18:00" } }, usage: { inputTokens: 10, outputTokens: 10 } };
+    } }, ["fixture"], { maxCalls: 1, totalTimeoutMs: 1000, maxOutputTokensPerCall: 128 }), []);
+    const steps = createTemporalReadStepActivities({
+      planner, runtimeMode: "active", contextResolver: { resolveMcpContext: async () => context },
+      audit: { append: async () => undefined }, registry: new CapabilityRegistry(), stepLeaseMs: 1000,
+      trajectory: { append: async () => undefined, claimStep: async () => ({ outcome: "claimed", token: "unused" }), completeStep: async () => undefined, failStep: async () => undefined },
+      approvalWriter: {
+        begin: async () => undefined, finishToolInvocation: async () => undefined,
+        resolveApprovalGrant: async (_task, _run, _capability, _scope, digest) => {
+          if (!approved || binding?.argumentsSha256 !== digest) throw new Error("No matching approval");
+          return binding;
+        },
+        consumeApproval: async () => { if (!approved) throw new Error("Not approved"); },
+        executeMessageCommand: async input => {
+          attempts++;
+          messages.set(input.invocationId, input.content);
+          if (attempts === 1) throw Object.assign(new Error("Response lost after commit"), { code: 14 });
+          return { resourceType: "message", resourceId: "MSG-NATURAL", commandKind: "system_message", commandId: input.invocationId };
+        }
+      }
+    });
+    const activities: AgentTaskWorkerActivities = {
+      ...steps,
+      admitAgentTask: async () => ({ taskId, runId, runStatus: "running" }),
+      finishAgentTask: async () => undefined, projectAgentTaskState: async () => undefined,
+      requestAgentTaskApproval: async input => { binding = input.approval; },
+      resolveAgentTaskApproval: async input => { approved = input.decision === "approved"; }
+    };
+    const queue = `natural-${decision}-${Date.now()}`;
+    let worker = await createWorker(env, queue, activities);
+    let running = worker.run();
+    try {
+      const client = new TemporalTaskClient(env.client.workflow, queue);
+      const started = await client.start({ taskId, goal: "publish notice", shadowEvent: event,
+        admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", eventId: event.eventId, triggerType: event.eventType, triggerRef: event.aggregateId } });
+      const handle = env.client.workflow.getHandle(started.workflowId);
+      const controls = new TemporalTaskControlClient(env.client.workflow);
+      await waitForStatus(env, handle, "waiting_approval");
+      expect(messages.size).toBe(0);
+      const pending = (await controls.query(taskId)).pending!;
+      worker.shutdown();
+      await running;
+      worker = await createWorker(env, queue, activities);
+      running = worker.run();
+      const signal = { requestId: pending.requestId, approvalId: binding!.approvalId, decision, actorUserId: "U100" };
+      await controls.resolveApproval(taskId, signal);
+      await controls.resolveApproval(taskId, signal);
+      const result = await handle.result();
+      expect(result.taskId).toBe(taskId);
+      expect(result.status).toBe(decision === "approved" ? "completed" : "cancelled");
+      expect(modelCalls).toBe(1);
+      expect(messages.size).toBe(decision === "approved" ? 1 : 0);
+      expect(attempts).toBe(decision === "approved" ? 2 : 0);
+    } finally {
+      worker.shutdown();
+      await running;
+    }
+  }, 120_000);
 
   it("retries Activities, converges duplicate starts, and resumes after Worker replacement", async () => {
     const taskQueue = `dipole-agent-task-test-${Date.now()}`;
