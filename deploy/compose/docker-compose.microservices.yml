@@ -286,7 +286,7 @@ services:
     volumes:
       - elasticsearch_microservices_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health >/dev/null"]
+      test: ["CMD-SHELL", "curl -fsS 'http://127.0.0.1:9200/_cluster/health?wait_for_status=yellow&timeout=3s' | grep -Eq '\"status\":\"(green|yellow)\"'"]
       interval: 10s
       timeout: 5s
       retries: 30

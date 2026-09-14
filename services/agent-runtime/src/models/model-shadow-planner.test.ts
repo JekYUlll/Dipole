@@ -63,6 +63,8 @@ describe("ModelShadowPlanner", () => {
     const calls = generate.mock.calls as unknown as Array<[{ prompt: string; stage: string }]>;
     expect(calls[0]![0].prompt).toContain("evidence is empty or insufficient");
     expect(calls[0]![0].stage).toBe("answer");
+    expect(calls[0]![0].prompt).not.toContain("policy:runtime-v1");
+    expect(calls[0]![0].prompt).not.toContain("messageWriteProposalAllowed");
     expect(calls[1]![0].prompt).not.toContain("UNBOUNDED_TAIL");
     expect(calls[1]![0].prompt.length).toBeLessThan(20000);
   });
@@ -109,7 +111,7 @@ describe("ModelShadowPlanner", () => {
     const messages = Array.from({ length: 25 }, (_, index) => ({
       id: BigInt(index + 1), serverMessageId: `M${index + 1}`, clientMessageId: `C${index + 1}`,
       conversationKey: "group:G1", sequence: BigInt(index + 1), senderId: "U200", targetType: 2, targetId: "G1",
-      messageType: 1, content: index === 0 ? "x".repeat(9000) : `message-${index + 1}`, fileId: "", fileName: "", fileSize: 0n,
+      messageType: 1, content: index === 24 ? "x".repeat(9000) : `message-${index + 1}`, fileId: "", fileName: "", fileSize: 0n,
       fileUrl: "", fileContentType: ""
     }));
     const planner = new ModelShadowPlanner(
@@ -121,8 +123,11 @@ describe("ModelShadowPlanner", () => {
 
     const prompt = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]![0].prompt;
     expect(prompt).toContain('\\"contentTruncated\\":true');
-    expect(prompt).toContain('"id":"message:M20:19"');
-    expect(prompt).not.toContain('"id":"message:M21:20"');
+    expect(prompt).toContain('"id":"message:M25:0"');
+    expect(prompt).not.toContain('"id":"message:M5:20"');
+    expect(prompt).toContain("current_user_request");
+    expect(prompt).toContain("historical_record");
+    expect(messages[0]!.sequence).toBe(1n);
   });
 
   it("retrieves scoped Memories and compiles them as untrusted provenance records", async () => {

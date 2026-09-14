@@ -22,7 +22,7 @@ describe("KafkaShadowConsumer", () => {
     await runtime.start();
     expect(factory.create).toHaveBeenCalledWith("dipole-agent-shadow-v1");
     expect(consumer.connect).toHaveBeenCalledOnce();
-    expect(consumer.subscribe).toHaveBeenCalledWith({ topic: "message.direct.created", fromBeginning: false });
+    expect(consumer.subscribe).toHaveBeenCalledWith({ topic: "message.direct.created", fromBeginning: true });
     expect(eachMessage).toBeDefined();
     await eachMessage!(payload(Buffer.from("event")));
     expect(process).toHaveBeenCalledWith("event");
@@ -104,7 +104,7 @@ describe("KafkaShadowConsumer", () => {
 
     await runtime.start();
     expect(consumer.subscribe).toHaveBeenNthCalledWith(2, {
-      topic: "dipole.message.direct.created.retry", fromBeginning: false
+      topic: "dipole.message.direct.created.retry", fromBeginning: true
     });
     await eachMessage!({
       topic: "dipole.message.direct.created",

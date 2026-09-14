@@ -136,6 +136,37 @@ content once. `/system <text>` remains a deterministic shortcut. Proposals are
 limited to the current direct conversation; ordinary AI replies use their
 existing restricted reply authorization without an approval prompt.
 
+### Daily Agent Development
+
+Use one running Agent Experience stack for development and demonstration. Model
+credentials stay in your private environment file; keep the same Compose project
+name on every invocation. Shadow, mock-provider and isolated Temporal tests are
+optional regression tools, not prerequisites for demonstrating a feature.
+
+For TypeScript-only changes with unchanged dependencies, update the existing
+development container without rebuilding infrastructure:
+
+```bash
+export COMPOSE_PROJECT_NAME=dipole-agent-finalization
+npm --prefix services/agent-runtime run build
+docker cp services/agent-runtime/dist/. "${COMPOSE_PROJECT_NAME}-agent-1:/app/dist"
+docker restart "${COMPOSE_PROJECT_NAME}-agent-1"
+node scripts/smoke-agent-experience.mjs
+```
+
+The smoke uses the real configured model, HTTP/WebSocket, Temporal, Core, MySQL,
+Kafka and Elasticsearch. It creates demo users/messages and restarts **only** the
+named Agent container to verify approval recovery. Do not run it against a shared
+production deployment. It prints IDs/counts, never login tokens or model keys.
+Source-only container updates are local iteration aids: rebuild the image when
+changing dependencies or recreating containers. Rebuild the migration binary and
+image when adding a database migration; Go source changes require rebuilding the
+affected service image too.
+
+The single-node experience reserves 20/10/5GB for Elasticsearch disk watermarks.
+Keep at least 20GB free. Its health check requires allocated primary shards;
+HTTP reachability alone does not establish search readiness.
+
 ## Verification
 
 ```bash

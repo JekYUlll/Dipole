@@ -13,10 +13,10 @@
 | 顺序 | 编号 | 优先级 | 事项 | 状态 |
 | --- | --- | --- | --- | --- |
 | 1 | IR-05 | P1 | benchmark 凭据脱敏与导出修复 | 进行中：工作区修复已验证，历史暴露待评估 |
-| 2 | IR-01 | P0 | 检索结果进入同一 Task 的二次推理 | 进行中：代码及 MySQL 契约已验证，完整体验待验收 |
-| 3 | IR-02 | P0 | 完整体验启动流程 | 进行中：配置和启动说明已修复，完整体验待验收 |
-| 4 | IR-03 | P1 | 模型提出写操作并复用现有审批 | 实现与本地 Temporal 测试通过，待真实模型体验 |
-| 5 | IR-04 | P1 | 真实业务链路的恢复与幂等验证 | 真实 Worker 恢复通过，Core 数据库闭环待验收 |
+| 2 | IR-01 | P0 | 检索结果进入同一 Task 的二次推理 | 已验证：真实 Search 证据进入二次回答，History/Sync 可读 |
+| 3 | IR-02 | P0 | 完整体验启动流程 | 现有栈完整体验已验证；全新 Agent 镜像构建受下载阻塞 |
+| 4 | IR-03 | P1 | 模型提出写操作并复用现有审批 | 真实模型和 Core/MySQL 体验通过 |
+| 5 | IR-04 | P1 | 真实业务链路的恢复与幂等验证 | 真实 Worker 重启、批准及重复批准通过；响应丢失注入仍限测试替身 |
 | 6 | IR-06 | P1 | 可重复的性能实验与数字口径 | 待处理 |
 | 7 | IR-07 | P2 | Memory、MCP 和高可用描述边界 | 待处理 |
 
@@ -67,6 +67,8 @@ Agent/Gateway 等待 Search 健康；漏启 Search profile 会在 Compose 校验
 
 ## IR-03：审批主要由固定命令触发
 
+**最新验证（2026-09-14）：** 已在现有 `dipole-agent-finalization` 使用真实 DeepSeek v4 flash、Temporal、Core/MySQL 完成自然语言提案与审批。下面的“现状与依据”保留为原始审核背景。
+
 **现状与依据：** [requestedSystemMessage](../../services/agent-runtime/src/temporal/agent-task-read-activities.ts) 对 `/system ...` 在模型执行前直接进入审批。当前模型工具选择主要覆盖只读能力。已有审批机制可以证明等待与恢复，但不足以单独证明模型提出写操作。
 
 **面试追问：** 写操作是否由模型根据意图提出？用户实际批准的是哪些参数和目标？
@@ -84,6 +86,22 @@ Agent/Gateway 等待 Search 健康；漏启 Search profile 会在 Compose 校验
 
 ## IR-04：恢复测试与真实业务证据之间仍有距离
 
+**最新验证（2026-09-14）：** `node scripts/smoke-agent-experience.mjs` 在既有体验栈完整通过，未使用 Mock Provider、替身 Core 或 Shadow。
+
+| 场景 | Task / 结果 |
+| --- | --- |
+| 私聊与 WS 回复 | `task:4a35ceefa44733a9da2a988d2184acab60b2d7f36131a170556ed6ccbf6` completed |
+| 拒绝提案 | `task:82a8db3b2873843b445c6512d879acfbfba5cb5c0ae6a7235f5d7a11154`，对应消息 0 条 |
+| Worker 重启后批准 | `task:6c8f7eeb20a36d7a8ed2a0c32755457ca68620767668e8850fcb1646223`，重复批准后对应消息仍 1 条 |
+| 群 @AI | `task:b30a8dfc47426fa87670243eb348174f411879b59f95723a7b4464f3760` completed，一条群回复 |
+| 检索与回答 | `task:b1122cfa19cb6b45230f5575f0a2c2ed1e4273278996103588b884ad54c`，plan/answer 均 completed |
+| 检索证据 | `M2099525036078407680` 出现在真实 Search 输出，回答可由 HTTP history 和 sync 读取 |
+
+实际修复：更新旧 Search 二进制、应用迁移 000052、启用 Gateway 搜索；修复 Elasticsearch 红色分片仍报健康、上下文错误优先旧消息、回答阶段重复策略超预算，以及 Kafka 无 offset 分区从 latest 跳过历史的风险。
+主开发路径收敛为一个 Experience 配置和一个真实 smoke。单测只做局部回归，历史 shadow/实验保留但不作为演示前置。
+本轮 Agent 完整镜像构建遇到包下载超时，已停止重试；运行实例使用构建后的 dist 更新，迁移/Search 镜像已构建。版本/依赖未升级；容器重建前仍须完成 Agent 镜像构建。
+定向测试 19 项、typecheck、build、Compose 检查及 diff 检查通过。此前仅用测试替身完成的“提交后响应丢失”注入，不提升为真实数据库验收结论。
+
 **现状与依据：** [Temporal integration test](../../services/agent-runtime/src/temporal/agent-task-workflow.integration.test.ts) 包含 Worker replacement 场景，关键业务 Activities 使用测试实现，且由 `DIPOLE_AGENT_TEMPORAL_INTEGRATION` 开关控制。这证明测试设计覆盖了恢复，不等同于当前真实 Core、MySQL 和 IM 写入全链路已验收。
 
 **面试追问：** 消息写入成功但 Activity 响应丢失，重试后如何保持一次业务副作用？
@@ -93,7 +111,7 @@ Agent/Gateway 等待 Search 健康；漏启 Search profile 会在 Compose 校验
 **验收条件：**
 
 - [x] 等待审批后重启 Worker，再批准，原 Task 完成（实际 Temporal，本地隔离进程）。
-- [ ] 重复批准与命令重试后，数据库中只有一条对应消息。
+- [x] Worker 重启并重复批准后，数据库只有一条对应消息；命令响应丢失注入的真实数据库场景仍待验证。
 - [ ] 注入“消息已提交、响应丢失”场景，重试返回相同业务结果。
 - [ ] 记录实际执行命令、Task ID、消息数量和测试版本，敏感字段脱敏。
 

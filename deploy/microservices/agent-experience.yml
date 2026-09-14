@@ -1,4 +1,10 @@
 services:
+  elasticsearch:
+    environment:
+      # Single-node development: reserve free bytes on large shared disks.
+      cluster.routing.allocation.disk.watermark.low: 20gb
+      cluster.routing.allocation.disk.watermark.high: 10gb
+      cluster.routing.allocation.disk.watermark.flood_stage: 5gb
   agent:
     depends_on:
       search:

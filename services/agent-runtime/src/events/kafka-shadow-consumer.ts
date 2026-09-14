@@ -125,9 +125,9 @@ export class KafkaShadowConsumer {
         await consumer.connect();
         const topics = [this.config.topic.trim(), ...(this.config.additionalTopics ?? []).map((topic) => topic.trim())];
         for (const topic of topics) {
-          await consumer.subscribe({ topic, fromBeginning: false });
+          await consumer.subscribe({ topic, fromBeginning: true });
           if (this.failureRouter !== undefined) {
-            await consumer.subscribe({ topic: `${topic}.retry`, fromBeginning: false });
+            await consumer.subscribe({ topic: `${topic}.retry`, fromBeginning: true });
           }
         }
         await consumer.run({
