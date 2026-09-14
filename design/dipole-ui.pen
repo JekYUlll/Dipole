@@ -39368,6 +39368,468 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "NNBqt",
+      "x": 44562,
+      "y": 0,
+      "name": "Agent Report/Desktop/Review",
+      "clip": true,
+      "width": 1120,
+      "height": 780,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": 32,
+      "children": [
+        {
+          "type": "text",
+          "id": "QB5jB",
+          "name": "Brand",
+          "fill": "$accent-strong",
+          "content": "DIPOLE AGENT / COLLABORATION",
+          "fontFamily": "$font-display",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "f9ksbv",
+          "name": "Title",
+          "fill": "$ink",
+          "content": "把讨论变成可确认的结论",
+          "fontFamily": "$font-body",
+          "fontSize": 28,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "y87bt",
+          "name": "Steps",
+          "fill": "$ink-soft",
+          "content": "检索  /  补充  /  草稿  /  审批发布",
+          "fontFamily": "$font-body",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "yemDC",
+          "name": "Workspace",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "rQONu",
+              "name": "Create and history",
+              "width": 310,
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 20,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "OieGI",
+                  "name": "Goal",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "总结目标\n本会话的进展、决策与风险",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "EZLqC",
+                  "name": "Deadline",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "补充截止时间\n2026-09-16 18:00",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "yTUZ8",
+                  "name": "Deadline help",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "超时标注未知项继续生成。\n发布仍需本人确认。",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "avYjA",
+                  "name": "Create button",
+                  "width": "fill_container",
+                  "fill": "$accent-strong",
+                  "cornerRadius": 6,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HzXOl",
+                      "name": "Create label",
+                      "fill": "$text-inverse",
+                      "content": "创建协作总结",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "JMDXf",
+                  "name": "History",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前已加载会话中的任务\n数据库迁移总结",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "EiD1Q",
+              "name": "Draft review",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 20,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ZUemn",
+                  "name": "Status",
+                  "fill": "$accent-strong",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "等待你的补充或审阅",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "NDphY",
+                  "name": "Draft",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "进展\nMySQL 保持默认存储。\n\n决策与依据\n消息 M123 记录当前迁移范围。\n\n风险与未知项\n上线日期由负责人补充，尚未独立核实。",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "BDdii",
+                  "name": "Edit",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "修改后的完整草稿\n留空保留原文",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "yr1ku",
+                  "name": "Continue button",
+                  "width": "fill_container",
+                  "fill": "$accent-strong",
+                  "cornerRadius": 6,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "w0nnX",
+                      "name": "Continue label",
+                      "fill": "$text-inverse",
+                      "content": "提交并继续",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "QsK7l",
+                  "name": "Recovery",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "任务已保存，等待期间可以离开页面。\n审批将展示最终发布原文。",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "jwsjh",
+      "x": 45762,
+      "y": 0,
+      "name": "Agent Report/Mobile/Review",
+      "clip": true,
+      "width": 390,
+      "height": 1180,
+      "fill": "$canvas",
+      "layout": "vertical",
+      "gap": 16,
+      "padding": 16,
+      "children": [
+        {
+          "type": "text",
+          "id": "Q7zR5",
+          "name": "Brand",
+          "fill": "$accent-strong",
+          "content": "DIPOLE AGENT / COLLABORATION",
+          "fontFamily": "$font-display",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "JJUIS",
+          "name": "Title",
+          "fill": "$ink",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "把讨论变成可确认的结论",
+          "fontFamily": "$font-body",
+          "fontSize": 22,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "YY1AK",
+          "name": "Steps",
+          "fill": "$ink-soft",
+          "content": "检索  /  补充  /  草稿  /  审批发布",
+          "fontFamily": "$font-body",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "xD0n2",
+          "name": "Workspace",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "kEt9q",
+              "name": "Create and history",
+              "width": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "UADtk",
+                  "name": "Goal",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "总结目标\n本会话的进展、决策与风险",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "ACBh5",
+                  "name": "Deadline",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "补充截止时间\n2026-09-16 18:00",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "cKPzR",
+                  "name": "Deadline help",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "超时标注未知项继续生成。\n发布仍需本人确认。",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "OBEMY",
+                  "name": "Create button",
+                  "width": "fill_container",
+                  "fill": "$accent-strong",
+                  "cornerRadius": 6,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WkUfh",
+                      "name": "Create label",
+                      "fill": "$text-inverse",
+                      "content": "创建协作总结",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "jz6gy",
+                  "name": "History",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前已加载会话中的任务\n数据库迁移总结",
+                  "lineHeight": 1.6,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tiYGP",
+              "name": "Draft review",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$surface",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "q3agy",
+                  "name": "Status",
+                  "fill": "$accent-strong",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "等待你的补充或审阅",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "RcDwP",
+                  "name": "Draft",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "进展\nMySQL 保持默认存储。\n\n决策与依据\n消息 M123 记录当前迁移范围。\n\n风险与未知项\n上线日期由负责人补充，尚未独立核实。",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "g7itDy",
+                  "name": "Edit",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "修改后的完整草稿\n留空保留原文",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "X2XCiE",
+                  "name": "Continue button",
+                  "width": "fill_container",
+                  "fill": "$accent-strong",
+                  "cornerRadius": 6,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kkHrT",
+                      "name": "Continue label",
+                      "fill": "$text-inverse",
+                      "content": "提交并继续",
+                      "fontFamily": "$font-body",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "cNuOT",
+                  "name": "Recovery",
+                  "fill": "$ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "任务已保存，等待期间可以离开页面。\n审批将展示最终发布原文。",
+                  "lineHeight": 1.7,
+                  "fontFamily": "$font-body",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {

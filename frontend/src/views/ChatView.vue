@@ -41,6 +41,7 @@
 
       <!-- 消息列表 -->
       <div v-if="navTab === 'chat'" class="panel-list">
+        <div class="panel-actions"><button class="panel-action-btn" @click="openAssistant">Dipole AI · 对话与协作总结</button></div>
         <div
           v-for="conv in filteredConversations"
           :key="conv.conversation_key"
@@ -164,6 +165,7 @@
         <div class="chat-header">
           <button class="back-btn" @click="chat.activeKey = ''"><IconBack :size="24" /></button>
           <span class="chat-header-title">{{ activeConvName }}</span>
+          <button v-if="isAIConversation || activeConv.target_type === 1" type="button" @click="showReports = !showReports">协作总结</button>
           <span v-if="isGroupDismissed" class="status-chip danger">已解散</span>
           <span v-else-if="isDirectConversationReadonly" class="status-chip warning">
             <span class="status-chip-icon">!</span>
@@ -185,6 +187,9 @@
           <button class="detail-toggle" @click="showDetail = !showDetail" title="详情"><IconInfo :size="18" /></button>
         </div>
 
+        <AgentReportWorkspace v-if="showReports && (isAIConversation || activeConv.target_type === 1)" :key="chat.activeKey" :messages="currentMessages" :owner-id="auth.currentUser?.uuid ?? ''"
+          :conversation-name="activeConvName" :group="activeConv.target_type === 1" :agent-id="activeConv.target_type === 0 ? activeConv.target_user!.uuid : 'UAI000000000000000001'"
+          @close="showReports = false" @create="createReport" />
         <div class="msg-list" ref="msgListRef">
           <button class="load-more-btn" @click="loadMore"><IconLoadMore :size="13" /> 加载更多</button>
           <div
@@ -583,6 +588,7 @@ import {
   IconCheckCircle, IconXCircle, IconUsers, IconUserPlus, IconLoadMore, IconSearch,
 } from '@/components/icons'
 import SearchWorkspace from '@/components/SearchWorkspace.vue'
+import AgentReportWorkspace from '@/components/AgentReportWorkspace.vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
@@ -592,6 +598,7 @@ import api from '@/api'
 import { browserSyncMode, observeBrowserTimelineNotification } from '@/sync/browserSync'
 
 const router = useRouter()
+const showReports = ref(false)
 const auth = useAuthStore()
 const chat = useChatStore()
 const messageSearchEnabled = import.meta.env.VITE_SEARCH_ENABLED === 'true'
@@ -669,6 +676,7 @@ const displayUserName = (user?: PublicUser | null) => {
 
 const formatTime = (t: string) => {
   const d = new Date(t)
+  if (!Number.isFinite(d.getTime())) return ''
   const now = new Date()
   if (d.toDateString() === now.toDateString()) {
     return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
@@ -1168,6 +1176,13 @@ const sendMessage = () => {
   inputText.value = ''
 }
 
+function createReport(content: string) {
+  const draft = inputText.value
+  inputText.value = content
+  sendMessage()
+  inputText.value = draft
+}
+
 const uploadFile = async (e: Event) => {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file || !activeConv.value) return
@@ -1351,6 +1366,16 @@ const switchToContacts = async () => {
 
 const openDirectChat = async (c: Contact) => {
   await openDirectChatByUser(c.user)
+}
+
+const openAssistant = async () => {
+  try {
+    const user = await api.get('/api/v1/users/UAI000000000000000001') as PublicUser
+    if (user.user_type !== 1) throw new Error('AI account unavailable')
+    await openDirectChatByUser(user)
+  } catch {
+    toast.error('AI 助手暂不可用，请确认 Agent Experience 已启动。')
+  }
 }
 
 const openDirectChatByUser = async (user: PublicUser) => {
@@ -2328,6 +2353,7 @@ onBeforeUnmount(() => {
 
 /* Chat Area */
 .chat-area {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;

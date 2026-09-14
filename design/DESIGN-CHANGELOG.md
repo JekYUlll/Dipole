@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+- 新增 `Agent Report/Desktop/Review` 与 `Agent Report/Mobile/Review`，复用 V3 奶油底色、绿色动作和中文字体；展示创建、截止说明、任务列表、草稿审阅及继续操作。通过 pen.dev CLI 在 canonical 文件内编辑并导出到 `exports/agent-report-v1/`。
+
 - 归档 Contact Directory 与 Group Directory 的 Pencil canonical desktop/mobile 导出，补齐 `design/README.md` 页面索引；导出来自现有 canonical frame，未复制第二份 `.pen` 文件。
 
 - 增加 Device Directory authenticated desktop/mobile 页面与 Chromium canonical 基线；明确 owner-scoped 会话、设备撤销操作和服务不可用清空策略。

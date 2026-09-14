@@ -22,6 +22,13 @@
 
 ## 当前 Frame
 
+### Collaboration Report
+
+- `Agent Report/Desktop/Review`：会话内双栏任务工作区。
+- `Agent Report/Mobile/Review`：窄屏单列创建与审阅。
+- 导出：`exports/agent-report-v1/NNBqt.png`、`exports/agent-report-v1/jwsjh.png`。
+- 实现：`frontend/src/components/AgentReportWorkspace.vue`。截止后继续生成仍须审批发布；输入、审批和取消均使用原 Task 的认证接口。新账号从会话列表直接打开 Dipole AI。
+
 ### V3 页面验收导出
 
 Pencil canonical 画布中的 File、Device 和 Settings frame 已导出到
