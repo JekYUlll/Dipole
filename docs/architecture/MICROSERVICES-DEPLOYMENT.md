@@ -30,8 +30,7 @@ Kafka   -> Search Indexer -> Elasticsearch write Alias
 
 ```bash
 scripts/generate-internal-certs.sh
-scripts/docker-build.sh backend
-scripts/docker-build-microservice-images.sh
+make images
 ```
 
 设置强随机 RPC secret，再启动：

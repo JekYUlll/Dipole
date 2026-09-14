@@ -56,7 +56,7 @@ func (s *persistentAgentToolInvocationAuditServiceV1) Begin(ctx context.Context,
 		if begin.ApprovalUUID != "" {
 			return nil, fmt.Errorf("%w: read capability cannot bind an approval", application.ErrAgentToolInvocationDenied)
 		}
-	} else if begin.CapabilityID == application.AgentCapabilityAssistantReplySend || begin.CapabilityID == application.AgentCapabilityGroupReplySend {
+	} else if begin.CapabilityID == application.AgentCapabilityAssistantReplySend || (begin.CapabilityID == application.AgentCapabilityGroupReplySend && begin.ApprovalUUID == "") {
 		if begin.ApprovalUUID != "" {
 			return nil, fmt.Errorf("%w: assistant replies are pre-authorized only", application.ErrAgentToolInvocationDenied)
 		}
@@ -243,7 +243,7 @@ func (s *persistentAgentToolInvocationAuditServiceV1) verifyMessageActionReferen
 		wantType = model.MessageTypeSystem
 	}
 	if invocation.CapabilityID != wantCapability || (reference.CommandKind == application.AgentMessageCommandSystemMessageV1 && invocation.ApprovalUUID == "") ||
-		((reference.CommandKind == application.AgentMessageCommandAssistantReplyV1 || reference.CommandKind == application.AgentMessageCommandGroupReplyV1) && invocation.ApprovalUUID != "") {
+		(reference.CommandKind == application.AgentMessageCommandAssistantReplyV1 && invocation.ApprovalUUID != "") {
 		return application.ErrAgentToolInvocationConflict
 	}
 	clientMessageID, err := application.AgentCommandClientMessageIDV1(reference.CommandKind, reference.CommandID)

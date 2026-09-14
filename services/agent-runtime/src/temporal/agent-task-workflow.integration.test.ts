@@ -33,18 +33,24 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     await env?.teardown();
   });
 
-  it.each(["approved", "denied"] as const)("restores a natural-language proposal after worker replacement: %s", async (decision) => {
+  it.each(["approved", "denied", "scheduled", "cancelled", "scheduled-group"] as const)("restores a natural-language proposal after worker replacement: %s", async (scenario) => {
+    const scheduled = scenario.startsWith("scheduled") || scenario === "cancelled";
+    const group = scenario === "scheduled-group";
+    const conversationKey = group ? "group:G100" : "direct:U100:UAI";
+    const capabilityId = group ? "message.group_reply.send" as const : "message.system.send" as const;
+    const decision = scenario === "denied" ? "denied" : "approved";
+    const publishAt = Date.now() + 15_000;
     const event: AgentEvent = {
-      eventId: `E-NATURAL-${decision}`, eventType: "message.direct.created", aggregateId: `M-NATURAL-${decision}`,
-      occurredAt: "2026-09-14T00:00:00.000Z",
-      payload: { content: "Please publish a system notice: deployment at 18:00", conversation_key: "direct:U100:UAI" }
+      eventId: `E-NATURAL-${scenario}`, eventType: group ? "message.group.created" : "message.direct.created", aggregateId: `M-NATURAL-${scenario}`,
+      occurredAt: new Date().toISOString(),
+      payload: { content: scheduled ? `${group ? "@AI " : ""}/digest ${new Date(publishAt).toISOString()} Summarize Cassandra discussions` : "Please publish a system notice: deployment at 18:00", conversation_key: conversationKey }
     };
     const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
     const runId = agentRunId(taskId, "dipole-agent", "active");
     const context = {
       tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
-      permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }],
-      approvedCapabilities: ["message.system.send"] as "message.system.send"[], eventId: event.eventId
+      permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: conversationKey, actions: ["write"] }],
+      approvedCapabilities: [capabilityId], eventId: event.eventId
     };
     let modelCalls = 0;
     let binding: AgentApprovalBinding | undefined;
@@ -53,7 +59,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     const messages = new Map<string, string>();
     const planner = new ModelShadowPlanner(new ModelRouter({ generate: async () => {
       modelCalls++;
-      return { output: { summary: "Approve this notice", steps: [], proposedWrite: { content: "Deployment at 18:00" } }, usage: { inputTokens: 10, outputTokens: 10 } };
+      return { output: { summary: "Approve this notice", steps: [], ...(group ? {} : { proposedWrite: { content: "Deployment at 18:00" } }) }, usage: { inputTokens: 10, outputTokens: 10 } };
     } }, ["fixture"], { maxCalls: 1, totalTimeoutMs: 1000, maxOutputTokensPerCall: 128 }), []);
     const steps = createTemporalReadStepActivities({
       planner, runtimeMode: "active", contextResolver: { resolveMcpContext: async () => context },
@@ -67,10 +73,12 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
         },
         consumeApproval: async () => { if (!approved) throw new Error("Not approved"); },
         executeMessageCommand: async input => {
+          if (group) expect(input.conversationKey).toBe(conversationKey);
+          if (scheduled) expect(Date.now()).toBeGreaterThanOrEqual(publishAt);
           attempts++;
           messages.set(input.invocationId, input.content);
           if (attempts === 1) throw Object.assign(new Error("Response lost after commit"), { code: 14 });
-          return { resourceType: "message", resourceId: "MSG-NATURAL", commandKind: "system_message", commandId: input.invocationId };
+          return { resourceType: "message", resourceId: "MSG-NATURAL", commandKind: group ? "group_reply" : "system_message", commandId: input.invocationId };
         }
       }
     });
@@ -97,15 +105,25 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       await running;
       worker = await createWorker(env, queue, activities);
       running = worker.run();
-      const signal = { requestId: pending.requestId, approvalId: binding!.approvalId, decision, actorUserId: "U100" };
+      const signal = { requestId: pending.requestId, approvalId: binding!.approvalId, decision, actorUserId: "U100" } as const;
       await controls.resolveApproval(taskId, signal);
       await controls.resolveApproval(taskId, signal);
+      if (scheduled) {
+        expect(messages.size).toBe(0);
+        // Restart once more after approval while the durable timer is pending.
+        worker.shutdown();
+        await running;
+        worker = await createWorker(env, queue, activities);
+        running = worker.run();
+        if (scenario === "cancelled") await controls.cancel(taskId, "cancel scheduled publication");
+      }
       const result = await handle.result();
       expect(result.taskId).toBe(taskId);
-      expect(result.status).toBe(decision === "approved" ? "completed" : "cancelled");
+      const delivered = decision === "approved" && scenario !== "cancelled";
+      expect(result.status).toBe(delivered ? "completed" : "cancelled");
       expect(modelCalls).toBe(1);
-      expect(messages.size).toBe(decision === "approved" ? 1 : 0);
-      expect(attempts).toBe(decision === "approved" ? 2 : 0);
+      expect(messages.size).toBe(delivered ? 1 : 0);
+      expect(attempts).toBe(delivered ? 2 : 0);
     } finally {
       worker.shutdown();
       await running;

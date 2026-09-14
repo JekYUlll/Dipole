@@ -80,7 +80,7 @@ Search Service 不初始化 MySQL、Redis 或 Kafka；Core/Message/Gateway 也�
 Web 搜索入口通过构建变量 `VITE_SEARCH_ENABLED=true` 启用。该变量必须与 Gateway `search.enabled=true` 同步发布；默认关闭时继续保留原会话筛选和聊天链路。前端工作区对请求执行 300ms 防抖并丢弃过期响应，Search 故障只显示局部错误态。
 
 ```bash
-VITE_SEARCH_ENABLED=true scripts/docker-build.sh frontend
+VITE_SEARCH_ENABLED=true make frontend
 DIPOLE_SEARCH_ENABLED=true docker compose -f deploy/compose/docker-compose.microservices.yml --profile search up -d
 ```
 

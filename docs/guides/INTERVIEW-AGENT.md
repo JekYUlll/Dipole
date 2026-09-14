@@ -78,9 +78,17 @@ Event Ledger 同时用事件键保护 Kafka 重放，确保一条用户消息不
 
 ### MCP 在项目中如何使用？
 
-MCP 提供统一 Tool 协议。Dipole Runtime 将 MCP Tool 投影为 Capability，并保留 allowlist、
-schema 校验、超时、有界输入输出、来源记录和写操作审批。核心演示使用 Dipole 自身的
-会话与消息能力，外部系统凭据不进入普通任务日志。
+项目保留 MCP Tool 到 Capability 的投影，以及 allowlist、schema 校验、超时和有界输出。
+当前 Agent Experience 明确关闭对外 MCP Server 与 external MCP；五条核心演示使用
+Dipole 内部会话 Capability 和消息命令。可以讲解协议与授权代码，不能将第三方 MCP
+接入描述为默认已演示能力。模型和工具的凭据不进入普通任务日志。
+
+### 当前是否默认具备长期 Memory？
+
+当前体验配置关闭 `DIPOLE_AGENT_MEMORY_ENABLED`，回答使用当前消息、近期会话和
+授权检索证据。源码已保留可选 Memory 读取与上下文注入，尚不将它列入默认演示能力。
+Temporal 保存的 Task、审批 checkpoint 和模型阶段输出属于执行恢复状态；这些状态
+不能作为已实现跨任务长期记忆效果的证据。
 
 ## 可演示的五个场景
 

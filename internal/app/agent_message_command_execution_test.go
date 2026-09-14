@@ -26,6 +26,62 @@ type agentMessageCommandSenderStub struct {
 	err     error
 }
 
+type scheduledGroupCapabilityStub struct {
+	application.AgentCapabilityV1
+	read      *application.AgentConversationReadV1
+	err       error
+	principal string
+}
+
+func (s *scheduledGroupCapabilityStub) ReadConversation(_ context.Context, invocation application.AgentInvocationV1, _ string, _ int) (*application.AgentConversationReadV1, error) {
+	s.principal = invocation.PrincipalUUID
+	return s.read, s.err
+}
+
+func TestApprovedGroupPublicationRechecksMembershipAndBoundContent(t *testing.T) {
+	for _, scenario := range []string{"member", "left", "denied", "wrong-group", "changed-content", "missing-check"} {
+		t.Run(scenario, func(t *testing.T) {
+			args, _ := application.AgentMessageCommandToolArgumentsSHA256ForConversationV1("summary", "group:G1")
+			tool := &application.AgentToolInvocationV1{
+				InvocationUUID: "INV-G", TaskUUID: "TASK", RunUUID: "RUN", TenantID: "dipole", PrincipalUUID: "U1", AgentUUID: "AI",
+				Transport: application.AgentToolTransportMCP, CapabilityID: application.AgentCapabilityGroupReplySend,
+				Status: application.AgentToolInvocationStatusRunning, ApprovalUUID: "APR", ArgumentsSHA256: args,
+			}
+			capability := &scheduledGroupCapabilityStub{read: &application.AgentConversationReadV1{Found: true, TargetUUID: "G1", TargetType: model.MessageTargetGroup}}
+			if scenario == "left" {
+				capability.read.Found = false
+			}
+			if scenario == "denied" {
+				capability.err = application.ErrAgentCapabilityDenied
+			}
+			if scenario == "wrong-group" {
+				capability.read.TargetUUID = "G2"
+			}
+			var port application.AgentCapabilityV1 = capability
+			if scenario == "missing-check" {
+				port = nil
+			}
+			sender := &agentMessageCommandSenderStub{message: &model.Message{UUID: "MSG-G"}}
+			service, err := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: tool}, agentToolAuditResolverStub{invocation: application.AgentInvocationV1{TenantID: "dipole", PrincipalUUID: "U1", AgentUUID: "AI"}}, sender, port)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request := application.AgentMessageCommandExecutionRequestV1{TaskUUID: "TASK", RunUUID: "RUN", InvocationUUID: "INV-G", Kind: application.AgentMessageCommandGroupReplyV1, Content: "summary", ConversationKey: "group:G1"}
+			if scenario == "changed-content" {
+				request.Content = "unapproved"
+			}
+			result, err := service.Execute(context.Background(), request)
+			if scenario == "member" {
+				if err != nil || result == nil || sender.command.ConversationKey != "group:G1" || capability.principal != "U1" {
+					t.Fatalf("result=%+v err=%v", result, err)
+				}
+			} else if !errors.Is(err, application.ErrAgentCommandDenied) || sender.command.CommandID != "" {
+				t.Fatalf("denied publication sent a command: %+v err=%v", sender.command, err)
+			}
+		})
+	}
+}
+
 func (s *agentMessageCommandSenderStub) SendMessage(ctx context.Context, command application.AgentMessageCommandV1) (*model.Message, error) {
 	s.command = command
 	s.lineage = eventlineage.FromContext(ctx)
@@ -50,7 +106,7 @@ func TestAgentMessageCommandExecutionBindsApprovedToolAndDerivesCommand(t *testi
 		ApprovalUUID: "APR-1", RequestID: "REQ-1", TraceID: "TRACE-1",
 	}
 	sender := &agentMessageCommandSenderStub{message: &model.Message{UUID: "MSG-1"}}
-	service, err := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: tool}, agentToolAuditResolverStub{invocation: invocation}, sender)
+	service, err := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: tool}, agentToolAuditResolverStub{invocation: invocation}, sender, nil)
 	if err != nil {
 		t.Fatalf("new Message Command execution: %v", err)
 	}
@@ -85,7 +141,7 @@ func TestAgentMessageCommandExecutionBindsAuthorizedAssistantReplyWithoutApprova
 		Transport: application.AgentToolTransportMCP, CapabilityID: application.AgentCapabilityAssistantReplySend, ArgumentsSHA256: argumentsSHA, Status: application.AgentToolInvocationStatusRunning,
 	}
 	sender := &agentMessageCommandSenderStub{message: &model.Message{UUID: "MSG-REPLY"}}
-	service, err := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: tool}, agentToolAuditResolverStub{invocation: invocation}, sender)
+	service, err := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: tool}, agentToolAuditResolverStub{invocation: invocation}, sender, nil)
 	if err != nil {
 		t.Fatalf("new Message Command execution: %v", err)
 	}
@@ -128,7 +184,7 @@ func TestAgentMessageCommandExecutionRejectsUnboundOrDriftingTool(t *testing.T) 
 			tool := *base
 			test.edit(&tool)
 			sender := &agentMessageCommandSenderStub{}
-			service, _ := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: &tool}, agentToolAuditResolverStub{invocation: identity}, sender)
+			service, _ := NewAgentMessageCommandExecutionV1(agentMessageCommandToolReaderStub{invocation: &tool}, agentToolAuditResolverStub{invocation: identity}, sender, nil)
 			if _, err := service.Execute(context.Background(), request); !errors.Is(err, application.ErrAgentCommandDenied) {
 				t.Fatalf("execution error = %v", err)
 			}
@@ -140,7 +196,7 @@ func TestAgentMessageCommandExecutionRejectsUnboundOrDriftingTool(t *testing.T) 
 }
 
 func TestAgentMessageCommandExecutionRejectsMissingDependencies(t *testing.T) {
-	if _, err := NewAgentMessageCommandExecutionV1(nil, agentToolAuditResolverStub{}, &agentMessageCommandSenderStub{}); err == nil {
+	if _, err := NewAgentMessageCommandExecutionV1(nil, agentToolAuditResolverStub{}, &agentMessageCommandSenderStub{}, nil); err == nil {
 		t.Fatal("expected missing Tool reader to fail")
 	}
 }

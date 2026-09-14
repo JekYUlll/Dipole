@@ -77,6 +77,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
   let checkpoint: unknown;
   let step = 0;
   let approvalSignal: { requestId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string } | undefined;
+  let publishAtUnixMs: number | undefined;
   let projectedRevision = -1;
   const maxSteps = validMaxSteps(input.maxSteps);
   const mcpExecution = input.execution === undefined
@@ -153,6 +154,15 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
       }
       if (state.status !== "waiting_approval") continue;
       const signal = approvalSignal!;
+      // Keep the approved draft in workflow history while waiting, without holding an Activity open.
+      if (signal.decision === "approved" && publishAtUnixMs !== undefined && publishAtUnixMs > Date.now()) {
+        await condition(() => isTerminal(state), waitDuration(publishAtUnixMs));
+        if (isTerminal(state)) continue;
+      }
+      if (publishAtUnixMs !== undefined && Date.now() >= state.pending!.expiresAtUnixMs) {
+        state = transitionAgentTask(state, { type: "expire_wait", requestId });
+        continue;
+      }
       await resolveAgentTaskApproval({
         taskId: input.taskId, runId: binding.runId, approvalId: signal.approvalId,
         decision: signal.decision, actorUserId: signal.actorUserId,
@@ -160,6 +170,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
         ...(input.admission?.traceId === undefined ? {} : { traceId: input.admission.traceId })
       });
       approvalSignal = undefined;
+      if (isTerminal(state)) continue;
       state = transitionAgentTask(state, { type: "resolve_approval", requestId: signal.requestId, decision: signal.decision });
       continue;
     }
@@ -208,6 +219,11 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
     step += 1;
     checkpoint = "checkpoint" in directive ? directive.checkpoint : undefined;
     if (directive.kind === "wait_approval") {
+      publishAtUnixMs = directive.notBeforeUnixMs;
+      if (publishAtUnixMs !== undefined && (!Number.isSafeInteger(publishAtUnixMs) || publishAtUnixMs <= 0 || publishAtUnixMs >= directive.approval.expiresAtUnixMs)) {
+        state = transitionAgentTask(state, { type: "fail", message: "Invalid scheduled publication time" });
+        break;
+      }
       await requestAgentTaskApproval({
         taskId: input.taskId, runId: binding.runId, approval: directive.approval,
         ...(input.admission?.requestId === undefined ? {} : { requestId: input.admission.requestId }),

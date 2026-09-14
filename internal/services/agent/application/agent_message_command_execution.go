@@ -12,18 +12,19 @@ import (
 )
 
 type AgentMessageCommandExecutionServiceV1 struct {
-	tools    application.AgentToolInvocationReaderV1
-	resolver application.AgentInvocationResolverV1
-	commands application.AgentCommandV1
+	tools        application.AgentToolInvocationReaderV1
+	resolver     application.AgentInvocationResolverV1
+	commands     application.AgentCommandV1
+	capabilities application.AgentCapabilityV1
 }
 
 var _ application.AgentMessageCommandExecutionV1 = (*AgentMessageCommandExecutionServiceV1)(nil)
 
-func NewAgentMessageCommandExecutionV1(tools application.AgentToolInvocationReaderV1, resolver application.AgentInvocationResolverV1, commands application.AgentCommandV1) (*AgentMessageCommandExecutionServiceV1, error) {
+func NewAgentMessageCommandExecutionV1(tools application.AgentToolInvocationReaderV1, resolver application.AgentInvocationResolverV1, commands application.AgentCommandV1, capabilities application.AgentCapabilityV1) (*AgentMessageCommandExecutionServiceV1, error) {
 	if tools == nil || resolver == nil || commands == nil {
 		return nil, errors.New("Agent Message Command execution dependencies are required")
 	}
-	return &AgentMessageCommandExecutionServiceV1{tools: tools, resolver: resolver, commands: commands}, nil
+	return &AgentMessageCommandExecutionServiceV1{tools: tools, resolver: resolver, commands: commands, capabilities: capabilities}, nil
 }
 
 func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, request application.AgentMessageCommandExecutionRequestV1) (*application.AgentMessageCommandExecutionResultV1, error) {
@@ -43,7 +44,7 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 	if tool == nil || tool.InvocationUUID != request.InvocationUUID || tool.TaskUUID != request.TaskUUID || tool.RunUUID != request.RunUUID ||
 		tool.Transport != application.AgentToolTransportMCP || tool.Status != application.AgentToolInvocationStatusRunning || tool.CapabilityID != wantCapability ||
 		(request.Kind == application.AgentMessageCommandSystemMessageV1 && strings.TrimSpace(tool.ApprovalUUID) == "") ||
-		((request.Kind == application.AgentMessageCommandAssistantReplyV1 || request.Kind == application.AgentMessageCommandGroupReplyV1) && strings.TrimSpace(tool.ApprovalUUID) != "") {
+		(request.Kind == application.AgentMessageCommandAssistantReplyV1 && strings.TrimSpace(tool.ApprovalUUID) != "") {
 		return nil, application.ErrAgentCommandDenied
 	}
 	invocation, err := s.resolver.Resolve(ctx, request.TaskUUID, request.RunUUID)
@@ -60,6 +61,17 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 	wantArgumentsSHA, err := application.AgentMessageCommandToolArgumentsSHA256ForConversationV1(request.Content, conversationKey)
 	if err != nil || tool.ArgumentsSHA256 != wantArgumentsSHA {
 		return nil, application.ErrAgentCommandDenied
+	}
+	// A scheduled approval may outlive the owner's group membership.
+	if request.Kind == application.AgentMessageCommandGroupReplyV1 && tool.ApprovalUUID != "" {
+		if s.capabilities == nil {
+			return nil, application.ErrAgentCommandDenied
+		}
+		groupUUID := strings.TrimPrefix(conversationKey, "group:")
+		conversation, err := s.capabilities.ReadConversation(ctx, invocation, groupUUID, 1)
+		if err != nil || conversation == nil || !conversation.Found || conversation.TargetType != model.MessageTargetGroup || conversation.TargetUUID != groupUUID {
+			return nil, application.ErrAgentCommandDenied
+		}
 	}
 	commandID, err := application.AgentMessageCommandIDV1(request.InvocationUUID, request.Kind)
 	if err != nil {

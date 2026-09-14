@@ -163,7 +163,7 @@ describe("shadow runtime composition", () => {
     await eachMessage!(payload(groupMessageEnvelope("plain discussion", "E-GROUP-1")));
     await eachMessage!(payload(groupMessageEnvelope("@AI summarize this", "E-GROUP-2")));
 
-    expect(consumer.subscribe).toHaveBeenCalledWith({ topic: "dipole.message.group.created", fromBeginning: false });
+    expect(consumer.subscribe).toHaveBeenCalledWith({ topic: "dipole.message.group.created", fromBeginning: true });
     expect(planner.plan).toHaveBeenCalledOnce();
     expect(planner.plan).toHaveBeenCalledWith(expect.objectContaining({ eventType: "message.group.created" }), expect.objectContaining({ principalUuid: "U100" }));
     expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({ eventId: "E-GROUP-2" }));

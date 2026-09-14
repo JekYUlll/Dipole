@@ -15,7 +15,7 @@ class ImageProvenanceContractTest(unittest.TestCase):
         self.assertIn("io.dipole.source.dirty", dockerfile)
 
     def test_build_script_passes_frozen_source_metadata(self):
-        script = (ROOT / "scripts/docker-build.sh").read_text(encoding="utf-8")
+        script = (ROOT / "Makefile").read_text(encoding="utf-8")
 
         self.assertIn("--build-arg DIPOLE_VCS_REVISION=", script)
         self.assertIn("--build-arg DIPOLE_BUILD_CREATED=", script)

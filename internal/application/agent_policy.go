@@ -17,6 +17,8 @@ const (
 	AgentCapabilityConversationsList  = "conversation.list"
 	AgentCapabilityConversationRead   = "conversation.read"
 	AgentCapabilityConversationSearch = "conversation.search"
+	AgentCapabilityGetWeather         = "get_weather"
+	AgentPermissionWeatherRead        = "weather.read"
 	AgentCapabilityAssistantReplySend = "message.assistant_reply.send"
 	AgentCapabilityGroupReplySend     = "message.group_reply.send"
 	AgentCapabilitySystemMessageSend  = "message.system.send"
@@ -65,7 +67,9 @@ func EmbeddedAgentPolicyGrantV1() ([]string, []AgentResourceScopeV1) {
 		AgentPermissionConversationRead,
 		AgentPermissionConversationSearch,
 		AgentPermissionMessageWrite,
+		AgentPermissionWeatherRead,
 	}, []AgentResourceScopeV1{
+		{ResourceType: "weather", ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
 		{ResourceType: AgentResourceTypeUser, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
 		{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead, AgentResourceActionList, AgentResourceActionSearch, AgentResourceActionWrite}},
 	}
@@ -97,6 +101,9 @@ func AuthorizeAgentCapabilityForResourceV1(invocation AgentInvocationV1, descrip
 }
 
 var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
+	AgentCapabilityGetWeather: {
+		ID: AgentCapabilityGetWeather, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionWeatherRead,
+	},
 	AgentCapabilityUserProfileRead: {
 		ID: AgentCapabilityUserProfileRead, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionUserProfileRead,
 	},
@@ -128,6 +135,7 @@ var agentActiveApprovedCapabilityProjectionV1 = []struct {
 	CapabilityID, Permission, ResourceType, Action string
 }{
 	{AgentCapabilitySystemMessageSend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
+	{AgentCapabilityGroupReplySend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
 }
 
 func ProjectAgentApprovedCapabilitiesV1(definition AgentDefinitionVersionV1) ([]string, error) {
@@ -136,6 +144,17 @@ func ProjectAgentApprovedCapabilitiesV1(definition AgentDefinitionVersionV1) ([]
 	}
 	approved := make([]string, 0, len(agentActiveApprovedCapabilityProjectionV1))
 	for _, rule := range agentActiveApprovedCapabilityProjectionV1 {
+		if rule.CapabilityID == AgentCapabilityGroupReplySend {
+			groupWrite := false
+			for _, scope := range definition.Scopes {
+				if scope.ResourceType == AgentResourceTypeConversation && (scope.ResourceID == AgentResourceWildcard || strings.HasPrefix(scope.ResourceID, "group:")) && containsAgentPolicyValue(scope.Actions, AgentResourceActionWrite) {
+					groupWrite = true
+				}
+			}
+			if !groupWrite {
+				continue
+			}
+		}
 		if !containsAgentPolicyValue(definition.Permissions, rule.Permission) || !definitionAllowsAgentResourceActionV1(definition, rule.ResourceType, rule.Action) {
 			continue
 		}

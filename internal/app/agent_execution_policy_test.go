@@ -455,7 +455,7 @@ func TestPersistentAgentRunAdmissionUsesDefinitionPolicyForActiveRun(t *testing.
 		t.Fatalf("admit active Run: %v", err)
 	}
 	if execution.Invocation.RuntimeID != "dipole-agent" || execution.Invocation.Mode != "active" ||
-		len(execution.Invocation.ApprovedCapabilities) != 1 || execution.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend {
+		len(execution.Invocation.ApprovedCapabilities) != 2 || execution.Invocation.ApprovedCapabilities[0] != application.AgentCapabilitySystemMessageSend || execution.Invocation.ApprovedCapabilities[1] != application.AgentCapabilityGroupReplySend {
 		t.Fatalf("definition capability binding drifted: execution=%+v", execution)
 	}
 	if run := store.runs[execution.RunUUID]; run == nil || run.CandidateVersion != "" {

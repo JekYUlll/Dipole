@@ -24,7 +24,7 @@ Kafka -> Search Indexer -> Elasticsearch write Alias
 
 ```bash
 scripts/generate-internal-certs.sh
-scripts/docker-build.sh build
+make legacy-image
 DIPOLE_INTERNAL_RPC_SHARED_SECRET=<secret> \
   docker compose --profile search -f deploy/compose/docker-compose.microservices.yml up -d --wait
 ```

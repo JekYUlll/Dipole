@@ -19,6 +19,7 @@ export interface McpMessageCommandPort {
     readonly invocationId: string;
     readonly commandKind: "assistant_reply" | "group_reply" | "system_message";
     readonly content: string;
+    readonly conversationKey?: string;
     readonly requestId?: string;
     readonly traceId?: string;
   }): Promise<AgentToolActionReference>;
@@ -29,6 +30,10 @@ const messageInputSchema = z.object({
   content: z.string().trim().min(1).max(16 * 1024)
 }).strict();
 
+type ApprovedMessageTool = Omit<DipoleMcpWriteToolProjection, "commandKind"> & {
+  commandKind: "assistant_reply" | "group_reply" | "system_message";
+};
+
 export class McpMessageWriteProjection implements DipoleMcpWriteExecutor {
   constructor(
     private readonly approvals: McpWriteApprovalGate,
@@ -36,9 +41,11 @@ export class McpMessageWriteProjection implements DipoleMcpWriteExecutor {
     private readonly commands: McpMessageCommandPort
   ) {}
 
-  async execute(tool: DipoleMcpWriteToolProjection, rawArguments: unknown, context: ExecutionContext): Promise<string> {
+  async execute(tool: ApprovedMessageTool, rawArguments: unknown, context: ExecutionContext): Promise<string> {
     const input = messageInputSchema.parse(rawArguments);
-    if (input.conversationId !== directConversationKey(context.principalUuid, context.agentUuid)) {
+    if (tool.commandKind === "group_reply"
+      ? !/^group:[^:\s]+$/.test(input.conversationId)
+      : input.conversationId !== directConversationKey(context.principalUuid, context.agentUuid)) {
       throw new Error("MCP Message Tool is limited to its authenticated direct conversation");
     }
     const approved = await this.approvals.authorize(tool.capabilityId, input, context);
@@ -54,6 +61,7 @@ export class McpMessageWriteProjection implements DipoleMcpWriteExecutor {
           invocationId,
           commandKind: tool.commandKind,
           content: input.content,
+          ...(tool.commandKind === "group_reply" ? { conversationKey: input.conversationId } : {}),
           ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
           ...(context.traceId === undefined ? {} : { traceId: context.traceId })
         });
@@ -72,13 +80,21 @@ const interactiveMessageTool: DipoleMcpWriteToolProjection = {
   commandKind: "system_message"
 };
 
+const approvedGroupMessageTool: ApprovedMessageTool = {
+  ...interactiveMessageTool,
+  name: "dipole_group_message_send",
+  capabilityId: "message.group_reply.send",
+  description: "Publish the approved draft to its bound group conversation",
+  commandKind: "group_reply"
+};
+
 export function createInteractiveMessageExecutor(
   client: Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">
 ): { execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext): Promise<string> } {
   const registry = new CapabilityRegistry();
-  registry.register({
+  for (const tool of [interactiveMessageTool, approvedGroupMessageTool]) registry.register({
     descriptor: {
-      id: "message.system.send",
+      id: tool.capabilityId,
       risk: "write",
       requiredPermission: "message.write",
       approvalRequired: true
@@ -104,7 +120,7 @@ export function createInteractiveMessageExecutor(
         isUncertainMessageCommandFailure
       ),
       { executeMessageCommand: command => client.executeMessageCommand(command) }
-    ).execute(interactiveMessageTool, input, context)
+    ).execute(input.conversationId.startsWith("group:") ? approvedGroupMessageTool : interactiveMessageTool, input, context)
   };
 }
 
@@ -116,7 +132,7 @@ function interactiveMessageInvocationID(
     "dipole.agent.interactive-message-invocation.v1",
     context.taskId,
     context.runId,
-    interactiveMessageTool.capabilityId,
+    input.conversationId.startsWith("group:") ? approvedGroupMessageTool.capabilityId : interactiveMessageTool.capabilityId,
     input.conversationId,
     input.content
   ].join("\n");

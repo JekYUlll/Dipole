@@ -7,8 +7,7 @@ Dipole 的 Go 服务入口已经按部署边界拆分到 `cmd/services/`。微�
 `deploy/images/go-service.Dockerfile` 是单服务镜像模板。每次构建只复制一个指定二进制到 `/app/service`，镜像不携带其他服务或一次性工具。`migrate`、六个长期服务和可选 repair worker 都使用同一模板，保证 schema 迁移和服务代码来自同一构建基线；基础微服务 Compose 与 override 均固定使用 `/app/service`。
 
 ```bash
-scripts/docker-build.sh backend
-scripts/docker-build-microservice-images.sh
+make images
 ```
 
 共享环境候选验证使用独立 Compose project 和 Gateway 端口，默认自动清理自己的容器、卷和临时证书；默认 smoke 覆盖生产核心路径，Search profile 由静态 Compose 门禁和独立 Search 验证覆盖：
@@ -40,7 +39,7 @@ ISOLATED_IMAGES=1 scripts/smoke-runtime-dependency-readiness.sh
 ```bash
 DIPOLE_CORE_IMAGE=registry.example/dipole-core:candidate \
 DIPOLE_GATEWAY_IMAGE=registry.example/dipole-gateway:candidate \
-scripts/docker-build-microservice-images.sh
+make images
 ```
 
 构建脚本会为每个镜像写入 Git revision、构建时间和 dirty provenance，包含可选的 `agent-timeline-repair` worker 镜像。它只构建镜像，不修改数据库、Kafka consumer group 或 authority。

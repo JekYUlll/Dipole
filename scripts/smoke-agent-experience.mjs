@@ -100,6 +100,40 @@ try {
   assert(JSON.stringify(sync).includes('MySQL'), 'Answer is available through user sync');
   console.log(`PASS Retrieval task=${retrieval} source=${source}`);
   console.log('PASS History + Sync');
+
+  const publishAt = Date.now() + 120000;
+  const scheduled = [];
+  const groupCount = () => Number(sql(`SELECT COUNT(*) FROM messages WHERE sender_uuid=${quote(ai)} AND target_uuid=${quote(group.uuid)}`));
+  const beforeScheduled = groupCount();
+  for (const decision of ['approved', 'denied', 'cancelled']) {
+    const task = await send(`@AI /digest ${new Date(publishAt).toISOString()} Use conversation.search with query ${marker}. Summarize the MySQL decision briefly for this group.`, group.uuid);
+    await until(() => status(task) === 'waiting_approval', 'Scheduled digest draft');
+    const approval = sql(`SELECT approval_uuid FROM agent_approvals WHERE task_uuid=${quote(task)} AND capability_id='message.group_reply.send' LIMIT 1`);
+    assert(approval, 'Group draft has a bound approval');
+    assert(Number(sql(`SELECT COUNT(*) FROM agent_shadow_steps WHERE task_uuid=${quote(task)} AND capability_id='conversation.search' AND status='completed'`)) > 0);
+    assert.equal(sql(`SELECT COUNT(*) FROM agent_model_runs WHERE task_uuid=${quote(task)} AND stage='answer' AND status='completed'`), '1');
+    await api(`/agent/tasks/${task}/approvals/${approval}`, { decision: decision === 'denied' ? 'denied' : 'approved' });
+    if (decision === 'cancelled') await api(`/agent/tasks/${task}/cancel`, { reason: 'Cancel scheduled smoke publication' });
+    scheduled.push({ task, approval, decision });
+  }
+  assert(Date.now() < publishAt, 'All decisions occurred before publication');
+  assert.equal(groupCount(), beforeScheduled, 'No premature group publication');
+  execFileSync('docker', ['restart', `${project}-agent-1`], { stdio: 'ignore' });
+  await sleep(Math.max(0, publishAt - Date.now()));
+  for (const { task, approval, decision } of scheduled) {
+    await until(() => status(task) === (decision === 'approved' ? 'completed' : 'cancelled'), 'Scheduled task terminal state');
+    const count = Number(sql(`SELECT COUNT(*) FROM agent_tool_invocations t JOIN messages m ON m.uuid=t.action_resource_uuid WHERE t.task_uuid=${quote(task)} AND t.status='completed' AND m.target_uuid=${quote(group.uuid)}`));
+    assert.equal(count, decision === 'approved' ? 1 : 0);
+    if (decision === 'approved') {
+      await api(`/agent/tasks/${task}/approvals/${approval}`, { decision: 'approved' }, 409);
+      const message = sql(`SELECT m.uuid FROM messages m JOIN agent_tool_invocations t ON t.action_resource_uuid=m.uuid WHERE t.task_uuid=${quote(task)}`);
+      assert(received.some(e => JSON.stringify(e).includes(message)), 'Scheduled group message reached WebSocket');
+      assert(JSON.stringify(await api('/sync?after_seq=0&limit=100')).includes(message), 'Scheduled publication reached Sync');
+    }
+    console.log(`PASS ScheduledGroup ${decision} task=${task} messages=${count}`);
+  }
+  assert.equal(groupCount(), beforeScheduled + 1, 'Exactly one scheduled group publication');
+  console.log('PASS ScheduledWorkerRecovery + NoEarlyDispatch + GroupSync');
 } finally {
   clearInterval(heartbeat);
   socket.close();

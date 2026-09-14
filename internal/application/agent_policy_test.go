@@ -15,6 +15,10 @@ func TestProjectAgentApprovedCapabilitiesV1UsesExplicitWriteAllowlist(t *testing
 	if err != nil || len(capabilities) != 1 || capabilities[0] != AgentCapabilitySystemMessageSend {
 		t.Fatalf("capabilities=%v err=%v", capabilities, err)
 	}
+	definition.Scopes[0].ResourceID = "group:G1"
+	if capabilities, err := ProjectAgentApprovedCapabilitiesV1(definition); err != nil || len(capabilities) != 2 || capabilities[1] != AgentCapabilityGroupReplySend {
+		t.Fatalf("group write projection=%v err=%v", capabilities, err)
+	}
 	definition.Scopes[0].Actions = []string{AgentResourceActionRead}
 	if capabilities, err := ProjectAgentApprovedCapabilitiesV1(definition); err != nil || len(capabilities) != 0 {
 		t.Fatalf("read-only projection=%v err=%v", capabilities, err)

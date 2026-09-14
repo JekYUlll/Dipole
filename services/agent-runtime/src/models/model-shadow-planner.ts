@@ -18,12 +18,12 @@ const modelPlanSchema = z.object({
 
 const baseContextBudget = {
   totalTokens: 4096,
-  allocations: { policy: 600, identity: 400, task: 400, evidence: 1800, memory: 0, capability: 800 }
+  allocations: { policy: 600, identity: 400, task: 400, evidence: 1400, memory: 0, capability: 1200 }
 } as const;
 
 const memoryContextBudget = {
   totalTokens: 4096,
-  allocations: { policy: 600, identity: 400, task: 400, evidence: 1390, memory: 500, capability: 800 }
+  allocations: { policy: 600, identity: 400, task: 400, evidence: 990, memory: 500, capability: 1200 }
 } as const;
 
 const maxConversationEvidenceMessages = 20;

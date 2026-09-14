@@ -9,7 +9,7 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
     def test_repair_worker_is_opt_in_and_has_persisted_dependencies(self):
         compose = (ROOT / "deploy/compose/docker-compose.microservices.yml").read_text(encoding="utf-8")
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-        build = (ROOT / "scripts/docker-build.sh").read_text(encoding="utf-8")
+        build = (ROOT / "Makefile").read_text(encoding="utf-8")
         smoke = (ROOT / "scripts/smoke-agent-timeline-repair.sh").read_text(encoding="utf-8")
         compose_smoke = (ROOT / "scripts/smoke-agent-timeline-repair-compose.sh").read_text(encoding="utf-8")
 
@@ -19,7 +19,7 @@ class AgentTimelineRepairComposeContractTest(unittest.TestCase):
         self.assertIn('mysql-permissions:', compose)
         self.assertIn('condition: service_completed_successfully', compose)
         self.assertIn('COPY dist/dipole-agent-task-timeline-repair', dockerfile)
-        self.assertIn('./cmd/tools/agent-task-timeline-repair', build)
+        self.assertIn('tools/agent-task-timeline-repair', build)
         self.assertIn('-once', smoke)
         self.assertIn('agent_task_timeline_repairs', smoke)
         self.assertIn('agent_task_timeline_events', smoke)

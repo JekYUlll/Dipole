@@ -19,7 +19,7 @@
 候选镜像必须由干净提交构建，并与当前工作树 `HEAD` 相同：
 
 ```bash
-IMAGE_TAG=c1-$(git rev-parse --short HEAD) scripts/docker-build.sh build
+IMAGE_TAG=c1-$(git rev-parse --short HEAD) make legacy-image
 scripts/bench/candidate_topology.sh up "dipole-server:${IMAGE_TAG}"
 ```
 

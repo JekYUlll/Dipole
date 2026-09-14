@@ -166,8 +166,8 @@ func NewPersistentAgentMemoryResolverV1(store application.AgentMemoryStoreV1, in
 	return agentapplication.NewPersistentAgentMemoryResolverV1(store, invocations, tasks, now)
 }
 
-func NewAgentMessageCommandExecutionV1(tools application.AgentToolInvocationReaderV1, resolver application.AgentInvocationResolverV1, commands application.AgentCommandV1) (*AgentMessageCommandExecutionServiceV1, error) {
-	return agentapplication.NewAgentMessageCommandExecutionV1(tools, resolver, commands)
+func NewAgentMessageCommandExecutionV1(tools application.AgentToolInvocationReaderV1, resolver application.AgentInvocationResolverV1, commands application.AgentCommandV1, capabilities application.AgentCapabilityV1) (*AgentMessageCommandExecutionServiceV1, error) {
+	return agentapplication.NewAgentMessageCommandExecutionV1(tools, resolver, commands, capabilities)
 }
 
 func NewPersistentAgentRuntimePromotionControlServiceV1(policies application.AgentPolicyStoreV1, artifacts application.AgentArtifactStoreV1, control application.AgentRuntimePromotionControlStoreV1) (*PersistentAgentRuntimePromotionControlServiceV1, error) {

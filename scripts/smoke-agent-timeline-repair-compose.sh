@@ -9,9 +9,8 @@ project_name="${COMPOSE_PROJECT_NAME:-dipole-agent-timeline-repair-compose-${RAN
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
   image_name="${IMAGE_NAME:-dipole-agent-timeline-repair}"
   image_tag="${IMAGE_TAG:-agent-timeline-repair-compose-smoke}"
-  "${script_dir}/docker-build.sh" backend
   DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE="${image_name}:${image_tag}" \
-    "${script_dir}/docker-build-microservice-images.sh"
+    make -C "${root_dir}" image-migrate image-agent-timeline-repair
   export DIPOLE_AGENT_TIMELINE_REPAIR_IMAGE="${image_name}:${image_tag}"
 fi
 

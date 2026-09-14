@@ -91,4 +91,4 @@ Dipole 采用面向服务边界的 Monorepo。目录结构先表达部署边界�
 scripts/check-service-layout.sh
 ```
 
-Go 单服务镜像使用 `scripts/docker-build-microservice-images.sh` 构建；`deploy/compose/docker-compose.dist.yml` 和 `DIPOLE_*_IMAGE` 可作为 legacy 回滚路径。
+Go 单服务镜像使用 `make images` 构建；`deploy/compose/docker-compose.dist.yml` 和 `DIPOLE_*_IMAGE` 可作为 legacy 回滚路径。

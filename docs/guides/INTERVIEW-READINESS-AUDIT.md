@@ -14,11 +14,11 @@
 | --- | --- | --- | --- | --- |
 | 1 | IR-05 | P1 | benchmark 凭据脱敏与导出修复 | 进行中：工作区修复已验证，历史暴露待评估 |
 | 2 | IR-01 | P0 | 检索结果进入同一 Task 的二次推理 | 已验证：真实 Search 证据进入二次回答，History/Sync 可读 |
-| 3 | IR-02 | P0 | 完整体验启动流程 | 现有栈完整体验已验证；全新 Agent 镜像构建受下载阻塞 |
+| 3 | IR-02 | P0 | 完整体验启动流程 | 现有栈已验证；Agent 镜像重建通过，干净环境启动仍待验收 |
 | 4 | IR-03 | P1 | 模型提出写操作并复用现有审批 | 真实模型和 Core/MySQL 体验通过 |
 | 5 | IR-04 | P1 | 真实业务链路的恢复与幂等验证 | 真实 Worker 重启、批准及重复批准通过；响应丢失注入仍限测试替身 |
 | 6 | IR-06 | P1 | 可重复的性能实验与数字口径 | 待处理 |
-| 7 | IR-07 | P2 | Memory、MCP 和高可用描述边界 | 待处理 |
+| 7 | IR-07 | P2 | Memory、MCP 和高可用描述边界 | 已验证：按当前配置核对并修正文档口径 |
 
 状态采用“待处理 / 进行中 / 已验证”。只有满足该项验收条件并补充实际证据，才改为已验证。优先级表示产品影响，执行顺序先处理凭据暴露。
 
@@ -45,6 +45,11 @@
 尚未使用真实 Provider 与 Search 服务联调，当前测试不代表模型语义准确率或线上体验已验收。
 
 ## IR-02：体验启动步骤不完整
+
+2026-09-15：`make image-agent` 完整通过 npm ci、TypeScript 编译、生产依赖裁剪和镜像打包。
+镜像 `sha256:2fa587ff7430124d3ada8e100557fbbec453e68c17fb0dce3cc927dc15544220` 在禁网临时容器内以 UID 1000 成功加载 `@temporalio/worker` 与编译后的 Runtime。
+依赖下载阻塞解除；未重建运行中的体验容器，未将模块加载检查当作干净环境全链路通过。
+npm 报告两项 low severity advisory，本次未执行强制依赖升级。
 
 **现状与依据：** [README](../../README.md) 的 Agent 启动命令没有启用 `search` profile。[基础 Compose](../../deploy/compose/docker-compose.microservices.yml) 的 Search、Indexer、Elasticsearch 位于该 profile 下，Gateway 搜索开关默认关闭。[experience 配置](../../deploy/microservices/agent-experience.yml) 未补齐这些启动条件。基础配置还依赖内部 RPC secret 与证书；README 的说明主要强调模型 Key。
 
@@ -162,9 +167,14 @@ ModelShadowPlanner、Temporal Activity 和消息执行器；模型、Core 授权
 
 **验收条件：**
 
-- [ ] Memory、MCP 的对外描述明确实际入口与启用状态；无演示证据时不宣称默认可体验。
-- [ ] 可独立部署与已验证集群高可用分别描述。
-- [ ] Dipole IM 与 Dipole Agent 简历口径分开，每个核心组件均能对应用户需求或可靠性问题。
+- [x] Memory、MCP 的对外描述明确实际入口与启用状态；无演示证据时不宣称默认可体验。
+- [x] 可独立部署与已验证集群高可用分别描述。
+- [x] Dipole IM 与 Dipole Agent 简历口径分开，每个核心组件均能对应用户需求或可靠性问题。
+
+2026-09-15：核对 Runtime 的 memoryEnabled 接线、MCP 启动条件及 Compose 默认值。
+README 和分开的 IM/Agent 面试问答明确长期记忆、对外 MCP 与第三方接入均不属于当前
+默认体验；区分 Temporal 执行状态与长期记忆，区分单节点恢复演示与集群高可用。
+本项为代码/配置与描述的一致性核对，不新增这些可选功能的运行时验收结论。
 
 ## 关闭记录
 

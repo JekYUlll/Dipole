@@ -355,6 +355,43 @@ func TestPersistentAgentToolInvocationAuditAllowsAuthorizedGroupReplyWithoutAppr
 	}
 }
 
+func TestScheduledGroupToolRequiresConsumedMatchingApproval(t *testing.T) {
+	for _, scenario := range []string{"consumed", "pending", "wrong-digest", "wrong-task", "wrong-scope"} {
+		t.Run(scenario, func(t *testing.T) {
+			consumedAt := time.Now()
+			scope := application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "group:G1", Actions: []string{"write"}}
+			approval := &application.AgentApprovalV1{ApprovalUUID: "APR", TaskUUID: "TASK", CapabilityID: application.AgentCapabilityGroupReplySend, ResourceScope: scope, ArgumentsSHA256: testAuditSHA, Status: application.AgentApprovalStatusConsumed, ConsumedAt: &consumedAt}
+			if scenario == "pending" {
+				approval.Status = application.AgentApprovalStatusPending
+			}
+			if scenario == "wrong-digest" {
+				approval.ArgumentsSHA256 = "wrong"
+			}
+			if scenario == "wrong-task" {
+				approval.TaskUUID = "OTHER"
+			}
+			if scenario == "wrong-scope" {
+				approval.ResourceScope.ResourceID = "group:G2"
+			}
+			store := &agentToolAuditStoreStub{}
+			service, err := NewPersistentAgentToolInvocationAuditServiceV1WithClock(store,
+				agentToolAuditResolverStub{invocation: application.AgentInvocationV1{TenantID: "dipole", PrincipalUUID: "U1", AgentUUID: "AI", Permissions: []string{application.AgentPermissionMessageWrite}, ResourceScopes: []application.AgentResourceScopeV1{scope}}},
+				agentToolApprovalReaderStub{approval: approval, run: &application.AgentRunV1{RunUUID: "RUN", TaskUUID: "TASK", RuntimeID: "dipole-agent", Mode: "active", Status: application.AgentRunStatusRunning}}, agentToolReceiptQueryStub{}, time.Now)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = service.Begin(context.Background(), application.AgentToolInvocationBeginV1{InvocationUUID: "INV-G", TaskUUID: "TASK", RunUUID: "RUN", Transport: application.AgentToolTransportMCP, ToolName: "dipole_group_message_send", CapabilityID: application.AgentCapabilityGroupReplySend, ArgumentsSHA256: testAuditSHA, ApprovalUUID: "APR"})
+			if scenario == "consumed" {
+				if err != nil || store.begun.ApprovalUUID != "APR" {
+					t.Fatalf("approval binding: %v", err)
+				}
+			} else if !errors.Is(err, application.ErrAgentToolInvocationDenied) || store.begun.InvocationUUID != "" {
+				t.Fatalf("invalid approval admitted: %v", err)
+			}
+		})
+	}
+}
+
 func TestPersistentAgentToolInvocationAuditVerifiesMessageActionReference(t *testing.T) {
 	clientMessageID, err := application.AgentCommandClientMessageIDV1(application.AgentMessageCommandSystemMessageV1, "CMD-1")
 	if err != nil {

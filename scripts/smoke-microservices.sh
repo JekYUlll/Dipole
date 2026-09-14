@@ -8,8 +8,7 @@ PROJECT_NAME="${COMPOSE_PROJECT_NAME:-dipole-microservices-smoke}"
 GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:8080}"
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
-  "${SCRIPT_DIR}/docker-build.sh" backend
-  "${SCRIPT_DIR}/docker-build-microservice-images.sh"
+  make -C "${ROOT_DIR}" images
 fi
 
 : "${DIPOLE_MIGRATE_IMAGE:=dipole-migrate:latest}"

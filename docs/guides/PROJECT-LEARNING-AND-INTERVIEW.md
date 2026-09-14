@@ -84,9 +84,12 @@ Elasticsearch 与 MinIO 实现可靠消息发送、实时投递、双 Timeline �
 
 ### Dipole Agent
 
-基于 TypeScript、Temporal、gRPC 与 MCP 构建 IM-native Agent Runtime；通过可信
+基于 TypeScript、Temporal 与 gRPC 构建 IM-native Agent Runtime；通过可信
 ExecutionContext、Capability 授权、上下文编译、Human-in-the-loop 和幂等 Message
 Command 支持会话检索、受控写操作与 Worker 重启后的 Durable Task 恢复。
+
+MCP 协议基础与长期 Memory 注入作为可选实现讲解，当前体验配置关闭其对外接入与注入。
+以上描述不包含第三方 MCP 演示、长期记忆效果或基础设施集群高可用承诺。
 
 ## 面试入口
 

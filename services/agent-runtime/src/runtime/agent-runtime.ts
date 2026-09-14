@@ -7,6 +7,7 @@ import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.j
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
 import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
+import { GetWeatherCapability } from "../capabilities/get-weather.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
@@ -377,12 +378,13 @@ export function createKafkaAgentRuntime(
     registry.register(new ConversationListCapability(rpcTransport!.client));
     registry.register(new ConversationReadCapability(rpcTransport!.client));
     registry.register(new ConversationSearchCapability(rpcTransport!.client));
+    registry.register(new GetWeatherCapability());
     trajectory = persistentAudit!;
   }
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), ["conversation.list", "conversation.read", "conversation.search"], routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
+    ), registry!.descriptors().map(item => item.id), routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
     : new MetadataShadowPlanner();
   const consumer = buildKafkaAgentRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
@@ -440,9 +442,10 @@ export function createTemporalReadActivityResources(config: AgentRuntimeConfig):
   registry.register(new ConversationListCapability(rpc.client));
   registry.register(new ConversationReadCapability(rpc.client));
   registry.register(new ConversationSearchCapability(rpc.client));
+  registry.register(new GetWeatherCapability());
   const planner = new ModelShadowPlanner(new ModelRouter(
     new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
-  ), ["conversation.list", "conversation.read", "conversation.search"], routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
+  ), registry.descriptors().map(item => item.id), routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({

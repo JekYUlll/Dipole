@@ -61,8 +61,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
-  "${script_dir}/docker-build.sh" backend
-  "${script_dir}/docker-build-microservice-images.sh"
+  make -C "${root_dir}" images
 fi
 
 : "${DIPOLE_IMAGE:=dipole-server:latest}"

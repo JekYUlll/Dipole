@@ -150,17 +150,23 @@ describe("Temporal read Step Activities", () => {
     expect(replyWriter.finishToolInvocation).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
   });
 
-  it.each(["/system Deployment starts at 18:00", "Please publish a system notice that deployment starts at 18:00"])("waits for approval and restores the exact proposal: %s", async (request) => {
+  it.each(["/system Deployment starts at 18:00", "Please publish a system notice that deployment starts at 18:00", "scheduled", "scheduled-group"])("waits for approval and restores the exact proposal: %s", async (request) => {
+    const publishAt = Date.now() + 60_000;
+    const scheduled = request.startsWith("scheduled");
+    const group = request === "scheduled-group";
+    const conversationKey = group ? "group:G100" : "direct:U100:UAI";
+    const capabilityId = group ? "message.group_reply.send" as const : "message.system.send" as const;
+    const commandKind = group ? "group_reply" as const : "system_message" as const;
     const event: AgentEvent = {
-      eventId: "E-APPROVAL", eventType: "message.direct.created", aggregateId: "M-APPROVAL",
-      occurredAt: "2026-08-27T08:00:00.000Z", payload: { content: request, conversation_key: "direct:U100:UAI" }
+      eventId: "E-APPROVAL", eventType: group ? "message.group.created" : "message.direct.created", aggregateId: "M-APPROVAL",
+      occurredAt: new Date().toISOString(), payload: { content: scheduled ? `${group ? "@AI " : ""}/digest ${new Date(publishAt).toISOString()} Find Cassandra discussions` : request, conversation_key: conversationKey }
     };
     const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
     const runId = agentRunId(taskId, "dipole-agent", "active");
     const context = {
       tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
-      permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }],
-      approvedCapabilities: ["message.system.send"] as "message.system.send"[], eventId: event.eventId
+      permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: conversationKey, actions: ["write"] }],
+      approvedCapabilities: [capabilityId], eventId: event.eventId
     };
     const approvalWriter = {
       begin: vi.fn(async () => undefined),
@@ -171,7 +177,7 @@ describe("Temporal read Step Activities", () => {
         scopeSha256: createHash("sha256").update(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions].join("\n"), "utf8").digest("hex"),
         argumentsSha256, nonceSha256: "1".repeat(64), expiresAtUnixMs: Date.now() + 60_000
       })),
-      executeMessageCommand: vi.fn(async () => ({ resourceType: "message" as const, resourceId: "MSG-SYSTEM-1", commandKind: "system_message" as const, commandId: "CMD-SYSTEM-1" }))
+      executeMessageCommand: vi.fn(async () => ({ resourceType: "message" as const, resourceId: "MSG-SYSTEM-1", commandKind, commandId: "CMD-SYSTEM-1" }))
     };
     const plan = vi.fn(async () => ({ summary: "Please approve", steps: [], proposedWrite: { content: "Deployment starts at 18:00" } }));
     const activities = createTemporalReadStepActivities({
@@ -184,17 +190,34 @@ describe("Temporal read Step Activities", () => {
       taskId, runId, goal: "notify", step: 0, shadowEvent: event,
       admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
     });
-    expect(initial).toMatchObject({ kind: "wait_approval", approval: { capabilityId: "message.system.send" } });
+    expect(initial).toMatchObject({ kind: "wait_approval", approval: { capabilityId, resourceScope: { resourceId: conversationKey } } });
     expect(approvalWriter.executeMessageCommand).not.toHaveBeenCalled();
     const callsBeforeResume = plan.mock.calls.length;
     const checkpoint = (initial as { checkpoint: unknown }).checkpoint;
+    let clock: ReturnType<typeof vi.spyOn> | undefined;
+    if (scheduled) {
+      expect(initial).toMatchObject({ notBeforeUnixMs: publishAt, checkpoint: { content: "Please approve", publishAtUnixMs: publishAt } });
+      expect(initial.kind === "wait_approval" && initial.summary).toContain(conversationKey);
+      const premature = {
+        taskId, runId, goal: "notify", step: 1, checkpoint, shadowEvent: event,
+        resume: { kind: "approval" as const, requestId: (initial as { requestId: string }).requestId,
+          approvalId: (initial as { approval: { approvalId: string } }).approval.approvalId, decision: "approved" as const },
+        admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+      };
+      await expect(activities.executeAgentTaskStep(premature)).rejects.toThrow(/not arrived/);
+      await expect(activities.executeAgentTaskStep({ ...premature, checkpoint: { ...(checkpoint as object), publishAtUnixMs: publishAt + 1 } })).rejects.toThrow(/time mismatch/);
+      expect(approvalWriter.executeMessageCommand).not.toHaveBeenCalled();
+      clock = vi.spyOn(Date, "now").mockReturnValue(publishAt);
+    }
 
+    try {
     await expect(activities.executeAgentTaskStep({
       taskId, runId, goal: "notify", step: 1, checkpoint, resume: { kind: "approval", requestId: (initial as { requestId: string }).requestId, approvalId: (initial as { approval: { approvalId: string } }).approval.approvalId, decision: "approved" }, shadowEvent: event,
       admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
     })).resolves.toMatchObject({ kind: "complete", output: { summary: "Approved system message delivered" } });
     expect(approvalWriter.consumeApproval).toHaveBeenCalledOnce();
     expect(approvalWriter.executeMessageCommand).toHaveBeenCalledOnce();
+    expect(approvalWriter.executeMessageCommand).toHaveBeenCalledWith(expect.objectContaining({ commandKind, ...(group ? { conversationKey } : {}) }));
     expect(plan).toHaveBeenCalledTimes(callsBeforeResume);
     await expect(activities.executeAgentTaskStep({
       taskId, runId, goal: "notify", step: 1, checkpoint,
@@ -202,6 +225,7 @@ describe("Temporal read Step Activities", () => {
       admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
     })).rejects.toThrow(/binding/);
     expect(approvalWriter.executeMessageCommand).toHaveBeenCalledOnce();
+    } finally { clock?.mockRestore(); }
   });
 
   it("writes a group reply to the triggering conversation", async () => {

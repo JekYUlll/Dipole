@@ -70,7 +70,11 @@ Gateway -> Core / Message -> MySQL + Transactional Outbox -> Kafka
 
 ## Quick Start
 
-Requirements: Docker Compose v2, Go (see `go.mod`), Node.js 22+, and OpenSSL.
+Requirements: Docker Compose v2, Go (see `go.mod`), Node.js 22+, OpenSSL,
+GNU Make and [just](https://github.com/casey/just) (`brew install just`).
+`make` owns the build graph; `just --list` lists daily development commands.
+The default build includes six Go services and the migration tool. Optional tools
+use `make tool-<name>`; the historical benchmark image uses `make legacy-image`.
 Run the following commands from the repository root. In your local `.env`, set
 `DIPOLE_INTERNAL_RPC_SHARED_SECRET` to a random value generated with
 `openssl rand -hex 32`. Keep `.env` private and pass it to Compose with `--env-file`.
@@ -78,9 +82,8 @@ Run the following commands from the repository root. In your local `.env`, set
 Generate development certificates once and build the Go service images:
 
 ```bash
-test -f certs/internal/ca.pem || scripts/generate-internal-certs.sh
-scripts/docker-build.sh backend
-scripts/docker-build-microservice-images.sh
+just certs
+make images
 ```
 
 The certificate generator replaces existing certificates when invoked directly;
@@ -88,15 +91,14 @@ reuse a valid set or deliberately renew the entire set when it expires.
 Start the IM stack:
 
 ```bash
-docker compose --env-file .env -f deploy/compose/docker-compose.microservices.yml up -d --wait
+just up
 ```
 
 Start the frontend during development:
 
 ```bash
-cd frontend
-npm ci
-DIPOLE_WEB_PROXY_TARGET=http://127.0.0.1:8080 npm run dev
+just install
+just web
 ```
 
 Open `http://localhost:5173/app/` (or the port printed by Vite).
@@ -116,9 +118,7 @@ The experience overlay enables the active TypeScript Runtime, Temporal and
 Gateway search; Core uses remote AI execution. Agent and Gateway wait for Search:
 
 ```bash
-docker compose --env-file .env --profile search \
-  -f deploy/compose/docker-compose.microservices.yml \
-  -f deploy/microservices/agent-experience.yml up -d --build --wait
+just agent-up
 ```
 
 The `migrate` service applies schema updates before application startup, including
@@ -126,6 +126,12 @@ The `migrate` service applies schema updates before application startup, includi
 images above so migrations and services match the source revision. Existing data
 volumes are reused; back them up before upgrading. This Compose setup is for local
 development and uses single-node infrastructure and development database passwords.
+
+Use `COMPOSE_PROJECT_NAME` and `DIPOLE_ENV_FILE` to select your project and private
+environment file consistently. `just down` preserves volumes. Build one service
+with `make image-core`; use `make image-agent` for the TypeScript image. Build
+targets compile before packaging and accept `GO`, `NPM`, `DOCKER`, `IMAGE_TAG`
+and existing `DIPOLE_*_IMAGE` overrides. Dependency installation is explicit.
 
 Verify `http://localhost:8080/health`, register two users and send a message with a
 distinctive phrase. Wait for it to appear in search, then ask AI to find and summarize
@@ -137,6 +143,42 @@ limited to the current direct conversation; ordinary AI replies use their
 existing restricted reply authorization without an approval prompt.
 
 ### Daily Agent Development
+
+The native read tool `get_weather` accepts `{ "city": "Beijing", "countryCode": "CN" }`
+and retrieves current conditions from [Open-Meteo](https://open-meteo.com/en/docs).
+Ask the Agent "What is the current weather in Beijing?" after rebuilding Core,
+Agent and the migration image and applying migration `000053`. No weather API key
+is required for the provider's non-commercial endpoint; its usage limits and terms
+still apply. The city is sent to Open-Meteo; identities and conversation history
+are not included. The result identifies the matched city, timestamp and units.
+This tool covers current conditions, not historical weather or multi-day forecasts.
+Custom Agent policies need `weather.read` and a `weather/*` read scope; the migration
+only updates the built-in Agent policies. Ambiguous cities can use a country code.
+
+Scheduled digest: send
+`/digest <ISO timestamp with timezone> <retrieval request>` to the AI user, for
+example `/digest 2026-09-16T09:00:00+08:00 Find Cassandra discussions and summarize the decisions`.
+Choose a future time within seven days. The task prepares a draft through the
+existing context/tool path and shows its full text, destination and UTC publication
+time for approval. Approval queues publication at that time; cancellation prevents
+dispatch while waiting. Worker downtime beyond the ten-minute publication grace
+period expires the task. During the timer wait, the task currently retains its
+approval-wait display. In a group, send `@AI /digest <timestamp> <retrieval request>`
+to publish the approved draft back to that group. Core rechecks the requesting user's
+current group access before dispatch; the Agent must also be able to send to the group.
+Direct requests publish to the owner's AI conversation. Natural-language time
+clarification remains pending. The group scheduled path has been verified against
+the real experience stack using DeepSeek, Temporal, MySQL, Elasticsearch, WebSocket
+and Sync, including approval/denial, cancellation and restart during the timer wait.
+Apply migration `000054` with the updated Core/Agent builds. Recovery after approval
+consumption and a subsequent write/audit failure remains an open issue (AD-008 in
+the [debt ledger](docs/architecture/ARCHITECTURE-DEBT.md)).
+
+The experience stack demonstrates conversation context, authorized retrieval,
+approval and durable execution. Long-term Memory injection, the public MCP server
+and external MCP integrations are disabled in this configuration. Internal tool
+support does not imply a configured third-party integration. The single-node
+infrastructure is a development topology, not a cluster high-availability proof.
 
 Use one running Agent Experience stack for development and demonstration. Model
 credentials stay in your private environment file; keep the same Compose project

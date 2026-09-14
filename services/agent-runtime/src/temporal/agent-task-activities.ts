@@ -27,7 +27,7 @@ export interface AgentMemoryPromotionActivities {
 export type AgentTaskDirective =
   | { kind: "continue"; checkpoint?: unknown }
   | { kind: "wait_input"; requestId: string; prompt: string; form: AgentElicitationForm; source?: AgentElicitationSource; expiresAtUnixMs: number; checkpoint?: unknown }
-  | { kind: "wait_approval"; requestId: string; summary: string; approval: AgentApprovalBinding; checkpoint?: unknown }
+  | { kind: "wait_approval"; requestId: string; summary: string; approval: AgentApprovalBinding; checkpoint?: unknown; notBeforeUnixMs?: number }
   | { kind: "complete"; output: unknown }
   | { kind: "failed"; message: string };
 

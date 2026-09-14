@@ -13,8 +13,7 @@ if [[ -z "${DIPOLE_INTERNAL_CERT_DIR:-}" ]]; then
 fi
 
 if [[ "${BUILD_IMAGE:-0}" == "1" ]]; then
-  "${script_dir}/docker-build.sh" backend
-  "${script_dir}/docker-build-microservice-images.sh"
+  make -C "${root_dir}" images
 fi
 
 if [[ "${ISOLATED_IMAGES:-0}" == "1" ]]; then

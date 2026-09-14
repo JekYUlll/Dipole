@@ -19,7 +19,8 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 const messageCheckpointSchema = z.object({
-  kind: z.literal("system_message"), content: z.string().trim().min(1).max(2000), conversationKey: z.string().min(1)
+  kind: z.literal("system_message"), content: z.string().trim().min(1).max(2000), conversationKey: z.string().min(1),
+  publishAtUnixMs: z.number().int().positive().optional()
 }).strict();
 
 interface AgentArtifactWriter {
@@ -96,17 +97,30 @@ export function createTemporalReadStepActivities(
         if (restored !== undefined && restored.conversationKey !== activeReplyConversationKey(event, context)) {
           throw new Error("Approval checkpoint conversation mismatch");
         }
-        const explicitMessage = requestedSystemMessage(event, context, restored?.content);
+        const schedule = scheduledDigest(event);
+        if (schedule !== undefined && input.resume === undefined && schedule.publishAtUnixMs <= Date.now()) {
+          throw new Error("Digest publication time has already passed");
+        }
+        if (restored?.publishAtUnixMs !== undefined && restored.publishAtUnixMs !== schedule?.publishAtUnixMs) {
+          throw new Error("Approval checkpoint publication time mismatch");
+        }
+        const explicitMessage = requestedSystemMessage(event, context, restored?.content, restored?.publishAtUnixMs);
         // Approval resumes use the exact checkpoint, without another model call.
         const plan = explicitMessage === undefined && input.resume === undefined
-          ? await executeShadowPlan(event, context, { ...dependencies, telemetry }) : undefined;
-        const systemMessage = explicitMessage ?? (plan?.proposedWrite === undefined
-          ? undefined : requestedSystemMessage(event, context, plan.proposedWrite.content));
-        if ((input.resume !== undefined || plan?.proposedWrite !== undefined) && systemMessage === undefined) {
+          ? await executeShadowPlan(schedule === undefined ? event : {
+            ...event, payload: { ...event.payload, content: schedule.query }
+          }, context, { ...dependencies, telemetry }) : undefined;
+        const systemMessage = explicitMessage ?? (schedule !== undefined && plan !== undefined
+          ? requestedSystemMessage(event, context, plan.summary, schedule.publishAtUnixMs)
+          : plan?.proposedWrite === undefined ? undefined : requestedSystemMessage(event, context, plan.proposedWrite.content));
+        if ((input.resume !== undefined || plan?.proposedWrite !== undefined || schedule !== undefined) && systemMessage === undefined) {
           throw new Error("Message proposal is outside authorized scope");
         }
         if (systemMessage !== undefined && dependencies.approvalWriter !== undefined) {
           if (input.resume?.kind === "approval") {
+            if (schedule !== undefined && Date.now() < schedule.publishAtUnixMs) {
+              throw new Error("Digest publication time has not arrived");
+            }
             if (input.resume.decision !== "approved" || input.resume.requestId !== systemMessage.requestId ||
                 input.resume.approvalId !== systemMessage.approval.approvalId) {
               throw new Error("Approval resume binding mismatch");
@@ -123,9 +137,11 @@ export function createTemporalReadStepActivities(
           return {
             kind: "wait_approval",
             requestId: systemMessage.requestId,
-            summary: `Send system message: ${systemMessage.content.slice(0, 160)}`,
+            summary: `${schedule === undefined ? "Send system message" : `Publish at ${new Date(schedule.publishAtUnixMs).toISOString()} to ${systemMessage.conversationKey}`}: ${systemMessage.content}`,
             approval: systemMessage.approval,
-            checkpoint: { kind: "system_message", content: systemMessage.content, conversationKey: systemMessage.conversationKey }
+            ...(schedule === undefined ? {} : { notBeforeUnixMs: schedule.publishAtUnixMs }),
+            checkpoint: { kind: "system_message", content: systemMessage.content, conversationKey: systemMessage.conversationKey,
+              ...(schedule === undefined ? {} : { publishAtUnixMs: schedule.publishAtUnixMs }) }
           };
         }
         if (systemMessage !== undefined || plan === undefined) throw new Error("Message approval writer is unavailable");
@@ -168,7 +184,7 @@ export function createTemporalReadStepActivities(
   };
 }
 
-function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>, context: ExecutionContext, proposedContent?: string): {
+function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>, context: ExecutionContext, proposedContent?: string, publishAtUnixMs?: number): {
   content: string;
   conversationKey: string;
   requestId: string;
@@ -182,7 +198,7 @@ function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>
     expiresAtUnixMs: number;
   };
 } | undefined {
-  if (event.eventType !== "message.direct.created") return undefined;
+  if (event.eventType !== "message.direct.created" && !(event.eventType === "message.group.created" && publishAtUnixMs !== undefined)) return undefined;
   const conversationKey = activeReplyConversationKey(event, context);
   const content = proposedContent ?? (typeof event.payload.content === "string"
     ? event.payload.content.trim().replace(/^\/system\s+/i, "").trim()
@@ -192,7 +208,8 @@ function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>
   const scope = { resourceType: "conversation", resourceId: conversationKey, actions: ["write"] };
   if (!context.permissions.includes("message.write") || !hasWriteScope(context, scope)) return undefined;
   const argumentsJson = canonicalMcpJSON({ conversationId: conversationKey, content });
-  const material = ["dipole.agent.system-message.v1", context.taskId, context.runId, conversationKey, content].join("\n");
+  const material = ["dipole.agent.system-message.v1", context.taskId, context.runId, conversationKey, content,
+    ...(publishAtUnixMs === undefined ? [] : [String(publishAtUnixMs)])].join("\n");
   const token = createHash("sha256").update(material, "utf8").digest("hex");
   return {
     content,
@@ -200,14 +217,29 @@ function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>
     requestId: `approval:${token.slice(0, 55)}`,
     approval: {
       approvalId: `approval:${token.slice(0, 55)}`,
-      capabilityId: "message.system.send",
+      capabilityId: conversationKey.startsWith("group:") ? "message.group_reply.send" : "message.system.send",
       resourceScope: scope,
       scopeSha256: sha256(["dipole.agent.scope.v1", scope.resourceType, scope.resourceId, ...scope.actions].join("\n")),
       argumentsSha256: sha256(argumentsJson),
       nonceSha256: sha256(`dipole.agent.approval-nonce.v1\n${token}`),
-      expiresAtUnixMs: Date.now() + 10 * 60_000
+      expiresAtUnixMs: publishAtUnixMs === undefined ? Date.now() + 10 * 60_000 : publishAtUnixMs + 10 * 60_000
     }
   };
+}
+
+function scheduledDigest(event: ReturnType<typeof agentEventSchema.parse>): { publishAtUnixMs: number; query: string } | undefined {
+  const content = String(event.payload.content ?? "").trim().replace(/^@(?:Dipole\s+AI|AI)\s+/i, "");
+  if (!/^\/digest(?:\s|$)/i.test(content)) return undefined;
+  const match = /^\/digest\s+(\S+)\s+([\s\S]+)$/i.exec(content);
+  if (!["message.direct.created", "message.group.created"].includes(event.eventType) || match === null || !/(?:Z|[+-]\d{2}:\d{2})$/.test(match[1]!)) {
+    throw new Error("Use /digest <ISO timestamp with timezone> <retrieval request>");
+  }
+  const publishAtUnixMs = Date.parse(match[1]!);
+  const occurredAt = Date.parse(event.occurredAt);
+  if (!Number.isSafeInteger(publishAtUnixMs) || publishAtUnixMs <= occurredAt || publishAtUnixMs > occurredAt + 7 * 86400_000) {
+    throw new Error("Digest publication must be within seven days after the request");
+  }
+  return { publishAtUnixMs, query: match[2]!.trim() };
 }
 
 function hasWriteScope(context: ExecutionContext, requested: { resourceType: string; resourceId: string; actions: readonly string[] }): boolean {
