@@ -218,7 +218,7 @@ func (s *persistentAgentToolInvocationAuditServiceV1) authorizeWriteApproval(ctx
 	}
 	approval, err := s.approvals.GetApproval(ctx, begin.ApprovalUUID)
 	if err != nil || approval == nil || approval.ApprovalUUID != begin.ApprovalUUID || approval.TaskUUID != begin.TaskUUID ||
-		approval.CapabilityID != begin.CapabilityID || approval.ArgumentsSHA256 != begin.ArgumentsSHA256 || approval.Status != application.AgentApprovalStatusConsumed || approval.ConsumedAt == nil ||
+		approval.CapabilityID != begin.CapabilityID || approval.ArgumentsSHA256 != begin.ArgumentsSHA256 || approval.Status != application.AgentApprovalStatusConsumed || approval.ConsumedAt == nil || approval.RevokedAt != nil ||
 		len(approval.ResourceScope.Actions) != 1 || approval.ResourceScope.Actions[0] != application.AgentResourceActionWrite {
 		return fmt.Errorf("%w: consumed approval binding is unavailable", application.ErrAgentToolInvocationDenied)
 	}

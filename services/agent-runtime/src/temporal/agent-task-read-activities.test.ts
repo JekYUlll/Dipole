@@ -168,12 +168,17 @@ describe("Temporal read Step Activities", () => {
       permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: conversationKey, actions: ["write"] }],
       approvedCapabilities: [capabilityId], eventId: event.eventId
     };
+    let consumed = false;
+    let boundApprovalId = "";
     const approvalWriter = {
-      begin: vi.fn(async () => undefined),
+      beginMcpToolCommand: vi.fn(async (input: { invocationId: string }) => {
+        if (!consumed) throw Object.assign(new Error("Approval not consumed"), { code: 7 });
+        return { invocationId: input.invocationId, status: "running" as const };
+      }),
       finishToolInvocation: vi.fn(async () => undefined),
-      consumeApproval: vi.fn(async () => undefined),
+      consumeApproval: vi.fn(async () => { consumed = true; }),
       resolveApprovalGrant: vi.fn(async (_taskId: string, _runId: string, capabilityId: string, resourceScope: { resourceType: string; resourceId: string; actions: string[] }, argumentsSha256: string) => ({
-        approvalId: "APR-1", capabilityId, resourceScope,
+        approvalId: boundApprovalId, capabilityId, resourceScope,
         scopeSha256: createHash("sha256").update(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions].join("\n"), "utf8").digest("hex"),
         argumentsSha256, nonceSha256: "1".repeat(64), expiresAtUnixMs: Date.now() + 60_000
       })),
@@ -191,6 +196,7 @@ describe("Temporal read Step Activities", () => {
       admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
     });
     expect(initial).toMatchObject({ kind: "wait_approval", approval: { capabilityId, resourceScope: { resourceId: conversationKey } } });
+    boundApprovalId = (initial as { approval: { approvalId: string } }).approval.approvalId;
     expect(approvalWriter.executeMessageCommand).not.toHaveBeenCalled();
     const callsBeforeResume = plan.mock.calls.length;
     const checkpoint = (initial as { checkpoint: unknown }).checkpoint;

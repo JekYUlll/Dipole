@@ -55,6 +55,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     let modelCalls = 0;
     let binding: AgentApprovalBinding | undefined;
     let approved = false;
+    let consumed = false;
     let attempts = 0;
     const messages = new Map<string, string>();
     const planner = new ModelShadowPlanner(new ModelRouter({ generate: async () => {
@@ -66,12 +67,15 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       audit: { append: async () => undefined }, registry: new CapabilityRegistry(), stepLeaseMs: 1000,
       trajectory: { append: async () => undefined, claimStep: async () => ({ outcome: "claimed", token: "unused" }), completeStep: async () => undefined, failStep: async () => undefined },
       approvalWriter: {
-        begin: async () => undefined, finishToolInvocation: async () => undefined,
+        beginMcpToolCommand: async input => {
+          if (!consumed) throw Object.assign(new Error("Approval not consumed"), { code: 7 });
+          return { invocationId: input.invocationId, status: "running" };
+        }, finishToolInvocation: async () => undefined,
         resolveApprovalGrant: async (_task, _run, _capability, _scope, digest) => {
           if (!approved || binding?.argumentsSha256 !== digest) throw new Error("No matching approval");
           return binding;
         },
-        consumeApproval: async () => { if (!approved) throw new Error("Not approved"); },
+        consumeApproval: async () => { if (!approved || consumed) throw new Error("Not approved or already consumed"); consumed = true; },
         executeMessageCommand: async input => {
           if (group) expect(input.conversationKey).toBe(conversationKey);
           if (scheduled) expect(Date.now()).toBeGreaterThanOrEqual(publishAt);

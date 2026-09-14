@@ -42,7 +42,7 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 		return nil, fmt.Errorf("load Agent Tool invocation for Message Command: %w", err)
 	}
 	if tool == nil || tool.InvocationUUID != request.InvocationUUID || tool.TaskUUID != request.TaskUUID || tool.RunUUID != request.RunUUID ||
-		tool.Transport != application.AgentToolTransportMCP || tool.Status != application.AgentToolInvocationStatusRunning || tool.CapabilityID != wantCapability ||
+		tool.Transport != application.AgentToolTransportMCP || (tool.Status != application.AgentToolInvocationStatusRunning && tool.Status != application.AgentToolInvocationStatusCompleted) || tool.CapabilityID != wantCapability ||
 		(request.Kind == application.AgentMessageCommandSystemMessageV1 && strings.TrimSpace(tool.ApprovalUUID) == "") ||
 		(request.Kind == application.AgentMessageCommandAssistantReplyV1 && strings.TrimSpace(tool.ApprovalUUID) != "") {
 		return nil, application.ErrAgentCommandDenied
@@ -61,6 +61,18 @@ func (s *AgentMessageCommandExecutionServiceV1) Execute(ctx context.Context, req
 	wantArgumentsSHA, err := application.AgentMessageCommandToolArgumentsSHA256ForConversationV1(request.Content, conversationKey)
 	if err != nil || tool.ArgumentsSHA256 != wantArgumentsSHA {
 		return nil, application.ErrAgentCommandDenied
+	}
+	if tool.Status == application.AgentToolInvocationStatusCompleted {
+		commandID, err := application.AgentMessageCommandIDV1(request.InvocationUUID, request.Kind)
+		ref := tool.ActionReference
+		if err != nil || ref == nil || ref.Validate() != nil || ref.CommandID != commandID || ref.CommandKind != request.Kind {
+			return nil, application.ErrAgentCommandConflict
+		}
+		clientID, err := application.AgentCommandClientMessageIDV1(request.Kind, commandID)
+		if err != nil {
+			return nil, application.ErrAgentCommandConflict
+		}
+		return &application.AgentMessageCommandExecutionResultV1{MessageUUID: ref.ResourceUUID, ClientMessageID: clientID, CommandID: commandID, Kind: request.Kind}, nil
 	}
 	// A scheduled approval may outlive the owner's group membership.
 	if request.Kind == application.AgentMessageCommandGroupReplyV1 && tool.ApprovalUUID != "" {

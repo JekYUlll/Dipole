@@ -89,11 +89,20 @@ func (c *LocalAgentCommandV1) SendMessage(ctx context.Context, command applicati
 		if !agentCommandMessageMatchesV1(message, command.Kind, agentUUID, principalUUID, conversationKey, content, clientMessageID) {
 			return nil, application.ErrAgentCommandConflict
 		}
-		return message, nil
 	}
 	recoveryCtx, cancelRecovery := context.WithTimeout(context.WithoutCancel(ctx), agentCommandReceiptRecoveryTimeoutV1)
 	defer cancelRecovery()
 	receipt, receiptErr := c.messages.GetMessageCommandReceiptContext(recoveryCtx, agentUUID, clientMessageID)
+	// Kafka acceptance can return a new draft UUID on replay. Only the committed
+	// receipt identifies the canonical message created by this idempotency key.
+	for err == nil && receiptErr == nil && (receipt == nil || receipt.Status == application.MessageCommandReceiptStatusAbsent) {
+		select {
+		case <-recoveryCtx.Done():
+			return nil, recoveryCtx.Err()
+		case <-time.After(25 * time.Millisecond):
+		}
+		receipt, receiptErr = c.messages.GetMessageCommandReceiptContext(recoveryCtx, agentUUID, clientMessageID)
+	}
 	if receiptErr != nil {
 		return nil, fmt.Errorf("recover Agent Message Command receipt: %w", errors.Join(err, receiptErr))
 	}

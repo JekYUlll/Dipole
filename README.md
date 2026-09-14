@@ -170,9 +170,11 @@ Direct requests publish to the owner's AI conversation. Natural-language time
 clarification remains pending. The group scheduled path has been verified against
 the real experience stack using DeepSeek, Temporal, MySQL, Elasticsearch, WebSocket
 and Sync, including approval/denial, cancellation and restart during the timer wait.
-Apply migration `000054` with the updated Core/Agent builds. Recovery after approval
-consumption and a subsequent write/audit failure remains an open issue (AD-008 in
-the [debt ledger](docs/architecture/ARCHITECTURE-DEBT.md)).
+Apply migrations through `000055` with the updated Core/Agent builds. Approved
+message writes recover using the original invocation and committed message receipt.
+The real smoke also interrupts completion auditing after message persistence and
+restarts the Worker: the original task completes with one invocation and one message.
+This verifies the tested failure window, without claiming universal exactly-once delivery.
 
 The experience stack demonstrates conversation context, authorized retrieval,
 approval and durable execution. Long-term Memory injection, the public MCP server

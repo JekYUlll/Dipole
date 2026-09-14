@@ -68,6 +68,20 @@ func (s *agentCommandMessagesStub) SendAssistantGroupMessageContext(ctx context.
 func (s *agentCommandMessagesStub) GetMessageCommandReceiptContext(ctx context.Context, sender, clientMessageID string) (*application.MessageCommandReceipt, error) {
 	s.receiptSender, s.receiptClientID = sender, clientMessageID
 	s.receiptContextErr = ctx.Err()
+	if s.receipt == nil && s.receiptErr == nil && s.sendErr == nil {
+		var message *model.Message
+		switch s.kind {
+		case application.AgentMessageCommandAssistantReplyV1:
+			message = commandStubMessage("M-REPLY", s.sender, s.target, s.content, clientMessageID, model.MessageTypeAIText)
+		case application.AgentMessageCommandSystemMessageV1:
+			message = commandStubMessage("M-SYSTEM", s.sender, s.target, s.content, clientMessageID, model.MessageTypeSystem)
+		case application.AgentMessageCommandGroupReplyV1:
+			message = commandStubMessage("M-GROUP-REPLY", s.sender, s.target, s.content, clientMessageID, model.MessageTypeAIText)
+			message.TargetType = model.MessageTargetGroup
+			message.ConversationKey = model.GroupConversationKey(s.target)
+		}
+		return &application.MessageCommandReceipt{Status: application.MessageCommandReceiptStatusCommitted, Message: message}, nil
+	}
 	return s.receipt, s.receiptErr
 }
 
@@ -211,6 +225,26 @@ func TestLocalAgentCommandV1RecoversCommittedReceiptAfterUncertainSend(t *testin
 	message, err := commands.SendMessage(parent, command)
 	if err != nil || message.UUID != "M-RECOVERED" || messages.receiptSender != command.Invocation.AgentUUID || messages.receiptClientID != clientMessageID || messages.receiptContextErr != nil {
 		t.Fatalf("recovered message=%+v sender=%q client=%q receipt_ctx=%v err=%v", message, messages.receiptSender, messages.receiptClientID, messages.receiptContextErr, err)
+	}
+}
+
+func TestLocalAgentCommandV1ReturnsCommittedMessageInsteadOfKafkaDraft(t *testing.T) {
+	command := application.AgentMessageCommandV1{
+		CommandID: "trigger:M100:system-message", Kind: application.AgentMessageCommandSystemMessageV1,
+		Invocation: agentCapabilityTestInvocation(), Content: "notice",
+	}
+	clientID := mustAgentCommandClientMessageIDV1(t, command.Kind, command.CommandID)
+	messages := &agentCommandMessagesStub{
+		sendMessage: commandStubMessage("M-NEW-DRAFT", "UAI", "U100", "notice", clientID, model.MessageTypeSystem),
+		receipt: &application.MessageCommandReceipt{Status: application.MessageCommandReceiptStatusCommitted,
+			Message: commandStubMessage("M-ORIGINAL", "UAI", "U100", "notice", clientID, model.MessageTypeSystem)},
+	}
+	commands, _ := NewLocalAgentCommandV1(messages)
+	for range 2 {
+		message, err := commands.SendMessage(context.Background(), command)
+		if err != nil || message.UUID != "M-ORIGINAL" {
+			t.Fatalf("canonical message=%+v err=%v", message, err)
+		}
 	}
 }
 

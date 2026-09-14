@@ -32,7 +32,7 @@ interface AgentContextResolver {
 }
 
 type AgentAssistantReplyWriter = Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "executeMessageCommand">;
-type AgentApprovalWriter = Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">;
+type AgentApprovalWriter = Pick<AgentCapabilityRPCClient, "beginMcpToolCommand" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">;
 
 export function createTemporalReadStepActivities(
   dependencies: ShadowPlanExecutionDependencies & {
@@ -128,7 +128,7 @@ export function createTemporalReadStepActivities(
             const result = await createInteractiveMessageExecutor(dependencies.approvalWriter).execute({
               conversationId: systemMessage.conversationKey,
               content: systemMessage.content
-            }, context);
+            }, context, input.resume.approvalId);
             return {
               kind: "complete",
               output: { summary: "Approved system message delivered", result }

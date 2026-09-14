@@ -23,8 +23,8 @@ async function api(path, body, acceptedStatus) {
   if (!response.ok || (result.code !== undefined && result.code !== 0)) throw new Error(`${path}: ${response.status} ${result.message ?? result.error}`);
   return result.data ?? result;
 }
-async function until(fn, label) {
-  const deadline = Date.now() + 120000;
+async function until(fn, label, timeoutMs = 120000) {
+  const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const value = await fn();
     if (value) return value;
@@ -57,6 +57,8 @@ const status = task => {
   if (value === 'failed') throw new Error(`Task failed: ${task}`);
   return value;
 };
+let faultTrigger;
+let workerStopped = false;
 try {
   const direct = await send('Hello, please reply briefly.');
   await until(() => status(direct) === 'completed', 'Direct completed');
@@ -80,6 +82,35 @@ try {
     }
     console.log(`PASS ${decision === 'approved' ? 'Approval + WorkerRecovery + DuplicateApproval' : 'Deny'} task=${task} messages=${count()}`);
   }
+  const recoveryText = `Recovery notice ${randomUUID()}`;
+  const recoveryTask = await send(`Please publish a system message in this conversation with exactly this text: ${recoveryText}`);
+  await until(() => status(recoveryTask) === 'waiting_approval', 'Recovery approval');
+  const recoveryApproval = sql(`SELECT approval_uuid FROM agent_approvals WHERE task_uuid=${quote(recoveryTask)} LIMIT 1`);
+  const recoveryCount = () => Number(sql(`SELECT COUNT(*) FROM messages WHERE sender_uuid=${quote(ai)} AND target_uuid=${quote(owner)} AND content=${quote(recoveryText)}`));
+  faultTrigger = `dipole_smoke_${randomUUID().replaceAll('-', '')}`;
+  // Fail only this task's real audit update, after its real message transaction commits.
+  sql(`DELIMITER $$
+    CREATE TRIGGER ${faultTrigger} BEFORE UPDATE ON agent_tool_invocations FOR EACH ROW
+    BEGIN IF NEW.task_uuid=${quote(recoveryTask)} AND NEW.status='completed' THEN
+      DO SLEEP(15); SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='smoke audit interruption';
+    END IF; END$$
+    DELIMITER ;`);
+  await api(`/agent/tasks/${recoveryTask}/approvals/${recoveryApproval}`, { decision: 'approved' });
+  await until(() => recoveryCount() === 1, 'Message committed before audit failure');
+  assert.equal(sql(`SELECT status FROM agent_approvals WHERE approval_uuid=${quote(recoveryApproval)}`), 'consumed');
+  assert.equal(sql(`SELECT status FROM agent_tool_invocations WHERE task_uuid=${quote(recoveryTask)} LIMIT 1`), 'running');
+  execFileSync('docker', ['stop', '--time', '0', `${project}-agent-1`], { stdio: 'ignore' });
+  workerStopped = true;
+  sql(`DROP TRIGGER ${faultTrigger}`);
+  faultTrigger = undefined;
+  execFileSync('docker', ['start', `${project}-agent-1`], { stdio: 'ignore' });
+  workerStopped = false;
+  await until(() => status(recoveryTask) === 'completed', 'Post-consumption recovery', 180000);
+  assert.equal(recoveryCount(), 1);
+  assert.equal(sql(`SELECT COUNT(*) FROM agent_tool_invocations WHERE task_uuid=${quote(recoveryTask)} AND status='completed'`), '1');
+  assert.equal(sql(`SELECT COUNT(*) FROM agent_tool_invocations WHERE task_uuid=${quote(recoveryTask)}`), '1');
+  assert.equal(sql(`SELECT COUNT(*) FROM agent_model_calls c JOIN agent_model_runs r ON r.run_uuid=c.run_uuid WHERE r.task_uuid=${quote(recoveryTask)} AND c.status='completed'`), '1');
+  console.log(`PASS PostConsumptionRecovery task=${recoveryTask} messages=1 invocations=1`);
   const group = await api('/groups', { name: 'Agent experience', member_uuids: [ai] });
   const marker = 'Cassandra' + Date.now();
   const source = await send(`${marker}: decision is to keep MySQL as the default backend.`, group.uuid, false);
@@ -135,6 +166,14 @@ try {
   assert.equal(groupCount(), beforeScheduled + 1, 'Exactly one scheduled group publication');
   console.log('PASS ScheduledWorkerRecovery + NoEarlyDispatch + GroupSync');
 } finally {
-  clearInterval(heartbeat);
-  socket.close();
+  try {
+    if (faultTrigger) sql(`DROP TRIGGER IF EXISTS ${faultTrigger}`);
+  } finally {
+    try {
+      if (workerStopped) execFileSync('docker', ['start', `${project}-agent-1`], { stdio: 'ignore' });
+    } finally {
+      clearInterval(heartbeat);
+      socket.close();
+    }
+  }
 }

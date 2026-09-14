@@ -131,7 +131,10 @@ describe("MCP Message write projection", () => {
         argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
         nonceSha256: "d".repeat(64), expiresAtUnixMs: Date.now() + 60_000
       })),
-      begin: vi.fn(async () => { order.push("begin"); }),
+      beginMcpToolCommand: vi.fn(async (input: { invocationId: string }) => {
+        if (!order.includes("consume")) throw Object.assign(new Error("Approval not consumed"), { code: 7 });
+        order.push("begin"); return { invocationId: input.invocationId, status: "running" as const };
+      }),
       finishToolInvocation: vi.fn(async () => { order.push("finish"); }),
       executeMessageCommand: vi.fn(async () => {
         order.push("command");
@@ -140,20 +143,28 @@ describe("MCP Message write projection", () => {
     };
     const result = await createInteractiveMessageExecutor(client).execute({
       conversationId: "direct:U100:UAI", content: "notice"
-    }, context);
+    }, context, "APR-1");
 
     expect(order).toEqual(["consume", "begin", "command", "finish"]);
     expect(result).toBe(JSON.stringify({
       commandId: "tool:interactive-1", commandKind: "system_message", resourceId: "MSG-INTERACTIVE-1", resourceType: "message"
     }));
+    order.length = 0;
+    await expect(createInteractiveMessageExecutor(client).execute({
+      conversationId: "direct:U100:UAI", content: "notice"
+    }, context, "APR-OTHER")).rejects.toThrow("Approval does not match the workflow binding");
+    expect(order).toEqual([]);
+    expect(client.consumeApproval).toHaveBeenCalledOnce();
   });
 
   it("reuses one message command after an uncertain Core response", async () => {
+    let consumed = false;
     const commandCalls: Array<{ invocationId: string }> = [];
     const persistedCommandIds = new Set<string>();
-    const finish = vi.fn(async () => undefined);
+    let completed = false;
+    const finish = vi.fn(async () => { completed = true; });
     const client = {
-      consumeApproval: vi.fn(async () => undefined),
+      consumeApproval: vi.fn(async () => { if (consumed) throw new Error("already consumed"); consumed = true; }),
       resolveApprovalGrant: vi.fn(async () => ({
         approvalId: "APR-1", capabilityId: "message.system.send",
         resourceScope: { resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] },
@@ -161,7 +172,10 @@ describe("MCP Message write projection", () => {
         argumentsSha256: "5ffc80e79ae2e6723a320e67256994b9954fe7b8acd0e1126a27bd5d03c50db9",
         nonceSha256: "d".repeat(64), expiresAtUnixMs: Date.now() + 60_000
       })),
-      begin: vi.fn(async () => undefined),
+      beginMcpToolCommand: vi.fn(async (input: { invocationId: string }) => {
+        if (!consumed) throw Object.assign(new Error("Approval not consumed"), { code: 7 });
+        return { invocationId: input.invocationId, status: completed ? "completed" as const : "running" as const };
+      }),
       finishToolInvocation: finish,
       executeMessageCommand: vi.fn(async (input: { invocationId: string }) => {
         commandCalls.push({ invocationId: input.invocationId });
@@ -178,14 +192,19 @@ describe("MCP Message write projection", () => {
     const executor = createInteractiveMessageExecutor(client);
     const input = { conversationId: "direct:U100:UAI", content: "notice" };
 
-    await expect(executor.execute(input, context)).rejects.toThrow("Tool invocation failed");
-    await expect(executor.execute(input, context)).resolves.toContain("MSG-INTERACTIVE-RETRY-1");
+    await expect(executor.execute(input, context, "APR-1")).rejects.toThrow("response lost after commit");
+    await expect(executor.execute(input, context, "APR-1")).resolves.toContain("MSG-INTERACTIVE-RETRY-1");
+    expect(client.consumeApproval).toHaveBeenCalledOnce();
+    expect(client.resolveApprovalGrant).toHaveBeenCalledOnce();
 
     expect(commandCalls).toHaveLength(2);
     expect(commandCalls[0]!.invocationId).toBe(commandCalls[1]!.invocationId);
     expect(persistedCommandIds).toEqual(new Set([commandCalls[0]!.invocationId]));
     expect(finish).toHaveBeenCalledOnce();
     expect(finish).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
+    await expect(executor.execute(input, context, "APR-1")).resolves.toContain("MSG-INTERACTIVE-RETRY-1");
+    expect(finish).toHaveBeenCalledOnce();
+    expect(client.consumeApproval).toHaveBeenCalledOnce();
   });
 });
 

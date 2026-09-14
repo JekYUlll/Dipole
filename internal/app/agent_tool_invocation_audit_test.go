@@ -356,13 +356,16 @@ func TestPersistentAgentToolInvocationAuditAllowsAuthorizedGroupReplyWithoutAppr
 }
 
 func TestScheduledGroupToolRequiresConsumedMatchingApproval(t *testing.T) {
-	for _, scenario := range []string{"consumed", "pending", "wrong-digest", "wrong-task", "wrong-scope"} {
+	for _, scenario := range []string{"consumed", "pending", "revoked", "wrong-digest", "wrong-task", "wrong-scope"} {
 		t.Run(scenario, func(t *testing.T) {
 			consumedAt := time.Now()
 			scope := application.AgentResourceScopeV1{ResourceType: "conversation", ResourceID: "group:G1", Actions: []string{"write"}}
 			approval := &application.AgentApprovalV1{ApprovalUUID: "APR", TaskUUID: "TASK", CapabilityID: application.AgentCapabilityGroupReplySend, ResourceScope: scope, ArgumentsSHA256: testAuditSHA, Status: application.AgentApprovalStatusConsumed, ConsumedAt: &consumedAt}
 			if scenario == "pending" {
 				approval.Status = application.AgentApprovalStatusPending
+			}
+			if scenario == "revoked" {
+				approval.RevokedAt = &consumedAt
 			}
 			if scenario == "wrong-digest" {
 				approval.ArgumentsSHA256 = "wrong"

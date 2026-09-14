@@ -125,6 +125,28 @@ func TestAgentMessageCommandExecutionBindsApprovedToolAndDerivesCommand(t *testi
 	if sender.lineage.Origin.ID != "UAI" || sender.lineage.AgentTaskID != "TASK-1" {
 		t.Fatalf("missing Agent action lineage: %+v", sender.lineage)
 	}
+	tool.Status = application.AgentToolInvocationStatusCompleted
+	tool.ActionReference = &application.AgentToolActionReferenceV1{
+		ResourceType: application.AgentToolActionResourceMessage, ResourceUUID: result.MessageUUID,
+		CommandKind: result.Kind, CommandID: result.CommandID,
+	}
+	sender.command = application.AgentMessageCommandV1{}
+	request := application.AgentMessageCommandExecutionRequestV1{
+		TaskUUID: "TASK-1", RunUUID: "RUN-1", InvocationUUID: "INV-1", Kind: application.AgentMessageCommandSystemMessageV1, Content: "notice",
+	}
+	replay, err := service.Execute(context.Background(), request)
+	if err != nil || *replay != *result || sender.command.CommandID != "" {
+		t.Fatalf("completed invocation replay=%+v err=%v command=%+v", replay, err, sender.command)
+	}
+	request.Content = "unapproved"
+	if _, err := service.Execute(context.Background(), request); !errors.Is(err, application.ErrAgentCommandDenied) {
+		t.Fatalf("completed invocation accepted changed content: %v", err)
+	}
+	request.Content = "notice"
+	tool.ActionReference = nil
+	if _, err := service.Execute(context.Background(), request); !errors.Is(err, application.ErrAgentCommandConflict) {
+		t.Fatalf("completed invocation accepted missing receipt: %v", err)
+	}
 }
 
 func TestAgentMessageCommandExecutionBindsAuthorizedAssistantReplyWithoutApproval(t *testing.T) {
@@ -169,8 +191,8 @@ func TestAgentMessageCommandExecutionRejectsUnboundOrDriftingTool(t *testing.T) 
 		edit func(*application.AgentToolInvocationV1)
 	}{
 		{name: "missing approval", edit: func(value *application.AgentToolInvocationV1) { value.ApprovalUUID = "" }},
-		{name: "terminal", edit: func(value *application.AgentToolInvocationV1) {
-			value.Status = application.AgentToolInvocationStatusCompleted
+		{name: "failed", edit: func(value *application.AgentToolInvocationV1) {
+			value.Status = application.AgentToolInvocationStatusFailed
 		}},
 		{name: "wrong run", edit: func(value *application.AgentToolInvocationV1) { value.RunUUID = "RUN-2" }},
 		{name: "wrong transport", edit: func(value *application.AgentToolInvocationV1) { value.Transport = "native" }},

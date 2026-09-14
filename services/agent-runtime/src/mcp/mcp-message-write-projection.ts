@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { AgentCapabilityRPCClient, AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
+import { canonicalMcpJSON } from "./canonical-json.js";
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import type { DipoleMcpWriteExecutor, DipoleMcpWriteToolProjection } from "./dipole-mcp-server.js";
 import { McpToolInvocationRunner } from "./mcp-tool-invocation.js";
@@ -89,8 +90,8 @@ const approvedGroupMessageTool: ApprovedMessageTool = {
 };
 
 export function createInteractiveMessageExecutor(
-  client: Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">
-): { execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext): Promise<string> } {
+  client: Pick<AgentCapabilityRPCClient, "beginMcpToolCommand" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">
+): { execute(input: { readonly conversationId: string; readonly content: string }, context: ExecutionContext, approvalId: string): Promise<string> } {
   const registry = new CapabilityRegistry();
   for (const tool of [interactiveMessageTool, approvedGroupMessageTool]) registry.register({
     descriptor: {
@@ -103,24 +104,55 @@ export function createInteractiveMessageExecutor(
     resolveResource: input => ({ resourceType: "conversation", resourceId: input.conversationId, action: "write" }),
     execute: async () => { throw new Error("Interactive Agent message writes require an audited Tool Invocation"); }
   });
-  const approvals = new McpWriteApprovalGate(
-    registry,
-    createMcpWriteApprovalConsumePort(client),
-    createMcpWriteApprovalGrantResolver(client)
-  );
+  const grants = createMcpWriteApprovalGrantResolver(client);
   return {
-    execute: (input, context) => new McpMessageWriteProjection(
-      approvals,
-      new McpToolInvocationRunner(
-        { begin: begin => client.begin(begin), finish: finish => client.finishToolInvocation(finish) },
-        undefined,
-        () => interactiveMessageInvocationID(context, input),
-        undefined,
-        undefined,
-        isUncertainMessageCommandFailure
-      ),
-      { executeMessageCommand: command => client.executeMessageCommand(command) }
-    ).execute(input.conversationId.startsWith("group:") ? approvedGroupMessageTool : interactiveMessageTool, input, context)
+    execute: async (rawInput, context, approvalId) => {
+      const input = messageInputSchema.parse(rawInput);
+      const tool = input.conversationId.startsWith("group:") ? approvedGroupMessageTool : interactiveMessageTool;
+      if (tool.commandKind === "group_reply" ? !/^group:[^:\s]+$/.test(input.conversationId)
+        : input.conversationId !== directConversationKey(context.principalUuid, context.agentUuid)) {
+        throw new Error("Message destination does not match the task conversation");
+      }
+      registry.prepare(tool.capabilityId, input, context);
+      const invocationId = interactiveMessageInvocationID(context, input);
+      const begin = {
+        invocationId, taskId: context.taskId, runId: context.runId, toolName: tool.name,
+        capabilityId: tool.capabilityId, approvalId,
+        argumentsSha256: createHash("sha256").update(canonicalMcpJSON(input)).digest("hex"),
+        ...(context.requestId === undefined ? {} : { requestId: context.requestId }),
+        ...(context.traceId === undefined ? {} : { traceId: context.traceId })
+      };
+      let record;
+      try {
+        // Core restores a consumed approval only for its uniquely bound invocation.
+        record = await client.beginMcpToolCommand(begin);
+      } catch (error) {
+        if (typeof error !== "object" || error === null || !("code" in error) || error.code !== 7) throw error;
+        const approvals = new McpWriteApprovalGate(registry, createMcpWriteApprovalConsumePort(client), {
+          resolve: async request => {
+            const grant = await grants.resolve(request);
+            if (grant.approvalId !== approvalId) throw new Error("Approval does not match the workflow binding");
+            return grant;
+          }
+        });
+        await approvals.authorize(tool.capabilityId, input, context);
+        record = await client.beginMcpToolCommand(begin);
+      }
+      if (record.status === "failed") throw new Error("Message invocation previously failed");
+      const startedAt = performance.now();
+      const result = messageActionReference(await client.executeMessageCommand({
+        taskId: context.taskId, runId: context.runId, invocationId, commandKind: tool.commandKind,
+        content: input.content, ...(tool.commandKind === "group_reply" ? { conversationKey: input.conversationId } : {})
+      }), tool.commandKind);
+      const canonical = canonicalMcpJSON(result);
+      // Leave an uncertain write/audit open. Temporal retries the same command ID.
+      if (record.status !== "completed") await client.finishToolInvocation({
+        invocationId, taskId: context.taskId, runId: context.runId, status: "completed",
+        resultSha256: createHash("sha256").update(canonical).digest("hex"),
+        resultBytes: Buffer.byteLength(canonical), latencyMs: Math.max(0, Math.floor(performance.now() - startedAt)), actionReference: result
+      });
+      return canonical;
+    }
   };
 }
 
@@ -139,12 +171,6 @@ function interactiveMessageInvocationID(
   return `tool:${createHash("sha256").update(material, "utf8").digest("hex").slice(0, 59)}`;
 }
 
-function isUncertainMessageCommandFailure(error: unknown): boolean {
-  if (typeof error !== "object" || error === null || !("code" in error)) return false;
-  const code = (error as { code?: unknown }).code;
-  // An idempotent Core command can commit before its response is lost.
-  return code === 4 || code === 14;
-}
 function directConversationKey(first: string, second: string): string {
   return `direct:${[first.trim(), second.trim()].sort().join(":")}`;
 }
