@@ -155,6 +155,22 @@ This tool covers current conditions, not historical weather or multi-day forecas
 Custom Agent policies need `weather.read` and a `weather/*` read scope; the migration
 only updates the built-in Agent policies. Ambiguous cities can use a country code.
 
+Collaboration report: open **Dipole AI** from the conversation list, then choose
+**协作总结**. Enter a goal and an information deadline (within seven days). The
+same Task retrieves authorized context, asks the owner one question if needed,
+and continues with unknown facts marked when the deadline expires. Review or
+replace the draft, then approve its exact text for publication. Denial sends
+nothing. Input waits survive Worker restart; completed model stages and message
+commands are reused. Group reports use the same panel in a group containing AI.
+The command form is `/report <ISO deadline with timezone> <goal>`; prefix `@AI`
+in groups. The deadline governs missing information, not scheduled publication.
+Draft review lasts until one day after the later of its creation and that deadline;
+publication approval lasts ten minutes. Task history in the panel follows loaded
+conversation messages; task lookup requires HTTPS or localhost. This is a single
+owner, single publication flow, without multi-person collection or recurring jobs.
+Run `node scripts/smoke-agent-experience.mjs --report-only` for the real report
+and deadline/restart scenarios against an already running local experience stack.
+
 Scheduled digest: send
 `/digest <ISO timestamp with timezone> <retrieval request>` to the AI user, for
 example `/digest 2026-09-16T09:00:00+08:00 Find Cassandra discussions and summarize the decisions`.

@@ -191,9 +191,27 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose Agent approval grants: %w", composeErr)
 		}
+		var artifacts applicationPort.AgentArtifactServiceV1
+		storageCfg := config.StorageConfig()
+		if storageCfg.ArtifactEnabled {
+			blobs, artifactErr := platformStorage.NewAgentArtifactBlobStoreFromConfig(ctx, platformStorage.AgentArtifactStorageConfigV1{
+				Enabled: true, Endpoint: storageCfg.ArtifactEndpoint, AccessKey: storageCfg.ArtifactAccessKey,
+				SecretKey: storageCfg.ArtifactSecretKey, UseSSL: storageCfg.ArtifactUseSSL, Bucket: storageCfg.ArtifactBucket,
+				GeneralAccessKey: storageCfg.AccessKey, GeneralBucket: storageCfg.Bucket,
+			})
+			if artifactErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose Agent Artifact storage: %w", artifactErr)
+			}
+			artifacts, artifactErr = agentapplication.NewPersistentAgentArtifactServiceV1(agentRepos.Policy, agentRepos.Artifacts, blobs)
+			if artifactErr != nil {
+				cleanup()
+				return nil, fmt.Errorf("compose Agent Artifacts: %w", artifactErr)
+			}
+		}
 		runtime.coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
 			rpcCfg, messaging.Core, agentCapability, resolver, admission, approvals, controls, projection, repairs,
-			nil, nil, nil, nil, toolAudits, nil, nil, messageCommands, approvalGrants,
+			nil, nil, nil, artifacts, toolAudits, nil, nil, messageCommands, approvalGrants,
 			nil, nil, nil, nil, nil, nil, agentRepos.TaskTimeline,
 		)
 		if err != nil {

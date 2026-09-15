@@ -11,7 +11,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 )
 
-const embeddedAgentDefinitionVersionV1 uint64 = 1
+const embeddedAgentDefinitionVersionV1 uint64 = 2
 const embeddedAgentRuntimeIDV1 = "dipole-eino"
 
 type agentPolicyClockV1 func() time.Time
@@ -347,11 +347,12 @@ func EnsureEmbeddedAgentDefinitionV1(ctx context.Context, store application.Agen
 	if err != nil {
 		return fmt.Errorf("get Embedded Agent Definition: %w", err)
 	}
-	if latest != nil {
+	definitionUUID := "embedded:" + agentUUID
+	if latest != nil && (latest.DefinitionUUID != definitionUUID || latest.Version >= embeddedAgentDefinitionVersionV1 || latest.Status != application.AgentDefinitionStatusActive) {
 		return nil
 	}
 	definition := application.AgentDefinitionVersionV1{
-		DefinitionUUID: "embedded:" + agentUUID,
+		DefinitionUUID: definitionUUID,
 		Version:        embeddedAgentDefinitionVersionV1,
 		TenantID:       tenantID,
 		OwnerUUID:      agentUUID,

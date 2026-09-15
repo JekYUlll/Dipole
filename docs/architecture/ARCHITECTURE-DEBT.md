@@ -17,6 +17,8 @@
 
 ## 已验证的产品边界
 
+- 协作总结已在真实模型、Temporal、Core、MinIO 和 IM 路径验证：等待补充时重启、到期默认未知继续生成、两版草稿、修改后审批、批准一次/拒绝零次。独立 Core 已装配原有 Artifact 服务，Active Run 仅新增 markdown 会话摘要产物权限。UI 列表仅索引已加载的当前会话消息，完整跨会话任务目录不在本功能范围。
+
 - 构建统一由 Makefile 管理，日常操作使用 justfile；旧多程序 Dockerfile 仅保留给仍有引用的 benchmark/legacy 配置，主路径使用单服务镜像。
 
 - IM 主路径使用消息事实、Transactional Outbox、Kafka、Conversation Timeline、

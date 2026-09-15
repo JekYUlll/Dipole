@@ -45,11 +45,11 @@ func TestPersistentAgentArtifactCreateConvergesAndRejectsVersionDrift(t *testing
 	}
 }
 
-func TestPersistentAgentArtifactCreateRequiresActiveBoundShadowRun(t *testing.T) {
+func TestPersistentAgentArtifactCreateRequiresBoundAuthorizedRun(t *testing.T) {
 	for _, run := range []*application.AgentRunV1{
 		{RunUUID: "RUN-1", TaskUUID: "TASK-2", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusRunning},
 		{RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "other", Mode: "shadow", Status: application.AgentRunStatusRunning},
-		{RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "active", Status: application.AgentRunStatusRunning},
+		{RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "active", Status: application.AgentRunStatusCompleted},
 		{RunUUID: "RUN-1", TaskUUID: "TASK-1", RuntimeID: "dipole-agent", Mode: "shadow", Status: application.AgentRunStatusCompleted},
 	} {
 		service, _ := NewPersistentAgentArtifactServiceV1(agentArtifactPolicyStubV1{

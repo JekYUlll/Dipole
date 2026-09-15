@@ -18,7 +18,11 @@ const (
 	AgentCapabilityConversationRead   = "conversation.read"
 	AgentCapabilityConversationSearch = "conversation.search"
 	AgentCapabilityGetWeather         = "get_weather"
+	AgentCapabilityCurrentTime        = "time.now"
+	AgentCapabilityCalculator         = "calculator.evaluate"
 	AgentPermissionWeatherRead        = "weather.read"
+	AgentPermissionTimeRead           = "time.read"
+	AgentPermissionCalculatorEvaluate = "calculator.evaluate"
 	AgentCapabilityAssistantReplySend = "message.assistant_reply.send"
 	AgentCapabilityGroupReplySend     = "message.group_reply.send"
 	AgentCapabilitySystemMessageSend  = "message.system.send"
@@ -31,6 +35,8 @@ const (
 
 	AgentResourceTypeUser         = "user"
 	AgentResourceTypeConversation = "conversation"
+	AgentResourceTypeTime         = "time"
+	AgentResourceTypeCalculator   = "calculator"
 	AgentResourceWildcard         = "*"
 	AgentResourceActionRead       = "read"
 	AgentResourceActionList       = "list"
@@ -68,8 +74,12 @@ func EmbeddedAgentPolicyGrantV1() ([]string, []AgentResourceScopeV1) {
 		AgentPermissionConversationSearch,
 		AgentPermissionMessageWrite,
 		AgentPermissionWeatherRead,
+		AgentPermissionTimeRead,
+		AgentPermissionCalculatorEvaluate,
 	}, []AgentResourceScopeV1{
 		{ResourceType: "weather", ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
+		{ResourceType: AgentResourceTypeTime, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
+		{ResourceType: AgentResourceTypeCalculator, ResourceID: AgentResourceWildcard, Actions: []string{"evaluate"}},
 		{ResourceType: AgentResourceTypeUser, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
 		{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead, AgentResourceActionList, AgentResourceActionSearch, AgentResourceActionWrite}},
 	}
@@ -103,6 +113,12 @@ func AuthorizeAgentCapabilityForResourceV1(invocation AgentInvocationV1, descrip
 var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	AgentCapabilityGetWeather: {
 		ID: AgentCapabilityGetWeather, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionWeatherRead,
+	},
+	AgentCapabilityCurrentTime: {
+		ID: AgentCapabilityCurrentTime, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionTimeRead,
+	},
+	AgentCapabilityCalculator: {
+		ID: AgentCapabilityCalculator, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionCalculatorEvaluate,
 	},
 	AgentCapabilityUserProfileRead: {
 		ID: AgentCapabilityUserProfileRead, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionUserProfileRead,

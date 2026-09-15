@@ -75,6 +75,7 @@ const { prepareAgentMemoryPromotion } = proxyActivities<AgentMemoryPromotionActi
 export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): Promise<AgentTaskState> {
   let state = createAgentTaskState(input.taskId);
   let checkpoint: unknown;
+  let inputTimeoutValue: Record<string, string> | undefined;
   let step = 0;
   let approvalSignal: { requestId: string; approvalId: string; decision: "approved" | "denied"; actorUserId: string } | undefined;
   let publishAtUnixMs: number | undefined;
@@ -142,7 +143,9 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
     if (state.status === "waiting_input") {
       const requestId = state.pending!.requestId;
       const resumed = await condition(() => state.status !== "waiting_input", waitDuration(state.pending!.expiresAtUnixMs));
-      if (!resumed && state.status === "waiting_input") state = transitionAgentTask(state, { type: "expire_wait", requestId });
+      if (!resumed && state.status === "waiting_input") state = transitionAgentTask(state, inputTimeoutValue === undefined
+        ? { type: "expire_wait", requestId }
+        : { type: "provide_input", requestId, value: inputTimeoutValue });
       continue;
     }
     if (state.status === "waiting_approval") {
@@ -218,6 +221,7 @@ export async function agentTaskWorkflow(input: AgentTaskWorkflowHistoryInput): P
     }
     step += 1;
     checkpoint = "checkpoint" in directive ? directive.checkpoint : undefined;
+    inputTimeoutValue = directive.kind === "wait_input" ? directive.timeoutValue : undefined;
     if (directive.kind === "wait_approval") {
       publishAtUnixMs = directive.notBeforeUnixMs;
       if (publishAtUnixMs !== undefined && (!Number.isSafeInteger(publishAtUnixMs) || publishAtUnixMs <= 0 || publishAtUnixMs >= directive.approval.expiresAtUnixMs)) {

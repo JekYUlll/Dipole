@@ -8,6 +8,8 @@ import { ConversationListCapability } from "../capabilities/conversation-list.js
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
 import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
 import { GetWeatherCapability } from "../capabilities/get-weather.js";
+import { GetCurrentTimeCapability } from "../capabilities/get-current-time.js";
+import { CalculateCapability } from "../capabilities/calculate.js";
 import { CapabilityRegistry } from "../capabilities/registry.js";
 import { DeterministicContextCompiler } from "../context/context-compiler.js";
 import { createConservativeRouteEstimator, parseRouteContextProfiles, routeContextProfileSchema } from "../context/token-estimator.js";
@@ -379,6 +381,8 @@ export function createKafkaAgentRuntime(
     registry.register(new ConversationReadCapability(rpcTransport!.client));
     registry.register(new ConversationSearchCapability(rpcTransport!.client));
     registry.register(new GetWeatherCapability());
+    registry.register(new GetCurrentTimeCapability());
+    registry.register(new CalculateCapability());
     trajectory = persistentAudit!;
   }
   const planner = usesLocalModel
@@ -443,6 +447,8 @@ export function createTemporalReadActivityResources(config: AgentRuntimeConfig):
   registry.register(new ConversationReadCapability(rpc.client));
   registry.register(new ConversationSearchCapability(rpc.client));
   registry.register(new GetWeatherCapability());
+  registry.register(new GetCurrentTimeCapability());
+  registry.register(new CalculateCapability());
   const planner = new ModelShadowPlanner(new ModelRouter(
     new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
   ), registry.descriptors().map(item => item.id), routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
@@ -452,7 +458,7 @@ export function createTemporalReadActivityResources(config: AgentRuntimeConfig):
       planner, audit, registry, trajectory: audit, stepLeaseMs: temporalStepLeaseMs,
       runtimeMode: config.runtimeMode,
       busyStepRetry: { intervalMs: 1000, maxWaitMs: temporalStepLeaseMs + 5000 },
-      ...(config.runtimeMode === "shadow" ? { artifacts: rpc.client } : {}),
+      artifacts: rpc.client,
       ...(config.runtimeMode === "active" ? { contextResolver: rpc.client, replyWriter: rpc.client, approvalWriter: rpc.client } : {})
     }),
     client: rpc.client,

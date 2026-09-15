@@ -311,8 +311,18 @@ func TestEnsureEmbeddedAgentDefinitionV1PreservesExistingDefinition(t *testing.T
 	if err := EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead}, scopes); err != nil {
 		t.Fatalf("ensure baseline: %v", err)
 	}
-	if store.latest == nil || store.latest.DefinitionUUID != "embedded:UAI" || store.latest.Version != 1 {
+	if store.latest == nil || store.latest.DefinitionUUID != "embedded:UAI" || store.latest.Version != 2 {
 		t.Fatalf("unexpected baseline: %+v", store.latest)
+	}
+	legacy := *store.latest
+	legacy.Version = 1
+	legacy.Permissions = []string{application.AgentPermissionConversationRead}
+	store.latest = &legacy
+	if err := EnsureEmbeddedAgentDefinitionV1(context.Background(), store, "dipole", "UAI", []string{application.AgentPermissionConversationRead, application.AgentPermissionWeatherRead}, scopes); err != nil {
+		t.Fatalf("upgrade embedded Definition: %v", err)
+	}
+	if store.latest.Version != 2 || len(store.latest.Permissions) != 2 {
+		t.Fatalf("embedded Definition was not upgraded: %+v", store.latest)
 	}
 	custom := activeAgentDefinitionV1(7, time.Unix(0, 0).UTC(), []string{application.AgentPermissionMessageWrite})
 	store.latest = &custom

@@ -60,6 +60,7 @@ const status = task => {
 let faultTrigger;
 let workerStopped = false;
 try {
+  if (!process.argv.includes('--report-only')) {
   const direct = await send('Hello, please reply briefly.');
   await until(() => status(direct) === 'completed', 'Direct completed');
   assert(received.some(e => e.data?.from_uuid === ai), 'AI reply delivered over WebSocket');
@@ -165,6 +166,44 @@ try {
   }
   assert.equal(groupCount(), beforeScheduled + 1, 'Exactly one scheduled group publication');
   console.log('PASS ScheduledWorkerRecovery + NoEarlyDispatch + GroupSync');
+  }
+  const reportGroup = await api('/groups', { name: 'Collaboration report', member_uuids: [ai] });
+  const reportMarker = `report-${Date.now()}`;
+  await send(`${reportMarker}: MySQL remains the default. Migration delivery date is unknown; only the task owner can confirm it.`, reportGroup.uuid, false);
+  for (const scenario of ['owner-input', 'deadline']) {
+    const deadline = Date.now() + (scenario === 'deadline' ? 45000 : 180000);
+    const task = await send(`@AI /report ${new Date(deadline).toISOString()} Read this conversation. Summarize ${reportMarker}, including the migration delivery date. Ask me to confirm the missing delivery date.`, reportGroup.uuid);
+    await until(() => status(task) === 'waiting_input', 'Report owner question');
+    let view = await api(`/agent/tasks/${task}`);
+    assert.equal(view.pending.form.fields[0].id, 'answer', 'Real model requests missing information');
+    const before = Number(sql(`SELECT COUNT(*) FROM messages WHERE sender_uuid=${quote(ai)} AND target_uuid=${quote(reportGroup.uuid)}`));
+    execFileSync('docker', ['restart', `${project}-agent-1`], { stdio: 'ignore' });
+    await until(async () => { try { view = await api(`/agent/tasks/${task}`); return true; } catch { return false; } }, 'Report worker recovery');
+    if (scenario === 'owner-input') {
+      await api(`/agent/tasks/${task}/inputs/${view.pending.requestId}`, { value: { answer: 'Confirmed delivery: Friday at 18:00; owner Alice.' } });
+    }
+    await until(async () => { view = await api(`/agent/tasks/${task}`); return view.pending?.form?.fields?.[0]?.id === 'content'; }, 'Report draft after input/deadline');
+    assert.equal(status(task), 'waiting_input');
+    assert.equal(Number(sql(`SELECT COUNT(*) FROM messages WHERE sender_uuid=${quote(ai)} AND target_uuid=${quote(reportGroup.uuid)}`)), before);
+    assert.equal(sql(`SELECT COUNT(*) FROM agent_model_runs WHERE task_uuid=${quote(task)} AND stage='report_final' AND status='completed'`), '1');
+    const edited = `Reviewed ${reportMarker}: MySQL default; delivery Friday at 18:00 (owner confirmed).`;
+    await api(`/agent/tasks/${task}/inputs/${view.pending.requestId}`, { value: scenario === 'owner-input' ? { content: edited } : {} });
+    await until(() => status(task) === 'waiting_approval', 'Report approval');
+    view = await api(`/agent/tasks/${task}`);
+    if (scenario === 'owner-input') assert(view.pending.summary.includes(edited));
+    const decision = scenario === 'owner-input' ? 'approved' : 'denied';
+    const approval = view.pending.approvalId;
+    await api(`/agent/tasks/${task}/approvals/${approval}`, { decision });
+    await until(() => status(task) === (decision === 'approved' ? 'completed' : 'cancelled'), 'Report terminal');
+    const count = Number(sql(`SELECT COUNT(*) FROM messages WHERE sender_uuid=${quote(ai)} AND target_uuid=${quote(reportGroup.uuid)}`));
+    assert.equal(count, before + (decision === 'approved' ? 1 : 0));
+    assert.equal(sql(`SELECT COUNT(*) FROM agent_artifacts WHERE task_uuid=${quote(task)}`), '2');
+    if (decision === 'approved') {
+      await api(`/agent/tasks/${task}/approvals/${approval}`, { decision }, 409);
+      assert.equal(sql(`SELECT COUNT(*) FROM messages WHERE sender_uuid=${quote(ai)} AND target_uuid=${quote(reportGroup.uuid)} AND content=${quote(edited)}`), '1');
+    }
+    console.log(`PASS CollaborationReport ${scenario} task=${task} artifacts=2 publication=${decision === 'approved' ? 1 : 0}`);
+  }
 } finally {
   try {
     if (faultTrigger) sql(`DROP TRIGGER IF EXISTS ${faultTrigger}`);

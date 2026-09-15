@@ -96,6 +96,8 @@ export interface ShadowPlanStep {
 }
 
 export interface ShadowPlanner {
+  reviewReport?(event: AgentEvent, context: ExecutionContext, summary: string): Promise<{ question?: string }>;
+  finishReport?(event: AgentEvent, context: ExecutionContext, summary: string, answer: string): Promise<string>;
   plan(event: AgentEvent, context: ExecutionContext): Promise<ShadowPlan>;
   answer?(event: AgentEvent, context: ExecutionContext, evidence: readonly unknown[]): Promise<string>;
 }

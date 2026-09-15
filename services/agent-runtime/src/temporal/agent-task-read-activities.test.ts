@@ -11,6 +11,52 @@ import { createTemporalReadStepActivities } from "./agent-task-read-activities.j
 import type { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 describe("Temporal read Step Activities", () => {
+  it("keeps report input, edited draft and approval in the original task", async () => {
+    const event: AgentEvent = { eventId: "E-REPORT", eventType: "message.group.created", aggregateId: "M-REPORT",
+      occurredAt: new Date().toISOString(), payload: { conversation_key: "group:G1", content: `@AI /report ${new Date(Date.now() + 60000).toISOString()} Summarize progress` } };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = { tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["message.write"], resourceScopes: [{ resourceType: "conversation", resourceId: "group:G1", actions: ["write"] }], approvedCapabilities: [] as ("message.group_reply.send" | "message.system.send")[], eventId: event.eventId };
+    const plan = vi.fn(async () => ({ summary: "Deadline unknown", steps: [] }));
+    const finishReport = vi.fn(async () => "Owner says Friday; verification pending.");
+    const createArtifact = vi.fn(async () => ({ schemaVersion: "dipole.agent.artifact.v1" as const, artifactId: "a".repeat(64), taskId, runId,
+      artifactType: "conversation_digest", version: 1, title: "Draft", mediaType: "text/markdown", contentSha256: "b".repeat(64), sizeBytes: 1, metadata: {} }));
+    const executeMessageCommand = vi.fn(async () => ({ resourceType: "message" as const, resourceId: "M-RESULT", commandKind: "group_reply" as const, commandId: "C1" }));
+    const activities = createTemporalReadStepActivities({ runtimeMode: "active", contextResolver: { resolveMcpContext: async () => context },
+      planner: { plan, reviewReport: async () => ({ question: "When is the deadline?" }), finishReport }, artifacts: { createArtifact },
+      audit: { append: vi.fn() }, registry: new CapabilityRegistry(), stepLeaseMs: 60000,
+      trajectory: { append: vi.fn(), claimStep: vi.fn(), completeStep: vi.fn(), failStep: vi.fn() },
+      approvalWriter: { beginMcpToolCommand: async input => ({ invocationId: input.invocationId, status: "running" }),
+        finishToolInvocation: vi.fn(), consumeApproval: vi.fn(), resolveApprovalGrant: vi.fn(), executeMessageCommand } });
+    const input = { taskId, runId, goal: "report", shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId } };
+    const question = await activities.executeAgentTaskStep({ ...input, step: 0 });
+    expect(question).toMatchObject({ kind: "wait_input", timeoutValue: { answer: "" } });
+    if (question.kind !== "wait_input") throw new Error("Expected question");
+    const draft = await activities.executeAgentTaskStep({ ...input, step: 1, checkpoint: question.checkpoint,
+      resume: { kind: "input", requestId: question.requestId, value: { answer: "Friday" } } });
+    expect(finishReport).toHaveBeenCalledWith(expect.anything(), context, "Deadline unknown", "Friday");
+    expect(draft.kind).toBe("wait_input");
+    if (draft.kind !== "wait_input") throw new Error("Expected draft");
+    await expect(activities.executeAgentTaskStep({ ...input, step: 2, checkpoint: draft.checkpoint,
+      resume: { kind: "input", requestId: "wrong", value: {} } })).rejects.toThrow(/binding/);
+    const approval = await activities.executeAgentTaskStep({ ...input, step: 2, checkpoint: draft.checkpoint,
+      resume: { kind: "input", requestId: draft.requestId, value: { content: "Reviewed: Friday" } } });
+    expect(approval).toMatchObject({ kind: "wait_approval", summary: expect.stringContaining("Reviewed: Friday") });
+    expect(executeMessageCommand).not.toHaveBeenCalled();
+    expect(createArtifact).toHaveBeenLastCalledWith(expect.objectContaining({ version: 2, content: Buffer.from("Reviewed: Friday") }));
+    if (approval.kind !== "wait_approval") throw new Error("Expected approval");
+    const resume = { kind: "approval" as const, requestId: approval.requestId, approvalId: approval.approval.approvalId, decision: "approved" as const };
+    await expect(activities.executeAgentTaskStep({ ...input, step: 3, checkpoint: approval.checkpoint, resume: { ...resume, approvalId: "forged" } })).rejects.toThrow(/approval binding/);
+    expect(executeMessageCommand).not.toHaveBeenCalled();
+    context.approvedCapabilities.push("message.group_reply.send");
+    await expect(activities.executeAgentTaskStep({ ...input, step: 3, checkpoint: approval.checkpoint, resume })).resolves.toMatchObject({ kind: "complete" });
+    expect(executeMessageCommand).toHaveBeenCalledOnce();
+    expect(executeMessageCommand).toHaveBeenCalledWith(expect.objectContaining({ content: "Reviewed: Friday", conversationKey: "group:G1" }));
+    expect(plan).toHaveBeenCalledOnce();
+  });
+
   it("compiles, plans, persists, and executes a read-only Step under the exact Task binding", async () => {
     const event: AgentEvent = {
       eventId: "E-TEMPORAL-READ", eventType: "message.direct.created", aggregateId: "M-TEMPORAL-READ",

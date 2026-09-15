@@ -1,6 +1,8 @@
 import type { z } from "zod";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
+export type ModelStage = "plan" | "answer" | "report_review" | "report_final";
+
 export interface ModelUsage {
   readonly inputTokens: number | undefined;
   readonly outputTokens: number | undefined;
@@ -48,13 +50,13 @@ export interface ModelCallRecovery extends ModelCallReservation {
 }
 
 export interface ModelAuditStore {
-  recover(taskId: string, policy: ModelRunBudgetPolicy, stage?: "plan" | "answer"): Promise<ModelCallRecovery | undefined>;
-  reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string, stage?: "plan" | "answer"): Promise<ModelCallReservation | undefined>;
+  recover(taskId: string, policy: ModelRunBudgetPolicy, stage?: ModelStage): Promise<ModelCallRecovery | undefined>;
+  reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string, stage?: ModelStage): Promise<ModelCallReservation | undefined>;
   completeCall(reservation: ModelCallReservation, output: unknown, usage: ModelUsage, finishReason: string, latencyMs: number): Promise<void>;
   failCall(reservation: ModelCallReservation, error: unknown, latencyMs: number): Promise<void>;
   completeRun(runId: string): Promise<void>;
   failRun(runId: string, error: unknown): Promise<void>;
-  failTask(taskId: string, error: unknown, stage?: "plan" | "answer"): Promise<void>;
+  failTask(taskId: string, error: unknown, stage?: ModelStage): Promise<void>;
 }
 
 export interface ModelTimelineSink {
@@ -96,7 +98,7 @@ export class ModelRouter {
     readonly prompt: string;
     readonly schema: z.ZodType<T>;
     readonly taskId?: string;
-    readonly stage?: "plan" | "answer";
+    readonly stage?: ModelStage;
   }): Promise<ModelRoutingResult<T>> {
     if (this.audit !== undefined && !input.taskId?.trim()) {
       throw new Error("persistent model routing requires a Task ID");

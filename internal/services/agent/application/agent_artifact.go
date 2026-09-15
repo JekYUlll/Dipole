@@ -60,7 +60,7 @@ func (s *PersistentAgentArtifactServiceV1) Create(ctx context.Context, input app
 		return existing, nil
 	}
 	if !agentArtifactCreateAllowedV1(task, run, candidate, input.Content) {
-		return nil, fmt.Errorf("%w: Artifact creation requires the active authenticated shadow Run", application.ErrAgentArtifactDenied)
+		return nil, fmt.Errorf("%w: Artifact creation requires an authorized Run", application.ErrAgentArtifactDenied)
 	}
 	receipt, err := s.blobs.PutImmutable(ctx, candidate.ObjectKey, candidate.MediaType, input.Content, candidate.ContentSHA256)
 	if err != nil {
@@ -98,7 +98,13 @@ func (s *PersistentAgentArtifactServiceV1) Create(ctx context.Context, input app
 }
 
 func agentArtifactCreateAllowedV1(task *application.AgentTaskV1, run *application.AgentRunV1, artifact *application.AgentArtifactV1, content []byte) bool {
-	if task == nil || run == nil || artifact == nil || run.RuntimeID != "dipole-agent" || run.Mode != "shadow" {
+	if task == nil || run == nil || artifact == nil || run.RuntimeID != "dipole-agent" {
+		return false
+	}
+	if run.Mode == "active" {
+		return run.Status == application.AgentRunStatusRunning && artifact.ArtifactType == "conversation_digest" && artifact.MediaType == "text/markdown"
+	}
+	if run.Mode != "shadow" {
 		return false
 	}
 	if artifact.ArtifactType != "promotion_evaluation" {

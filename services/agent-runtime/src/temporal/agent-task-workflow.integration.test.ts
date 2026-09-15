@@ -438,6 +438,28 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     await workerTwoRun;
   }, 120_000);
 
+  it("resumes a report with its recorded unknown value after the input deadline", async () => {
+    const queue = `report-deadline-${Date.now()}`;
+    const activities: AgentTaskWorkerActivities = {
+      async admitAgentTask(input) { return { taskId: input.taskId, runId: "run-report", runStatus: "running" }; },
+      async finishAgentTask() {}, async projectAgentTaskState() {}, async requestAgentTaskApproval() {}, async resolveAgentTaskApproval() {},
+      async executeAgentTaskStep(input) {
+        if (input.step === 0) return { kind: "wait_input", requestId: "report:question", prompt: "Delivery date?",
+          expiresAtUnixMs: Date.now() + 200, timeoutValue: { answer: "" }, checkpoint: { summary: "Unknown date" },
+          form: { schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "answer", label: "Answer", type: "text", required: false, maxLength: 100 }] } };
+        expect(input.checkpoint).toEqual({ summary: "Unknown date" });
+        expect(input.resume).toMatchObject({ kind: "input", requestId: "report:question", value: { answer: "" } });
+        return { kind: "complete", output: { summary: "Delivery date unknown" } };
+      }
+    };
+    const worker = await createWorker(env, queue, activities);
+    const running = worker.run();
+    try {
+      const started = await new TemporalTaskClient(env.client.workflow, queue).start({ taskId: "task-report-deadline", goal: "Report" });
+      await expect(env.client.workflow.getHandle(started.workflowId).result()).resolves.toMatchObject({ status: "completed", output: { summary: "Delivery date unknown" } });
+    } finally { worker.shutdown(); await running; }
+  }, 120000);
+
   it("cancels an unanswered durable input after its recorded deadline", async () => {
     const taskQueue = `dipole-agent-task-input-timeout-${Date.now()}`;
     const finishes: AgentTaskFinishInput[] = [];

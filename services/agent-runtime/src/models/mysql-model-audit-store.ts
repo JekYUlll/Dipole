@@ -48,7 +48,7 @@ interface ModelRunStatusRow extends RowDataPacket {
 export class MySQLModelAuditStore implements ModelAuditStore {
   constructor(private readonly pool: Pool) {}
 
-  async recover(taskId: string, policy: ModelRunBudgetPolicy, stage: "plan" | "answer" = "plan"): Promise<ModelCallRecovery | undefined> {
+  async recover(taskId: string, policy: ModelRunBudgetPolicy, stage: "plan" | "answer" | "report_review" | "report_final" = "plan"): Promise<ModelCallRecovery | undefined> {
     taskId = required(taskId, "Task ID", 64);
     policy = validatePolicy(policy);
     const [rows] = await this.pool.execute<CompletedModelCallRow[]>(GET_COMPLETED_AGENT_MODEL_CALL, [taskId, stage]);
@@ -72,7 +72,7 @@ export class MySQLModelAuditStore implements ModelAuditStore {
     };
   }
 
-  async reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string, stage: "plan" | "answer" = "plan"): Promise<ModelCallReservation | undefined> {
+  async reserve(taskId: string, policy: ModelRunBudgetPolicy, route: string, stage: "plan" | "answer" | "report_review" | "report_final" = "plan"): Promise<ModelCallReservation | undefined> {
     taskId = required(taskId, "Task ID", 64);
     route = required(route, "model route", 255);
     policy = validatePolicy(policy);
@@ -148,7 +148,7 @@ export class MySQLModelAuditStore implements ModelAuditStore {
     await this.finishRun(runId, "failed", errorText(error));
   }
 
-  async failTask(taskId: string, error: unknown, stage: "plan" | "answer" = "plan"): Promise<void> {
+  async failTask(taskId: string, error: unknown, stage: "plan" | "answer" | "report_review" | "report_final" = "plan"): Promise<void> {
     taskId = required(taskId, "Task ID", 64);
     await this.pool.execute(FAIL_AGENT_MODEL_RUN_BY_TASK, [errorText(error), taskId, stage]);
   }
@@ -186,13 +186,13 @@ function decodedJSON(value: unknown): unknown {
   return value;
 }
 
-export function agentModelRunId(taskId: string, stage: "plan" | "answer" = "plan"): string {
+export function agentModelRunId(taskId: string, stage: "plan" | "answer" | "report_review" | "report_final" = "plan"): string {
   taskId = required(taskId, "Task ID", 64);
-  const digest = createHash("sha256").update(`dipole.agent.model.run.v1\n${taskId}${stage === "plan" ? "" : "\nanswer"}`, "utf8").digest("hex");
+  const digest = createHash("sha256").update(`dipole.agent.model.run.v1\n${taskId}${stage === "plan" ? "" : `\n${stage}`}`, "utf8").digest("hex");
   return `run:${digest.slice(0, 59)}`;
 }
 
-async function lockRun(connection: PoolConnection, taskId: string, stage: "plan" | "answer"): Promise<ModelRunRow> {
+async function lockRun(connection: PoolConnection, taskId: string, stage: "plan" | "answer" | "report_review" | "report_final"): Promise<ModelRunRow> {
   const [rows] = await connection.execute<ModelRunRow[]>(LOCK_AGENT_MODEL_RUN, [taskId, stage]);
   if (rows.length !== 1) {
     throw new Error(`Agent model run missing or duplicated for ${taskId}`);

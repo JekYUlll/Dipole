@@ -6,7 +6,7 @@ import {
   executeShadowPlan,
   type ShadowPlanExecutionDependencies
 } from "../events/shadow-processor.js";
-import type { AgentTaskActivities } from "./agent-task-activities.js";
+import type { AgentTaskActivities, AgentTaskActivityInput, AgentTaskDirective } from "./agent-task-activities.js";
 import type { AgentArtifactCreateInput, AgentArtifactRecord } from "../capabilities/agent-capability-rpc.js";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 import type { AgentRuntimeMode } from "../capabilities/agent-capability-rpc.js";
@@ -45,7 +45,7 @@ export function createTemporalReadStepActivities(
 ): AgentTaskActivities {
   return {
     async executeAgentTaskStep(input) {
-      if ((input.step !== 0 && (input.step !== 1 || input.resume?.kind !== "approval")) || input.admission === undefined || input.shadowEvent === undefined) {
+      if (input.admission === undefined || input.shadowEvent === undefined) {
         throw new Error("Temporal read Step requires an initial step or an approval resume with trusted admission and shadow event");
       }
       const event = agentEventSchema.parse(input.shadowEvent);
@@ -92,6 +92,11 @@ export function createTemporalReadStepActivities(
         taskId: context.taskId, runId: context.runId,
         attributes: { "dipole.agent.mode": context.mode, "dipole.agent.event.type": event.eventType }
       }, async span => {
+        const report = collaborationReport(event);
+        if (report !== undefined) return executeCollaborationReport(input, event, context, dependencies, report);
+        if (input.step !== 0 && (input.step !== 1 || input.resume?.kind !== "approval")) {
+          throw new Error("Unexpected message task resume");
+        }
         const restored = input.resume?.kind === "approval" && input.checkpoint !== undefined
           ? messageCheckpointSchema.parse(input.checkpoint) : undefined;
         if (restored !== undefined && restored.conversationKey !== activeReplyConversationKey(event, context)) {
@@ -149,7 +154,7 @@ export function createTemporalReadStepActivities(
         const reply = runtimeMode === "active" && conversationKey !== undefined && dependencies.replyWriter !== undefined
           ? await writeAssistantReply(dependencies.replyWriter, context, plan.summary, conversationKey)
           : undefined;
-        const artifact = dependencies.artifacts === undefined ? undefined : await telemetry.withSpan("agent.artifact.create", {
+        const artifact = dependencies.artifacts === undefined || runtimeMode === "active" ? undefined : await telemetry.withSpan("agent.artifact.create", {
           taskId: context.taskId, runId: context.runId,
           attributes: { "dipole.agent.artifact.type": "conversation_digest", "dipole.agent.artifact.version": 1 }
         }, async artifactSpan => {
@@ -198,7 +203,7 @@ function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>
     expiresAtUnixMs: number;
   };
 } | undefined {
-  if (event.eventType !== "message.direct.created" && !(event.eventType === "message.group.created" && publishAtUnixMs !== undefined)) return undefined;
+  if (event.eventType !== "message.direct.created" && !(event.eventType === "message.group.created" && (publishAtUnixMs !== undefined || collaborationReport(event) !== undefined))) return undefined;
   const conversationKey = activeReplyConversationKey(event, context);
   const content = proposedContent ?? (typeof event.payload.content === "string"
     ? event.payload.content.trim().replace(/^\/system\s+/i, "").trim()
@@ -245,6 +250,92 @@ function scheduledDigest(event: ReturnType<typeof agentEventSchema.parse>): { pu
 function hasWriteScope(context: ExecutionContext, requested: { resourceType: string; resourceId: string; actions: readonly string[] }): boolean {
   return context.resourceScopes.some(scope => scope.resourceType === requested.resourceType &&
     (scope.resourceId === requested.resourceId || scope.resourceId === "*") && requested.actions.every(action => scope.actions.includes(action)));
+}
+
+const reportCheckpointSchema = z.object({
+  kind: z.literal("collaboration_report"), phase: z.enum(["question", "draft", "approval"]),
+  summary: z.string().min(1).max(2000), conversationKey: z.string().min(1),
+  deadline: z.number().int().positive(), requestId: z.string().min(1)
+}).strict();
+
+function collaborationReport(event: ReturnType<typeof agentEventSchema.parse>): { deadline: number; query: string } | undefined {
+  const content = String(event.payload.content ?? "").trim().replace(/^@(?:Dipole\s+AI|AI)\s+/i, "");
+  if (!/^\/report(?:\s|$)/i.test(content)) return undefined;
+  const match = /^\/report\s+(\S+)\s+([\s\S]+)$/i.exec(content);
+  const deadline = match === null ? NaN : Date.parse(match[1]!);
+  const occurred = Date.parse(event.occurredAt);
+  if (match === null || !/(?:Z|[+-]\d{2}:\d{2})$/.test(match[1]!) || !Number.isSafeInteger(deadline) ||
+      deadline <= occurred || deadline > occurred + 7 * 86400_000 || match[2]!.length > 500) {
+    throw new Error("Use /report <ISO deadline with timezone within seven days> <request up to 500 characters>");
+  }
+  return { deadline, query: match[2]!.trim() };
+}
+
+async function executeCollaborationReport(
+  input: AgentTaskActivityInput, event: ReturnType<typeof agentEventSchema.parse>, context: ExecutionContext,
+  dependencies: Parameters<typeof createTemporalReadStepActivities>[0], report: { deadline: number; query: string }
+): Promise<AgentTaskDirective> {
+  const conversationKey = activeReplyConversationKey(event, context);
+  if (context.mode !== "active" || !conversationKey || !dependencies.approvalWriter ||
+      !dependencies.planner.reviewReport || !dependencies.planner.finishReport || !dependencies.artifacts) {
+    throw new Error("Collaboration report requires active model, artifacts and approved message execution");
+  }
+  const requestEvent = { ...event, payload: { ...event.payload, content: `Read this conversation and retrieve evidence for: ${report.query}. Prepare a factual report; do not propose a write.` } };
+  let summary: string;
+  if (input.step === 0 && input.resume === undefined) {
+    const plan = await executeShadowPlan(requestEvent, context, dependencies);
+    summary = plan.summary;
+    const review = await dependencies.planner.reviewReport(requestEvent, context, summary);
+    if (review.question && Date.now() < report.deadline) {
+      const requestId = `report:${sha256(`${context.taskId}:question`).slice(0, 55)}`;
+      return {
+        kind: "wait_input", requestId, prompt: review.question, expiresAtUnixMs: report.deadline,
+        form: { schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "answer", label: "补充信息（留空表示暂时未知）", type: "text", required: false, maxLength: 1500 }] },
+        timeoutValue: { answer: "" },
+        checkpoint: { kind: "collaboration_report", phase: "question", summary, conversationKey, deadline: report.deadline, requestId }
+      };
+    }
+    summary = await dependencies.planner.finishReport(requestEvent, context, summary, "No owner input. Mark any missing information unknown.");
+  } else {
+    const saved = reportCheckpointSchema.parse(input.checkpoint);
+    if (saved.conversationKey !== conversationKey || saved.deadline !== report.deadline || input.resume?.requestId !== saved.requestId) {
+      throw new Error("Report checkpoint binding mismatch");
+    }
+    if (saved.phase === "approval" && input.resume.kind === "approval") {
+      const proposed = requestedSystemMessage(event, context, saved.summary);
+      if (!proposed || input.resume.approvalId !== proposed.approval.approvalId || input.resume.decision !== "approved") {
+        throw new Error("Report approval binding mismatch");
+      }
+      const result = await createInteractiveMessageExecutor(dependencies.approvalWriter).execute(
+        { conversationId: conversationKey, content: saved.summary }, context, input.resume.approvalId);
+      return { kind: "complete", output: { summary: saved.summary, result } };
+    }
+    if (input.resume.kind !== "input") throw new Error("Report requires task-bound owner input");
+    if (saved.phase === "question") {
+      const answer = z.object({ answer: z.string().max(1500).optional() }).strict().parse(input.resume.value);
+      summary = await dependencies.planner.finishReport(requestEvent, context, saved.summary,
+        answer.answer?.trim() || "Owner did not provide information before continuing. Mark missing facts unknown.");
+    } else if (saved.phase === "draft") {
+      const edit = z.object({ content: z.string().trim().max(1800).optional() }).strict().parse(input.resume.value);
+      summary = edit.content || saved.summary;
+      const proposed = requestedSystemMessage(event, context, summary);
+      if (!proposed) throw new Error("Report destination is outside authorized scope");
+      await dependencies.artifacts.createArtifact({ tenantId: context.tenantId, taskId: context.taskId, runId: context.runId,
+        artifactType: "conversation_digest", version: 2, title: "Reviewed collaboration report", mediaType: "text/markdown",
+        content: Buffer.from(summary), metadata: { conversation_key: conversationKey } });
+      return { kind: "wait_approval", requestId: proposed.requestId, summary: `发布到 ${conversationKey}\n\n${summary}`,
+        approval: proposed.approval,
+        checkpoint: { ...saved, phase: "approval", summary, requestId: proposed.requestId } };
+    } else throw new Error("Unexpected report input phase");
+  }
+  const requestId = `report:${sha256(`${context.taskId}:draft`).slice(0, 55)}`;
+  await dependencies.artifacts.createArtifact({ tenantId: context.tenantId, taskId: context.taskId, runId: context.runId,
+    artifactType: "conversation_digest", version: 1, title: "Collaboration report draft", mediaType: "text/markdown",
+    content: Buffer.from(summary), metadata: { conversation_key: conversationKey } });
+  return { kind: "wait_input", requestId, prompt: `草稿预览（留空保留原文，填写内容可替换草稿）\n\n${summary}`,
+    expiresAtUnixMs: Math.max(report.deadline, Date.now()) + 86400_000,
+    form: { schemaVersion: "dipole.agent.elicitation.v1", fields: [{ id: "content", label: "修改后的完整草稿", type: "text", required: false, maxLength: 1800 }] },
+    checkpoint: { kind: "collaboration_report", phase: "draft", summary, conversationKey, deadline: report.deadline, requestId } };
 }
 
 function sha256(value: string): string {
