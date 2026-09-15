@@ -28,7 +28,7 @@ describe('collaboration report workspace', () => {
       persistentStatus: 'running', workflowProjection: { outcome: 'match' }, pending: { kind: 'input', requestId: 'report:draft',
         prompt: 'Draft', expiresAtUnixMs: Date.now() + 60000, source: { kind: 'agent' },
         form: { schemaVersion: 'dipole.agent.elicitation.v1', fields: [{ id: 'content', label: 'Edit', type: 'text', required: false, maxLength: 1800 }] } } })
-    const messages = [{ from_uuid: 'U1', message_id: 'M1', content: '/report 2026-09-16T00:00:00Z My report' },
+    const messages = [{ from_uuid: 'U1', message_id: 'M1', content: '@AI /report 2026-09-16T00:00:00Z My report' },
       { from_uuid: 'U2', message_id: 'M2', content: '/report 2026-09-16T00:00:00Z Another owner' }] as Message[]
     const wrapper = mount(AgentReportWorkspace, { props: { ...props, messages } })
     await vi.waitFor(() => expect(wrapper.findAll('.task-item')).toHaveLength(1))
@@ -38,6 +38,18 @@ describe('collaboration report workspace', () => {
     await flushPromises()
     expect(agentTaskClient.provideInput).toHaveBeenCalledWith(expect.stringMatching(/^task:/), 'report:draft', { content: 'Edited report' })
     expect(agentTaskClient.resolveApproval).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('indexes ordinary direct messages as Agent tasks and always exposes the timeline', async () => {
+    vi.stubGlobal('crypto', webcrypto)
+    vi.mocked(agentTaskClient.getTask).mockResolvedValue({ taskId: 'task:1', status: 'completed', revision: 1,
+      persistentStatus: 'completed', workflowProjection: { outcome: 'match' } })
+    const messages = [{ from_uuid: 'U1', message_id: 'M1', content: '帮我找之前关于 Cassandra 的讨论并总结结论' }] as Message[]
+    const wrapper = mount(AgentReportWorkspace, { props: { ...props, group: false, messages } })
+    await vi.waitFor(() => expect(wrapper.findAll('.task-item')).toHaveLength(1))
+    await flushPromises()
+    expect(wrapper.get('a').attributes('href')).toMatch(/^\/app\/agent\/tasks\/task%3A[0-9a-f]+\/timeline$/)
     wrapper.unmount()
   })
 })

@@ -17,8 +17,7 @@ const loading = ref(false)
 let generation = 0
 let timer: ReturnType<typeof setTimeout> | undefined
 const pending = computed(() => state.value?.pending)
-const timelineEnabled = import.meta.env.VITE_AGENT_TIMELINE_ENABLED === 'true'
-const labels: Record<string, string> = { created: '准备执行', running: '检索 / 生成报告', waiting_input: '等待你的补充或审阅', waiting_approval: '等待发布审批', completed: '已发布', cancelled: '已取消', failed: '执行失败' }
+const labels: Record<string, string> = { created: '准备执行', running: '正在执行', waiting_input: '等待你的补充', waiting_approval: '等待确认', completed: '已完成', cancelled: '已取消', failed: '执行失败' }
 
 function create() {
   const at = new Date(deadline.value).getTime()
@@ -29,8 +28,11 @@ function create() {
   emit('create', `${props.group ? '@AI ' : ''}/report ${new Date(at).toISOString()} ${query.value.trim()}`)
 }
 
-watch(() => [props.messages, props.ownerId, props.agentId] as const, async () => {
-  const candidates = props.messages.filter(m => m.from_uuid === props.ownerId && /^(?:@(?:Dipole\s+AI|AI)\s+)?\/report\s/i.test(m.content)).slice(-12).reverse()
+watch(() => [props.messages, props.ownerId, props.agentId, props.group] as const, async () => {
+  const candidates = props.messages.filter(message => {
+    if (message.from_uuid !== props.ownerId) return false
+    return props.group ? /@(?:Dipole\s+AI|AI)\b/i.test(message.content) : true
+  }).slice(-24).reverse()
   const current = ++generation
   try {
     const result: { id: string; title: string }[] = []
@@ -80,8 +82,8 @@ onBeforeUnmount(() => { generation++; clearTimeout(timer); selected.value = '' }
 </script>
 
 <template>
-  <section class="report-workspace" aria-label="协作总结任务">
-    <header><div><small>DIPOLE AGENT / COLLABORATION</small><h2>把讨论变成可确认的结论</h2><p>{{ conversationName }} · 检索 → 补充 → 草稿 → 审批发布</p></div><button aria-label="关闭任务面板" @click="emit('close')">关闭</button></header>
+  <section class="report-workspace" aria-label="Agent 任务">
+    <header><div><small>DIPOLE AGENT</small><h2>会话中的任务与执行记录</h2><p>{{ conversationName }} · 检索 → 补充 → 确认 → 完成</p></div><button aria-label="关闭任务面板" @click="emit('close')">关闭</button></header>
     <div class="report-columns">
       <aside>
         <form @submit.prevent="create">
@@ -90,8 +92,8 @@ onBeforeUnmount(() => { generation++; clearTimeout(timer); selected.value = '' }
           <p class="hint">使用本地时区。超时将标注未知项继续生成，发布仍需你确认。截止时间内最多询问一轮。</p>
           <button class="primary" type="submit">创建协作总结</button>
         </form>
-        <h3>当前已加载会话中的任务</h3>
-        <p v-if="!tasks.length" class="hint">创建后任务会出现在这里；更早任务可先加载聊天历史。</p>
+        <h3>当前会话中的 Agent 任务</h3>
+        <p v-if="!tasks.length" class="hint">向 AI 发送消息或在群里 @AI 后，任务会出现在这里；更早任务可先加载聊天历史。</p>
         <button v-for="task in tasks" :key="task.id" class="task-item" :class="{ selected: selected === task.id }" @click="selected = task.id">{{ task.title }}</button>
       </aside>
       <main aria-live="polite">
@@ -108,13 +110,13 @@ onBeforeUnmount(() => { generation++; clearTimeout(timer); selected.value = '' }
             </form>
           </template>
           <template v-else-if="pending?.kind === 'approval'">
-            <pre>{{ pending.summary }}</pre><p class="hint">确认后将发布这份原文；拒绝不会发送。</p>
-            <div class="actions"><button :disabled="submitting" @click="act('denied')">拒绝发布</button><button class="primary" :disabled="submitting" @click="act('approved')">批准发布</button></div>
+            <pre>{{ pending.summary }}</pre><p class="hint">确认后将执行该操作；拒绝不会发送或修改内容。</p>
+            <div class="actions"><button :disabled="submitting" @click="act('denied')">拒绝操作</button><button class="primary" :disabled="submitting" @click="act('approved')">确认操作</button></div>
           </template>
-          <p v-else-if="state.status === 'completed'">报告已发布到当前会话，可在消息历史中查看。</p>
+          <p v-else-if="state.status === 'completed'">任务已完成，结果可在当前会话的消息记录中查看。</p>
           <p v-else-if="state.status === 'failed'">任务未完成。已产生的消息不会自动撤销，请检查会话记录。</p>
           <button v-if="!['completed','failed','cancelled'].includes(state.status)" class="cancel" :disabled="submitting" @click="act('cancel')">取消任务</button>
-          <details><summary>执行记录</summary><p class="task-id">{{ state.taskId }}</p><a v-if="timelineEnabled" :href="`/app/agent/tasks/${encodeURIComponent(state.taskId)}/timeline`">查看时间线</a></details>
+          <details><summary>执行记录</summary><p class="task-id">{{ state.taskId }}</p><a :href="`/app/agent/tasks/${encodeURIComponent(state.taskId)}/timeline`">查看时间线</a></details>
         </template>
         <div v-else class="empty"><h3>{{ selected ? '正在接入任务' : '从一个明确的问题开始' }}</h3><p>Agent 会读取授权会话，向你核实缺失信息，并在发布前展示完整草稿。</p></div>
       </main>

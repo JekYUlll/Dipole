@@ -36,7 +36,7 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { deviceSessionClient, type DeviceSession, type DeviceSessionClient } from '@/api/devices'
-import dipoleLogo from '../../../docs/images/dipole-v3-im-mark-traced.svg'
+import dipoleLogo from '../../../docs/images/dipole-v3-im.svg'
 
 const props = withDefaults(defineProps<{ client?: DeviceSessionClient }>(), { client: () => deviceSessionClient })
 const state = ref<'loading' | 'ready' | 'unavailable'>('loading')

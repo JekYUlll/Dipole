@@ -11,18 +11,21 @@ the SVG assets below so the repository keeps a consistent visual identity.
 | `dipole-mark.svg` | Square application icon, favicons and compact product entry points. |
 | `dipole-im-mark.svg` | IM-focused materials and architecture documents. |
 | `dipole-agent-mark.svg` | Agent Runtime-focused materials and architecture documents. |
+| `dipole-v3-im.svg` | Symmetric V3 IM mark for product entry points. |
 | `dipole-v3-im-traced.svg` | PNG-derived Dipole IM logo, generated with VTracer from `LOGO_V3.png`. |
-| `dipole-v3-im-mark-traced.svg` | PNG-derived compact IM mark, generated from the upper IM crop in `LOGO_V3.png`. |
+| `dipole-v3-im-mark-traced.svg` | Historical compact IM trace, retained for source-asset continuity. |
 | `dipole-v3-agent-traced.svg` | PNG-derived Dipole Agent logo, generated with VTracer from `LOGO_V3.png`. |
 | `dipole-v3-agent-mark-traced.svg` | PNG-derived compact Agent mark for narrow control rails, generated with VTracer from the Agent crop in `LOGO_V3.png`. |
 
-The `dipole-v3-*-traced.svg` files preserve the current PNG concept artwork as
+The `dipole-v3-*-traced.svg` files preserve the PNG concept artwork as
 transparent vector paths. The canvas color is removed before tracing, and the
 crop coordinates intentionally exclude the concept heading and palette
 swatches. Recreate them with `scripts/trace-brand-assets.sh`; the crop
 coordinates and VTracer parameters are kept in that script so later revisions
 remain reproducible. The generated files contain SVG paths only and do not
-embed the source PNG. The older generic marks remain available during
-migration, but V3 pages and documentation must use the traced assets above.
+embed the source PNG. Use the symmetric `dipole-v3-im.svg` for all user-facing
+IM pages. The traced variants remain available as reproducible source assets.
 
-Keep the deep-teal signal, orange event pulse and restrained light canvas aligned across new assets. The Agent mark represents governed tasks and capabilities only; it must not imply privileged capabilities are enabled by default.
+Keep the V3 navy and signal-red palette aligned across new assets. The Agent
+mark represents governed tasks and capabilities only; it must not imply
+privileged capabilities are enabled by default.

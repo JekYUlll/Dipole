@@ -5,6 +5,7 @@ import process from 'node:process'
 const root = new URL('..', import.meta.url)
 const files = [
   'docs/images/LOGO_V3.png',
+  'docs/images/dipole-v3-im.svg',
   'scripts/trace-brand-assets.sh',
   'docs/images/dipole-v3-im-traced.svg',
   'docs/images/dipole-v3-im-mark-traced.svg',
@@ -13,6 +14,7 @@ const files = [
 ]
 const mirrors = [
   ['docs/images/LOGO_V3.png', 'design/assets/brand/LOGO_V3.png'],
+  ['docs/images/dipole-v3-im.svg', 'design/assets/brand/dipole-v3-im.svg'],
   ['docs/images/dipole-v3-im-traced.svg', 'design/assets/brand/dipole-v3-im-traced.svg'],
   ['docs/images/dipole-v3-im-mark-traced.svg', 'design/assets/brand/dipole-v3-im-mark-traced.svg'],
   ['docs/images/dipole-v3-agent-traced.svg', 'design/assets/brand/dipole-v3-agent-traced.svg'],
@@ -32,7 +34,7 @@ for (const [sourcePath, mirrorPath] of mirrors) {
   }
 }
 
-for (const relativePath of files.slice(2)) {
+for (const relativePath of files.filter((relativePath) => relativePath.endsWith('.svg'))) {
   const svg = await readFile(new URL(relativePath, root), 'utf8')
   if (!svg.includes('<path') || /<image|data:image/i.test(svg)) {
     throw new Error(`brand SVG is not a path-only trace: ${relativePath}`)
@@ -45,12 +47,12 @@ if (!source.includes('LOGO_V3.png') || !source.includes('vtracer')) {
 }
 
 const references = {
-  'frontend/src/components/ContactDirectory.vue': 'dipole-v3-im-mark-traced.svg',
-  'frontend/src/components/GroupDirectory.vue': 'dipole-v3-im-mark-traced.svg',
-  'frontend/src/components/DeviceDirectory.vue': 'dipole-v3-im-mark-traced.svg',
-  'frontend/src/components/FileDirectory.vue': 'dipole-v3-im-mark-traced.svg',
-  'frontend/src/views/SettingsView.vue': 'dipole-v3-im-mark-traced.svg',
-  'frontend/src/views/LoginView.vue': 'dipole-v3-im-traced.svg',
+  'frontend/src/components/ContactDirectory.vue': 'dipole-v3-im.svg',
+  'frontend/src/components/GroupDirectory.vue': 'dipole-v3-im.svg',
+  'frontend/src/components/DeviceDirectory.vue': 'dipole-v3-im.svg',
+  'frontend/src/components/FileDirectory.vue': 'dipole-v3-im.svg',
+  'frontend/src/views/SettingsView.vue': 'dipole-v3-im.svg',
+  'frontend/src/views/LoginView.vue': 'dipole-v3-im.svg',
   'frontend/src/views/AgentDefinitionsView.vue': 'dipole-v3-agent-mark-traced.svg',
   'frontend/src/components/AgentMemoryManager.vue': 'dipole-v3-agent-mark-traced.svg',
   'frontend/src/components/AgentSubscriptionManager.vue': 'dipole-v3-agent-mark-traced.svg',

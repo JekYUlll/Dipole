@@ -66,7 +66,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import api from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { useChatStore } from '@/stores/chat'
-import dipoleLogo from '../../../docs/images/dipole-v3-im-mark-traced.svg'
+import dipoleLogo from '../../../docs/images/dipole-v3-im.svg'
 
 const auth = useAuthStore()
 const chat = useChatStore()

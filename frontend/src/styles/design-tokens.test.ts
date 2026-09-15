@@ -32,4 +32,10 @@ describe('Pencil design token contract', () => {
       expect(cssToken(cssName)).toBe(`${pen.variables[penName].value}px`)
     }
   })
+
+  it('uses the V3 IM mark palette for the primary product surfaces', () => {
+    expect(cssToken('rail')).toBe('#0d2744')
+    expect(cssToken('accent')).toBe('#e92925')
+    expect(cssToken('accent-strong')).toBe('#bd201d')
+  })
 })

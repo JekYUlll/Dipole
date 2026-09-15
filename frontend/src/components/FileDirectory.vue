@@ -26,7 +26,7 @@
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ownedFileDirectoryClient, type OwnedFileDirectoryClient, type OwnedFileDirectoryItem } from '@/api/files'
-import dipoleLogo from '../../../docs/images/dipole-v3-im-mark-traced.svg'
+import dipoleLogo from '../../../docs/images/dipole-v3-im.svg'
 
 const props = withDefaults(defineProps<{ client?: OwnedFileDirectoryClient }>(), { client: () => ownedFileDirectoryClient })
 const state = ref<'loading' | 'ready' | 'unavailable'>('loading')

@@ -1,16 +1,16 @@
 :root {
-  --dp-canvas: #f3f1ea;
-  --dp-surface: #fffefb;
-  --dp-surface-muted: #f4f5f2;
-  --dp-rail: #172126;
-  --dp-rail-soft: #243139;
-  --dp-ink: #17211d;
-  --dp-ink-soft: #66716c;
-  --dp-ink-faint: #98a19d;
-  --dp-line: #dde2dc;
-  --dp-accent: #00a86b;
-  --dp-accent-strong: #007a4e;
-  --dp-accent-soft: #ddf5e9;
+  --dp-canvas: #f4f6f8;
+  --dp-surface: #ffffff;
+  --dp-surface-muted: #eef2f5;
+  --dp-rail: #0d2744;
+  --dp-rail-soft: #183b62;
+  --dp-ink: #132a43;
+  --dp-ink-soft: #607286;
+  --dp-ink-faint: #8b9aab;
+  --dp-line: #d9e1e8;
+  --dp-accent: #e92925;
+  --dp-accent-strong: #bd201d;
+  --dp-accent-soft: #fde8e7;
   --dp-warning: #b77818;
   --dp-warning-soft: #fff1d8;
   --dp-danger: #c94a43;

@@ -19,6 +19,9 @@
         <button class="icon-btn" :class="{ active: navTab === 'groups' }" @click="navTab = 'groups'" title="群组">
           <IconGroups :size="22" />
         </button>
+        <button class="icon-btn" @click="openAutomationRules" title="自动化规则" aria-label="自动化规则">
+          <IconInfo :size="22" />
+        </button>
       </div>
       <button class="icon-btn logout-btn" @click="handleLogout" title="退出">
         <IconLogout :size="22" />
@@ -165,7 +168,7 @@
         <div class="chat-header">
           <button class="back-btn" @click="chat.activeKey = ''"><IconBack :size="24" /></button>
           <span class="chat-header-title">{{ activeConvName }}</span>
-          <button v-if="isAIConversation || activeConv.target_type === 1" type="button" @click="showReports = !showReports">协作总结</button>
+          <button v-if="isAIConversation || activeConv.target_type === 1" type="button" @click="showReports = !showReports">Agent 任务</button>
           <span v-if="isGroupDismissed" class="status-chip danger">已解散</span>
           <span v-else-if="isDirectConversationReadonly" class="status-chip warning">
             <span class="status-chip-icon">!</span>
@@ -1362,6 +1365,10 @@ const uploadChatFile = async (file: File): Promise<{ file_id: string }> => {
 const switchToContacts = async () => {
   navTab.value = 'contacts'
   await chat.fetchApplications()
+}
+
+const openAutomationRules = () => {
+  router.push({ name: 'agent-subscriptions' })
 }
 
 const openDirectChat = async (c: Contact) => {
@@ -3434,6 +3441,7 @@ onBeforeUnmount(() => {
 }
 .im-container .nav-bar { width: 64px; background: var(--chat-rail); padding: var(--dp-space-md) 0; }
 .im-container .nav-avatar { background: var(--chat-rail-soft); border-radius: var(--dp-radius-sm); }
+.im-container .profile-avatar-preview, .im-container .upc-avatar, .im-container .msg-avatar-fallback, .im-container .detail-avatar { background: var(--dp-surface-muted); color: var(--chat-soft); }
 .im-container .nav-icons { gap: var(--dp-space-sm); margin-top: var(--dp-space-lg); }
 .im-container .icon-btn { color: var(--dp-text-inverse); border-radius: var(--dp-radius-sm); }
 .im-container .icon-btn:hover, .im-container .icon-btn.active { background: color-mix(in srgb, var(--dp-text-inverse) 10%, transparent); }
@@ -3446,12 +3454,15 @@ onBeforeUnmount(() => {
 .im-container .conv-avatar { border-radius: var(--dp-radius-sm); background: var(--dp-accent-soft); color: var(--dp-accent-strong); }
 .im-container .conv-time, .im-container .conv-preview, .im-container .conv-preview-sender { color: var(--chat-soft); }
 .im-container .conv-badge { background: var(--dp-accent); }
+.im-container .nav-badge { background: var(--dp-danger); }
 .im-container .chat-area { background: var(--chat-canvas); }
 .im-container .chat-header { height: 64px; padding: 0 var(--dp-space-lg); background: var(--chat-surface); border-bottom: 1px solid var(--chat-line); font-family: var(--dp-font-display); }
 .im-container .msg-list { padding: var(--dp-space-lg); }
 .im-container .msg-item.other .msg-bubble { background: var(--chat-surface); border-color: var(--chat-line); }
 .im-container .msg-item.self .msg-bubble { background: var(--dp-accent-soft); border: 1px solid color-mix(in srgb, var(--dp-accent) 22%, var(--chat-line)); color: var(--chat-ink); }
 .im-container .msg-item.ai .msg-bubble { background: var(--dp-warning-soft); border-color: color-mix(in srgb, var(--dp-warning) 28%, var(--chat-line)); }
+.im-container .status-chip, .im-container .sync-status { background: var(--dp-accent-soft); color: var(--dp-accent-strong); }
+.im-container .status-chip.danger, .im-container .status-chip.warning, .im-container .sync-status-error, .im-container .sync-status-storage_full { background: var(--dp-danger-soft); color: var(--dp-danger); }
 .im-container .input-area { background: var(--chat-surface); border-top-color: var(--chat-line); }
 .im-container .input-toolbar { border-bottom-color: var(--chat-line); }
 .im-container .input-area textarea { background: var(--chat-surface); color: var(--chat-ink); }
@@ -3460,4 +3471,7 @@ onBeforeUnmount(() => {
 .im-container .detail-header { border-bottom-color: var(--chat-line); }
 .im-container .send-btn { background: var(--dp-accent-strong); border-radius: var(--dp-radius-sm); }
 .im-container .send-btn:hover { background: var(--dp-accent); }
+.im-container .toast-error { background: var(--dp-danger-soft); border-color: color-mix(in srgb, var(--dp-danger) 35%, var(--chat-line)); color: var(--dp-danger); }
+.im-container .toast-success { background: var(--dp-accent-soft); border-color: color-mix(in srgb, var(--dp-accent) 35%, var(--chat-line)); color: var(--dp-accent-strong); }
+.im-container .toast-info { background: var(--chat-muted-surface); border-color: var(--chat-line); color: var(--chat-ink); }
 </style>

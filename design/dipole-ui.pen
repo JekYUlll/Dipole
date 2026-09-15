@@ -39843,23 +39843,23 @@
     },
     "surface-muted": {
       "type": "color",
-      "value": "#F4F5F2"
+      "value": "#EEF2F5"
     },
     "surface-inverse": {
       "type": "color",
-      "value": "#111827"
+      "value": "#0D2744"
     },
     "text-primary": {
       "type": "color",
-      "value": "#17212B"
+      "value": "#132A43"
     },
     "text-secondary": {
       "type": "color",
-      "value": "#697586"
+      "value": "#607286"
     },
     "text-muted": {
       "type": "color",
-      "value": "#98A2B3"
+      "value": "#8B9AAB"
     },
     "text-inverse": {
       "type": "color",
@@ -39867,11 +39867,11 @@
     },
     "brand": {
       "type": "color",
-      "value": "#07C160"
+      "value": "#E92925"
     },
     "brand-deep": {
       "type": "color",
-      "value": "#04964A"
+      "value": "#BD201D"
     },
     "warning": {
       "type": "color",
@@ -39919,47 +39919,47 @@
     },
     "canvas": {
       "type": "color",
-      "value": "#F3F1EA"
+      "value": "#F4F6F8"
     },
     "surface": {
       "type": "color",
-      "value": "#FFFEFB"
+      "value": "#FFFFFF"
     },
     "rail": {
       "type": "color",
-      "value": "#172126"
+      "value": "#0D2744"
     },
     "rail-soft": {
       "type": "color",
-      "value": "#243139"
+      "value": "#183B62"
     },
     "ink": {
       "type": "color",
-      "value": "#17211D"
+      "value": "#132A43"
     },
     "ink-soft": {
       "type": "color",
-      "value": "#66716C"
+      "value": "#607286"
     },
     "ink-faint": {
       "type": "color",
-      "value": "#98A19D"
+      "value": "#8B9AAB"
     },
     "line": {
       "type": "color",
-      "value": "#DDE2DC"
+      "value": "#D9E1E8"
     },
     "accent": {
       "type": "color",
-      "value": "#00A86B"
+      "value": "#E92925"
     },
     "accent-soft": {
       "type": "color",
-      "value": "#DDF5E9"
+      "value": "#FDE8E7"
     },
     "accent-strong": {
       "type": "color",
-      "value": "#007A4E"
+      "value": "#BD201D"
     },
     "danger-soft": {
       "type": "color",

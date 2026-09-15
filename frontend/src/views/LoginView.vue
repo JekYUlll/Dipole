@@ -32,7 +32,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import dipoleLogo from '../../../docs/images/dipole-v3-im-traced.svg'
+import dipoleLogo from '../../../docs/images/dipole-v3-im.svg'
 
 const router = useRouter()
 const auth = useAuthStore()

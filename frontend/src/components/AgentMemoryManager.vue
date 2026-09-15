@@ -280,6 +280,14 @@ function statusClass(item: AgentMemory) { return inactive(item) ? 'status-danger
 .memory-shell .brand > span { width: auto; height: auto; border-radius: 0; background: transparent; }
 .memory-shell .mobile-brandbar { display: none; }
 .memory-shell .rail-kicker, .memory-shell .rail-boundary, .memory-shell .mono, .memory-shell .state-code { font-family: var(--dp-font-data); }
+.memory-shell .control-rail { color: var(--dp-text-inverse); }
+.memory-shell .brand > span, .memory-shell .rail-active { background: var(--dp-rail-soft); }
+.memory-shell .rail-kicker, .memory-shell .rail-item, .memory-shell .rail-boundary { color: var(--dp-ink-faint); }
+.memory-shell .brand > span { background: transparent; }
+.memory-shell .list-heading h2, .memory-shell .list-heading span, .memory-shell .mono, .memory-shell .authority-panel dt, .memory-shell .revoke-dialog label { color: var(--dp-ink-faint); }
+.memory-shell .revoke-dialog textarea { background: var(--dp-surface-muted); }
+.memory-shell .cancel-button { background: var(--dp-surface-muted); }
+.memory-shell .revoke-dialog textarea:focus-visible, .memory-shell button:focus-visible { outline-color: color-mix(in srgb, var(--dp-accent) 28%, transparent); }
 @media(max-width:900px){.memory-shell{grid-template-columns:1fr}.memory-shell > .control-rail{display:none}.memory-main{margin:0;padding:18px 20px 60px}.memory-shell .mobile-brandbar{display:flex;align-items:center;gap:10px;margin-bottom:28px;color:var(--dp-ink);font:800 16px var(--dp-font-display)}.memory-shell .mobile-brandbar .brand-mark{width:30px;height:30px}.memory-shell .mobile-brandbar small{margin-left:auto;color:var(--dp-ink-faint);font:800 9px var(--dp-font-data);letter-spacing:.08em}.content-grid{grid-template-columns:1fr}.authority-panel{order:-1}.page-header{align-items:flex-start}.trust-notice{align-items:flex-start;flex-direction:column;gap:6px}}
 @media(max-width:560px){.memory-main{padding:20px 16px 48px}.page-header h1{font-size:34px}.auto-status{font-size:8px}.authority-panel{display:none}.memory-card{padding:17px}.card-top{align-items:flex-start}.card-top h3{font-size:16px}.status-pill{padding:7px 9px}.card-bottom{align-items:flex-end}.revoke-dialog{width:100%;padding:14px 20px 24px}.trust-notice{margin:22px 0}}
 </style>
