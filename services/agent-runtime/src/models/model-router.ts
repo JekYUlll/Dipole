@@ -11,6 +11,7 @@ export interface ModelUsage {
 export interface StructuredModelRequest {
   readonly route: string;
   readonly prompt: string;
+  readonly system?: string;
   readonly schema: z.ZodType;
   readonly maxOutputTokens: number;
   readonly timeoutMs: number;
@@ -96,6 +97,7 @@ export class ModelRouter {
 
   async generate<T>(input: {
     readonly prompt: string;
+    readonly system?: string;
     readonly schema: z.ZodType<T>;
     readonly taskId?: string;
     readonly stage?: ModelStage;
@@ -145,7 +147,7 @@ export class ModelRouter {
       try {
         const generate = async (span?: Parameters<Parameters<typeof this.telemetry.withSpan>[2]>[0]) => {
           const value = await this.client.generate({
-            route, prompt: input.prompt, schema: input.schema,
+            route, prompt: input.prompt, ...(input.system === undefined ? {} : { system: input.system }), schema: input.schema,
             maxOutputTokens: this.#policy.maxOutputTokensPerCall,
             timeoutMs: Math.max(1, Math.floor(remainingMs))
           });

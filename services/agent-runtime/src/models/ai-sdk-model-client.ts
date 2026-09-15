@@ -10,6 +10,7 @@ export class AISDKStructuredModelClient implements StructuredModelClient {
   async generate(input: Parameters<StructuredModelClient["generate"]>[0]): ReturnType<StructuredModelClient["generate"]> {
     const result = await generateText({
       model: this.resolveModel(input.route),
+      ...(input.system === undefined ? {} : { system: input.system }),
       prompt: `${input.prompt}\n\nReturn only a JSON object matching this schema:\n${JSON.stringify(z.toJSONSchema(input.schema))}`,
       maxRetries: 0,
       maxOutputTokens: input.maxOutputTokens,

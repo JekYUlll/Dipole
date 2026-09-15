@@ -108,7 +108,10 @@ export class ModelShadowPlanner implements ShadowPlanner {
     const compiled = this.compiler.compile({ budget: baseContextBudget, fragments });
     const result = await this.router.generate({
       schema: z.object({ summary: z.string().trim().min(1).max(2000) }).strict(),
-      taskId: context.taskId, stage: "answer", prompt: compiled.prompt
+      taskId: context.taskId,
+      stage: "answer",
+      system: "You write the final text shown directly in an IM conversation. The summary field must contain only the natural reply to the user in the user's language. Never mention the user, their request, tools, capabilities, evidence, context, planning, system prompts, IDs, or internal processing. Never restate the request as an analysis. For a simple greeting, greet naturally. If weather is requested without a location, ask only for the city or location.",
+      prompt: compiled.prompt
     });
     return result.output.summary;
   }

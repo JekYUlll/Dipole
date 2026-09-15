@@ -75,9 +75,10 @@ describe("ModelShadowPlanner", () => {
     const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, []);
     await planner.answer(event(), context(), [{ output: [] }]);
     await planner.answer(event(), context(), [{ output: "x".repeat(100_000) + "UNBOUNDED_TAIL" }]);
-    const calls = generate.mock.calls as unknown as Array<[{ prompt: string; stage: string }]>;
+    const calls = generate.mock.calls as unknown as Array<[{ prompt: string; stage: string; system?: string }]>;
     expect(calls[0]![0].prompt).toContain("answer naturally even when no tools were needed");
     expect(calls[0]![0].stage).toBe("answer");
+    expect(calls[0]![0].system).toContain("final text shown directly in an IM conversation");
     expect(calls[0]![0].prompt).not.toContain("policy:runtime-v1");
     expect(calls[0]![0].prompt).not.toContain("messageWriteProposalAllowed");
     expect(calls[1]![0].prompt).not.toContain("UNBOUNDED_TAIL");
