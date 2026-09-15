@@ -55,13 +55,28 @@ describe("ModelShadowPlanner", () => {
     expect(searchConversations).not.toHaveBeenCalled();
   });
 
-  it("bounds answer evidence and explicitly handles empty results", async () => {
+  it("turns a no-tool active plan into a user-facing reply", async () => {
+    const active = { ...context(), mode: "active" as const };
+    const answer = vi.fn(async () => "你好，有什么可以帮你？");
+    const trajectory = {
+      append: vi.fn(async () => undefined),
+      claimStep: vi.fn(), completeStep: vi.fn(), failStep: vi.fn()
+    };
+
+    await expect(executeShadowPlan(event(), active, {
+      planner: { plan: async () => ({ summary: "Simple greeting", steps: [] }), answer },
+      registry: new CapabilityRegistry(), trajectory, audit: trajectory, stepLeaseMs: 1000
+    })).resolves.toMatchObject({ summary: "你好，有什么可以帮你？", steps: [] });
+    expect(answer).toHaveBeenCalledOnce();
+  });
+
+  it("bounds answer evidence and supports direct replies without tool evidence", async () => {
     const generate = vi.fn(async () => ({ output: { summary: "No evidence" }, route: "model", attempts: 1, usage: {} }));
     const planner = new ModelShadowPlanner({ generate } as unknown as ModelRouter, []);
     await planner.answer(event(), context(), [{ output: [] }]);
     await planner.answer(event(), context(), [{ output: "x".repeat(100_000) + "UNBOUNDED_TAIL" }]);
     const calls = generate.mock.calls as unknown as Array<[{ prompt: string; stage: string }]>;
-    expect(calls[0]![0].prompt).toContain("evidence is empty or insufficient");
+    expect(calls[0]![0].prompt).toContain("answer naturally even when no tools were needed");
     expect(calls[0]![0].stage).toBe("answer");
     expect(calls[0]![0].prompt).not.toContain("policy:runtime-v1");
     expect(calls[0]![0].prompt).not.toContain("messageWriteProposalAllowed");

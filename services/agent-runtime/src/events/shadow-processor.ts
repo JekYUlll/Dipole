@@ -263,7 +263,9 @@ export async function executeShadowPlan(
     plan, context, dependencies.registry, dependencies.trajectory,
     dependencies.stepLeaseMs, dependencies.busyStepRetry, dependencies.telemetry ?? new AgentTelemetry()
   );
-  if (context.mode === "active" && plan.steps.length > 0 && dependencies.planner.answer !== undefined) {
+  // A plan summary is operational metadata. Active IM tasks always need a
+  // user-facing response, including simple requests that require no tools.
+  if (context.mode === "active" && dependencies.planner.answer !== undefined) {
     return { ...plan, summary: await dependencies.planner.answer(event, context, evidence) };
   }
   return plan;
