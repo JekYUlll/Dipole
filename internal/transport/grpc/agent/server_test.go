@@ -225,6 +225,7 @@ type capabilityStub struct {
 	invocation  application.AgentInvocationV1
 	readTarget  string
 	searchQuery string
+	contactLimit int
 }
 
 type approvalServiceStub struct {
@@ -346,6 +347,16 @@ func (s *capabilityStub) SearchConversations(_ context.Context, invocation appli
 	}}, nil
 }
 
+func (s *capabilityStub) GetUserProfile(_ context.Context, invocation application.AgentInvocationV1, subjectUUID string) (*model.User, error) {
+	s.invocation = invocation
+	return &model.User{UUID: subjectUUID, Nickname: "owner", Telephone: "private", Email: "private@example.com"}, nil
+}
+
+func (s *capabilityStub) ListContacts(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*application.AgentContactProfileV1, error) {
+	s.invocation, s.contactLimit = invocation, limit
+	return []*application.AgentContactProfileV1{{UserUUID: "U200", Nickname: "friend", Remark: "project owner"}}, nil
+}
+
 func TestListConversationsResolvesTrustedTaskIdentity(t *testing.T) {
 	capability := &capabilityStub{}
 	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
@@ -421,6 +432,40 @@ func TestSearchConversationsRejectsClientPrincipal(t *testing.T) {
 	server, _ := NewServer(&capabilityStub{}, resolverStub{}, &admissionStub{})
 	_, err := server.SearchConversations(context.Background(), &agentv1.SearchConversationsRequest{
 		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Query: "Cassandra", Limit: 20,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)
+	}
+}
+
+func TestGetUserProfileResolvesTaskPrincipalAndOmitsPrivateFields(t *testing.T) {
+	capability := &capabilityStub{}
+	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.GetUserProfile(context.Background(), &agentv1.GetUserProfileRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1",
+	})
+	if err != nil || capability.invocation.PrincipalUUID != "U100" || response.GetProfile().GetUserId() != "U100" || response.GetProfile().GetNickname() != "owner" {
+		t.Fatalf("profile response=%+v invocation=%+v err=%v", response, capability.invocation, err)
+	}
+}
+
+func TestListContactsResolvesTaskPrincipalAndRejectsForgedPrincipal(t *testing.T) {
+	capability := &capabilityStub{}
+	server, err := NewServer(capability, resolverStub{invocation: application.AgentInvocationV1{PrincipalUUID: "U100", AgentUUID: "UAI"}}, &admissionStub{})
+	if err != nil {
+		t.Fatalf("new server: %v", err)
+	}
+	response, err := server.ListContacts(context.Background(), &agentv1.ListContactsRequest{
+		Context: grpccommon.RequestContext("", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Limit: 20,
+	})
+	if err != nil || capability.invocation.PrincipalUUID != "U100" || capability.contactLimit != 20 || len(response.GetContacts()) != 1 || response.GetContacts()[0].GetProfile().GetUserId() != "U200" {
+		t.Fatalf("contacts response=%+v invocation=%+v err=%v", response, capability.invocation, err)
+	}
+	_, err = server.ListContacts(context.Background(), &agentv1.ListContactsRequest{
+		Context: grpccommon.RequestContext("U999", "dipole-agent"), TaskId: "TASK-1", RunId: "RUN-1", Limit: 20,
 	})
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("forged principal code = %s, want %s", status.Code(err), codes.InvalidArgument)

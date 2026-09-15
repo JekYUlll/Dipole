@@ -47,6 +47,7 @@ type Server struct {
 	toolRounds           application.AgentMCPToolRoundServiceV1
 	toolTerminals        application.AgentMCPToolInvocationTerminalServiceV1
 	messageCommands      application.AgentMessageCommandExecutionV1
+	memoryCommands       application.AgentMemoryCommandExecutionV1
 }
 
 func (s *Server) WithMCPReadinessEvidencePublisher(publisher application.AgentMCPReadinessEvidencePublisherV1) (*Server, error) {
@@ -142,6 +143,14 @@ func (s *Server) WithMessageCommands(commands application.AgentMessageCommandExe
 		return nil, errors.New("Agent Message Command execution service is required")
 	}
 	s.messageCommands = commands
+	return s, nil
+}
+
+func (s *Server) WithMemoryCommands(commands application.AgentMemoryCommandExecutionV1) (*Server, error) {
+	if s == nil || commands == nil {
+		return nil, errors.New("Agent Memory Command execution service is required")
+	}
+	s.memoryCommands = commands
 	return s, nil
 }
 
@@ -1388,6 +1397,33 @@ func (s *Server) ExecuteMcpMessageCommand(ctx context.Context, request *agentv1.
 	}, nil
 }
 
+func (s *Server) ExecuteMcpMemoryCommand(ctx context.Context, request *agentv1.ExecuteMcpMemoryCommandRequest) (*agentv1.ExecuteMcpMemoryCommandResponse, error) {
+	if err := s.authorizeMcpToolAuditCallerV1(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if s.memoryCommands == nil {
+		return nil, status.Error(codes.Unavailable, "Agent Memory Command execution is unavailable")
+	}
+	memory, err := s.memoryCommands.ExecuteMemory(grpccommon.Correlation(ctx, request.GetContext()), application.AgentMemoryCommandExecutionRequestV1{
+		TaskUUID: request.GetTaskId(), RunUUID: request.GetRunId(), InvocationUUID: request.GetInvocationId(),
+		MemoryType: application.AgentMemoryTypeV1(request.GetMemoryType()), Content: request.GetContent(),
+		CompactContent: request.GetCompactContent(), ConversationKey: request.GetConversationKey(),
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, application.ErrAgentMemoryDenied):
+			return nil, status.Error(codes.PermissionDenied, "Agent Memory Command denied")
+		case errors.Is(err, application.ErrAgentMemoryInvalid):
+			return nil, status.Error(codes.InvalidArgument, "Agent Memory Command is invalid")
+		case errors.Is(err, application.ErrAgentMemoryConflict):
+			return nil, status.Error(codes.Aborted, "Agent Memory Command conflicts")
+		default:
+			return nil, status.Errorf(codes.Internal, "Agent Memory Command execution failed: %v", err)
+		}
+	}
+	return &agentv1.ExecuteMcpMemoryCommandResponse{Memory: agentOwnedMemoryResponseV1(*memory)}, nil
+}
+
 func (s *Server) authorizeMcpToolAuditCallerV1(ctx context.Context, requestContext *commonv1.RequestContext) error {
 	caller, err := grpccommon.Caller(ctx, requestContext)
 	if err != nil {
@@ -1819,11 +1855,91 @@ func (s *Server) SearchConversations(ctx context.Context, request *agentv1.Searc
 	return response, nil
 }
 
+func (s *Server) GetUserProfile(ctx context.Context, request *agentv1.GetUserProfileRequest) (*agentv1.GetUserProfileResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	invocation, err := s.resolver.Resolve(ctx, request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task policy denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task policy lookup failed")
+	}
+	user, err := s.capability.GetUserProfile(ctx, invocation, invocation.PrincipalUUID)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentCapabilityDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Capability denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent user profile lookup failed")
+	}
+	return &agentv1.GetUserProfileResponse{Profile: agentUserProfileToProto(user)}, nil
+}
+
+func (s *Server) ListContacts(ctx context.Context, request *agentv1.ListContactsRequest) (*agentv1.ListContactsResponse, error) {
+	if _, err := grpccommon.Caller(ctx, request.GetContext()); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(request.GetContext().GetPrincipalUserId()) != "" {
+		return nil, status.Error(codes.InvalidArgument, "Agent principal must be resolved from Task")
+	}
+	limit := int(request.GetLimit())
+	if limit < 1 || limit > 50 {
+		return nil, status.Error(codes.InvalidArgument, "limit must be between 1 and 50")
+	}
+	invocation, err := s.resolver.Resolve(ctx, request.GetTaskId(), request.GetRunId())
+	if err != nil {
+		if errors.Is(err, application.ErrAgentExecutionPolicyDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Task policy denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent Task policy lookup failed")
+	}
+	items, err := s.capability.ListContacts(ctx, invocation, limit)
+	if err != nil {
+		if errors.Is(err, application.ErrAgentCapabilityDenied) {
+			return nil, status.Error(codes.PermissionDenied, "Agent Capability denied")
+		}
+		return nil, status.Error(codes.Internal, "Agent contact list failed")
+	}
+	response := &agentv1.ListContactsResponse{Contacts: make([]*agentv1.AgentContactSnapshot, 0, len(items))}
+	for _, item := range items {
+		if item != nil {
+			response.Contacts = append(response.Contacts, &agentv1.AgentContactSnapshot{
+				Profile: agentContactProfileToProto(item), Remark: item.Remark, Status: int32(item.Status),
+			})
+		}
+	}
+	return response, nil
+}
+
 func conversationToProto(item *model.Conversation) *agentv1.ConversationSnapshot {
 	return &agentv1.ConversationSnapshot{
 		ConversationKey: item.ConversationKey, TargetId: item.TargetUUID, TargetType: int32(item.TargetType),
 		LastMessageId: item.LastMessageUUID, LastMessageSeq: item.LastMessageSeq,
 		LastMessagePreview: item.LastMessagePreview, LastMessageAtUnixMs: item.LastMessageAt.UnixMilli(),
 		ReadSeq: item.ReadSeq, UnreadCount: int32(item.UnreadCount),
+	}
+}
+
+func agentUserProfileToProto(user *model.User) *agentv1.AgentUserProfile {
+	if user == nil {
+		return nil
+	}
+	return &agentv1.AgentUserProfile{
+		UserId: user.UUID, Nickname: user.Nickname, Avatar: user.Avatar, Signature: user.Signature,
+		UserType: int32(user.UserType), Status: int32(user.Status),
+	}
+}
+
+func agentContactProfileToProto(item *application.AgentContactProfileV1) *agentv1.AgentUserProfile {
+	if item == nil {
+		return nil
+	}
+	return &agentv1.AgentUserProfile{
+		UserId: item.UserUUID, Nickname: item.Nickname, Avatar: item.Avatar, Signature: item.Signature,
+		UserType: int32(item.UserType), Status: int32(item.Status),
 	}
 }

@@ -73,6 +73,24 @@ describe("AgentCapabilityRPCClient", () => {
       .resolves.toEqual({ found: false, reason: "not_found", targetId: "U200", targetType: 1, messages: [] });
   });
 
+  it("derives profile and contact data from the trusted task rather than caller input", async () => {
+    const getUserProfile = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", context: { principalUserId: "" } });
+      callback(null, { profile: { userId: "U100", nickname: "owner", avatar: "", signature: "", userType: 0, status: 1 } });
+      return {};
+    });
+    const listContacts = vi.fn((input, _metadata, _options, callback) => {
+      expect(input).toMatchObject({ taskId: "TASK-1", runId: "RUN-1", limit: 10, context: { principalUserId: "" } });
+      callback(null, { contacts: [{ profile: { userId: "U200", nickname: "friend", avatar: "", signature: "", userType: 0, status: 1 }, remark: "project owner", status: 0 }] });
+      return {};
+    });
+    const client = new AgentCapabilityRPCClient({ getUserProfile, listContacts } as unknown as IAgentCapabilityServiceClient, "secret");
+    const context = conversationReadContext();
+
+    await expect(client.getUserProfile(context)).resolves.toMatchObject({ userId: "U100", nickname: "owner" });
+    await expect(client.listContacts(context, 10)).resolves.toEqual([expect.objectContaining({ remark: "project owner", profile: expect.objectContaining({ userId: "U200" }) })]);
+  });
+
   it("rejects invalid scopes, oversized responses, and conflicting RPC responses", async () => {
     const readConversation = vi.fn((_input, _metadata, _options, callback) => {
       callback(null, { found: true, reason: "", targetId: "U999", targetType: 1, messages: [] });

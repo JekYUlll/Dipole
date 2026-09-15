@@ -58,6 +58,7 @@ func TestAgentCapabilityV1DescriptorsAreVersionedAndRiskClassified(t *testing.T)
 		AgentCapabilityConversationsList:  AgentCapabilityRiskRead,
 		AgentCapabilityConversationRead:   AgentCapabilityRiskRead,
 		AgentCapabilityConversationSearch: AgentCapabilityRiskRead,
+		AgentCapabilityContactsList:       AgentCapabilityRiskRead,
 		AgentCapabilityGetWeather:         AgentCapabilityRiskRead,
 		AgentCapabilityCurrentTime:        AgentCapabilityRiskRead,
 		AgentCapabilityCalculator:         AgentCapabilityRiskRead,
@@ -82,7 +83,7 @@ func TestEmbeddedAgentPolicyGrantV1IncludesBuiltInUtilities(t *testing.T) {
 
 	permissions, scopes := EmbeddedAgentPolicyGrantV1()
 	wantPermissions := map[string]bool{
-		AgentPermissionWeatherRead: true, AgentPermissionTimeRead: true, AgentPermissionCalculatorEvaluate: true,
+		AgentPermissionWeatherRead: true, AgentPermissionTimeRead: true, AgentPermissionCalculatorEvaluate: true, AgentPermissionContactsList: true,
 	}
 	for _, permission := range permissions {
 		delete(wantPermissions, permission)
@@ -90,7 +91,7 @@ func TestEmbeddedAgentPolicyGrantV1IncludesBuiltInUtilities(t *testing.T) {
 	if len(wantPermissions) != 0 {
 		t.Fatalf("missing built-in permissions: %v", wantPermissions)
 	}
-	wantScopes := map[string]string{AgentResourceTypeTime: AgentResourceActionRead, AgentResourceTypeCalculator: "evaluate"}
+	wantScopes := map[string]string{AgentResourceTypeTime: AgentResourceActionRead, AgentResourceTypeCalculator: "evaluate", AgentResourceTypeContact: AgentResourceActionList}
 	for _, scope := range scopes {
 		if action, ok := wantScopes[scope.ResourceType]; ok && scope.ResourceID == AgentResourceWildcard {
 			for _, candidate := range scope.Actions {

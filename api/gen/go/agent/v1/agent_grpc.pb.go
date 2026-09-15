@@ -40,6 +40,8 @@ const (
 	AgentCapabilityService_ListConversations_FullMethodName                     = "/dipole.agent.v1.AgentCapabilityService/ListConversations"
 	AgentCapabilityService_ReadConversation_FullMethodName                      = "/dipole.agent.v1.AgentCapabilityService/ReadConversation"
 	AgentCapabilityService_SearchConversations_FullMethodName                   = "/dipole.agent.v1.AgentCapabilityService/SearchConversations"
+	AgentCapabilityService_GetUserProfile_FullMethodName                        = "/dipole.agent.v1.AgentCapabilityService/GetUserProfile"
+	AgentCapabilityService_ListContacts_FullMethodName                          = "/dipole.agent.v1.AgentCapabilityService/ListContacts"
 	AgentCapabilityService_AuthorizeTaskControl_FullMethodName                  = "/dipole.agent.v1.AgentCapabilityService/AuthorizeTaskControl"
 	AgentCapabilityService_ListAgentTaskTimeline_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ListAgentTaskTimeline"
 	AgentCapabilityService_AppendAgentTaskTimelineEvent_FullMethodName          = "/dipole.agent.v1.AgentCapabilityService/AppendAgentTaskTimelineEvent"
@@ -51,6 +53,7 @@ const (
 	AgentCapabilityService_FinishMcpToolInvocation_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocation"
 	AgentCapabilityService_FinishMcpToolInvocationFromRound_FullMethodName      = "/dipole.agent.v1.AgentCapabilityService/FinishMcpToolInvocationFromRound"
 	AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ExecuteMcpMessageCommand"
+	AgentCapabilityService_ExecuteMcpMemoryCommand_FullMethodName               = "/dipole.agent.v1.AgentCapabilityService/ExecuteMcpMemoryCommand"
 	AgentCapabilityService_ProjectTaskWorkflowState_FullMethodName              = "/dipole.agent.v1.AgentCapabilityService/ProjectTaskWorkflowState"
 	AgentCapabilityService_ListTaskWorkflowProjectionSnapshots_FullMethodName   = "/dipole.agent.v1.AgentCapabilityService/ListTaskWorkflowProjectionSnapshots"
 	AgentCapabilityService_ProposeWorkflowRepair_FullMethodName                 = "/dipole.agent.v1.AgentCapabilityService/ProposeWorkflowRepair"
@@ -94,6 +97,8 @@ type AgentCapabilityServiceClient interface {
 	ListConversations(ctx context.Context, in *ListConversationsRequest, opts ...grpc.CallOption) (*ListConversationsResponse, error)
 	ReadConversation(ctx context.Context, in *ReadConversationRequest, opts ...grpc.CallOption) (*ReadConversationResponse, error)
 	SearchConversations(ctx context.Context, in *SearchConversationsRequest, opts ...grpc.CallOption) (*SearchConversationsResponse, error)
+	GetUserProfile(ctx context.Context, in *GetUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
+	ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error)
 	AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error)
 	ListAgentTaskTimeline(ctx context.Context, in *ListAgentTaskTimelineRequest, opts ...grpc.CallOption) (*ListAgentTaskTimelineResponse, error)
 	AppendAgentTaskTimelineEvent(ctx context.Context, in *AppendAgentTaskTimelineEventRequest, opts ...grpc.CallOption) (*AppendAgentTaskTimelineEventResponse, error)
@@ -105,6 +110,7 @@ type AgentCapabilityServiceClient interface {
 	FinishMcpToolInvocation(ctx context.Context, in *FinishMcpToolInvocationRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationResponse, error)
 	FinishMcpToolInvocationFromRound(ctx context.Context, in *FinishMcpToolInvocationFromRoundRequest, opts ...grpc.CallOption) (*FinishMcpToolInvocationFromRoundResponse, error)
 	ExecuteMcpMessageCommand(ctx context.Context, in *ExecuteMcpMessageCommandRequest, opts ...grpc.CallOption) (*ExecuteMcpMessageCommandResponse, error)
+	ExecuteMcpMemoryCommand(ctx context.Context, in *ExecuteMcpMemoryCommandRequest, opts ...grpc.CallOption) (*ExecuteMcpMemoryCommandResponse, error)
 	ProjectTaskWorkflowState(ctx context.Context, in *ProjectTaskWorkflowStateRequest, opts ...grpc.CallOption) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(ctx context.Context, in *ListTaskWorkflowProjectionSnapshotsRequest, opts ...grpc.CallOption) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
 	ProposeWorkflowRepair(ctx context.Context, in *ProposeWorkflowRepairRequest, opts ...grpc.CallOption) (*WorkflowRepairProposalResponse, error)
@@ -341,6 +347,26 @@ func (c *agentCapabilityServiceClient) SearchConversations(ctx context.Context, 
 	return out, nil
 }
 
+func (c *agentCapabilityServiceClient) GetUserProfile(ctx context.Context, in *GetUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserProfileResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_GetUserProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ListContacts(ctx context.Context, in *ListContactsRequest, opts ...grpc.CallOption) (*ListContactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListContactsResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ListContacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentCapabilityServiceClient) AuthorizeTaskControl(ctx context.Context, in *AuthorizeTaskControlRequest, opts ...grpc.CallOption) (*AuthorizeTaskControlResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AuthorizeTaskControlResponse)
@@ -445,6 +471,16 @@ func (c *agentCapabilityServiceClient) ExecuteMcpMessageCommand(ctx context.Cont
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ExecuteMcpMessageCommandResponse)
 	err := c.cc.Invoke(ctx, AgentCapabilityService_ExecuteMcpMessageCommand_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentCapabilityServiceClient) ExecuteMcpMemoryCommand(ctx context.Context, in *ExecuteMcpMemoryCommandRequest, opts ...grpc.CallOption) (*ExecuteMcpMemoryCommandResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExecuteMcpMemoryCommandResponse)
+	err := c.cc.Invoke(ctx, AgentCapabilityService_ExecuteMcpMemoryCommand_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -636,6 +672,8 @@ type AgentCapabilityServiceServer interface {
 	ListConversations(context.Context, *ListConversationsRequest) (*ListConversationsResponse, error)
 	ReadConversation(context.Context, *ReadConversationRequest) (*ReadConversationResponse, error)
 	SearchConversations(context.Context, *SearchConversationsRequest) (*SearchConversationsResponse, error)
+	GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error)
+	ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error)
 	AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error)
 	ListAgentTaskTimeline(context.Context, *ListAgentTaskTimelineRequest) (*ListAgentTaskTimelineResponse, error)
 	AppendAgentTaskTimelineEvent(context.Context, *AppendAgentTaskTimelineEventRequest) (*AppendAgentTaskTimelineEventResponse, error)
@@ -647,6 +685,7 @@ type AgentCapabilityServiceServer interface {
 	FinishMcpToolInvocation(context.Context, *FinishMcpToolInvocationRequest) (*FinishMcpToolInvocationResponse, error)
 	FinishMcpToolInvocationFromRound(context.Context, *FinishMcpToolInvocationFromRoundRequest) (*FinishMcpToolInvocationFromRoundResponse, error)
 	ExecuteMcpMessageCommand(context.Context, *ExecuteMcpMessageCommandRequest) (*ExecuteMcpMessageCommandResponse, error)
+	ExecuteMcpMemoryCommand(context.Context, *ExecuteMcpMemoryCommandRequest) (*ExecuteMcpMemoryCommandResponse, error)
 	ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error)
 	ListTaskWorkflowProjectionSnapshots(context.Context, *ListTaskWorkflowProjectionSnapshotsRequest) (*ListTaskWorkflowProjectionSnapshotsResponse, error)
 	ProposeWorkflowRepair(context.Context, *ProposeWorkflowRepairRequest) (*WorkflowRepairProposalResponse, error)
@@ -736,6 +775,12 @@ func (UnimplementedAgentCapabilityServiceServer) ReadConversation(context.Contex
 func (UnimplementedAgentCapabilityServiceServer) SearchConversations(context.Context, *SearchConversationsRequest) (*SearchConversationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchConversations not implemented")
 }
+func (UnimplementedAgentCapabilityServiceServer) GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserProfile not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ListContacts(context.Context, *ListContactsRequest) (*ListContactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListContacts not implemented")
+}
 func (UnimplementedAgentCapabilityServiceServer) AuthorizeTaskControl(context.Context, *AuthorizeTaskControlRequest) (*AuthorizeTaskControlResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AuthorizeTaskControl not implemented")
 }
@@ -768,6 +813,9 @@ func (UnimplementedAgentCapabilityServiceServer) FinishMcpToolInvocationFromRoun
 }
 func (UnimplementedAgentCapabilityServiceServer) ExecuteMcpMessageCommand(context.Context, *ExecuteMcpMessageCommandRequest) (*ExecuteMcpMessageCommandResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ExecuteMcpMessageCommand not implemented")
+}
+func (UnimplementedAgentCapabilityServiceServer) ExecuteMcpMemoryCommand(context.Context, *ExecuteMcpMemoryCommandRequest) (*ExecuteMcpMemoryCommandResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExecuteMcpMemoryCommand not implemented")
 }
 func (UnimplementedAgentCapabilityServiceServer) ProjectTaskWorkflowState(context.Context, *ProjectTaskWorkflowStateRequest) (*ProjectTaskWorkflowStateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ProjectTaskWorkflowState not implemented")
@@ -1217,6 +1265,42 @@ func _AgentCapabilityService_SearchConversations_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentCapabilityService_GetUserProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).GetUserProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_GetUserProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).GetUserProfile(ctx, req.(*GetUserProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ListContacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListContactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ListContacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ListContacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ListContacts(ctx, req.(*ListContactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentCapabilityService_AuthorizeTaskControl_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AuthorizeTaskControlRequest)
 	if err := dec(in); err != nil {
@@ -1411,6 +1495,24 @@ func _AgentCapabilityService_ExecuteMcpMessageCommand_Handler(srv interface{}, c
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AgentCapabilityServiceServer).ExecuteMcpMessageCommand(ctx, req.(*ExecuteMcpMessageCommandRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentCapabilityService_ExecuteMcpMemoryCommand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecuteMcpMemoryCommandRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentCapabilityServiceServer).ExecuteMcpMemoryCommand(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentCapabilityService_ExecuteMcpMemoryCommand_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentCapabilityServiceServer).ExecuteMcpMemoryCommand(ctx, req.(*ExecuteMcpMemoryCommandRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1795,6 +1897,14 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AgentCapabilityService_SearchConversations_Handler,
 		},
 		{
+			MethodName: "GetUserProfile",
+			Handler:    _AgentCapabilityService_GetUserProfile_Handler,
+		},
+		{
+			MethodName: "ListContacts",
+			Handler:    _AgentCapabilityService_ListContacts_Handler,
+		},
+		{
 			MethodName: "AuthorizeTaskControl",
 			Handler:    _AgentCapabilityService_AuthorizeTaskControl_Handler,
 		},
@@ -1837,6 +1947,10 @@ var AgentCapabilityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ExecuteMcpMessageCommand",
 			Handler:    _AgentCapabilityService_ExecuteMcpMessageCommand_Handler,
+		},
+		{
+			MethodName: "ExecuteMcpMemoryCommand",
+			Handler:    _AgentCapabilityService_ExecuteMcpMemoryCommand_Handler,
 		},
 		{
 			MethodName: "ProjectTaskWorkflowState",

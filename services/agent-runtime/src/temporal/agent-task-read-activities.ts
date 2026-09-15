@@ -14,6 +14,7 @@ import type { ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentCapabilityRPCClient, AgentToolActionReference } from "../capabilities/agent-capability-rpc.js";
 import { McpToolInvocationRunner } from "../mcp/mcp-tool-invocation.js";
 import { createInteractiveMessageExecutor } from "../mcp/mcp-message-write-projection.js";
+import { createInteractiveMemoryExecutor } from "../mcp/mcp-memory-write-projection.js";
 import { canonicalMcpJSON } from "../mcp/canonical-json.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -21,6 +22,11 @@ import { z } from "zod";
 const messageCheckpointSchema = z.object({
   kind: z.literal("system_message"), content: z.string().trim().min(1).max(2000), conversationKey: z.string().min(1),
   publishAtUnixMs: z.number().int().positive().optional()
+}).strict();
+
+const memoryCheckpointSchema = z.object({
+  kind: z.literal("memory"), content: z.string().trim().min(1).max(1000),
+  memoryType: z.enum(["semantic", "episodic"]), conversationKey: z.string().min(1)
 }).strict();
 
 interface AgentArtifactWriter {
@@ -32,7 +38,8 @@ interface AgentContextResolver {
 }
 
 type AgentAssistantReplyWriter = Pick<AgentCapabilityRPCClient, "begin" | "finishToolInvocation" | "executeMessageCommand">;
-type AgentApprovalWriter = Pick<AgentCapabilityRPCClient, "beginMcpToolCommand" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand">;
+type AgentApprovalWriter = Pick<AgentCapabilityRPCClient, "beginMcpToolCommand" | "finishToolInvocation" | "consumeApproval" | "resolveApprovalGrant" | "executeMessageCommand"> &
+  Partial<Pick<AgentCapabilityRPCClient, "executeMemoryCommand">>;
 
 export function createTemporalReadStepActivities(
   dependencies: ShadowPlanExecutionDependencies & {
@@ -94,6 +101,28 @@ export function createTemporalReadStepActivities(
       }, async span => {
         const report = collaborationReport(event);
         if (report !== undefined) return executeCollaborationReport(input, event, context, dependencies, report);
+        const memoryRequest = requestedMemorySave(event, context);
+        if (memoryRequest !== undefined) {
+          if (dependencies.approvalWriter?.executeMemoryCommand === undefined) throw new Error("Memory approval writer is unavailable");
+          if (input.resume?.kind === "approval") {
+            const restored = memoryCheckpointSchema.parse(input.checkpoint);
+            if (input.resume.decision !== "approved" || input.resume.requestId !== memoryRequest.requestId ||
+                input.resume.approvalId !== memoryRequest.approval.approvalId || restored.conversationKey !== memoryRequest.conversationKey ||
+                restored.memoryType !== memoryRequest.memoryType || restored.content !== memoryRequest.content) {
+              throw new Error("Memory approval resume binding mismatch");
+            }
+            const memory = await createInteractiveMemoryExecutor(dependencies.approvalWriter as AgentApprovalWriter & Pick<AgentCapabilityRPCClient, "executeMemoryCommand">).execute({
+              content: restored.content, conversationId: restored.conversationKey, memoryType: restored.memoryType
+            }, context, input.resume.approvalId);
+            return { kind: "complete", output: { summary: "Approved Memory saved", memoryId: memory.memoryId } };
+          }
+          return {
+            kind: "wait_approval", requestId: memoryRequest.requestId,
+            summary: `Save ${memoryRequest.memoryType} Memory for ${memoryRequest.conversationKey}: ${memoryRequest.content}`,
+            approval: memoryRequest.approval,
+            checkpoint: { kind: "memory", content: memoryRequest.content, memoryType: memoryRequest.memoryType, conversationKey: memoryRequest.conversationKey }
+          };
+        }
         if (input.step !== 0 && (input.step !== 1 || input.resume?.kind !== "approval")) {
           throw new Error("Unexpected message task resume");
         }
@@ -185,6 +214,44 @@ export function createTemporalReadStepActivities(
           }
         };
       });
+    }
+  };
+}
+
+function requestedMemorySave(event: ReturnType<typeof agentEventSchema.parse>, context: ExecutionContext): {
+  content: string;
+  memoryType: "semantic" | "episodic";
+  conversationKey: string;
+  requestId: string;
+  approval: {
+    approvalId: string;
+    capabilityId: string;
+    resourceScope: { resourceType: string; resourceId: string; actions: readonly string[] };
+    scopeSha256: string;
+    argumentsSha256: string;
+    nonceSha256: string;
+    expiresAtUnixMs: number;
+  };
+} | undefined {
+  if (event.eventType !== "message.direct.created" || context.mode !== "active") return undefined;
+  const match = /^\/remember\s+(semantic|episodic)\s+([\s\S]+)$/i.exec(String(event.payload.content ?? "").trim());
+  const conversationKey = activeReplyConversationKey(event, context);
+  if (match === null || conversationKey === undefined || !context.permissions.includes("memory.write") || !hasWriteScope(context, {
+    resourceType: "conversation", resourceId: conversationKey, actions: ["write"]
+  })) return undefined;
+  const content = match[2]!.trim();
+  if (!content || content.length > 1000) throw new Error("Memory content must be between 1 and 1000 characters");
+  const memoryType = match[1]!.toLowerCase() as "semantic" | "episodic";
+  const scope = { resourceType: "conversation", resourceId: conversationKey, actions: ["write"] };
+  const argumentsJson = canonicalMcpJSON({ content, conversationId: conversationKey, memoryType });
+  const token = createHash("sha256").update(["dipole.agent.memory.v1", context.taskId, context.runId, conversationKey, memoryType, content].join("\n"), "utf8").digest("hex");
+  return {
+    content, memoryType, conversationKey, requestId: `approval:${token.slice(0, 55)}`,
+    approval: {
+      approvalId: `approval:${token.slice(0, 55)}`, capabilityId: "memory.save", resourceScope: scope,
+      scopeSha256: sha256(["dipole.agent.scope.v1", scope.resourceType, scope.resourceId, ...scope.actions].join("\n")),
+      argumentsSha256: sha256(argumentsJson), nonceSha256: sha256(`dipole.agent.approval-nonce.v1\n${token}`),
+      expiresAtUnixMs: Date.now() + 10 * 60_000
     }
   };
 }

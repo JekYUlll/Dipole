@@ -39,6 +39,16 @@ type agentCapabilityMessagesStub struct {
 	items        []*model.Message
 }
 
+type agentCapabilityContactsStub struct {
+	owner    string
+	contacts []*model.Contact
+}
+
+func (s *agentCapabilityContactsStub) ListFriends(userUUID string) ([]*model.Contact, error) {
+	s.owner = userUUID
+	return s.contacts, nil
+}
+
 type agentCapabilityCommandsStub struct {
 	command application.AgentMessageCommandV1
 	ids     correlation.IDs
@@ -91,7 +101,7 @@ func TestLocalAgentCapabilityV1RestrictsProfileSubjects(t *testing.T) {
 		"U100": {UUID: "U100"},
 		"UAI":  {UUID: "UAI", UserType: model.UserTypeAssistant},
 	}}
-	capability, err := NewLocalAgentCapabilityV1(core, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
+	capability, err := NewLocalAgentCapabilityV1(core, &agentCapabilityContactsStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -107,12 +117,40 @@ func TestLocalAgentCapabilityV1RestrictsProfileSubjects(t *testing.T) {
 	}
 }
 
+func TestLocalAgentCapabilityV1ListsOnlyPrincipalContacts(t *testing.T) {
+	t.Parallel()
+
+	core := &agentCapabilityCoreStub{users: map[string]*model.User{
+		"U200": {UUID: "U200", Nickname: "Alice", Telephone: "private", Email: "private@example.com", Signature: "backend"},
+	}}
+	contacts := &agentCapabilityContactsStub{contacts: []*model.Contact{
+		{UserUUID: "U999", FriendUUID: "U200", Remark: "foreign"},
+		{UserUUID: "U100", FriendUUID: "U200", Remark: "project owner"},
+	}}
+	capability, err := NewLocalAgentCapabilityV1(core, contacts, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
+	if err != nil {
+		t.Fatalf("new Agent Capability: %v", err)
+	}
+	invocation := agentCapabilityTestInvocation()
+	invocation.Permissions = append(invocation.Permissions, application.AgentPermissionContactsList)
+	invocation.ResourceScopes = append(invocation.ResourceScopes, application.AgentResourceScopeV1{
+		ResourceType: application.AgentResourceTypeContact, ResourceID: application.AgentResourceWildcard, Actions: []string{application.AgentResourceActionList},
+	})
+	items, err := capability.ListContacts(context.Background(), invocation, 20)
+	if err != nil || contacts.owner != "U100" || len(items) != 1 || items[0].UserUUID != "U200" || items[0].Remark != "project owner" {
+		t.Fatalf("contacts=%+v owner=%q err=%v", items, contacts.owner, err)
+	}
+	if _, err := capability.ListContacts(context.Background(), application.AgentInvocationV1{PrincipalUUID: "U100"}, 20); !errors.Is(err, application.ErrAgentCapabilityDenied) {
+		t.Fatalf("expected ungranted contact list denial, got %v", err)
+	}
+}
+
 func TestLocalAgentCapabilityV1RoutesAuthorizedConversationReads(t *testing.T) {
 	t.Parallel()
 
 	messages := &agentCapabilityMessagesStub{items: []*model.Message{{UUID: "M1"}}}
 	conversations := &agentCapabilityConversationsStub{}
-	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, messages, conversations, &agentCapabilityCommandsStub{})
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityContactsStub{}, messages, conversations, &agentCapabilityCommandsStub{})
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -144,7 +182,7 @@ func TestLocalAgentCapabilityV1ListsConversationsAndPreservesCommandContext(t *t
 		{TargetUUID: "U200"},
 	}}
 	commands := &agentCapabilityCommandsStub{}
-	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, messages, conversations, commands)
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityContactsStub{}, messages, conversations, commands)
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -170,7 +208,7 @@ func TestLocalAgentCapabilityV1ListsConversationsAndPreservesCommandContext(t *t
 func TestLocalAgentCapabilityV1EnforcesInvocationPolicy(t *testing.T) {
 	t.Parallel()
 
-	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityContactsStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -189,7 +227,7 @@ func TestLocalAgentCapabilityV1SearchesAuthorizedConversations(t *testing.T) {
 		SenderUUID: "U200", Content: "Cassandra decision", SentAt: time.UnixMilli(1_700_000_000_000).UTC(),
 	}}}
 	capability, err := NewLocalAgentCapabilityV1(
-		&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{}, search,
+		&agentCapabilityCoreStub{}, &agentCapabilityContactsStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{}, search,
 	)
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
@@ -202,7 +240,7 @@ func TestLocalAgentCapabilityV1SearchesAuthorizedConversations(t *testing.T) {
 		t.Fatalf("unexpected Agent search result: %+v", results)
 	}
 
-	withoutSearch, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
+	withoutSearch, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityContactsStub{}, &agentCapabilityMessagesStub{}, &agentCapabilityConversationsStub{}, &agentCapabilityCommandsStub{})
 	if err != nil {
 		t.Fatalf("new capability without Search: %v", err)
 	}
@@ -218,7 +256,7 @@ func TestLocalAgentCapabilityV1EnforcesResourceScope(t *testing.T) {
 	conversations := &agentCapabilityConversationsStub{
 		found: &model.Conversation{TargetUUID: "G2", TargetType: model.MessageTargetGroup, ConversationKey: model.GroupConversationKey("G2")},
 	}
-	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, messages, conversations, &agentCapabilityCommandsStub{})
+	capability, err := NewLocalAgentCapabilityV1(&agentCapabilityCoreStub{}, &agentCapabilityContactsStub{}, messages, conversations, &agentCapabilityCommandsStub{})
 	if err != nil {
 		t.Fatalf("new Agent Capability: %v", err)
 	}
@@ -259,16 +297,20 @@ func TestNewLocalAgentCapabilityV1RejectsMissingDependencies(t *testing.T) {
 	messages := &agentCapabilityMessagesStub{}
 	conversations := &agentCapabilityConversationsStub{}
 	commands := &agentCapabilityCommandsStub{}
-	if _, err := NewLocalAgentCapabilityV1(nil, messages, conversations, commands); err == nil {
+	contacts := &agentCapabilityContactsStub{}
+	if _, err := NewLocalAgentCapabilityV1(nil, contacts, messages, conversations, commands); err == nil {
 		t.Fatal("expected missing Core dependency rejection")
 	}
-	if _, err := NewLocalAgentCapabilityV1(core, nil, conversations, commands); err == nil {
+	if _, err := NewLocalAgentCapabilityV1(core, contacts, nil, conversations, commands); err == nil {
 		t.Fatal("expected missing Message dependency rejection")
 	}
-	if _, err := NewLocalAgentCapabilityV1(core, messages, nil, commands); err == nil {
+	if _, err := NewLocalAgentCapabilityV1(core, contacts, messages, nil, commands); err == nil {
 		t.Fatal("expected missing Conversation dependency rejection")
 	}
-	if _, err := NewLocalAgentCapabilityV1(core, messages, conversations, nil); err == nil {
+	if _, err := NewLocalAgentCapabilityV1(core, contacts, messages, conversations, nil); err == nil {
 		t.Fatal("expected missing Command dependency rejection")
+	}
+	if _, err := NewLocalAgentCapabilityV1(core, nil, messages, conversations, commands); err == nil {
+		t.Fatal("expected missing Contact dependency rejection")
 	}
 }

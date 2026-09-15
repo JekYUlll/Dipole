@@ -22,8 +22,13 @@ type AgentCapabilityConversations interface {
 	FindForUser(userUUID, targetUUID string) (*model.Conversation, error)
 }
 
+type AgentCapabilityContacts interface {
+	ListFriends(userUUID string) ([]*model.Contact, error)
+}
+
 type LocalAgentCapabilityV1 struct {
 	core          application.CoreCapability
+	contacts      AgentCapabilityContacts
 	messages      AgentCapabilityMessages
 	conversations AgentCapabilityConversations
 	commands      application.AgentCommandV1
@@ -32,12 +37,15 @@ type LocalAgentCapabilityV1 struct {
 
 var _ application.AgentCapabilityV1 = (*LocalAgentCapabilityV1)(nil)
 
-func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCapabilityMessages, conversations AgentCapabilityConversations, commands application.AgentCommandV1, searches ...application.SearchApplication) (*LocalAgentCapabilityV1, error) {
+func NewLocalAgentCapabilityV1(core application.CoreCapability, contacts AgentCapabilityContacts, messages AgentCapabilityMessages, conversations AgentCapabilityConversations, commands application.AgentCommandV1, searches ...application.SearchApplication) (*LocalAgentCapabilityV1, error) {
 	if core == nil {
 		return nil, errors.New("Agent Capability Core dependency is required")
 	}
 	if messages == nil {
 		return nil, errors.New("Agent Capability Message dependency is required")
+	}
+	if contacts == nil {
+		return nil, errors.New("Agent Capability Contact dependency is required")
 	}
 	if conversations == nil {
 		return nil, errors.New("Agent Capability Conversation dependency is required")
@@ -52,7 +60,46 @@ func NewLocalAgentCapabilityV1(core application.CoreCapability, messages AgentCa
 	if len(searches) == 1 {
 		search = searches[0]
 	}
-	return &LocalAgentCapabilityV1{core: core, messages: messages, conversations: conversations, commands: commands, search: search}, nil
+	return &LocalAgentCapabilityV1{core: core, contacts: contacts, messages: messages, conversations: conversations, commands: commands, search: search}, nil
+}
+
+func (c *LocalAgentCapabilityV1) ListContacts(_ context.Context, invocation application.AgentInvocationV1, limit int) ([]*application.AgentContactProfileV1, error) {
+	if limit < 1 || limit > 50 || authorizeLocalAgentCapabilityForResourceV1(
+		invocation, application.AgentCapabilityContactsList, application.AgentResourceTypeContact,
+		application.AgentResourceWildcard, application.AgentResourceActionList,
+	) != nil {
+		return nil, application.ErrAgentCapabilityDenied
+	}
+	principalUUID := strings.TrimSpace(invocation.PrincipalUUID)
+	if principalUUID == "" {
+		return nil, application.ErrAgentCapabilityDenied
+	}
+	contacts, err := c.contacts.ListFriends(principalUUID)
+	if err != nil {
+		return nil, fmt.Errorf("list Agent contacts: %w", err)
+	}
+	items := make([]*application.AgentContactProfileV1, 0, min(limit, len(contacts)))
+	for _, contact := range contacts {
+		if contact == nil || strings.TrimSpace(contact.UserUUID) != principalUUID || len(items) >= limit {
+			continue
+		}
+		friendUUID := strings.TrimSpace(contact.FriendUUID)
+		if friendUUID == "" {
+			continue
+		}
+		user, err := c.core.GetUserByUUID(friendUUID)
+		if err != nil {
+			return nil, fmt.Errorf("get Agent contact profile: %w", err)
+		}
+		if user == nil {
+			continue
+		}
+		items = append(items, &application.AgentContactProfileV1{
+			UserUUID: user.UUID, Nickname: user.Nickname, Avatar: user.Avatar, Signature: user.Signature,
+			UserType: user.UserType, Status: user.Status, Remark: contact.Remark,
+		})
+	}
+	return items, nil
 }
 
 func (c *LocalAgentCapabilityV1) GetUserProfile(_ context.Context, invocation application.AgentInvocationV1, subjectUUID string) (*model.User, error) {

@@ -11,6 +11,7 @@
     "list_conversations",
     "read_conversation",
     "search_conversations",
+    "list_contacts",
     "send_system_message"
   ],
   "x-dipole-capabilities": [
@@ -19,6 +20,7 @@
     {"id": "conversation.list", "risk": "read", "required_permission": "conversation.list", "approval_required": false},
     {"id": "conversation.read", "risk": "read", "required_permission": "conversation.read", "approval_required": false},
     {"id": "conversation.search", "risk": "read", "required_permission": "conversation.search", "approval_required": false},
+    {"id": "contact.list", "risk": "read", "required_permission": "contact.list", "approval_required": false},
     {"id": "message.system.send", "risk": "write", "required_permission": "message.write", "approval_required": false}
   ],
   "required": ["operation", "tenant_id", "principal_uuid", "agent_uuid", "permissions", "resource_scopes", "input"],
@@ -30,6 +32,7 @@
         "list_conversations",
         "read_conversation",
         "search_conversations",
+        "list_contacts",
         "send_system_message"
       ]
     },

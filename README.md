@@ -50,8 +50,9 @@ Gateway -> Core / Message -> MySQL + Transactional Outbox -> Kafka
 
 - Direct AI chat and group `@AI` tasks share one TypeScript Agent Runtime.
 - ExecutionContext derives principal and resource scope from trusted server state.
-- `conversation.list`, `conversation.read`, and `conversation.search` are
-  read capabilities; retrieved evidence is bounded before entering context.
+- `conversation.list`, `conversation.read`, `conversation.search`,
+  `user.profile.read`, and `contact.list` are read capabilities. Core derives
+  the principal from the Task, bounds results, and excludes private profile fields.
 - Temporal persists task state, retries Activities, waits for approval, and
   resumes the same workflow after a worker restart.
 - Write tools require approval and execute through an idempotent Core Message
@@ -142,6 +143,15 @@ content once. `/system <text>` remains a deterministic shortcut. Proposals are
 limited to the current direct conversation; ordinary AI replies use their
 existing restricted reply authorization without an approval prompt.
 
+Conversation Memory: in a direct AI conversation, send
+`/remember semantic <fact>` or `/remember episodic <event>`. The Task enters
+the existing approval flow before any record is written. Approving resumes the
+same Temporal Workflow and stores one owner- and conversation-scoped Memory;
+denying writes nothing. Active Memory is included by the Context Compiler only
+for later Tasks in that authorized conversation. With
+`VITE_AGENT_MEMORIES_ENABLED=true`, the **Agent Memories** page lets the owner
+inspect, correct, or revoke saved records.
+
 ### Daily Agent Development
 
 The native read tool `get_weather` accepts `{ "city": "Beijing", "countryCode": "CN" }`
@@ -193,7 +203,7 @@ restarts the Worker: the original task completes with one invocation and one mes
 This verifies the tested failure window, without claiming universal exactly-once delivery.
 
 The experience stack demonstrates conversation context, authorized retrieval,
-approval and durable execution. Long-term Memory injection, the public MCP server
+explicit Memory writes, approval and durable execution. The public MCP server
 and external MCP integrations are disabled in this configuration. Internal tool
 support does not imply a configured third-party integration. The single-node
 infrastructure is a development topology, not a cluster high-availability proof.

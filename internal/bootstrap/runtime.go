@@ -166,7 +166,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose local Agent Search: %w", composeErr)
 		}
-		agentCapability, composeErr := agentapplication.NewLocalAgentCapabilityV1(localMessaging.Core, localMessaging.Messages, localMessaging.Conversations, agentCommands, localSearch)
+		agentCapability, composeErr := agentapplication.NewLocalAgentCapabilityV1(localMessaging.Core, repos.Contacts, localMessaging.Messages, localMessaging.Conversations, agentCommands, localSearch)
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose remote Agent Capability: %w", composeErr)
 		}
@@ -250,6 +250,10 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 		if composeErr != nil {
 			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
 		}
+		memoryCommands, composeErr := agentapplication.NewAgentMemoryCommandExecutionV1(repos.AgentToolAudits, repos.AgentPolicy, resolver, repos.AgentMemories, repos.AgentMemoryOwners, time.Now)
+		if composeErr != nil {
+			return nil, fmt.Errorf("compose Agent Memory Command execution: %w", composeErr)
+		}
 		var artifactService applicationPort.AgentArtifactServiceV1
 		var promotionEvidence applicationPort.AgentRuntimePromotionEvidenceReviewServiceV1
 		if storageCfg.ArtifactEnabled {
@@ -274,7 +278,7 @@ func Initialize(ctx context.Context) (*Runtime, error) {
 			}
 		}
 		coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
-			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryPromotions, repos.AgentTaskTimeline, memoryResolver,
+			rpcCfg, localMessaging.Core, agentCapability, resolver, admission, approvalService, controlAuthorizer, workflowProjection, workflowRepairAudit, subscriptionResolver, subscriptionControls, definitionCatalog, artifactService, toolAudits, toolRounds, toolTerminals, messageCommands, approvalGrants, promotionControls, promotionEvidence, readinessEvidence, readinessResolver, memoryControls, memoryPromotions, memoryCommands, repos.AgentTaskTimeline, memoryResolver,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("initialize core rpc server: %w", err)

@@ -59,7 +59,8 @@ Runtime 先根据 Tool 输入计算目标资源，再把可信主体和资源范
 
 ### Agent 如何检索历史会话？
 
-模型可以选择 `conversation.list`、`conversation.read` 和 `conversation.search`。这些都是
+模型可以选择 `conversation.list`、`conversation.read`、`conversation.search`、`user.profile.read`
+和 `contact.list`。这些都是
 普通的只读 Capability，运行在原 Task 内：Runtime 请求 Core 做权限校验，Search Service
 返回有界结果，Context Compiler 将结果作为不可信 evidence 注入下一轮模型调用。检索
 不拥有独立身份、独立任务队列或独立产品入口。

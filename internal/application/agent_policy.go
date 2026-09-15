@@ -17,12 +17,15 @@ const (
 	AgentCapabilityConversationsList  = "conversation.list"
 	AgentCapabilityConversationRead   = "conversation.read"
 	AgentCapabilityConversationSearch = "conversation.search"
+	AgentCapabilityContactsList       = "contact.list"
 	AgentCapabilityGetWeather         = "get_weather"
 	AgentCapabilityCurrentTime        = "time.now"
 	AgentCapabilityCalculator         = "calculator.evaluate"
+	AgentCapabilityMemorySave         = "memory.save"
 	AgentPermissionWeatherRead        = "weather.read"
 	AgentPermissionTimeRead           = "time.read"
 	AgentPermissionCalculatorEvaluate = "calculator.evaluate"
+	AgentPermissionMemoryWrite        = "memory.write"
 	AgentCapabilityAssistantReplySend = "message.assistant_reply.send"
 	AgentCapabilityGroupReplySend     = "message.group_reply.send"
 	AgentCapabilitySystemMessageSend  = "message.system.send"
@@ -31,10 +34,12 @@ const (
 	AgentPermissionConversationList   = "conversation.list"
 	AgentPermissionConversationRead   = "conversation.read"
 	AgentPermissionConversationSearch = "conversation.search"
+	AgentPermissionContactsList       = "contact.list"
 	AgentPermissionMessageWrite       = "message.write"
 
 	AgentResourceTypeUser         = "user"
 	AgentResourceTypeConversation = "conversation"
+	AgentResourceTypeContact      = "contact"
 	AgentResourceTypeTime         = "time"
 	AgentResourceTypeCalculator   = "calculator"
 	AgentResourceWildcard         = "*"
@@ -72,16 +77,19 @@ func EmbeddedAgentPolicyGrantV1() ([]string, []AgentResourceScopeV1) {
 		AgentPermissionConversationList,
 		AgentPermissionConversationRead,
 		AgentPermissionConversationSearch,
+		AgentPermissionContactsList,
 		AgentPermissionMessageWrite,
 		AgentPermissionWeatherRead,
 		AgentPermissionTimeRead,
 		AgentPermissionCalculatorEvaluate,
+		AgentPermissionMemoryWrite,
 	}, []AgentResourceScopeV1{
 		{ResourceType: "weather", ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
 		{ResourceType: AgentResourceTypeTime, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
 		{ResourceType: AgentResourceTypeCalculator, ResourceID: AgentResourceWildcard, Actions: []string{"evaluate"}},
 		{ResourceType: AgentResourceTypeUser, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead}},
 		{ResourceType: AgentResourceTypeConversation, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionRead, AgentResourceActionList, AgentResourceActionSearch, AgentResourceActionWrite}},
+		{ResourceType: AgentResourceTypeContact, ResourceID: AgentResourceWildcard, Actions: []string{AgentResourceActionList}},
 	}
 }
 
@@ -120,6 +128,9 @@ var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	AgentCapabilityCalculator: {
 		ID: AgentCapabilityCalculator, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionCalculatorEvaluate,
 	},
+	AgentCapabilityMemorySave: {
+		ID: AgentCapabilityMemorySave, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMemoryWrite, ApprovalRequired: true,
+	},
 	AgentCapabilityUserProfileRead: {
 		ID: AgentCapabilityUserProfileRead, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionUserProfileRead,
 	},
@@ -134,6 +145,9 @@ var agentCapabilityDescriptorsV1 = map[string]AgentCapabilityDescriptorV1{
 	},
 	AgentCapabilityConversationSearch: {
 		ID: AgentCapabilityConversationSearch, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionConversationSearch,
+	},
+	AgentCapabilityContactsList: {
+		ID: AgentCapabilityContactsList, Risk: AgentCapabilityRiskRead, RequiredPermission: AgentPermissionContactsList,
 	},
 	AgentCapabilityAssistantReplySend: {
 		ID: AgentCapabilityAssistantReplySend, Risk: AgentCapabilityRiskWrite, RequiredPermission: AgentPermissionMessageWrite,
@@ -152,6 +166,7 @@ var agentActiveApprovedCapabilityProjectionV1 = []struct {
 }{
 	{AgentCapabilitySystemMessageSend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
 	{AgentCapabilityGroupReplySend, AgentPermissionMessageWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
+	{AgentCapabilityMemorySave, AgentPermissionMemoryWrite, AgentResourceTypeConversation, AgentResourceActionWrite},
 }
 
 func ProjectAgentApprovedCapabilitiesV1(definition AgentDefinitionVersionV1) ([]string, error) {

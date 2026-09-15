@@ -28,6 +28,16 @@ type AgentConversationSearchResultV1 struct {
 	SentAtUnixMillis int64
 }
 
+type AgentContactProfileV1 struct {
+	UserUUID  string
+	Nickname  string
+	Avatar    string
+	Signature string
+	UserType  int8
+	Status    int8
+	Remark    string
+}
+
 // AgentCapabilityV1 is the transport-neutral boundary used by Agent runtimes.
 // Identity arguments must come from a trusted execution context.
 type AgentCapabilityV1 interface {
@@ -36,5 +46,6 @@ type AgentCapabilityV1 interface {
 	ListConversations(ctx context.Context, invocation AgentInvocationV1, limit int) ([]*model.Conversation, error)
 	ReadConversation(ctx context.Context, invocation AgentInvocationV1, targetUUID string, limit int) (*AgentConversationReadV1, error)
 	SearchConversations(ctx context.Context, invocation AgentInvocationV1, text string, limit int) ([]*AgentConversationSearchResultV1, error)
+	ListContacts(ctx context.Context, invocation AgentInvocationV1, limit int) ([]*AgentContactProfileV1, error)
 	SendSystemMessage(ctx context.Context, invocation AgentInvocationV1, content string) (*model.Message, error)
 }

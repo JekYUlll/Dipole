@@ -200,6 +200,10 @@ export interface SendSystemDirectMessageRequest {
      * @generated from protobuf field: string content = 4
      */
     content: string;
+    /**
+     * @generated from protobuf field: string client_message_id = 5
+     */
+    clientMessageId: string;
 }
 /**
  * @generated from protobuf message dipole.message.v1.SendSystemGroupMessageRequest
@@ -997,7 +1001,8 @@ class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMe
             { no: 1, name: "context", kind: "message", T: () => RequestContext },
             { no: 2, name: "sender_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
             { no: 3, name: "target_user_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
-            { no: 4, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
+            { no: 4, name: "content", kind: "scalar", T: 9 /*ScalarType.STRING*/ },
+            { no: 5, name: "client_message_id", kind: "scalar", T: 9 /*ScalarType.STRING*/ }
         ]);
     }
     create(value?: PartialMessage<SendSystemDirectMessageRequest>): SendSystemDirectMessageRequest {
@@ -1005,6 +1010,7 @@ class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMe
         message.senderUserId = "";
         message.targetUserId = "";
         message.content = "";
+        message.clientMessageId = "";
         if (value !== undefined)
             reflectionMergePartial<SendSystemDirectMessageRequest>(this, message, value);
         return message;
@@ -1025,6 +1031,9 @@ class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMe
                     break;
                 case /* string content */ 4:
                     message.content = reader.string();
+                    break;
+                case /* string client_message_id */ 5:
+                    message.clientMessageId = reader.string();
                     break;
                 default:
                     let u = options.readUnknownField;
@@ -1050,6 +1059,9 @@ class SendSystemDirectMessageRequest$Type extends MessageType<SendSystemDirectMe
         /* string content = 4; */
         if (message.content !== "")
             writer.tag(4, WireType.LengthDelimited).string(message.content);
+        /* string client_message_id = 5; */
+        if (message.clientMessageId !== "")
+            writer.tag(5, WireType.LengthDelimited).string(message.clientMessageId);
         let u = options.writeUnknownFields;
         if (u !== false)
             (u == true ? UnknownFieldHandler.onWrite : u)(this.typeName, message, writer);

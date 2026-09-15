@@ -141,7 +141,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose Agent Command: %w", composeErr)
 		}
-		agentCapability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, runtime.messageSender, messaging.Conversations, commands, runtime.search)
+		agentCapability, composeErr := agentapplication.NewLocalAgentCapabilityV1(messaging.Core, coreRepos.Contacts, runtime.messageSender, messaging.Conversations, commands, runtime.search)
 		if composeErr != nil {
 			cleanup()
 			return nil, fmt.Errorf("compose Agent Capability: %w", composeErr)
@@ -186,6 +186,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose Agent Message Command execution: %w", composeErr)
 		}
+		memoryCommands, composeErr := agentapplication.NewAgentMemoryCommandExecutionV1(agentRepos.ToolAudits, agentRepos.Policy, resolver, agentRepos.Memories, agentRepos.MemoryOwners, time.Now)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent Memory Command execution: %w", composeErr)
+		}
 		approvalGrants, composeErr := agentapplication.NewPersistentAgentApprovalGrantResolverV1(agentRepos.ApprovalGrants)
 		if composeErr != nil {
 			cleanup()
@@ -212,7 +217,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		runtime.coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
 			rpcCfg, messaging.Core, agentCapability, resolver, admission, approvals, controls, projection, repairs,
 			nil, nil, nil, artifacts, toolAudits, nil, nil, messageCommands, approvalGrants,
-			nil, nil, nil, nil, nil, nil, agentRepos.TaskTimeline,
+			nil, nil, nil, nil, nil, nil, memoryCommands, agentRepos.TaskTimeline,
 		)
 		if err != nil {
 			cleanup()

@@ -7,6 +7,8 @@ import { AgentCapabilityRPCClient } from "../capabilities/agent-capability-rpc.j
 import { ConversationListCapability } from "../capabilities/conversation-list.js";
 import { ConversationReadCapability } from "../capabilities/conversation-read.js";
 import { ConversationSearchCapability } from "../capabilities/conversation-search.js";
+import { ContactListCapability } from "../capabilities/contact-list.js";
+import { UserProfileReadCapability } from "../capabilities/user-profile-read.js";
 import { GetWeatherCapability } from "../capabilities/get-weather.js";
 import { GetCurrentTimeCapability } from "../capabilities/get-current-time.js";
 import { CalculateCapability } from "../capabilities/calculate.js";
@@ -380,6 +382,8 @@ export function createKafkaAgentRuntime(
     registry.register(new ConversationListCapability(rpcTransport!.client));
     registry.register(new ConversationReadCapability(rpcTransport!.client));
     registry.register(new ConversationSearchCapability(rpcTransport!.client));
+    registry.register(new UserProfileReadCapability(rpcTransport!.client));
+    registry.register(new ContactListCapability(rpcTransport!.client));
     registry.register(new GetWeatherCapability());
     registry.register(new GetCurrentTimeCapability());
     registry.register(new CalculateCapability());
@@ -446,6 +450,8 @@ export function createTemporalReadActivityResources(config: AgentRuntimeConfig):
   registry.register(new ConversationListCapability(rpc.client));
   registry.register(new ConversationReadCapability(rpc.client));
   registry.register(new ConversationSearchCapability(rpc.client));
+  registry.register(new UserProfileReadCapability(rpc.client));
+  registry.register(new ContactListCapability(rpc.client));
   registry.register(new GetWeatherCapability());
   registry.register(new GetCurrentTimeCapability());
   registry.register(new CalculateCapability());

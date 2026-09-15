@@ -179,6 +179,22 @@ type AgentMemoryContextResolverV1 interface {
 	ResolveContextMemories(ctx context.Context, taskUUID, runUUID, resourceType, resourceID string, limit int) ([]AgentMemoryV1, error)
 }
 
+// AgentMemoryCommandExecutionV1 persists a user-approved, conversation-scoped
+// Memory from an audited Agent Tool Invocation.
+type AgentMemoryCommandExecutionV1 interface {
+	ExecuteMemory(ctx context.Context, request AgentMemoryCommandExecutionRequestV1) (*AgentMemoryV1, error)
+}
+
+type AgentMemoryCommandExecutionRequestV1 struct {
+	TaskUUID        string
+	RunUUID         string
+	InvocationUUID  string
+	MemoryType      AgentMemoryTypeV1
+	Content         string
+	CompactContent  string
+	ConversationKey string
+}
+
 func (m AgentMemoryV1) Validate() error {
 	if anyBlank(m.MemoryUUID, m.TenantID, m.PrincipalUUID, m.AgentUUID, m.ResourceType, m.ResourceID, m.Content,
 		m.Provenance.SourceType, m.Provenance.SourceID) || m.ValidFrom.IsZero() || m.Priority < 0 || m.Priority > 1000 ||

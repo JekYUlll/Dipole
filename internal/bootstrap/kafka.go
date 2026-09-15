@@ -123,6 +123,7 @@ func registerCoreKafkaHandlers(hub kafkaWSEventSender, repos *appComposition.Rep
 		}
 		agentCapability, err := agentapplication.NewLocalAgentCapabilityV1(
 			messaging.Core,
+			repos.Contacts,
 			messaging.Messages,
 			messaging.Conversations,
 			agentCommands,

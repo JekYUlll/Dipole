@@ -48,6 +48,14 @@ func (s *stubAgentCapability) ReadConversation(context.Context, application.Agen
 	return s.read, s.err
 }
 
+func (*stubAgentCapability) ListContacts(context.Context, application.AgentInvocationV1, int) ([]*application.AgentContactProfileV1, error) {
+	return nil, nil
+}
+
+func (*stubAgentCapability) SearchConversations(context.Context, application.AgentInvocationV1, string, int) ([]*application.AgentConversationSearchResultV1, error) {
+	return nil, nil
+}
+
 func (s *stubAgentCapability) SendSystemMessage(_ context.Context, invocation application.AgentInvocationV1, content string) (*model.Message, error) {
 	s.senderUUID, s.targetUUID, s.content = invocation.AgentUUID, invocation.PrincipalUUID, content
 	return s.sentMessage, s.err

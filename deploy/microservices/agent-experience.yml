@@ -21,6 +21,9 @@ services:
       DIPOLE_AGENT_MODEL_MAX_OUTPUT_TOKENS: "2048"
       DIPOLE_AGENT_MODEL_TOTAL_TIMEOUT_MS: "60000"
       DIPOLE_AGENT_CONTEXT_COMPILER_VERSION: v2
+      # Memory is owner-scoped and conversation-scoped. Automatic observation
+      # remains disabled; new records require an explicit approved write.
+      DIPOLE_AGENT_MEMORY_ENABLED: "true"
       DIPOLE_AGENT_TEMPORAL_ENABLED: "true"
       DIPOLE_AGENT_TEMPORAL_ADDRESS: temporal:7233
       DIPOLE_AGENT_TEMPORAL_TASK_QUEUE: dipole-agent-task-v1

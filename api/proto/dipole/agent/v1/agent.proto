@@ -183,6 +183,43 @@ message SearchConversationsResponse {
   repeated SearchConversationResult messages = 1;
 }
 
+// AgentUserProfile deliberately exposes only fields safe for model context.
+message AgentUserProfile {
+  string user_id = 1;
+  string nickname = 2;
+  string avatar = 3;
+  string signature = 4;
+  int32 user_type = 5;
+  int32 status = 6;
+}
+
+message GetUserProfileRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+}
+
+message GetUserProfileResponse {
+  AgentUserProfile profile = 1;
+}
+
+message ListContactsRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  int32 limit = 4;
+}
+
+message AgentContactSnapshot {
+  AgentUserProfile profile = 1;
+  string remark = 2;
+  int32 status = 3;
+}
+
+message ListContactsResponse {
+  repeated AgentContactSnapshot contacts = 1;
+}
+
 message AuthorizeTaskControlRequest {
   dipole.common.v1.RequestContext context = 1;
   string task_id = 2;
@@ -390,6 +427,21 @@ message ExecuteMcpMessageCommandRequest {
 message ExecuteMcpMessageCommandResponse {
   AgentToolActionReference action_reference = 1;
   string client_message_id = 2;
+}
+
+message ExecuteMcpMemoryCommandRequest {
+  dipole.common.v1.RequestContext context = 1;
+  string task_id = 2;
+  string run_id = 3;
+  string invocation_id = 4;
+  string memory_type = 5;
+  string content = 6;
+  string compact_content = 7;
+  string conversation_key = 8;
+}
+
+message ExecuteMcpMemoryCommandResponse {
+  AgentOwnedMemory memory = 1;
 }
 
 message ProjectTaskWorkflowStateRequest {
@@ -898,6 +950,8 @@ service AgentCapabilityService {
   rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
   rpc ReadConversation(ReadConversationRequest) returns (ReadConversationResponse);
   rpc SearchConversations(SearchConversationsRequest) returns (SearchConversationsResponse);
+  rpc GetUserProfile(GetUserProfileRequest) returns (GetUserProfileResponse);
+  rpc ListContacts(ListContactsRequest) returns (ListContactsResponse);
   rpc AuthorizeTaskControl(AuthorizeTaskControlRequest) returns (AuthorizeTaskControlResponse);
   rpc ListAgentTaskTimeline(ListAgentTaskTimelineRequest) returns (ListAgentTaskTimelineResponse);
   rpc AppendAgentTaskTimelineEvent(AppendAgentTaskTimelineEventRequest) returns (AppendAgentTaskTimelineEventResponse);
@@ -909,6 +963,7 @@ service AgentCapabilityService {
   rpc FinishMcpToolInvocation(FinishMcpToolInvocationRequest) returns (FinishMcpToolInvocationResponse);
   rpc FinishMcpToolInvocationFromRound(FinishMcpToolInvocationFromRoundRequest) returns (FinishMcpToolInvocationFromRoundResponse);
   rpc ExecuteMcpMessageCommand(ExecuteMcpMessageCommandRequest) returns (ExecuteMcpMessageCommandResponse);
+  rpc ExecuteMcpMemoryCommand(ExecuteMcpMemoryCommandRequest) returns (ExecuteMcpMemoryCommandResponse);
   rpc ProjectTaskWorkflowState(ProjectTaskWorkflowStateRequest) returns (ProjectTaskWorkflowStateResponse);
   rpc ListTaskWorkflowProjectionSnapshots(ListTaskWorkflowProjectionSnapshotsRequest) returns (ListTaskWorkflowProjectionSnapshotsResponse);
   rpc ProposeWorkflowRepair(ProposeWorkflowRepairRequest) returns (WorkflowRepairProposalResponse);

@@ -2,7 +2,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import type { AgentEvent, AgentIdentity } from "../events/shadow-processor.js";
 import type { IAgentCapabilityServiceClient } from "../generated/dipole/agent/v1/agent.grpc-client.js";
-import type { AppendAgentTaskTimelineEventResponse, ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
+import type { AgentContactSnapshot, AgentUserProfile, AppendAgentTaskTimelineEventResponse, ConversationSnapshot, ListAgentTaskTimelineResponse } from "../generated/dipole/agent/v1/agent.js";
 import type { Message as AgentMessage } from "../generated/dipole/message/v1/message.js";
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
 import type { AgentEventSubscription } from "../events/event-subscription.js";
@@ -14,6 +14,18 @@ const callerService = "dipole-agent";
 const errorCodePattern = /^[a-z][a-z0-9_]{0,63}$/;
 const mcpToolRoundResultLimit = 128 * 1024;
 const readinessEvidenceRecordSchemaVersion = "dipole.agent.external-mcp-readiness-evidence-record.v1";
+
+function profileFromRPC(profile: AgentUserProfile): UserProfile {
+  return {
+    userId: profile.userId, nickname: profile.nickname, avatar: profile.avatar, signature: profile.signature,
+    userType: profile.userType, status: profile.status
+  };
+}
+
+function contactFromRPC(contact: AgentContactSnapshot): ContactListItem {
+  if (contact.profile === undefined || !contact.profile.userId) throw new Error("Agent contact list returned an invalid profile");
+  return { profile: profileFromRPC(contact.profile), remark: contact.remark, status: contact.status };
+}
 
 export interface AgentRunIdentity {
   readonly taskId: string;
@@ -145,6 +157,21 @@ export interface ConversationSearchResult {
   readonly sentAtUnixMs: string;
 }
 
+export interface UserProfile {
+  readonly userId: string;
+  readonly nickname: string;
+  readonly avatar: string;
+  readonly signature: string;
+  readonly userType: number;
+  readonly status: number;
+}
+
+export interface ContactListItem {
+  readonly profile: UserProfile;
+  readonly remark: string;
+  readonly status: number;
+}
+
 export interface AgentTaskControlAuthorization {
   readonly taskId: string;
   readonly taskStatus: string;
@@ -249,6 +276,18 @@ export interface AgentMessageCommandExecutionInput {
   readonly commandKind: "assistant_reply" | "group_reply" | "system_message";
   readonly content: string;
   readonly conversationKey?: string;
+  readonly requestId?: string;
+  readonly traceId?: string;
+}
+
+export interface AgentMemoryCommandExecutionInput {
+  readonly taskId: string;
+  readonly runId: string;
+  readonly invocationId: string;
+  readonly memoryType: "semantic" | "episodic";
+  readonly content: string;
+  readonly compactContent?: string;
+  readonly conversationKey: string;
   readonly requestId?: string;
   readonly traceId?: string;
 }
@@ -633,6 +672,50 @@ export class AgentCapabilityRPCClient {
     });
   }
 
+  async getUserProfile(context: ExecutionContext): Promise<UserProfile> {
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.getUserProfile({
+        context: this.requestContext(context.requestId, context.traceId), taskId: context.taskId, runId: context.runId
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response?.profile === undefined) {
+          reject(error ?? new Error("Agent user profile returned no profile"));
+          return;
+        }
+        const profile = profileFromRPC(response.profile);
+        if (!profile.userId || profile.userId !== context.principalUuid) {
+          reject(new Error("Agent user profile returned conflicting subject"));
+          return;
+        }
+        resolve(profile);
+      });
+    });
+  }
+
+  async listContacts(context: ExecutionContext, limit: number): Promise<readonly ContactListItem[]> {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 50) throw new Error("Agent contact list request is invalid");
+    const metadata = this.metadata(context.requestId, context.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.listContacts({
+        context: this.requestContext(context.requestId, context.traceId), taskId: context.taskId, runId: context.runId, limit
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response === undefined) {
+          reject(error ?? new Error("Agent contact list returned no response"));
+          return;
+        }
+        if (response.contacts.length > limit) {
+          reject(new Error("Agent contact list returned too many contacts"));
+          return;
+        }
+        try {
+          resolve(response.contacts.map(contactFromRPC));
+        } catch (cause) {
+          reject(cause);
+        }
+      });
+    });
+  }
+
   async authorizeTaskControl(taskId: string, principalUserId: string, context?: { requestId?: string; traceId?: string }): Promise<AgentTaskControlAuthorization> {
     const metadata = this.metadata(context?.requestId, context?.traceId);
     return new Promise((resolve, reject) => {
@@ -936,6 +1019,40 @@ export class AgentCapabilityRPCClient {
           return;
         }
         resolve({ resourceType: "message", resourceId: reference.resourceId, commandKind: input.commandKind, commandId });
+      });
+    });
+  }
+
+  async executeMemoryCommand(input: AgentMemoryCommandExecutionInput): Promise<AgentContextMemory> {
+    const content = input.content.trim();
+    if (!input.taskId.trim() || !input.runId.trim() || !input.invocationId.trim() || !input.conversationKey.trim() || !content) {
+      throw new Error("Agent Memory Command input is invalid");
+    }
+    const metadata = this.metadata(input.requestId, input.traceId);
+    return new Promise((resolve, reject) => {
+      this.rpc.executeMcpMemoryCommand({
+        context: this.requestContext(input.requestId, input.traceId), taskId: input.taskId, runId: input.runId,
+        invocationId: input.invocationId, memoryType: input.memoryType, content,
+        compactContent: input.compactContent?.trim() ?? "", conversationKey: input.conversationKey.trim()
+      }, metadata, { deadline: Date.now() + this.timeoutMs }, (error, response) => {
+        if (error !== null || response?.memory === undefined) {
+          reject(error ?? new Error("Agent Memory Command returned no Memory"));
+          return;
+        }
+        const memory = response.memory;
+        if (!validBoundedIdentifier(memory.memoryId, 64) || !["semantic", "episodic"].includes(memory.memoryType) ||
+            memory.status !== "active" || memory.resourceType !== "conversation" || memory.resourceId !== input.conversationKey.trim() ||
+            memory.content !== content || memory.provenance === undefined) {
+          reject(new Error("Agent Memory Command returned conflicting evidence"));
+          return;
+        }
+        resolve({
+          memoryId: memory.memoryId, memoryType: memory.memoryType as AgentContextMemory["memoryType"], content: memory.content,
+          ...(memory.compactContent ? { compactContent: memory.compactContent } : {}), priority: memory.priority,
+          provenance: { sourceType: memory.provenance.sourceType, sourceId: memory.provenance.sourceId,
+            ...(memory.provenance.uri ? { uri: memory.provenance.uri } : {}),
+            ...(memory.provenance.sequence ? { sequence: memory.provenance.sequence } : {}) }
+        });
       });
     });
   }

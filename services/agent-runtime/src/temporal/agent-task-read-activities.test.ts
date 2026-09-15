@@ -308,6 +308,67 @@ describe("Temporal read Step Activities", () => {
     expect(replyWriter.executeMessageCommand).toHaveBeenCalledWith(expect.objectContaining({ commandKind: "group_reply", conversationKey: "group:G100" }));
   });
 
+  it("waits for approval before saving an explicit conversation Memory", async () => {
+    const event: AgentEvent = {
+      eventId: "E-MEMORY", eventType: "message.direct.created", aggregateId: "M-MEMORY",
+      occurredAt: "2026-09-16T00:00:00.000Z", payload: {
+        content: "/remember semantic Prefer concise Chinese replies", conversation_key: "direct:U100:UAI"
+      }
+    };
+    const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
+    const runId = agentRunId(taskId, "dipole-agent", "active");
+    const context = {
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId, runId, mode: "active" as const,
+      permissions: ["memory.write"], resourceScopes: [{ resourceType: "conversation", resourceId: "direct:U100:UAI", actions: ["write"] }],
+      approvedCapabilities: ["memory.save"] as "memory.save"[], eventId: event.eventId
+    };
+    let consumed = false;
+    let approvalId = "";
+    const executeMemoryCommand = vi.fn(async () => ({
+      memoryId: "MEM-1", memoryType: "semantic" as const, content: "Prefer concise Chinese replies", priority: 500,
+      provenance: { sourceType: "agent_task", sourceId: taskId, sequence: runId }
+    }));
+    const approvalWriter = {
+      beginMcpToolCommand: vi.fn(async (input: { invocationId: string }) => {
+        if (!consumed) throw Object.assign(new Error("Approval not consumed"), { code: 7 });
+        return { invocationId: input.invocationId, status: "running" as const };
+      }),
+      finishToolInvocation: vi.fn(async () => undefined),
+      consumeApproval: vi.fn(async () => { consumed = true; }),
+      resolveApprovalGrant: vi.fn(async (_taskId: string, _runId: string, capabilityId: string, resourceScope: { resourceType: string; resourceId: string; actions: string[] }, argumentsSha256: string) => ({
+        approvalId, capabilityId, resourceScope,
+        scopeSha256: createHash("sha256").update(["dipole.agent.scope.v1", resourceScope.resourceType, resourceScope.resourceId, ...resourceScope.actions].join("\n"), "utf8").digest("hex"),
+        argumentsSha256, nonceSha256: "1".repeat(64), expiresAtUnixMs: Date.now() + 60_000
+      })),
+      executeMemoryCommand,
+      executeMessageCommand: vi.fn()
+    };
+    const activities = createTemporalReadStepActivities({
+      planner: { plan: vi.fn() }, audit: { append: vi.fn(async () => undefined) }, registry: new CapabilityRegistry(),
+      trajectory: { append: vi.fn(async () => undefined), claimStep: vi.fn(async () => ({ outcome: "claimed" as const, token: "TOKEN-MEMORY" })), completeStep: vi.fn(async () => undefined), failStep: vi.fn(async () => undefined) },
+      runtimeMode: "active", contextResolver: { resolveMcpContext: vi.fn(async () => context) }, approvalWriter, stepLeaseMs: 60_000
+    });
+    const input = {
+      taskId, runId, goal: "remember", step: 0, shadowEvent: event,
+      admission: { tenantId: "dipole", principalUserId: "U100", agentId: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId, eventId: event.eventId }
+    };
+
+    const waiting = await activities.executeAgentTaskStep(input);
+    expect(waiting).toMatchObject({ kind: "wait_approval", approval: { capabilityId: "memory.save" }, checkpoint: { kind: "memory" } });
+    expect(executeMemoryCommand).not.toHaveBeenCalled();
+    if (waiting.kind !== "wait_approval") throw new Error("Expected Memory approval");
+    approvalId = waiting.approval.approvalId;
+
+    await expect(activities.executeAgentTaskStep({ ...input, step: 1, checkpoint: waiting.checkpoint,
+      resume: { kind: "approval", requestId: waiting.requestId, approvalId, decision: "approved" }
+    })).resolves.toMatchObject({ kind: "complete", output: { memoryId: "MEM-1" } });
+    expect(approvalWriter.consumeApproval).toHaveBeenCalledOnce();
+    expect(executeMemoryCommand).toHaveBeenCalledOnce();
+    expect(executeMemoryCommand).toHaveBeenCalledWith(expect.objectContaining({
+      taskId, runId, memoryType: "semantic", conversationKey: "direct:U100:UAI"
+    }));
+  });
+
   it("waits for a crashed Step lease and accepts its completed replay", async () => {
     const event: AgentEvent = {
       eventId: "E-BUSY", eventType: "message.direct.created", aggregateId: "M-BUSY",

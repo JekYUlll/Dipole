@@ -58,7 +58,8 @@ Device Cursor：历史顺序、已读位置和设备同步位置分别表达，�
 状态构建 ExecutionContext，再编译当前消息、会话窗口与有界检索证据。模型只能选择
 已经注册的 Capability：
 
-- `conversation.list`、`conversation.read`、`conversation.search` 用于只读会话检索。
+- `conversation.list`、`conversation.read`、`conversation.search` 用于只读会话检索；
+  `user.profile.read` 与 `contact.list` 分别读取任务所属用户的公开资料和本人通讯录。
 - 写操作先进入 `WAITING_APPROVAL`，由用户批准或拒绝。
 - 批准后的写入通过 Core 再次校验权限与资源范围，最终以幂等 Message Command 写回 IM。
 

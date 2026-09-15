@@ -126,8 +126,8 @@ func NewLocalAgentCommandV1(messages agentapplication.AgentCommandMessages) (*Lo
 	return agentapplication.NewLocalAgentCommandV1(messages)
 }
 
-func NewLocalAgentCapabilityV1(core application.CoreCapability, messages agentapplication.AgentCapabilityMessages, conversations agentapplication.AgentCapabilityConversations, commands application.AgentCommandV1, searches ...application.SearchApplication) (*LocalAgentCapabilityV1, error) {
-	return agentapplication.NewLocalAgentCapabilityV1(core, messages, conversations, commands, searches...)
+func NewLocalAgentCapabilityV1(core application.CoreCapability, contacts agentapplication.AgentCapabilityContacts, messages agentapplication.AgentCapabilityMessages, conversations agentapplication.AgentCapabilityConversations, commands application.AgentCommandV1, searches ...application.SearchApplication) (*LocalAgentCapabilityV1, error) {
+	return agentapplication.NewLocalAgentCapabilityV1(core, contacts, messages, conversations, commands, searches...)
 }
 
 func agentCommandCapabilityIDV1(kind application.AgentMessageCommandKindV1) (string, error) {

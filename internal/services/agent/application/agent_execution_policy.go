@@ -11,7 +11,7 @@ import (
 	"github.com/JekYUlll/Dipole/internal/application"
 )
 
-const embeddedAgentDefinitionVersionV1 uint64 = 2
+const embeddedAgentDefinitionVersionV1 uint64 = 3
 const embeddedAgentRuntimeIDV1 = "dipole-eino"
 
 type agentPolicyClockV1 func() time.Time
