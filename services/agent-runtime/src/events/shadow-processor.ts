@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-
 import { z } from "zod";
 
 import { executionContextSchema, type ExecutionContext } from "../runtime/execution-context.js";
@@ -313,6 +312,12 @@ async function executeShadowPlanSteps(
       evidence.push({ capabilityId: step.capabilityId, output });
     } catch (error) {
       await trajectory.failStep(context.taskId, stepNo, claimToken, error);
+      // A malformed model-generated read input has not reached the capability.
+      // Preserve it as evidence so the task can still give the user a useful reply.
+      if (error instanceof z.ZodError) {
+        evidence.push({ capabilityId: step.capabilityId, error: "invalid_input" });
+        continue;
+      }
       throw error;
     }
   }

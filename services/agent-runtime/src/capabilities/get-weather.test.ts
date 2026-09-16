@@ -67,4 +67,22 @@ describe("get_weather", () => {
     expect(result.summary).toBe("Beijing is 25 C (Open-Meteo).");
     expect(answer).toHaveBeenCalledOnce();
   });
+
+  it("keeps the task reply path available when a model proposes invalid weather input", async () => {
+    const { registry } = fixture({ results: [location] }, { timezone: "Asia/Shanghai", current });
+    const answer = vi.fn(async (_event, _ctx, evidence) => {
+      expect(evidence).toEqual([{ capabilityId: "get_weather", error: "invalid_input" }]);
+      return "我可以查询天气，请告诉我城市。";
+    });
+    const failStep = vi.fn(async () => undefined);
+    const result = await executeShadowPlan({ eventId: "E2", aggregateId: "M2", eventType: "message.direct.created",
+      occurredAt: "2026-09-15T00:00:00Z", payload: { content: "你有什么能力" } }, context, {
+      planner: { plan: async () => ({ summary: "checking", steps: [{ capabilityId: "get_weather", input: { location: "current location" } }] }), answer },
+      registry, audit: { append: async () => undefined }, stepLeaseMs: 30_000,
+      trajectory: { append: async () => undefined, claimStep: async () => ({ outcome: "claimed", token: "lease" }),
+        completeStep: async () => undefined, failStep }
+    });
+    expect(result.summary).toBe("我可以查询天气，请告诉我城市。");
+    expect(failStep).toHaveBeenCalledOnce();
+  });
 });

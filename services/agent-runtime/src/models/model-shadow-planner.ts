@@ -152,7 +152,8 @@ export class ModelShadowPlanner implements ShadowPlanner {
       if (value.usage.outputTokens !== undefined) span.setAttribute("dipole.agent.model.output_tokens", value.usage.outputTokens);
       return value;
     });
-    for (const step of result.output.steps) {
+    const steps = capabilityOverviewRequest(event) ? [] : result.output.steps;
+    for (const step of steps) {
       if (!this.#allowedCapabilityIds.has(step.capabilityId)) {
         throw new Error(`model capability ${step.capabilityId} is not allowed in shadow mode`);
       }
@@ -164,7 +165,7 @@ export class ModelShadowPlanner implements ShadowPlanner {
     return {
       summary: result.output.summary,
       ...(result.output.proposedWrite === undefined ? {} : { proposedWrite: result.output.proposedWrite }),
-      steps: result.output.steps,
+      steps,
       model: {
         route: result.route,
         attempts: result.attempts,
@@ -190,6 +191,11 @@ export class ModelShadowPlanner implements ShadowPlanner {
       }
     };
   }
+}
+
+function capabilityOverviewRequest(event: Parameters<ShadowPlanner["plan"]>[0]): boolean {
+  const content = typeof event.payload.content === "string" ? event.payload.content.trim().toLowerCase() : "";
+  return /(?:你有什么(?:功能|能力)|你能做什么|有哪些(?:功能|能力)|what can you do|what are your capabilities)/i.test(content);
 }
 
 function contextFragments(

@@ -284,6 +284,17 @@ describe("ModelShadowPlanner", () => {
     expect(request?.prompt).not.toContain(oversizedSchema.description);
   });
 
+  it("does not execute tools when the user asks for an overview of capabilities", async () => {
+    const router = { generate: vi.fn(async () => ({
+      output: { summary: "I can help with weather", steps: [{ capabilityId: "get_weather", input: { location: "current location" } }] },
+      route: "gateway/primary", attempts: 1, usage: { inputTokens: 10, outputTokens: 5 }
+    })) } as unknown as ModelRouter;
+    const planner = new ModelShadowPlanner(router, ["get_weather"]);
+
+    await expect(planner.plan({ ...event(), payload: { content: "你有什么能力" } }, context()))
+      .resolves.toMatchObject({ steps: [] });
+  });
+
   it("rejects capabilities outside the read-only shadow allowlist", async () => {
     const router = { generate: vi.fn(async () => ({
       output: { summary: "send a reply", steps: [{ capabilityId: "message.send", input: { content: "hello" } }] },
