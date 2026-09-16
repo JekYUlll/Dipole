@@ -151,6 +151,11 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 			cleanup()
 			return nil, fmt.Errorf("compose Agent resolver: %w", composeErr)
 		}
+		memoryResolver, composeErr := agentapplication.NewPersistentAgentMemoryResolverV1(agentRepos.Memories, resolver, agentRepos.Policy, time.Now)
+		if composeErr != nil {
+			cleanup()
+			return nil, fmt.Errorf("compose Agent Memory resolver: %w", composeErr)
+		}
 		admission, composeErr := agentapplication.NewPersistentAgentRunAdmissionV1(agentRepos.Policy)
 		if composeErr != nil {
 			cleanup()
@@ -217,7 +222,7 @@ func InitializeCoreService(ctx context.Context) (*CoreRuntime, error) {
 		runtime.coreRPC, err = NewCoreRPCServerWithAgentArtifacts(
 			rpcCfg, messaging.Core, agentCapability, resolver, admission, approvals, controls, projection, repairs,
 			nil, nil, nil, artifacts, toolAudits, nil, nil, messageCommands, approvalGrants,
-			nil, nil, nil, nil, nil, nil, memoryCommands, agentRepos.TaskTimeline,
+			nil, nil, nil, nil, nil, nil, memoryCommands, agentRepos.TaskTimeline, memoryResolver,
 		)
 		if err != nil {
 			cleanup()
