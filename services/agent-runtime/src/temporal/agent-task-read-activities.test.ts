@@ -196,16 +196,19 @@ describe("Temporal read Step Activities", () => {
     expect(replyWriter.finishToolInvocation).toHaveBeenCalledWith(expect.objectContaining({ status: "completed" }));
   });
 
-  it.each(["/system Deployment starts at 18:00", "Please publish a system notice that deployment starts at 18:00", "scheduled", "scheduled-group"])("waits for approval and restores the exact proposal: %s", async (request) => {
+  it.each(["/system Deployment starts at 18:00", "Please publish a system notice that deployment starts at 18:00", "scheduled", "scheduled-group", "reminder", "reminder-group"])("waits for approval and restores the exact proposal: %s", async (request) => {
     const publishAt = Date.now() + 60_000;
-    const scheduled = request.startsWith("scheduled");
-    const group = request === "scheduled-group";
+    const reminder = request.startsWith("reminder");
+    const scheduled = request.startsWith("scheduled") || reminder;
+    const group = request === "scheduled-group" || request === "reminder-group";
     const conversationKey = group ? "group:G100" : "direct:U100:UAI";
     const capabilityId = group ? "message.group_reply.send" as const : "message.system.send" as const;
     const commandKind = group ? "group_reply" as const : "system_message" as const;
     const event: AgentEvent = {
       eventId: "E-APPROVAL", eventType: group ? "message.group.created" : "message.direct.created", aggregateId: "M-APPROVAL",
-      occurredAt: new Date().toISOString(), payload: { content: scheduled ? `${group ? "@AI " : ""}/digest ${new Date(publishAt).toISOString()} Find Cassandra discussions` : request, conversation_key: conversationKey }
+      occurredAt: new Date().toISOString(), payload: { content: reminder
+        ? `${group ? "@AI " : ""}/remind ${new Date(publishAt).toISOString()} Take a break`
+        : scheduled ? `${group ? "@AI " : ""}/digest ${new Date(publishAt).toISOString()} Find Cassandra discussions` : request, conversation_key: conversationKey }
     };
     const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
     const runId = agentRunId(taskId, "dipole-agent", "active");
@@ -248,7 +251,7 @@ describe("Temporal read Step Activities", () => {
     const checkpoint = (initial as { checkpoint: unknown }).checkpoint;
     let clock: ReturnType<typeof vi.spyOn> | undefined;
     if (scheduled) {
-      expect(initial).toMatchObject({ notBeforeUnixMs: publishAt, checkpoint: { content: "Please approve", publishAtUnixMs: publishAt } });
+      expect(initial).toMatchObject({ notBeforeUnixMs: publishAt, checkpoint: { content: reminder ? "Take a break" : "Please approve", publishAtUnixMs: publishAt } });
       expect(initial.kind === "wait_approval" && initial.summary).toContain(conversationKey);
       const premature = {
         taskId, runId, goal: "notify", step: 1, checkpoint, shadowEvent: event,
@@ -269,7 +272,7 @@ describe("Temporal read Step Activities", () => {
     })).resolves.toMatchObject({ kind: "complete", output: { summary: "Approved system message delivered" } });
     expect(approvalWriter.consumeApproval).toHaveBeenCalledOnce();
     expect(approvalWriter.executeMessageCommand).toHaveBeenCalledOnce();
-    expect(approvalWriter.executeMessageCommand).toHaveBeenCalledWith(expect.objectContaining({ commandKind, ...(group ? { conversationKey } : {}) }));
+    expect(approvalWriter.executeMessageCommand).toHaveBeenCalledWith(expect.objectContaining({ commandKind, ...(group ? { conversationKey } : {}), ...(reminder ? { content: "Take a break" } : {}) }));
     expect(plan).toHaveBeenCalledTimes(callsBeforeResume);
     await expect(activities.executeAgentTaskStep({
       taskId, runId, goal: "notify", step: 1, checkpoint,

@@ -131,20 +131,23 @@ export function createTemporalReadStepActivities(
         if (restored !== undefined && restored.conversationKey !== activeReplyConversationKey(event, context)) {
           throw new Error("Approval checkpoint conversation mismatch");
         }
-        const schedule = scheduledDigest(event);
+        const schedule = scheduledMessage(event);
         if (schedule !== undefined && input.resume === undefined && schedule.publishAtUnixMs <= Date.now()) {
-          throw new Error("Digest publication time has already passed");
+          throw new Error(`${schedule.kind === "digest" ? "Digest publication" : "Reminder time"} has already passed`);
         }
         if (restored?.publishAtUnixMs !== undefined && restored.publishAtUnixMs !== schedule?.publishAtUnixMs) {
           throw new Error("Approval checkpoint publication time mismatch");
         }
         const explicitMessage = requestedSystemMessage(event, context, restored?.content, restored?.publishAtUnixMs);
         // Approval resumes use the exact checkpoint, without another model call.
-        const plan = explicitMessage === undefined && input.resume === undefined
-          ? await executeShadowPlan(schedule === undefined ? event : {
-            ...event, payload: { ...event.payload, content: schedule.query }
-          }, context, { ...dependencies, telemetry }) : undefined;
-        const systemMessage = explicitMessage ?? (schedule !== undefined && plan !== undefined
+        const planningEvent = schedule?.kind === "digest"
+          ? { ...event, payload: { ...event.payload, content: schedule.query } }
+          : event;
+        const plan = explicitMessage === undefined && input.resume === undefined && schedule?.kind !== "reminder"
+          ? await executeShadowPlan(planningEvent, context, { ...dependencies, telemetry }) : undefined;
+        const systemMessage = explicitMessage ?? (schedule?.kind === "reminder"
+          ? requestedSystemMessage(event, context, schedule.content, schedule.publishAtUnixMs)
+          : schedule?.kind === "digest" && plan !== undefined
           ? requestedSystemMessage(event, context, plan.summary, schedule.publishAtUnixMs)
           : plan?.proposedWrite === undefined ? undefined : requestedSystemMessage(event, context, plan.proposedWrite.content));
         if ((input.resume !== undefined || plan?.proposedWrite !== undefined || schedule !== undefined) && systemMessage === undefined) {
@@ -153,7 +156,7 @@ export function createTemporalReadStepActivities(
         if (systemMessage !== undefined && dependencies.approvalWriter !== undefined) {
           if (input.resume?.kind === "approval") {
             if (schedule !== undefined && Date.now() < schedule.publishAtUnixMs) {
-              throw new Error("Digest publication time has not arrived");
+              throw new Error(`${schedule.kind === "digest" ? "Digest publication" : "Reminder time"} has not arrived`);
             }
             if (input.resume.decision !== "approved" || input.resume.requestId !== systemMessage.requestId ||
                 input.resume.approvalId !== systemMessage.approval.approvalId) {
@@ -171,7 +174,7 @@ export function createTemporalReadStepActivities(
           return {
             kind: "wait_approval",
             requestId: systemMessage.requestId,
-            summary: `${schedule === undefined ? "Send system message" : `Publish at ${new Date(schedule.publishAtUnixMs).toISOString()} to ${systemMessage.conversationKey}`}: ${systemMessage.content}`,
+            summary: `${schedule === undefined ? "Send system message" : `${schedule.kind === "digest" ? "Publish" : "Remind"} at ${new Date(schedule.publishAtUnixMs).toISOString()} to ${systemMessage.conversationKey}`}: ${systemMessage.content}`,
             approval: systemMessage.approval,
             ...(schedule === undefined ? {} : { notBeforeUnixMs: schedule.publishAtUnixMs }),
             checkpoint: { kind: "system_message", content: systemMessage.content, conversationKey: systemMessage.conversationKey,
@@ -299,19 +302,29 @@ function requestedSystemMessage(event: ReturnType<typeof agentEventSchema.parse>
   };
 }
 
-function scheduledDigest(event: ReturnType<typeof agentEventSchema.parse>): { publishAtUnixMs: number; query: string } | undefined {
+type ScheduledMessage =
+  | { kind: "digest"; publishAtUnixMs: number; query: string }
+  | { kind: "reminder"; publishAtUnixMs: number; content: string };
+
+function scheduledMessage(event: ReturnType<typeof agentEventSchema.parse>): ScheduledMessage | undefined {
   const content = String(event.payload.content ?? "").trim().replace(/^@(?:Dipole\s+AI|AI)\s+/i, "");
-  if (!/^\/digest(?:\s|$)/i.test(content)) return undefined;
-  const match = /^\/digest\s+(\S+)\s+([\s\S]+)$/i.exec(content);
+  const digest = /^\/digest\s+(\S+)\s+([\s\S]+)$/i.exec(content);
+  const reminder = /^\/remind\s+(\S+)\s+([\s\S]+)$/i.exec(content);
+  if (digest === null && reminder === null) return undefined;
+  const match = digest ?? reminder!;
   if (!["message.direct.created", "message.group.created"].includes(event.eventType) || match === null || !/(?:Z|[+-]\d{2}:\d{2})$/.test(match[1]!)) {
-    throw new Error("Use /digest <ISO timestamp with timezone> <retrieval request>");
+    throw new Error(`Use /${digest === null ? "remind" : "digest"} <ISO timestamp with timezone> <${digest === null ? "message" : "retrieval request"}>`);
   }
   const publishAtUnixMs = Date.parse(match[1]!);
   const occurredAt = Date.parse(event.occurredAt);
   if (!Number.isSafeInteger(publishAtUnixMs) || publishAtUnixMs <= occurredAt || publishAtUnixMs > occurredAt + 7 * 86400_000) {
-    throw new Error("Digest publication must be within seven days after the request");
+    throw new Error(`${digest === null ? "Reminder" : "Digest publication"} must be within seven days after the request`);
   }
-  return { publishAtUnixMs, query: match[2]!.trim() };
+  const value = match[2]!.trim();
+  if (value.length === 0 || value.length > 2000) throw new Error(`${digest === null ? "Reminder" : "Digest request"} must be between 1 and 2000 characters`);
+  return digest === null
+    ? { kind: "reminder", publishAtUnixMs, content: value }
+    : { kind: "digest", publishAtUnixMs, query: value };
 }
 
 function hasWriteScope(context: ExecutionContext, requested: { resourceType: string; resourceId: string; actions: readonly string[] }): boolean {

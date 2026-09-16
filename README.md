@@ -184,18 +184,23 @@ and deadline/restart scenarios against an already running local experience stack
 Scheduled digest: send
 `/digest <ISO timestamp with timezone> <retrieval request>` to the AI user, for
 example `/digest 2026-09-16T09:00:00+08:00 Find Cassandra discussions and summarize the decisions`.
-Choose a future time within seven days. The task prepares a draft through the
-existing context/tool path and shows its full text, destination and UTC publication
-time for approval. Approval queues publication at that time; cancellation prevents
-dispatch while waiting. Worker downtime beyond the ten-minute publication grace
-period expires the task. During the timer wait, the task currently retains its
-approval-wait display. In a group, send `@AI /digest <timestamp> <retrieval request>`
-to publish the approved draft back to that group. Core rechecks the requesting user's
-current group access before dispatch; the Agent must also be able to send to the group.
-Direct requests publish to the owner's AI conversation. Natural-language time
-clarification remains pending. The group scheduled path has been verified against
-the real experience stack using DeepSeek, Temporal, MySQL, Elasticsearch, WebSocket
-and Sync, including approval/denial, cancellation and restart during the timer wait.
+
+For a durable reminder, send `/remind <ISO timestamp with timezone> <message>`.
+The Task keeps the approved reminder in Temporal history, waits until the
+scheduled time, then sends one idempotent message in the originating conversation.
+Choose a future time within seven days. Reminders retain the supplied text;
+scheduled digests prepare a draft through the existing context/tool path. Both show
+the destination and UTC publication time for approval. Approval queues publication
+at that time; cancellation prevents dispatch while waiting. Worker downtime beyond
+the ten-minute publication grace period expires the task. During the timer wait,
+the task retains its approval-wait display. In a group, send `@AI /remind <timestamp>
+<message>` or `@AI /digest <timestamp> <retrieval request>` to publish into that
+group. Core rechecks the requesting user's current group access before dispatch; the
+Agent must also be able to send to the group. Direct requests publish to the owner's
+AI conversation. Natural-language time clarification remains pending. The group
+scheduled path has been verified against the real experience stack using DeepSeek,
+Temporal, MySQL, Elasticsearch, WebSocket and Sync, including approval/denial,
+cancellation and restart during the timer wait.
 Apply migrations through `000055` with the updated Core/Agent builds. Approved
 message writes recover using the original invocation and committed message receipt.
 The real smoke also interrupts completion auditing after message persistence and

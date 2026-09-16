@@ -33,8 +33,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     await env?.teardown();
   });
 
-  it.each(["approved", "denied", "scheduled", "cancelled", "scheduled-group"] as const)("restores a natural-language proposal after worker replacement: %s", async (scenario) => {
-    const scheduled = scenario.startsWith("scheduled") || scenario === "cancelled";
+  it.each(["approved", "denied", "scheduled", "cancelled", "scheduled-group", "reminder"] as const)("restores a natural-language proposal after worker replacement: %s", async (scenario) => {
+    const reminder = scenario === "reminder";
+    const scheduled = scenario.startsWith("scheduled") || scenario === "cancelled" || reminder;
     const group = scenario === "scheduled-group";
     const conversationKey = group ? "group:G100" : "direct:U100:UAI";
     const capabilityId = group ? "message.group_reply.send" as const : "message.system.send" as const;
@@ -43,7 +44,9 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     const event: AgentEvent = {
       eventId: `E-NATURAL-${scenario}`, eventType: group ? "message.group.created" : "message.direct.created", aggregateId: `M-NATURAL-${scenario}`,
       occurredAt: new Date().toISOString(),
-      payload: { content: scheduled ? `${group ? "@AI " : ""}/digest ${new Date(publishAt).toISOString()} Summarize Cassandra discussions` : "Please publish a system notice: deployment at 18:00", conversation_key: conversationKey }
+      payload: { content: reminder
+        ? `/remind ${new Date(publishAt).toISOString()} Take a break`
+        : scheduled ? `${group ? "@AI " : ""}/digest ${new Date(publishAt).toISOString()} Summarize Cassandra discussions` : "Please publish a system notice: deployment at 18:00", conversation_key: conversationKey }
     };
     const taskId = agentTaskId({ tenantId: "dipole", agentUuid: "UAI", triggerType: event.eventType, triggerRef: event.aggregateId });
     const runId = agentRunId(taskId, "dipole-agent", "active");
@@ -58,10 +61,15 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
     let consumed = false;
     let attempts = 0;
     const messages = new Map<string, string>();
-    const planner = new ModelShadowPlanner(new ModelRouter({ generate: async () => {
+    const planner = new ModelShadowPlanner(new ModelRouter({ generate: async ({ system }) => {
       modelCalls++;
-      return { output: { summary: "Approve this notice", steps: [], ...(group ? {} : { proposedWrite: { content: "Deployment at 18:00" } }) }, usage: { inputTokens: 10, outputTokens: 10 } };
-    } }, ["fixture"], { maxCalls: 1, totalTimeoutMs: 1000, maxOutputTokensPerCall: 128 }), []);
+      return {
+        output: system === undefined
+          ? { summary: "Approve this notice", steps: [], ...(group ? {} : { proposedWrite: { content: "Deployment at 18:00" } }) }
+          : { summary: "Approve this notice" },
+        usage: { inputTokens: 10, outputTokens: 10 }
+      };
+    } }, ["fixture"], { maxCalls: 2, totalTimeoutMs: 1000, maxOutputTokensPerCall: 128 }), []);
     const steps = createTemporalReadStepActivities({
       planner, runtimeMode: "active", contextResolver: { resolveMcpContext: async () => context },
       audit: { append: async () => undefined }, registry: new CapabilityRegistry(), stepLeaseMs: 1000,
@@ -125,7 +133,7 @@ describe.skipIf(!integrationEnabled)("Agent Task Temporal integration", () => {
       expect(result.taskId).toBe(taskId);
       const delivered = decision === "approved" && scenario !== "cancelled";
       expect(result.status).toBe(delivered ? "completed" : "cancelled");
-      expect(modelCalls).toBe(1);
+      expect(modelCalls).toBe(reminder ? 0 : 2);
       expect(messages.size).toBe(delivered ? 1 : 0);
       expect(attempts).toBe(delivered ? 2 : 0);
     } finally {
