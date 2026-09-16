@@ -9,13 +9,12 @@ export class AISDKStructuredModelClient implements StructuredModelClient {
   constructor(private readonly resolveModel: (route: string) => WrappableLanguageModel = defaultModelResolver) {}
 
   async generate(input: Parameters<StructuredModelClient["generate"]>[0]): ReturnType<StructuredModelClient["generate"]> {
-    const result = await generateText({
+    const request = {
       // Compatible providers occasionally wrap JSON in Markdown fences. Keep
       // that tolerance inside the AI SDK output pipeline.
       model: wrapLanguageModel({ model: this.resolveModel(input.route), middleware: extractJsonMiddleware() }),
       ...(input.system === undefined ? {} : { system: input.system }),
       prompt: input.prompt,
-      output: Output.object({ schema: input.schema }),
       ...(input.tools === undefined ? {} : { tools: input.tools, activeTools: input.activeTools, stopWhen: stepCountIs(8) }),
       maxRetries: 0,
       maxOutputTokens: input.maxOutputTokens,
@@ -25,16 +24,50 @@ export class AISDKStructuredModelClient implements StructuredModelClient {
         // budget on hidden reasoning before returning the structured plan.
         openai: { reasoningEffort: "none" }
       }
-    });
-    return {
-      output: result.output,
-      usage: {
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens
-      },
-      finishReason: result.finishReason
     };
+    try {
+      const result = await generateText({ ...request, output: Output.object({ schema: input.schema }) });
+      return structuredResult(input, result.output, result);
+    } catch (error) {
+      if (!responseFormatUnavailable(error)) throw error;
+    }
+
+    const fallback = await generateText({
+      ...request,
+      system: strictJSONInstruction(input.system),
+      prompt: `${input.prompt}\n\nReturn only the JSON object described by the system instruction.`
+    });
+    return structuredResult(input, parseJSONObject(fallback.text), fallback);
   }
+}
+
+function structuredResult(
+  input: Parameters<StructuredModelClient["generate"]>[0],
+  output: unknown,
+  result: { readonly usage: { readonly inputTokens: number | undefined; readonly outputTokens: number | undefined }; readonly finishReason: string }
+): Awaited<ReturnType<StructuredModelClient["generate"]>> {
+  const parsed = input.schema.parse(output);
+  return {
+    output: parsed,
+    usage: {
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens
+    },
+    finishReason: result.finishReason
+  };
+}
+
+function responseFormatUnavailable(error: unknown): boolean {
+  return /response_format.*unavailable/i.test(error instanceof Error ? error.message : String(error));
+}
+
+function strictJSONInstruction(system: string | undefined): string {
+  return `${system ?? ""}\nReturn exactly one JSON object with no Markdown or extra text. The response is validated before use.`;
+}
+
+function parseJSONObject(text: string): unknown {
+  const candidate = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  return JSON.parse(candidate);
 }
 
 function defaultModelResolver(route: string): WrappableLanguageModel {

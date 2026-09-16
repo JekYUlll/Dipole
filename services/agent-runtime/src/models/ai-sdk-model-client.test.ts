@@ -72,6 +72,28 @@ describe("AISDKStructuredModelClient", () => {
     expect(doGenerate).toHaveBeenCalledOnce();
   });
 
+  it("falls back to locally validated JSON when a provider rejects response_format", async () => {
+    const doGenerate = vi.fn(async (options: { responseFormat?: { type?: string } }) => {
+      if (options.responseFormat?.type === "json") {
+        throw new Error("This response_format type is unavailable now");
+      }
+      return {
+        content: [{ type: "text" as const, text: '{"summary":"ready"}' }],
+        finishReason: { unified: "stop" as const, raw: "stop" },
+        usage: { inputTokens: { total: 2, noCache: 2, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 1, text: 1, reasoning: 0 } },
+        warnings: []
+      };
+    });
+    const model = new MockLanguageModelV3({ provider: "test", modelId: "fallback", doGenerate });
+    const client = new AISDKStructuredModelClient(() => model);
+
+    await expect(client.generate({
+      route: "test/fallback", prompt: "plan event", schema: z.object({ summary: z.string() }), maxOutputTokens: 96, timeoutMs: 2000
+    })).resolves.toMatchObject({ output: { summary: "ready" } });
+    expect(doGenerate).toHaveBeenCalledTimes(2);
+    expect(model.doGenerateCalls[1]?.responseFormat).not.toMatchObject({ type: "json" });
+  });
+
   it("forwards active read tools to the AI SDK tool loop", async () => {
     const model = new MockLanguageModelV3({
       provider: "test", modelId: "planner",
