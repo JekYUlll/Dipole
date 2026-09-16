@@ -268,6 +268,10 @@ function contextFragments(
           messageWriteProposalAllowed: context.mode === "active" && event.eventType === "message.direct.created" && context.permissions.includes("message.write"),
         ...(allowedCapabilities.length === 0 ? {} : { capabilities: allowedCapabilities })
       }),
+	  compactContent: JSON.stringify({
+          allowedCapabilityIds: [...allowedCapabilityIds].sort(),
+          messageWriteProposalAllowed: context.mode === "active" && event.eventType === "message.direct.created" && context.permissions.includes("message.write")
+      }),
 	  provenance: { sourceType: "capability_registry", sourceId: "runtime-v1" }
     }
   ];

@@ -262,6 +262,28 @@ describe("ModelShadowPlanner", () => {
     expect(request?.prompt).not.toContain('\\"message.send\\"');
   });
 
+  it("uses the compact capability allowlist when full schemas exceed the context allocation", async () => {
+    const generate = vi.fn(async () => ({
+      output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
+      usage: { inputTokens: 10, outputTokens: 5 }
+    }));
+    const oversizedSchema = {
+      type: "object",
+      description: "x".repeat(12_000),
+      properties: { query: { type: "string" } },
+      additionalProperties: false
+    };
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.search"], undefined, undefined, undefined, undefined, undefined,
+      [{ id: "conversation.search", risk: "read", requiredPermission: "conversation.search", inputSchema: oversizedSchema }]
+    );
+
+    await expect(planner.plan(event(), context())).resolves.toMatchObject({ summary: "observe" });
+    const request = (generate.mock.calls as unknown as Array<[{ prompt: string }]>)[0]?.[0];
+    expect(request?.prompt).toContain('\\"allowedCapabilityIds\\":[\\"conversation.search\\"]');
+    expect(request?.prompt).not.toContain(oversizedSchema.description);
+  });
+
   it("rejects capabilities outside the read-only shadow allowlist", async () => {
     const router = { generate: vi.fn(async () => ({
       output: { summary: "send a reply", steps: [{ capabilityId: "message.send", input: { content: "hello" } }] },
