@@ -5,7 +5,7 @@ import { MockLanguageModelV3 } from "ai/test";
 import { AISDKStructuredModelClient } from "./ai-sdk-model-client.js";
 
 describe("AISDKStructuredModelClient", () => {
-  it("uses AI SDK structured output without hidden retries", async () => {
+  it("uses AI SDK native structured output without hidden retries", async () => {
     const model = new MockLanguageModelV3({
       provider: "test",
       modelId: "planner",
@@ -34,11 +34,14 @@ describe("AISDKStructuredModelClient", () => {
     expect(model.doGenerateCalls).toHaveLength(1);
     expect(model.doGenerateCalls[0]).toMatchObject({
       maxOutputTokens: 96,
+      responseFormat: {
+        type: "json",
+      },
       providerOptions: { openai: { reasoningEffort: "none" } }
     });
   });
 
-  it("parses fenced JSON with the caller schema", async () => {
+  it("validates generated output with the caller schema", async () => {
     const model = new MockLanguageModelV3({
       provider: "test",
       modelId: "planner",
