@@ -1,4 +1,4 @@
-import { extractJsonMiddleware, generateText, Output, wrapLanguageModel } from "ai";
+import { extractJsonMiddleware, generateText, Output, stepCountIs, wrapLanguageModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 
 import type { StructuredModelClient } from "./model-router.js";
@@ -16,6 +16,7 @@ export class AISDKStructuredModelClient implements StructuredModelClient {
       ...(input.system === undefined ? {} : { system: input.system }),
       prompt: input.prompt,
       output: Output.object({ schema: input.schema }),
+      ...(input.tools === undefined ? {} : { tools: input.tools, activeTools: input.activeTools, stopWhen: stepCountIs(8) }),
       maxRetries: 0,
       maxOutputTokens: input.maxOutputTokens,
       timeout: input.timeoutMs,

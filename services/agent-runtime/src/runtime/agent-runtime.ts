@@ -392,7 +392,7 @@ export function createKafkaAgentRuntime(
   const planner = usesLocalModel
     ? new ModelShadowPlanner(new ModelRouter(
       new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool!), undefined, rpcTransport?.client
-    ), registry!.descriptors().map(item => item.id), routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors())
+    ), registry!.descriptors().map(item => item.id), routeContextCompiler(config), config.memoryEnabled ? rpcTransport!.client : undefined, undefined, persistentAudit!, rpcTransport!.client, registry!.descriptors(), registry!)
     : new MetadataShadowPlanner();
   const consumer = buildKafkaAgentRuntime(
     config, factory, planner, audit, ledger, failureRouter, rpcTransport?.client, registry, trajectory,
@@ -457,7 +457,7 @@ export function createTemporalReadActivityResources(config: AgentRuntimeConfig):
   registry.register(new CalculateCapability());
   const planner = new ModelShadowPlanner(new ModelRouter(
     new AISDKStructuredModelClient(), config.modelRoutes, config.modelBudget, undefined, new MySQLModelAuditStore(pool), undefined, rpc.client
-  ), registry.descriptors().map(item => item.id), routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors());
+  ), registry.descriptors().map(item => item.id), routeContextCompiler(config), config.memoryEnabled ? rpc.client : undefined, undefined, audit, rpc.client, registry.descriptors(), registry);
   const temporalStepLeaseMs = Math.min(config.leaseMs, 85_000);
   return {
     activities: createTemporalReadStepActivities({

@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { ToolSet } from "ai";
 import { AgentTelemetry } from "../observability/agent-telemetry.js";
 
 export type ModelStage = "plan" | "answer" | "report_review" | "report_final";
@@ -15,6 +16,8 @@ export interface StructuredModelRequest {
   readonly schema: z.ZodType;
   readonly maxOutputTokens: number;
   readonly timeoutMs: number;
+  readonly tools?: ToolSet;
+  readonly activeTools?: readonly string[];
 }
 
 export interface StructuredModelClient {
@@ -101,6 +104,8 @@ export class ModelRouter {
     readonly schema: z.ZodType<T>;
     readonly taskId?: string;
     readonly stage?: ModelStage;
+    readonly tools?: ToolSet;
+    readonly activeTools?: readonly string[];
   }): Promise<ModelRoutingResult<T>> {
     if (this.audit !== undefined && !input.taskId?.trim()) {
       throw new Error("persistent model routing requires a Task ID");
@@ -149,6 +154,8 @@ export class ModelRouter {
           const value = await this.client.generate({
             route, prompt: input.prompt, ...(input.system === undefined ? {} : { system: input.system }), schema: input.schema,
             maxOutputTokens: this.#policy.maxOutputTokensPerCall,
+            ...(input.tools === undefined ? {} : { tools: input.tools }),
+            ...(input.activeTools === undefined ? {} : { activeTools: input.activeTools }),
             timeoutMs: Math.max(1, Math.floor(remainingMs))
           });
           const validated = { ...value, output: input.schema.parse(value.output) };

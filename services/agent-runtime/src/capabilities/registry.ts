@@ -1,3 +1,6 @@
+import { tool, type ToolSet } from "ai";
+import { z } from "zod";
+
 import type { ExecutionContext } from "../runtime/execution-context.js";
 import { PolicyEngine, type CapabilityDescriptor, type ResourceRequest } from "../policy/policy-engine.js";
 
@@ -17,6 +20,11 @@ export interface PreparedCapabilityInvocation {
   readonly resource: ResourceRequest;
   readonly input: unknown;
   execute(): Promise<unknown>;
+}
+
+export interface ReadOnlyToolSession {
+  readonly tools: ToolSet;
+  readonly activeTools: readonly string[];
 }
 
 export class CapabilityRegistry {
@@ -61,6 +69,26 @@ export class CapabilityRegistry {
 
   descriptors(): readonly CapabilityDescriptor[] {
     return [...this.#capabilities.values()].map((capability) => capability.descriptor);
+  }
+
+  createReadOnlyToolSession(context: ExecutionContext, allowedCapabilityIds: readonly string[]): ReadOnlyToolSession {
+    const allowed = new Set(allowedCapabilityIds);
+    const tools: ToolSet = {};
+
+    for (const [capabilityId, capability] of this.#capabilities) {
+      if (!allowed.has(capabilityId) || capability.descriptor.risk !== "read") continue;
+      const toolName = capabilityId.replaceAll(".", "_");
+      if (tools[toolName] !== undefined) {
+        throw new Error(`AI SDK Tool name ${toolName} is ambiguous`);
+      }
+      tools[toolName] = tool({
+        description: `Execute the authorized read capability ${capabilityId}.`,
+        inputSchema: z.fromJSONSchema(capability.descriptor.inputSchema as Parameters<typeof z.fromJSONSchema>[0]),
+        execute: input => this.execute(capabilityId, input, context)
+      });
+    }
+
+    return { tools, activeTools: Object.keys(tools) };
   }
 }
 

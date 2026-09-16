@@ -75,4 +75,38 @@ describe("CapabilityRegistry", () => {
     await expect(registry.execute("conversation.list", { limit: 3 }, context)).resolves.toEqual([expect.objectContaining({ unreadCount: 3 })]);
     expect(listConversations).toHaveBeenCalledOnce();
   });
+
+  it("projects only authorized read capabilities as AI SDK tools", async () => {
+    const registry = new CapabilityRegistry();
+    const read = vi.fn(async () => ({ found: true }));
+    const write = vi.fn(async () => ({ sent: true }));
+    registry.register({
+      descriptor: { id: "conversation.read", risk: "read" as const, requiredPermission: "conversation.read", inputSchema: {
+        type: "object", properties: { conversationId: { type: "string", minLength: 1 } }, required: ["conversationId"], additionalProperties: false
+      } },
+      inputSchema: { parse: input => input as { conversationId: string } },
+      resolveResource: input => ({ resourceType: "conversation", resourceId: input.conversationId, action: "read" }),
+      execute: read
+    });
+    registry.register({
+      descriptor: { id: "message.send", risk: "write" as const, requiredPermission: "message.write", inputSchema: { type: "object", properties: {}, additionalProperties: false } },
+      inputSchema: { parse: input => input }, resolveResource: () => ({ resourceType: "conversation", resourceId: "group:G1", action: "write" }), execute: write
+    });
+    const context = executionContextSchema.parse({
+      tenantId: "dipole", principalUuid: "U100", agentUuid: "UAI", taskId: "TASK-1", runId: "RUN-1", mode: "active",
+      permissions: ["conversation.read", "message.write"],
+      resourceScopes: [{ resourceType: "conversation", resourceId: "group:G1", actions: ["read", "write"] }], approvedCapabilities: []
+    });
+
+    const session = registry.createReadOnlyToolSession(context, ["conversation.read", "message.send"]);
+    expect(session.activeTools).toEqual(["conversation_read"]);
+    expect(session.tools).not.toHaveProperty("message_send");
+
+    const execute = (session.tools.conversation_read as unknown as {
+      execute(input: unknown, options: unknown): Promise<unknown>;
+    }).execute;
+    await expect(execute({ conversationId: "group:G1" }, { toolCallId: "CALL-1", messages: [], abortSignal: new AbortController().signal })).resolves.toEqual({ found: true });
+    expect(read).toHaveBeenCalledOnce();
+    expect(write).not.toHaveBeenCalled();
+  });
 });

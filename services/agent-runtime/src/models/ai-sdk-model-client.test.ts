@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { tool } from "ai";
 import { z } from "zod";
 import { MockLanguageModelV3 } from "ai/test";
 
@@ -69,5 +70,28 @@ describe("AISDKStructuredModelClient", () => {
       maxOutputTokens: 96, timeoutMs: 2000
     })).rejects.toThrow(/provider unavailable/);
     expect(doGenerate).toHaveBeenCalledOnce();
+  });
+
+  it("forwards active read tools to the AI SDK tool loop", async () => {
+    const model = new MockLanguageModelV3({
+      provider: "test", modelId: "planner",
+      doGenerate: {
+        content: [{ type: "text", text: JSON.stringify({ summary: "北京时间是 12:34" }) }],
+        finishReason: { unified: "stop", raw: "stop" },
+        usage: { inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 1, text: 1, reasoning: 0 } },
+        warnings: []
+      }
+    });
+    const client = new AISDKStructuredModelClient(() => model);
+
+    await client.generate({
+      route: "test/planner", prompt: "现在几点", schema: z.object({ summary: z.string() }), maxOutputTokens: 96, timeoutMs: 2000,
+      tools: { get_current_time: tool({ inputSchema: z.object({}), execute: async () => ({ time: "12:34" }) }) },
+      activeTools: ["get_current_time"]
+    });
+
+    expect(model.doGenerateCalls[0]).toMatchObject({
+      tools: [expect.objectContaining({ name: "get_current_time" })]
+    });
   });
 });

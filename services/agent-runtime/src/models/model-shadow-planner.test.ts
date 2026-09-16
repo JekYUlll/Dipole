@@ -85,6 +85,27 @@ describe("ModelShadowPlanner", () => {
     expect(calls[1]![0].prompt.length).toBeLessThan(20000);
   });
 
+  it("projects authorized read capabilities into the AI SDK answer call", async () => {
+    const generate = vi.fn(async () => ({ output: { summary: "已找到讨论" }, route: "model", attempts: 1, usage: {} }));
+    const registry = new CapabilityRegistry();
+    registry.register(new ConversationSearchCapability({ searchConversations: vi.fn(async () => []) }));
+    const active = {
+      ...context(), mode: "active" as const,
+      permissions: ["conversation.search"],
+      resourceScopes: [{ resourceType: "conversation", resourceId: "*", actions: ["search"] }]
+    };
+    const planner = new ModelShadowPlanner(
+      { generate } as unknown as ModelRouter, ["conversation.search"], undefined, undefined, undefined, undefined, undefined,
+      registry.descriptors(), registry
+    );
+
+    await expect(planner.answer(event(), active, [])).resolves.toBe("已找到讨论");
+    expect(generate).toHaveBeenCalledWith(expect.objectContaining({
+      activeTools: ["conversation_search"],
+      tools: expect.objectContaining({ conversation_search: expect.anything() })
+    }));
+  });
+
   it("reads the authorized conversation and compiles messages as untrusted evidence", async () => {
     const generate = vi.fn(async () => ({
       output: { summary: "observe", steps: [] }, route: "gateway/primary", attempts: 1,
