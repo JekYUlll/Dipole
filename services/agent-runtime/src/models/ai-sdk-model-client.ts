@@ -1,5 +1,6 @@
 import { extractJsonMiddleware, generateText, Output, stepCountIs, wrapLanguageModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
+import type { z } from "zod";
 
 import type { StructuredModelClient } from "./model-router.js";
 
@@ -34,7 +35,7 @@ export class AISDKStructuredModelClient implements StructuredModelClient {
 
     const fallback = await generateText({
       ...request,
-      system: strictJSONInstruction(input.system),
+      system: strictJSONInstruction(input.system, input.schema),
       prompt: `${input.prompt}\n\nReturn only the JSON object described by the system instruction.`
     });
     return structuredResult(input, parseJSONObject(fallback.text), fallback);
@@ -61,8 +62,8 @@ function responseFormatUnavailable(error: unknown): boolean {
   return /response_format.*unavailable/i.test(error instanceof Error ? error.message : String(error));
 }
 
-function strictJSONInstruction(system: string | undefined): string {
-  return `${system ?? ""}\nReturn exactly one JSON object with no Markdown or extra text. The response is validated before use.`;
+function strictJSONInstruction(system: string | undefined, schema: z.ZodType): string {
+  return `${system ?? ""}\nReturn exactly one JSON object with no Markdown or extra text. Validate it against this JSON Schema: ${JSON.stringify(schema.toJSONSchema())}`;
 }
 
 function parseJSONObject(text: string): unknown {
